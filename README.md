@@ -17,7 +17,7 @@ TokenSim is a tool for simulating the behavior of large language models (LLMs) i
 ```shell
 $ git clone https://github.com/pku-lemonade/TokenSim.git
 $ git submodule update --init --recursive
-$ conda create -n tokensim python=3.10
+$ conda create -n tokensim python=3.11
 $ conda activate tokensim
 $ pip install -r requirements.txt
 ```
