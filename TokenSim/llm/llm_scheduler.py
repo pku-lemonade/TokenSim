@@ -1,27 +1,66 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from enum import Enum, auto
+import logging
 
 
-from TokenSim.llm.llm_comm import SwapMetadata
+from TokenSim.llm.llm_comm import KVConnectorMetadata, KVConnectorWorkerMetadata
 from TokenSim.llm.llm_request import Request, RequestStatus
 from TokenSim.block.block_manager import BlockManager
-from TokenSim.config.config import CacheConfig
+from TokenSim.config.config import CacheConfig, KVTransferConfig
+from TokenSim.kv_transfer import NoopConnector
 
-check_req_id = []
+logger = logging.getLogger(__name__)
+
+
+class SchedulePhase(Enum):
+    IDLE = auto()
+    PREFILL = auto()
+    DECODE = auto()
+    RECOMPUTE = auto()
+
+
+@dataclass
+class ScheduleOutput:
+    running: list[Request]
+    preempted: list[Request]
+    scheduled: list[Request]
+    connector_metadata: KVConnectorMetadata
+    phase: SchedulePhase = SchedulePhase.IDLE
 
 
 class LLMScheduler(ABC):
-    def __init__(self):
+    def __init__(self, connector=None):
         self.running: list[Request] = []
         self.waiting: list[Request] = []
-        self.swapped: list[Request] = []
+        self.connector = connector or NoopConnector(KVTransferConfig.default())
 
     def add_requests(self, requests: list[Request]):
+        for req in requests:
+            self.connector.on_new_request(req)
         self.waiting.extend(requests)
 
     @abstractmethod
-    def schedule(self) -> tuple[list[Request], list[Request], SwapMetadata]:
-        pass
+    def schedule(self) -> tuple[list[Request], list[Request]]:
+        raise NotImplementedError
+
+    def schedule_output(self) -> ScheduleOutput:
+        running, preempted = self.schedule()
+        phase = SchedulePhase.IDLE
+        if running:
+            phase = (
+                SchedulePhase.PREFILL if running[0].is_prefill else SchedulePhase.DECODE
+            )
+        output = ScheduleOutput(
+            running=running,
+            preempted=preempted or [],
+            scheduled=running if not preempted else [],
+            connector_metadata=KVConnectorMetadata(),
+            phase=phase,
+        )
+        output.connector_metadata = self.connector.build_connector_meta(output)
+        return output
 
     def update(self, requests: list[Request]):
         # update block manager
@@ -32,29 +71,8 @@ class LLMScheduler(ABC):
         self.running = [req for req in self.running if not req.is_done]
         return self.running
 
-    def schedule_prompt(self):
-        running: list[Request] = []
-        swapped: list[Request] = []
-        for req in self.running:
-            swapped.append(req)
-        self.running = running
-        return swapped, SwapMetadata(0, 0, sum([_.num_physical_token_blocks for _ in swapped]))
-
-    def _swap_in(self, req: Request):
-        print(f"Swap in request {req.id}")
-        pass
-
-    def _swap_out(self, req: Request):
-        print(f"Swap out request {req.id}")
-        pass
-
-    def _remote_swap_out(self, req: Request):
-        print(f"Remote swap out request {req.id}")
-        pass
-
-    def _remote_swap_in(self, requests: list[Request]) -> tuple[list[Request], list[Request]]:
-        print(f"Remote swap in requests {[req.id for req in requests]}")
-        return requests, []
+    def update_connector_output(self, worker_output: KVConnectorWorkerMetadata) -> None:
+        self.connector.update_connector_output(worker_output)
 
     def free(self, req: Request):
         req.status = RequestStatus.FINISHED_STOPPED
@@ -64,66 +82,62 @@ class LLMScheduler(ABC):
 
 
 class LLMDynamicScheduler(LLMScheduler):
-    def __init__(self, max_parallem_sum=200):
-        super().__init__()
+    def __init__(self, max_parallem_sum=200, connector=None):
+        super().__init__(connector=connector)
         self.max_parallem_sum = max_parallem_sum
 
-    def schedule(self) -> tuple[list[Request], list[Request], SwapMetadata | None]:
+    def schedule(self) -> tuple[list[Request], list[Request]]:
         running = []
-        swapped = []
-        if not self.swapped:
-            while self.waiting:
-                request = self.waiting.pop()
-                running.append(request)
-                if sum([req.prompt_len for req in running]) == self.max_parallem_sum:
-                    break
-            if running:
-                self.running.extend(running)
-                return self.running, swapped, None
+        while self.waiting:
+            request = self.waiting.pop()
+            running.append(request)
+            if sum([req.prefill_len for req in running]) == self.max_parallem_sum:
+                break
+        if running:
+            self.running.extend(running)
+            return self.running, []
 
-            self.running = sorted(self.running, key=lambda r: r.arrival_time)
-            while self.running:
-                running.append(self.running.pop())
-
+        self.running = sorted(self.running, key=lambda r: r.arrival_time)
+        while self.running:
+            running.append(self.running.pop())
         self.running.extend(running)
-        return self.running, swapped, None
+        return self.running, []
 
     def cpu_workload(self):
         return 0
 
 
 class LLMStaticScheduler(LLMScheduler):
-    def __init__(self, max_parallem_sum=0):
-        super().__init__()
+    def __init__(self, max_parallem_sum=0, connector=None):
+        super().__init__(connector=connector)
         self.max_parallem_sum = max_parallem_sum
 
-    def schedule(self) -> tuple[list[Request], list[Request], SwapMetadata | None]:
+    def schedule(self) -> tuple[list[Request], list[Request]]:
         running = []
-        if not self.swapped:
-            while self.running:
-                running.append(self.running.pop())
-                if sum([req.prompt_len for req in running]) == self.max_parallem_sum:
-                    break
-            if running:
-                self.running.extend(running)
-                return running, self.swapped, None
-            while self.waiting:
-                running.append(self.waiting.pop())
-                if sum([req.prompt_len for req in running]) == self.max_parallem_sum:
-                    break
+        while self.running:
+            running.append(self.running.pop())
+            if sum([req.prefill_len for req in running]) == self.max_parallem_sum:
+                break
+        if running:
+            self.running.extend(running)
+            return running, []
+        while self.waiting:
+            running.append(self.waiting.pop())
+            if sum([req.prefill_len for req in running]) == self.max_parallem_sum:
+                break
         self.running.extend(running)
-        return running, self.swapped, None
+        return running, []
 
     def cpu_workload(self):
         return 0
 
 
-class LLMPromptScheduler(LLMScheduler):
-    def __init__(self, max_parallem_sum=0):
-        super().__init__()
+class LLMPrefillScheduler(LLMScheduler):
+    def __init__(self, max_parallem_sum=0, connector=None):
+        super().__init__(connector=connector)
         self.max_parallem_sum = max_parallem_sum
 
-    def schedule(self) -> tuple[list[Request], list[Request], SwapMetadata | None]:
+    def schedule(self) -> tuple[list[Request], list[Request]]:
         running = []
         if len(self.waiting) >= self.max_parallem_sum:
             while self.waiting:
@@ -136,7 +150,7 @@ class LLMPromptScheduler(LLMScheduler):
                 while self.waiting:
                     running.append(self.waiting.pop())
         self.running.extend(running)
-        return running, self.swapped, None
+        return running, []
 
 
 class LLMPagedAttnScheduler(LLMScheduler):
@@ -144,63 +158,88 @@ class LLMPagedAttnScheduler(LLMScheduler):
         self,
         id: int,
         cache_config: CacheConfig,
-        lazy_swap: bool,
         max_parallem_sum=None,
         max_occupy_ratio: float = 1,
+        connector=None,
     ):
-        super().__init__()
+        super().__init__(connector=connector)
 
         self.id = id
         self.cache_config = cache_config
-        self.lazy_swap = lazy_swap
         self.max_parallem_sum = max_parallem_sum
 
         self.block_manager: BlockManager = BlockManager(
             block_size=self.cache_config.block_size,
             num_gpu_blocks=self.cache_config.num_gpu_blocks,
             num_cpu_blocks=self.cache_config.num_cpu_blocks,
+            model=self.cache_config.model,
         )
 
         self.max_occupy_ratio = max_occupy_ratio
+        set_releaser = getattr(self.connector, "set_block_releaser", None)
+        if set_releaser is not None:
+            set_releaser(self._release_delayed_blocks)
 
-    def schedule(self) -> tuple[list[Request], list[Request] | None, SwapMetadata | None]:
+    def schedule(self) -> tuple[list[Request], list[Request]]:
         """The scheduler FSM for dynamic scheduling, basically being ported
             from the vLLM's Scheduler.schedule() method.
 
-            currently we donnot consider requests whose generation length exceeds
+            currently we donnot consider requests whose decode length exceeds
             the max_len limitation.
 
         Return:
-            A list of candidate requests for the next generation step.
+            A list of candidate requests for the next decode step.
         """
-        num_blocks_to_swap_in: int = 0
-        num_blocks_to_swap_out: int = 0
-
         scheduled: list[Request] = []
-        if not self.swapped:
-            while self.waiting:
-                if not self._is_occupy_below_usage():
-                    break
-                if self.max_parallem_sum is not None and len(self.running) >= self.max_parallem_sum:
-                    break
+        admission_phase: SchedulePhase | None = None
+        while self.waiting:
+            if not self._is_occupy_below_usage():
+                break
+            if (
+                self.max_parallem_sum is not None
+                and len(self.running) >= self.max_parallem_sum
+            ):
+                break
 
-                req = self.waiting[0]
+            req = self.waiting[0]
+            req_phase = (
+                SchedulePhase.RECOMPUTE
+                if req.needs_recompute
+                else SchedulePhase.PREFILL
+            )
+            if admission_phase is not None and req_phase != admission_phase:
+                break
 
-                if not self.block_manager.can_allocate(req):
-                    # print("cant allocate waiting")
-                    break
+            if not self.block_manager.can_allocate(req):
+                break
 
-                req = self.waiting.pop(0)
-                self.block_manager.allocate(req)
-                req.status = RequestStatus.RUNNING
-                self.running.append(req)
-                scheduled.append(req)
+            req = self.waiting.pop(0)
+            local_plan = self.block_manager.kv_cache_manager.plan_reuse(req)
+            num_external_tokens = self.connector.get_num_new_matched_tokens(
+                req,
+                local_plan.hit_tokens,
+            )
+            if req.needs_recompute:
+                req.recompute_tokens = max(
+                    0,
+                    req.context_len - local_plan.hit_tokens - num_external_tokens,
+                )
+            self.block_manager.allocate(req)
+            self.connector.update_state_after_alloc(
+                req,
+                self.block_manager.block_table.get_blocks(req.id),
+                num_external_tokens,
+            )
+            req.status = RequestStatus.RUNNING
+            self.running.append(req)
+            scheduled.append(req)
+            admission_phase = req_phase
 
-                # if sum([req.prompt_len for req in scheduled]) >= self.max_parallem_sum:
-                #     break
+            # if sum([req.prefill_len for req in scheduled]) >= self.max_parallem_sum:
+            #     break
 
-            if scheduled:
-                return scheduled, None, None
+        if scheduled:
+            return scheduled, []
 
         # [TODO: xuechao] sort self.running according to some priority policy.
         self.running = sorted(self.running, key=lambda req: req.arrival_time)
@@ -208,137 +247,110 @@ class LLMPagedAttnScheduler(LLMScheduler):
         # Reserve new token slots for the running sequence groups.
         running: list[Request] = []
         preempted: list[Request] = []
-        if_swap: bool = False
 
         while self.running:
             req = self.running.pop(0)
-            num_blocks_to_reserve = 0
-            if self.lazy_swap:
-                num_blocks_to_reserve = max(len(running), num_blocks_to_swap_out)
-            while not self.block_manager.can_append_slot(num_blocks_to_reserve):
+            while True:
+                if self.block_manager.can_append_slot(req):
+                    # Append new slots to the sequence group.
+                    self.block_manager.append_slot(req)
+                    running.append(req)
+                    break
                 if self.running:
                     # Preempt the lowest-priority sequence groups.
                     victim_req = self.running.pop(-1)
                     self._preempt(victim_req)
-                    num_blocks_to_swap_out += len(victim_req._physical_token_blocks)
                     preempted.append(victim_req)
                 else:
                     # No other sequence groups can be preempted.
                     # Preempt the current sequence group.
                     self._preempt(req)
-                    num_blocks_to_swap_out += len(req._physical_token_blocks)
                     preempted.append(req)
                     break
-            else:
-                # Append new slots to the sequence group.
-                self.block_manager.append_slot(req)
-                running.append(req)
         self.running = running
 
-        if num_blocks_to_swap_out > 500:
-            print("wtf")
-            pass
-        if self.lazy_swap:
-            self.block_manager.try_allocate(num_blocks_to_swap_out)
+        return self.running, preempted
 
-        # TODO: sort self.swapped according to some priority policy.
-        self.swapped = sorted(self.swapped, key=lambda req: req.arrival_time)
-
-        # Swap in the requests in the SWAPPED state if possible.
-        while self.swapped and (num_blocks_to_swap_out == 0):
-            if not self._is_occupy_below_usage():
-                break
-            if self.max_parallem_sum is not None and len(self.running) >= self.max_parallem_sum:
-                break
-            req = self.swapped[0]
-            # If the sequence group has been preempted in this step, stop.
-            if req in preempted:
-                break
-            # If the sequence group cannot be swapped in, stop.
-            if not self.block_manager.can_swap_in(req, len(running) + 1):
-                break
-            req = self.swapped.pop(0)
-            num_blocks_to_swap_in += len(req._physical_token_blocks)
-            self._swap_in(req)
-            self.block_manager.append_slot(req)
-            self.running.append(req)
-
-        return (
-            self.running,
-            preempted,
-            SwapMetadata(self.id, num_blocks_to_swap_in, num_blocks_to_swap_out),
+    def schedule_output(self) -> ScheduleOutput:
+        running, preempted = self.schedule()
+        phase = SchedulePhase.IDLE
+        if running:
+            if running[0].needs_recompute:
+                phase = SchedulePhase.RECOMPUTE
+            elif running[0].is_prefill:
+                phase = SchedulePhase.PREFILL
+            else:
+                phase = SchedulePhase.DECODE
+        output = ScheduleOutput(
+            running=running,
+            preempted=preempted or [],
+            scheduled=running if not preempted else [],
+            connector_metadata=KVConnectorMetadata(
+                preempted_request_ids=[req.id for req in preempted or []],
+            ),
+            phase=phase,
         )
+        output.connector_metadata = self.connector.build_connector_meta(output)
+        if preempted and not output.connector_metadata.preempted_request_ids:
+            output.connector_metadata.preempted_request_ids = [
+                req.id for req in preempted
+            ]
+        return output
+
+    def update(self, requests: list[Request]):
+        for req in requests:
+            if req.generation_idx > 0:
+                self.block_manager.commit_input_cache(req)
+        return super().update(requests)
+
+    def update_connector_output(self, worker_output: KVConnectorWorkerMetadata) -> None:
+        super().update_connector_output(worker_output)
+        if worker_output.finished_sending:
+            self.running = [
+                req
+                for req in self.running
+                if req.id not in worker_output.finished_sending
+            ]
 
     def _is_occupy_below_usage(self):
         (_, used_blks, all_blks) = self.block_manager.get_gpu_status()
         return used_blks / all_blks < self.max_occupy_ratio
 
     def _preempt(self, req: Request) -> None:
-        # In lazy swap mode, request status must still be updated, and the swap related
-        # meta data should also be recorded (e.g., number of blocks to be swapped). But
-        # the swap operations are not necessarily performed immediately by current worker.
-        # print(f"Preempt request {req.id}")
-        if self.lazy_swap:
-            self._remote_swap_out(req)
-        else:
-            self._swap_out(req)
-            self.swapped.append(req)
+        if req.status != RequestStatus.RUNNING:
+            logger.debug("preempting request %s with status %s", req.id, req.status)
+        self.block_manager.release_request_blocks(req)
+        req.prepare_recompute()
+        req.status = RequestStatus.WAITING
+        self.waiting.insert(0, req)
 
-    def _swap_in(self, req: Request) -> None:
-        assert req.status == RequestStatus.SWAPPED
-        self.block_manager.swap_in(req)
-        req.status = RequestStatus.RUNNING
-
-    def _remote_swap_in_running(self, req: Request) -> None:
-        assert req.status == RequestStatus.SWAPPED_REMOTE
-        self.block_manager.remote_swap_in_running(req)
-        req.status = RequestStatus.RUNNING
-
-    def _remote_swap_in_swapped(self, req: Request) -> None:
-        assert req.status == RequestStatus.SWAPPED_REMOTE
-        self.block_manager.remote_swap_in_swapped(req)
-        req.status = RequestStatus.SWAPPED
-
-    def _swap_out(self, req: Request) -> None:
-        if not self.block_manager.can_swap_out(req):
-            raise RuntimeError(
-                "Aborted due to the lack of CPU swap space. Please increase "
-                "the swap space to avoid this error."
-            )
-        assert req.status == RequestStatus.RUNNING
-        self.block_manager.swap_out(req)
-        req.status = RequestStatus.SWAPPED
-
-    def _remote_swap_out(self, req: Request) -> None:
-        assert req.status == RequestStatus.RUNNING
-        self.block_manager.remote_swap_out(req)
-        req.status = RequestStatus.SWAPPED_REMOTE
-
-    def _remote_swap_in(self, requests: list[Request]):
-        to_running: list[Request] = []
-        to_swapped: list[Request] = []
+    def finish_recompute(self, requests: list[Request], latency: float) -> None:
         for req in requests:
-            if self.block_manager.can_swap_in(req) and self._is_occupy_below_usage():
-                self._remote_swap_in_running(req)
-                to_running.append(req)
-            elif self.block_manager.can_swap_out(req):
-                self._remote_swap_in_swapped(req)
-                to_swapped.append(req)
-            else:
-                raise RuntimeError("Aborted due to the lack of CPU swap space.")
-        return to_running, to_swapped
+            self.block_manager.commit_input_cache(req)
+            req.finish_recompute(latency)
+
+    def release_reserved_blocks(self, num_blocks: int | None = None):
+        self.block_manager.release_reserved_blocks(num_blocks)
 
     def free(self, req: Request):
+        block_ids = [
+            block.block_number
+            for block in self.block_manager.block_table.get_blocks(req.id)
+        ]
+        delay_free, _ = self.connector.request_finished(req, block_ids)
+        if delay_free:
+            req.status = RequestStatus.WAITING_FOR_CONNECTOR_FREE
+            return
         self.block_manager.free(req)
         req.status = RequestStatus.FINISHED_STOPPED
 
     def workload(self):
-        """返回GPU内存使用情况"""
+        """Return GPU KV-cache utilization as a percentage."""
         free_blocks, used_blocks, total_blocks = self.block_manager.get_gpu_status()
         return (used_blocks / total_blocks) * 100 if total_blocks > 0 else 0
 
     def cpu_workload(self):
-        """返回CPU内存使用情况"""
+        """Return allocated CPU KV-cache capacity in GiB."""
         _GB = 1 << 30
         capacity = (
             self.block_manager.cpu_allocator.get_num_allocated_blocks()
@@ -349,3 +361,7 @@ class LLMPagedAttnScheduler(LLMScheduler):
         # return self.block_manager.cpu_allocator.get_num_allocated_blocks()
 
         return capacity
+
+    def _release_delayed_blocks(self, req: Request, block_ids: list[int]) -> None:
+        self.block_manager.release_request_blocks(req)
+        req.status = RequestStatus.FINISHED_STOPPED

@@ -1,0 +1,27 @@
+{
+    "num_workers": 8,
+    "networks": {
+        "netw1": "ethernet100Gb",
+        "netw2": "ethernet100Gb"
+    },
+    "parallel_config": {
+        "tensor_parallel_size": 2,
+        "pipeline_parallel_size": 2,
+        "data_parallel_size": 2,
+        "data_parallel_size_local": 2
+    },
+    "worker_groups": [
+        {
+            "role": "hybrid",
+            "hardware": "A100-40G",
+            "num_workers": 4,
+            "network": "netw1"
+        },
+        {
+            "role": "hybrid",
+            "hardware": "A100-40G",
+            "num_workers": 4,
+            "network": "netw2"
+        }
+    ]
+}

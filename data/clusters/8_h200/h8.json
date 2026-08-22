@@ -5,8 +5,8 @@
     },
     "worker_groups": [
         {
-            "role": "homo",
-            "hardware": "A100-40G",
+            "role": "hybrid",
+            "hardware": "H200",
             "num_workers": 8,
             "network": "netw1"
         }

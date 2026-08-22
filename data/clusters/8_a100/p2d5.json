@@ -5,13 +5,13 @@
     },
     "worker_groups": [
         {
-            "role": "prompt",
+            "role": "prefill",
             "hardware": "A100-40G",
             "num_workers": 2,
             "network": "netw1"
         },
         {
-            "role": "generation",
+            "role": "decode",
             "hardware": "A100-40G",
             "num_workers": 6,
             "network": "netw1"

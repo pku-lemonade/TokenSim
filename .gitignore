@@ -1,7 +1,14 @@
+.DS_Store
 .vscode
-__pycache__
+
+__pycache__/
+*.py[cod]
+.pytest_cache/
 
 results
 img
 log
 tmp
+
+.codex
+.claude

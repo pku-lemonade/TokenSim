@@ -1,49 +1,59 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Optional, Any, Tuple
+from enum import Enum, auto
+from typing import Any, Optional
 import logging
 import math
-from enum import Enum
-from abc import ABC, abstractmethod
+import time
+
 import simpy
 
-
-from TokenSim.llm.llm_comm import SwapMetadata, SwapInMetadata
-from TokenSim.llm.llm_request import Request
-from TokenSim.config.config import ClusterConfig, WorkerConfig, CacheConfig, _GB
+from TokenSim.config.config import (
+    CacheConfig,
+    ClusterConfig,
+    KVTransferConfig,
+    ParallelConfig,
+    ParallelRankInfo,
+    WorkerConfig,
+    _GB,
+)
 from TokenSim.config.psla_config import PSLAConfig
+from TokenSim.errors import ConfigurationError, SimulationStateError
+from TokenSim.kv_transfer import (
+    ConnectorStats,
+    KVConnectorFactory,
+    KVConnectorMetadata,
+    P2PConnector,
+)
+from TokenSim.latency import build_latency_backend
+from TokenSim.llm.llm_request import Request, RequestStatus
 from TokenSim.llm.llm_scheduler import (
-    LLMStaticScheduler,
     LLMDynamicScheduler,
     LLMPagedAttnScheduler,
-    LLMPromptScheduler,
+    LLMStaticScheduler,
+    SchedulePhase,
 )
+from TokenSim.placement import (
+    BalancedLoadWorkerPool,
+    DataParallelWorkerPool,
+    LeastGpuMemoryWorkerPool,
+    RoundRobinWorkerPool,
+)
+from TokenSim.parallel import ParallelCommunicator
+from TokenSim.moe import MoEModelConfig, ExpertPlacement, build_expert_placement
 
 from TransformerRoofline import TransformerRoofline
 
-from LLMCompass.software_model.transformer import (
-    TransformerBlockInitComputationTP,
-    TransformerBlockAutoRegressionTP,
-)
-from LLMCompass.hardware_model.system import System as LLMCompassSystem
-from LLMCompass.software_model.utils import Tensor, data_type_dict
-
-g_trace = []
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
 class Task(Enum):
-    ADD = 10  # 添加新请求
-    STEP = 20  # 执行一步计算
-    STOP = 30  # 停止执行
-    SWAP = 0  # 交换内存
-    SWAP_LOCAL = 1  # 本地内存交换
-    SWAP_IN_REMOTE = 2  # 从远程加载内存
-    SWAP_OUT_REMOTE = 3  # 写出到远程内存
-    SWAP_IN_REMOTE_DONE = -1
-    SWAP_OUT_REMOTE_DONE = -1
+    ADD = auto()
+    STEP = auto()
+    STOP = auto()
 
 
 @dataclass
@@ -58,18 +68,29 @@ class Message:
 
 
 class WorkerStatus(Enum):
-    WAITING = 0
-    RUNNING = 1
-    SWAPPING = 2
-    STOPPED = 3
+    WAITING = auto()
+    RUNNING = auto()
+    STOPPED = auto()
 
 
-class SwapPolicy(Enum):
-    lazy = "lazy"
-    eager = "eager"
+class RequestCompletionDebugPrinter:
+    def __init__(self, enabled: bool = False) -> None:
+        self.enabled = enabled
+        self.wall_start: float | None = None
 
-    def __str__(self):
-        return self.value
+    def start(self, wall_start: float | None = None) -> None:
+        self.wall_start = time.perf_counter() if wall_start is None else wall_start
+
+    def record(self, event: str, request: Request, timestamp: float) -> None:
+        if not self.enabled or self.wall_start is None:
+            return
+        wall_elapsed = time.perf_counter() - self.wall_start
+        print(
+            f"[request={request.id}] debug event={event} "
+            f"wall_elapsed_s={wall_elapsed:.6f} "
+            f"request_id={request.id} input_len={request.prefill_len} "
+            f"output_len={request.generation_idx} timestamp={timestamp:.6f}"
+        )
 
 
 class Worker:
@@ -77,29 +98,46 @@ class Worker:
         self.env = env
         self.id = id
         self.msg_queue = simpy.PriorityStore(self.env)
-        self.memory = []
-        self.cpu_mem = []
 
     def send_task(
-        self, worker: Worker, task: Task, requests: Optional[list[Request]] = None, metadata=None
+        self,
+        worker: Worker,
+        task: Task,
+        requests: Optional[list[Request]] = None,
+        metadata=None,
     ):
         worker.msg_queue.put(Message(task, self.id, requests, metadata))
 
-    def trace(self, name, dur, requests: list[Request]):
-        trace = {}
-        trace["name"] = name + str(len(requests))
-        trace["pid"] = self.id
-        trace["tid"] = 1
-        trace["ph"] = "X"
-        trace["ts"] = self.env.now * 1e6
-        trace["dur"] = dur * 1e6
-        trace["args"] = {"requests": [(req.id, req.generation_idx) for req in requests]}
-        g_trace.append(trace)
-
     def check(self, requests: list[Request]):
-        check_id = 3473
-        if check_id in [_.id for _ in requests]:
-            print(self.env.now)
+        logger.debug(
+            "worker %s check at time=%s requests=%s",
+            self.id,
+            self.env.now,
+            _request_ids(requests),
+        )
+
+
+def _request_ids(requests: list[Request] | None) -> list[int]:
+    if not requests:
+        return []
+    return [req.id for req in requests]
+
+
+def _merge_connector_metadata(
+    left: KVConnectorMetadata,
+    right: KVConnectorMetadata | None,
+) -> KVConnectorMetadata:
+    if right is None:
+        return left
+    return KVConnectorMetadata(
+        connector_name=right.connector_name if right.has_work else left.connector_name,
+        loads=[*left.loads, *right.loads],
+        saves=[*left.saves, *right.saves],
+        preempted_request_ids=[
+            *left.preempted_request_ids,
+            *right.preempted_request_ids,
+        ],
+    )
 
 
 class LLMWorker(Worker):
@@ -112,19 +150,18 @@ class LLMWorker(Worker):
         worker_config: WorkerConfig,
         block_size: int,
         batching: str,
-        swap_policy: SwapPolicy,
+        kv_transfer_config: KVTransferConfig,
         roofline: TransformerRoofline,
         max_parallem_sum: int,
         max_occupy_ratio: float = 1,
-        pp_dim: int = 1,
-        wrapped_llmcompass_vars: Tuple[
-            LLMCompassSystem, TransformerBlockInitComputationTP, TransformerBlockAutoRegressionTP
-        ] = None,
+        parallel_config: ParallelConfig | None = None,
+        moe_config: MoEModelConfig | None = None,
+        expert_placement: ExpertPlacement | None = None,
+        latency_backend_type: str = "roofline",
+        random_seed: int = 0,
+        wrapped_llmcompass_vars: tuple[Any, Any, Any] | None = None,
     ):
         super().__init__(env, id)
-        self.llmcm_system, self.llmcm_prefill, self.llmcm_decode = None, None, None
-        if wrapped_llmcompass_vars is not None:
-            self.llmcm_system, self.llmcm_prefill, self.llmcm_decode = wrapped_llmcompass_vars
         self.roofline = roofline
         self.engine = engine
 
@@ -133,42 +170,98 @@ class LLMWorker(Worker):
         self.network = worker_config.network
         self.nettype = worker_config.nettype
         self.model = psla_config.model
+        self.parallel_config = parallel_config or ParallelConfig.default()
+        self.moe_config = moe_config or psla_config.moe_config
+        self.expert_placement = expert_placement
+        self.rank_info = worker_config.rank_info or ParallelRankInfo()
+        self.global_rank = self.rank_info.global_rank
+        self.tp_rank = self.rank_info.tp_rank
+        self.pp_rank = self.rank_info.pp_rank
+        self.dp_rank = self.rank_info.dp_rank
+        self.rank_in_dp_group = self.rank_info.rank_in_dp_group
+        self.kv_cache_group_id = self.rank_info.kv_cache_group_id
 
         self.block_size = block_size
-        self.swap_policy = swap_policy
-
-        self.cache_config = CacheConfig(self.block_size, self.hardware, self.model, self.roofline)
-
+        try:
+            self.cache_config = CacheConfig(
+                self.block_size,
+                self.hardware,
+                self.model,
+                self.roofline,
+                parallel_config=self.parallel_config,
+                rank_info=self.rank_info,
+                moe_config=self.moe_config,
+                expert_placement=self.expert_placement,
+            )
+        except TypeError as exc:
+            if "unexpected keyword argument" not in str(exc):
+                raise
+            self.cache_config = CacheConfig(
+                self.block_size,
+                self.hardware,
+                self.model,
+                self.roofline,
+            )
         self.preempted_cnt = 0
+        self.pending_connector_metadata: KVConnectorMetadata | None = None
+        self.parallel_communicator = ParallelCommunicator(
+            roofline=self.roofline,
+            workers=self.engine.workers,
+            worker_id=self.id,
+            rank_info=self.rank_info,
+            parallel_config=self.parallel_config,
+            hardware=self.hardware,
+        )
 
-        self.pp_dim = pp_dim
+        self.latency_backend = build_latency_backend(
+            backend_type=latency_backend_type,
+            roofline=self.roofline,
+            model=self.model,
+            hardware=self.hardware,
+            parallel_config=self.parallel_config,
+            rank_info=self.rank_info,
+            communicator=self.parallel_communicator,
+            moe_config=self.moe_config,
+            expert_placement=self.expert_placement,
+            random_seed=random_seed + id,
+            wrapped_llmcompass_vars=wrapped_llmcompass_vars,
+        )
+        self.owned_expert_ids = (
+            self.expert_placement.experts_for_rank(self.rank_info)
+            if self.expert_placement is not None
+            else []
+        )
 
-        self.mems = [{}, {}, {}, {}]
+        self.kv_transfer_config = kv_transfer_config.with_worker_defaults(
+            worker_config.role,
+            kv_rank=id,
+        )
+        self.connector = KVConnectorFactory.create_connector(
+            self.kv_transfer_config,
+            self.cache_config,
+        )
 
-        # FIXME: max_parallem_sum should be calculated based on accelerator type
         if batching == "paged-attn":
-            if False:
-                # if self.role == "prompt":
-                self.scheduler = LLMPromptScheduler(max_parallem_sum=200)
-            else:
-                self.scheduler = LLMPagedAttnScheduler(
-                    self.id,
-                    cache_config=self.cache_config,
-                    lazy_swap=self.lazy_swap,
-                    max_parallem_sum=max_parallem_sum,
-                    max_occupy_ratio=max_occupy_ratio if self.role != "prompt" else 1,
-                )
+            self.scheduler = LLMPagedAttnScheduler(
+                self.id,
+                cache_config=self.cache_config,
+                max_parallem_sum=max_parallem_sum,
+                max_occupy_ratio=max_occupy_ratio if self.role != "prefill" else 1,
+                connector=self.connector,
+            )
         elif batching == "static":
-            self.scheduler = LLMStaticScheduler(max_parallem_sum=max_parallem_sum)
+            self.scheduler = LLMStaticScheduler(
+                max_parallem_sum=max_parallem_sum,
+                connector=self.connector,
+            )
         else:
-            self.scheduler = LLMDynamicScheduler(max_parallem_sum=max_parallem_sum)
+            self.scheduler = LLMDynamicScheduler(
+                max_parallem_sum=max_parallem_sum,
+                connector=self.connector,
+            )
 
         self.status = WorkerStatus.WAITING
         self.action = self.env.process(self.run())
-
-    @property
-    def lazy_swap(self):
-        return self.swap_policy == SwapPolicy.lazy
 
     def workload(self):
         return self.scheduler.workload()
@@ -176,55 +269,50 @@ class LLMWorker(Worker):
     def cpu_workload(self):
         return self.scheduler.cpu_workload()
 
-    def trace_memory(self):
-        self.memory.append((self.env.now, self.workload()))
-        self.cpu_mem.append((self.env.now, self.cpu_workload()))
-
     def step(self, requests: list[Request], latency: float):
         for request in requests:
+            was_prefill = request.is_prefill
             request.step(self.env, latency, len(requests))
+            if was_prefill:
+                self.engine.record_request_completion("prefill", request)
+            if request.is_done:
+                self.engine.record_request_completion("decode", request)
 
-    def swap_eager(self, swap_metadata: SwapMetadata):
+    def estimate_transfer_latency(self, remote_id: int, num_blocks: int) -> float:
+        if num_blocks == 0:
+            return 0.0
         hardwares = self.roofline.hardwares
         links = self.roofline.links
 
-        if self.id == swap_metadata.remote_id:
-            link = links[hardwares[self.hardware].Pcie]
-            Latency = link.Latency
-            BW = link.UniBW
+        if self.id == remote_id:
+            return 0.0
+
+        remote_worker = self.engine.workers[remote_id]
+        if self.network == remote_worker.network:
+            latency = max(
+                links[hardwares[self.hardware].Nvlink].Latency,
+                links[hardwares[remote_worker.hardware].Nvlink].Latency,
+            )
+            bandwidth = min(
+                links[hardwares[self.hardware].Nvlink].UniBW,
+                links[hardwares[remote_worker.hardware].Nvlink].UniBW,
+            )
         else:
-            swap_worker = self.engine.workers[swap_metadata.remote_id]
-            if self.network == swap_worker.network:
-                Latency = max(
-                    links[hardwares[self.hardware].Nvlink].Latency,
-                    links[hardwares[swap_worker.hardware].Nvlink].Latency,
-                )
-                BW = min(
-                    links[hardwares[self.hardware].Nvlink].UniBW,
-                    links[hardwares[swap_worker.hardware].Nvlink].UniBW,
-                )
-            else:
-                Latency = max(links[self.nettype].Latency, links[swap_worker.nettype].Latency)
-                BW = min(links[self.nettype].UniBW, links[swap_worker.nettype].UniBW)
+            latency = max(
+                links[self.nettype].Latency, links[remote_worker.nettype].Latency
+            )
+            bandwidth = min(
+                links[self.nettype].UniBW, links[remote_worker.nettype].UniBW
+            )
 
-        swap_overhead_in = (
-            Latency
-            + swap_metadata.num_blocks_to_swap_in
+        return (
+            latency
+            + num_blocks
             * self.cache_config.block_size
             * self.cache_config.size_per_token
             / _GB
-            / BW
+            / bandwidth
         )
-        swap_overhead_out = (
-            Latency
-            + swap_metadata.num_blocks_to_swap_out
-            * self.cache_config.block_size
-            * self.cache_config.size_per_token
-            / _GB
-            / BW
-        )
-
-        return max(swap_overhead_in, swap_overhead_out)
 
     def run(self):
         while True:
@@ -235,240 +323,75 @@ class LLMWorker(Worker):
             try:
                 match msg.task:
                     case Task.ADD:
-                        self.scheduler.add_requests(msg.requests)
+                        if msg.metadata is not None:
+                            self.pending_connector_metadata = msg.metadata
+                        self.scheduler.add_requests(msg.requests or [])
                         self.status = WorkerStatus.RUNNING
+
                     case Task.STEP:
-                        assert self.status == WorkerStatus.RUNNING
-                        running, swapped, swap_metadata = self.scheduler.schedule()
+                        if self.status != WorkerStatus.RUNNING:
+                            raise SimulationStateError(
+                                f"worker {self.id} received STEP while {self.status}"
+                            )
+                        self.connector.set_simulation_time(self.env.now)
+                        schedule_output = self.scheduler.schedule_output()
+                        connector_metadata = _merge_connector_metadata(
+                            schedule_output.connector_metadata,
+                            self.pending_connector_metadata,
+                        )
+                        self.pending_connector_metadata = None
+                        self.connector.handle_preemptions(connector_metadata)
+                        self.connector.bind_connector_metadata(connector_metadata)
 
-                        if swapped and swap_metadata:
-                            if self.lazy_swap:
-                                self.send_task(self.engine, Task.SWAP, swapped, swap_metadata)
-                            else:
-                                latency = self.swap_eager(swap_metadata)
-                                self.preempted_cnt += 1
-                                yield self.env.timeout(latency)
+                        load_latency = self.connector.start_load_kv()
+                        if load_latency:
+                            yield self.env.timeout(load_latency)
 
+                        if schedule_output.preempted:
+                            self.preempted_cnt += len(schedule_output.preempted)
+
+                        running = schedule_output.running
                         if running:
                             latency = self.dynamic_batch(running)
-                            yield self.env.timeout(latency)
+                            if latency:
+                                yield self.env.timeout(latency)
+                            if schedule_output.phase == SchedulePhase.RECOMPUTE:
+                                self.scheduler.finish_recompute(running, latency)
+                            else:
+                                self.step(running, latency)
+                                running = self.scheduler.update(running)
+                            self.connector.set_simulation_time(self.env.now)
+                            save_latency = self.connector.wait_for_save()
+                            if save_latency:
+                                yield self.env.timeout(save_latency)
+                            worker_meta = self.connector.build_connector_worker_meta()
+                            self.scheduler.update_connector_output(worker_meta)
 
-                            self.step(running, latency)
+                            if running and self.role == "prefill":
+                                self.engine.dispatch_prefill_to_decode(
+                                    self, list(running)
+                                )
+                                self.scheduler.running = []
+                                running = []
 
-                            running = self.scheduler.update(running)
-                            self.trace_memory()
-
-                            self.engine.trace_all_memory_usage()
-                            if running and self.role == "prompt":
-                                swapped, swap_metadata = self.scheduler.schedule_prompt()
-                                if swapped and swap_metadata:
-                                    self.send_task(self.engine, Task.SWAP, swapped, swap_metadata)
-
-                        if not running and not self.scheduler.waiting and not swapped:
+                        if not running and not self.scheduler.waiting:
                             self.status = WorkerStatus.WAITING
-
-                    case Task.SWAP_LOCAL:
-                        if msg.requests:
-                            for req in msg.requests:
-                                self.scheduler._swap_out(req)
-                                self.scheduler.swapped.append(req)
-
-                            latency = self.swap_eager(msg.metadata)
-                            yield self.env.timeout(latency)
-                            self.status = WorkerStatus.RUNNING
-
-                    case Task.SWAP_OUT_REMOTE:
-                        if msg.requests:
-                            self.env.process(self.swap_out(msg))
-
-                    case Task.SWAP_IN_REMOTE:
-                        if msg.requests:
-                            self.env.process(self.swap_in(msg))
-
-                    case Task.SWAP_IN_REMOTE_DONE:
-                        metadata = msg.metadata
-                        self.scheduler.running.extend(metadata.to_running)
-                        self.scheduler.swapped.extend(metadata.to_swapped)
-                        self.status = WorkerStatus.RUNNING
 
                     case Task.STOP:
                         self.status = WorkerStatus.STOPPED
                         break
-            except RuntimeError:
+            except Exception:
+                logger.exception(
+                    "worker %s failed while handling %s for requests=%s metadata=%s",
+                    self.id,
+                    msg.task,
+                    _request_ids(msg.requests),
+                    msg.metadata,
+                )
                 self.send_task(self.engine, Task.STOP)
 
-    def swap_out(self, msg):
-        for req in msg.requests:
-            self.scheduler._remote_swap_out(req)
-        msg.metadata.event.succeed()
-        latency = self.swap_eager(msg.metadata)
-        yield self.env.timeout(latency)
-        self.status = WorkerStatus.RUNNING
-
-    def swap_in(self, msg):
-        yield msg.metadata.event
-        to_running, to_swapped = self.scheduler._remote_swap_in(msg.requests)
-        latency = self.swap_eager(msg.metadata)
-        yield self.env.timeout(latency)
-        self.send_task(self, Task.SWAP_IN_REMOTE_DONE, None, SwapInMetadata(to_running, to_swapped))
-        self.status = WorkerStatus.RUNNING
-
     def dynamic_batch(self, requests: list[Request]) -> float:
-        if self.llmcm_system is None:
-            return self.dynamic_batch_roofline(requests)
-        else:
-            try:
-                return self.dynamic_batch_llmcompass(requests)
-            except Exception as e:
-                print(f"Error occured in LLMCompass: {e}")
-                return self.dynamic_batch_roofline(requests)
-
-    def dynamic_batch_roofline(self, requests: list[Request]) -> float:
-        batch_size = len(requests)
-        sum_attn_latency = 0
-        proj_latency = 0
-        # Prefill Stage
-        if requests[0].is_prompt:
-            total_prompt_len = sum([req.prompt_len for req in requests])
-            total_prompt_len = int(total_prompt_len / 128) * 128 + 128  # Calibration
-            proj_latency, _ = self.roofline.Compute_Timebreakdown_Iteration(
-                total_prompt_len,
-                requests[0].generation_idx,
-                1,
-                self.model,
-                self.hardware,
-                Pipeline_Stage=self.pp_dim,
-            )
-        # Generation Stage
-        else:
-            proj_latency, _ = self.roofline.Compute_Timebreakdown_Iteration(
-                requests[0].prompt_len,
-                requests[0].generation_idx,
-                batch_size,
-                self.model,
-                self.hardware,
-                Pipeline_Stage=self.pp_dim,
-            )
-        for req in requests:
-            _, attn_latency = self.roofline.Compute_Timebreakdown_Iteration(
-                req.prompt_len,
-                req.generation_idx,
-                1,
-                self.model,
-                self.hardware,
-                Pipeline_Stage=self.pp_dim,
-            )
-            sum_attn_latency += attn_latency
-
-        # Calibration
-        total_time = proj_latency + sum_attn_latency
-
-        if requests[0].is_prompt:
-            total_time = total_time * 1.41 + 0.009
-        else:
-            total_time = total_time / 0.55
-        return total_time
-
-    def dynamic_batch_llmcompass(self, requests: list[Request]) -> float:
-        batch_size = len(requests)
-        sum_attn_latency = 0
-        proj_latency = 0
-
-        if requests[0].is_prompt:
-            total_prompt_len = sum([req.prompt_len for req in requests])
-            total_prompt_len = int(total_prompt_len / 128) * 128 + 128  # Calibration
-            if total_prompt_len in self.mems[0]:
-                proj_latency = self.mems[0][total_prompt_len]
-            else:
-                _ = self.llmcm_prefill(Tensor([1, total_prompt_len, 4096], data_type_dict["fp16"]))
-                proj_latency, _ = self.llmcm_prefill.compile_and_simulate_proj_attn(
-                    self.llmcm_system, "heuristic-GPU"
-                )
-                self.mems[0][total_prompt_len] = proj_latency
-            proj_latency *= 40  # layer num
-            for req in requests:
-                if req.prompt_len in self.mems[1]:
-                    attn = self.mems[1][req.prompt_len]
-                else:
-                    _ = self.llmcm_prefill(
-                        Tensor([1, req.prompt_len, 4096], data_type_dict["fp16"])
-                    )
-                    _, attn = self.llmcm_prefill.compile_and_simulate_proj_attn(
-                        self.llmcm_system, "heuristic-GPU"
-                    )
-                    self.mems[1][req.prompt_len] = attn
-                sum_attn_latency += attn * 40  # layer num
-        else:
-            if (batch_size, max([req.generation_idx for req in requests])) in self.mems[2]:
-                proj_latency = self.mems[2][
-                    (batch_size, max([req.generation_idx for req in requests]))
-                ]
-            else:
-                _ = self.llmcm_decode(
-                    Tensor([batch_size, 1, 4096], data_type_dict["fp16"]),
-                    max([req.generation_idx for req in requests]),
-                )
-                proj_latency, _ = self.llmcm_decode.compile_and_simulate_proj_attn(
-                    self.llmcm_system, "heuristic-GPU"
-                )
-                self.mems[2][
-                    (batch_size, max([req.generation_idx for req in requests]))
-                ] = proj_latency
-            proj_latency *= 40  # layer num
-            for req in requests:
-                if req.prompt_len + req.generation_idx in self.mems[3]:
-                    attn = self.mems[3][req.prompt_len + req.generation_idx]
-                else:
-                    _ = self.llmcm_decode(
-                        Tensor([1, 1, 4096], data_type_dict["fp16"]),
-                        req.prompt_len + req.generation_idx,
-                    )
-                    _, attn = self.llmcm_decode.compile_and_simulate_proj_attn(
-                        self.llmcm_system, "heuristic-GPU"
-                    )
-                    self.mems[3][req.prompt_len + req.generation_idx] = attn
-                sum_attn_latency += attn * 40
-        # Calibration
-        total_time = proj_latency + sum_attn_latency
-        return total_time
-
-
-class WorkerPool(ABC):
-    def __init__(self, workers: list[LLMWorker]):
-        self.workers = workers
-        self.start_idx = workers[0].id
-
-    @abstractmethod
-    def schedule(self) -> LLMWorker:
-        pass
-
-    def get(self, id: int) -> LLMWorker:
-        return self.workers[id - self.start_idx]
-
-    def __len__(self) -> int:
-        return len(self.workers)
-
-
-class DePool(WorkerPool):
-    def __init__(self, workers: list[LLMWorker]):
-        super().__init__(workers)
-        self.cur_idx = 0
-        self.num_workers = len(workers)
-
-    def schedule(self):
-        i = self.cur_idx
-        self.cur_idx = (self.cur_idx + 1) % self.num_workers
-        return self.workers[i]
-
-
-class CePool(WorkerPool):
-    def workloads(self):
-        return [worker.workload() for worker in self.workers]
-
-    def schedule(self):
-        workloads = self.workloads()
-        i = workloads.index(min(workloads))
-        return self.workers[i]
+        return self.latency_backend.estimate_step_latency(requests)
 
 
 class LLMEngine(Worker):
@@ -477,150 +400,211 @@ class LLMEngine(Worker):
         env: simpy.Environment,
         block_size: int,
         batching: str,
-        swap_policy: SwapPolicy,
+        kv_transfer_config: KVTransferConfig,
         psla_config: PSLAConfig,
         cluster_config: ClusterConfig,
         roofline: TransformerRoofline,
-        pworker_pool_type: str,
-        gworker_pool_type: str,
+        prefill_worker_pool_type: str,
+        decode_worker_pool_type: str,
         max_parallem_sum: int,
         max_occupy_ratio: float = 1,
-        pp_dim: int = 1,
-        wrapped_llmcompass_vars: Tuple[
-            LLMCompassSystem, TransformerBlockInitComputationTP, TransformerBlockAutoRegressionTP
-        ] = None,
+        parallel_config: ParallelConfig | None = None,
+        latency_backend_type: str = "roofline",
+        wrapped_llmcompass_vars: tuple[Any, Any, Any] | None = None,
+        random_seed: int = 0,
+        debug_print: bool = False,
     ):
         super().__init__(env, -1)
 
-        pworker_pool_type = pworker_pool_type.lower()
-        gworker_pool_type = gworker_pool_type.lower()
+        prefill_worker_pool_type = prefill_worker_pool_type.lower()
+        decode_worker_pool_type = decode_worker_pool_type.lower()
 
-        pool_type_map = {"depool": DePool, "cepool": CePool}
+        pool_type_map = {
+            "round_robin": RoundRobinWorkerPool,
+            "least_gpu_memory": LeastGpuMemoryWorkerPool,
+            "balanced_load": BalancedLoadWorkerPool,
+        }
+        self.parallel_config = parallel_config or ParallelConfig.default()
+        self.debug_printer = RequestCompletionDebugPrinter(debug_print)
+        self.moe_config = psla_config.moe_config
+        self.expert_placement = build_expert_placement(
+            self.moe_config,
+            self.parallel_config,
+            total_layers=getattr(roofline.models[psla_config.model], "Nlayer", None),
+        )
 
+        worker_configs = cluster_config.workers(self.parallel_config)
+        self.workers: list[LLMWorker] = []
         self.workers = [
             LLMWorker(
-                env,
-                id,
-                self,
-                psla_config,
-                worker_config,
-                block_size,
-                batching,
-                swap_policy,
-                roofline,
-                max_parallem_sum,
-                max_occupy_ratio,
-                pp_dim,
-                wrapped_llmcompass_vars,
+                env=env,
+                id=id,
+                engine=self,
+                psla_config=psla_config,
+                worker_config=worker_config,
+                block_size=block_size,
+                batching=batching,
+                kv_transfer_config=kv_transfer_config,
+                roofline=roofline,
+                max_parallem_sum=max_parallem_sum,
+                max_occupy_ratio=max_occupy_ratio,
+                parallel_config=self.parallel_config,
+                moe_config=self.moe_config,
+                expert_placement=self.expert_placement,
+                latency_backend_type=latency_backend_type,
+                random_seed=random_seed,
+                wrapped_llmcompass_vars=wrapped_llmcompass_vars,
             )
-            for id, worker_config in enumerate(cluster_config.workers())
+            for id, worker_config in enumerate(worker_configs)
         ]
-        self.pworkers = pool_type_map[pworker_pool_type](
-            [worker for worker in self.workers if worker.role == "homo" or worker.role == "prompt"]
-        )
-        self.gworkers = pool_type_map[gworker_pool_type](
+        for worker in self.workers:
+            worker.parallel_communicator.workers = self.workers
+
+        self.prefill_workers = self._build_worker_pool(
             [
                 worker
                 for worker in self.workers
-                if worker.role == "homo" or worker.role == "generation"
-            ]
+                if worker.role == "hybrid" or worker.role == "prefill"
+                if self._is_schedulable_worker(worker)
+            ],
+            pool_type_map[prefill_worker_pool_type],
+        )
+        self.decode_workers = self._build_worker_pool(
+            [
+                worker
+                for worker in self.workers
+                if worker.role == "hybrid" or worker.role == "decode"
+                if self._is_schedulable_worker(worker)
+            ],
+            pool_type_map[decode_worker_pool_type],
         )
 
-        self.memory_usage_trace = []
-
+        self.connector_stats = ConnectorStats()
         self.action = self.env.process(self.run())
 
-    def trace_all_memory_usage(self):
-        """记录所有worker的内存使用情况"""
-        current_time = self.env.now
-        memory_snapshot = {"time": current_time, "workers": []}
+    def start_debug_clock(self, wall_start: float | None = None) -> None:
+        self.debug_printer.start(wall_start)
 
-        for worker in self.workers:
-            if hasattr(worker.scheduler, "block_manager"):
-                (
-                    free_blocks,
-                    used_blocks,
-                    total_blocks,
-                ) = worker.scheduler.block_manager.get_gpu_status()
-                usage_percent = (used_blocks / total_blocks) * 100 if total_blocks > 0 else 0
-                memory_snapshot["workers"].append(
-                    {
-                        "worker_id": worker.id,
-                        "role": worker.role,
-                        "free_blocks": free_blocks,
-                        "used_blocks": used_blocks,
-                        "total_blocks": total_blocks,
-                        "usage_percent": usage_percent,
-                    }
+    def record_request_completion(self, event: str, request: Request) -> None:
+        self.debug_printer.record(event, request, self.env.now)
+
+    def validate_request_capacity(self, requests: list[Request]) -> None:
+        role_pools = (
+            (
+                "prefill",
+                self.prefill_workers.workers,
+                lambda req: req.num_logical_token_blocks,
+            ),
+            (
+                "decode",
+                self.decode_workers.workers,
+                lambda req: (req.prefill_len + req.decode_len + req.block_size - 1)
+                // req.block_size,
+            ),
+        )
+        for role, workers, required_blocks in role_pools:
+            capacities = []
+            for worker in workers:
+                block_manager = getattr(worker.scheduler, "block_manager", None)
+                if block_manager is None:
+                    continue
+                capacities.append(
+                    block_manager.num_total_gpu_blocks - block_manager.watermark_blocks
                 )
+            if not capacities:
+                continue
+            available_blocks = min(capacities)
+            for req in requests:
+                needed = required_blocks(req)
+                if needed > available_blocks:
+                    raise ConfigurationError(
+                        f"request {req.id} cannot fit on every eligible {role} worker: "
+                        f"required_blocks={needed}, available_blocks={available_blocks}, "
+                        f"prefill_len={req.prefill_len}, decode_len={req.decode_len}, "
+                        f"block_size={req.block_size}"
+                    )
 
-        self.memory_usage_trace.append(memory_snapshot)
+    def _build_worker_pool(self, workers, pool_cls):
+        if self.parallel_config.data_parallel_size > 1:
+            return DataParallelWorkerPool(workers, pool_cls)
+        return pool_cls(workers)
+
+    def _is_schedulable_worker(self, worker: LLMWorker) -> bool:
+        if self.parallel_config.world_size == 1:
+            return True
+        return worker.tp_rank == 0 and worker.pp_rank == 0
 
     def run(self):
         while True:
             msg = yield self.msg_queue.get()
             match msg.task:
                 case Task.ADD:
-                    worker = self.pworkers.schedule()
-                    self.send_task(worker, Task.ADD, msg.requests)
-                    self.trace_all_memory_usage()
-                # 3. 内存交换
-                case Task.SWAP:
-                    if msg.sender_id < len(self.pworkers):
-                        # prompt ==> generation
-                        sender = self.pworkers.get(msg.sender_id)
-                        # Balance SWAP from prefill to generation
-                        num_requests = len(msg.requests)
-                        num_per_worker = math.ceil(num_requests / len(self.gworkers))
-                        for i in range(0, num_requests, num_per_worker):
-                            worker = self.gworkers.schedule()
-                            requests = msg.requests[i : i + num_per_worker]
-                            if sender is worker:
-                                self.send_task(worker, Task.SWAP_LOCAL, requests, msg.metadata)
-                            else:
-                                num_blocks_to_swap = msg.metadata.num_blocks_to_swap_out
-                                event = self.env.event()
-                                self.send_task(
-                                    sender,
-                                    Task.SWAP_OUT_REMOTE,
-                                    requests,
-                                    SwapMetadata(worker.id, 0, num_blocks_to_swap, event),
-                                )
-                                self.send_task(
-                                    worker,
-                                    Task.SWAP_IN_REMOTE,
-                                    requests,
-                                    SwapMetadata(sender.id, num_blocks_to_swap, 0, event),
-                                )
-                    else:
-                        # generation ==> generation
-                        sender = self.gworkers.get(msg.sender_id)
-                        worker = self.gworkers.schedule()
-                        if sender is worker:
-                            self.send_task(worker, Task.SWAP_LOCAL, msg.requests, msg.metadata)
-                        else:
-                            num_blocks_to_swap = msg.metadata.num_blocks_to_swap_out
-                            self.send_task(
-                                sender,
-                                Task.SWAP_OUT_REMOTE,
-                                msg.requests,
-                                SwapMetadata(worker.id, 0, num_blocks_to_swap),
-                            )
-                            self.send_task(
-                                worker,
-                                Task.SWAP_IN_REMOTE,
-                                msg.requests,
-                                SwapMetadata(sender.id, num_blocks_to_swap, 0),
-                            )
-                    self.trace_all_memory_usage()
+                    self._send_to_prefill_worker(msg.requests)
                 case Task.STOP:
-                    for worker in self.workers:
-                        self.send_task(worker, Task.STOP)
+                    self._broadcast_stop()
                     break
 
     def add_requests(self, requests: list[Request]):
         self.send_task(self, Task.ADD, requests)
 
     def add_requests_burst(self, requests: list[Request]):
-        worker = self.pworkers.schedule()
+        self._send_to_prefill_worker(requests)
+
+    def _send_to_prefill_worker(self, requests: list[Request] | None) -> None:
+        worker = self.prefill_workers.select_prefill_worker(
+            requests[0] if requests else None
+        )
         self.send_task(worker, Task.ADD, requests)
+
+    def _broadcast_stop(self) -> None:
+        for worker in self.workers:
+            self.send_task(worker, Task.STOP)
+
+    def dispatch_prefill_to_decode(
+        self,
+        sender: LLMWorker,
+        requests: list[Request],
+    ) -> None:
+        if not requests:
+            return
+        num_requests = len(requests)
+        num_per_worker = math.ceil(num_requests / len(self.decode_workers))
+        for i in range(0, num_requests, num_per_worker):
+            batch = requests[i : i + num_per_worker]
+            worker = self.decode_workers.select_transfer_target(batch)
+            request_block_counts = (
+                sender.scheduler.block_manager.get_request_block_counts(batch)
+            )
+            num_blocks = sum(request_block_counts.values())
+            connector = sender.connector
+            uses_default_p2p = not hasattr(connector, "build_transfer_plan")
+            if uses_default_p2p:
+                connector = P2PConnector(sender.kv_transfer_config, sender.cache_config)
+            latency = (
+                sender.estimate_transfer_latency(worker.id, num_blocks)
+                if uses_default_p2p or connector.name == "P2PConnector"
+                else None
+            )
+            plan = connector.build_transfer_plan(
+                requests=batch,
+                source_worker_id=sender.id,
+                target_worker_id=worker.id,
+                kind="local" if sender is worker else "load",
+                latency=latency,
+                request_block_counts=request_block_counts,
+            )
+            sender_metadata = KVConnectorMetadata(
+                connector_name=connector.name,
+                saves=[plan],
+            )
+            receiver_metadata = KVConnectorMetadata(
+                connector_name=connector.name,
+                loads=[] if sender is worker else [plan],
+            )
+            sender.connector.bind_connector_metadata(sender_metadata)
+            sender.connector.wait_for_save()
+            for req in batch:
+                sender.scheduler.block_manager.release_request_blocks(req)
+                sender.connector.on_request_released(req)
+                req.status = RequestStatus.WAITING_FOR_KV
+            self.send_task(worker, Task.ADD, batch, receiver_metadata)

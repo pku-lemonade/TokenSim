@@ -1,0 +1,21 @@
+{
+    "kv_connector": "MooncakeStoreConnector",
+    "kv_connector_extra_config": {
+        "mode": "standalone-store",
+        "protocol": "rdma",
+        "global_segment_size_gb": 1,
+        "local_buffer_size_gb": 1,
+        "memory_capacity_blocks": 1,
+        "enable_offload": true,
+        "ssd_capacity_blocks": 64,
+        "ssd_read_bw_gbps": 7.0,
+        "ssd_write_bw_gbps": 3.0,
+        "ssd_read_latency_us": 100,
+        "ssd_write_latency_us": 200,
+        "replica_num": 1,
+        "admission_policy": "always",
+        "eviction_policy": "lru",
+        "load_async": false,
+        "transfer_overlap": false
+    }
+}

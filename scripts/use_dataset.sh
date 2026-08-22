@@ -3,11 +3,11 @@
 ./benchmark.py \
     --batching paged-attn \
     --block_size 16 \
-    --swap_policy eager \
-    --prompt_count 100 \
+    --request_count 20 \
     --cluster ./data/clusters/1_a100/h1.json \
-    --dataset_json_path ./data/llmb_ver.json \
+    --dataset_path ./dataset/example.json \
+    --workload_type json_pairs \
     --qps 50 \
     --max_parallem_sum 100 \
     --verbose none \
-    --psla ./data/psla/llama-7b.json
+    --model ./data/psla/llama-7b.json

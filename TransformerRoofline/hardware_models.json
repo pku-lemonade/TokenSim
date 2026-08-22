@@ -109,19 +109,6 @@
             "nvlink": "nvlinkx12"
         },
         {
-            "Name": "A100-80G",
-            "Type": "Homo",
-            "TFLOPS": 312,
-            "BW_TBs": 0.7,
-            "Capacity": 40,
-            "Card_Num": 1,
-            "Static_Power": 60,
-            "TDP": 400,
-            "Price": 100000,
-            "pcie": "pcie4.0x16",
-            "nvlink": "nvlinkx12_real"
-        },
-        {
             "Name": "A100-40G-TP8",
             "Type": "Homo",
             "TFLOPS": 312,
@@ -166,10 +153,38 @@
             "TFLOPS": 1000,
             "BW_TBs": 3,
             "Card_Num": 1,
-            "Capacity": 80,
+            "Capacity": 96,
             "Static_Power": 0,
             "TDP": 0,
-            "Price": 240000
+            "Price": 240000,
+            "pcie": "pcie5.0x16",
+            "nvlink": "nvlinkx18"
+        },
+        {
+            "Name": "H200",
+            "Type": "Homo",
+            "TFLOPS": 1979,
+            "BW_TBs": 4.8,
+            "Card_Num": 1,
+            "Capacity": 141,
+            "Static_Power": 0,
+            "TDP": 700,
+            "Price": 240000,
+            "pcie": "pcie5.0x16",
+            "nvlink": "nvlinkx18"
+        },
+        {
+            "Name": "B200",
+            "Type": "Homo",
+            "TFLOPS": 4500,
+            "BW_TBs": 8.0,
+            "Card_Num": 1,
+            "Capacity": 192,
+            "Static_Power": 0,
+            "TDP": 1000,
+            "Price": 500000,
+            "pcie": "pcie5.0x16",
+            "nvlink": "nvlink5x18"
         },
         {
             "Name": "TPUv4",
@@ -567,6 +582,32 @@
             "Dmodel": 4096,
             "Nlayer": 32,
             "Max_Token": 4096
+        },
+        {
+            "Name": "MoE-Toy",
+            "Nhead": 8,
+            "Dmodel": 128,
+            "Nlayer": 4,
+            "Max_Token": 4096,
+            "Wnum_in_MLP": 2,
+            "FFN_Hidden": 256,
+            "FFN_MOE": "True",
+            "MOE_Quantity": 4,
+            "MOE_Activate": 2
+        },
+        {
+            "Name": "DeepSeek-V3-Like",
+            "Nhead": 128,
+            "Dmodel": 7168,
+            "Nlayer": 61,
+            "Max_Token": 4096,
+            "Wnum_in_MLP": 2,
+            "FFN_Hidden": 2048,
+            "FFN_MOE": "True",
+            "MOE_Quantity": 256,
+            "MOE_Activate": 8,
+            "Grouped_Query": "True",
+            "Grouped_Num": 1
         }
     ],
     "sparse": [
@@ -674,16 +715,16 @@
             "BiBW": 900
         },
         {
+            "Name": "nvlink5x18",
+            "Latency": 1e-05,
+            "UniBW": 900,
+            "BiBW": 1800
+        },
+        {
             "Name": "ethernet100Gb",
             "Latency": 1e-05,
             "UniBW": 12.5,
             "BiBW": 12.5
-        },
-        {
-            "Name": "pcie4.0x16",
-            "Latency": 0.1,
-            "UniBW": 0.5,
-            "BiBW": 0.5
         }
     ]
 }

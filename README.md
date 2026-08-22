@@ -1,59 +1,177 @@
 # TokenSim
 
-TokenSim is a tool for simulating the behavior of large language models (LLMs) in a distributed environment. It provides a flexible framework for modeling and analyzing the performance of LLMs under various conditions.
+TokenSim is a discrete-event simulator for studying the hardware and software
+design of large language model inference systems. It models request arrivals,
+prefill and decode scheduling, KV-cache management, distributed execution, and
+hardware-dependent latency without requiring the simulated accelerator cluster.
 
-[TokenSim: Enabling Hardware and Software Exploration for Large Language Model Inference Systems](https://arxiv.org/abs/2503.08415)
+Paper: [TokenSim: Enabling Hardware and Software Exploration for Large Language
+Model Inference Systems](https://arxiv.org/abs/2503.08415)
 
-## Key Features
+## Features
 
-- Dynamic Workload Simulation: TokenSim supports dynamic LLM request inputs sampled from real-world datasets, allowing for realistic simulations of concurrent requests and varying request lengths.
-- Customizable Scheduling and Memory Management: Users can define their own scheduling policies and memory management strategies at the operator level, enabling fine-grained control over system optimizations.
-- Extensive Hardware Support: TokenSim supports a wide range of hardware configurations, including CPUs, GPUs, and FPGAs, and allows for the simulation of different compute simulators like GenZ and LLMCompass.
-- Accurate Performance Modeling: With support for detailed memory simulation and operator-level hooks, TokenSim achieves high accuracy in modeling the performance of LLM inference systems.
-- Scalable and Modular Design: The framework is built using the SimPy discrete-event simulation library, ensuring efficient and scalable simulations that can run on personal computers without requiring specialized hardware.
+- Static, dynamic, and paged-attention batching with preemption and recomputation.
+- Prefix KV-cache reuse driven by block hashes in JSON and JSONL workloads.
+- Hybrid and disaggregated prefill/decode worker layouts.
+- Tensor, pipeline, data, and expert parallel simulation.
+- MoE expert placement, routing distributions, all-to-all latency, and load metrics.
+- P2P and Mooncake-compatible KV transfer connectors.
+- Mooncake memory-store and SSD offload simulation with admission and LRU eviction.
+- Roofline latency modeling and an optional LLMCompass backend.
+
+## Requirements
+
+The default latency backend uses the bundled
+`TransformerRoofline/roofline.cpython-311-x86_64-linux-gnu.so`. The supported
+runtime for that backend is:
+
+- Linux x86_64
+- Python 3.11
+
+The TransformerRoofline Python source and notebooks are not included. The
+precompiled extension and the hardware data needed by TokenSim are included in
+`TransformerRoofline/`.
 
 ## Installation
 
-```shell
-$ git clone https://github.com/pku-lemonade/TokenSim.git
-$ git submodule update --init --recursive
-$ conda create -n tokensim python=3.11
-$ conda activate tokensim
-$ pip install -r requirements.txt
+```bash
+git clone https://github.com/pku-lemonade/TokenSim.git
+cd TokenSim
+
+conda create -n tokensim11 python=3.11
+conda activate tokensim11
+pip install -r requirements.txt
+```
+
+The `LLMCompass` submodule is only required when using an LLMCompass template as
+the latency backend:
+
+```bash
+git submodule update --init LLMCompass
 ```
 
 ## Quick Start
 
-You can run the benchmark script with the following command:
+Run the default synthetic benchmark:
 
-```shell
-$ ./scripts/benchmark.sh
+```bash
+./scripts/benchmark.sh
 ```
 
-## Configuration Parameters
+Run a JSON pair workload:
 
-The benchmark script supports the following parameters:
+```bash
+./scripts/use_dataset.sh
+```
 
-- `--qps`: The number of requests per second
-- `--batching`: The batching strategy to use (greedy, dynamic, etc.)
-- `--distribution`: The distribution of request lengths
-- `--block_size`: The size of the batch to use
-- `--swap_policy`: The swap policy to use
-- `--model`: The LLM model to simulate
-- `--hardware`: The hardware configuration path
-- `--duration`: Simulation duration in seconds, if not specified, the simulation will run until all requests are processed
+Run the included MoE example with TP=2, DP=4, and expert parallelism:
 
-## Note
+```bash
+./benchmark.py \
+  --batching paged-attn \
+  --block_size 16 \
+  --request_count 8 \
+  --prefill_mean_len 32 \
+  --prefill_range_len 0 \
+  --decode_mean_len 4 \
+  --decode_range_len 0 \
+  --cluster ./data/clusters/8_a100/moe_tp2_dp4.json \
+  --model ./data/psla/moe-toy.json \
+  --qps 10 \
+  --verbose none
+```
 
-TransformerRoofline is not open-sourced in this repository. Instead, we provide pre-compiled shared libraries (`.so` files) for Linux systems. These libraries are essential for accurate performance modeling of transformer-based models. The shared libraries are located in the `lib/` directory and will be automatically loaded when running the simulator.
+Run a Mooncake store with SSD offload and repeated prefixes:
 
-## License
+```bash
+./benchmark.py \
+  --batching paged-attn \
+  --block_size 16 \
+  --request_count 4 \
+  --cluster ./data/clusters/1_a100/h1.json \
+  --kv_transfer_config ./data/kv_transfer/mooncake_store_standalone_ssd.json \
+  --dataset_path ./dataset/mooncake_reuse.json \
+  --workload_type json_pairs \
+  --model ./data/psla/llama-7b.json \
+  --qps 50 \
+  --verbose none
+```
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+## Configuration
+
+The main configuration surfaces are:
+
+| Surface | Location or option | Purpose |
+| --- | --- | --- |
+| Model and workload defaults | `data/psla/*.json`, `--model` | Model dimensions, length distributions, SLOs, and MoE metadata |
+| Cluster | `data/clusters/**/*.json`, `--cluster` | Worker roles, hardware, networks, and optional parallel/KV settings |
+| KV transfer | `data/kv_transfer/*.json`, `--kv_transfer_config` | P2P, Mooncake store, SSD, and multi-connector settings |
+| Dataset | `--dataset_path`, `--workload_type` | Synthetic, `json_pairs`, or `qwen_jsonl` requests |
+| Latency | `--latency_backend` | `roofline` or an LLMCompass architecture template path |
+
+Useful CLI options include:
+
+- `--qps`: request arrival rate; required for every run.
+- `--batching`: `static`, `dynamic`, or `paged-attn`.
+- `--request_count`: number of generated or loaded requests.
+- `--prefill_mean_len`, `--decode_mean_len`: synthetic request lengths.
+- `--tensor_parallel_size`, `--pipeline_parallel_size`, `--data_parallel_size`:
+  override parallel dimensions from the model or cluster config.
+- `--enable_expert_parallel`: enable or disable expert parallelism.
+- `--moe_routing_distribution`: `uniform`, `skew`, `hot`, or `burst`.
+- `--trace_timestamp_scale`, `--trace_target_qps`: mutually exclusive controls
+  for replaying timestamped traces.
+- `--results_path`: write `result_<qps>.json` to a specific directory.
+
+Run `./benchmark.py --help` for the complete option list. Users of the initial
+public release should also review the current configuration examples.
+
+## Feature Guides
+
+- [Prefix cache](docs/prefix-cache.md): workload metadata, exact hit conditions,
+  output-prefix reuse, and result metrics.
+- [MoE](docs/moe.md): model metadata, expert parallelism, routing distributions,
+  trace-provided expert histograms, and result metrics.
+- [Mooncake](docs/mooncake.md): direct P2P transfer, shared memory/SSD stores,
+  connector composition, configuration fields, and timing behavior.
+- [Parallelism](docs/parallelism.md): worker roles, TP/PP/DP/EP configuration,
+  rank mapping, communication modeling, and configuration precedence.
+
+## Workload Formats
+
+`json_pairs` reads a JSON list whose records begin with
+`[prefill_len, decode_len]`. An optional third object can provide arrival times,
+prefix hashes, output hashes, reuse groups, or expert histograms. See
+`dataset/mooncake_reuse.json`.
+
+`qwen_jsonl` reads one object per line with `input_length` and `output_length`.
+Optional fields include `timestamp`, request/chat identifiers, prefix metadata,
+and expert histograms. See `dataset/qwen_example.jsonl`.
+
+## Results
+
+Without `--results_path`, results are written under:
+
+```text
+results/<model>/<cluster-directory>/<cluster>/result_<qps>.json
+```
+
+The JSON output includes latency and throughput, preemption/recomputation,
+prefix-cache reuse, connector transfer, parallelism, MoE, and Mooncake metrics.
+If the SimPy event queue ends with unfinished requests, TokenSim writes a failure
+snapshot and raises an error instead of exporting a successful result.
+
+## Validation
+
+```bash
+python -m compileall -q benchmark.py TokenSim util
+python -m unittest discover -s tests -v
+./scripts/benchmark.sh
+```
 
 ## Citation
 
-If you use TokenSim in your research, please cite our paper:
+If you use TokenSim in your research, please cite:
 
 ```bibtex
 @misc{wu2025tokensimenablinghardwaresoftware,
@@ -63,11 +181,11 @@ If you use TokenSim in your research, please cite our paper:
   eprint={2503.08415},
   archivePrefix={arXiv},
   primaryClass={cs.DC},
-  url={https://arxiv.org/abs/2503.08415},
+  url={https://arxiv.org/abs/2503.08415}
 }
 ```
 
 ## Acknowledgments
 
-- Thanks to all contributors who have helped shape TokenSim
-- Special thanks to the SimPy community for their excellent discrete-event simulation library
+TokenSim builds on SimPy and optionally integrates LLMCompass. We thank their
+developers and the TokenSim contributors.

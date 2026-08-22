@@ -1,0 +1,2 @@
+{"request_id": 0, "timestamp": 0.0, "input_length": 16, "output_length": 16, "hash_ids": ["p"], "output_hash_ids": ["o"], "reuse_group": "output-demo"}
+{"request_id": 1, "timestamp": 1.0, "input_length": 32, "output_length": 4, "hash_ids": ["p", "o"], "reuse_group": "output-demo"}

@@ -1,20 +1,17 @@
-import argparse
-
-from LLMCompass.software_model.transformer import (
-    TransformerBlockInitComputationTP,
-    TransformerBlockAutoRegressionTP,
-)
-from LLMCompass.design_space_exploration.dse import (
-    template_to_system,
-    read_architecture_template,
-)
-from LLMCompass.software_model.utils import data_type_dict
-
-
-def get_compass_vars(args: argparse.Namespace):
-    if not args.llm_compass:
+def get_compass_vars(architecture_template_path: str | None):
+    if not architecture_template_path:
         return None
-    specs = read_architecture_template(args.llm_compass)
+    from LLMCompass.design_space_exploration.dse import (
+        read_architecture_template,
+        template_to_system,
+    )
+    from LLMCompass.software_model.transformer import (
+        TransformerBlockAutoRegressionTP,
+        TransformerBlockInitComputationTP,
+    )
+    from LLMCompass.software_model.utils import data_type_dict
+
+    specs = read_architecture_template(architecture_template_path)
     system = template_to_system(specs)
     prefill_model = TransformerBlockInitComputationTP(
         d_model=4096,
