@@ -5,6 +5,8 @@ from pathlib import Path
 from dataclasses import asdict
 from typing import TYPE_CHECKING, List, Any
 
+import numpy as np
+
 from TokenSim.config.psla_config import PSLAConfig, LLMResult, MetricData
 from TokenSim.config.config import ClusterConfig
 from TokenSim.llm.llm_request import LLMTime, Request
@@ -104,6 +106,39 @@ def get_parallel_stats(engine: LLMEngine) -> dict[str, Any]:
     }
 
 
+def get_cache_capacity_stats(engine: LLMEngine) -> dict[str, int | float]:
+    """Report usable KV capacity once per data-parallel replica."""
+    replica_workers: dict[int, Any] = {}
+    for worker in getattr(engine, "workers", []):
+        if getattr(worker, "tp_rank", 0) != 0 or getattr(worker, "pp_rank", 0) != 0:
+            continue
+        replica_workers.setdefault(getattr(worker, "dp_rank", 0), worker)
+    if not replica_workers:
+        return {}
+    capacities: list[int] = []
+    first_cache = None
+    for worker in replica_workers.values():
+        cache = getattr(worker, "cache_config", None)
+        block_manager = getattr(getattr(worker, "scheduler", None), "block_manager", None)
+        if cache is None or block_manager is None:
+            continue
+        first_cache = first_cache or cache
+        capacities.append(
+            int(block_manager.num_total_gpu_blocks) * int(cache.block_size)
+        )
+    if not capacities or first_cache is None:
+        return {}
+    return {
+        "kv_cache_block_size": int(first_cache.block_size),
+        "kv_cache_bytes_per_token_per_rank": int(first_cache.size_per_token),
+        "kv_cache_capacity_tokens_per_dp_rank": min(capacities),
+        "kv_cache_capacity_tokens_total": sum(capacities),
+        "model_param_size_bytes_per_rank": float(
+            getattr(first_cache, "model_param_size", 0)
+        ),
+    }
+
+
 def get_moe_stats(engine: LLMEngine) -> dict[str, Any]:
     aggregate: MoEStats | None = None
     placement = getattr(engine, "expert_placement", None)
@@ -137,6 +172,84 @@ def get_mooncake_stats(engine: LLMEngine) -> dict[str, Any]:
             seen_stats.add(stats_id)
             aggregate = aggregate.aggregate(stats)
     return aggregate.as_dict()
+
+
+def get_agentx_metrics(
+    args: Any,
+    requests: list[Request],
+    duration: float,
+    num_gpus: int = 1,
+) -> dict[str, Any] | None:
+    if getattr(args, "workload_type", None) != "agentx_weka":
+        return None
+    ttft = [request.prefill_latency for request in requests]
+    e2e = [request.total_time for request in requests]
+    tpot = [
+        request.decode_time_sum / (request.decode_len - 1)
+        for request in requests
+        if request.decode_len > 1
+    ]
+    interactivity = [1.0 / value for value in tpot if value > 0]
+    normalized_interactivity = [
+        request.decode_len / request.total_time
+        for request in requests
+        if request.total_time > 0
+    ]
+    output_tokens = sum(request.decode_len for request in requests)
+    metadata = dict(getattr(args, "agentx_runtime_metadata", {}) or {})
+    return {
+        "methodology": "agentx-closed-loop-simulation",
+        "official_submission_compatible": False,
+        "concurrency": getattr(args, "agentx_concurrency", 1),
+        "trace_count": metadata.get("trace_count", 0),
+        "play_count": metadata.get("play_count", 0),
+        "warmup_request_count": metadata.get("warmup_request_count", 0),
+        "warmup_duration_s": metadata.get("warmup_duration_s", 0.0),
+        "profile_duration_s": duration,
+        "request_count": len(requests),
+        "root_request_count": sum(
+            getattr(request, "agentx_stream_id", None) == "root" for request in requests
+        ),
+        "subagent_request_count": sum(
+            getattr(request, "agentx_stream_id", None) != "root" for request in requests
+        ),
+        "input_tokens": sum(request.prefill_len for request in requests),
+        "output_tokens": output_tokens,
+        "request_throughput_rps": len(requests) / duration if duration else 0.0,
+        "output_token_throughput_tps": output_tokens / duration if duration else 0.0,
+        "output_token_throughput_per_gpu_tps": (
+            output_tokens / duration / max(1, num_gpus) if duration else 0.0
+        ),
+        "ttft_s": _percentile_summary(ttft),
+        "tpot_s": _percentile_summary(tpot),
+        "e2e_s": _percentile_summary(e2e),
+        "interactivity_tps": _percentile_summary(interactivity),
+        "e2e_normalized_interactivity_tps": _percentile_summary(
+            normalized_interactivity
+        ),
+    }
+
+
+def _percentile_summary(values: list[float]) -> dict[str, float | int]:
+    if not values:
+        return {
+            "count": 0,
+            "mean": 0.0,
+            "p50": 0.0,
+            "p90": 0.0,
+            "p95": 0.0,
+            "p99": 0.0,
+            "max": 0.0,
+        }
+    return {
+        "count": len(values),
+        "mean": float(np.mean(values)),
+        "p50": float(np.percentile(values, 50)),
+        "p90": float(np.percentile(values, 90)),
+        "p95": float(np.percentile(values, 95)),
+        "p99": float(np.percentile(values, 99)),
+        "max": float(max(values)),
+    }
 
 
 def _flatten_connectors(connector: Any) -> list[Any]:
@@ -370,12 +483,23 @@ def export_result(
     duration: float,
     simulator_wall_time: float = 0,
 ):
-    request_time = MetricData.from_list(g_time.request_time)
-    prefill_time = MetricData.from_list(g_time.prefill_time)
-    decode_time = MetricData.from_list(g_time.decode_time)
+    if getattr(args, "workload_type", None) == "agentx_weka":
+        request_time = MetricData.from_list([req.total_time for req in requests])
+        prefill_time = MetricData.from_list([req.prefill_latency for req in requests])
+        decode_time = MetricData.from_list(
+            [
+                req.decode_time_sum / max(1, req.generation_idx - 1)
+                for req in requests
+            ]
+        )
+    else:
+        request_time = MetricData.from_list(g_time.request_time)
+        prefill_time = MetricData.from_list(g_time.prefill_time)
+        decode_time = MetricData.from_list(g_time.decode_time)
     prefix_reuse_stats = get_prefix_reuse_stats(requests)
     connector_stats = get_connector_stats(engine)
     parallel_stats = get_parallel_stats(engine)
+    cache_capacity_stats = get_cache_capacity_stats(engine)
     moe_stats = get_moe_stats(engine)
     mooncake_stats = get_mooncake_stats(engine)
 
@@ -402,8 +526,15 @@ def export_result(
         **prefix_reuse_stats,
         **connector_stats,
         **parallel_stats,
+        **cache_capacity_stats,
         **moe_stats,
         **mooncake_stats,
+        agentx_metrics=get_agentx_metrics(
+            args,
+            requests,
+            duration,
+            num_gpus=len(engine.workers),
+        ),
     )
 
     if args.results_path == "":
@@ -425,6 +556,10 @@ def export_result(
     result_dict["prefill_time"] = asdict(result.prefill_time)
     result_dict["decode_time"] = asdict(result.decode_time)
 
-    result_file = results_path / f"result_{args.qps}.json"
+    if getattr(args, "workload_type", None) == "agentx_weka":
+        result_name = f"agentx_c{args.agentx_concurrency}.json"
+    else:
+        result_name = f"result_{args.qps}.json"
+    result_file = results_path / result_name
     with open(result_file, "w") as f:
         json.dump(result_dict, f, indent=4)

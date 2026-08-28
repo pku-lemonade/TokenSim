@@ -203,10 +203,8 @@ class ParallelCommunicator:
             worker
             for worker in self.workers
             if getattr(worker, "pp_rank", None) == self.rank_info.pp_rank
-            and (
-                getattr(worker, "tp_rank", None) != self.rank_info.tp_rank
-                or getattr(worker, "dp_rank", None) != self.rank_info.dp_rank
-            )
+            and getattr(worker, "dp_rank", None) == self.rank_info.dp_rank
+            and getattr(worker, "tp_rank", None) != self.rank_info.tp_rank
         ]
         if not candidates:
             return None, "local", 0.0

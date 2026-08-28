@@ -48,6 +48,30 @@ class ClusterConfig:
     worker_groups: list[WorkerGroupConfig] = Field(default_factory=list)
     kv_transfer: KVTransferConfig | None = None
     parallel_config: ParallelConfig | None = None
+    kv_cache_capacity_tokens_per_dp_rank: int | None = None
+    kv_cache_capacity_tokens_total: int | None = None
+
+    def __post_init__(self) -> None:
+        if (
+            self.kv_cache_capacity_tokens_per_dp_rank is not None
+            and self.kv_cache_capacity_tokens_total is not None
+        ):
+            raise ConfigurationError(
+                "set only one of kv_cache_capacity_tokens_per_dp_rank or "
+                "kv_cache_capacity_tokens_total"
+            )
+        if (
+            self.kv_cache_capacity_tokens_per_dp_rank is not None
+            and self.kv_cache_capacity_tokens_per_dp_rank <= 0
+        ):
+            raise ConfigurationError(
+                "kv_cache_capacity_tokens_per_dp_rank must be positive"
+            )
+        if (
+            self.kv_cache_capacity_tokens_total is not None
+            and self.kv_cache_capacity_tokens_total <= 0
+        ):
+            raise ConfigurationError("kv_cache_capacity_tokens_total must be positive")
 
     @classmethod
     def from_file(cls, filename):
@@ -70,6 +94,16 @@ class ClusterConfig:
             or model_parallel_config
             or ParallelConfig.default()
         )
+
+    def effective_kv_cache_capacity_per_dp_rank(
+        self,
+        parallel_config: ParallelConfig,
+    ) -> int | None:
+        if self.kv_cache_capacity_tokens_per_dp_rank is not None:
+            return self.kv_cache_capacity_tokens_per_dp_rank
+        if self.kv_cache_capacity_tokens_total is None:
+            return None
+        return self.kv_cache_capacity_tokens_total // parallel_config.data_parallel_size
 
     def workers(self, parallel_config: ParallelConfig | None = None):
         workers = [

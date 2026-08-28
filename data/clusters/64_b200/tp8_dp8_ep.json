@@ -1,0 +1,33 @@
+{
+    "num_workers": 64,
+    "kv_cache_capacity_tokens_total": 21943624,
+    "networks": {
+        "node0": "ethernet100Gb",
+        "node1": "ethernet100Gb",
+        "node2": "ethernet100Gb",
+        "node3": "ethernet100Gb",
+        "node4": "ethernet100Gb",
+        "node5": "ethernet100Gb",
+        "node6": "ethernet100Gb",
+        "node7": "ethernet100Gb"
+    },
+    "parallel_config": {
+        "tensor_parallel_size": 8,
+        "pipeline_parallel_size": 1,
+        "data_parallel_size": 8,
+        "data_parallel_size_local": 1,
+        "enable_expert_parallel": true,
+        "expert_placement_strategy": "linear",
+        "all2all_backend": "deepep_high_throughput"
+    },
+    "worker_groups": [
+        {"role": "hybrid", "hardware": "B200", "num_workers": 8, "network": "node0"},
+        {"role": "hybrid", "hardware": "B200", "num_workers": 8, "network": "node1"},
+        {"role": "hybrid", "hardware": "B200", "num_workers": 8, "network": "node2"},
+        {"role": "hybrid", "hardware": "B200", "num_workers": 8, "network": "node3"},
+        {"role": "hybrid", "hardware": "B200", "num_workers": 8, "network": "node4"},
+        {"role": "hybrid", "hardware": "B200", "num_workers": 8, "network": "node5"},
+        {"role": "hybrid", "hardware": "B200", "num_workers": 8, "network": "node6"},
+        {"role": "hybrid", "hardware": "B200", "num_workers": 8, "network": "node7"}
+    ]
+}

@@ -1,3 +1,5 @@
+import json
+from pathlib import Path
 from typing import Any
 
 from TransformerRoofline import TransformerRoofline
@@ -7,6 +9,29 @@ from TokenSim.config.parallel_config import ParallelConfig, ParallelRankInfo
 from TokenSim.errors import ConfigurationError
 from TokenSim.moe.config import MoEModelConfig
 from TokenSim.moe.placement import ExpertPlacement
+
+
+_MODEL_EXTENSION_FIELDS = (
+    "KV_Cache_Dim",
+    "KV_Cache_Dtype_Bytes",
+    "KV_Cache_Value_Count",
+    "KV_Cache_Sharded",
+)
+
+
+def attach_roofline_model_extensions(
+    roofline: TransformerRoofline,
+    hardware_models_path: str | Path,
+) -> None:
+    """Restore model metadata ignored by the compiled roofline JSON schema."""
+    payload = json.loads(Path(hardware_models_path).read_text())
+    for model_data in payload.get("models", []):
+        model = roofline.models.get(model_data.get("Name"))
+        if model is None:
+            continue
+        for field_name in _MODEL_EXTENSION_FIELDS:
+            if field_name in model_data:
+                setattr(model, field_name, model_data[field_name])
 
 
 class CacheConfig:
@@ -20,6 +45,7 @@ class CacheConfig:
         rank_info: ParallelRankInfo | None = None,
         moe_config: MoEModelConfig | None = None,
         expert_placement: ExpertPlacement | None = None,
+        capacity_tokens_override: int | None = None,
     ):
         # block size
         self.block_size: int = block_size
@@ -42,14 +68,39 @@ class CacheConfig:
             self.parallel_config.tensor_parallel_size,
         )
         self.head_dim = model_conf.Dmodel / model_conf.Nhead
-        self.size_per_token_unsharded = model_conf.Dmodel * 2 * 2 * model_conf.Nlayer
-        self.size_per_token = int(
-            self.local_kv_heads
-            * self.head_dim
-            * 2
-            * 2
-            * self.num_layers_per_rank
-        )
+        compressed_kv_dim = getattr(model_conf, "KV_Cache_Dim", None)
+        if compressed_kv_dim is None:
+            self.size_per_token_unsharded = (
+                model_conf.Dmodel * 2 * 2 * model_conf.Nlayer
+            )
+            self.size_per_token = int(
+                self.local_kv_heads * self.head_dim * 2 * 2 * self.num_layers_per_rank
+            )
+        else:
+            compressed_kv_dim = int(compressed_kv_dim)
+            dtype_bytes = int(getattr(model_conf, "KV_Cache_Dtype_Bytes", 2))
+            value_count = int(getattr(model_conf, "KV_Cache_Value_Count", 1))
+            sharded = bool(getattr(model_conf, "KV_Cache_Sharded", True))
+            if compressed_kv_dim <= 0 or dtype_bytes <= 0 or value_count <= 0:
+                raise ConfigurationError(
+                    "compressed KV cache dimensions and element sizes must be positive"
+                )
+            if sharded:
+                tp_size = self.parallel_config.tensor_parallel_size
+                if compressed_kv_dim % tp_size != 0:
+                    raise ConfigurationError(
+                        f"KV_Cache_Dim={compressed_kv_dim} is not divisible by "
+                        f"tensor_parallel_size {tp_size}"
+                    )
+                local_kv_dim = compressed_kv_dim // tp_size
+            else:
+                local_kv_dim = compressed_kv_dim
+            self.size_per_token_unsharded = (
+                compressed_kv_dim * dtype_bytes * value_count * model_conf.Nlayer
+            )
+            self.size_per_token = int(
+                local_kv_dim * dtype_bytes * value_count * self.num_layers_per_rank
+            )
 
         self.model_param_size_unsharded = self._estimate_unsharded_model_params(
             model_conf,
@@ -73,6 +124,10 @@ class CacheConfig:
             / self.size_per_token
             // self.block_size
         )
+        if capacity_tokens_override is not None:
+            if capacity_tokens_override <= 0:
+                raise ConfigurationError("KV cache capacity override must be positive")
+            self.num_gpu_blocks = capacity_tokens_override // self.block_size
 
     def _estimate_unsharded_model_params(self, model_conf) -> float:
         if not self.moe_config.enabled:
@@ -126,26 +181,24 @@ class CacheConfig:
             self.expert_placement.moe_layers_for_pp_rank(self.rank_info.pp_rank)
         )
         total_moe_layers_in_stage = owned_moe_layers
-        dense_layers_in_stage = max(0, self.num_layers_per_rank - total_moe_layers_in_stage)
+        dense_layers_in_stage = max(
+            0, self.num_layers_per_rank - total_moe_layers_in_stage
+        )
         dense_params = (
             4 * self.num_layers_per_rank * hidden * hidden
             + 2 * dense_layers_in_stage * hidden * dense_ffn
             + (50000 * hidden / self.parallel_config.pipeline_parallel_size)
         )
         shared_params = (
-            2
-            * owned_moe_layers
-            * self.moe_config.num_shared_experts
-            * hidden
-            * moe_ffn
+            2 * owned_moe_layers * self.moe_config.num_shared_experts * hidden * moe_ffn
         )
         owned_experts = self.expert_placement.experts_for_rank(self.rank_info)
-        routed_params = (
-            2 * owned_moe_layers * len(owned_experts) * hidden * moe_ffn
-        )
+        routed_params = 2 * owned_moe_layers * len(owned_experts) * hidden * moe_ffn
         return (
-            dense_params + shared_params + routed_params
-        ) * 2 / self.parallel_config.tensor_parallel_size
+            (dense_params + shared_params + routed_params)
+            * 2
+            / self.parallel_config.tensor_parallel_size
+        )
 
 
 def stage_layer_count(total_layers: int, pp_size: int, pp_rank: int) -> int:

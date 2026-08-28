@@ -16,8 +16,10 @@ from util.compass import get_compass_vars
 from TokenSim.llm.llm_engine import LLMEngine
 from TokenSim.llm.llm_request import g_time, reset_g_time, Request
 from TokenSim.config.config import ClusterConfig, KVTransferConfig, ParallelConfig
+from TokenSim.config.cache_config import attach_roofline_model_extensions
 from TokenSim.config.psla_config import PSLAConfig
 from TokenSim.errors import ConfigurationError, SimulationStateError
+from TokenSim.workload.agentx import AgentXReplay, load_agentx_traces
 from TransformerRoofline import TransformerRoofline
 
 
@@ -107,7 +109,10 @@ def check_results(
     )
 
 
-def main(args: argparse.Namespace):
+def main(
+    args: argparse.Namespace,
+    preloaded_agentx_traces=None,
+):
     reset_g_time()
     latency_backend_type = get_latency_backend_type(args.latency_backend)
     if latency_backend_type == "llm_compass":
@@ -119,11 +124,13 @@ def main(args: argparse.Namespace):
         wrapped_llmcompass_vars = get_compass_vars(args.latency_backend)
     else:
         wrapped_llmcompass_vars = None
+    hardware_models_path = "./TransformerRoofline/hardware_models.json"
     roofline = TransformerRoofline(
-        "./TransformerRoofline/hardware_models.json",
+        hardware_models_path,
         "./TransformerRoofline/allreduce_v100.xlsx",
         "./TransformerRoofline/hardware_elements.json",
     )
+    attach_roofline_model_extensions(roofline, hardware_models_path)
 
     cluster = ClusterConfig.from_file(args.cluster)
     kv_transfer_override = (
@@ -138,15 +145,37 @@ def main(args: argparse.Namespace):
 
     tqdm_manager = TqdmManager(verbose=args.verbose, program_id=args.program_id)
     env = simpy.Environment()
-    requests, prefill_lens, decode_lens = get_requests(
-        args=args,
-        model_config=model_config,
-        block_size=args.block_size,
-        tqdm_submit_func=lambda req_num: tqdm_manager.update(req_num),
-    )
-
-    request_count = len(requests)
-    tqdm_manager.set_total(request_count)
+    is_agentx = args.workload_type == "agentx_weka"
+    agentx_traces = None
+    if is_agentx:
+        if not args.dataset_path:
+            raise ConfigurationError(
+                "--dataset_path is required for agentx_weka workloads"
+            )
+        agentx_traces = preloaded_agentx_traces
+        if agentx_traces is None:
+            agentx_traces = load_agentx_traces(
+                args.dataset_path,
+                trace_count=args.agentx_trace_count,
+                trace_skip_count=args.dataset_skip_count,
+            )
+        requests: list[Request] = []
+        prefill_lens: list[int] = []
+        decode_lens: list[int] = []
+        estimated_total = (
+            args.agentx_max_requests
+            or sum(trace.request_count for trace in agentx_traces)
+            * args.agentx_concurrency
+        )
+        tqdm_manager.set_total(estimated_total)
+    else:
+        requests, prefill_lens, decode_lens = get_requests(
+            args=args,
+            model_config=model_config,
+            block_size=args.block_size,
+            tqdm_submit_func=lambda req_num: tqdm_manager.update(req_num),
+        )
+        tqdm_manager.set_total(len(requests))
 
     engine = LLMEngine(
         env=env,
@@ -166,27 +195,70 @@ def main(args: argparse.Namespace):
         random_seed=args.random_seed,
         debug_print=getattr(args, "debug_print", False),
     )
-    engine.validate_request_capacity(requests)
+    replay = None
+    if is_agentx:
+        replay = AgentXReplay(
+            env,
+            engine,
+            agentx_traces,
+            block_size=args.block_size,
+            concurrency=args.agentx_concurrency,
+            profile_duration=args.agentx_profile_duration,
+            max_requests=args.agentx_max_requests,
+            system_idle_gap_cap=(
+                args.agentx_idle_gap_cap if args.agentx_idle_gap_cap > 0 else None
+            ),
+            warmup=args.agentx_warmup,
+            warmup_min_ratio=args.agentx_warmup_min_ratio,
+            warmup_max_ratio=args.agentx_warmup_max_ratio,
+            random_seed=args.random_seed,
+            tqdm_submit_func=lambda req_num: tqdm_manager.update(req_num),
+        )
+        capacity_request = replay.capacity_request()
+        engine.validate_request_capacity([capacity_request])
+        capacity_request.release_logical_blocks()
+        source = replay.run()
+    else:
+        engine.validate_request_capacity(requests)
+        source = LLMSource(
+            env=env,
+            engine=engine,
+            requests=requests,
+            qps=args.qps,
+            distribution=model_config.distribution,
+        )
 
-    source = LLMSource(
-        env=env,
-        engine=engine,
-        requests=requests,
-        qps=args.qps,
-        distribution=model_config.distribution,
-    )
-
-    env.process(source)
+    source_process = env.process(source)
 
     wall_start = time.perf_counter()
     engine.start_debug_clock(wall_start)
     if args.sim_time is not None:
         env.run(args.sim_time)
+    elif replay is not None and replay.profile_duration is not None:
+        env.run(until=source_process)
     else:
         env.run()
     simulator_wall_time = time.perf_counter() - wall_start
 
-    duration = env.now
+    if replay is not None:
+        requests = replay.requests
+        prefill_lens = [request.prefill_len for request in requests]
+        decode_lens = [request.decode_len for request in requests]
+        duration = replay.profile_elapsed
+        if not requests or duration <= 0:
+            raise SimulationStateError(
+                "AgentX replay completed without profile requests; increase "
+                "--agentx_profile_duration or use --no-agentx_warmup for a short smoke run"
+            )
+        args.agentx_runtime_metadata = {
+            "trace_count": len(agentx_traces),
+            "play_count": replay.play_count,
+            "warmup_request_count": len(replay.warmup_requests),
+            "warmup_duration_s": replay.profile_started_at or 0.0,
+        }
+    else:
+        duration = env.now
+    request_count = len(requests)
 
     check_results(
         args,
@@ -241,7 +313,7 @@ if __name__ == "__main__":
 
     parser.add_argument("--sim_time", type=float, default=None)
 
-    parser.add_argument("--qps", type=float, required=True)
+    parser.add_argument("--qps", type=float, default=1.0)
     parser.add_argument(
         "--batching", choices=["static", "dynamic", "paged-attn"], default="dynamic"
     )
@@ -342,9 +414,21 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--workload_type",
-        choices=["synthetic", "json_pairs", "qwen_jsonl"],
+        choices=["synthetic", "json_pairs", "qwen_jsonl", "agentx_weka"],
         default="synthetic",
     )
+    parser.add_argument("--agentx_concurrency", type=int, default=1)
+    parser.add_argument("--agentx_trace_count", type=int, default=8)
+    parser.add_argument("--agentx_profile_duration", type=float, default=None)
+    parser.add_argument("--agentx_max_requests", type=int, default=None)
+    parser.add_argument("--agentx_idle_gap_cap", type=float, default=10.0)
+    parser.add_argument(
+        "--agentx_warmup",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+    )
+    parser.add_argument("--agentx_warmup_min_ratio", type=float, default=0.0)
+    parser.add_argument("--agentx_warmup_max_ratio", type=float, default=1.0)
     parser.add_argument("--random_seed", type=int, default=0)
 
     parser.add_argument(

@@ -67,6 +67,8 @@ class MooncakeStore:
         self._access_counter = 0
 
     def lookup(self, keys: list[PoolKey], *, now: float = 0.0) -> StoreHit:
+        if not keys:
+            return StoreHit(keys=[], hit_blocks=0, tier=None)
         hit_keys: list[PoolKey] = []
         slowest_tier: str | None = None
         for key in keys:
@@ -112,6 +114,34 @@ class MooncakeStore:
             if not present:
                 missing.append(index)
         return missing
+
+    def missing_prefix_indices(self, keys: list[PoolKey]) -> list[int]:
+        """Find an absent suffix efficiently while the store has no holes."""
+        if not keys:
+            return []
+        if self.stats.eviction_count:
+            return self.missing_indices(keys)
+        if not self._contains(keys[0]):
+            return list(range(len(keys)))
+        if self._contains(keys[-1]):
+            return []
+        present_index = 0
+        missing_index = len(keys) - 1
+        while missing_index - present_index > 1:
+            middle = (present_index + missing_index) // 2
+            if self._contains(keys[middle]):
+                present_index = middle
+            else:
+                missing_index = middle
+        return list(range(missing_index, len(keys)))
+
+    def _contains(self, key: PoolKey) -> bool:
+        obj = self.objects.get(key.to_string())
+        return obj is not None and (
+            not self._is_offload_tier(obj.tier)
+            or self.offload is None
+            or self.offload.contains(obj.key)
+        )
 
     def get(
         self,

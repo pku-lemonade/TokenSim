@@ -46,6 +46,7 @@ class MooncakeStoreConnector(BaseKVConnector):
         # Per-request key chain and its string form, both computed exactly once.
         self._keys_cache: dict[int, tuple[list[PoolKey], list[str]]] = {}
         self._saved_request_ids: set[int] = set()
+        self._pending_async_loads: set[int] = set()
         self._pending_async_puts: set[int] = set()
         self._delayed_releases: dict[int, tuple[Request, list[int]]] = {}
         self._block_releaser: Any | None = None
@@ -59,23 +60,37 @@ class MooncakeStoreConnector(BaseKVConnector):
         self._request_keys[req.id] = keys
         if not keys:
             return 0
+        self.mooncake_stats.cache_query_tokens += len(keys) * self.block_size
         local_gpu_tokens = max(0, int(num_computed_tokens))
         if local_gpu_tokens:
             self.mooncake_stats.local_gpu_hit_tokens += local_gpu_tokens
-        hit = self.service.store.lookup(keys, now=self.simulation_time)
+        local_gpu_blocks = min(len(keys), local_gpu_tokens // self.block_size)
+        hit = self.service.store.lookup(
+            keys[local_gpu_blocks:],
+            now=self.simulation_time,
+        )
         if hit.hit_blocks <= 0:
             return 0
         hit_keys = list(hit.keys)
         hit_tokens = hit.hit_blocks * self.block_size
-        if self._aligned and hit_tokens >= req.prefill_len:
+        if self._aligned and local_gpu_tokens + hit_tokens >= req.prefill_len:
             # Reference behavior: on a full-prompt hit, leave the trailing
             # block uncomputed-from-cache so prefill still computes tokens.
-            capped_blocks = max(0, (req.prefill_len - 1) // self.block_size)
-            hit_keys = hit_keys[:capped_blocks]
-            hit_tokens = capped_blocks * self.block_size
-        external_tokens = max(0, hit_tokens - local_gpu_tokens)
+            capped_total_blocks = max(0, (req.prefill_len - 1) // self.block_size)
+            capped_external_blocks = max(
+                0,
+                capped_total_blocks - local_gpu_blocks,
+            )
+            hit_keys = hit_keys[:capped_external_blocks]
+            hit_tokens = capped_external_blocks * self.block_size
+        external_tokens = min(
+            hit_tokens,
+            max(0, req.prefill_len - local_gpu_tokens),
+        )
         if external_tokens <= 0:
             return 0
+        external_blocks = external_tokens // self.block_size
+        hit_keys = hit_keys[:external_blocks]
         if hit.tier == "ssd":
             self.mooncake_stats.mooncake_disk_hit_tokens += external_tokens
         else:
@@ -84,7 +99,7 @@ class MooncakeStoreConnector(BaseKVConnector):
             "keys": hit_keys,
             "tier": hit.tier,
             "tokens": external_tokens,
-            "blocks": external_tokens // self.block_size,
+            "blocks": external_blocks,
         }
         return external_tokens
 
@@ -98,19 +113,20 @@ class MooncakeStoreConnector(BaseKVConnector):
         num_external_tokens: int,
     ) -> None:
         if num_external_tokens:
-            req.cached_prefill_tokens = max(
-                req.cached_prefill_tokens,
-                num_external_tokens,
+            req.cached_prefill_tokens = min(
+                req.prefill_len,
+                req.cached_prefill_tokens + num_external_tokens,
             )
-            req.cached_prefill_blocks = max(
-                req.cached_prefill_blocks,
-                num_external_tokens // self.block_size,
+            req.cached_prefill_blocks = min(
+                req.prefill_len // self.block_size,
+                req.cached_prefill_blocks
+                + num_external_tokens // self.block_size,
             )
             req.effective_prefill_tokens = max(
                 0,
                 req.prefill_len - req.cached_prefill_tokens,
             )
-            req.reuse_hit_blocks = max(req.reuse_hit_blocks, req.cached_prefill_blocks)
+            req.reuse_hit_blocks = req.cached_prefill_blocks
             req.reuse_miss_blocks = max(
                 0,
                 req.prefill_len // self.block_size - req.reuse_hit_blocks,
@@ -123,7 +139,10 @@ class MooncakeStoreConnector(BaseKVConnector):
         for req in getattr(scheduler_output, "scheduled", []) or []:
             load_info = self._pending_loads.pop(req.id, None)
             if load_info is not None:
-                loads.append(self._build_load_plan(req, load_info))
+                load_plan = self._build_load_plan(req, load_info)
+                loads.append(load_plan)
+                if load_plan.async_transfer:
+                    self._pending_async_loads.update(load_plan.request_ids)
             if not can_save:
                 continue
             if self._aligned:
@@ -236,26 +255,34 @@ class MooncakeStoreConnector(BaseKVConnector):
         finished_req_ids: set[int],
     ) -> tuple[set[int], set[int]]:
         finished_sending = set(finished_req_ids) & self._pending_async_puts
-        finished_recving = set(finished_req_ids) & self._pending_async_puts
+        finished_recving = set(finished_req_ids) & self._pending_async_loads
         return finished_sending, finished_recving
 
     def build_connector_worker_meta(self) -> KVConnectorWorkerMetadata:
         meta = super().build_connector_worker_meta()
+        if self._pending_async_loads:
+            meta.finished_recving.update(self._pending_async_loads)
         if self._pending_async_puts:
             meta.finished_sending.update(self._pending_async_puts)
-            meta.finished_recving.update(self._pending_async_puts)
         return meta
 
     def update_connector_output(
         self,
         worker_output: KVConnectorWorkerMetadata,
     ) -> None:
-        releasable = set(worker_output.finished_sending)
-        self._pending_async_puts.difference_update(worker_output.finished_sending)
+        completed_loads = self._pending_async_loads.intersection(
+            worker_output.finished_recving
+        )
+        releasable = self._pending_async_puts.intersection(
+            worker_output.finished_sending
+        )
+        self._pending_async_loads.difference_update(completed_loads)
+        self._pending_async_puts.difference_update(releasable)
         self.mooncake_stats.pending_async_jobs = max(
             0,
             self.mooncake_stats.pending_async_jobs
-            - len(worker_output.finished_sending),
+            - len(completed_loads)
+            - len(releasable),
         )
         for req_id in releasable:
             delayed = self._delayed_releases.pop(req_id, None)
@@ -307,7 +334,7 @@ class MooncakeStoreConnector(BaseKVConnector):
         )
         pool_keys = list(load_info["keys"][:blocks])
         self._request_keys[req.id] = pool_keys
-        keys = self._key_strings_for_request(req)[: len(pool_keys)]
+        keys = [key.to_string() for key in pool_keys]
         return ConnectorTransferPlan(
             request_ids=[req.id],
             request_block_counts={req.id: blocks},
@@ -336,7 +363,7 @@ class MooncakeStoreConnector(BaseKVConnector):
             # Reference semantics: an existence prefilter runs before the put
             # (worker-side batch_is_exist) so only missing keys are written
             # and transferred.
-            missing = self.service.store.missing_indices(pool_keys)
+            missing = self.service.store.missing_prefix_indices(pool_keys)
             if not missing:
                 self._request_keys[req.id] = pool_keys
                 return None

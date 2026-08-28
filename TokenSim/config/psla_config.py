@@ -49,6 +49,11 @@ class LLMResult:
     reuse_hit_tokens: int = 0
     effective_prefill_tokens: int = 0
     prefix_cache_hit_rate: float = 0
+    kv_cache_block_size: int = 0
+    kv_cache_bytes_per_token_per_rank: int = 0
+    kv_cache_capacity_tokens_per_dp_rank: int = 0
+    kv_cache_capacity_tokens_total: int = 0
+    model_param_size_bytes_per_rank: float = 0
     connector_transfer_count: int = 0
     connector_transfer_blocks: int = 0
     connector_transfer_bytes: int = 0
@@ -102,6 +107,7 @@ class LLMResult:
     mooncake_admission_rejection_count: int = 0
     mooncake_eviction_count: int = 0
     mooncake_pending_async_jobs: int = 0
+    mooncake_cache_query_tokens: int = 0
     mooncake_local_gpu_hit_tokens: int = 0
     mooncake_memory_hit_tokens: int = 0
     mooncake_disk_hit_tokens: int = 0
@@ -110,6 +116,7 @@ class LLMResult:
     mooncake_pool_keys: list[str] | None = None
     mooncake_offload_tiers: list[str] | None = None
     mooncake_offload_profiles: list[dict[str, Any]] | None = None
+    agentx_metrics: dict[str, Any] | None = None
 
     @classmethod
     def from_file(cls, filename):

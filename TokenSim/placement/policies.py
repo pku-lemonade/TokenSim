@@ -10,8 +10,7 @@ WorkerT = TypeVar("WorkerT")
 
 
 class PlacementPolicy(Protocol[WorkerT]):
-    def schedule(self) -> WorkerT:
-        ...
+    def schedule(self) -> WorkerT: ...
 
 
 class WorkerPool(Generic[WorkerT]):
@@ -62,6 +61,7 @@ class DataParallelWorkerPool(WorkerPool[WorkerT]):
         self.dp_ranks = sorted(self.group_pools)
         self.cur_dp_idx = 0
         self.dp_placement_counts = {rank: 0 for rank in self.dp_ranks}
+        self.affinity_to_rank: dict[str, int] = {}
 
     def schedule(self) -> WorkerT:
         return self._select()
@@ -89,13 +89,21 @@ class DataParallelWorkerPool(WorkerPool[WorkerT]):
 
     def _select_for_request(self, request=None, assign_new: bool = False) -> WorkerT:
         dp_rank = getattr(request, "dp_rank", None)
+        affinity_key = getattr(request, "chat_id", None)
+        if dp_rank not in self.group_pools and affinity_key:
+            dp_rank = self.affinity_to_rank.get(str(affinity_key))
         if dp_rank in self.group_pools:
             worker = self.group_pools[dp_rank].schedule()
         else:
             worker = self._next_group_pool().schedule()
         self._record(worker)
-        if request is not None and (assign_new or getattr(request, "dp_rank", None) is None):
-            setattr(request, "dp_rank", getattr(worker, "dp_rank", 0))
+        if request is not None and (
+            assign_new or getattr(request, "dp_rank", None) is None
+        ):
+            assigned_rank = getattr(worker, "dp_rank", 0)
+            setattr(request, "dp_rank", assigned_rank)
+            if affinity_key:
+                self.affinity_to_rank.setdefault(str(affinity_key), assigned_rank)
         return worker
 
     def _next_group_pool(self) -> WorkerPool[WorkerT]:
@@ -141,9 +149,8 @@ class WorkerLoad:
 class BalancedLoadWorkerPool(WorkerPool[WorkerT]):
     def worker_load(self, worker: WorkerT) -> WorkerLoad:
         scheduler = worker.scheduler
-        active_requests = (
-            len(getattr(scheduler, "running", []))
-            + len(getattr(scheduler, "waiting", []))
+        active_requests = len(getattr(scheduler, "running", [])) + len(
+            getattr(scheduler, "waiting", [])
         )
         return WorkerLoad(
             active_requests=active_requests,

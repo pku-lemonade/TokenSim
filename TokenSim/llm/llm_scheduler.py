@@ -215,6 +215,8 @@ class LLMPagedAttnScheduler(LLMScheduler):
 
             req = self.waiting.pop(0)
             local_plan = self.block_manager.kv_cache_manager.plan_reuse(req)
+            # Reuse the already-built prefix chain in external-cache connectors.
+            req.input_cache_keys = list(local_plan.input_keys)
             num_external_tokens = self.connector.get_num_new_matched_tokens(
                 req,
                 local_plan.hit_tokens,
@@ -309,7 +311,13 @@ class LLMPagedAttnScheduler(LLMScheduler):
             self.running = [
                 req
                 for req in self.running
-                if req.id not in worker_output.finished_sending
+                if not (
+                    req.id in worker_output.finished_sending
+                    and (
+                        req.is_done
+                        or req.status == RequestStatus.WAITING_FOR_CONNECTOR_FREE
+                    )
+                )
             ]
 
     def _is_occupy_below_usage(self):

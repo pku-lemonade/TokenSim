@@ -144,13 +144,14 @@ class MoEConfigTest(unittest.TestCase):
 class MoEPlacementRoutingTest(unittest.TestCase):
     def test_linear_and_round_robin_placement(self):
         moe = _moe_psla().moe_config
+        linear_parallel = ParallelConfig(
+            tensor_parallel_size=2,
+            data_parallel_size=2,
+            enable_expert_parallel=True,
+        )
         linear = build_expert_placement(
             moe,
-            ParallelConfig(
-                tensor_parallel_size=2,
-                data_parallel_size=2,
-                enable_expert_parallel=True,
-            ),
+            linear_parallel,
             total_layers=4,
         )
         rr = build_expert_placement(
@@ -164,8 +165,14 @@ class MoEPlacementRoutingTest(unittest.TestCase):
             total_layers=4,
         )
 
-        self.assertEqual(linear.rank_to_experts, {0: [0], 1: [1], 2: [2], 3: [3]})
-        self.assertEqual(rr.rank_to_experts, {0: [0], 1: [1], 2: [2], 3: [3]})
+        self.assertEqual(linear.rank_to_experts, {0: [0, 1], 1: [2, 3]})
+        self.assertEqual(rr.rank_to_experts, {0: [0, 2], 1: [1, 3]})
+        self.assertEqual(
+            linear.experts_for_rank(
+                ParallelRankInfo.from_global_rank(2, linear_parallel)
+            ),
+            [0, 1],
+        )
         self.assertEqual(linear.pp_stage_to_moe_layers[0], [1, 2])
 
     def test_routing_histogram_deterministic_and_validated(self):

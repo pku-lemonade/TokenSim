@@ -1,0 +1,20 @@
+{
+    "kv_connector": "MooncakeStoreConnector",
+    "kv_connector_extra_config": {
+        "mode": "standalone-store",
+        "protocol": "rdma",
+        "global_segment_size_gb": 3072,
+        "local_buffer_size_gb": 16,
+        "enable_offload": false,
+        "replica_num": 1,
+        "admission_policy": "always",
+        "eviction_policy": "lru",
+        "save_policy": "mooncake",
+        "load_async": true,
+        "transfer_overlap": true,
+        "num_nics": 4,
+        "parallel_paths": 4,
+        "fixed_latency_us": 8,
+        "bandwidth_gbps": 50
+    }
+}

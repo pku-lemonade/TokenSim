@@ -50,6 +50,15 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
+def _flatten_connectors(connector: Any) -> list[Any]:
+    if connector is None:
+        return []
+    flattened = [connector]
+    for child in getattr(connector, "children", []):
+        flattened.extend(_flatten_connectors(child))
+    return flattened
+
+
 class Task(Enum):
     ADD = auto()
     STEP = auto()
@@ -157,6 +166,7 @@ class LLMWorker(Worker):
         parallel_config: ParallelConfig | None = None,
         moe_config: MoEModelConfig | None = None,
         expert_placement: ExpertPlacement | None = None,
+        kv_cache_capacity_tokens_per_dp_rank: int | None = None,
         latency_backend_type: str = "roofline",
         random_seed: int = 0,
         wrapped_llmcompass_vars: tuple[Any, Any, Any] | None = None,
@@ -192,6 +202,7 @@ class LLMWorker(Worker):
                 rank_info=self.rank_info,
                 moe_config=self.moe_config,
                 expert_placement=self.expert_placement,
+                capacity_tokens_override=kv_cache_capacity_tokens_per_dp_rank,
             )
         except TypeError as exc:
             if "unexpected keyword argument" not in str(exc):
@@ -451,6 +462,11 @@ class LLMEngine(Worker):
                 parallel_config=self.parallel_config,
                 moe_config=self.moe_config,
                 expert_placement=self.expert_placement,
+                kv_cache_capacity_tokens_per_dp_rank=(
+                    cluster_config.effective_kv_cache_capacity_per_dp_rank(
+                        self.parallel_config
+                    )
+                ),
                 latency_backend_type=latency_backend_type,
                 random_seed=random_seed,
                 wrapped_llmcompass_vars=wrapped_llmcompass_vars,
@@ -487,6 +503,53 @@ class LLMEngine(Worker):
 
     def record_request_completion(self, event: str, request: Request) -> None:
         self.debug_printer.record(event, request, self.env.now)
+
+    def reset_profile_stats(self) -> None:
+        """Reset counters after warmup while retaining caches and routing affinity."""
+        from TokenSim.kv_transfer.connectors.metadata import ConnectorStats
+        from TokenSim.moe.stats import MoEStats
+        from TokenSim.mooncake.metrics import MooncakeStats
+        from TokenSim.parallel import ParallelStats
+
+        self.connector_stats = ConnectorStats()
+        seen_mooncake_stats: set[int] = set()
+        for worker in self.workers:
+            worker.preempted_cnt = 0
+            worker.parallel_communicator.stats = ParallelStats()
+            latency_backend = getattr(worker, "latency_backend", None)
+            if hasattr(latency_backend, "moe_stats"):
+                latency_backend.moe_stats = MoEStats()
+            for connector in _flatten_connectors(worker.connector):
+                old_stats = getattr(connector, "stats", None)
+                if old_stats is not None:
+                    connector.stats = ConnectorStats(
+                        producer_count=old_stats.producer_count,
+                        consumer_count=old_stats.consumer_count,
+                        both_count=old_stats.both_count,
+                    )
+                mooncake_stats = getattr(connector, "mooncake_stats", None)
+                if mooncake_stats is None or id(mooncake_stats) in seen_mooncake_stats:
+                    continue
+                seen_mooncake_stats.add(id(mooncake_stats))
+                preserved_tiers = list(mooncake_stats.offload_tiers)
+                preserved_profiles = list(mooncake_stats.offload_profiles)
+                fresh_stats = MooncakeStats(
+                    offload_tiers=preserved_tiers,
+                    offload_profiles=preserved_profiles,
+                )
+                for field_name in fresh_stats.__dataclass_fields__:
+                    setattr(
+                        mooncake_stats, field_name, getattr(fresh_stats, field_name)
+                    )
+        for pool_name in ("prefill_workers", "decode_workers"):
+            pool = getattr(self, pool_name, None)
+            if pool is None:
+                continue
+            pool.placement_decision_count = 0
+            if hasattr(pool, "dp_placement_counts"):
+                pool.dp_placement_counts = {
+                    rank: 0 for rank in pool.dp_placement_counts
+                }
 
     def validate_request_capacity(self, requests: list[Request]) -> None:
         role_pools = (

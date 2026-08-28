@@ -187,6 +187,19 @@
             "nvlink": "nvlink5x18"
         },
         {
+            "Name": "B300",
+            "Type": "Homo",
+            "TFLOPS": 9000,
+            "BW_TBs": 8.0,
+            "Card_Num": 1,
+            "Capacity": 288,
+            "Static_Power": 0,
+            "TDP": 1400,
+            "Price": 0,
+            "pcie": "pcie5.0x16",
+            "nvlink": "nvlink5x18"
+        },
+        {
             "Name": "TPUv4",
             "Type": "Homo",
             "TFLOPS": 275,
@@ -608,6 +621,24 @@
             "MOE_Activate": 8,
             "Grouped_Query": "True",
             "Grouped_Num": 1
+        },
+        {
+            "Name": "DeepSeek-V4-Proxy",
+            "Nhead": 128,
+            "Dmodel": 7168,
+            "Nlayer": 61,
+            "Max_Token": 1048576,
+            "Wnum_in_MLP": 2,
+            "FFN_Hidden": 2048,
+            "FFN_MOE": "True",
+            "MOE_Quantity": 256,
+            "MOE_Activate": 8,
+            "Grouped_Query": "True",
+            "Grouped_Num": 1,
+            "KV_Cache_Dim": 576,
+            "KV_Cache_Dtype_Bytes": 2,
+            "KV_Cache_Value_Count": 1,
+            "KV_Cache_Sharded": true
         }
     ],
     "sparse": [

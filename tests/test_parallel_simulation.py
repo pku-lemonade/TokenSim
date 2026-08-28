@@ -18,6 +18,7 @@ from TokenSim.config.config import (
     local_kv_heads,
 )
 from TokenSim.config.psla_config import MetricData, PSLAConfig
+from TokenSim.config.cache_config import attach_roofline_model_extensions
 from TokenSim.errors import ConfigurationError
 from TokenSim.latency import RooflineLatencyBackend
 from TokenSim.llm.llm_engine import LLMEngine, Task
@@ -93,6 +94,28 @@ class _PlacementWorker:
 
 
 class ParallelConfigTest(unittest.TestCase):
+    def test_total_kv_capacity_is_split_across_dp_replicas(self):
+        config = ParallelConfig(data_parallel_size=8)
+        cluster = ClusterConfig(
+            num_workers=8,
+            networks={"net1": "ethernet-test"},
+            kv_cache_capacity_tokens_total=21_943_624,
+        )
+
+        self.assertEqual(
+            cluster.effective_kv_cache_capacity_per_dp_rank(config),
+            2_742_953,
+        )
+
+    def test_total_and_per_dp_kv_capacity_are_mutually_exclusive(self):
+        with self.assertRaises(ConfigurationError):
+            ClusterConfig(
+                num_workers=1,
+                networks={"net1": "ethernet-test"},
+                kv_cache_capacity_tokens_total=1024,
+                kv_cache_capacity_tokens_per_dp_rank=128,
+            )
+
     def test_cli_overrides_cluster_and_model_parallel_config(self):
         args = argparse.Namespace(
             tensor_parallel_size=4,
@@ -135,14 +158,66 @@ class ParallelConfigTest(unittest.TestCase):
 
         workers = cluster.workers(config)
 
-        self.assertEqual(workers[0].rank_info, ParallelRankInfo(0, 0, 0, 0, 0, "dp0-pp0"))
-        self.assertEqual(workers[3].rank_info, ParallelRankInfo(3, 3, 1, 1, 0, "dp0-pp1"))
-        self.assertEqual(workers[4].rank_info, ParallelRankInfo(4, 0, 0, 0, 1, "dp1-pp0"))
+        self.assertEqual(
+            workers[0].rank_info, ParallelRankInfo(0, 0, 0, 0, 0, "dp0-pp0")
+        )
+        self.assertEqual(
+            workers[3].rank_info, ParallelRankInfo(3, 3, 1, 1, 0, "dp0-pp1")
+        )
+        self.assertEqual(
+            workers[4].rank_info, ParallelRankInfo(4, 0, 0, 0, 1, "dp1-pp0")
+        )
         with self.assertRaises(ConfigurationError):
             cluster.workers(ParallelConfig(tensor_parallel_size=3))
 
 
 class ParallelMemoryTest(unittest.TestCase):
+    def test_compiled_roofline_model_extensions_are_restored(self):
+        roofline = _ParallelRoofline()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "models.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "models": [
+                            {
+                                "Name": "TestModel",
+                                "KV_Cache_Dim": 16,
+                                "KV_Cache_Dtype_Bytes": 2,
+                                "KV_Cache_Value_Count": 1,
+                                "KV_Cache_Sharded": True,
+                            }
+                        ]
+                    }
+                )
+            )
+            attach_roofline_model_extensions(roofline, path)
+
+        self.assertEqual(roofline.models["TestModel"].KV_Cache_Dim, 16)
+
+    def test_compiled_roofline_model_extensions_are_restored(self):
+        roofline = _ParallelRoofline()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "models.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "models": [
+                            {
+                                "Name": "TestModel",
+                                "KV_Cache_Dim": 16,
+                                "KV_Cache_Dtype_Bytes": 2,
+                                "KV_Cache_Value_Count": 1,
+                                "KV_Cache_Sharded": True,
+                            }
+                        ]
+                    }
+                )
+            )
+            attach_roofline_model_extensions(roofline, path)
+
+        self.assertEqual(roofline.models["TestModel"].KV_Cache_Dim, 16)
+
     def test_cache_config_shards_weight_layers_and_kv_heads(self):
         roofline = _ParallelRoofline()
         config = ParallelConfig(tensor_parallel_size=2, pipeline_parallel_size=2)
@@ -158,6 +233,34 @@ class ParallelMemoryTest(unittest.TestCase):
     def test_unsupported_kv_head_divisibility_fails(self):
         with self.assertRaises(ConfigurationError):
             local_kv_heads(3, 2)
+
+    def test_compressed_kv_geometry_is_sharded_across_tp_ranks(self):
+        roofline = _ParallelRoofline()
+        roofline.models["TestModel"].KV_Cache_Dim = 16
+        roofline.models["TestModel"].KV_Cache_Dtype_Bytes = 2
+        roofline.models["TestModel"].KV_Cache_Value_Count = 1
+        roofline.models["TestModel"].KV_Cache_Sharded = True
+        config = ParallelConfig(tensor_parallel_size=2, pipeline_parallel_size=2)
+        rank = ParallelRankInfo.from_global_rank(3, config)
+
+        cache = CacheConfig(16, "TestGPU", "TestModel", roofline, config, rank)
+
+        self.assertEqual(cache.size_per_token_unsharded, 16 * 2 * 4)
+        self.assertEqual(cache.size_per_token, 8 * 2 * 2)
+
+    def test_explicit_kv_capacity_override_is_block_aligned(self):
+        roofline = _ParallelRoofline()
+        cache = CacheConfig(
+            16,
+            "TestGPU",
+            "TestModel",
+            roofline,
+            ParallelConfig(tensor_parallel_size=2, pipeline_parallel_size=2),
+            ParallelRankInfo(global_rank=0),
+            capacity_tokens_override=1000,
+        )
+
+        self.assertEqual(cache.num_gpu_blocks, 62)
 
 
 class ParallelLatencyTest(unittest.TestCase):

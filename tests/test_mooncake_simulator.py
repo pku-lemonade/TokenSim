@@ -107,7 +107,10 @@ class MooncakeConfigTransferTest(unittest.TestCase):
             "./data/kv_transfer/mooncake_multi_connector.json",
         ):
             config = KVTransferConfig.from_file(path)
-            self.assertIn(config.kv_connector, {"MooncakeConnector", "MooncakeStoreConnector", "MultiConnector"})
+            self.assertIn(
+                config.kv_connector,
+                {"MooncakeConnector", "MooncakeStoreConnector", "MultiConnector"},
+            )
 
         with self.assertRaises(ConfigurationError):
             KVTransferConfig(
@@ -124,6 +127,7 @@ class MooncakeConfigTransferTest(unittest.TestCase):
                 kv_connector="MooncakeStoreConnector",
                 kv_connector_extra_config={"offload_tier": "bad"},
             )
+
     def test_transfer_engine_protocol_latency_and_overlap(self):
         config = parse_mooncake_config(
             {
@@ -169,9 +173,7 @@ class MooncakeConfigTransferTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             path = Path(tmpdir) / "reuse.json"
             path.write_text(
-                json.dumps(
-                    [[32, 2, {"hash_ids": ["a", "b"], "reuse_group": "tenant"}]]
-                )
+                json.dumps([[32, 2, {"hash_ids": ["a", "b"], "reuse_group": "tenant"}]])
             )
             workload = load_json_pairs_workload(str(path), request_count=1)
 
@@ -185,11 +187,19 @@ class MooncakeStoreModelTest(unittest.TestCase):
 
     def test_pool_key_includes_rank_context(self):
         req = Request(0, 32, 1, 16, hash_ids=["a", "b"], reuse_group="tenant")
-        rank0 = ParallelRankInfo(tp_rank=0, pp_rank=0, dp_rank=0, kv_cache_group_id="dp0-pp0")
-        rank1 = ParallelRankInfo(tp_rank=1, pp_rank=0, dp_rank=0, kv_cache_group_id="dp0-pp0")
+        rank0 = ParallelRankInfo(
+            tp_rank=0, pp_rank=0, dp_rank=0, kv_cache_group_id="dp0-pp0"
+        )
+        rank1 = ParallelRankInfo(
+            tp_rank=1, pp_rank=0, dp_rank=0, kv_cache_group_id="dp0-pp0"
+        )
 
-        key0 = pool_keys_for_request(req, model_name="m", rank_info=rank0, engine_id="e")[0]
-        key1 = pool_keys_for_request(req, model_name="m", rank_info=rank1, engine_id="e")[0]
+        key0 = pool_keys_for_request(
+            req, model_name="m", rank_info=rank0, engine_id="e"
+        )[0]
+        key1 = pool_keys_for_request(
+            req, model_name="m", rank_info=rank1, engine_id="e"
+        )[0]
 
         self.assertNotEqual(key0, key1)
         self.assertIn("@tp_rank:0", key0.to_string())
@@ -218,6 +228,23 @@ class MooncakeStoreModelTest(unittest.TestCase):
         self.assertGreater(store.stats.ssd_write_blocks, 0)
         self.assertEqual(store.objects[key0.to_string()].replicas, 1)
         self.assertTrue(store.objects[key0.to_string()].persisted)
+
+    def test_missing_prefix_indices_finds_only_the_unwritten_suffix(self):
+        store = MooncakeStore(parse_mooncake_config(), block_bytes=128)
+        keys = [PoolKey(KeyMetadata("m"), str(index)) for index in range(4)]
+        store.put(keys[:2])
+
+        self.assertEqual(store.missing_prefix_indices(keys), [2, 3])
+        store.put(keys[2:])
+        self.assertEqual(store.missing_prefix_indices(keys), [])
+
+    def test_empty_lookup_does_not_count_as_a_store_miss(self):
+        store = MooncakeStore(parse_mooncake_config(), block_bytes=128)
+
+        hit = store.lookup([])
+
+        self.assertEqual(hit.hit_blocks, 0)
+        self.assertEqual(store.stats.store_miss_count, 0)
 
     def test_ssd_media_writes_are_blocking(self):
         block_bytes = 10 * (1 << 20)
@@ -316,7 +343,9 @@ class MooncakeConnectorTest(unittest.TestCase):
             kind="load",
             latency=None,
         )
-        connector.bind_connector_metadata(KVConnectorMetadata(connector_name="MooncakeConnector", loads=[plan]))
+        connector.bind_connector_metadata(
+            KVConnectorMetadata(connector_name="MooncakeConnector", loads=[plan])
+        )
 
         latency = connector.start_load_kv()
 
@@ -329,7 +358,9 @@ class MooncakeConnectorTest(unittest.TestCase):
 
     def test_multi_connector_delegates_p2p_transfer_plan(self):
         connector = KVConnectorFactory.create_connector(
-            KVTransferConfig.from_file("./data/kv_transfer/mooncake_multi_connector.json"),
+            KVTransferConfig.from_file(
+                "./data/kv_transfer/mooncake_multi_connector.json"
+            ),
             _CacheConfig(),
         )
         req = Request(0, 16, 1, 16)
@@ -410,26 +441,98 @@ class MooncakeConnectorTest(unittest.TestCase):
         req1 = Request(1, 32, 1, 16, hash_ids=["a", "b"])
         req2 = Request(2, 32, 1, 16, hash_ids=["c", "d"])
 
-        meta0 = connector.build_connector_meta(type("Output", (), {"scheduled": [req0], "preempted": []})())
+        meta0 = connector.build_connector_meta(
+            type("Output", (), {"scheduled": [req0], "preempted": []})()
+        )
         connector.bind_connector_metadata(meta0)
         connector.wait_for_save()
         hit_tokens = connector.get_num_new_matched_tokens(req1, 0)
         self.assertEqual(hit_tokens, 16)
-        meta1 = connector.build_connector_meta(type("Output", (), {"scheduled": [req1], "preempted": []})())
+        meta1 = connector.build_connector_meta(
+            type("Output", (), {"scheduled": [req1], "preempted": []})()
+        )
         self.assertEqual(meta1.loads[0].tier, "ssd")
         self.assertEqual(meta1.loads[0].blocks, 1)
         self.assertTrue(meta1.loads[0].keys)
         connector.bind_connector_metadata(meta1)
         self.assertGreater(connector.start_load_kv(), 0)
 
-        meta2 = connector.build_connector_meta(type("Output", (), {"scheduled": [req2], "preempted": []})())
+        meta2 = connector.build_connector_meta(
+            type("Output", (), {"scheduled": [req2], "preempted": []})()
+        )
         connector.bind_connector_metadata(meta2)
         connector.wait_for_save()
         hit_tokens = connector.get_num_new_matched_tokens(req1, 0)
 
         self.assertEqual(hit_tokens, 16)
-        self.assertEqual(connector.service.store.lookup(connector._keys_for_request(req1)).tier, "ssd")
+        self.assertEqual(
+            connector.service.store.lookup(connector._keys_for_request(req1)).tier,
+            "ssd",
+        )
         self.assertGreater(connector.mooncake_stats.disk_tier_hit_count, 0)
+
+    def test_local_and_external_prefix_hits_are_combined(self):
+        connector = MooncakeStoreConnector(
+            KVTransferConfig(
+                kv_connector="MooncakeStoreConnector",
+                kv_connector_extra_config={"memory_capacity_blocks": 8},
+            ),
+            _CacheConfig(),
+        )
+        req = Request(0, 64, 1, 16, hash_ids=["a", "b", "c", "d"])
+        req.cached_prefill_tokens = 16
+        req.cached_prefill_blocks = 1
+        req.reuse_hit_blocks = 1
+        req.reuse_miss_blocks = 3
+
+        connector.update_state_after_alloc(req, [], 32)
+
+        self.assertEqual(req.cached_prefill_tokens, 48)
+        self.assertEqual(req.cached_prefill_blocks, 3)
+        self.assertEqual(req.effective_prefill_tokens, 16)
+        self.assertEqual(req.reuse_hit_blocks, 3)
+        self.assertEqual(req.reuse_miss_blocks, 1)
+
+    def test_external_load_skips_locally_cached_prefix_blocks(self):
+        connector = MooncakeStoreConnector(
+            KVTransferConfig(
+                kv_connector="MooncakeStoreConnector",
+                kv_connector_extra_config={
+                    "memory_capacity_blocks": 8,
+                    "load_async": True,
+                    "transfer_overlap": True,
+                },
+            ),
+            _CacheConfig(),
+        )
+        req0 = Request(0, 64, 1, 16, hash_ids=["a", "b", "c", "d"])
+        connector.bind_connector_metadata(
+            connector.build_connector_meta(
+                type("Output", (), {"scheduled": [req0], "preempted": []})()
+            )
+        )
+        connector.wait_for_save()
+        connector.update_connector_output(connector.build_connector_worker_meta())
+
+        req1 = Request(1, 64, 1, 16, hash_ids=["a", "b", "c", "d"])
+        external_tokens = connector.get_num_new_matched_tokens(req1, 16)
+        load_meta = connector.build_connector_meta(
+            type("Output", (), {"scheduled": [req1], "preempted": []})()
+        )
+        load = load_meta.loads[0]
+        connector.bind_connector_metadata(load_meta)
+        connector.start_load_kv()
+
+        expected_keys = [
+            key.to_string() for key in connector._keys_for_request(req1)[1:3]
+        ]
+        self.assertEqual(external_tokens, 32)
+        self.assertEqual(load.blocks, 2)
+        self.assertEqual(load.keys, expected_keys)
+        self.assertEqual(connector.mooncake_stats.cache_query_tokens, 64)
+        self.assertEqual(connector.mooncake_stats.pending_async_jobs, 1)
+        connector.update_connector_output(connector.build_connector_worker_meta())
+        self.assertEqual(connector.mooncake_stats.pending_async_jobs, 0)
 
     def test_ssd_saves_are_blocking(self):
         connector = MooncakeStoreConnector(
@@ -501,6 +604,46 @@ class MooncakeConnectorTest(unittest.TestCase):
 
         self.assertEqual(req.status.name, "FINISHED_STOPPED")
         self.assertEqual(scheduler.block_manager.block_table.get_num_blocks(req.id), 0)
+
+    def test_async_prefill_feedback_keeps_unfinished_request_running(self):
+        connector = MooncakeStoreConnector(
+            KVTransferConfig(
+                kv_connector="MooncakeStoreConnector",
+                kv_connector_extra_config={
+                    "load_async": True,
+                    "transfer_overlap": True,
+                },
+            ),
+            _CacheConfig(),
+        )
+        scheduler = LLMPagedAttnScheduler(
+            id=0,
+            cache_config=type(
+                "Cache",
+                (),
+                {
+                    "block_size": 16,
+                    "num_gpu_blocks": 8,
+                    "num_cpu_blocks": 8,
+                    "model": "TestModel",
+                },
+            )(),
+            max_parallem_sum=4,
+            connector=connector,
+        )
+        req = Request(0, 32, 2, 16, hash_ids=["a", "b"])
+        scheduler.add_requests([req])
+        running, _ = scheduler.schedule()
+        connector.bind_connector_metadata(
+            connector.build_connector_meta(
+                type("Output", (), {"scheduled": running, "preempted": []})()
+            )
+        )
+        connector.wait_for_save()
+
+        scheduler.update_connector_output(connector.build_connector_worker_meta())
+
+        self.assertIn(req, scheduler.running)
 
 
 class MooncakeAlignedSemanticsTest(unittest.TestCase):
@@ -664,7 +807,7 @@ class MooncakeEndToEndTest(unittest.TestCase):
         stats = get_mooncake_stats(engine)
 
         self.assertGreater(stats["mooncake_put_count"], 0)
-        self.assertGreater(stats["mooncake_memory_tier_hit_count"], 0)
+        self.assertGreater(stats["mooncake_local_gpu_hit_tokens"], 0)
         self.assertGreater(stats["mooncake_transferred_bytes"], 0)
         with tempfile.TemporaryDirectory() as tmpdir:
             export_result(
@@ -687,7 +830,7 @@ class MooncakeEndToEndTest(unittest.TestCase):
                 simulator_wall_time=0.1,
             )
             result = json.loads((Path(tmpdir) / "result_1.json").read_text())
-        self.assertGreater(result["mooncake_memory_tier_hit_count"], 0)
+        self.assertGreater(result["mooncake_local_gpu_hit_tokens"], 0)
         self.assertGreater(result["mooncake_transferred_bytes"], 0)
 
     def test_non_mooncake_export_has_zero_defaults(self):
@@ -749,7 +892,9 @@ class MooncakeEndToEndTest(unittest.TestCase):
 
     def test_multi_connector_store_and_p2p_metrics_aggregate(self):
         connector = KVConnectorFactory.create_connector(
-            KVTransferConfig.from_file("./data/kv_transfer/mooncake_multi_connector.json"),
+            KVTransferConfig.from_file(
+                "./data/kv_transfer/mooncake_multi_connector.json"
+            ),
             _CacheConfig(),
         )
         store = connector.children[1]
@@ -777,7 +922,11 @@ class MooncakeEndToEndTest(unittest.TestCase):
             latency=None,
         )
         connector.bind_connector_metadata(
-            type("Meta", (), {"loads": [p2p_plan], "saves": [], "preempted_request_ids": []})()
+            type(
+                "Meta",
+                (),
+                {"loads": [p2p_plan], "saves": [], "preempted_request_ids": []},
+            )()
         )
         connector.start_load_kv()
 
