@@ -1,0 +1,23 @@
+.vscode
+__pycache__
+
+# Local AI assistant configuration
+/.agents/
+/.claude/
+/.codex/
+/AGENTS.md
+/CLAUDE.md
+
+# Private date-stamped research notes
+/july*.md
+
+# Local research and workflow material
+/dataset/
+/docs/
+/openspec/
+
+results
+img
+log
+tmp
+ref

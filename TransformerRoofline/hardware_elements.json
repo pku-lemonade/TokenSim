@@ -1,0 +1,10 @@
+{
+    "server_price": 30000,
+    "avg_server_power": 300,
+    "electric_price": 1.0,
+    "design_cost": 50000000,
+    "wafer_fee_dram": 36000,
+    "wafer_fee_logic": 100000,
+    "time_yrs": 5,
+    "Require_Token_per_Second": 99000000
+}

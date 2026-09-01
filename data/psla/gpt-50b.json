@@ -1,0 +1,21 @@
+{
+    "name": "gpt-50b",
+    "model": "GPT-50B",
+    "qps": 100,
+    "distribution": "poisson",
+    "prefill_mean_len": 256,
+    "prefill_range_len": 256,
+    "decode_mean_len": 128,
+    "decode_range_len": 1536,
+    "decode_len_distribution": "capped_exponential",
+    "first_token_latency": {
+        "max": 10,
+        "p50": 2,
+        "p99": 3
+    },
+    "decode_token_latency": {
+        "p50": 0.02,
+        "p99": 0.05,
+        "max": 1
+    }
+}

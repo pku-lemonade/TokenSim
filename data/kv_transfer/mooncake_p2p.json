@@ -1,0 +1,13 @@
+{
+    "kv_connector": "MooncakeConnector",
+    "kv_connector_extra_config": {
+        "mode": "embedded",
+        "protocol": "rdma",
+        "global_segment_size_gb": 1,
+        "local_buffer_size_gb": 1,
+        "num_nics": 1,
+        "parallel_paths": 1,
+        "load_async": false,
+        "transfer_overlap": false
+    }
+}

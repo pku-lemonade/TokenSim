@@ -1,0 +1,6 @@
+[submodule "LLMCompass"]
+	path = LLMCompass
+	url = https://github.com/PrincetonUniversity/LLMCompass.git
+[submodule "qwen-bailian-usagetraces-anon"]
+	path = qwen-bailian-usagetraces-anon
+	url = https://github.com/alibaba-edu/qwen-bailian-usagetraces-anon.git

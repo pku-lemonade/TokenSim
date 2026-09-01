@@ -1,0 +1,25 @@
+{
+    "name": "qwen3-4b",
+    "model": "Qwen3-4B",
+    "qps": 50,
+    "distribution": "uniform",
+    "prefill_mean_len": 64,
+    "prefill_range_len": 0,
+    "decode_mean_len": 4,
+    "decode_range_len": 0,
+    "decode_len_distribution": "uniform",
+    "first_token_latency": {
+        "max": 10,
+        "p50": 2,
+        "p99": 3
+    },
+    "decode_token_latency": {
+        "p50": 0.02,
+        "p99": 0.05,
+        "max": 1
+    },
+    "hidden_size": 2560,
+    "intermediate_size": 9728,
+    "num_attention_heads": 32,
+    "num_key_value_heads": 8
+}

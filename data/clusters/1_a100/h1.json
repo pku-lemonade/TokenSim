@@ -1,0 +1,14 @@
+{
+    "num_workers": 1,
+    "networks": {
+        "netw1": "ethernet100Gb"
+    },
+    "worker_groups": [
+        {
+            "role": "hybrid",
+            "hardware": "A100-40G",
+            "num_workers": 1,
+            "network": "netw1"
+        }
+    ]
+}

@@ -1,0 +1,24 @@
+{
+    "num_workers": 8,
+    "networks": {
+        "netw1": "ethernet100Gb"
+    },
+    "kv_transfer": {
+        "kv_connector": "P2PConnector",
+        "kv_parallel_size": 8
+    },
+    "worker_groups": [
+        {
+            "role": "prefill",
+            "hardware": "A100-40G",
+            "num_workers": 2,
+            "network": "netw1"
+        },
+        {
+            "role": "decode",
+            "hardware": "A100-40G",
+            "num_workers": 6,
+            "network": "netw1"
+        }
+    ]
+}

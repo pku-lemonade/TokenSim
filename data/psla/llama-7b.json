@@ -1,0 +1,21 @@
+{
+    "name": "llama7b",
+    "model": "LLaMa-7B",
+    "qps": 1000,
+    "distribution": "uniform",
+    "prefill_mean_len": 55,
+    "prefill_range_len": -1,
+    "decode_mean_len": 7,
+    "decode_range_len": -1,
+    "decode_len_distribution": "uniform",
+    "first_token_latency": {
+        "max": 10,
+        "p50": 2,
+        "p99": 3
+    },
+    "decode_token_latency": {
+        "p50": 0.02,
+        "p99": 0.05,
+        "max": 1
+    }
+}

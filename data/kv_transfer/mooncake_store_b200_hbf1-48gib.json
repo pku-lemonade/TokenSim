@@ -1,0 +1,25 @@
+{
+    "kv_connector": "MooncakeStoreConnector",
+    "kv_connector_extra_config": {
+        "experiment_label": "b200-mooncake-hbf1-48gib",
+        "target_hardware": "B200",
+        "accelerator_memory_preset": "HBF1-48GiB",
+        "mode": "standalone-store",
+        "protocol": "rdma",
+        "global_segment_size_gb": 1,
+        "local_buffer_size_gb": 1,
+        "memory_capacity_blocks": 1,
+        "enable_offload": true,
+        "offload_tier": "hbf",
+        "hbf_capacity_gb": 49152,
+        "hbf_seq_read_bw_gbps": 2400.0,
+        "hbf_seq_write_bw_gbps": 2400.0,
+        "hbf_read_latency_us": 12,
+        "hbf_write_latency_us": 120,
+        "replica_num": 1,
+        "admission_policy": "always",
+        "eviction_policy": "lru",
+        "load_async": false,
+        "transfer_overlap": false
+    }
+}
