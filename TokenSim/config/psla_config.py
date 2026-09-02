@@ -110,6 +110,9 @@ class LLMResult:
     mooncake_pool_keys: list[str] | None = None
     mooncake_offload_tiers: list[str] | None = None
     mooncake_offload_profiles: list[dict[str, Any]] | None = None
+    af_enabled: bool = False
+    af_iteration_count: int = 0
+    af_trace: list[dict[str, Any]] | None = None
 
     @classmethod
     def from_file(cls, filename):

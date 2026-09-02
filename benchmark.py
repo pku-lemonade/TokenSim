@@ -70,16 +70,31 @@ def check_results(
                     "id": worker.id,
                     "role": worker.role,
                     "status": worker.status.name,
-                    "running": [req.id for req in worker.scheduler.running],
-                    "waiting": [req.id for req in worker.scheduler.waiting],
+                    "running": [
+                        req.id
+                        for req in getattr(
+                            getattr(worker, "scheduler", None), "running", []
+                        )
+                    ],
+                    "waiting": [
+                        req.id
+                        for req in getattr(
+                            getattr(worker, "scheduler", None), "waiting", []
+                        )
+                    ],
                     "gpu_blocks": (
                         worker.scheduler.block_manager.get_gpu_status()
-                        if hasattr(worker.scheduler, "block_manager")
+                        if hasattr(getattr(worker, "scheduler", None), "block_manager")
                         else None
                     ),
                 }
                 for worker in engine.workers
             ],
+            "unfinished_af_iterations": (
+                engine.af_executor.unfinished_snapshot()
+                if getattr(engine, "af_executor", None) is not None
+                else []
+            ),
         }
         failure_file = diagnostic_path / f"failure_{args.qps}.json"
         temporary_file = failure_file.with_suffix(".json.tmp")
@@ -109,6 +124,33 @@ def check_results(
 
 def main(args: argparse.Namespace):
     reset_g_time()
+    cluster = ClusterConfig.from_file(args.cluster)
+    af_compute_provider = getattr(args, "af_compute_provider", None)
+    af_transfer_provider = getattr(args, "af_transfer_provider", None)
+    if cluster.af.enabled:
+        from TokenSim.af import resolve_af_latency_providers
+
+        try:
+            af_compute_provider, af_transfer_provider = resolve_af_latency_providers(
+                cluster.af,
+                args.cluster,
+                af_compute_provider,
+                af_transfer_provider,
+            )
+        except Exception as exc:
+            raise ConfigurationError(
+                f"failed to initialize AF latency providers: {exc}"
+            ) from exc
+        missing = []
+        if af_compute_provider is None:
+            missing.append("compute latency provider")
+        if af_transfer_provider is None:
+            missing.append("transfer latency provider")
+        if missing:
+            raise ConfigurationError(
+                "AF configuration is valid, but the runtime is missing required "
+                "dependencies: " + ", ".join(missing)
+            )
     latency_backend_type = get_latency_backend_type(args.latency_backend)
     if latency_backend_type == "llm_compass":
         llm_compass_path = os.path.join(
@@ -125,7 +167,6 @@ def main(args: argparse.Namespace):
         "./TransformerRoofline/hardware_elements.json",
     )
 
-    cluster = ClusterConfig.from_file(args.cluster)
     kv_transfer_override = (
         KVTransferConfig.from_file(args.kv_transfer_config)
         if args.kv_transfer_config
@@ -136,12 +177,13 @@ def main(args: argparse.Namespace):
     parallel_config = build_parallel_config(args, cluster, model_config)
     validate_moe_parallel_config(model_config, parallel_config)
 
+    kv_block_size = args.block_size
     tqdm_manager = TqdmManager(verbose=args.verbose, program_id=args.program_id)
     env = simpy.Environment()
     requests, prefill_lens, decode_lens = get_requests(
         args=args,
         model_config=model_config,
-        block_size=args.block_size,
+        block_size=kv_block_size,
         tqdm_submit_func=lambda req_num: tqdm_manager.update(req_num),
     )
 
@@ -150,7 +192,7 @@ def main(args: argparse.Namespace):
 
     engine = LLMEngine(
         env=env,
-        block_size=args.block_size,
+        block_size=kv_block_size,
         batching=args.batching,
         kv_transfer_config=kv_transfer_config,
         psla_config=model_config,
@@ -165,6 +207,9 @@ def main(args: argparse.Namespace):
         wrapped_llmcompass_vars=wrapped_llmcompass_vars,
         random_seed=args.random_seed,
         debug_print=getattr(args, "debug_print", False),
+        af_compute_provider=af_compute_provider,
+        af_transfer_provider=af_transfer_provider,
+        af_dtype=getattr(args, "af_dtype", "fp16"),
     )
     engine.validate_request_capacity(requests)
 

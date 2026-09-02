@@ -1,0 +1,68 @@
+dataset_version: example-v1
+experiment_id: af-e2e
+hardware_profiles:
+  a-device:
+    backend: analytical
+    peak_compute_by_dtype: {bf16: 1.0e+12}
+    memory_bandwidth_bytes_per_s: 1.0e+11
+    memory_capacity_bytes: 230000000
+    interconnect_bandwidth_bytes_per_s: 4.8e+11
+  f-device:
+    backend: analytical
+    peak_compute_by_dtype: {bf16: 1.0e+12}
+    memory_bandwidth_bytes_per_s: 1.0e+11
+    memory_capacity_bytes: 230000000
+    interconnect_bandwidth_bytes_per_s: 4.8e+11
+sources:
+  - source_id: measured:example-link
+    evidence_grade: A
+    method: measured
+    device: example-link
+    backend: analytical
+    reference: replace-with-real-link-benchmark
+    input_hash: example-only
+calibrations:
+  gemm: {multiplier: 1.0, offset_us: 0.0, calibration_id: example-uncalibrated}
+  context_attention: {multiplier: 1.0, offset_us: 0.0, calibration_id: example-uncalibrated}
+  generation_attention: {multiplier: 1.0, offset_us: 0.0, calibration_id: example-uncalibrated}
+  moe: {multiplier: 1.0, offset_us: 0.0, calibration_id: example-uncalibrated}
+  elementwise: {multiplier: 1.0, offset_us: 0.0, calibration_id: example-uncalibrated}
+shape_requests:
+  - table: gemm
+    key: {device: a-device, backend: analytical, gemm_dtype: bf16, m: 1, n: 24, k: 8}
+  - table: gemm
+    key: {device: a-device, backend: analytical, gemm_dtype: bf16, m: 1, n: 8, k: 8}
+  - table: gemm
+    key: {device: f-device, backend: analytical, gemm_dtype: bf16, m: 1, n: 4, k: 8}
+  - table: context_attention
+    key: {device: a-device, backend: analytical, attn_dtype: bf16, kv_cache_dtype: bf16, batch_size: 1, input_seq_len: 1, num_heads: 2, num_kv_heads: 2, head_dim: 4, window_size: 0}
+  - table: generation_attention
+    key: {device: a-device, backend: analytical, attn_dtype: bf16, kv_cache_dtype: bf16, batch_size: 1, context_len: 1, num_heads: 2, num_kv_heads: 2, head_dim: 4, window_size: 0}
+  - table: moe
+    key: {device: f-device, backend: analytical, moe_dtype: bf16, phase: prefill, distribution: balanced, num_tokens: 1, hidden_size: 8, inter_size: 16, top_k: 2, num_experts: 4, tp_size: 1, ep_size: 1}
+  - table: moe
+    key: {device: f-device, backend: analytical, moe_dtype: bf16, phase: decode, distribution: balanced, num_tokens: 1, hidden_size: 8, inter_size: 16, top_k: 2, num_experts: 4, tp_size: 1, ep_size: 1}
+  - table: elementwise
+    key: {device: a-device, backend: analytical, op_name: rmsnorm, dtype: bf16, num_tokens: 1, hidden_size: 8}
+  - table: elementwise
+    key: {device: a-device, backend: analytical, op_name: rope, dtype: bf16, num_tokens: 1, hidden_size: 8}
+  - table: elementwise
+    key: {device: a-device, backend: analytical, op_name: residual_add, dtype: bf16, num_tokens: 1, hidden_size: 8}
+  - table: elementwise
+    key: {device: f-device, backend: analytical, op_name: rmsnorm, dtype: bf16, num_tokens: 1, hidden_size: 8}
+  - table: elementwise
+    key: {device: f-device, backend: analytical, op_name: residual_add, dtype: bf16, num_tokens: 1, hidden_size: 8}
+  - table: communication
+    key: {source_device: a-device, target_device: f-device, backend: analytical, network: af-net, link_group: af-fabric, operation: af_transfer, direction: a_to_f, group_size: 2}
+  - table: communication
+    key: {source_device: f-device, target_device: a-device, backend: analytical, network: af-net, link_group: af-fabric, operation: af_transfer, direction: f_to_a, group_size: 2}
+observations:
+  - table: communication
+    key: {source_device: a-device, target_device: f-device, backend: analytical, network: af-net, link_group: af-fabric, operation: af_transfer, direction: a_to_f, group_size: 2, fixed_latency_us: 1.0, effective_bandwidth_bytes_per_s: 1.6e+7}
+    latency_us: 0.0
+    source_id: measured:example-link
+  - table: communication
+    key: {source_device: f-device, target_device: a-device, backend: analytical, network: af-net, link_group: af-fabric, operation: af_transfer, direction: f_to_a, group_size: 2, fixed_latency_us: 1.0, effective_bandwidth_bytes_per_s: 1.6e+7}
+    latency_us: 0.0
+    source_id: measured:example-link
+holdout_comparisons: {}

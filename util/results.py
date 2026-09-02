@@ -38,6 +38,18 @@ def get_prefix_reuse_stats(requests: list[Request]) -> dict[str, float | int]:
     }
 
 
+def get_af_stats(engine: LLMEngine) -> dict[str, Any]:
+    executor = getattr(engine, "af_executor", None)
+    summaries = getattr(engine, "af_iteration_summaries", [])
+    return {
+        "af_enabled": executor is not None,
+        "af_iteration_count": len(summaries),
+        "af_trace": (
+            list(summaries) if executor is not None and executor.trace.enabled else None
+        ),
+    }
+
+
 def get_connector_stats(engine: LLMEngine) -> dict[str, float | int]:
     stats = getattr(engine, "connector_stats", None)
     if stats is None:
@@ -378,6 +390,7 @@ def export_result(
     parallel_stats = get_parallel_stats(engine)
     moe_stats = get_moe_stats(engine)
     mooncake_stats = get_mooncake_stats(engine)
+    af_stats = get_af_stats(engine)
 
     result = LLMResult(
         qps=args.qps,
@@ -404,6 +417,7 @@ def export_result(
         **parallel_stats,
         **moe_stats,
         **mooncake_stats,
+        **af_stats,
     )
 
     if args.results_path == "":
@@ -424,6 +438,9 @@ def export_result(
     result_dict["request_time"] = asdict(result.request_time)
     result_dict["prefill_time"] = asdict(result.prefill_time)
     result_dict["decode_time"] = asdict(result.decode_time)
+    if getattr(engine, "af_executor", None) is None:
+        for field_name in ("af_enabled", "af_iteration_count", "af_trace"):
+            result_dict.pop(field_name, None)
 
     result_file = results_path / f"result_{args.qps}.json"
     with open(result_file, "w") as f:

@@ -136,6 +136,8 @@ public release should also review the current configuration examples.
   connector composition, configuration fields, and timing behavior.
 - [Parallelism](docs/parallelism.md): worker roles, TP/PP/DP/EP configuration,
   rank mapping, communication modeling, and configuration precedence.
+- [AF 分离配置与验证](docs/af-separation.md)：Prefill/Decode 阶段选择、
+  Attention/FFN capability、逐层 executor、通信竞争、trace 和验证契约。
 
 ## Workload Formats
 
@@ -157,7 +159,8 @@ results/<model>/<cluster-directory>/<cluster>/result_<qps>.json
 ```
 
 The JSON output includes latency and throughput, preemption/recomputation,
-prefix-cache reuse, connector transfer, parallelism, MoE, and Mooncake metrics.
+prefix-cache reuse, connector transfer, parallelism, MoE, Mooncake, and enabled
+AF executor trace metrics.
 If the SimPy event queue ends with unfinished requests, TokenSim writes a failure
 snapshot and raises an error instead of exporting a successful result.
 

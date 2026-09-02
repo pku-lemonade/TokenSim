@@ -9,6 +9,14 @@ import time
 
 import simpy
 
+from TokenSim.af import (
+    AFComputeLatencyProvider,
+    AFExecutor,
+    AFIteration,
+    AFResourceRegistry,
+    AFTransferLatencyProvider,
+    phase_for_requests,
+)
 from TokenSim.config.config import (
     CacheConfig,
     ClusterConfig,
@@ -71,6 +79,36 @@ class WorkerStatus(Enum):
     WAITING = auto()
     RUNNING = auto()
     STOPPED = auto()
+
+
+class AFComputeWorker:
+    """Physical AF-only worker that never owns requests or KV cache."""
+
+    def __init__(self, env: simpy.Environment, id: int, config: WorkerConfig) -> None:
+        self.env = env
+        self.id = id
+        self.role = None
+        self.name = config.name
+        self.capabilities = config.capabilities
+        self.hardware = config.hardware
+        self.network = config.network
+        self.nettype = config.nettype
+        self.rank_info = config.rank_info or ParallelRankInfo()
+        self.global_rank = self.rank_info.global_rank
+        self.tp_rank = self.rank_info.tp_rank
+        self.pp_rank = self.rank_info.pp_rank
+        self.dp_rank = self.rank_info.dp_rank
+        self.rank_in_dp_group = self.rank_info.rank_in_dp_group
+        self.kv_cache_group_id = self.rank_info.kv_cache_group_id
+        self.status = WorkerStatus.WAITING
+        self.preempted_cnt = 0
+        self.owned_expert_ids: list[int] = []
+
+    def workload(self) -> float:
+        return 0.0
+
+    def cpu_workload(self) -> float:
+        return 0.0
 
 
 class RequestCompletionDebugPrinter:
@@ -160,12 +198,15 @@ class LLMWorker(Worker):
         latency_backend_type: str = "roofline",
         random_seed: int = 0,
         wrapped_llmcompass_vars: tuple[Any, Any, Any] | None = None,
+        runtime_role: str | None = None,
     ):
         super().__init__(env, id)
         self.roofline = roofline
         self.engine = engine
 
-        self.role = worker_config.role
+        self.role = runtime_role or worker_config.role
+        self.name = worker_config.name
+        self.capabilities = worker_config.capabilities
         self.hardware = worker_config.hardware
         self.network = worker_config.network
         self.nettype = worker_config.nettype
@@ -233,7 +274,7 @@ class LLMWorker(Worker):
         )
 
         self.kv_transfer_config = kv_transfer_config.with_worker_defaults(
-            worker_config.role,
+            self.role,
             kv_rank=id,
         )
         self.connector = KVConnectorFactory.create_connector(
@@ -352,9 +393,27 @@ class LLMWorker(Worker):
 
                         running = schedule_output.running
                         if running:
-                            latency = self.dynamic_batch(running)
-                            if latency:
-                                yield self.env.timeout(latency)
+                            use_af = (
+                                schedule_output.phase != SchedulePhase.RECOMPUTE
+                                and self.engine.uses_af_for(running)
+                            )
+                            if use_af:
+                                iteration = self.engine.af_executor.submit(
+                                    self.id,
+                                    running,
+                                )
+                                yield self.env.process(
+                                    self.engine.af_executor.run_iteration(iteration)
+                                )
+                                latency = iteration.makespan or 0.0
+                                self.engine.record_af_iteration(iteration)
+                            else:
+                                latency = self.dynamic_batch(running)
+                                if latency:
+                                    yield from self.engine.run_complete_compute(
+                                        self.id,
+                                        latency,
+                                    )
                             if schedule_output.phase == SchedulePhase.RECOMPUTE:
                                 self.scheduler.finish_recompute(running, latency)
                             else:
@@ -413,6 +472,9 @@ class LLMEngine(Worker):
         wrapped_llmcompass_vars: tuple[Any, Any, Any] | None = None,
         random_seed: int = 0,
         debug_print: bool = False,
+        af_compute_provider: AFComputeLatencyProvider | None = None,
+        af_transfer_provider: AFTransferLatencyProvider | None = None,
+        af_dtype: str = "fp16",
     ):
         super().__init__(env, -1)
 
@@ -433,38 +495,70 @@ class LLMEngine(Worker):
             total_layers=getattr(roofline.models[psla_config.model], "Nlayer", None),
         )
 
+        self.cluster_config = cluster_config
         worker_configs = cluster_config.workers(self.parallel_config)
-        self.workers: list[LLMWorker] = []
-        self.workers = [
-            LLMWorker(
-                env=env,
-                id=id,
-                engine=self,
-                psla_config=psla_config,
-                worker_config=worker_config,
-                block_size=block_size,
-                batching=batching,
-                kv_transfer_config=kv_transfer_config,
-                roofline=roofline,
-                max_parallem_sum=max_parallem_sum,
-                max_occupy_ratio=max_occupy_ratio,
-                parallel_config=self.parallel_config,
-                moe_config=self.moe_config,
-                expert_placement=self.expert_placement,
-                latency_backend_type=latency_backend_type,
-                random_seed=random_seed,
-                wrapped_llmcompass_vars=wrapped_llmcompass_vars,
-            )
-            for id, worker_config in enumerate(worker_configs)
-        ]
-        for worker in self.workers:
+        self.af_resources = (
+            AFResourceRegistry(env, cluster_config, worker_configs)
+            if cluster_config.af.enabled
+            else None
+        )
+        self.af_executor: AFExecutor | None = None
+        self.af_iteration_summaries: list[dict[str, Any]] = []
+        self.workers: list[LLMWorker | AFComputeWorker] = []
+        self.request_workers: list[LLMWorker] = []
+        for worker_id, worker_config in enumerate(worker_configs):
+            if self._is_request_owning_config(worker_config):
+                worker = LLMWorker(
+                    env=env,
+                    id=worker_id,
+                    engine=self,
+                    psla_config=psla_config,
+                    worker_config=worker_config,
+                    block_size=block_size,
+                    batching=batching,
+                    kv_transfer_config=kv_transfer_config,
+                    roofline=roofline,
+                    max_parallem_sum=max_parallem_sum,
+                    max_occupy_ratio=max_occupy_ratio,
+                    parallel_config=self.parallel_config,
+                    moe_config=self.moe_config,
+                    expert_placement=self.expert_placement,
+                    latency_backend_type=latency_backend_type,
+                    random_seed=random_seed,
+                    wrapped_llmcompass_vars=wrapped_llmcompass_vars,
+                    runtime_role=self._runtime_role(worker_config),
+                )
+                self.request_workers.append(worker)
+            else:
+                worker = AFComputeWorker(env, worker_id, worker_config)
+            self.workers.append(worker)
+        for worker in self.request_workers:
             worker.parallel_communicator.workers = self.workers
+
+        if cluster_config.af.enabled:
+            model_metadata = roofline.models[psla_config.model]
+            total_layers = getattr(model_metadata, "Nlayer", None)
+            hidden_size = psla_config.hidden_size or getattr(
+                model_metadata, "Dmodel", None
+            )
+            self.af_executor = AFExecutor(
+                env=env,
+                cluster_config=cluster_config,
+                worker_configs=worker_configs,
+                compute_provider=af_compute_provider,
+                transfer_provider=af_transfer_provider,
+                model_id=psla_config.model,
+                dtype=af_dtype,
+                total_layers=total_layers,
+                hidden_size=hidden_size,
+                resources=self.af_resources,
+            )
 
         self.prefill_workers = self._build_worker_pool(
             [
                 worker
-                for worker in self.workers
-                if worker.role == "hybrid" or worker.role == "prefill"
+                for worker in self.request_workers
+                if self._worker_supports_phase(worker, "prefill")
                 if self._is_schedulable_worker(worker)
             ],
             pool_type_map[prefill_worker_pool_type],
@@ -472,8 +566,8 @@ class LLMEngine(Worker):
         self.decode_workers = self._build_worker_pool(
             [
                 worker
-                for worker in self.workers
-                if worker.role == "hybrid" or worker.role == "decode"
+                for worker in self.request_workers
+                if self._worker_supports_phase(worker, "decode")
                 if self._is_schedulable_worker(worker)
             ],
             pool_type_map[decode_worker_pool_type],
@@ -481,6 +575,65 @@ class LLMEngine(Worker):
 
         self.connector_stats = ConnectorStats()
         self.action = self.env.process(self.run())
+
+    def _is_request_owning_config(self, worker_config: WorkerConfig) -> bool:
+        return any(
+            self._config_supports_phase(worker_config, phase)
+            for phase in ("prefill", "decode")
+        )
+
+    def _config_supports_phase(
+        self,
+        worker_config: WorkerConfig,
+        phase: str,
+    ) -> bool:
+        if self.cluster_config.af.enabled and phase in self.cluster_config.af.phases:
+            link = self.cluster_config.phase_to_af_link[phase]
+            return worker_config.name == link.attention_group
+        capability = "prefill" if phase == "prefill" else "decode_full"
+        return capability in worker_config.capabilities
+
+    def _runtime_role(self, worker_config: WorkerConfig) -> str:
+        supports_prefill = self._config_supports_phase(worker_config, "prefill")
+        supports_decode = self._config_supports_phase(worker_config, "decode")
+        if supports_prefill and supports_decode:
+            return "hybrid"
+        if supports_prefill:
+            return "prefill"
+        if supports_decode:
+            return "decode"
+        raise ConfigurationError(
+            f"request-owning worker group {worker_config.name!r} is not bound to "
+            "Prefill or Decode"
+        )
+
+    def _worker_supports_phase(self, worker: LLMWorker, phase: str) -> bool:
+        if self.cluster_config.af.enabled and phase in self.cluster_config.af.phases:
+            return (
+                worker.name
+                == self.cluster_config.phase_to_af_link[phase].attention_group
+            )
+        capability = "prefill" if phase == "prefill" else "decode_full"
+        return capability in worker.capabilities
+
+    def uses_af_for(self, requests: list[Request]) -> bool:
+        if self.af_executor is None:
+            return False
+        return phase_for_requests(requests) in self.cluster_config.af.phases
+
+    def run_complete_compute(self, worker_id: int, latency: float):
+        if self.af_resources is None:
+            yield self.env.timeout(latency)
+            return
+        resource = self.af_resources.compute_slots[worker_id]
+        with resource.request() as request:
+            yield request
+            yield self.env.timeout(latency)
+
+    def record_af_iteration(self, iteration: AFIteration) -> None:
+        if self.af_executor is None:
+            return
+        self.af_iteration_summaries.append(self.af_executor.trace.summarize(iteration))
 
     def start_debug_clock(self, wall_start: float | None = None) -> None:
         self.debug_printer.start(wall_start)
@@ -557,7 +710,7 @@ class LLMEngine(Worker):
         self.send_task(worker, Task.ADD, requests)
 
     def _broadcast_stop(self) -> None:
-        for worker in self.workers:
+        for worker in self.request_workers:
             self.send_task(worker, Task.STOP)
 
     def dispatch_prefill_to_decode(
