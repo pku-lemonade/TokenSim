@@ -17,7 +17,7 @@ latency = calibration_multiplier * roofline_time + calibration_offset
 
 运行时先 exact match，再按表执行单维内部插值：GEMM 只沿 `m`，Prefill Attention 只沿 `input_seq_len`，Decode Attention 只沿 `context_len`，MoE 只沿 `num_tokens`。Elementwise 不插值，所有表第一版都不外推。失败会报告完整 key，不回退旧模型。
 
-A 阶段组合 QKV GEMM、Attention core、输出投影与必要 elementwise；F 阶段组合 Router、MoE expert 与必要 elementwise。Manifest 的 `component_includes` 用于阻止 fused kernel 重复包含 softmax、SwiGLU、投影或 Router。Dispatch/combine 与 A-to-F/F-to-A 不进入 compute sum。
+A rank 查询组合其 TP-local QKV、Attention core、输出投影与必要 elementwise；Router/Top-K 是所选 A replica leader 上的独立查询，使用该 A worker 的 `device_type`；F expert rank 查询只组合实际 routed local tokens 对应的 expert 与必要 elementwise。三类 breakdown 互不重叠。Manifest 的 `component_includes` 用于阻止 fused kernel 重复包含 softmax、SwiGLU、投影或 Router。TP collective、A-to-F/F-to-A 和 EP dispatch/combine 不进入 compute sum；包括 `EP=1` 在内，dispatch/combine 都产生独立 query，provider 可将其 service time 估为 0。缺失 `local_shape` 或 `local_token_count` 会明确失败，不使用完整 workload fallback。
 
 通信 service time 为：
 
@@ -25,7 +25,9 @@ A 阶段组合 QKV GEMM、Attention core、输出投影与必要 elementwise；F
 fixed_latency + payload_bytes / effective_bandwidth
 ```
 
-Provider 不计算 queue time。全/半双工、容量和多个 AF blocks 的竞争仍由 AF executor 的 SimPy resource 产生。
+运行时通信 query 使用 `af_a_to_f`、`af_f_to_a` 和 `tp_collective`。Router 在 A 侧先产生 routed workload；A-to-F 直接连接 A leader 与 active F Expert ranks，同时完成跨域传输和 EP dispatch，F-to-A 同时完成 EP gather/combine，因此同一 payload 不会再通过 `ep_dispatch`/`ep_combine` 搬第二遍。两个方向的 payload 都按 routed token count 计算；存在 histogram 时取计数之和，否则取 `token_count * top_k`。`payload_bytes` 由 planner 唯一计算，provider 只按该 payload 和链路参数返回 service time；它不重算 Top-K、不增加 transfer，也不计算 queue time。全/半双工、容量和多个 AF blocks 的竞争仍由 AF executor 的 SimPy resource 产生。
+
+MoE 表的 `num_tokens` 表示已经完成 Top-K 展开的 routed token-expert assignments，不是 Router 输入 token 数。Provider 保留 F rank 上的逐 Expert workload，按每个 Expert 的 routed count 查询后聚合；Expert 公式不再乘第二次 `top_k`。MoE 的 intermediate dimension 以及 Dense FFN 的 gate/up、SwiGLU、down shapes 都按 F domain `tp_size` 切成本 rank 的形状，TP collective 另行计时。
 
 ## 数据包内容
 

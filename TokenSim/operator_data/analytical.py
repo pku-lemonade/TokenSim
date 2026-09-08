@@ -110,14 +110,19 @@ def estimate_operator(
         tokens = int(key["num_tokens"])
         hidden = int(key["hidden_size"])
         inter = int(key["inter_size"])
-        top_k = int(key["top_k"])
+        _ = int(key["top_k"])
         experts = int(key["num_experts"])
+        tp_size = int(key["tp_size"])
+        if tp_size < 1:
+            raise ValueError("moe tp_size must be positive")
+        local_inter = (inter + tp_size - 1) // tp_size
         # gate/up (two projections) plus down, only for activated experts.
-        flops = 6.0 * tokens * top_k * hidden * inter
-        active_experts = min(experts, max(1, tokens * top_k))
-        weight_bytes = 3.0 * active_experts * hidden * inter * element_bytes
+        # num_tokens is already the number of routed token-expert assignments.
+        flops = 6.0 * tokens * hidden * local_inter
+        active_experts = min(experts, max(1, tokens))
+        weight_bytes = 3.0 * active_experts * hidden * local_inter * element_bytes
         activation_bytes = (
-            tokens * hidden + 2 * tokens * top_k * inter + tokens * hidden
+            tokens * hidden + 2 * tokens * local_inter + tokens * hidden
         ) * element_bytes
         kv_bytes = 0.0
     elif table_name == "elementwise":

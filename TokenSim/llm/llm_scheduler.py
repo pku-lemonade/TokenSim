@@ -161,6 +161,7 @@ class LLMPagedAttnScheduler(LLMScheduler):
         max_parallem_sum=None,
         max_occupy_ratio: float = 1,
         connector=None,
+        block_manager: BlockManager | None = None,
     ):
         super().__init__(connector=connector)
 
@@ -168,7 +169,7 @@ class LLMPagedAttnScheduler(LLMScheduler):
         self.cache_config = cache_config
         self.max_parallem_sum = max_parallem_sum
 
-        self.block_manager: BlockManager = BlockManager(
+        self.block_manager = block_manager or BlockManager(
             block_size=self.cache_config.block_size,
             num_gpu_blocks=self.cache_config.num_gpu_blocks,
             num_cpu_blocks=self.cache_config.num_cpu_blocks,

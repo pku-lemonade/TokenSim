@@ -8,24 +8,63 @@ from TokenSim.af.latency import (
     AFTransferQuery,
     resolve_af_latency_providers,
 )
-from TokenSim.af.models import AFBlock, AFIteration
-from TokenSim.af.resources import AFResourceRegistry, AFWorkerToken
+from TokenSim.af.models import AFBlock, AFBlockPlacement, AFExpertPlacement, AFIteration
+from TokenSim.af.planning import (
+    AFExecutionDAG,
+    AFExecutionPlanBuilder,
+    AFExecutionStep,
+    ExecutionNode,
+    GlobalRoundRobinReplicaSelector,
+    ParallelExecutionPlanner,
+    RankLocalWork,
+)
+from TokenSim.af.resources import AFResourceRegistry
+from TokenSim.af.runtime import (
+    AFCacheConfig,
+    AFDomainRuntime,
+    AFKVHeadPartition,
+    AFModelComponent,
+    AFPhysicalRuntimeState,
+    AFRankBinding,
+    AFReplicaRuntime,
+    AFRuntimePlan,
+    compile_af_runtime_plan,
+    kv_head_partitions,
+)
 from TokenSim.af.trace import AFTraceEvent, AFTraceRecorder
 
 __all__ = [
     "AFBlock",
+    "AFBlockPlacement",
+    "AFExpertPlacement",
     "AFBlockBuilder",
     "AFComputeLatencyProvider",
     "AFComputeQuery",
+    "AFCacheConfig",
+    "AFDomainRuntime",
     "AFExecutor",
+    "AFExecutionPlanBuilder",
+    "AFExecutionStep",
+    "AFExecutionDAG",
     "AFIteration",
+    "AFKVHeadPartition",
+    "AFModelComponent",
+    "AFPhysicalRuntimeState",
+    "AFRankBinding",
+    "AFReplicaRuntime",
     "AFResourceRegistry",
+    "AFRuntimePlan",
     "AFServiceEstimate",
     "AFTraceEvent",
     "AFTraceRecorder",
     "AFTransferLatencyProvider",
     "AFTransferQuery",
-    "AFWorkerToken",
+    "ExecutionNode",
+    "GlobalRoundRobinReplicaSelector",
+    "ParallelExecutionPlanner",
+    "RankLocalWork",
+    "compile_af_runtime_plan",
+    "kv_head_partitions",
     "phase_for_requests",
     "resolve_af_latency_providers",
 ]

@@ -66,7 +66,13 @@
 
 ### Requirement: Worker groups declare explicit capabilities
 
-系统 SHALL 支持 worker group 使用唯一 `name` 和非空 `capabilities` 声明职责。允许的 capability MUST 限于 `prefill`、`decode_full`、`af_attention` 和 `af_ffn`；同一 group 内重复或未知 capability MUST 被拒绝。worker 数量 MUST 为正整数，group 引用的默认网络 MUST 存在于集群网络配置中。
+系统 SHALL 支持 worker group 使用唯一 `name` 和非空 `capabilities` 声明职责。允许的 capability MUST 限于 `prefill`、`decode_full`、`af_attention` 和 `af_ffn`；同一 group 内重复或未知 capability MUST 被拒绝。`num_workers` MUST 表示该 group 中可独立竞争的物理计算 slot 数量，而不是 A/F 共用的 TP/PP/DP/EP 总数；其值 MUST 为正整数，group 引用的默认网络 MUST 存在于集群网络配置中。对每个启用的 AF execution domain，其全部 logical rank identities 与该 domain worker group 的 physical workers MUST 形成严格一对一映射。
+
+#### Scenario: Physical worker count is independent of parallel ranks
+
+- **WHEN** A group 与 F group 分别声明 2 个和 4 个 physical workers，且各自 execution domain 分别生成并一对一映射 2 个和 4 个 logical rank identities
+- **THEN** 系统保留 2 个和 4 个可竞争计算 slot
+- **AND** 系统不将两组 physical worker 数相加后与任一 domain 的 world size 比较
 
 #### Scenario: Shared complete Prefill and AF Attention group is accepted
 
@@ -88,17 +94,23 @@
 
 ### Requirement: Each selected phase has one split topology
 
-当 `af.enabled=true` 时，每个所选阶段 MUST 恰好由一条 AF link 覆盖。该 link 的 `attention_group` 与 `ffn_group` MUST 引用不同 worker group，前者 MUST 声明 `af_attention`，后者 MUST 声明 `af_ffn`。系统 MUST 不根据 Ada、Groq 或其他硬件名称推断职责。
+当 `af.enabled=true` 时，每个所选阶段 MUST 恰好由一条 AF link 覆盖。该 link 的 `attention_group` 与 `ffn_group` MUST 引用不同 worker group，前者 MUST 声明 `af_attention`，后者 MUST 声明 `af_ffn`。每个端点 MUST 引用与其职责相符的 execution domain；系统 MUST 不根据 Ada、Groq 或其他硬件名称推断职责或 rank topology。
+
+#### Scenario: Decode AF uses separate A and F domains
+
+- **WHEN** Decode link 将 A group 和 F group 分别绑定到合法的 `decode_attention` 与 `decode_ffn` execution domain
+- **THEN** 系统接受两个 domain 各自的 topology 与 device mapping
+- **AND** A 与 F 的 worker 数 MAY 彼此不同，但每个 domain 内 logical rank identity 数 MUST 等于其映射的 physical worker 数
 
 #### Scenario: One link covers both phases
 
-- **WHEN** 一条合法 link 的 `phases` 同时包含 `prefill` 和 `decode`
+- **WHEN** 一条合法 link 的 `phases` 同时包含 `prefill` 和 `decode` 且端点 domain 覆盖相应职责
 - **THEN** 系统接受同一组 A/F 设备承担两个阶段
 
 #### Scenario: Separate links cover separate phases
 
 - **WHEN** 一条合法 link 只覆盖 Prefill，另一条合法 link 只覆盖 Decode
-- **THEN** 系统接受两个阶段使用不同 A/F 设备池
+- **THEN** 系统接受两个阶段使用不同 A/F 设备池和 execution domains
 
 #### Scenario: Selected phase has no link
 
@@ -114,9 +126,75 @@
 
 #### Scenario: Link endpoints do not provide required capabilities
 
-- **WHEN** link 的 A 或 F 端点未声明相应 `af_attention` 或 `af_ffn` capability
+- **WHEN** link 的 A 或 F 端点未声明相应 `af_attention` 或 `af_ffn` capability，或未绑定相符 execution domain
 - **THEN** 系统拒绝该配置
-- **AND** 错误信息包含 link 与端点 group 名称
+- **AND** 错误信息包含 link、端点 group 和 domain 名称
+
+### Requirement: Execution domains separate topology from physical placement
+
+系统 MUST 将 Prefill、Decode A 和 Decode F 建模为独立 execution domains，并分别保存 logical instances、domain-local rank topology 与 rank-to-device mapping。每个 domain MUST 独立校验其 TP、PP、DP 以及适用的 EP 关系和 mapping 完整性；系统 MUST NOT 要求所有 P/A/F physical workers 数之和等于 `TP * PP * DP`，也 MUST NOT 将一套 global rank 顺序隐式复用于全部 domains。每个 `(logical_instance, domain_rank)` identity MUST 映射到唯一 physical worker，同一 domain 内一个 physical worker MUST NOT 被多个 logical rank identities 复用，且该 domain worker group 的每个 physical worker MUST 恰好被映射一次。EP SHALL 描述 F domain 内 expert placement 或 expert communication group，不得被无条件当作额外 physical worker 乘数。
+
+#### Scenario: P, A, and F use different topologies
+
+- **WHEN** Prefill、Decode A 和 Decode F domains 分别声明不同的 logical instance 数、TP/PP/DP/EP 配置和合法 device mapping
+- **THEN** 系统逐 domain 接受并校验这些配置
+- **AND** 任一 domain 的 rank 编号都只在该 domain 内解释
+
+#### Scenario: One physical device backs multiple logical ranks
+
+- **WHEN** 一个 mapping 将同一 execution domain 内的多个 logical rank identities 映射到同一 physical device 或 compute slot
+- **THEN** 系统在模拟启动前拒绝该配置
+- **AND** 错误信息列出冲突的 domain、logical instance、domain rank 与 physical worker
+
+#### Scenario: Domain mapping is incomplete
+
+- **WHEN** 一个显式多 rank domain 缺少 rank、device 或并行组映射，导致拓扑不能无歧义解析
+- **THEN** 系统在模拟前拒绝配置并标明 domain 与缺失 mapping
+- **AND** 系统不得按 worker group 顺序猜测 global ranks
+
+#### Scenario: Legacy single-device configuration remains valid
+
+- **WHEN** AF 被关闭或合法单设备 AF 配置未显式声明新 domain topology
+- **THEN** 系统生成无歧义的单实例 domain view
+- **AND** 既有单卡执行行为保持不变
+
+### Requirement: AF parallel topology must be executable
+
+系统 MUST 在仿真开始前将每个参与 AF 的 execution domain 解析为完整的 DP replica、TP group、适用的 EP group、logical rank 与 physical worker 映射。每个并行参数 MUST 对应运行时可执行的分片、复制、路由或通信语义；系统 MUST NOT 接受仅通过数值乘积或 rank 数量校验、但无法确定每个 rank 职责的配置。第一阶段 AF execution domain 的 `PP` MUST 等于 1，任何 `PP > 1` 的 AF 配置 MUST 明确失败。
+
+#### Scenario: Unsupported AF pipeline parallelism is rejected
+
+- **WHEN** 任一参与 AF 的 A 或 F execution domain 配置 `PP > 1`
+- **THEN** 系统在创建执行事件前拒绝该配置
+- **AND** 错误信息标明 domain、`PP` 值以及第一阶段仅支持 `PP=1`
+
+#### Scenario: Resolvable TP DP and EP topology is accepted
+
+- **WHEN** AF domains 使用 `PP=1`，且每个 logical rank 的 DP replica、TP group、适用的 EP group和 physical worker 均可唯一解析
+- **THEN** 系统接受该配置并保留所有 group membership
+- **AND** 系统不把 TP、DP 或 EP 降级为只参与 world-size 校验的数字
+
+#### Scenario: Ambiguous rank responsibility is rejected
+
+- **WHEN** 一个 AF logical rank 缺少 DP replica、TP group、适用的 EP group或 physical worker 信息，或同一 membership 可被解析为多个结果
+- **THEN** 系统在仿真开始前拒绝配置
+- **AND** 错误信息包含 domain、rank 与缺失或冲突的并行维度
+
+### Requirement: Expert placement resolves routed work to F ranks
+
+启用 MoE 的 F execution domain MUST 提供与模型 expert 集合一致的 expert placement，使每个 Router/Top-K 输出的 expert id 都能解析到合法的 F logical rank 和 physical worker。EP MUST 表示 expert 到 rank 的放置和域内 dispatch/combine 参与关系，不得被无条件解释为额外 worker 乘数。系统 MUST 在仿真前拒绝缺失 expert、未知 expert、空 placement 或引用 domain 外 rank 的配置。
+
+#### Scenario: Complete expert placement is accepted
+
+- **WHEN** 模型中的每个 expert 都映射到 F domain 内至少一个合法 rank，且所有映射均可解析到 physical worker
+- **THEN** 系统接受 placement
+- **AND** 后续 routing result 可唯一确定每个 expert 分支的候选执行 rank
+
+#### Scenario: Routed expert has no legal rank
+
+- **WHEN** placement 缺少模型中的某个 expert，或将其映射到 F domain 外的 rank
+- **THEN** 系统在执行 AF iteration 前失败
+- **AND** 错误信息列出 expert id、F domain 与无效 placement
 
 ### Requirement: Non-AF phases retain complete execution topology
 

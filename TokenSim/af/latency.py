@@ -13,13 +13,26 @@ class AFComputeQuery:
     block_id: int
     layer_id: int
     phase: AFPhase
-    stage: Literal["a", "f"]
+    stage: Literal["a", "router", "expert"]
     token_count: int
     context_lengths: tuple[int, ...]
     model_id: str
     dtype: str
     device_type: str
     worker_id: int
+    operation: str = ""
+    source_domain: str | None = None
+    dp_rank: int = 0
+    tp_rank: int = 0
+    ep_rank: int = 0
+    logical_participant: str | None = None
+    physical_worker: str | None = None
+    local_shape: Mapping[str, int] = field(default_factory=dict)
+    local_token_count: int | None = None
+    expert_ids: tuple[int, ...] = ()
+    expert_workload: tuple[tuple[int, int], ...] = ()
+    tp_group: tuple[int, ...] = ()
+    ep_group: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -28,18 +41,26 @@ class AFTransferQuery:
     block_id: int
     layer_id: int
     phase: AFPhase
-    direction: Literal["a_to_f", "f_to_a"]
+    direction: str
     token_count: int
     hidden_size: int
     dtype: str
     source_device: str
     target_device: str
     network: str
-    operation: str = "af_transfer"
+    operation: str = "af_a_to_f"
     link_group: str | None = None
     group_size: int | None = None
     payload_bytes: int | None = None
     top_k: int = 1
+    source_domain: str | None = None
+    target_domain: str | None = None
+    logical_participants: tuple[str, ...] = ()
+    participant_ranks: tuple[int, ...] = ()
+    physical_endpoints: tuple[str, ...] = ()
+    resource_identities: tuple[str, ...] = ()
+    topology: Mapping[str, object] = field(default_factory=dict)
+    node_id: str | None = None
 
 
 @dataclass(frozen=True)

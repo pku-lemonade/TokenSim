@@ -39,9 +39,9 @@ shape_requests:
   - table: generation_attention
     key: {device: a-device, backend: analytical, attn_dtype: bf16, kv_cache_dtype: bf16, batch_size: 1, context_len: 1, num_heads: 2, num_kv_heads: 2, head_dim: 4, window_size: 0}
   - table: moe
-    key: {device: f-device, backend: analytical, moe_dtype: bf16, phase: prefill, distribution: balanced, num_tokens: 1, hidden_size: 8, inter_size: 16, top_k: 2, num_experts: 4, tp_size: 1, ep_size: 1}
+    key: {device: f-device, backend: analytical, moe_dtype: bf16, phase: prefill, distribution: balanced, num_tokens: 1, hidden_size: 8, inter_size: 16, top_k: 1, num_experts: 1, tp_size: 1, ep_size: 1}
   - table: moe
-    key: {device: f-device, backend: analytical, moe_dtype: bf16, phase: decode, distribution: balanced, num_tokens: 1, hidden_size: 8, inter_size: 16, top_k: 2, num_experts: 4, tp_size: 1, ep_size: 1}
+    key: {device: f-device, backend: analytical, moe_dtype: bf16, phase: decode, distribution: balanced, num_tokens: 1, hidden_size: 8, inter_size: 16, top_k: 1, num_experts: 1, tp_size: 1, ep_size: 1}
   - table: elementwise
     key: {device: a-device, backend: analytical, op_name: rmsnorm, dtype: bf16, num_tokens: 1, hidden_size: 8}
   - table: elementwise
@@ -52,6 +52,8 @@ shape_requests:
     key: {device: f-device, backend: analytical, op_name: rmsnorm, dtype: bf16, num_tokens: 1, hidden_size: 8}
   - table: elementwise
     key: {device: f-device, backend: analytical, op_name: residual_add, dtype: bf16, num_tokens: 1, hidden_size: 8}
+  - table: elementwise
+    key: {device: f-device, backend: analytical, op_name: residual_add, dtype: bf16, num_tokens: 2, hidden_size: 8}
   - table: communication
     key: {source_device: a-device, target_device: f-device, backend: analytical, network: af-net, link_group: af-fabric, operation: af_transfer, direction: a_to_f, group_size: 2}
   - table: communication

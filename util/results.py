@@ -41,11 +41,17 @@ def get_prefix_reuse_stats(requests: list[Request]) -> dict[str, float | int]:
 def get_af_stats(engine: LLMEngine) -> dict[str, Any]:
     executor = getattr(engine, "af_executor", None)
     summaries = getattr(engine, "af_iteration_summaries", [])
+    runtime_summary = getattr(engine, "af_runtime_summary", None)
     return {
         "af_enabled": executor is not None,
         "af_iteration_count": len(summaries),
         "af_trace": (
             list(summaries) if executor is not None and executor.trace.enabled else None
+        ),
+        "af_runtime_state": (
+            runtime_summary()
+            if executor is not None and callable(runtime_summary)
+            else None
         ),
     }
 
@@ -439,7 +445,12 @@ def export_result(
     result_dict["prefill_time"] = asdict(result.prefill_time)
     result_dict["decode_time"] = asdict(result.decode_time)
     if getattr(engine, "af_executor", None) is None:
-        for field_name in ("af_enabled", "af_iteration_count", "af_trace"):
+        for field_name in (
+            "af_enabled",
+            "af_iteration_count",
+            "af_trace",
+            "af_runtime_state",
+        ):
             result_dict.pop(field_name, None)
 
     result_file = results_path / f"result_{args.qps}.json"

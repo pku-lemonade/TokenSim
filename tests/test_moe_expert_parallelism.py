@@ -9,13 +9,23 @@ from types import SimpleNamespace
 
 import simpy
 
-from TokenSim.config.config import CacheConfig, ClusterConfig, ParallelConfig, ParallelRankInfo, WorkerGroupConfig
+from TokenSim.config.config import (
+    CacheConfig,
+    ClusterConfig,
+    ParallelConfig,
+    ParallelRankInfo,
+    WorkerGroupConfig,
+)
 from TokenSim.config.psla_config import MetricData, PSLAConfig
 from TokenSim.errors import ConfigurationError, WorkloadValidationError
 from TokenSim.latency import RooflineLatencyBackend
 from TokenSim.llm.llm_engine import LLMEngine, Task
 from TokenSim.llm.llm_request import Request, g_time, reset_g_time
-from TokenSim.moe import ExpertRouting, build_expert_placement, normalize_expert_histogram
+from TokenSim.moe import (
+    ExpertRouting,
+    build_expert_placement,
+    normalize_expert_histogram,
+)
 from benchmark import build_parallel_config, validate_moe_parallel_config
 from util.request import LLMSource
 from util.results import export_result, get_moe_stats
@@ -179,6 +189,38 @@ class MoEPlacementRoutingTest(unittest.TestCase):
         )
         with self.assertRaises(WorkloadValidationError):
             normalize_expert_histogram({4: 1}, num_experts=4, request_id=7)
+        with self.assertRaisesRegex(WorkloadValidationError, "must equal 8"):
+            normalize_expert_histogram(
+                {0: 3, 1: 4},
+                num_experts=4,
+                request_id=7,
+                expected_route_count=8,
+            )
+
+    def test_routing_validates_each_phase_and_does_not_reuse_prefill_cache(self):
+        routing = ExpertRouting(_moe_psla().moe_config, seed=1)
+        req = Request(
+            0,
+            prefill_len=4,
+            decode_len=2,
+            block_size=16,
+            prefill_expert_histogram={0: 8},
+            decode_expert_histogram={1: 2},
+        )
+
+        self.assertEqual(routing.histogram_for_step([req]), {0: 8})
+        req.generation_idx = 1
+        self.assertEqual(routing.histogram_for_step([req]), {1: 2})
+
+        bad = Request(
+            1,
+            prefill_len=4,
+            decode_len=1,
+            block_size=16,
+            prefill_expert_histogram={0: 7},
+        )
+        with self.assertRaisesRegex(WorkloadValidationError, "must equal 8"):
+            routing.histogram_for_step([bad])
 
     def test_json_pairs_loader_uses_and_validates_expert_histogram(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -224,8 +266,12 @@ class MoEMemoryLatencyIntegrationTest(unittest.TestCase):
         rank0 = ParallelRankInfo.from_global_rank(0, config)
         rank1 = ParallelRankInfo.from_global_rank(1, config)
 
-        cache0 = CacheConfig(16, "TestGPU", "MoEModel", roofline, config, rank0, moe, placement)
-        cache1 = CacheConfig(16, "TestGPU", "MoEModel", roofline, config, rank1, moe, placement)
+        cache0 = CacheConfig(
+            16, "TestGPU", "MoEModel", roofline, config, rank0, moe, placement
+        )
+        cache1 = CacheConfig(
+            16, "TestGPU", "MoEModel", roofline, config, rank1, moe, placement
+        )
 
         self.assertEqual(cache0.size_per_token, cache1.size_per_token)
         self.assertEqual(cache0.local_kv_heads, cache1.local_kv_heads)
@@ -255,7 +301,7 @@ class MoEMemoryLatencyIntegrationTest(unittest.TestCase):
             prefill_len=16,
             decode_len=1,
             block_size=16,
-            prefill_expert_histogram={0: 20, 1: 2, 2: 2, 3: 2},
+            prefill_expert_histogram={0: 26, 1: 2, 2: 2, 3: 2},
         )
 
         latency = backend.estimate_step_latency([req])

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, Callable
 
-from TokenSim.af.models import AFBlock, AFIteration, AFPhase
+from TokenSim.af.models import AFBlock, AFBlockPlacement, AFIteration, AFPhase
 from TokenSim.config.cluster_config import AFLinkConfig
 from TokenSim.errors import ConfigurationError
 
@@ -30,6 +30,10 @@ class AFBlockBuilder:
         source_a_worker_id: int,
         link: AFLinkConfig,
         phase: AFPhase | None = None,
+        placement_factory: (
+            Callable[[int, tuple[Any, ...]], AFBlockPlacement] | None
+        ) = None,
+        histogram_factory: Callable[[tuple[Any, ...]], dict[int, int]] | None = None,
     ) -> AFIteration:
         resolved_phase = phase or phase_for_requests(requests)
         if type(af_block_size) is not int or af_block_size < 1:
@@ -68,6 +72,20 @@ class AFBlockBuilder:
                     ),
                     source_a_worker_id=source_a_worker_id,
                     link_name=link.name,
+                    placement=(
+                        placement_factory(block_id, block_requests)
+                        if placement_factory is not None
+                        else None
+                    ),
+                    expert_histogram=tuple(
+                        sorted(
+                            (
+                                histogram_factory(block_requests)
+                                if histogram_factory
+                                else {}
+                            ).items()
+                        )
+                    ),
                 )
             )
         return AFIteration(

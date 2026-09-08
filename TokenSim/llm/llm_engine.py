@@ -10,13 +10,18 @@ import time
 import simpy
 
 from TokenSim.af import (
+    AFCacheConfig,
     AFComputeLatencyProvider,
     AFExecutor,
     AFIteration,
     AFResourceRegistry,
     AFTransferLatencyProvider,
+    AFRankBinding,
+    AFRuntimePlan,
+    compile_af_runtime_plan,
     phase_for_requests,
 )
+from TokenSim.block.replica_kv import ReplicaKVBlockManager
 from TokenSim.config.config import (
     CacheConfig,
     ClusterConfig,
@@ -84,7 +89,15 @@ class WorkerStatus(Enum):
 class AFComputeWorker:
     """Physical AF-only worker that never owns requests or KV cache."""
 
-    def __init__(self, env: simpy.Environment, id: int, config: WorkerConfig) -> None:
+    def __init__(
+        self,
+        env: simpy.Environment,
+        id: int,
+        config: WorkerConfig,
+        *,
+        runtime_bindings: tuple[AFRankBinding, ...] = (),
+        runtime_state=None,
+    ) -> None:
         self.env = env
         self.id = id
         self.role = None
@@ -94,6 +107,7 @@ class AFComputeWorker:
         self.network = config.network
         self.nettype = config.nettype
         self.rank_info = config.rank_info or ParallelRankInfo()
+        self.physical_worker_ref = config.physical_worker_ref
         self.global_rank = self.rank_info.global_rank
         self.tp_rank = self.rank_info.tp_rank
         self.pp_rank = self.rank_info.pp_rank
@@ -102,7 +116,15 @@ class AFComputeWorker:
         self.kv_cache_group_id = self.rank_info.kv_cache_group_id
         self.status = WorkerStatus.WAITING
         self.preempted_cnt = 0
-        self.owned_expert_ids: list[int] = []
+        self.af_runtime_bindings = runtime_bindings
+        self.af_runtime_state = runtime_state
+        self.owned_expert_ids = sorted(
+            {
+                expert_id
+                for binding in runtime_bindings
+                for expert_id in binding.expert_ids
+            }
+        )
 
     def workload(self) -> float:
         return 0.0
@@ -199,6 +221,10 @@ class LLMWorker(Worker):
         random_seed: int = 0,
         wrapped_llmcompass_vars: tuple[Any, Any, Any] | None = None,
         runtime_role: str | None = None,
+        cache_config_override: AFCacheConfig | None = None,
+        block_manager: ReplicaKVBlockManager | None = None,
+        runtime_bindings: tuple[AFRankBinding, ...] = (),
+        runtime_state=None,
     ):
         super().__init__(env, id)
         self.roofline = roofline
@@ -214,7 +240,27 @@ class LLMWorker(Worker):
         self.parallel_config = parallel_config or ParallelConfig.default()
         self.moe_config = moe_config or psla_config.moe_config
         self.expert_placement = expert_placement
-        self.rank_info = worker_config.rank_info or ParallelRankInfo()
+        self.af_runtime_bindings = runtime_bindings
+        self.af_runtime_state = runtime_state
+        leader_binding = next(
+            (binding for binding in runtime_bindings if binding.is_scheduler_leader),
+            None,
+        )
+        self.rank_info = (
+            ParallelRankInfo(
+                global_rank=leader_binding.domain_rank,
+                rank_in_dp_group=leader_binding.tp_rank,
+                tp_rank=leader_binding.tp_rank,
+                pp_rank=leader_binding.pp_rank,
+                dp_rank=leader_binding.dp_rank,
+                kv_cache_group_id=(
+                    f"{leader_binding.domain}:dp{leader_binding.dp_rank}"
+                ),
+            )
+            if leader_binding is not None
+            else worker_config.rank_info or ParallelRankInfo()
+        )
+        self.physical_worker_ref = worker_config.physical_worker_ref
         self.global_rank = self.rank_info.global_rank
         self.tp_rank = self.rank_info.tp_rank
         self.pp_rank = self.rank_info.pp_rank
@@ -223,26 +269,29 @@ class LLMWorker(Worker):
         self.kv_cache_group_id = self.rank_info.kv_cache_group_id
 
         self.block_size = block_size
-        try:
-            self.cache_config = CacheConfig(
-                self.block_size,
-                self.hardware,
-                self.model,
-                self.roofline,
-                parallel_config=self.parallel_config,
-                rank_info=self.rank_info,
-                moe_config=self.moe_config,
-                expert_placement=self.expert_placement,
-            )
-        except TypeError as exc:
-            if "unexpected keyword argument" not in str(exc):
-                raise
-            self.cache_config = CacheConfig(
-                self.block_size,
-                self.hardware,
-                self.model,
-                self.roofline,
-            )
+        if cache_config_override is not None:
+            self.cache_config = cache_config_override
+        else:
+            try:
+                self.cache_config = CacheConfig(
+                    self.block_size,
+                    self.hardware,
+                    self.model,
+                    self.roofline,
+                    parallel_config=self.parallel_config,
+                    rank_info=self.rank_info,
+                    moe_config=self.moe_config,
+                    expert_placement=self.expert_placement,
+                )
+            except TypeError as exc:
+                if "unexpected keyword argument" not in str(exc):
+                    raise
+                self.cache_config = CacheConfig(
+                    self.block_size,
+                    self.hardware,
+                    self.model,
+                    self.roofline,
+                )
         self.preempted_cnt = 0
         self.pending_connector_metadata: KVConnectorMetadata | None = None
         self.parallel_communicator = ParallelCommunicator(
@@ -267,10 +316,19 @@ class LLMWorker(Worker):
             random_seed=random_seed + id,
             wrapped_llmcompass_vars=wrapped_llmcompass_vars,
         )
+        runtime_experts = {
+            expert_id
+            for binding in runtime_bindings
+            for expert_id in binding.expert_ids
+        }
         self.owned_expert_ids = (
-            self.expert_placement.experts_for_rank(self.rank_info)
-            if self.expert_placement is not None
-            else []
+            sorted(runtime_experts)
+            if runtime_bindings
+            else (
+                self.expert_placement.experts_for_rank(self.rank_info)
+                if self.expert_placement is not None
+                else []
+            )
         )
 
         self.kv_transfer_config = kv_transfer_config.with_worker_defaults(
@@ -289,6 +347,7 @@ class LLMWorker(Worker):
                 max_parallem_sum=max_parallem_sum,
                 max_occupy_ratio=max_occupy_ratio if self.role != "prefill" else 1,
                 connector=self.connector,
+                block_manager=block_manager,
             )
         elif batching == "static":
             self.scheduler = LLMStaticScheduler(
@@ -497,6 +556,22 @@ class LLMEngine(Worker):
 
         self.cluster_config = cluster_config
         worker_configs = cluster_config.workers(self.parallel_config)
+        self.af_runtime_plan: AFRuntimePlan | None = (
+            compile_af_runtime_plan(
+                cluster_config=cluster_config,
+                worker_configs=worker_configs,
+                roofline=roofline,
+                model=psla_config.model,
+                moe_config=self.moe_config,
+                block_size=block_size,
+                dtype=af_dtype,
+            )
+            if cluster_config.af.enabled
+            else None
+        )
+        self.af_replica_block_managers: dict[tuple[str, int], ReplicaKVBlockManager] = (
+            {}
+        )
         self.af_resources = (
             AFResourceRegistry(env, cluster_config, worker_configs)
             if cluster_config.af.enabled
@@ -507,7 +582,62 @@ class LLMEngine(Worker):
         self.workers: list[LLMWorker | AFComputeWorker] = []
         self.request_workers: list[LLMWorker] = []
         for worker_id, worker_config in enumerate(worker_configs):
+            physical_identity = (
+                worker_config.physical_worker_ref.identity
+                if worker_config.physical_worker_ref is not None
+                else None
+            )
+            runtime_bindings = (
+                self.af_runtime_plan.bindings_for_physical(physical_identity)
+                if self.af_runtime_plan is not None and physical_identity is not None
+                else ()
+            )
+            runtime_state = (
+                self.af_runtime_plan.physical_state(physical_identity)
+                if runtime_bindings and self.af_runtime_plan is not None
+                else None
+            )
             if self._is_request_owning_config(worker_config):
+                has_af_scheduler_binding = any(
+                    binding.is_scheduler_leader for binding in runtime_bindings
+                )
+                scheduler_replicas = (
+                    self.af_runtime_plan.scheduler_replicas_for_physical(
+                        physical_identity
+                    )
+                    if self.af_runtime_plan is not None
+                    and physical_identity is not None
+                    and has_af_scheduler_binding
+                    else ()
+                )
+                replica = scheduler_replicas[0] if scheduler_replicas else None
+                if replica is not None:
+                    block_manager = next(
+                        (
+                            self.af_replica_block_managers[item.replica_key]
+                            for item in scheduler_replicas
+                            if item.replica_key in self.af_replica_block_managers
+                        ),
+                        None,
+                    )
+                    if block_manager is None:
+                        block_manager = ReplicaKVBlockManager.from_plan(
+                            self.af_runtime_plan,
+                            replica,
+                            aliases=scheduler_replicas,
+                        )
+                    for item in scheduler_replicas:
+                        self.af_replica_block_managers[item.replica_key] = block_manager
+                    cache_config_override = AFCacheConfig.from_plan(
+                        self.af_runtime_plan, replica
+                    )
+                    worker_parallel_config = self.af_runtime_plan.domain_runtime(
+                        replica.domain
+                    ).parallel_config()
+                else:
+                    block_manager = None
+                    cache_config_override = None
+                    worker_parallel_config = self.parallel_config
                 worker = LLMWorker(
                     env=env,
                     id=worker_id,
@@ -520,17 +650,27 @@ class LLMEngine(Worker):
                     roofline=roofline,
                     max_parallem_sum=max_parallem_sum,
                     max_occupy_ratio=max_occupy_ratio,
-                    parallel_config=self.parallel_config,
+                    parallel_config=worker_parallel_config,
                     moe_config=self.moe_config,
                     expert_placement=self.expert_placement,
                     latency_backend_type=latency_backend_type,
                     random_seed=random_seed,
                     wrapped_llmcompass_vars=wrapped_llmcompass_vars,
                     runtime_role=self._runtime_role(worker_config),
+                    cache_config_override=cache_config_override,
+                    block_manager=block_manager,
+                    runtime_bindings=runtime_bindings,
+                    runtime_state=runtime_state,
                 )
                 self.request_workers.append(worker)
             else:
-                worker = AFComputeWorker(env, worker_id, worker_config)
+                worker = AFComputeWorker(
+                    env,
+                    worker_id,
+                    worker_config,
+                    runtime_bindings=runtime_bindings,
+                    runtime_state=runtime_state,
+                )
             self.workers.append(worker)
         for worker in self.request_workers:
             worker.parallel_communicator.workers = self.workers
@@ -552,6 +692,9 @@ class LLMEngine(Worker):
                 total_layers=total_layers,
                 hidden_size=hidden_size,
                 resources=self.af_resources,
+                moe_config=self.moe_config,
+                random_seed=random_seed,
+                runtime_plan=self.af_runtime_plan,
             )
 
         self.prefill_workers = self._build_worker_pool(
@@ -588,8 +731,10 @@ class LLMEngine(Worker):
         phase: str,
     ) -> bool:
         if self.cluster_config.af.enabled and phase in self.cluster_config.af.phases:
-            link = self.cluster_config.phase_to_af_link[phase]
-            return worker_config.name == link.attention_group
+            physical = worker_config.physical_worker_ref
+            return physical is not None and physical.identity in (
+                self.cluster_config.af_request_owner_identities(phase)
+            )
         capability = "prefill" if phase == "prefill" else "decode_full"
         return capability in worker_config.capabilities
 
@@ -609,9 +754,9 @@ class LLMEngine(Worker):
 
     def _worker_supports_phase(self, worker: LLMWorker, phase: str) -> bool:
         if self.cluster_config.af.enabled and phase in self.cluster_config.af.phases:
-            return (
-                worker.name
-                == self.cluster_config.phase_to_af_link[phase].attention_group
+            physical = worker.physical_worker_ref
+            return physical is not None and physical.identity in (
+                self.cluster_config.af_request_owner_identities(phase)
             )
         capability = "prefill" if phase == "prefill" else "decode_full"
         return capability in worker.capabilities
@@ -634,6 +779,11 @@ class LLMEngine(Worker):
         if self.af_executor is None:
             return
         self.af_iteration_summaries.append(self.af_executor.trace.summarize(iteration))
+
+    def af_runtime_summary(self) -> dict[str, Any] | None:
+        if self.af_runtime_plan is None:
+            return None
+        return self.af_runtime_plan.summary(self.af_replica_block_managers)
 
     def start_debug_clock(self, wall_start: float | None = None) -> None:
         self.debug_printer.start(wall_start)
@@ -678,11 +828,16 @@ class LLMEngine(Worker):
                     )
 
     def _build_worker_pool(self, workers, pool_cls):
-        if self.parallel_config.data_parallel_size > 1:
+        dp_ranks = {getattr(worker, "dp_rank", 0) for worker in workers}
+        if len(dp_ranks) > 1:
             return DataParallelWorkerPool(workers, pool_cls)
         return pool_cls(workers)
 
     def _is_schedulable_worker(self, worker: LLMWorker) -> bool:
+        if self.af_runtime_plan is not None and worker.af_runtime_bindings:
+            return any(
+                binding.is_scheduler_leader for binding in worker.af_runtime_bindings
+            )
         if self.parallel_config.world_size == 1:
             return True
         return worker.tp_rank == 0 and worker.pp_rank == 0

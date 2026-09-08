@@ -74,6 +74,12 @@ disaggregated prefill/decode layout can send related requests to different
 workers; use a `MooncakeStoreConnector` when reuse must be modeled through an
 external store. See [Mooncake](mooncake.md).
 
+For AF with `A TP > 1`, "one worker" means one A DP replica's logical cache.
+The scheduler performs prefix lookup once on the leader, while every hit or
+miss maps to one local shard on each A TP rank. Reference counts, eviction,
+free, preemption, and swap remain aligned across the complete shard set. An F
+rank never owns prefix-cache blocks.
+
 ## Reusing Generated Output
 
 `output_hash_ids` lets completed decode blocks become part of a later prompt.

@@ -1,18 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 import simpy
 
 from TokenSim.config.cluster_config import AFLinkConfig, ClusterConfig, WorkerConfig
 from TokenSim.errors import ConfigurationError
-
-
-@dataclass(frozen=True, order=True)
-class AFWorkerToken:
-    worker_id: int
-    group_name: str
-    hardware: str
 
 
 class AFResourceRegistry:
@@ -27,6 +18,18 @@ class AFResourceRegistry:
         self.worker_configs = {
             index: config for index, config in enumerate(worker_configs)
         }
+        self.worker_ids_by_physical_identity = {}
+        for worker_id, config in self.worker_configs.items():
+            if config.physical_worker_ref is None:
+                raise ConfigurationError(
+                    f"worker {worker_id} has no physical worker identity"
+                )
+            identity = config.physical_worker_ref.identity
+            if identity in self.worker_ids_by_physical_identity:
+                raise ConfigurationError(
+                    f"duplicate physical worker identity {identity!r}"
+                )
+            self.worker_ids_by_physical_identity[identity] = worker_id
         self.compute_slots = {
             worker_id: simpy.Resource(env, capacity=1)
             for worker_id in self.worker_configs
@@ -40,21 +43,22 @@ class AFResourceRegistry:
             self.group_worker_ids.setdefault(worker.name, ())
             self.group_worker_ids[worker.name] += (worker_id,)
 
-        self.ffn_pools: dict[str, simpy.Store] = {}
-        for group in cluster_config.worker_groups:
-            if "af_ffn" not in group.capabilities:
-                continue
-            worker_ids = self.group_worker_ids[group.name]
-            pool = simpy.Store(env, capacity=len(worker_ids))
-            for worker_id in worker_ids:
-                worker = self.worker_configs[worker_id]
-                pool.put(AFWorkerToken(worker_id, group.name, worker.hardware))
-            self.ffn_pools[group.name] = pool
-
         self.communication_resources = {
             key: simpy.Resource(env, capacity=config.capacity)
             for key, config in cluster_config.af_communication_resources.items()
         }
+        configured_groups = {key[0] for key in self.communication_resources}
+        for domain in cluster_config.af.execution_domains:
+            for collective in domain.communication_plan:
+                if (
+                    collective.resource_group is not None
+                    and collective.resource_group not in configured_groups
+                ):
+                    raise ConfigurationError(
+                        f"execution domain {domain.name!r} collective "
+                        f"{collective.operation!r} references missing fabric alias "
+                        f"resource_group={collective.resource_group!r}"
+                    )
 
     def worker(self, worker_id: int) -> WorkerConfig:
         try:
@@ -68,36 +72,56 @@ class AFResourceRegistry:
             raise ConfigurationError(f"worker {worker_id} has no group")
         return worker.name
 
-    def first_group_worker(self, group_name: str) -> WorkerConfig:
+    def worker_id_for_physical(self, identity: str) -> int:
         try:
-            worker_id = self.group_worker_ids[group_name][0]
-        except (KeyError, IndexError) as exc:
-            raise ConfigurationError(
-                f"AF worker group {group_name!r} has no workers"
-            ) from exc
-        return self.worker(worker_id)
-
-    def ffn_pool(self, group_name: str) -> simpy.Store:
-        try:
-            return self.ffn_pools[group_name]
+            return self.worker_ids_by_physical_identity[identity]
         except KeyError as exc:
             raise ConfigurationError(
-                f"AF FFN group {group_name!r} has no compute pool"
+                f"unknown physical worker identity {identity!r}"
             ) from exc
 
-    def communication_resource(
+    def compute_resources_for(
+        self, physical_identities: tuple[str, ...]
+    ) -> tuple[tuple[int, simpy.Resource], ...]:
+        if len(physical_identities) != len(set(physical_identities)):
+            raise ConfigurationError(
+                "compute step contains duplicate physical workers; execution-domain "
+                "placement must be strictly one-to-one"
+            )
+        resolved = tuple(
+            (
+                self.worker_id_for_physical(identity),
+                self.compute_slots[self.worker_id_for_physical(identity)],
+            )
+            for identity in physical_identities
+        )
+        return tuple(sorted(resolved))
+
+    def communication_resources_for_step(
         self,
         link: AFLinkConfig,
         direction: str,
-    ) -> tuple[tuple[str, str], simpy.Resource]:
-        suffix = "shared" if link.duplex == "half" else direction
-        key = (link.resource_group, suffix)
-        try:
-            return key, self.communication_resources[key]
-        except KeyError as exc:
+        resource_group: str | None = None,
+    ) -> tuple[tuple[tuple[str, str], simpy.Resource], ...]:
+        group = resource_group or link.resource_group
+        if link.duplex == "half":
+            suffix = "shared"
+        else:
+            suffix = {
+                "a_to_f": "a_to_f",
+                "f_to_a": "f_to_a",
+                "tp_collective": "a_to_f",
+                "ep_dispatch": "a_to_f",
+                "ep_combine": "f_to_a",
+            }.get(direction, direction)
+        key = (group, suffix)
+        resource = self.communication_resources.get(key)
+        if resource is None:
             raise ConfigurationError(
-                f"AF communication resource {key!r} is missing"
-            ) from exc
+                f"AF communication resource {key!r} is missing; domain-internal "
+                "fabric must alias a configured resource_group"
+            )
+        return ((key, resource),)
 
     def resource_capacities(self) -> dict[str, int]:
         capacities = {f"worker:{worker_id}": 1 for worker_id in self.compute_slots}

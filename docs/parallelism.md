@@ -91,6 +91,53 @@ EP is enabled with `enable_expert_parallel`. Experts are placed across
 PP stages. EP adds all-to-all and load-imbalance latency. It requires a MoE model
 configuration. See [MoE](moe.md).
 
+### AF execution domains
+
+AF uses a stricter topology than the non-AF path. One logical instance is one
+DP replica: an A replica contains `TP` ranks, while an F replica contains
+`EP * TP` ranks. F expert placement is fully replicated inside every DP
+replica. The AF planner executes rank-local work and TP collectives; these sizes
+are not configuration-only metadata. The A replica leader runs Router/Top-K
+after A TP compute/collective. A-to-F directly scatters routed activations from
+that leader to the resident Expert ranks, and F-to-A gathers the partial Expert
+results back for combination. These two cross-domain nodes are the EP
+dispatch/combine; the same payload is not moved again through synthetic
+F-internal nodes.
+
+An Expert histogram counts routed token-expert assignments, so its total is
+`source_tokens * top_k`. Expert compute consumes that count directly and never
+multiplies by `top_k` again. F-domain TP shards the Expert or dense FFN
+intermediate dimension on every rank; the corresponding TP collective remains
+a separate communication cost.
+
+AF currently requires `PP=1` in both domains because pipeline stages,
+activation send/receive and bubble scheduling are not implemented for the
+Attention-FFN split. See [AF separation](af-separation.md) and the executable
+`data/clusters/af/tp2_dp2_ep2.json` example.
+
+When AF is enabled, domain-local parallel values override the unrelated global
+`parallel_config` for AF ranks. `AFRuntimePlan` is compiled once and shared by
+the Engine, Planner, memory accounting, and validation. Each A DP replica has
+one scheduler leader and one logical request queue, while every A TP rank owns
+its own model and KV shard state. F ranks own only the Expert/FFN components
+selected by their EP placement. Each A DP replica's `tp_rank=0, ep_rank=0`
+leader additionally owns Router; F ranks do not own Router weights.
+
+One logical A KV block maps atomically to one local shard on every required TP
+rank. The replica capacity is the minimum rank-local capacity, not the leader
+capacity and not the sum across TP ranks. KV-head partitioning also uses the A
+domain TP size; small MQA/GQA head counts are explicitly replicated when the
+replication groups divide evenly.
+
+Separate Prefill and Decode A domains may share one physical TP group when
+their TP/DP sizes and rank-to-worker mappings are identical. The aliases then
+share one scheduler, request queue, and KV state. Non-equivalent aliases fail
+at startup instead of creating conflicting logical state on the same devices.
+
+The result field `af_runtime_state` reports the compiled topology, component
+bytes, local KV bytes/capacity/usage, and replica logical capacity/usage. It is
+the memory counterpart to the compute/communication events in `af_trace`.
+
 ## Configuration Precedence
 
 The effective parallel configuration is selected in this order:

@@ -15,6 +15,7 @@ def normalize_expert_histogram(
     *,
     num_experts: int,
     request_id: int | None = None,
+    expected_route_count: int | None = None,
 ) -> dict[int, int]:
     if value is None:
         return {}
@@ -25,12 +26,12 @@ def normalize_expert_histogram(
         if all(isinstance(item, int) for item in value):
             counter = Counter(int(item) for item in value)
             items = list(counter.items())
-        elif all(
-            isinstance(item, (list, tuple)) and len(item) == 2 for item in value
-        ):
+        elif all(isinstance(item, (list, tuple)) and len(item) == 2 for item in value):
             items = [(item[0], item[1]) for item in value]
         else:
-            raise _invalid_histogram(request_id, "must be a dict or [expert, count] list")
+            raise _invalid_histogram(
+                request_id, "must be a dict or [expert, count] list"
+            )
     else:
         raise _invalid_histogram(request_id, "must be a dict or list")
 
@@ -40,7 +41,9 @@ def normalize_expert_histogram(
             expert_id = int(expert_id_raw)
             count = int(count_raw)
         except (TypeError, ValueError) as exc:
-            raise _invalid_histogram(request_id, "expert ids and counts must be integers") from exc
+            raise _invalid_histogram(
+                request_id, "expert ids and counts must be integers"
+            ) from exc
         if expert_id < 0 or expert_id >= num_experts:
             raise _invalid_histogram(
                 request_id,
@@ -50,6 +53,15 @@ def normalize_expert_histogram(
             raise _invalid_histogram(request_id, "expert counts must be non-negative")
         if count:
             histogram[expert_id] = histogram.get(expert_id, 0) + count
+    if (
+        expected_route_count is not None
+        and sum(histogram.values()) != expected_route_count
+    ):
+        raise _invalid_histogram(
+            request_id,
+            f"total routed count must equal {expected_route_count}; "
+            f"got {sum(histogram.values())}",
+        )
     return histogram
 
 
@@ -66,10 +78,12 @@ class ExpertRouting:
         routing_config: RoutingConfig | None = None,
     ) -> None:
         self.moe_config = moe_config
-        self.routing_config = replace(routing_config or moe_config.routing or RoutingConfig())
+        self.routing_config = replace(
+            routing_config or moe_config.routing or RoutingConfig()
+        )
         self.random = random.Random(seed)
         self._synthetic_cache: dict[int, dict[int, int]] = {}
-        self._normalized_cache: dict[int, dict[int, int]] = {}
+        self._normalized_cache: dict[tuple[int, str, int], dict[int, int]] = {}
 
     def histogram_for_step(self, requests: list[Request]) -> dict[int, int]:
         histogram: dict[int, int] = {}
@@ -82,6 +96,11 @@ class ExpertRouting:
         return histogram
 
     def _request_histogram(self, request: Request) -> dict[int, int]:
+        phase = "prefill" if request.is_prefill else "decode"
+        if getattr(request, "needs_recompute", False):
+            token_count = request.recompute_tokens
+        else:
+            token_count = request.prefill_compute_len if request.is_prefill else 1
         provided = None
         if request.is_prefill:
             provided = getattr(request, "prefill_expert_histogram", None)
@@ -92,21 +111,20 @@ class ExpertRouting:
         if provided is not None:
             # Decode re-reads the same trace-provided histogram every step;
             # normalize once per request. Callers must not mutate the result.
-            cached = self._normalized_cache.get(request.id)
+            expected_route_count = token_count * self.moe_config.num_experts_per_tok
+            cache_key = (request.id, phase, expected_route_count)
+            cached = self._normalized_cache.get(cache_key)
             if cached is None:
                 cached = normalize_expert_histogram(
                     provided,
                     num_experts=self.moe_config.num_experts,
                     request_id=request.id,
+                    expected_route_count=expected_route_count,
                 )
                 if len(self._normalized_cache) >= self._SYNTHETIC_CACHE_LIMIT:
                     self._normalized_cache.clear()
-                self._normalized_cache[request.id] = cached
+                self._normalized_cache[cache_key] = cached
             return cached
-        if getattr(request, "needs_recompute", False):
-            token_count = request.recompute_tokens
-        else:
-            token_count = request.prefill_compute_len if request.is_prefill else 1
         return self.synthetic_histogram(token_count)
 
     def synthetic_histogram(self, token_count: int) -> dict[int, int]:

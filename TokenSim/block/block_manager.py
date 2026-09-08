@@ -129,16 +129,23 @@ class BlockManager:
 
     def allocate(self, req: Request):
         # Allocate new physical token blocks that will store the prompt&generated tokens.
+        if self.block_table.get_num_blocks(req.id):
+            raise SimulationStateError(
+                f"request {req.id} already has blocks in this block manager"
+            )
         plan = self.kv_cache_manager.plan_reuse(req)
+        blocks: list[PhysicalTokenBlock] = []
+        try:
+            for block in plan.hit_blocks:
+                self.gpu_allocator.acquire(block)
+                blocks.append(block)
+            for _ in range(plan.miss_block_count):
+                blocks.append(self.gpu_allocator.allocate())
+        except Exception:
+            for block in reversed(blocks):
+                self.gpu_allocator.free(block)
+            raise
         self.kv_cache_manager.apply_plan(req, plan)
-
-        blocks = list(plan.hit_blocks)
-        for block in plan.hit_blocks:
-            self.gpu_allocator.acquire(block)
-
-        for _ in range(plan.miss_block_count):
-            block = self.gpu_allocator.allocate()
-            blocks.append(block)
         self.block_table.add_blocks(req.id, blocks)
         self._sync_request_blocks(req, blocks)
         self._mark_input_blocks_pending(req, blocks, plan)
@@ -186,6 +193,86 @@ class BlockManager:
             block = self.gpu_allocator.allocate()
             self.block_table.add_block(req.id, block)
             req._append_physical_block(block)
+
+    def rollback_last_block(self, req: Request) -> None:
+        block = self.block_table.pop_last_block(req.id)
+        if block is None:
+            return
+        self._free_block(block)
+        self._sync_request_blocks(req, self.block_table.get_blocks(req.id))
+
+    def fork(self, parent: Request, child: Request) -> None:
+        if self.block_table.get_num_blocks(child.id):
+            raise SimulationStateError(
+                f"fork child request {child.id} already owns blocks"
+            )
+        parent_blocks = self.block_table.get_blocks(parent.id)
+        if not parent_blocks:
+            raise SimulationStateError(f"fork parent request {parent.id} has no blocks")
+        acquired: list[PhysicalTokenBlock] = []
+        try:
+            for block in parent_blocks:
+                allocator = (
+                    self.gpu_allocator
+                    if block.device == Device.GPU
+                    else self.cpu_allocator
+                )
+                allocator.acquire(block)
+                acquired.append(block)
+        except Exception:
+            for block in reversed(acquired):
+                self._free_block(block)
+            raise
+        self.block_table.add_blocks(child.id, acquired)
+        self._sync_request_blocks(child, acquired)
+
+    def can_swap_out(self, req: Request) -> bool:
+        blocks = self.block_table.get_blocks(req.id)
+        return bool(blocks) and self.cpu_allocator.get_num_free_blocks() >= len(blocks)
+
+    def can_swap_in(self, req: Request) -> bool:
+        blocks = self.block_table.get_blocks(req.id)
+        return bool(blocks) and self.gpu_allocator.get_num_free_blocks() >= len(blocks)
+
+    def swap_out(self, req: Request) -> None:
+        self._swap(req, Device.GPU, Device.CPU)
+
+    def swap_in(self, req: Request) -> None:
+        self._swap(req, Device.CPU, Device.GPU)
+
+    def _swap(self, req: Request, source: Device, target: Device) -> None:
+        source_blocks = self.block_table.get_blocks(req.id)
+        self._validate_blocks_device(
+            req, source_blocks, source, f"swap to {target.name}"
+        )
+        target_allocator = (
+            self.gpu_allocator if target == Device.GPU else self.cpu_allocator
+        )
+        if target_allocator.get_num_free_blocks() < len(source_blocks):
+            raise OutOfBlocksError(
+                f"request {req.id} cannot swap to {target.name}; "
+                f"required={len(source_blocks)}, "
+                f"free={target_allocator.get_num_free_blocks()}"
+            )
+        target_blocks: list[PhysicalTokenBlock] = []
+        try:
+            for source_block in source_blocks:
+                target_block = target_allocator.allocate()
+                target_block.block_hash = source_block.block_hash
+                target_block.is_full = source_block.is_full
+                target_block.cached = False
+                target_blocks.append(target_block)
+        except Exception:
+            for block in reversed(target_blocks):
+                target_allocator.free(block)
+            raise
+        self.block_table.set_blocks(req.id, target_blocks)
+        self._sync_request_blocks(req, target_blocks)
+        for block in source_blocks:
+            self._free_block(block)
+
+    def get_cpu_status(self) -> Tuple[int, int, int]:
+        return self.cpu_allocator.get_status()
 
     def get_request_block_counts(self, requests: list[Request]) -> dict[int, int]:
         return {req.id: self._num_blocks(req) for req in requests}

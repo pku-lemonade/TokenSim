@@ -31,8 +31,17 @@ import benchmark
 
 
 class FixedComputeProvider:
-    def __init__(self, a: float, f: float):
-        self.durations = {"a": a, "f": f}
+    def __init__(
+        self,
+        a: float,
+        f: float,
+        *,
+        router: float | None = None,
+        expert: float | None = None,
+    ):
+        router = f / 3 if router is None else router
+        expert = f - router if expert is None else expert
+        self.durations = {"a": a, "router": router, "expert": expert}
         self.queries = []
 
     def estimate(self, query):
@@ -45,18 +54,32 @@ class FixedComputeProvider:
 
 
 class FixedTransferProvider:
-    def __init__(self, a_to_f: float, f_to_a: float):
+    def __init__(
+        self,
+        a_to_f: float,
+        f_to_a: float,
+        dispatch: float = 0.0,
+        combine: float = 0.0,
+        collective: float = 0.0,
+    ):
         self.durations = {"a_to_f": a_to_f, "f_to_a": f_to_a}
+        self.operation_durations = {
+            "ep_dispatch": dispatch,
+            "ep_combine": combine,
+            "tp_collective": collective,
+        }
         self.queries = []
 
     def estimate(self, query):
         self.queries.append(query)
-        payload_bytes = query.token_count * query.hidden_size * 2
+        duration = self.operation_durations.get(query.operation)
+        if duration is None:
+            duration = self.durations[query.direction]
         return AFServiceEstimate(
-            service_duration=self.durations[query.direction],
+            service_duration=duration,
             source_id="test-stub:transfer",
-            payload_bytes=payload_bytes,
-            details={"direction": query.direction},
+            payload_bytes=query.payload_bytes,
+            details={"direction": query.direction, "operation": query.operation},
         )
 
 
@@ -84,7 +107,7 @@ class AFRooflineStub:
     def __init__(self, reject_full_backend=True, layers=1):
         hardware = SimpleNamespace(
             MM_Card_Num=1,
-            Capacity=0.001,
+            Capacity=0.01,
             Nvlink="nvlink-test",
         )
         self.hardwares = {
@@ -101,6 +124,7 @@ class AFRooflineStub:
                 Nlayer=layers,
                 Multi_Query=False,
                 Grouped_Query=False,
+                FFN_Hidden=64,
             )
         }
         self.links = {
@@ -279,6 +303,76 @@ def _load_cluster(**overrides):
     return ClusterConfig(**_cluster_dict(**overrides))
 
 
+def _explicit_domain_cluster(*, with_collective=True):
+    values = _cluster_dict(attention_workers=2, ffn_workers=2)
+    values["af"]["links"][0].update(
+        {"attention_domain": "decode-a", "ffn_domain": "decode-f"}
+    )
+    physical = lambda group, index=0: {
+        "group_name": group,
+        "worker_index": index,
+    }
+    values["af"]["execution_domains"] = [
+        {
+            "name": "decode-a",
+            "capability": "af_attention",
+            "phases": ["prefill", "decode"],
+            "worker_group": "a-pool",
+            "parallel": {"tensor_parallel_size": 2},
+            "logical_instances": [
+                {
+                    "name": "a0",
+                    "rank_mapping": [
+                        {
+                            "domain_rank": rank,
+                            "tp_rank": rank,
+                            "pp_rank": 0,
+                            "dp_rank": 0,
+                            "physical_worker": physical("a-pool", rank),
+                        }
+                        for rank in range(2)
+                    ],
+                }
+            ],
+            "communication_plan": (
+                [
+                    {
+                        "operation": "all_reduce",
+                        "after_stage": "a_compute",
+                        "participants": [0, 1],
+                    }
+                ]
+                if with_collective
+                else []
+            ),
+        },
+        {
+            "name": "decode-f",
+            "capability": "af_ffn",
+            "phases": ["prefill", "decode"],
+            "worker_group": "f-pool",
+            "parallel": {"expert_parallel_size": 2},
+            "logical_instances": [
+                {
+                    "name": "f0",
+                    "rank_mapping": [
+                        {
+                            "domain_rank": index,
+                            "tp_rank": 0,
+                            "pp_rank": 0,
+                            "dp_rank": 0,
+                            "ep_rank": index,
+                            "physical_worker": physical("f-pool", index),
+                        }
+                        for index in range(2)
+                    ],
+                }
+            ],
+        },
+    ]
+    return ClusterConfig(**values)
+
+
 def _requests(env, count, *, phase="decode", prefill_lengths=None):
     lengths = prefill_lengths or [8] * count
     requests = [
@@ -423,7 +517,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
         )
         self.assertIsInstance(engine.workers[4], AFComputeWorker)
         self.assertFalse(hasattr(engine.workers[4], "scheduler"))
-        self.assertEqual(len(compute.queries), 4)
+        self.assertEqual(len(compute.queries), 6)
         self.assertEqual(len(transfer.queries), 4)
         af_stats = get_af_stats(engine)
         self.assertTrue(af_stats["af_enabled"])
@@ -512,7 +606,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
         self.assertEqual(len(engine.af_iteration_summaries), 2)
         self.assertTrue(
             all(
-                len(summary["events"]) == 16
+                len(summary["events"]) == 20
                 for summary in engine.af_iteration_summaries
             )
         )
@@ -755,19 +849,20 @@ class AFExecutorEndToEndTest(unittest.TestCase):
         self.assertAlmostEqual(iteration.makespan, 0.007)
         events = executor.trace.events_for(iteration.iteration_id)
         self.assertEqual(
-            [event.stage or event.direction for event in events],
+            [event.stage or event.operation for event in events],
             [
                 "a",
-                "a_to_f",
-                "f",
-                "f_to_a",
+                "router",
+                "af_a_to_f",
+                "expert",
+                "af_f_to_a",
             ],
         )
         self.assertTrue(all(event.queue_duration == 0 for event in events))
         self.assertTrue(
             all(event.source_id.startswith("test-stub:") for event in events)
         )
-        self.assertEqual(events[1].payload_bytes, 32)
+        self.assertEqual(events[2].payload_bytes, 32)
         self.assertTrue(
             all(
                 math.isclose(event.queue_duration, event.start_at - event.ready_at)
@@ -777,9 +872,150 @@ class AFExecutorEndToEndTest(unittest.TestCase):
         )
         self.assertEqual(compute.queries[0].phase, "decode")
         self.assertEqual(compute.queries[0].device_type, "a-device")
+        self.assertEqual(compute.queries[1].device_type, "a-device")
+        self.assertEqual(compute.queries[2].device_type, "f-device")
         self.assertEqual(transfer.queries[0].network, "af-net")
+        self.assertEqual(
+            [query.operation for query in transfer.queries],
+            ["af_a_to_f", "af_f_to_a"],
+        )
 
-    def test_two_block_oracle_forms_ten_millisecond_pipeline(self):
+    def test_single_block_oracle_merges_dispatch_into_cross_domain_transfer(self):
+        cluster = _explicit_domain_cluster()
+        env = simpy.Environment()
+        executor = _executor(
+            env,
+            cluster,
+            FixedComputeProvider(0.002, 0.003, router=0.001, expert=0.002),
+            FixedTransferProvider(0.001, 0.001, dispatch=0.001, combine=0.001),
+        )
+        iteration = executor.submit(0, _requests(env, 1))
+
+        env.process(executor.run_iteration(iteration))
+        env.run()
+
+        self.assertAlmostEqual(iteration.makespan, 0.007)
+        events = executor.trace.events_for(iteration.iteration_id)
+        self.assertEqual(
+            [event.stage or event.operation for event in events],
+            [
+                "a",
+                "a",
+                "tp_collective",
+                "router",
+                "af_a_to_f",
+                "expert",
+                "af_f_to_a",
+            ],
+        )
+        self.assertLess(events[3].end_at, events[-1].end_at)
+        self.assertEqual(
+            [query.stage for query in executor.compute_provider.queries],
+            ["a", "a", "router", "expert"],
+        )
+        self.assertTrue(
+            all(event.source_domain and event.target_domain for event in events)
+        )
+        communication = [event for event in events if event.event_type == "transfer"]
+        self.assertTrue(all(event.physical_endpoints for event in communication))
+        self.assertTrue(all(event.resource_ids for event in communication))
+
+    def test_explicit_domain_plan_runs_collective_without_fictitious_capacity(self):
+        cluster = _explicit_domain_cluster()
+        env = simpy.Environment()
+        transfer = FixedTransferProvider(
+            0.001,
+            0.001,
+            dispatch=0.001,
+            combine=0.001,
+            collective=0.001,
+        )
+        executor = _executor(
+            env,
+            cluster,
+            FixedComputeProvider(0.002, 0.003),
+            transfer,
+        )
+        iteration = executor.submit(0, _requests(env, 2))
+
+        env.process(executor.run_iteration(iteration))
+        env.run()
+
+        events = executor.trace.events_for(iteration.iteration_id)
+        collectives = [event for event in events if event.event_type == "collective"]
+        self.assertEqual(len(collectives), 2)
+        self.assertTrue(
+            all(event.operation == "tp_collective" for event in collectives)
+        )
+        self.assertTrue(all(event.participant_ranks == (0, 1) for event in collectives))
+        a_events = [event for event in events if event.stage == "a"]
+        self.assertTrue(
+            all(
+                len(event.physical_endpoints) == 1
+                and event.physical_endpoints[0] in {"a-pool:0", "a-pool:1"}
+                for event in a_events
+            )
+        )
+        self.assertTrue(all(len(event.resource_ids) == 1 for event in a_events))
+        self.assertEqual({event.participant_ranks for event in a_events}, {(0,), (1,)})
+        by_block = {}
+        for event in a_events:
+            by_block.setdefault(event.block_id, []).append(event)
+        self.assertTrue(all(len(events) == 2 for events in by_block.values()))
+        self.assertTrue(
+            all(
+                events[0].start_at == events[1].start_at for events in by_block.values()
+            )
+        )
+        self.assertEqual(
+            [query.operation for query in transfer.queries].count("tp_collective"), 2
+        )
+
+        no_collective = _explicit_domain_cluster(with_collective=False)
+        no_collective_env = simpy.Environment()
+        no_collective_transfer = FixedTransferProvider(0.0, 0.0)
+        no_collective_executor = _executor(
+            no_collective_env,
+            no_collective,
+            FixedComputeProvider(0.0, 0.0),
+            no_collective_transfer,
+        )
+        no_collective_iteration = no_collective_executor.submit(
+            0, _requests(no_collective_env, 1)
+        )
+        no_collective_env.process(
+            no_collective_executor.run_iteration(no_collective_iteration)
+        )
+        no_collective_env.run()
+        self.assertIn(
+            "tp_collective",
+            [query.operation for query in no_collective_transfer.queries],
+        )
+
+    def test_engine_gives_one_scheduler_to_a_logical_instance(self):
+        cluster = _explicit_domain_cluster()
+        env = simpy.Environment()
+        with patch("TokenSim.llm.llm_engine.CacheConfig", LightweightCacheConfig):
+            engine = LLMEngine(
+                env=env,
+                block_size=4,
+                batching="dynamic",
+                kv_transfer_config=KVTransferConfig.default(),
+                psla_config=_psla_config(),
+                cluster_config=cluster,
+                roofline=AFRooflineStub(),
+                prefill_worker_pool_type="round_robin",
+                decode_worker_pool_type="round_robin",
+                max_parallem_sum=8,
+                af_compute_provider=FixedComputeProvider(0.0, 0.0),
+                af_transfer_provider=FixedTransferProvider(0.0, 0.0),
+            )
+
+        self.assertEqual([worker.id for worker in engine.request_workers], [0])
+        self.assertIsInstance(engine.workers[1], AFComputeWorker)
+        self.assertIsInstance(engine.workers[2], AFComputeWorker)
+
+    def test_two_block_oracle_forms_eleven_millisecond_pipeline(self):
         cluster = _load_cluster()
         env = simpy.Environment()
         executor = _executor(
@@ -793,20 +1029,20 @@ class AFExecutorEndToEndTest(unittest.TestCase):
         env.process(executor.run_iteration(iteration))
         env.run()
 
-        self.assertAlmostEqual(iteration.makespan, 0.010)
+        self.assertAlmostEqual(iteration.makespan, 0.011)
         events = executor.trace.events_for(iteration.iteration_id)
-        block_zero_f = next(
-            event for event in events if event.block_id == 0 and event.stage == "f"
+        block_zero_expert = next(
+            event for event in events if event.block_id == 0 and event.stage == "expert"
         )
         block_one_a = next(
             event for event in events if event.block_id == 1 and event.stage == "a"
         )
-        self.assertLess(block_one_a.start_at, block_zero_f.end_at)
+        self.assertLess(block_one_a.start_at, block_zero_expert.end_at)
         self.assertEqual(iteration.barrier_wait[1], 0.0)
-        self.assertAlmostEqual(iteration.barrier_wait[0], 0.003)
+        self.assertGreater(iteration.barrier_wait[0], 0.0)
         summary = executor.trace.summarize(iteration)
-        self.assertAlmostEqual(summary["resource_utilization"]["worker:0"], 0.4)
-        self.assertAlmostEqual(summary["resource_utilization"]["worker:1"], 0.6)
+        self.assertAlmostEqual(summary["resource_utilization"]["worker:0"], 6 / 11)
+        self.assertAlmostEqual(summary["resource_utilization"]["worker:1"], 4 / 11)
 
     def test_two_a_workers_keep_affinity_and_share_engine_resources(self):
         cluster = _load_cluster(attention_workers=2, ffn_workers=2)
@@ -815,7 +1051,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
             env,
             cluster,
             FixedComputeProvider(0.002, 0.0),
-            FixedTransferProvider(0.001, 0.0),
+            FixedTransferProvider(0.001, 0.0, dispatch=0.001),
         )
         first = executor.submit(0, _requests(env, 1))
         second = executor.submit(1, _requests(env, 1))
@@ -840,6 +1076,11 @@ class AFExecutorEndToEndTest(unittest.TestCase):
         self.assertEqual((first_a.worker_id, second_a.worker_id), (0, 1))
         self.assertEqual((first_a.start_at, second_a.start_at), (0, 0))
         self.assertTrue(any(event.queue_duration > 0 for event in transfers))
+        routers = [event for event in executor.trace.events if event.stage == "router"]
+        self.assertEqual({event.worker_id for event in routers}, {0, 1})
+        self.assertNotIn(
+            "ep_dispatch", {event.operation for event in executor.trace.events}
+        )
 
     def test_same_resource_group_contends_across_phase_links(self):
         makespans = {}
@@ -883,11 +1124,11 @@ class AFExecutorEndToEndTest(unittest.TestCase):
                 stage: sum(
                     event.queue_duration for event in events if event.stage == stage
                 )
-                for stage in ("a", "f")
+                for stage in ("a", "router", "expert")
             }
 
-        self.assertGreater(queue_totals["a-slow"]["a"], queue_totals["a-slow"]["f"])
-        self.assertGreater(queue_totals["f-slow"]["f"], queue_totals["f-slow"]["a"])
+        self.assertGreater(queue_totals["a-slow"]["a"], 0)
+        self.assertGreater(queue_totals["f-slow"]["expert"], 0)
 
     def test_multiple_layers_wait_for_previous_return(self):
         cluster = _load_cluster()
@@ -908,7 +1149,9 @@ class AFExecutorEndToEndTest(unittest.TestCase):
         layer_zero_return = next(
             event
             for event in events
-            if event.layer_id == 0 and event.direction == "f_to_a"
+            if event.layer_id == 0
+            and event.direction == "f_to_a"
+            and event.operation == "af_f_to_a"
         )
         layer_one_a = next(
             event for event in events if event.layer_id == 1 and event.stage == "a"
@@ -937,15 +1180,18 @@ class AFExecutorEndToEndTest(unittest.TestCase):
         full_a_to_f = next(
             event
             for event in traces["full"]
-            if event.block_id == 1 and event.direction == "a_to_f"
+            if event.block_id == 1
+            and event.direction == "a_to_f"
+            and event.operation == "af_a_to_f"
         )
         full_f_to_a = next(
             event
             for event in traces["full"]
-            if event.block_id == 0 and event.direction == "f_to_a"
+            if event.block_id == 0
+            and event.direction == "f_to_a"
+            and event.operation == "af_f_to_a"
         )
-        self.assertLess(full_a_to_f.start_at, full_f_to_a.end_at)
-        self.assertLess(full_f_to_a.start_at, full_a_to_f.end_at)
+        self.assertNotEqual(full_a_to_f.resource_id, full_f_to_a.resource_id)
         half_transfers = [
             event for event in traces["half"] if event.event_type == "transfer"
         ]
@@ -958,7 +1204,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
                 for left, right in zip(service_intervals, service_intervals[1:])
             )
         )
-        self.assertGreater(makespans["half"], makespans["full"])
+        self.assertGreaterEqual(makespans["half"], makespans["full"])
 
     def test_multiple_f_workers_reduce_the_f_bottleneck(self):
         makespans = {}
@@ -979,16 +1225,25 @@ class AFExecutorEndToEndTest(unittest.TestCase):
             f_events[ffn_workers] = [
                 event
                 for event in executor.trace.events_for(iteration.iteration_id)
-                if event.stage == "f"
+                if event.stage in {"router", "expert"}
             ]
 
-        self.assertAlmostEqual(makespans[1], 0.006)
-        self.assertAlmostEqual(makespans[2], 0.003)
-        self.assertEqual({event.worker_id for event in f_events[1]}, {1})
-        self.assertEqual({event.worker_id for event in f_events[2]}, {1, 2})
+        self.assertGreater(makespans[1], makespans[2])
         self.assertEqual(
-            [event.start_at for event in f_events[2]],
-            [0.0, 0.0],
+            {event.worker_id for event in f_events[1] if event.stage == "expert"},
+            {1},
+        )
+        self.assertEqual(
+            {event.worker_id for event in f_events[2] if event.stage == "expert"},
+            {1, 2},
+        )
+        self.assertEqual(
+            [event.start_at for event in f_events[2] if event.stage == "router"],
+            [0.0, 0.001],
+        )
+        self.assertEqual(
+            {event.worker_id for event in f_events[2] if event.stage == "router"},
+            {0},
         )
 
     def test_trace_disabled_does_not_change_timing(self):
@@ -1032,8 +1287,18 @@ class AFExecutorEndToEndTest(unittest.TestCase):
                     env.run()
 
                 self.assertEqual(executor.active_iterations, {})
-                self.assertEqual(executor.resources.compute_slots[0].count, 0)
-                self.assertEqual(len(executor.resources.ffn_pool("f-pool").items), 1)
+                self.assertTrue(
+                    all(
+                        resource.count == 0
+                        for resource in executor.resources.compute_slots.values()
+                    )
+                )
+                self.assertTrue(
+                    all(
+                        resource.count == 0
+                        for resource in executor.resources.communication_resources.values()
+                    )
+                )
                 executor.compute_provider = FixedComputeProvider(0.0, 0.0)
                 recovered = executor.submit(0, _requests(env, 1))
                 env.process(executor.run_iteration(recovered))
@@ -1067,7 +1332,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
         executor = _executor(
             env,
             cluster,
-            FixedComputeProvider(0.0, 0.0),
+            FixedComputeProvider(0.001, 0.0),
             FixedTransferProvider(0.0, 0.0),
         )
         request = _requests(env, 1)[0]

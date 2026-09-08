@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import argparse
+from copy import deepcopy
+from dataclasses import asdict
 import json
 import sys
 import types
@@ -15,6 +17,7 @@ from TokenSim.config.cluster_config import (
     ClusterConfig,
     WorkerGroupConfig,
 )
+from TokenSim.config.parallel_config import ParallelConfig
 from TokenSim.config.constants import (
     AF_PHASES,
     LEGACY_ROLE_CAPABILITIES,
@@ -398,6 +401,7 @@ class AFLoadingAndEntryPointTest(unittest.TestCase):
         decode = ClusterConfig.from_file(
             root / "data/clusters/af/decode_half_duplex.json"
         )
+        combined = ClusterConfig.from_file(root / "data/clusters/af/tp2_dp2_ep2.json")
 
         self.assertEqual(full.af.phases, ("prefill", "decode"))
         self.assertEqual(
@@ -408,6 +412,261 @@ class AFLoadingAndEntryPointTest(unittest.TestCase):
         self.assertEqual(
             set(decode.af_communication_resources), {("shared-af-fabric", "shared")}
         )
+        self.assertEqual(combined.execution_domains["a-domain"].required_rank_count, 4)
+        self.assertEqual(combined.execution_domains["f-domain"].required_rank_count, 8)
+
+    def test_explicit_domains_use_independent_one_to_one_worker_topologies(self):
+        raw = {
+            "num_workers": 4,
+            "networks": {"net1": "network"},
+            "worker_groups": [
+                {
+                    "name": "attention",
+                    "capabilities": ["af_attention"],
+                    "hardware": "a-device",
+                    "num_workers": 2,
+                },
+                {
+                    "name": "ffn",
+                    "capabilities": ["af_ffn"],
+                    "hardware": "f-device",
+                    "num_workers": 2,
+                },
+            ],
+            "af": {
+                "enabled": True,
+                "phases": ["prefill", "decode"],
+                "links": [
+                    {
+                        **asdict(_full_link()),
+                        "attention_domain": "decode-a",
+                        "ffn_domain": "decode-f",
+                    }
+                ],
+                "execution_domains": [
+                    {
+                        "name": "decode-a",
+                        "capability": "af_attention",
+                        "phases": ["prefill", "decode"],
+                        "worker_group": "attention",
+                        "parallel": {"tensor_parallel_size": 2},
+                        "logical_instances": [
+                            {
+                                "name": "a0",
+                                "rank_mapping": [
+                                    {
+                                        "domain_rank": rank,
+                                        "tp_rank": rank,
+                                        "pp_rank": 0,
+                                        "dp_rank": 0,
+                                        "physical_worker": {
+                                            "group_name": "attention",
+                                            "worker_index": rank,
+                                        },
+                                    }
+                                    for rank in range(2)
+                                ],
+                            }
+                        ],
+                    },
+                    {
+                        "name": "decode-f",
+                        "capability": "af_ffn",
+                        "phases": ["prefill", "decode"],
+                        "worker_group": "ffn",
+                        "parallel": {"expert_parallel_size": 2},
+                        "logical_instances": [
+                            {
+                                "name": "f0",
+                                "rank_mapping": [
+                                    {
+                                        "domain_rank": rank,
+                                        "tp_rank": 0,
+                                        "pp_rank": 0,
+                                        "dp_rank": 0,
+                                        "ep_rank": rank,
+                                        "physical_worker": {
+                                            "group_name": "ffn",
+                                            "worker_index": rank,
+                                        },
+                                    }
+                                    for rank in range(2)
+                                ],
+                            }
+                        ],
+                    },
+                ],
+            },
+        }
+
+        cluster = ClusterConfig(**raw)
+        workers = cluster.workers(ParallelConfig(tensor_parallel_size=8))
+
+        self.assertEqual(len(workers), 4)
+        self.assertEqual(cluster.execution_domains["decode-a"].parallel.world_size, 2)
+        self.assertEqual(cluster.phase_to_af_domains["decode"][1].name, "decode-f")
+        self.assertEqual(workers[0].physical_worker_ref.identity, "attention:0")
+
+        invalid = deepcopy(raw)
+        invalid["af"]["execution_domains"][0]["logical_instances"] = [
+            {
+                "name": "a0",
+                "rank_mapping": raw["af"]["execution_domains"][0]["logical_instances"][
+                    0
+                ]["rank_mapping"][:1],
+            }
+        ]
+        with self.assertRaisesRegex(ConfigurationError, "decode-a.*cover dp replica"):
+            ClusterConfig(**invalid)
+
+        duplicate = deepcopy(raw)
+        duplicate_mapping = duplicate["af"]["execution_domains"][0][
+            "logical_instances"
+        ][0]["rank_mapping"]
+        duplicate_mapping[1]["physical_worker"]["worker_index"] = 0
+        with self.assertRaisesRegex(
+            ConfigurationError,
+            "decode-a.*a0.*rank 1.*attention:0.*a0.*rank 0.*one-to-one",
+        ):
+            ClusterConfig(**duplicate)
+
+        unmapped = deepcopy(raw)
+        unmapped["worker_groups"][0]["num_workers"] = 3
+        unmapped["num_workers"] = 4
+        with self.assertRaisesRegex(
+            ConfigurationError, "decode-a.*unmapped physical workers.*attention:2"
+        ):
+            ClusterConfig(**unmapped)
+
+        cross_group = deepcopy(raw)
+        cross_group["af"]["execution_domains"][0]["logical_instances"][0][
+            "rank_mapping"
+        ][1]["physical_worker"]["group_name"] = "ffn"
+        with self.assertRaisesRegex(
+            ConfigurationError, "decode-a.*rank 1.*ffn.*attention"
+        ):
+            ClusterConfig(**cross_group)
+
+    def test_domain_topology_matrix_keeps_a_f_world_sizes_independent(self):
+        def replica(group, name, dp_rank, tp, ep=1, worker_offset=0):
+            ranks_per_replica = tp * ep
+            return {
+                "name": name,
+                "rank_mapping": [
+                    {
+                        "domain_rank": dp_rank * ranks_per_replica + local_rank,
+                        "tp_rank": local_rank % tp,
+                        "pp_rank": 0,
+                        "dp_rank": dp_rank,
+                        "ep_rank": local_rank // tp,
+                        "physical_worker": {
+                            "group_name": group,
+                            "worker_index": worker_offset + local_rank,
+                        },
+                    }
+                    for local_rank in range(ranks_per_replica)
+                ],
+            }
+
+        raw = {
+            "num_workers": 6,
+            "networks": {"net1": "network"},
+            "worker_groups": [
+                {
+                    "name": "attention",
+                    "capabilities": ["af_attention"],
+                    "hardware": "a-device",
+                    "num_workers": 4,
+                },
+                {
+                    "name": "ffn",
+                    "capabilities": ["af_ffn"],
+                    "hardware": "f-device",
+                    "num_workers": 2,
+                },
+            ],
+            "af": {
+                "enabled": True,
+                "links": [
+                    {
+                        **asdict(_full_link()),
+                        "attention_domain": "decode-a",
+                        "ffn_domain": "decode-f",
+                    }
+                ],
+                "execution_domains": [
+                    {
+                        "name": "decode-a",
+                        "capability": "af_attention",
+                        "phases": ["prefill", "decode"],
+                        "worker_group": "attention",
+                        "parallel": {
+                            "tensor_parallel_size": 2,
+                            "pipeline_parallel_size": 1,
+                            "data_parallel_size": 2,
+                        },
+                        "logical_instances": [
+                            replica("attention", "a0", 0, 2, worker_offset=0),
+                            replica("attention", "a1", 1, 2, worker_offset=2),
+                        ],
+                    },
+                    {
+                        "name": "decode-f",
+                        "capability": "af_ffn",
+                        "phases": ["prefill", "decode"],
+                        "worker_group": "ffn",
+                        "parallel": {
+                            "tensor_parallel_size": 1,
+                            "pipeline_parallel_size": 1,
+                            "data_parallel_size": 1,
+                            "expert_parallel_size": 2,
+                        },
+                        "logical_instances": [
+                            replica("ffn", "f0", 0, 1, ep=2),
+                        ],
+                    },
+                ],
+            },
+        }
+
+        cluster = ClusterConfig(**raw)
+
+        self.assertEqual(cluster.execution_domains["decode-a"].parallel.world_size, 4)
+        self.assertEqual(cluster.execution_domains["decode-f"].parallel.world_size, 1)
+        self.assertEqual(cluster.execution_domains["decode-f"].required_rank_count, 2)
+        self.assertEqual(
+            cluster.execution_domains["decode-f"].parallel.expert_parallel_size, 2
+        )
+        self.assertEqual(
+            len(cluster.workers(ParallelConfig(tensor_parallel_size=8))), 6
+        )
+
+        unsupported_pp = deepcopy(raw)
+        unsupported_pp["af"]["execution_domains"][0]["parallel"][
+            "pipeline_parallel_size"
+        ] = 2
+        with self.assertRaisesRegex(
+            ConfigurationError, "decode-a.*pipeline_parallel_size=2.*only supports"
+        ):
+            ClusterConfig(**unsupported_pp)
+
+        invalid_a_ep = deepcopy(raw)
+        invalid_a_ep["af"]["execution_domains"][0]["parallel"][
+            "expert_parallel_size"
+        ] = 2
+        with self.assertRaisesRegex(
+            ConfigurationError, "decode-a.*expert_parallel_size.*only valid for af_ffn"
+        ):
+            ClusterConfig(**invalid_a_ep)
+
+        mixed_dp = deepcopy(raw)
+        mixed_dp["af"]["execution_domains"][0]["logical_instances"][0]["rank_mapping"][
+            1
+        ]["dp_rank"] = 1
+        with self.assertRaisesRegex(
+            ConfigurationError, "decode-a.*a0.*exactly one dp_rank"
+        ):
+            ClusterConfig(**mixed_dp)
 
     def test_af_block_size_is_not_kv_block_size(self):
         cluster = _cluster()

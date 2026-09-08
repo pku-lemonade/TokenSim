@@ -113,6 +113,7 @@ class LLMResult:
     af_enabled: bool = False
     af_iteration_count: int = 0
     af_trace: list[dict[str, Any]] | None = None
+    af_runtime_state: dict[str, Any] | None = None
 
     @classmethod
     def from_file(cls, filename):

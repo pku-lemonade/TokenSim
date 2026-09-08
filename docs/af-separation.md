@@ -4,7 +4,7 @@
 
 本版本已经把 Attention-FFN（AF）分离配置接入可运行的 SimPy executor。它支持 Prefill、Decode 或两阶段 AF，能够明确 A/F worker group、通信网络、全/半双工以及物理竞争域，并输出可重建流水行为的结构化 trace。
 
-当前 executor 需要调用方注入 compute 与 transfer latency provider。仓库测试使用带 `test-stub` source ID 的确定性 provider 验证调度机制；这些数值不是 Groq 或其他硬件的物理性能结论。缺少 provider 或必要模型元数据时，`benchmark.py` 会在产生 AF 事件前明确失败，不会静默回退到 Roofline 或 LLMCompass 的完整 iteration 时延。
+当前 executor 需要调用方注入 compute 与 communication latency provider。并行 planner 把 TP、DP 和 EP 配置展开为逐 rank DAG；provider 只估算一个 rank 的局部计算或一次已规划通信。仓库测试使用带 `test-stub` source ID 的确定性 provider 验证调度机制；这些数值不是 Groq 或其他硬件的物理性能结论。缺少 provider 或必要模型元数据时，`benchmark.py` 会在产生 AF 事件前明确失败，不会静默回退到完整 iteration 时延。
 
 ## 配置模型
 
@@ -41,16 +41,66 @@
 scheduler 选出的同阶段 requests 按 `af_block_size` 连续组成 blocks。每个 block 对模型的每一层严格执行：
 
 ```text
-A compute -> A-to-F transfer -> F compute -> F-to-A transfer
+A TP rank-local compute
+-> required A TP collective
+-> A leader Router/Top-K
+-> one A-to-F / EP dispatch
+-> routed expert rank-local compute and required F TP collective
+-> one F-to-A / EP combine
 ```
 
-同一 block 只有在 F-to-A 返回原 A worker 后才能进入下一层。不同 blocks 使用独立 SimPy process，可以在依赖和资源容量允许时形成计算/通信流水。A compute 固定使用持有 request 与 KV 的 source A worker；F compute 从 link 对应的 F pool 获取稳定 worker token。F-only worker 不拥有 scheduler、Request 或 KV Cache。
+Router/Top-K 固定在所选 A replica 的 `tp_rank=0, ep_rank=0` leader，并等待 A TP compute/collective 完成。Router 产生的 routed workload 同时决定 Expert 负载、跨域 endpoints 和 payload；存在 histogram 时 routed token count 为 histogram 计数之和，否则为 `token_count * top_k`。A-to-F 直接从 A leader 发到 active F Expert ranks，本身就是 EP dispatch；F-to-A 从这些 ranks 返回 partial Expert results，本身就是 EP gather/combine。Planner 不再生成重复搬运同一 payload 的 F-internal dispatch/combine 节点。每层始终只有一个 `af_a_to_f` 和一个 `af_f_to_a`，且两个方向都按 routed token count 计算 payload。同一 block 只有在 F-to-A 返回 A 域后才能进入下一层。A 域持有 request/KV ownership，首次 admission 后不能在没有 KV transfer 的情况下换 A DP replica；F replica 按全局 round-robin 在 block 提交顺序中预选。
+
+## AF 并行拓扑
+
+AF 第一阶段支持 TP、DP 和 F 域 EP，明确不支持 PP。任何 A/F execution domain 的 `pipeline_parallel_size > 1` 都会在创建执行事件前失败。
+
+- 每个 `LogicalInstanceConfig` 表示一个 DP replica，而不是重复包含整个 DP world。
+- A replica 有 `TP` 个 ranks，坐标为 `(dp_rank, ep_rank=0, tp_rank, pp_rank=0)`。
+- F replica 有 `EP * TP` 个 ranks，坐标为 `(dp_rank, ep_rank, tp_rank, pp_rank=0)`。
+- A 域必须为 `EP=1`。F 域在每个 DP replica 内完整复制 expert placement，支持 `linear` 或 `round_robin`。
+- `domain_rank` 在整个 domain 唯一，每个 physical worker 只能映射一个 rank。
+
+完整可加载示例见 `data/clusters/af/tp2_dp2_ep2.json`。其中 A 域 `TP=2, DP=2`，所以有 4 个 ranks；F 域 `TP=2, DP=2, EP=2`，所以有 8 个 ranks。旧配置若让每个 instance 都覆盖 `TP*DP` ranks，需要拆成两个 instances：`a0` 只保留 `dp_rank=0` 的 TP ranks，`a1` 只保留 `dp_rank=1` 的 TP ranks；F 域同理，每个 instance 只保留自己的 `EP*TP` ranks。
+
+### Runtime plan、Scheduler 与 KV 状态
+
+启用 AF 后，Engine 在创建 worker 前把 execution domains 编译成唯一的 `AFRuntimePlan`。它是 topology 的事实来源，记录每个 domain rank 的 DP/TP/EP 坐标、物理 worker、TP/EP group、scheduler leader、模型组件和 Expert 驻留。Planner 只读取这张表生成 DAG；Planner 不运行请求调度、不分配 KV，也不占用一个 TP rank。
+
+每个 A DP replica 只有 `tp_rank=0` leader 运行一份 Scheduler，但这个 replica 的每个 TP rank 都有独立模型和 KV 账本。Scheduler 看到一个逻辑 KV block，内部状态为：
+
+Prefill 和 Decode 可以声明为两个 A domain，并逐 rank 复用同一组物理 TP workers。只要两个 domain 的 TP/DP 大小和物理 rank 映射完全一致，它们会共享同一份 Scheduler、request queue 和 KV 状态，同时保留各自的 domain ownership；若拓扑不等价，Engine 会在启动前明确拒绝，避免两套逻辑状态误占同一组物理卡。
+
+```text
+logical block (request, block index)
+  -> A TP rank 0 local shard
+  -> A TP rank 1 local shard
+  -> ...
+```
+
+allocate、append、fork、free、swap-in、swap-out、preemption 和 connector release 都更新完整 shard 集。分配或 swap 的任一 rank 失败时，已更新 ranks 会回滚。F ranks 只记录实际驻留的 Expert/FFN 权重，不创建 request queue 或 KV Cache。
+
+一个 A replica 的逻辑容量取所有必要 TP ranks 的最小可用容量。例如两个 ranks 分别有 100 和 80 个 local blocks，Scheduler 只能使用 80 个逻辑 blocks；不能只看 leader 的 100，也不能相加为 180。
+
+KV heads 使用 A-domain TP，而不是全局 `parallel_config`。当 KV heads 不少于 TP 时必须整除分片；当 KV heads 少于 TP 时，TP 必须能被 KV head 数整除，并建立明确复制组。例如 1 个 KV head、TP=2 时两个 ranks 都保存 head 0，但全局仍只有一个 KV head。
+
+模型内存同样按组件归属记账：A 保存 Attention 和首尾组件，每个 A DP replica 的 `tp_rank=0, ep_rank=0` leader 额外保存 Router；F ranks 按 EP placement 保存 routed experts，并保存需要复制的 dense/shared FFN，不保存 Router。相同物理 worker 上相同 component id 只计一次，不同组件累加。模型放不下、元数据缺失或 topology 不一致时，Engine 在事件循环前失败。
+
+结果 JSON 的 `af_runtime_state` 使用带版本的 schema，包含：
+
+```text
+schema/version
+physical_workers[].component_bytes/model_bytes/kv_bytes_per_block/rank_usage
+replicas[].local_gpu_blocks/local_cpu_blocks/logical_gpu_usage/logical_cpu_usage
+```
+
+这份 summary 用于逐卡核对内存与 KV；计算和通信时间线仍在 `af_trace` 中，两者不重复记录。
 
 每个物理 worker 只有一个共享 compute slot。未选择 AF 的完整 Prefill/Decode 与 AF compute 也申请该 slot，复合 capability worker 因而不会重复提供算力。所有 iterations 共用 Engine 生命周期内的 worker、F pool 和通信资源注册表，跨 block、跨 link、跨 iteration 的竞争不会因重建资源而消失。
 
 iteration 等待所有 blocks 完成 barrier 后，才由原 worker 入口对本轮每个 request 调用一次 `step()` 并更新 scheduler。block、layer 和 stage 完成本身不会推进 request，也不会分配、释放或迁移 KV blocks。Prefill 与 Decode 使用不同 A groups 时，阶段间 KV 仍通过现有 connector 转移；逐层 A-to-F/F-to-A link 不替代该 KV transfer。
 
-Trace 的每个 compute/transfer 事件包含 iteration、block、layer、stage 或 direction、resource、worker、ready/start/end、queue/service、request/token 数和 `source_id`，transfer 还包含 payload bytes。Iteration summary 包含 block completion、barrier wait、makespan 和只按 service intervals 计算的资源利用率。`trace_enabled=false` 只关闭记录，不改变资源选择或模拟时间。
+Trace 的每个事件包含 DAG node/predecessors、DP/TP/EP rank/group、logical/physical participants、local shape/workload、payload、resource、ready/start/end、queue/service 和 provider provenance。内置 invariant checker 验证依赖与 join 时间、资源容量、每层双向边界节点及 payload 一致性。Iteration summary 从最终节点时间与 service intervals 重建 block completion、barrier wait、makespan 和资源利用率，不对各 rank duration 求和。`trace_enabled=false` 只关闭记录，不改变资源选择或模拟时间。
 
 ### Worker capability
 
@@ -162,22 +212,22 @@ source_id
 
 ### A/F 组合边界
 
-A 阶段组合：
+A 阶段查询：
 
 - QKV GEMM；
 - Attention 核心；
 - 输出投影 GEMM；
 - 必要的 RMSNorm、RoPE、Residual Add 和 data reorder。
+- A leader 上独立计时的 Router/Gating GEMM。
 
-F 阶段组合：
+F 阶段查询：
 
-- Router/Gating GEMM；
 - MoE grouped/fused expert 计算；
 - 必要的逐元素算子。
 
-Attention 核心不重复包含 QKV 和输出投影；MoE expert 不包含 Router、dispatch 和 combine；softmax 与 fused SwiGLU 只在其所属聚合算子中计时一次。dispatch、combine、AllReduce、A→F 和 F→A 始终是独立通信事件。
+Attention 核心不重复包含 QKV 和输出投影；MoE expert 不包含 Router 或通信；softmax 与 fused SwiGLU 只在其所属聚合算子中计时一次。A→F/EP dispatch、F→A/EP combine 和必要的 TP collective 是独立通信事件，一层不会再额外生成同 payload 的 F-internal dispatch/combine。
 
-GQA/MQA 必须使用真实 KV head 维度。Decode `context_len` 使用长度桶上界或 batch 最大 KV 长度，不使用平均长度。MoE 满足 `sum(T_e)=T*k`，第一版以 `balanced` distribution 建表。
+GQA/MQA 必须使用真实 KV head 维度。Decode `context_len` 使用长度桶上界或 batch 最大 KV 长度，不使用平均长度。MoE 满足 `sum(T_e)=T*k`，其中 `T_e` 是已展开的 routed assignments；Expert 公式直接使用 `T_e`，不再乘一次 `k`。外部 Prefill/Decode histogram 必须分别匹配当前 step 的总量，否则在 workload 边界失败。
 
 Groq 第一版候选公开峰值包括 FP16 188 TFLOPs、INT8 750 TOPS、230 MB SRAM、80 TB/s SRAM 带宽和 480 GB/s 芯片网络带宽。每项写入 `hardware.yaml` 前必须保存原始来源，并区分公开规格、项目假设和待确认参数；峰值不能冒充算子实测。
 
@@ -189,7 +239,7 @@ AF executor 的测试从真实配置加载，经 Engine、worker、scheduler、�
 
 | 场景 | 主要断言 |
 | --- | --- |
-| 单 block、单层 | A→A-F→F→F-A 依赖顺序严格正确，每个事件一次 |
+| 单 block、单层 | A TP→A Router→A-F/EP Dispatch→Expert→F-A/EP Combine 依赖顺序严格正确；每层只有两次跨域 payload 搬运 |
 | 单 block、多层 | 每层边界清晰，层间状态不丢失，iteration barrier 正确 |
 | 双 block 流水 | 独立计算/通信按依赖重叠，makespan 与 oracle 一致 |
 | A 慢、F 快 | A 是稳态瓶颈，F 不产生虚假并发 |
@@ -200,6 +250,7 @@ AF executor 的测试从真实配置加载，经 Engine、worker、scheduler、�
 | Prefill | token_count 为 request 实际 Prefill token 总和 |
 | Decode | 每 request 每轮一个 token，轮末 barrier 正确 |
 | 非 AF 回归 | AF 默认关闭，原 Prefill/Decode、KV、MoE 和 latency 行为不变 |
+| TP=2, DP=2, EP=2 | 局部 shape、replica 选择、KV shards、A/F component bytes、Expert 驻留、边界传输次数、join 与 makespan 可核对 |
 
 每项必须断言：
 
@@ -216,34 +267,35 @@ AF executor 的测试从真实配置加载，经 Engine、worker、scheduler、�
 
 ```text
 A compute = 2 ms
+A Router  = 1 ms
 A -> F    = 1 ms
-F compute = 3 ms
+F Expert  = 2 ms
 F -> A    = 1 ms
 ```
 
 容量为 1 时，单 block 为 7 ms，两个 block 完全串行为 14 ms。正确流水应为：
 
 ```text
-block 0: A[0,2]  A->F[2,3]  F[3,6]  F->A[6,7]
-block 1: A[2,4]  A->F[4,5]  F[6,9]  F->A[9,10]
+block 0: A[0,2]  Router[4,5]  A->F[5,6]  Expert[6,8]   F->A[8,9]
+block 1: A[2,4]  Router[5,6]  A->F[6,7]  Expert[8,10]  F->A[10,11]
 ```
 
-最终 makespan 必须精确为 10 ms。该 oracle 证明执行机制正确，不证明真实硬件时延准确。
+两个 blocks 同时提交时，它们的 A compute 先进入同一个 A worker 队列，因此 block 0 的 Router 在两个 A compute 之后取得该 worker。最终 makespan 必须精确为 11 ms。该 oracle 证明执行机制正确，不证明真实硬件时延准确。
 
 当前确定性 E2E 矩阵的已验证结果如下，时间均来自 SimPy event records：
 
 | 场景 | makespan | 关键 queue/service 与通过条件 |
 | --- | ---: | --- |
-| 单 block，2/1/3/1 ms | 7 ms | 四段 service 严格相接，queue 均为 0 |
-| 双 block，2/1/3/1 ms | 10 ms | block 1 的 A 与 block 0 的 F 重叠；早完成 block barrier wait 为 3 ms |
+| 单 block，2/1/1/2/1 ms | 7 ms | A、A Router、A-to-F/EP dispatch、F Expert、F-to-A/EP combine 五段非零 service 严格相接，不生成独立 dispatch/combine 事件 |
+| 双 block，2/1/1/2/1 ms | 11 ms | 两次 A compute 和 Router 竞争同一 A worker；block 1 的 Expert 等待 F worker |
 | A 慢 4 ms，F 快 1 ms，3 blocks | 13 ms | 主要等待落在共享 A slot，A service 区间不重叠 |
 | A 快 1 ms，F 慢 4 ms，3 blocks | 13 ms | 主要等待落在 F pool，F service 区间不重叠 |
 | full-duplex，双向各 3 ms | 10 ms | A-to-F 与 F-to-A 在独立方向键上合法重叠 |
 | half-duplex，双向各 3 ms | 13 ms | 相反方向串行，两个 return transfer 各等待 3 ms |
 | 同 resource group 的两条 links | 9 ms | 相同方向键跨 link 竞争 |
 | 不同 resource groups 的两条 links | 6 ms | 两条 link 的方向资源独立 |
-| 1 个 F worker，两个 3 ms F stages | 6 ms | 同时服务数为 1 |
-| 2 个 F workers，两个 3 ms F stages | 3 ms | worker 1/2 在 0 ms 同时开始，容量不越界 |
+| 1 个 F worker，两个 blocks 的 Router/Expert 为 1/2 ms | 5 ms | Router 在 A worker 串行，两个 Expert 在同一 F worker 串行 |
+| 2 个 F workers，两个 blocks 的 Router/Expert 为 1/2 ms | 4 ms | Router 仍在 A worker 串行，两个 Expert 分配到不同 F workers 并行 |
 
 测试还覆盖 Prefill-only、Decode-only、两阶段、不同 A groups 的阶段间 KV transfer、trace on/off、AF disabled、provider 缺失/unsupported/非法值，以及失败后同一 SimPy environment 的恢复运行。
 
@@ -291,7 +343,7 @@ microbenchmark 数据必须覆盖：
 - 单传输与并发传输；
 - 本地、跨设备和跨节点；
 - resource group 竞争；
-- 内部 dispatch/combine 与 AllReduce。
+- A→F/EP dispatch、F→A/EP combine 与必要的 TP collective。
 
 `service_duration` 对照链路实测，`queue_duration` 对照确定性事件 oracle，total 必须等于二者之和。没有目标链路数据时只能声明模型自洽，不能声明物理准确。
 

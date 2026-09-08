@@ -2,6 +2,7 @@ import math
 import sys
 import tempfile
 import unittest
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -23,10 +24,12 @@ from TokenSim.config.config import KVTransferConfig
 from TokenSim.config.cluster_config import ClusterConfig
 from TokenSim.llm.llm_engine import LLMEngine, Task
 from TokenSim.llm.llm_request import Request, reset_g_time
+from TokenSim.moe.config import MoEModelConfig
 from TokenSim.operator_data import (
     Calibration,
     EvidenceGrade,
     HardwareProfile,
+    LookupResult,
     MissingOperatorDataError,
     ModelOperatorManifest,
     Observation,
@@ -41,11 +44,12 @@ from TokenSim.operator_data import (
     estimate_operator,
 )
 from TokenSim.operator_data.package import _read_parquet
+from TokenSim.operator_data.providers import ModelShape
 from util.request import LLMSource
 
 
 def _tempdir():
-    return tempfile.TemporaryDirectory(dir=Path(__file__).parent)
+    return tempfile.TemporaryDirectory()
 
 
 def _hardware(device):
@@ -151,11 +155,15 @@ def _fixture_inputs():
             Observation(table, key, latency, source.source_id, split="runtime")
         )
 
-    # A-side GEMMs, F router, dense interpolation-only shape, for tokens 1 and 2.
+    # A-side attention/Router GEMMs and one interpolation shape.
     for tokens in (1, 2):
         add("gemm", _key("gemm", m=tokens, n=24, k=8), 10.0 * tokens)
         add("gemm", _key("gemm", m=tokens, n=8, k=8), 8.0 * tokens)
-        add("gemm", _key("gemm", device="f-device", m=tokens, n=4, k=8), 4.0 * tokens)
+        add(
+            "gemm",
+            _key("gemm", device="a-device", m=tokens, n=4, k=8),
+            4.0 * tokens,
+        )
     add("gemm", _key("gemm", m=1, n=7, k=8), 10.0)
     add("gemm", _key("gemm", m=3, n=7, k=8), 30.0)
 
@@ -170,15 +178,51 @@ def _fixture_inputs():
             _key("generation_attention", context_len=seq),
             latency,
         )
+    # TP=2 A-rank local shapes for an exact two-token query.
+    add("gemm", _key("gemm", m=2, n=12, k=8), 12.0)
+    add("gemm", _key("gemm", m=2, n=8, k=4), 7.0)
+    add(
+        "generation_attention",
+        _key(
+            "generation_attention",
+            context_len=2,
+            num_heads=1,
+            num_kv_heads=1,
+        ),
+        6.0,
+    )
     for phase in ("prefill", "decode"):
-        for tokens in (1, 2, 3):
-            add(
+        for tokens in (1, 2, 3, 4):
+            for top_k, num_experts in ((2, 4), (1, 1)):
+                add(
+                    "moe",
+                    _key(
+                        "moe",
+                        device="f-device",
+                        phase=phase,
+                        num_tokens=tokens,
+                        top_k=top_k,
+                        num_experts=num_experts,
+                    ),
+                    6.0 * tokens,
+                )
+    for tokens in (1, 3):
+        add(
+            "moe",
+            _key(
                 "moe",
-                _key("moe", device="f-device", phase=phase, num_tokens=tokens),
-                6.0 * tokens,
-            )
+                device="f-device",
+                phase="decode",
+                num_tokens=tokens,
+                top_k=1,
+                num_experts=1,
+                tp_size=2,
+                ep_size=2,
+            ),
+            10.0 * tokens,
+        )
     for device in ("a-device", "f-device"):
-        for tokens in (1, 2):
+        for tokens in (1, 2, 3, 4):
             for op, latency in (
                 ("rmsnorm", 1.0),
                 ("rope", 1.0),
@@ -195,22 +239,42 @@ def _fixture_inputs():
                     ),
                     latency * tokens,
                 )
+    for op, latency in (
+        ("rmsnorm", 1.0),
+        ("rope", 1.0),
+        ("residual_add", 1.0),
+        ("data_reorder", 1.0),
+    ):
+        add(
+            "elementwise",
+            _key(
+                "elementwise",
+                device="a-device",
+                op_name=op,
+                num_tokens=2,
+                hidden_size=4,
+            ),
+            latency,
+        )
 
-    for direction, source_device, target_device in (
-        ("a_to_f", "a-device", "f-device"),
-        ("f_to_a", "f-device", "a-device"),
+    for operation, direction, source_device, target_device, group_size in (
+        ("af_a_to_f", "a_to_f", "a-device", "f-device", 2),
+        ("af_f_to_a", "f_to_a", "f-device", "a-device", 2),
+        ("ep_dispatch", "ep_dispatch", "f-device", "f-device", 1),
+        ("ep_combine", "ep_combine", "f-device", "f-device", 1),
     ):
         key = _key(
             "communication",
+            operation=operation,
             source_device=source_device,
             target_device=target_device,
             direction=direction,
+            group_size=group_size,
         )
         add("communication", key, 0.0)
     for operation, direction, source_device, target_device, group_size in (
-        ("all_reduce", "collective", "a-device", "a-device", 4),
-        ("moe_dispatch", "a_to_f", "a-device", "f-device", 2),
-        ("moe_combine", "f_to_a", "f-device", "a-device", 2),
+        ("tp_collective", "tp_collective", "a-device", "a-device", 2),
+        ("tp_collective", "tp_collective", "f-device", "f-device", 2),
     ):
         add(
             "communication",
@@ -318,7 +382,7 @@ class OperatorDataGenerationTest(unittest.TestCase):
         self.assertEqual(prefill.flops, 128.0)
         self.assertEqual(decode.flops, 64.0)
         self.assertEqual(elementwise.flops, 80.0)
-        self.assertEqual(moe.flops, 3072.0)
+        self.assertEqual(moe.flops, 1536.0)
         self.assertTrue(
             all(
                 estimate.latency_us
@@ -326,6 +390,82 @@ class OperatorDataGenerationTest(unittest.TestCase):
                 for estimate in (prefill, decode, elementwise, moe)
             )
         )
+
+    def test_moe_uses_routed_assignments_once_and_tp_shards_compute(self):
+        hardware = _hardware("f-device")
+        routed = _key(
+            "moe",
+            device="f-device",
+            num_tokens=4,
+            top_k=2,
+            num_experts=1,
+        )
+        tp1 = estimate_operator("moe", routed, hardware)
+        tp2 = estimate_operator("moe", {**routed, "tp_size": 2}, hardware)
+        top_k_one = estimate_operator("moe", {**routed, "top_k": 1}, hardware)
+
+        self.assertEqual(tp1.flops, top_k_one.flops)
+        self.assertEqual(tp2.flops, tp1.flops / 2)
+        self.assertEqual(tp2.weight_bytes, tp1.weight_bytes / 2)
+
+    def test_dense_ffn_operator_keys_use_tp_local_intermediate_shape(self):
+        class RecordingLookup:
+            def __init__(self):
+                self.calls = []
+                self.package = SimpleNamespace(dataset_version="shape-test")
+
+            def lookup(self, table_name, key):
+                self.calls.append((table_name, dict(key)))
+                return LookupResult(0.0, "exact", "shape-test", dict(key))
+
+        lookup = RecordingLookup()
+        manifest = ModelOperatorManifest(
+            {
+                "DenseModel": ModelShape(
+                    model_id="DenseModel",
+                    hidden_size=8,
+                    intermediate_size=16,
+                    num_attention_heads=2,
+                    num_key_value_heads=2,
+                    f_elementwise=(),
+                )
+            }
+        )
+        provider = OperatorDataComputeLatencyProvider(lookup, manifest, "analytical")
+        query = AFComputeQuery(
+            iteration_id=0,
+            block_id=0,
+            layer_id=0,
+            phase="decode",
+            stage="expert",
+            token_count=2,
+            context_lengths=(2,),
+            model_id="DenseModel",
+            dtype="bf16",
+            device_type="f-device",
+            worker_id=0,
+            operation="expert_rank_compute",
+            source_domain="f-domain",
+            local_shape={
+                "tokens": 2,
+                "hidden_size": 4,
+                "global_hidden_size": 8,
+                "tp_size": 2,
+            },
+            local_token_count=2,
+            tp_group=(0, 1),
+        )
+
+        provider.estimate(query)
+        gemms = [key for table, key in lookup.calls if table == "gemm"]
+        swiglu = next(
+            key
+            for table, key in lookup.calls
+            if table == "elementwise" and key["op_name"] == "swiglu"
+        )
+        self.assertEqual(gemms[0]["n"], 16)
+        self.assertEqual(gemms[1]["k"], 8)
+        self.assertEqual(swiglu["hidden_size"], 8)
 
     def test_source_grades_cannot_masquerade_as_measurements(self):
         with self.assertRaisesRegex(ValueError, "grade A"):
@@ -527,11 +667,29 @@ class OperatorDataProviderTest(unittest.TestCase):
         self.transfer = OperatorDataTransferLatencyProvider(
             self.lookup, "analytical", "af-fabric", 2
         )
+        self.moe_config = MoEModelConfig(
+            is_moe_model=True,
+            num_experts=4,
+            num_experts_per_tok=2,
+            num_moe_layers=1,
+        )
 
     def tearDown(self):
         self.temp.cleanup()
 
-    def _compute_query(self, stage="a", phase="decode", tokens=2, context=(2,)):
+    def _compute_query(
+        self,
+        stage="a",
+        phase="decode",
+        tokens=2,
+        context=(2,),
+        tp_size=1,
+        ep_size=1,
+        expert_workload=None,
+    ):
+        hidden_size = 8
+        if expert_workload is None and stage == "expert":
+            expert_workload = ((0, tokens),)
         return AFComputeQuery(
             iteration_id=0,
             block_id=0,
@@ -542,40 +700,135 @@ class OperatorDataProviderTest(unittest.TestCase):
             context_lengths=context,
             model_id="TestModel",
             dtype="bf16",
-            device_type="a-device" if stage == "a" else "f-device",
-            worker_id=0 if stage == "a" else 1,
+            device_type="a-device" if stage in {"a", "router"} else "f-device",
+            worker_id=0 if stage in {"a", "router"} else 1,
+            operation={
+                "a": "a_rank_compute",
+                "router": "router_topk",
+                "expert": "expert_rank_compute",
+            }[stage],
+            source_domain=("a-domain" if stage in {"a", "router"} else "f-domain"),
+            logical_participant="a0" if stage in {"a", "router"} else "f0",
+            physical_worker=("a-pool:0" if stage in {"a", "router"} else "f-pool:0"),
+            local_shape={
+                "tokens": tokens,
+                "hidden_size": (
+                    hidden_size
+                    if stage == "router"
+                    else math.ceil(hidden_size / tp_size)
+                ),
+                "global_hidden_size": hidden_size,
+                "tp_size": tp_size,
+            },
+            local_token_count=tokens,
+            expert_ids=tuple(expert_id for expert_id, _ in (expert_workload or ())),
+            expert_workload=tuple(expert_workload or ()),
+            tp_group=tuple(range(tp_size)),
+            ep_group=tuple(range(ep_size)) if stage == "expert" else (),
         )
 
     def test_attention_and_moe_composition_reconstruct_seconds_without_duplicates(self):
         a = self.compute.estimate(self._compute_query("a"))
-        f = self.compute.estimate(self._compute_query("f"))
-        for estimate in (a, f):
+        router = self.compute.estimate(self._compute_query("router"))
+        expert = self.compute.estimate(self._compute_query("expert"))
+        for estimate in (a, router, expert):
             total = sum(item["latency_us"] for item in estimate.details["components"])
             self.assertAlmostEqual(estimate.service_duration, total / 1e6)
             self.assertEqual(estimate.dataset_version, "test-v1")
         a_names = [item["name"] for item in a.details["components"]]
-        f_names = [item["name"] for item in f.details["components"]]
+        router_names = [item["name"] for item in router.details["components"]]
+        expert_names = [item["name"] for item in expert.details["components"]]
         self.assertEqual(a_names.count("qkv_projection"), 1)
         self.assertEqual(a_names.count("output_projection"), 1)
-        self.assertEqual(f_names.count("router"), 1)
-        self.assertEqual(f_names.count("moe_expert"), 1)
-        self.assertNotIn("dispatch", f_names)
+        self.assertEqual(router_names.count("router"), 1)
+        self.assertEqual(expert_names.count("moe_expert"), 1)
+        self.assertFalse(set(router_names) & set(expert_names))
+        self.assertNotIn("dispatch", router_names + expert_names)
 
     def test_prefill_uses_context_attention_and_prefill_moe_rows(self):
         a = self.compute.estimate(
             self._compute_query("a", phase="prefill", tokens=2, context=(2,))
         )
-        f = self.compute.estimate(
-            self._compute_query("f", phase="prefill", tokens=2, context=(2,))
+        expert = self.compute.estimate(
+            self._compute_query("expert", phase="prefill", tokens=2, context=(2,))
         )
         attention = next(
             item for item in a.details["components"] if item["name"] == "attention_core"
         )
         moe = next(
-            item for item in f.details["components"] if item["name"] == "moe_expert"
+            item
+            for item in expert.details["components"]
+            if item["name"] == "moe_expert"
         )
         self.assertIn("input_seq_len", attention["key"])
         self.assertEqual(moe["key"]["phase"], "prefill")
+
+    def test_rank_local_tp_shape_and_expert_workload_use_distinct_lookup_keys(self):
+        attention = self.compute.estimate(self._compute_query("a", tp_size=2))
+        by_name = {
+            item["name"]: item["key"] for item in attention.details["components"]
+        }
+        self.assertEqual(by_name["qkv_projection"]["n"], 12)
+        self.assertEqual(by_name["attention_core"]["num_heads"], 1)
+        self.assertEqual(by_name["output_projection"]["k"], 4)
+        self.assertEqual(attention.details["local_shape"]["hidden_size"], 4)
+
+        expert = self.compute.estimate(
+            self._compute_query("expert", tp_size=2, ep_size=2)
+        )
+        moe = next(
+            item
+            for item in expert.details["components"]
+            if item["name"] == "moe_expert"
+        )
+        self.assertEqual(moe["key"]["num_tokens"], 2)
+        self.assertEqual(moe["key"]["top_k"], 1)
+        self.assertEqual(moe["key"]["num_experts"], 1)
+        self.assertEqual(moe["key"]["tp_size"], 2)
+        self.assertEqual(moe["key"]["ep_size"], 2)
+        self.assertEqual(moe["match_type"], "interpolated")
+
+    def test_expert_component_preserves_and_aggregates_per_expert_workload(self):
+        estimate = self.compute.estimate(
+            self._compute_query(
+                "expert",
+                tokens=3,
+                expert_workload=((0, 1), (2, 2)),
+            )
+        )
+        component = next(
+            item
+            for item in estimate.details["components"]
+            if item["name"] == "moe_expert"
+        )
+
+        self.assertEqual(
+            [
+                (item["expert_id"], item["num_tokens"])
+                for item in component["per_expert"]
+            ],
+            [(0, 1), (2, 2)],
+        )
+        self.assertEqual(component["latency_us"], 18.0)
+
+    def test_expert_workload_rejects_invalid_expert_metadata(self):
+        out_of_range = replace(
+            self._compute_query("expert"),
+            expert_ids=(4,),
+            expert_workload=((4, 2),),
+        )
+        with self.assertRaisesRegex(ValueError, "outside model range"):
+            self.compute.estimate(out_of_range)
+
+        inconsistent_ids = replace(
+            self._compute_query(
+                "expert",
+                expert_workload=((0, 1), (2, 1)),
+            ),
+            expert_ids=(0, 1),
+        )
+        with self.assertRaisesRegex(ValueError, "does not match expert_workload"):
+            self.compute.estimate(inconsistent_ids)
 
     def test_explicit_operator_data_config_resolves_relative_paths(self):
         config = AFConfig(
@@ -602,6 +855,35 @@ class OperatorDataProviderTest(unittest.TestCase):
         with self.assertRaises(MissingOperatorDataError):
             provider.estimate(self._compute_query("a", tokens=99, context=(99,)))
 
+        missing_local_work = self._compute_query("expert")
+        missing_local_work = missing_local_work.__class__(
+            **{
+                **missing_local_work.__dict__,
+                "local_shape": {},
+                "local_token_count": None,
+            }
+        )
+        with self.assertRaisesRegex(
+            ValueError, "local_token_count.*expert_rank_compute"
+        ):
+            provider.estimate(missing_local_work)
+
+        split_conflict_path = Path(self.temp.name) / "split-conflict.yaml"
+        _write_manifest(split_conflict_path)
+        split_document = yaml.safe_load(split_conflict_path.read_text(encoding="utf-8"))
+        split_document["models"]["TestModel"]["component_includes"] = {
+            "router": ["moe_body"],
+            "moe_expert": ["moe_body"],
+        }
+        split_conflict_path.write_text(yaml.safe_dump(split_document), encoding="utf-8")
+        split_provider = OperatorDataComputeLatencyProvider(
+            self.lookup,
+            ModelOperatorManifest.load(split_conflict_path),
+            "analytical",
+        )
+        with self.assertRaisesRegex(ValueError, "covered by both"):
+            split_provider.estimate(self._compute_query("router"))
+
     def test_transfer_formula_payload_direction_and_service_only(self):
         query = AFTransferQuery(
             iteration_id=0,
@@ -615,6 +897,9 @@ class OperatorDataProviderTest(unittest.TestCase):
             source_device="a-device",
             target_device="f-device",
             network="af-net",
+            operation="af_a_to_f",
+            group_size=2,
+            payload_bytes=32,
         )
         first = self.transfer.estimate(query)
         second = self.transfer.estimate(query)
@@ -626,29 +911,41 @@ class OperatorDataProviderTest(unittest.TestCase):
             **{
                 **query.__dict__,
                 "direction": "f_to_a",
+                "operation": "af_f_to_a",
                 "source_device": "f-device",
                 "target_device": "a-device",
             }
         )
         self.assertAlmostEqual(self.transfer.estimate(reverse).service_duration, 3e-6)
         dispatch = query.__class__(
-            **{**query.__dict__, "operation": "moe_dispatch", "top_k": 2}
+            **{
+                **query.__dict__,
+                "operation": "ep_dispatch",
+                "direction": "ep_dispatch",
+                "source_device": "f-device",
+                "target_device": "f-device",
+                "group_size": 1,
+                "payload_bytes": 64,
+            }
         )
         dispatch_estimate = self.transfer.estimate(dispatch)
         self.assertEqual(dispatch_estimate.payload_bytes, 64)
-        self.assertEqual(dispatch_estimate.details["key"]["operation"], "moe_dispatch")
+        self.assertEqual(dispatch_estimate.details["key"]["operation"], "ep_dispatch")
         all_reduce = query.__class__(
             **{
                 **query.__dict__,
-                "operation": "all_reduce",
-                "direction": "collective",
+                "operation": "tp_collective",
+                "direction": "tp_collective",
                 "target_device": "a-device",
-                "group_size": 4,
+                "group_size": 2,
+                "payload_bytes": 48,
             }
         )
         all_reduce_estimate = self.transfer.estimate(all_reduce)
         self.assertEqual(all_reduce_estimate.payload_bytes, 48)
-        self.assertEqual(all_reduce_estimate.details["key"]["operation"], "all_reduce")
+        self.assertEqual(
+            all_reduce_estimate.details["key"]["operation"], "tp_collective"
+        )
 
     def test_executor_trace_preserves_provider_metadata_and_contention(self):
         cluster = ClusterConfig(
@@ -700,6 +997,7 @@ class OperatorDataProviderTest(unittest.TestCase):
             "bf16",
             total_layers=1,
             hidden_size=8,
+            moe_config=self.moe_config,
         )
         requests = [
             SimpleNamespace(
@@ -715,10 +1013,41 @@ class OperatorDataProviderTest(unittest.TestCase):
         env.process(executor.run_iteration(iteration))
         env.run()
         events = executor.trace.events
-        self.assertEqual(len(events), 8)
+        self.assertEqual(len(events), 10)
+        self.assertEqual(
+            {event.operation for event in events if event.event_type == "transfer"},
+            {"af_a_to_f", "af_f_to_a"},
+        )
         self.assertTrue(all(event.dataset_version == "test-v1" for event in events))
         self.assertTrue(all(event.match_type == "exact" for event in events))
         self.assertTrue(any(event.queue_duration > 0 for event in events))
+        for block_id in (0, 1):
+            compute_events = [
+                event
+                for event in events
+                if event.block_id == block_id and event.event_type == "compute"
+            ]
+            self.assertEqual(
+                [event.stage for event in compute_events],
+                ["a", "router", "expert"],
+            )
+            router_components = {
+                item["name"] for item in compute_events[1].details["components"]
+            }
+            expert_components = {
+                item["name"] for item in compute_events[2].details["components"]
+            }
+            self.assertFalse(router_components & expert_components)
+            self.assertEqual(
+                compute_events[1].source_domain.startswith("implicit:a-"), True
+            )
+            self.assertEqual(
+                compute_events[2].source_domain.startswith("implicit:f-"), True
+            )
+            self.assertNotEqual(
+                compute_events[1].physical_endpoints,
+                compute_events[2].physical_endpoints,
+            )
         for event in events:
             self.assertAlmostEqual(
                 event.end_at - event.ready_at,
@@ -777,6 +1106,7 @@ class OperatorDataProviderTest(unittest.TestCase):
                 "bf16",
                 total_layers=1,
                 hidden_size=8,
+                moe_config=self.moe_config,
             )
             requests = [
                 SimpleNamespace(
@@ -840,15 +1170,24 @@ class OperatorDataProviderTest(unittest.TestCase):
             },
         )
         env = simpy.Environment()
+        roofline = AFRooflineStub()
+        roofline.models["TestModel"].Dmodel = 8
         with patch("TokenSim.llm.llm_engine.CacheConfig", LightweightCacheConfig):
             engine = LLMEngine(
                 env=env,
                 block_size=2,
                 batching="dynamic",
                 kv_transfer_config=KVTransferConfig.default(),
-                psla_config=_psla_config(),
+                psla_config=replace(
+                    _psla_config(),
+                    is_moe_model=True,
+                    num_experts=4,
+                    num_experts_per_tok=2,
+                    num_moe_layers=1,
+                    moe_intermediate_size=16,
+                ),
                 cluster_config=cluster,
-                roofline=AFRooflineStub(),
+                roofline=roofline,
                 prefill_worker_pool_type="round_robin",
                 decode_worker_pool_type="round_robin",
                 max_parallem_sum=8,

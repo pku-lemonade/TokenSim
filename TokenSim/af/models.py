@@ -8,6 +8,25 @@ AFPhase = Literal["prefill", "decode"]
 
 
 @dataclass(frozen=True)
+class AFExpertPlacement:
+    expert_id: int
+    ep_rank: int
+    domain_ranks: tuple[int, ...]
+    physical_workers: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class AFBlockPlacement:
+    a_domain: str
+    a_instance: str
+    a_dp_rank: int
+    f_domain: str
+    f_instance: str
+    f_dp_rank: int
+    expert_placement: tuple[AFExpertPlacement, ...] = ()
+
+
+@dataclass(frozen=True)
 class AFBlock:
     iteration_id: int
     block_id: int
@@ -18,6 +37,8 @@ class AFBlock:
     context_lengths: tuple[int, ...]
     source_a_worker_id: int
     link_name: str
+    placement: AFBlockPlacement | None = None
+    expert_histogram: tuple[tuple[int, int], ...] = ()
 
 
 @dataclass

@@ -12,3 +12,8 @@ tmp
 
 .codex
 .claude
+.agents/
+
+tests/.codex-tmp/
+tests/.tmp/
+tests/tmp*/

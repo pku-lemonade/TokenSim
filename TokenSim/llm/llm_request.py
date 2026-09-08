@@ -207,6 +207,7 @@ class Request:
     expert_histogram: dict[int, int] | list | None = None
     prefill_expert_histogram: dict[int, int] | list | None = None
     decode_expert_histogram: dict[int, int] | list | None = None
+    af_a_owners: dict[str, str] = field(default_factory=dict, repr=False)
     cache_salt: str | None = None
     reuse_group: str | None = None
     cached_prefill_blocks: int = 0
