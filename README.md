@@ -17,20 +17,16 @@ Model Inference Systems](https://arxiv.org/abs/2503.08415)
 - MoE expert placement, routing distributions, all-to-all latency, and load metrics.
 - P2P and Mooncake-compatible KV transfer connectors.
 - Mooncake memory-store and SSD offload simulation with admission and LRU eviction.
-- Roofline latency modeling and an optional LLMCompass backend.
+- Operator-level latency tables (measured kernels first, analytical roofline
+  fallback) for A100/H100/H200/H20/RTX 4090/GB300 GPUs and the Groq TSP, plus an
+  optional LLMCompass backend.
+- Hierarchical interconnect topologies (chip / node / rack / cluster) with an
+  alpha-beta collective model that scales to thousands of devices.
 
 ## Requirements
 
-The default latency backend uses the bundled
-`TransformerRoofline/roofline.cpython-311-x86_64-linux-gnu.so`. The supported
-runtime for that backend is:
-
-- Linux x86_64
-- Python 3.11
-
-The TransformerRoofline Python source and notebooks are not included. The
-precompiled extension and the hardware data needed by TokenSim are included in
-`TransformerRoofline/`.
+Pure Python (3.10+), no compiled extensions. Operator tables are Parquet files
+read with `pyarrow`; catalogs are YAML.
 
 ## Installation
 
@@ -38,8 +34,8 @@ precompiled extension and the hardware data needed by TokenSim are included in
 git clone https://github.com/pku-lemonade/TokenSim.git
 cd TokenSim
 
-conda create -n tokensim11 python=3.11
-conda activate tokensim11
+conda create -n tokensim python=3.12
+conda activate tokensim
 pip install -r requirements.txt
 ```
 
@@ -62,6 +58,18 @@ Run a JSON pair workload:
 
 ```bash
 ./scripts/use_dataset.sh
+```
+
+Run Llama-3-70B on an 8x H100 node with measured TensorRT-LLM kernel tables:
+
+```bash
+./benchmark.py \
+  --batching paged-attn \
+  --request_count 32 \
+  --cluster ./data/clusters/8_h100/tp8.json \
+  --model ./data/psla/llama-3-70b.json \
+  --qps 4 \
+  --verbose none
 ```
 
 Run the included MoE example with TP=2, DP=4, and expert parallelism:
@@ -103,11 +111,15 @@ The main configuration surfaces are:
 
 | Surface | Location or option | Purpose |
 | --- | --- | --- |
-| Model and workload defaults | `data/psla/*.json`, `--model` | Model dimensions, length distributions, SLOs, and MoE metadata |
-| Cluster | `data/clusters/**/*.json`, `--cluster` | Worker roles, hardware, networks, and optional parallel/KV settings |
+| Workload defaults | `data/psla/*.json`, `--model` | Which catalog model to run, length distributions, SLOs, and MoE metadata |
+| Models | `data/models/*.yaml` | Architecture (hidden size, heads, KV heads, FFN, MoE) transcribed from HF configs |
+| Devices | `data/devices/*.yaml` | Peak compute per dtype, memory, on-chip SRAM, interconnect ports, sourced values |
+| Topologies | `data/topologies/*.yaml`, `links.yaml` | Link classes and chip/node/rack/cluster hierarchies |
+| Operator data | `data/operator_data/<device>/<backend>/` | Measured or analytical latency tables; see [operator latency model](docs/operator-latency-model.md) |
+| Cluster | `data/clusters/**/*.json`, `--cluster` | Worker roles, hardware, networks, optional `topology`, `device_indices`, `operator_backend` |
 | KV transfer | `data/kv_transfer/*.json`, `--kv_transfer_config` | P2P, Mooncake store, SSD, and multi-connector settings |
 | Dataset | `--dataset_path`, `--workload_type` | Synthetic, `json_pairs`, or `qwen_jsonl` requests |
-| Latency | `--latency_backend` | `roofline` or an LLMCompass architecture template path |
+| Latency | `--latency_backend`, `--latency_fallback`, `--operator_backend` | `operator_table` (default), `analytical`, or an LLMCompass template path |
 
 Useful CLI options include:
 
@@ -128,6 +140,11 @@ public release should also review the current configuration examples.
 
 ## Feature Guides
 
+- [Operator latency model](docs/operator-latency-model.md): device/model/topology
+  catalogs, operator tables, lookup rules, analytical fallback, communication
+  model, and the `operator_data` CLI.
+- [Data collection checklist](docs/data-collection-checklist.md): which kernels
+  to measure on which device, and how to import the results.
 - [Prefix cache](docs/prefix-cache.md): workload metadata, exact hit conditions,
   output-prefix reuse, and result metrics.
 - [MoE](docs/moe.md): model metadata, expert parallelism, routing distributions,
@@ -157,7 +174,10 @@ results/<model>/<cluster-directory>/<cluster>/result_<qps>.json
 ```
 
 The JSON output includes latency and throughput, preemption/recomputation,
-prefix-cache reuse, connector transfer, parallelism, MoE, and Mooncake metrics.
+prefix-cache reuse, connector transfer, parallelism, MoE, Mooncake metrics, and
+the provenance of every latency estimate (`latency_backends`,
+`operator_match_type_counts`, `operator_component_seconds`). Shapes that no
+table could answer are written to `missing_shapes_<qps>.json` next to the result.
 If the SimPy event queue ends with unfinished requests, TokenSim writes a failure
 snapshot and raises an error instead of exporting a successful result.
 

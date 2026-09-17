@@ -4,21 +4,19 @@ import argparse
 import json
 import simpy
 from pathlib import Path
-import sys
 import os
 import time
 
 from util.results import export_result, print_all_stats
 from util.request import get_requests, LLMSource
 from util.tqdm import TqdmManager
-from util.compass import get_compass_vars
-
 from TokenSim.llm.llm_engine import LLMEngine
 from TokenSim.llm.llm_request import g_time, reset_g_time, Request
 from TokenSim.config.config import ClusterConfig, KVTransferConfig, ParallelConfig
 from TokenSim.config.psla_config import PSLAConfig
 from TokenSim.errors import ConfigurationError, SimulationStateError
-from TransformerRoofline import TransformerRoofline
+from TokenSim.hardware import HardwareContext
+from TokenSim.latency import FALLBACK_POLICIES
 
 
 def check_results(
@@ -110,20 +108,7 @@ def check_results(
 def main(args: argparse.Namespace):
     reset_g_time()
     latency_backend_type = get_latency_backend_type(args.latency_backend)
-    if latency_backend_type == "llm_compass":
-        llm_compass_path = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            "LLMCompass",
-        )
-        sys.path.append(llm_compass_path)
-        wrapped_llmcompass_vars = get_compass_vars(args.latency_backend)
-    else:
-        wrapped_llmcompass_vars = None
-    roofline = TransformerRoofline(
-        "./TransformerRoofline/hardware_models.json",
-        "./TransformerRoofline/allreduce_v100.xlsx",
-        "./TransformerRoofline/hardware_elements.json",
-    )
+    hardware = HardwareContext.load(args.data_root)
 
     cluster = ClusterConfig.from_file(args.cluster)
     kv_transfer_override = (
@@ -156,13 +141,15 @@ def main(args: argparse.Namespace):
         psla_config=model_config,
         cluster_config=cluster,
         parallel_config=parallel_config,
-        roofline=roofline,
+        hardware=hardware,
         prefill_worker_pool_type=args.prefill_worker_pool_type,
         decode_worker_pool_type=args.decode_worker_pool_type,
         max_parallem_sum=args.max_parallem_sum,
         max_occupy_ratio=args.max_occupy_ratio,
         latency_backend_type=latency_backend_type,
-        wrapped_llmcompass_vars=wrapped_llmcompass_vars,
+        latency_fallback=args.latency_fallback,
+        operator_backend=args.operator_backend,
+        decode_context_bucket=args.decode_context_bucket,
         random_seed=args.random_seed,
         debug_print=getattr(args, "debug_print", False),
     )
@@ -202,10 +189,17 @@ def main(args: argparse.Namespace):
     )
 
 
+LATENCY_BACKEND_KEYWORDS = ("operator_table", "analytical")
+
+
 def get_latency_backend_type(latency_backend: str) -> str:
-    if latency_backend == "roofline":
-        return "roofline"
-    return "llm_compass"
+    """Map the CLI value to a backend type."""
+    if latency_backend in LATENCY_BACKEND_KEYWORDS:
+        return latency_backend
+    raise ConfigurationError(
+        f"unsupported latency backend {latency_backend!r}; "
+        "use 'operator_table' (tables with analytical fallback) or 'analytical'"
+    )
 
 
 def build_parallel_config(
@@ -350,8 +344,35 @@ if __name__ == "__main__":
     parser.add_argument(
         "--latency_backend",
         type=str,
-        default="roofline",
-        help="Use 'roofline' or provide an LLMCompass architecture template path.",
+        default="operator_table",
+        help=(
+            "'operator_table' (per-operator tables with analytical fallback) "
+            "or 'analytical' (formulas only)."
+        ),
+    )
+    parser.add_argument(
+        "--latency_fallback",
+        choices=list(FALLBACK_POLICIES),
+        default="table_first",
+        help="How operator_table handles shapes missing from the tables.",
+    )
+    parser.add_argument(
+        "--operator_backend",
+        type=str,
+        default=None,
+        help="Operator-data backend to load for every worker (e.g. trtllm, vllm, analytical).",
+    )
+    parser.add_argument(
+        "--decode_context_bucket",
+        type=int,
+        default=128,
+        help="Decode attention lookups round context length up to this multiple.",
+    )
+    parser.add_argument(
+        "--data_root",
+        type=str,
+        default="./data",
+        help="Directory holding devices/, topologies/, models/ and operator_data/.",
     )
 
     args = parser.parse_args()

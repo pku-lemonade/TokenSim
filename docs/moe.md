@@ -1,9 +1,14 @@
 # Mixture-of-Experts Simulation
 
 TokenSim models MoE layer placement, routed expert compute, expert load
-imbalance, and expert-parallel all-to-all communication. A MoE run needs both a
-model entry in `TransformerRoofline/hardware_models.json` and MoE metadata in a
-PSLA file under `data/psla/`.
+imbalance, and expert-parallel all-to-all communication. A MoE run needs a
+model entry in `data/models/*.yaml` (MoE fields under `moe:`) or MoE metadata in
+the PSLA file under `data/psla/`; PSLA metadata overrides the catalog entry.
+Expert compute comes from the `moe` operator table (or the analytical model)
+queried with the layer's token count, `top_k`, expert count and the effective
+`tp_size`/`ep_size`; the routing histogram scales it by the per-rank load
+imbalance and the dispatch/combine all-to-all is priced by the communication
+model.
 
 ## Quick Start
 

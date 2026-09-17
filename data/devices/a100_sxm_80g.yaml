@@ -1,0 +1,32 @@
+schema_version: 1
+device_id: a100_sxm_80g
+family: nvidia_gpu
+display_name: NVIDIA A100-SXM4-80GB
+aliases: [A100, A100-80G, A100-SXM4-80GB, a100_sxm]
+sources:
+  nvidia-a100-product-page:
+    grade: A
+    reference: https://www.nvidia.com/en-us/data-center/a100/
+    notes: Official specification table. Tensor throughput quoted dense (sparsity figures halved).
+  assumption-gpu-analytical-v1:
+    grade: D
+    reference: docs/operator-latency-model.md#analytical-defaults
+    notes: Project defaults for kernel efficiency and launch overhead until calibrated.
+peak_compute:            # dense operations per second
+  fp16: {value: 312.0e12, source_id: nvidia-a100-product-page}
+  bf16: {value: 312.0e12, source_id: nvidia-a100-product-page}
+  tf32: {value: 156.0e12, source_id: nvidia-a100-product-page}
+  int8: {value: 624.0e12, source_id: nvidia-a100-product-page}
+  fp32: {value: 19.5e12, source_id: nvidia-a100-product-page}
+memory:
+  kind: hbm2e
+  capacity_bytes: {value: 85899345920, source_id: nvidia-a100-product-page}     # 80 GiB
+  bandwidth_bytes_per_s: {value: 2039.0e9, source_id: nvidia-a100-product-page}
+on_chip_memory:
+  capacity_bytes: {value: 41943040, source_id: nvidia-a100-product-page}          # 40 MB L2
+interconnect:
+  scale_up_link: nvlink3          # 600 GB/s bidirectional = 300 GB/s per direction
+  scale_up_ports: 12
+  host_link: pcie4_x16
+step_overhead_us: {value: 0.0, source_id: assumption-gpu-analytical-v1, grade: D}
+power: {tdp_w: 400}

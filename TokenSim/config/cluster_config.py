@@ -16,6 +16,8 @@ class WorkerConfig:
     network: str
     nettype: str
     rank_info: ParallelRankInfo | None = None
+    device_index: int | None = None
+    operator_backend: str | None = None
 
 
 @dataclass
@@ -24,6 +26,10 @@ class WorkerGroupConfig:
     hardware: str
     num_workers: int
     network: str = "net1"
+    # Explicit topology device indices for the group's workers (optional).
+    device_indices: list[int] | None = None
+    # Which operator-data backend (e.g. trtllm, vllm, analytical) to use.
+    operator_backend: str | None = None
 
     def workers(self, networks):
         if self.role not in WORKER_ROLES:
@@ -31,9 +37,27 @@ class WorkerGroupConfig:
                 f"unsupported worker role {self.role!r}; expected one of "
                 + f"{sorted(WORKER_ROLES)}"
             )
+        if self.network not in networks:
+            raise ConfigurationError(
+                f"worker group {self.role!r} references unknown network {self.network!r}; "
+                + f"known networks: {sorted(networks)}"
+            )
+        if self.device_indices is not None and len(self.device_indices) != self.num_workers:
+            raise ConfigurationError(
+                f"worker group {self.role!r}: device_indices must have num_workers entries"
+            )
         return [
-            WorkerConfig(self.role, self.hardware, self.network, networks[self.network])
-            for _ in range(self.num_workers)
+            WorkerConfig(
+                self.role,
+                self.hardware,
+                self.network,
+                networks[self.network],
+                device_index=(
+                    self.device_indices[index] if self.device_indices is not None else None
+                ),
+                operator_backend=self.operator_backend,
+            )
+            for index in range(self.num_workers)
         ]
 
     def __str__(self):
@@ -48,6 +72,9 @@ class ClusterConfig:
     worker_groups: list[WorkerGroupConfig] = Field(default_factory=list)
     kv_transfer: KVTransferConfig | None = None
     parallel_config: ParallelConfig | None = None
+    # Optional catalog topology id (data/topologies/*.yaml). When omitted a
+    # two-level topology is synthesized from ``networks``.
+    topology: str | None = None
 
     @classmethod
     def from_file(cls, filename):

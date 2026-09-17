@@ -1,0 +1,31 @@
+schema_version: 1
+device_id: a100_sxm_40g
+family: nvidia_gpu
+display_name: NVIDIA A100-SXM4-40GB
+aliases: [A100-40G, A100-40GB, A100-SXM4-40GB]
+sources:
+  nvidia-a100-datasheet-40g:
+    grade: A
+    reference: https://www.nvidia.com/content/dam/en-zz/Solutions/Data-Center/a100/pdf/nvidia-a100-datasheet-us-nvidia-1758950-r4-web.pdf
+    notes: A100 datasheet, 40GB SXM column (1,555 GB/s, 40 GB HBM2). Compute identical to 80GB part.
+  assumption-gpu-analytical-v1:
+    grade: D
+    reference: docs/operator-latency-model.md#analytical-defaults
+peak_compute:
+  fp16: {value: 312.0e12, source_id: nvidia-a100-datasheet-40g}
+  bf16: {value: 312.0e12, source_id: nvidia-a100-datasheet-40g}
+  tf32: {value: 156.0e12, source_id: nvidia-a100-datasheet-40g}
+  int8: {value: 624.0e12, source_id: nvidia-a100-datasheet-40g}
+  fp32: {value: 19.5e12, source_id: nvidia-a100-datasheet-40g}
+memory:
+  kind: hbm2
+  capacity_bytes: {value: 42949672960, source_id: nvidia-a100-datasheet-40g}      # 40 GiB
+  bandwidth_bytes_per_s: {value: 1555.0e9, source_id: nvidia-a100-datasheet-40g}
+on_chip_memory:
+  capacity_bytes: {value: 41943040, source_id: nvidia-a100-datasheet-40g}
+interconnect:
+  scale_up_link: nvlink3
+  scale_up_ports: 12
+  host_link: pcie4_x16
+step_overhead_us: {value: 0.0, source_id: assumption-gpu-analytical-v1, grade: D}
+power: {tdp_w: 400}

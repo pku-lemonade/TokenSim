@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import math
 import json
 import tempfile
 import unittest
@@ -26,7 +27,10 @@ from TokenSim.kv_transfer import (
     P2PConnector,
 )
 from TokenSim.errors import ConfigurationError, SimulationStateError
-from TokenSim.latency import RooflineLatencyBackend, build_latency_backend
+from TokenSim.latency import OperatorTableLatencyBackend, build_latency_backend
+from TokenSim.operator_data.lookup import MissingOperatorDataError
+from TokenSim.operator_data.package import OperatorDataPackage, PackageMeta, SourceRecord
+from tests.hardware_fixtures import test_device, test_model
 from TokenSim.llm.llm_engine import (
     LLMEngine,
     LLMWorker,
@@ -157,25 +161,6 @@ class PlacementPolicyTest(unittest.TestCase):
                 self.assertEqual(workers[0].role, role)
 
 
-class _RooflineStub:
-    def __init__(self):
-        self.calls = []
-
-    def Compute_Timebreakdown_Iteration(
-        self,
-        prefill_len,
-        generation_idx,
-        batch_size,
-        model,
-        hardware,
-        Pipeline_Stage,
-    ):
-        self.calls.append(
-            (prefill_len, generation_idx, batch_size, model, hardware, Pipeline_Stage)
-        )
-        return 0.01, 0.001
-
-
 class _LatencyRequest:
     def __init__(
         self,
@@ -186,6 +171,7 @@ class _LatencyRequest:
         needs_recompute: bool = False,
         recompute_tokens: int = 0,
     ):
+        self.id = 0
         self.prefill_len = prefill_len
         self.generation_idx = generation_idx
         self.is_prefill = is_prefill
@@ -196,88 +182,106 @@ class _LatencyRequest:
         self.recompute_tokens = recompute_tokens
 
 
-class LatencyBackendTest(unittest.TestCase):
-    def test_latency_backend_cli_uses_roofline_or_llmcompass_template_path(self):
-        self.assertEqual(get_latency_backend_type("roofline"), "roofline")
-        self.assertEqual(
-            get_latency_backend_type("./LLMCompass/examples/a100.json"),
-            "llm_compass",
-        )
+_DEVICE = test_device("TestGPU")
+_MODEL = test_model("TestModel", hidden_size=64, intermediate_size=128, num_layers=2, num_attention_heads=4)
 
-    def test_latency_backend_builder_creates_roofline_backend(self):
+
+def _analytical_backend(**kwargs) -> OperatorTableLatencyBackend:
+    return OperatorTableLatencyBackend(
+        device=_DEVICE, model=_MODEL, parallel_config=ParallelConfig(), fallback="analytical_only", **kwargs
+    )
+
+
+def _gemm_only_package() -> OperatorDataPackage:
+    source = SourceRecord("measured:test", "A", "measured", device="TestGPU", backend="test")
+    meta = PackageMeta(dataset_version="test-v1", device_id="TestGPU", backend="test", sources={"measured:test": source})
+    rows = [
+        {"dtype": "fp16", "m": m, "n": n, "k": k, "latency_us": 10.0 + m, "source_id": "measured:test"}
+        for m in (1, 8, 64)
+        for (n, k) in ((192, 64), (64, 64), (256, 64), (64, 128), (1024, 64))
+    ]
+    return OperatorDataPackage.from_rows(meta, {"gemm": rows})
+
+
+class LatencyBackendTest(unittest.TestCase):
+    def test_latency_backend_cli_uses_keywords_or_rejects_unknown(self):
+        self.assertEqual(get_latency_backend_type("operator_table"), "operator_table")
+        self.assertEqual(get_latency_backend_type("analytical"), "analytical")
+        with self.assertRaises(ConfigurationError):
+            get_latency_backend_type("roofline")
+        with self.assertRaises(ConfigurationError):
+            get_latency_backend_type("unknown_backend")
+
+    def test_latency_backend_builder_creates_operator_table_backend(self):
         backend = build_latency_backend(
-            "roofline",
-            roofline=_RooflineStub(),
-            model="model",
-            hardware="hardware",
+            "analytical",
+            device=_DEVICE,
+            model=_MODEL,
             parallel_config=ParallelConfig(),
         )
 
-        self.assertIsInstance(backend, RooflineLatencyBackend)
+        self.assertIsInstance(backend, OperatorTableLatencyBackend)
+        self.assertEqual(backend.describe()["fallback"], "analytical_only")
 
-    def test_latency_backend_builder_requires_llmcompass_vars(self):
+    def test_latency_backend_builder_rejects_unknown_type(self):
         with self.assertRaises(ConfigurationError):
             build_latency_backend(
-                "llm_compass",
-                roofline=_RooflineStub(),
-                model="model",
-                hardware="hardware",
+                "unknown",
+                device=_DEVICE,
+                model=_MODEL,
                 parallel_config=ParallelConfig(),
             )
 
-    def test_roofline_backend_prefill_projection_uses_packed_context_batch(self):
-        roofline = _RooflineStub()
-        backend = RooflineLatencyBackend(
-            roofline, "model", "hardware", ParallelConfig()
-        )
+    def test_table_only_requires_operator_data(self):
+        with self.assertRaises(ConfigurationError):
+            build_latency_backend(
+                "operator_table",
+                device=_DEVICE,
+                model=_MODEL,
+                parallel_config=ParallelConfig(),
+                fallback="table_only",
+            )
+
+    def test_prefill_step_sums_tokens_and_groups_attention_by_shape(self):
+        backend = _analytical_backend()
         requests = [
             _LatencyRequest(prefill_len=64, generation_idx=0, is_prefill=True),
             _LatencyRequest(prefill_len=64, generation_idx=0, is_prefill=True),
         ]
 
-        backend.estimate_step_latency(requests)
+        latency = backend.estimate_step_latency(requests)
+        single = _analytical_backend().estimate_step_latency(requests[:1])
 
-        self.assertEqual(roofline.calls[0][0], 256)
-        self.assertEqual(roofline.calls[0][2], 1)
+        self.assertGreater(latency, single)
+        # Both requests share one (query_len, kv_len) shape, so attention is
+        # looked up once with batch_size=2 rather than twice.
+        attention = backend.stats.table_match_counts["context_attention"]
+        self.assertEqual(sum(attention.values()), 1)
 
-    def test_roofline_backend_uses_nonzero_attention_prefill_for_zero_effective_prompt(
-        self,
-    ):
-        roofline = _RooflineStub()
-        backend = RooflineLatencyBackend(
-            roofline, "model", "hardware", ParallelConfig()
-        )
-        request = _LatencyRequest(
-            prefill_len=128,
-            prefill_compute_len=0,
-            generation_idx=0,
-            is_prefill=True,
-        )
+    def test_prefill_with_zero_effective_prompt_uses_one_token(self):
+        backend = _analytical_backend()
+        request = _LatencyRequest(prefill_len=128, prefill_compute_len=0, generation_idx=0, is_prefill=True)
 
-        backend.estimate_step_latency([request])
+        latency = backend.estimate_step_latency([request])
 
-        self.assertEqual(roofline.calls[1][0], 1)
+        self.assertGreater(latency, 0)
+        self.assertTrue(math.isfinite(latency))
 
-    def test_roofline_backend_decode_uses_original_prefill_len_without_hits(self):
-        roofline = _RooflineStub()
-        backend = RooflineLatencyBackend(
-            roofline, "model", "hardware", ParallelConfig()
-        )
-        request = _LatencyRequest(prefill_len=128, generation_idx=1, is_prefill=False)
+    def test_decode_step_buckets_context_length(self):
+        backend = _analytical_backend(decode_context_bucket=128)
+        short = _LatencyRequest(prefill_len=100, generation_idx=1, is_prefill=False)
+        long = _LatencyRequest(prefill_len=120, generation_idx=1, is_prefill=False)
 
-        backend.estimate_step_latency([request])
+        backend.estimate_step_latency([short])
+        backend.estimate_step_latency([long])
 
-        # The projection and per-request attention lookups share the same
-        # (prompt_len, step, batch) key here, so memoization dedupes them into
-        # a single roofline call — still with the original prefill length.
-        self.assertEqual(len(roofline.calls), 1)
-        self.assertEqual(roofline.calls[0][0], 128)
+        # Both contexts round up to the same 128-token bucket, so the second
+        # decode step reuses the cached attention estimate.
+        self.assertEqual(backend.stats.table_match_counts["generation_attention"]["analytical"], 2)
+        self.assertEqual(len([k for k in backend._cache if k[0] == "generation_attention"]), 1)
 
-    def test_roofline_backend_models_recompute_as_context_build(self):
-        roofline = _RooflineStub()
-        backend = RooflineLatencyBackend(
-            roofline, "model", "hardware", ParallelConfig()
-        )
+    def test_recompute_is_modelled_as_context_build(self):
+        backend = _analytical_backend()
         request = _LatencyRequest(
             prefill_len=128,
             generation_idx=17,
@@ -286,10 +290,43 @@ class LatencyBackendTest(unittest.TestCase):
             recompute_tokens=96,
         )
 
-        backend.estimate_step_latency([request])
+        latency = backend.estimate_step_latency([request])
 
-        self.assertEqual(roofline.calls[0][0], 128)
-        self.assertEqual(roofline.calls[0][1], 0)
+        self.assertGreater(latency, 0)
+        self.assertIn("context_attention", backend.stats.table_match_counts)
+        self.assertNotIn("generation_attention", backend.stats.table_match_counts)
+
+    def test_zero_token_recompute_costs_nothing(self):
+        backend = _analytical_backend()
+        request = _LatencyRequest(prefill_len=16, generation_idx=3, is_prefill=False, needs_recompute=True, recompute_tokens=0)
+
+        self.assertEqual(backend.estimate_step_latency([request]), 0.0)
+
+    def test_table_first_prefers_measured_rows_and_records_missing_shapes(self):
+        package = _gemm_only_package()
+        backend = OperatorTableLatencyBackend(
+            device=_DEVICE, model=_MODEL, parallel_config=ParallelConfig(), package=package, fallback="table_first"
+        )
+        request = _LatencyRequest(prefill_len=8, generation_idx=0, is_prefill=True)
+
+        backend.estimate_step_latency([request])
+        stats = backend.stats.as_dict()
+
+        self.assertGreater(stats["operator_match_type_counts"].get("exact", 0), 0)
+        self.assertGreater(stats["operator_match_type_counts"].get("analytical", 0), 0)
+        self.assertGreater(stats["operator_missing_shape_count"], 0)
+        tables_missing = {item["table"] for item in backend.stats.missing_shape_records()}
+        self.assertIn("context_attention", tables_missing)
+        self.assertEqual(backend.describe()["dataset_version"], "test-v1")
+
+    def test_table_only_raises_on_missing_shape(self):
+        backend = OperatorTableLatencyBackend(
+            device=_DEVICE, model=_MODEL, parallel_config=ParallelConfig(), package=_gemm_only_package(), fallback="table_only"
+        )
+        request = _LatencyRequest(prefill_len=8, generation_idx=0, is_prefill=True)
+
+        with self.assertRaises(MissingOperatorDataError):
+            backend.estimate_step_latency([request])
 
 
 class SchedulerOutputTest(unittest.TestCase):

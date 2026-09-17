@@ -37,42 +37,14 @@ from util.request import LLMSource
 from util.results import export_result, get_mooncake_stats
 
 
-class _Roofline:
-    def __init__(self):
-        self.links = {
-            "nvlink": type("Link", (), {"Latency": 1e-6, "UniBW": 300.0})(),
-            "ethernet-test": type("Link", (), {"Latency": 1e-5, "UniBW": 12.5})(),
-        }
-        self.hardwares = {
-            "TestGPU": type(
-                "Hardware",
-                (),
-                {
-                    "Name": "TestGPU",
-                    "MM_Card_Num": 1,
-                    "Capacity": 80,
-                    "Nvlink": "nvlink",
-                    "Pcie": "ethernet-test",
-                    "MM_TFLOPS": 100,
-                },
-            )()
-        }
-        self.models = {
-            "TestModel": type(
-                "Model",
-                (),
-                {
-                    "Name": "TestModel",
-                    "Nlayer": 2,
-                    "Dmodel": 128,
-                    "Nhead": 8,
-                    "FFN_Hidden": 256,
-                },
-            )()
-        }
+from tests.hardware_fixtures import test_device, test_hardware, test_model
 
-    def Compute_Timebreakdown_Iteration(self, *args, **kwargs):
-        return 0.001, 0.0005
+_DEVICE = test_device("TestGPU", memory_gib=80.0)
+_MODEL = test_model("TestModel", hidden_size=128, intermediate_size=256, num_layers=2, num_attention_heads=8)
+
+
+def _hardware():
+    return test_hardware(_DEVICE, models=[_MODEL])
 
 
 class _CacheConfig:
@@ -638,11 +610,12 @@ class MooncakeEndToEndTest(unittest.TestCase):
             ),
             psla_config=_psla(),
             cluster_config=cluster,
-            roofline=_Roofline(),
+            hardware=_hardware(),
             prefill_worker_pool_type="round_robin",
             decode_worker_pool_type="round_robin",
             max_parallem_sum=8,
             max_occupy_ratio=1,
+            latency_backend_type="analytical",
         )
         requests = [
             Request(0, 32, 2, 16, inter_arrival_time=0.05, hash_ids=["a", "b"]),
@@ -711,11 +684,12 @@ class MooncakeEndToEndTest(unittest.TestCase):
             kv_transfer_config=KVTransferConfig.default(),
             psla_config=_psla(),
             cluster_config=cluster,
-            roofline=_Roofline(),
+            hardware=_hardware(),
             prefill_worker_pool_type="round_robin",
             decode_worker_pool_type="round_robin",
             max_parallem_sum=8,
             max_occupy_ratio=1,
+            latency_backend_type="analytical",
         )
         request = Request(0, 32, 2, 16)
         request.arrive(env)

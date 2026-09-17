@@ -1,0 +1,20 @@
+schema_version: 1
+model_id: gpt4-8k
+display_name: GPT-4 8K (speculative dense configuration inherited from the legacy roofline table)
+aliases: [GPT4-8K, gpt4]
+sources:
+  legacy-transformer-roofline-models:
+    grade: D
+    reference: git history of TransformerRoofline/hardware_models.json (commit 455e0ad)
+    notes: Not a public architecture. Kept only so existing PSLA files keep loading.
+hidden_size: 24576
+intermediate_size: 98304
+num_layers: 192
+num_attention_heads: 192
+num_key_value_heads: 192
+head_dim: 128
+vocab_size: 100000
+activation: gelu
+max_position_embeddings: 8192
+dtype: fp16
+kv_cache_dtype: fp16

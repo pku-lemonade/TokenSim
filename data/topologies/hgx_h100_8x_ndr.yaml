@@ -1,0 +1,15 @@
+schema_version: 1
+topology_id: hgx_h100_8x_ndr
+description: "HGX H100/H200/H20 node (8 GPUs on NVSwitch) with one NDR400 NIC per GPU into a rail-optimized fat tree."
+source_id: nvidia-dgx-h100-user-guide
+levels:
+  - name: node
+    size: 8
+    link: nvlink4
+    fabric: switched
+  - name: cluster
+    size: null
+    link: ib_ndr400
+    fabric: fat_tree
+    links_per_endpoint: 8
+    oversubscription: 1.0

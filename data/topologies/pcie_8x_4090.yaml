@@ -1,0 +1,17 @@
+schema_version: 1
+topology_id: pcie_8x_4090
+description: "Commodity 8x RTX 4090 server. GPUs communicate over PCIe 4.0 through PCIe switches / host root complex (no NVLink); one 100 GbE NIC per node."
+source_id: assumption-network-v1
+levels:
+  - name: node
+    size: 8
+    link: pcie4_x16
+    fabric: switched
+    oversubscription: 2.0        # two GPUs typically share one x16 uplink to the CPU
+    collective_algorithm: ring
+  - name: cluster
+    size: null
+    link: ethernet100Gb
+    fabric: fat_tree
+    links_per_endpoint: 1
+    oversubscription: 1.0

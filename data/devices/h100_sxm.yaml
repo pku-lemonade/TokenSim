@@ -1,0 +1,32 @@
+schema_version: 1
+device_id: h100_sxm
+family: nvidia_gpu
+display_name: NVIDIA H100 80GB HBM3
+aliases: [H100, H100-SXM, H100-80G, NVIDIA H100 80GB HBM3]
+sources:
+  nvidia-h100-datasheet:
+    grade: A
+    reference: https://resources.nvidia.com/en-us-tensor-core/nvidia-tensor-core-gpu-datasheet
+    notes: H100 SXM column. Datasheet lists sparsity figures (1,979 TFLOPS FP16); dense is half.
+  assumption-gpu-analytical-v1:
+    grade: D
+    reference: docs/operator-latency-model.md#analytical-defaults
+peak_compute:
+  fp16: {value: 989.4e12, source_id: nvidia-h100-datasheet}
+  bf16: {value: 989.4e12, source_id: nvidia-h100-datasheet}
+  fp8: {value: 1978.9e12, source_id: nvidia-h100-datasheet}
+  int8: {value: 1978.9e12, source_id: nvidia-h100-datasheet}
+  tf32: {value: 494.7e12, source_id: nvidia-h100-datasheet}
+  fp32: {value: 67.0e12, source_id: nvidia-h100-datasheet}
+memory:
+  kind: hbm3
+  capacity_bytes: {value: 85899345920, source_id: nvidia-h100-datasheet}
+  bandwidth_bytes_per_s: {value: 3352.0e9, source_id: nvidia-h100-datasheet}
+on_chip_memory:
+  capacity_bytes: {value: 52428800, source_id: nvidia-h100-datasheet}           # 50 MB L2
+interconnect:
+  scale_up_link: nvlink4          # 900 GB/s bidirectional = 450 GB/s per direction
+  scale_up_ports: 18
+  host_link: pcie5_x16
+step_overhead_us: {value: 0.0, source_id: assumption-gpu-analytical-v1, grade: D}
+power: {tdp_w: 700}
