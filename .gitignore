@@ -12,3 +12,6 @@ tmp
 
 .codex
 .claude
+
+# generated experiment artifacts
+*.egg-info

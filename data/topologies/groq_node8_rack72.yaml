@@ -1,0 +1,27 @@
+schema_version: 1
+topology_id: groq_node8_rack72
+description: >
+  GroqNode / GroqRack RealScale hierarchy (ISCA 2022): 8 TSPs per node fully
+  connected by 7 local C2C links each; 9 nodes per rack connected through the
+  4 global links of every TSP (32 global links per node, 4 per node pair);
+  multi-rack systems connect racks through the remaining global ports.
+source_id: isca2022-realscale
+levels:
+  - name: node
+    size: 8
+    link: groq_c2c_25g
+    fabric: all_to_all
+    links_per_endpoint: 7
+    collective_algorithm: direct
+  - name: rack
+    size: 9
+    link: groq_c2c_25g
+    fabric: all_to_all
+    links_per_endpoint: 32
+    collective_algorithm: direct
+  - name: system
+    size: null
+    link: groq_c2c_25g
+    fabric: fat_tree
+    links_per_endpoint: 16
+    oversubscription: 2.0

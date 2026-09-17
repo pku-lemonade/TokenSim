@@ -1,0 +1,21 @@
+schema_version: 1
+latency_unit: us
+dataset_version: v100-nccl-legacy-v1
+device_id: v100_sxm2
+backend: nccl
+framework_version: ''
+notes: Converted from the legacy TransformerRoofline all-reduce spreadsheet. Only
+  all_reduce fp32 over 2/4/8 GPUs on one node.
+sources:
+- source_id: legacy-nccl-tests-v100
+  grade: A
+  method: measured
+  reference: TransformerRoofline/allreduce_v100.xlsx (git history, commit 455e0ad)
+  notes: nccl-tests all_reduce_perf out-of-place time on a V100 NVLink node (2/4/8
+    GPUs, fp32). Sheet name = GPU count.
+  device: v100_sxm2
+  backend: nccl
+calibration: {}
+tables:
+  collective:
+    rows: 87

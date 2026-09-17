@@ -1,0 +1,19 @@
+schema_version: 1
+model_id: llama-3-8b
+display_name: Llama-3-8B / Llama-3.1-8B
+aliases: [Llama-3-8B, llama3-8b, toy_dense, Llama-3.1-8B]
+sources:
+  hf-llama-3-8b-config:
+    grade: A
+    reference: https://huggingface.co/meta-llama/Meta-Llama-3-8B/blob/main/config.json
+hidden_size: 4096
+intermediate_size: 14336
+num_layers: 32
+num_attention_heads: 32
+num_key_value_heads: 8
+head_dim: 128
+vocab_size: 128256
+activation: swiglu
+max_position_embeddings: 8192
+dtype: bf16
+kv_cache_dtype: bf16

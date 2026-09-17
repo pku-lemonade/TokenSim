@@ -1,0 +1,19 @@
+schema_version: 1
+model_id: llama-7b
+display_name: LLaMA 7B / Llama-2-7B
+aliases: [LLaMa-7B, llama7b, Llama-2-7b, llama-2-7b]
+sources:
+  hf-llama-2-7b-config:
+    grade: A
+    reference: https://huggingface.co/meta-llama/Llama-2-7b-hf/blob/main/config.json
+hidden_size: 4096
+intermediate_size: 11008
+num_layers: 32
+num_attention_heads: 32
+num_key_value_heads: 32
+head_dim: 128
+vocab_size: 32000
+activation: swiglu
+max_position_embeddings: 4096
+dtype: fp16
+kv_cache_dtype: fp16

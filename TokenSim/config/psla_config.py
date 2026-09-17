@@ -69,7 +69,17 @@ class LLMResult:
     parallel_pp_transfer_latency: float = 0
     parallel_ep_all2all_latency: float = 0
     parallel_sync_event_count: int = 0
-    parallel_roofline_conversion_count: int = 0
+    parallel_tp_shard_event_count: int = 0
+    parallel_link_type_counts: dict[str, int] | None = None
+    parallel_comm_match_type_counts: dict[str, int] | None = None
+    latency_backends: dict[str, Any] | None = None
+    operator_query_count: int = 0
+    operator_match_type_counts: dict[str, int] | None = None
+    operator_table_match_counts: dict[str, Any] | None = None
+    operator_component_seconds: dict[str, float] | None = None
+    operator_missing_shape_count: int = 0
+    operator_step_count: int = 0
+    operator_missing_shapes: list[dict[str, Any]] | None = None
     effective_moe_config: dict | None = None
     moe_ep_rank_count: int = 1
     moe_expert_placement: dict | None = None
@@ -154,14 +164,18 @@ class PSLAConfig:
         return cls(**json.loads(Path(filename).read_text()))
 
     def from_args(self, args):
-        self.distribution = args.distribution or self.distribution
-        self.prefill_mean_len = args.prefill_mean_len or self.prefill_mean_len
-        self.prefill_range_len = args.prefill_range_len or self.prefill_range_len
-        self.decode_mean_len = args.decode_mean_len or self.decode_mean_len
-        self.decode_range_len = args.decode_range_len or self.decode_range_len
-        self.decode_len_distribution = (
-            args.decode_len_distribution or self.decode_len_distribution
-        )
+        # ``is not None`` rather than ``or``: an explicit 0 (e.g. --decode_range_len 0)
+        # must override the file value instead of being treated as "unset".
+        def pick(name):
+            value = getattr(args, name, None)
+            return getattr(self, name) if value is None else value
+
+        self.distribution = pick("distribution")
+        self.prefill_mean_len = pick("prefill_mean_len")
+        self.prefill_range_len = pick("prefill_range_len")
+        self.decode_mean_len = pick("decode_mean_len")
+        self.decode_range_len = pick("decode_range_len")
+        self.decode_len_distribution = pick("decode_len_distribution")
         self._apply_moe_args(args)
         self._moe_config = MoEModelConfig.from_model_config(self)
         return self

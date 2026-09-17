@@ -1,0 +1,29 @@
+schema_version: 1
+latency_unit: us
+dataset_version: groqchip_v1-analytical-v1
+device_id: groqchip_v1
+backend: analytical
+framework_version: ''
+notes: Analytical package generated from manifest 'groq-llama3-mixtral-v1'.
+sources:
+- source_id: analytical:groq_tsp:groqchip_v1:uncalibrated
+  grade: D
+  method: analytical
+  reference: TokenSim/operator_data/analytical
+  notes: GroqTSPModel roofline estimate on groqchip_v1; calibration=uncalibrated
+  device: groqchip_v1
+  backend: analytical
+calibration: {}
+tables:
+  gemm:
+    rows: 275
+  elementwise:
+    rows: 143
+  context_attention:
+    rows: 105
+  generation_attention:
+    rows: 189
+  moe:
+    rows: 39
+manifest: groq-llama3-mixtral-v1
+device_family: groq_tsp

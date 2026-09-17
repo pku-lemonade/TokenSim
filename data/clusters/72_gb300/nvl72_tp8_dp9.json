@@ -1,0 +1,22 @@
+{
+    "num_workers": 72,
+    "topology": "gb300_nvl72",
+    "networks": {
+        "rack": "ethernet800Gb"
+    },
+    "parallel_config": {
+        "tensor_parallel_size": 8,
+        "pipeline_parallel_size": 1,
+        "data_parallel_size": 9,
+        "data_parallel_size_local": 9
+    },
+    "worker_groups": [
+        {
+            "role": "hybrid",
+            "hardware": "gb300",
+            "num_workers": 72,
+            "network": "rack",
+            "operator_backend": "trtllm"
+        }
+    ]
+}

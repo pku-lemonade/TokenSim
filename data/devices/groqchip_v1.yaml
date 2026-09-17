@@ -1,0 +1,52 @@
+schema_version: 1
+device_id: groqchip_v1
+family: groq_tsp
+display_name: GroqChip v1 (TSP / LPU, GroqCard)
+aliases: [GroqChip, GroqChip_v1.5, groqchip_v1_5, groq, LPU-v1]
+sources:
+  groqchip-product-brief-v1.5:
+    grade: A
+    reference: https://groq.com/product-spec-sheet-groqchip-processor/
+    notes: >
+      Product Spec Sheet v1.5: up to 750 TOPs INT8 and 188 TFLOPs FP16 at 900 MHz,
+      230 MB SRAM per chip, up to 80 TB/s on-die memory bandwidth,
+      16 integrated RealScale chip-to-chip interconnects, PCIe Gen4 x16,
+      14 nm, TDP 215 W (max 300 W).
+  isca2020-tsp:
+    grade: A
+    reference: https://doi.org/10.1109/ISCA45697.2020.00023
+    notes: 220 MiB SRAM across 88 MEM slices (= 230,686,720 bytes), 320-lane SIMD, deterministic execution.
+  isca2022-realscale:
+    grade: A
+    reference: https://doi.org/10.1145/3470496.3527405
+    notes: >
+      Each C2C link has 4 lanes at 25 Gbps (12.5 GB/s per direction); GroqNode uses
+      7 local + 4 global links per TSP out of the 16 ports. The often-quoted
+      480 GB/s aggregate equals 16 links x 4 lanes x 30 Gbps x 2 directions and is
+      a derived bidirectional total, not a per-link figure.
+  assumption-groq-analytical-v1:
+    grade: D
+    reference: docs/operator-latency-model.md#analytical-defaults
+    notes: Deterministic streaming model; efficiency factors are project assumptions until calibrated.
+peak_compute:
+  fp16: {value: 188.0e12, source_id: groqchip-product-brief-v1.5}
+  int8: {value: 750.0e12, source_id: groqchip-product-brief-v1.5}
+  fp32: {value: 47.0e12, source_id: assumption-groq-analytical-v1, grade: D}
+memory:
+  kind: sram                       # weights are SRAM resident; there is no DRAM
+  capacity_bytes: {value: 230686720, source_id: isca2020-tsp}
+  bandwidth_bytes_per_s: {value: 80.0e12, source_id: groqchip-product-brief-v1.5}
+on_chip_memory:
+  capacity_bytes: {value: 230686720, source_id: isca2020-tsp}
+  bandwidth_bytes_per_s: {value: 80.0e12, source_id: groqchip-product-brief-v1.5}
+interconnect:
+  scale_up_link: groq_c2c_25g
+  scale_up_ports: 16
+  host_link: pcie4_x16
+analytical:
+  gemm_mfu: 0.80
+  attention_mfu: 0.60
+  memory_efficiency: 0.90
+  kernel_launch_us: 0.2
+step_overhead_us: {value: 0.0, source_id: assumption-groq-analytical-v1, grade: D}
+power: {tdp_w: 215}

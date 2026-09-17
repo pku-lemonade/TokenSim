@@ -63,14 +63,18 @@ TP=2, PP=2, DP=2, global ranks 0-3 form DP group 0 and ranks 4-7 form DP group
 ### Tensor Parallelism
 
 TP shards dense projection/attention compute and model/KV memory across TP
-ranks. The roofline adapter adds two hidden-state collective synchronizations
-per simulated step. The model's KV head count must be divisible by TP size.
+ranks. The latency backend queries every GEMM and attention operator with its
+rank-local shape (`ceil(heads / TP)` heads, `ceil(inter / TP)` FFN columns) and
+adds one all-reduce after the attention output projection and one after the FFN
+per layer. KV heads must be divisible by TP, or TP must be a multiple of the KV
+head count (heads are then replicated).
 
 ### Pipeline Parallelism
 
 PP splits layers, model memory, and KV memory across stages. Remainder layers are
-assigned to the earliest stages. The latency model passes `Pipeline_Stage` to
-TransformerRoofline and adds adjacent-stage activation transfer latency.
+assigned to the earliest stages. The latency backend composes only the layers
+owned by a stage (the last stage adds the LM head) and adds one adjacent-stage
+activation transfer per step.
 
 ### Data Parallelism
 
@@ -105,13 +109,24 @@ contain exactly the resulting `world_size` workers.
 
 ## Communication Topology and Metrics
 
-For peers on the same named network, TokenSim prefers the accelerator NVLink
-model when available. Otherwise it uses the configured network link; if neither
-is available, the communication event is treated as local with zero latency.
-TP uses the slowest peer link in the TP group, PP uses the adjacent stage, and EP
-uses the slowest participating expert peer.
+Workers are placed on a hierarchical topology (`data/topologies/*.yaml`). A
+cluster names one with `"topology": "hgx_h100_8x_ndr"` and may pin workers with
+`device_indices`; otherwise a two-level topology is synthesized from `networks`
+(workers sharing a network form a node joined by the device's scale-up link,
+nodes are joined by the network's link class).
+
+Collectives are priced by `TokenSim/comm/collectives.py`: the TP/EP group is
+mapped onto the topology levels it spans and a hierarchical alpha-beta model
+(ring / tree / direct per level, NCCL-style) adds latency and bandwidth terms
+level by level. When the device's operator data contains a measured `collective`
+table for the same operation, dtype, group size and node count, the measured
+curve is used instead. Point-to-point KV transfers use the link of the lowest
+topology level shared by the two workers. See
+[operator-latency-model.md](operator-latency-model.md#5-通信模型).
 
 Results export the effective `parallel_config`, expected and actual rank counts,
 per-rank TP/PP/DP IDs and utilization, DP placement counts, TP collective
 latency, PP transfer latency, EP all-to-all latency, total synchronization
-latency, synchronization event count, and roofline conversion count.
+latency, synchronization event count, per-topology-level event counts
+(`parallel_link_type_counts`) and how many collective estimates came from
+measurements versus the analytical model (`parallel_comm_match_type_counts`).

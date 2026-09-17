@@ -1,0 +1,39 @@
+schema_version: 1
+device_id: rtx_4090
+family: nvidia_gpu
+display_name: NVIDIA GeForce RTX 4090
+aliases: [4090, RTX4090, RTX-4090, GeForce RTX 4090]
+sources:
+  nvidia-rtx-4090-product-page:
+    grade: A
+    reference: https://www.nvidia.com/en-us/geforce/graphics-cards/40-series/rtx-4090/
+    notes: 16384 CUDA cores, 2.52 GHz boost, 24 GB GDDR6X 384-bit, PCIe Gen4, 450 W, no NVLink.
+  nvidia-ada-whitepaper:
+    grade: A
+    reference: https://images.nvidia.com/aem-dam/Solutions/geforce/ada/nvidia-ada-gpu-architecture.pdf
+    notes: >
+      Peak tensor throughput (dense): FP16 with FP32 accumulate 165.2 TFLOPS,
+      FP16 with FP16 accumulate 330.3 TFLOPS, FP8 330.3 (FP32 acc), INT8 660.6 TOPS.
+      LLM GEMMs normally accumulate in FP32, so fp16/bf16 use 165.2 TFLOPS.
+      Memory bandwidth 1008 GB/s = 21 Gbps x 384 bit / 8.
+  assumption-gpu-analytical-v1:
+    grade: D
+    reference: docs/operator-latency-model.md#analytical-defaults
+peak_compute:
+  fp16: {value: 165.2e12, source_id: nvidia-ada-whitepaper}
+  bf16: {value: 165.2e12, source_id: nvidia-ada-whitepaper}
+  fp8: {value: 330.3e12, source_id: nvidia-ada-whitepaper}
+  int8: {value: 660.6e12, source_id: nvidia-ada-whitepaper}
+  tf32: {value: 82.6e12, source_id: nvidia-ada-whitepaper}
+  fp32: {value: 82.6e12, source_id: nvidia-rtx-4090-product-page}
+memory:
+  kind: gddr6x
+  capacity_bytes: {value: 25769803776, source_id: nvidia-rtx-4090-product-page}        # 24 GiB
+  bandwidth_bytes_per_s: {value: 1008.0e9, source_id: nvidia-ada-whitepaper}
+on_chip_memory:
+  capacity_bytes: {value: 75497472, source_id: nvidia-ada-whitepaper}                  # 72 MB L2
+interconnect:
+  scale_up_link: null             # no NVLink: peers talk over PCIe
+  host_link: pcie4_x16
+step_overhead_us: {value: 0.0, source_id: assumption-gpu-analytical-v1, grade: D}
+power: {tdp_w: 450}
