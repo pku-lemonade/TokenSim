@@ -52,9 +52,24 @@ class CacheConfig:
         self.size_per_token_unsharded = int(
             2 * model.kv_dim * kv_bytes * model.num_layers
         )
-        self.size_per_token = int(
-            self.local_kv_heads * self.head_dim * 2 * kv_bytes * self.num_layers_per_rank
-        )
+        if model.kv_cache_dim is not None:
+            if model.kv_dim % self.parallel_config.tensor_parallel_size != 0:
+                raise ConfigurationError(
+                    f"model {model.model_id!r}: kv_cache_dim must be divisible by "
+                    f"tensor_parallel_size {self.parallel_config.tensor_parallel_size}"
+                )
+            local_kv_dim = model.kv_dim // self.parallel_config.tensor_parallel_size
+            self.size_per_token = int(
+                local_kv_dim * 2 * kv_bytes * self.num_layers_per_rank
+            )
+        else:
+            self.size_per_token = int(
+                self.local_kv_heads
+                * self.head_dim
+                * 2
+                * kv_bytes
+                * self.num_layers_per_rank
+            )
 
         weight_bytes = dtype_bytes(model.dtype)
         self.model_param_size_unsharded = model.total_params() * weight_bytes

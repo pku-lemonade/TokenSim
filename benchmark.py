@@ -17,6 +17,7 @@ from TokenSim.config.psla_config import PSLAConfig
 from TokenSim.errors import ConfigurationError, SimulationStateError
 from TokenSim.hardware import HardwareContext
 from TokenSim.latency import FALLBACK_POLICIES
+from TokenSim.workload.agentx import AgentXReplay, load_agentx_traces
 
 
 def check_results(

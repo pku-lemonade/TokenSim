@@ -28,10 +28,13 @@ class ModelSpec:
     num_attention_heads: int
     num_key_value_heads: int
     head_dim: int
+    # Optional compressed KV width for latent-attention models.
+    kv_cache_dim: int | None = None
     vocab_size: int = 32000
     activation: str = "swiglu"
     max_position_embeddings: int = 4096
     dtype: str = "fp16"
+    activation_dtype: str | None = None
     kv_cache_dtype: str = "fp16"
     sliding_window: int = 0
     tie_word_embeddings: bool = False
@@ -61,7 +64,14 @@ class ModelSpec:
                 f"model {self.model_id!r}: activation must be one of {sorted(ACTIVATIONS)}"
             )
         object.__setattr__(self, "dtype", normalize_dtype(self.dtype))
+        object.__setattr__(
+            self,
+            "activation_dtype",
+            normalize_dtype(self.activation_dtype or self.dtype),
+        )
         object.__setattr__(self, "kv_cache_dtype", normalize_dtype(self.kv_cache_dtype))
+        if self.kv_cache_dim is not None and int(self.kv_cache_dim) <= 0:
+            raise ConfigurationError(f"model {self.model_id!r}: kv_cache_dim must be positive")
         if not self.display_name:
             object.__setattr__(self, "display_name", self.model_id)
 
@@ -73,7 +83,7 @@ class ModelSpec:
 
     @property
     def kv_dim(self) -> int:
-        return self.num_key_value_heads * self.head_dim
+        return self.kv_cache_dim or self.num_key_value_heads * self.head_dim
 
     @property
     def gated(self) -> bool:
@@ -169,10 +179,16 @@ class ModelSpec:
             num_attention_heads=heads,
             num_key_value_heads=int(raw.get("num_key_value_heads", heads)),
             head_dim=head_dim,
+            kv_cache_dim=(
+                int(raw["kv_cache_dim"]) if raw.get("kv_cache_dim") is not None else None
+            ),
             vocab_size=int(raw.get("vocab_size", 32000)),
             activation=str(raw.get("activation", "swiglu")).lower(),
             max_position_embeddings=int(raw.get("max_position_embeddings", 4096)),
             dtype=str(raw.get("dtype", "fp16")),
+            activation_dtype=(
+                str(raw["activation_dtype"]) if raw.get("activation_dtype") is not None else None
+            ),
             kv_cache_dtype=str(raw.get("kv_cache_dtype", raw.get("dtype", "fp16"))),
             sliding_window=int(raw.get("sliding_window", 0) or 0),
             tie_word_embeddings=bool(raw.get("tie_word_embeddings", False)),
@@ -187,6 +203,12 @@ class ModelSpec:
         if moe_config is None or not moe_config.enabled:
             return self
         updates: dict[str, Any] = {"moe": moe_config}
+        # A compressed-KV catalog entry carries the authoritative latent
+        # attention geometry. Legacy PSLA files describe the MoE block but
+        # cannot represent MLA's compressed KV heads, so do not overwrite the
+        # catalog's attention dimensions in that case.
+        if self.kv_cache_dim is not None:
+            return replace(self, **updates)
         if moe_config.hidden_size:
             updates["hidden_size"] = moe_config.hidden_size
         if moe_config.intermediate_size:
@@ -210,9 +232,11 @@ class ModelSpec:
             "num_attention_heads": self.num_attention_heads,
             "num_key_value_heads": self.num_key_value_heads,
             "head_dim": self.head_dim,
+            "kv_cache_dim": self.kv_cache_dim,
             "vocab_size": self.vocab_size,
             "activation": self.activation,
             "dtype": self.dtype,
+            "activation_dtype": self.activation_dtype,
             "kv_cache_dtype": self.kv_cache_dtype,
             "is_moe": self.is_moe,
             "total_params": self.total_params(),

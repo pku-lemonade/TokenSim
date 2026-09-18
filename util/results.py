@@ -587,6 +587,12 @@ def export_result(
         **moe_stats,
         **mooncake_stats,
         **latency_stats,
+        agentx_metrics=get_agentx_metrics(
+            args,
+            requests,
+            duration,
+            num_gpus=len(engine.workers),
+        ),
     )
 
     if args.results_path == "":

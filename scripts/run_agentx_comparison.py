@@ -105,7 +105,11 @@ def benchmark_args(
         agentx_warmup_min_ratio=0.0,
         agentx_warmup_max_ratio=1.0,
         random_seed=0,
-        latency_backend="roofline",
+        latency_backend="operator_table",
+        latency_fallback="table_first",
+        operator_backend="vllm",
+        decode_context_bucket=128,
+        data_root="./data",
     )
 
 

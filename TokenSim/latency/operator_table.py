@@ -182,7 +182,11 @@ class OperatorTableLatencyBackend(LatencyBackend):
         self.heads_local = math.ceil(model.num_attention_heads / tp)
         self.kv_heads_local = local_kv_heads(model.num_key_value_heads, tp)
         self.q_dim_local = self.heads_local * model.head_dim
-        self.kv_dim_local = self.kv_heads_local * model.head_dim
+        self.kv_dim_local = (
+            model.kv_dim // tp
+            if model.kv_cache_dim is not None
+            else self.kv_heads_local * model.head_dim
+        )
         self.inter_local = math.ceil(model.intermediate_size / tp)
         self.vocab_local = math.ceil(model.vocab_size / tp)
         self.layers_local = stage_layer_count(model.num_layers, pp, self.rank_info.pp_rank)
@@ -193,7 +197,7 @@ class OperatorTableLatencyBackend(LatencyBackend):
             else 0
         )
         self.dense_layers_local = max(0, self.layers_local - self.moe_layers_local)
-        self.activation_bytes = activation_bytes_for(model.dtype)
+        self.activation_bytes = activation_bytes_for(model.activation_dtype)
         ep_enabled = (
             self.parallel_config.enable_expert_parallel
             and self.expert_placement is not None
@@ -360,13 +364,13 @@ class OperatorTableLatencyBackend(LatencyBackend):
             return 0.0
         return self._query(
             "elementwise",
-            {"op_name": op_name, "dtype": self.model.dtype, "num_tokens": int(tokens), "hidden_size": int(hidden)},
+            {"op_name": op_name, "dtype": self.model.activation_dtype, "num_tokens": int(tokens), "hidden_size": int(hidden)},
         ).latency_us
 
     def _attention_prefill(self, batch: int, q_len: int, kv_len: int) -> float:
         model = self.model
         key = {
-            "attn_dtype": model.dtype,
+            "attn_dtype": model.activation_dtype,
             "kv_cache_dtype": model.kv_cache_dtype,
             "batch_size": int(batch),
             "input_seq_len": int(q_len),
@@ -379,7 +383,7 @@ class OperatorTableLatencyBackend(LatencyBackend):
         if kv_len > q_len:
             # Prefix-cache hit: queries attend to cached keys as well. Scale by
             # the analytical work ratio because tables assume kv_len == q_len.
-            base = context_attention_work(batch, q_len, self.heads_local, self.kv_heads_local, model.head_dim, model.dtype, model.kv_cache_dtype, model.sliding_window)
+            base = context_attention_work(batch, q_len, self.heads_local, self.kv_heads_local, model.head_dim, model.activation_dtype, model.kv_cache_dtype, model.sliding_window)
             full_keys = float(min(kv_len, model.sliding_window) if model.sliding_window else kv_len)
             # queries q_len each attend to (kv_len - q_len) cached keys + causal part of their own block
             full_flops = 4.0 * batch * q_len * ((kv_len - q_len) + 0.5 * q_len) * self.q_dim_local
@@ -392,7 +396,7 @@ class OperatorTableLatencyBackend(LatencyBackend):
     def _attention_decode(self, batch: int, context_len: int) -> float:
         model = self.model
         key = {
-            "attn_dtype": model.dtype,
+            "attn_dtype": model.activation_dtype,
             "kv_cache_dtype": model.kv_cache_dtype,
             "batch_size": int(batch),
             "context_len": int(context_len),
