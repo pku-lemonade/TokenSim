@@ -9,6 +9,7 @@ from pathlib import Path
 from statistics import mean
 from typing import Any, Iterable, Mapping, Sequence
 
+from TokenSim.dtypes import canonicalize_dtype
 from TokenSim.operator_data.analytical import (
     AnalyticalEstimate,
     Calibration,
@@ -19,7 +20,10 @@ from TokenSim.operator_data.schema import (
     LATENCY_UNIT,
     SCHEMA_VERSION,
     TABLE_SPECS,
+    OPTIONAL_TABLES,
+    validate_batch_key,
     analysis_filename,
+    dtype_role_for_field,
     perf_filename,
 )
 
@@ -147,6 +151,19 @@ class ValidationReport:
         )
 
 
+@dataclass(frozen=True)
+class CalibrationRule:
+    table_name: str
+    key_match: Mapping[str, Any]
+    calibration: Calibration
+
+    def __post_init__(self) -> None:
+        if self.table_name not in TABLE_SPECS or self.table_name == "communication":
+            raise ValueError("calibration rule requires a compute table")
+        if set(self.key_match) - set(TABLE_SPECS[self.table_name].key_fields):
+            raise ValueError("calibration rule has unknown shape fields")
+
+
 class OperatorDataGenerator:
     def __init__(
         self,
@@ -154,7 +171,8 @@ class OperatorDataGenerator:
         hardware_profiles: Mapping[str, HardwareProfile],
         sources: Iterable[SourceRecord],
         calibrations: Mapping[str, Calibration] | None = None,
-        tool_version: str = "tokensim-operator-data-v1",
+        tool_version: str = "tokensim-operator-data-v2",
+        shape_calibrations: Sequence[CalibrationRule] = (),
     ) -> None:
         if not dataset_version:
             raise ValueError("dataset_version must be non-empty")
@@ -163,6 +181,7 @@ class OperatorDataGenerator:
         source_values = tuple(sources)
         self.sources = {source.source_id: source for source in source_values}
         self.calibrations = dict(calibrations or {})
+        self.shape_calibrations = tuple(shape_calibrations)
         self.tool_version = tool_version
         if not self.hardware_profiles:
             raise ValueError("at least one hardware profile is required")
@@ -204,6 +223,8 @@ class OperatorDataGenerator:
         perf_tables: dict[str, list[dict[str, Any]]] = {}
         analysis_tables: dict[str, list[dict[str, Any]]] = {}
         for table_name in TABLE_SPECS:
+            if table_name in OPTIONAL_TABLES and not request_by_table[table_name]:
+                continue
             perf_rows, analysis_rows = self._generate_table(
                 table_name,
                 request_by_table[table_name],
@@ -233,6 +254,9 @@ class OperatorDataGenerator:
         ]
         input_document = {
             "experiment_id": experiment_id,
+            "hardware_profiles": {name: asdict(value) for name, value in self.hardware_profiles.items()},
+            "calibrations": {name: asdict(value) for name, value in self.calibrations.items()},
+            "shape_calibrations": [asdict(rule) for rule in self.shape_calibrations],
             "shape_requests": sorted(
                 input_shapes, key=lambda item: json.dumps(item, sort_keys=True)
             ),
@@ -263,7 +287,10 @@ class OperatorDataGenerator:
             "devices": {
                 name: {
                     "backend": profile.backend,
-                    "peak_compute_by_dtype": dict(profile.peak_compute_by_dtype),
+                    "peak_compute_by_dtype": {
+                        canonicalize_dtype(dtype, role="activation_dtype"): value
+                        for dtype, value in profile.peak_compute_by_dtype.items()
+                    },
                     "memory_bandwidth_bytes_per_s": profile.memory_bandwidth_bytes_per_s,
                     "memory_capacity_bytes": profile.memory_capacity_bytes,
                     "interconnect_bandwidth_bytes_per_s": profile.interconnect_bandwidth_bytes_per_s,
@@ -284,8 +311,11 @@ class OperatorDataGenerator:
                 )
             ],
             "calibration_ids": sorted(
-                calibration.calibration_id for calibration in self.calibrations.values()
+                {calibration.calibration_id for calibration in self.calibrations.values()}
+                | {rule.calibration.calibration_id for rule in self.shape_calibrations}
             ),
+            "calibrations": {name: asdict(value) for name, value in self.calibrations.items()},
+            "shape_calibrations": [asdict(rule) for rule in self.shape_calibrations],
             "calibration_observation_ids": sorted(
                 item.source_id for item in observations if item.split == "calibration"
             ),
@@ -312,12 +342,24 @@ class OperatorDataGenerator:
         _write_yaml(output / "hardware.yaml", hardware_document)
         _write_yaml(output / "generation_meta.yaml", metadata_document)
         _write_yaml(manifest_dir / f"{experiment_id}.yaml", manifest_document)
-        for table_name in TABLE_SPECS:
+        for table_name in perf_tables:
             _write_parquet(output / perf_filename(table_name), perf_tables[table_name])
             _write_parquet(
                 output / analysis_filename(table_name), analysis_tables[table_name]
             )
         return reports
+
+    def _calibration_for(self, table_name: str, key: Mapping[str, Any]) -> Calibration | None:
+        matches = [rule for rule in self.shape_calibrations
+                   if rule.table_name == table_name
+                   and all(key.get(name) == value for name, value in rule.key_match.items())]
+        if not matches:
+            return self.calibrations.get(table_name)
+        specificity = max(len(rule.key_match) for rule in matches)
+        best = [rule for rule in matches if len(rule.key_match) == specificity]
+        if len(best) != 1:
+            raise ValueError(f"ambiguous calibration rules for {table_name}: {key}")
+        return best[0].calibration
 
     def _generate_table(
         self,
@@ -362,7 +404,7 @@ class OperatorDataGenerator:
                     table_name,
                     key,
                     hardware,
-                    self.calibrations.get(table_name),
+                    self._calibration_for(table_name, key),
                 )
                 eligible.append(
                     Observation(
@@ -405,11 +447,21 @@ class OperatorDataGenerator:
                         f"communication observation missing link parameters for key={key}"
                     )
                 perf_row = {**key, **extra, "source_id": selected.source_id}
+                timing_scope = raw.key.get("timing_scope", "legacy_unspecified")
+                if timing_scope not in {"legacy_unspecified", "transport_service", "eager_interval"}:
+                    raise ValueError(f"unsupported communication timing_scope={timing_scope!r}")
+                perf_row["timing_scope"] = timing_scope
             else:
                 perf_row = {
                     **key,
                     "latency_us": float(selected.latency_us),
                     "source_id": selected.source_id,
+                    "timing_method": source.method,
+                    "calibration_applied": source.method == "analytical",
+                    "fixed_overhead_us": (
+                        analytical.details["fixed_overhead_us"]
+                        if source.method == "analytical" and analytical is not None else None
+                    ),
                 }
             perf_rows.append(perf_row)
             analysis_row = {
@@ -424,6 +476,11 @@ class OperatorDataGenerator:
             if analytical is not None:
                 analysis_row.update(asdict(analytical))
                 analysis_row["latency_us"] = float(selected.latency_us)
+                analysis_row["analytical_candidate_latency_us"] = analytical.latency_us
+                analysis_row["calibration_applied_to_selected"] = source.method == "analytical"
+                analysis_row["selected_fixed_overhead_us"] = (
+                    analytical.details["fixed_overhead_us"] if source.method == "analytical" else None
+                )
             analysis_rows.append(analysis_row)
         return perf_rows, analysis_rows
 
@@ -431,12 +488,28 @@ class OperatorDataGenerator:
 def _canonical_key(table_name: str, raw: Mapping[str, Any]) -> dict[str, Any]:
     spec = TABLE_SPECS[table_name]
     missing = [field for field in spec.key_fields if field not in raw]
+    extra = sorted(set(raw) - set(spec.key_fields) - {
+        "fixed_latency_us",
+        "effective_bandwidth_bytes_per_s",
+        "timing_scope",
+    })
     if missing:
-        raise ValueError(f"{table_name} key missing fields {missing}: {dict(raw)}")
+        raise ValueError(
+            f"{table_name} operator-data schema v{SCHEMA_VERSION} migration "
+            f"required; key missing fields {missing}: {dict(raw)}"
+        )
+    if extra:
+        raise ValueError(
+            f"{table_name} key has fields outside schema v{SCHEMA_VERSION}: {extra}"
+        )
     key: dict[str, Any] = {}
     for field in spec.key_fields:
         value = raw[field]
+        dtype_role = dtype_role_for_field(field, raw)
+        if dtype_role is not None:
+            value = canonicalize_dtype(str(value), role=dtype_role)
         key[field] = value.strip().lower() if isinstance(value, str) else value
+    validate_batch_key(table_name, key)
     return key
 
 

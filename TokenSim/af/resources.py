@@ -34,6 +34,12 @@ class AFResourceRegistry:
             worker_id: simpy.Resource(env, capacity=1)
             for worker_id in self.worker_configs
         }
+        timing = cluster_config.af.communication_timing
+        host_keys = ({"shared"} if timing.host_resource_scope == "shared"
+                     else {str(worker_id) for worker_id in self.worker_configs})
+        self.host_submission_slots = {
+            key: simpy.Resource(env, capacity=1) for key in host_keys
+        } if timing.enabled else {}
         self.group_worker_ids: dict[str, tuple[int, ...]] = {}
         for worker_id, worker in self.worker_configs.items():
             if worker.name is None:
@@ -102,29 +108,31 @@ class AFResourceRegistry:
         link: AFLinkConfig,
         direction: str,
         resource_group: str | None = None,
+        resource_lane: str | None = None,
     ) -> tuple[tuple[tuple[str, str], simpy.Resource], ...]:
         group = resource_group or link.resource_group
-        if link.duplex == "half":
-            suffix = "shared"
-        else:
-            suffix = {
-                "a_to_f": "a_to_f",
-                "f_to_a": "f_to_a",
-                "tp_collective": "a_to_f",
-                "ep_dispatch": "a_to_f",
-                "ep_combine": "f_to_a",
-            }.get(direction, direction)
-        key = (group, suffix)
+        lane = resource_lane
+        if lane is None:
+            if direction not in {"a_to_f", "f_to_a"}:
+                raise ConfigurationError(
+                    f"AF communication operation {direction!r} requires an explicit "
+                    "resource_lane; collective resources must not be inferred from "
+                    "an AF transfer direction"
+                )
+            lane = "shared" if link.duplex == "half" else direction
+        key = (group, lane)
         resource = self.communication_resources.get(key)
         if resource is None:
             raise ConfigurationError(
-                f"AF communication resource {key!r} is missing; domain-internal "
-                "fabric must alias a configured resource_group"
+                f"AF communication resource {key!r} is missing for "
+                f"operation={direction!r}; the execution plan must resolve an "
+                "existing resource_group/resource_lane"
             )
         return ((key, resource),)
 
     def resource_capacities(self) -> dict[str, int]:
         capacities = {f"worker:{worker_id}": 1 for worker_id in self.compute_slots}
+        capacities.update({f"host:{key}": 1 for key in self.host_submission_slots})
         capacities.update(
             {
                 self.format_link_resource(key): resource.capacity
@@ -132,6 +140,13 @@ class AFResourceRegistry:
             }
         )
         return capacities
+
+    def host_resources_for(self, physical_identities):
+        scope = self.cluster_config.af.communication_timing.host_resource_scope
+        keys = {"shared"} if scope == "shared" else {
+            str(self.worker_id_for_physical(identity)) for identity in physical_identities
+        }
+        return tuple((f"host:{key}", self.host_submission_slots[key]) for key in sorted(keys))
 
     @staticmethod
     def format_link_resource(key: tuple[str, str]) -> str:

@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from typing import Any, Mapping
+from typing import Any, Literal, Mapping
 
 from TokenSim.config.cluster_config import (
+    AFEffectiveDTypes,
     ClusterConfig,
+    DomainCollectiveConfig,
     DomainRankMapping,
     ExecutionDomainConfig,
     PhysicalWorkerRef,
@@ -13,12 +15,180 @@ from TokenSim.config.cluster_config import (
 )
 from TokenSim.config.constants import _GB
 from TokenSim.config.parallel_config import ParallelConfig, ParallelRankInfo
+from TokenSim.dtypes import canonicalize_dtype, dtype_size_bytes
 from TokenSim.errors import ConfigurationError, SimulationStateError
 from TokenSim.moe.config import MoEModelConfig
+from TokenSim.mla import MLADimensions
 
 
 RankKey = tuple[str, int]
 ReplicaKey = tuple[str, int]
+LayerType = Literal["dense", "moe"]
+TensorLayout = Literal["sharded", "replicated", "partial"]
+
+
+@dataclass(frozen=True, order=True)
+class AFTensorInterval:
+    start: int
+    end: int
+
+    def __post_init__(self) -> None:
+        if type(self.start) is not int or type(self.end) is not int:
+            raise ConfigurationError("AF tensor interval bounds must be integers")
+        if self.start < 0 or self.end <= self.start:
+            raise ConfigurationError(
+                f"AF tensor interval must be a non-empty half-open range; "
+                f"got [{self.start}, {self.end})"
+            )
+
+    @property
+    def size(self) -> int:
+        return self.end - self.start
+
+    def intersection(self, other: "AFTensorInterval") -> "AFTensorInterval | None":
+        start = max(self.start, other.start)
+        end = min(self.end, other.end)
+        return AFTensorInterval(start, end) if start < end else None
+
+    def as_dict(self) -> dict[str, int]:
+        return {"start": self.start, "end": self.end, "size": self.size}
+
+
+@dataclass(frozen=True)
+class AFTensorOwnership:
+    domain: str
+    domain_rank: int
+    dp_rank: int
+    tp_rank: int
+    physical_worker: str
+    interval: AFTensorInterval
+    layout: TensorLayout = "sharded"
+    canonical_producer: bool = False
+    retains_residual: bool = False
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "domain": self.domain,
+            "domain_rank": self.domain_rank,
+            "dp_rank": self.dp_rank,
+            "tp_rank": self.tp_rank,
+            "physical_worker": self.physical_worker,
+            "interval": self.interval.as_dict(),
+            "layout": self.layout,
+            "canonical_producer": self.canonical_producer,
+            "retains_residual": self.retains_residual,
+        }
+
+
+@dataclass(frozen=True)
+class AFRequestOwner:
+    phase: str
+    domain: str
+    instance: str
+    dp_rank: int
+    leader_rank: int
+    physical_worker: str
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "phase": self.phase,
+            "domain": self.domain,
+            "instance": self.instance,
+            "dp_rank": self.dp_rank,
+            "leader_rank": self.leader_rank,
+            "physical_worker": self.physical_worker,
+        }
+
+
+@dataclass(frozen=True)
+class AFPartialDestination:
+    phase: str
+    source_domain: str
+    source_rank: int
+    source_dp_rank: int
+    target_domain: str
+    target_rank: int
+    target_dp_rank: int
+    interval: AFTensorInterval
+    source_layout: TensorLayout = "sharded"
+    target_layout: TensorLayout = "sharded"
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "phase": self.phase,
+            "source_domain": self.source_domain,
+            "source_rank": self.source_rank,
+            "source_dp_rank": self.source_dp_rank,
+            "target_domain": self.target_domain,
+            "target_rank": self.target_rank,
+            "target_dp_rank": self.target_dp_rank,
+            "interval": self.interval.as_dict(),
+            "source_layout": self.source_layout,
+            "target_layout": self.target_layout,
+        }
+
+
+@dataclass(frozen=True)
+class AFLayerRuntime:
+    layer_id: int
+    layer_type: LayerType
+    hidden_size: int
+    num_attention_heads: int
+    num_kv_heads: int
+    head_dim: int
+    dense_intermediate_size: int
+    routed_intermediate_size: int
+    shared_intermediate_size: int
+    num_experts: int
+    top_k: int
+    num_shared_experts: int
+    mla: MLADimensions | None = None
+    tie_word_embeddings: bool = True
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "layer_id": self.layer_id,
+            "mla": vars(self.mla) if self.mla else None,
+            "layer_type": self.layer_type,
+            "hidden_size": self.hidden_size,
+            "num_attention_heads": self.num_attention_heads,
+            "num_kv_heads": self.num_kv_heads,
+            "head_dim": self.head_dim,
+            "dense_intermediate_size": self.dense_intermediate_size,
+            "routed_intermediate_size": self.routed_intermediate_size,
+            "shared_intermediate_size": self.shared_intermediate_size,
+            "num_experts": self.num_experts,
+            "top_k": self.top_k,
+            "num_shared_experts": self.num_shared_experts,
+        }
+
+
+@dataclass(frozen=True)
+class AFResolvedCollectivePlan:
+    domain: str
+    dp_rank: int
+    after_stage: str
+    operation: str
+    participant_ranks: tuple[int, ...]
+    physical_workers: tuple[str, ...]
+    network: str
+    resource_group: str
+    resource_lane: str
+    payload_bytes: int | None = None
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "domain": self.domain,
+            "dp_rank": self.dp_rank,
+            "after_stage": self.after_stage,
+            "operation": self.operation,
+            "participant_ranks": list(self.participant_ranks),
+            "physical_workers": list(self.physical_workers),
+            "network": self.network,
+            "resource_group": self.resource_group,
+            "resource_lane": self.resource_lane,
+            "payload_bytes": self.payload_bytes,
+        }
 
 
 @dataclass(frozen=True)
@@ -27,6 +197,9 @@ class AFModelComponent:
     category: str
     bytes: int
     formula: str
+    layer_id: int | None = None
+    formula_source: str = "exact_model_shape"
+    shape: tuple[tuple[str, int], ...] = ()
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -34,6 +207,9 @@ class AFModelComponent:
             "category": self.category,
             "bytes": self.bytes,
             "formula": self.formula,
+            "layer_id": self.layer_id,
+            "formula_source": self.formula_source,
+            "shape": dict(self.shape),
         }
 
 
@@ -201,6 +377,8 @@ class AFDomainRuntime:
     data_parallel_size: int
     expert_parallel_size: int
     expert_placement_strategy: str
+    expert_parallel_mode: Literal["expert_tp", "rank_reuse"] = "expert_tp"
+    expert_tensor_parallel_size: int = 1
 
     def parallel_config(self) -> ParallelConfig:
         return ParallelConfig(
@@ -217,9 +395,10 @@ class AFRuntimePlan:
     schema_version: str
     model: str
     block_size: int
-    dtype: str
-    dtype_size_bytes: int
+    effective_dtypes: AFEffectiveDTypes
     total_layers: int
+    hidden_size: int
+    num_attention_heads: int
     num_kv_heads: int
     head_dim: int
     num_experts: int
@@ -227,6 +406,287 @@ class AFRuntimePlan:
     rank_bindings: tuple[AFRankBinding, ...]
     replicas: tuple[AFReplicaRuntime, ...]
     physical_states: tuple[AFPhysicalRuntimeState, ...]
+    layers: tuple[AFLayerRuntime, ...] = ()
+    request_owners: tuple[AFRequestOwner, ...] = ()
+    tensor_ownerships: tuple[AFTensorOwnership, ...] = ()
+    partial_destinations: tuple[AFPartialDestination, ...] = ()
+    collective_plans: tuple[AFResolvedCollectivePlan, ...] = ()
+    link_effective_dtypes: tuple[tuple[str, AFEffectiveDTypes], ...] = ()
+    mla: MLADimensions | None = None
+
+    @property
+    def dtype(self) -> str:
+        return self.effective_dtypes.activation_dtype
+
+    @property
+    def dtype_size_bytes(self) -> int:
+        return dtype_size_bytes(self.dtype, role="activation_dtype")
+
+    @property
+    def weight_dtype_size_bytes(self) -> int:
+        return dtype_size_bytes(
+            self.effective_dtypes.weight_dtype, role="weight_dtype"
+        )
+
+    @property
+    def kv_dtype_size_bytes(self) -> int:
+        return dtype_size_bytes(
+            self.effective_dtypes.kv_cache_dtype, role="kv_cache_dtype"
+        )
+
+    def layer_plan(self, layer_id: int) -> AFLayerRuntime:
+        try:
+            return self.layers[layer_id]
+        except (IndexError, TypeError) as exc:
+            raise ConfigurationError(
+                f"AF runtime plan has no layer metadata for layer_id={layer_id}"
+            ) from exc
+
+    def dtypes_for_link(self, link_name: str) -> AFEffectiveDTypes:
+        for name, effective in self.link_effective_dtypes:
+            if name == link_name:
+                return effective
+        if not self.link_effective_dtypes:
+            return self.effective_dtypes
+        raise ConfigurationError(
+            f"AF runtime plan has no dtype contract for link {link_name!r}"
+        )
+
+    def ownerships_for_replica(
+        self, domain: str, dp_rank: int
+    ) -> tuple[AFTensorOwnership, ...]:
+        ownerships = tuple(
+            sorted(
+                (
+                    item
+                    for item in self.tensor_ownerships
+                    if item.domain == domain and item.dp_rank == dp_rank
+                ),
+                key=lambda item: item.tp_rank,
+            )
+        )
+        if not ownerships:
+            raise ConfigurationError(
+                f"AF runtime plan has no tensor ownership for domain={domain!r}, "
+                f"dp_rank={dp_rank}"
+            )
+        return ownerships
+
+    def collective_plan(
+        self, domain: str, dp_rank: int, after_stage: str
+    ) -> AFResolvedCollectivePlan | None:
+        matches = tuple(
+            item
+            for item in self.collective_plans
+            if item.domain == domain
+            and item.dp_rank == dp_rank
+            and item.after_stage == after_stage
+        )
+        if len(matches) > 1:
+            raise ConfigurationError(
+                f"AF runtime plan has ambiguous collective for domain={domain!r}, "
+                f"dp_rank={dp_rank}, after_stage={after_stage!r}"
+            )
+        return matches[0] if matches else None
+
+    def local_shape(
+        self,
+        domain: str,
+        domain_rank: int,
+        layer_id: int,
+        operation: str,
+    ) -> dict[str, int]:
+        binding = self.binding(domain, domain_rank)
+        domain_plan = self.domain_runtime(domain)
+        layer = self.layer_plan(layer_id)
+        shape = {
+            "global_hidden_size": self.hidden_size,
+            "hidden_size": self.hidden_size,
+            "tp_size": domain_plan.tensor_parallel_size,
+        }
+        if operation in {"attention", "a_rank_compute"}:
+            if binding.kv_partition is None:
+                raise ConfigurationError(
+                    f"attention rank {binding.rank_key!r} has no KV partition"
+                )
+            shape.update(
+                {
+                    "num_heads": self.num_attention_heads
+                    // domain_plan.tensor_parallel_size,
+                    "num_kv_heads": binding.kv_partition.local_head_count,
+                    "head_dim": self.head_dim,
+                    "query_width": (
+                        self.num_attention_heads
+                        // domain_plan.tensor_parallel_size
+                        * self.head_dim
+                    ),
+                    "kv_width": (
+                        binding.kv_partition.local_head_count * self.head_dim
+                    ),
+                }
+            )
+            if self.mla is not None:
+                shape.update(self.mla.local_shape(self.num_attention_heads, domain_plan.tensor_parallel_size))
+        elif operation == "dense_ffn":
+            if layer.layer_type != "dense":
+                raise ConfigurationError(
+                    f"layer={layer_id} is {layer.layer_type}, not Dense FFN"
+                )
+            shape["intermediate_size"] = (
+                layer.dense_intermediate_size
+                // domain_plan.tensor_parallel_size
+            )
+        elif operation == "shared_expert":
+            if layer.layer_type != "moe" or not layer.shared_intermediate_size:
+                raise ConfigurationError(
+                    f"layer={layer_id} has no Shared Expert component"
+                )
+            shape["intermediate_size"] = (
+                layer.shared_intermediate_size
+                // domain_plan.tensor_parallel_size
+            )
+        elif operation in {"routed_expert", "expert_rank_compute"}:
+            if layer.layer_type != "moe" or not layer.num_experts:
+                raise ConfigurationError(
+                    f"layer={layer_id} has no Routed Expert component"
+                )
+            expert_tp_size = domain_plan.expert_tensor_parallel_size
+            shape.update(
+                {
+                    "tp_size": expert_tp_size,
+                    "expert_tp_size": expert_tp_size,
+                    "expert_tp_rank": (
+                        binding.tp_rank if expert_tp_size > 1 else 0
+                    ),
+                    "intermediate_size": (
+                        layer.routed_intermediate_size // expert_tp_size
+                    ),
+                }
+            )
+        return shape
+
+    def expert_execution(
+        self, domain: str, expert_id: int, f_service_dp_rank: int
+    ) -> tuple[AFRankBinding, ...]:
+        domain_plan = self.domain_runtime(domain)
+        if domain_plan.capability != "af_ffn":
+            raise ConfigurationError(
+                f"expert execution requires an F domain, got {domain!r}"
+            )
+        if not 0 <= f_service_dp_rank < domain_plan.data_parallel_size:
+            raise ConfigurationError(
+                f"F domain={domain!r} has no service replica "
+                f"dp_rank={f_service_dp_rank}"
+            )
+        candidates = tuple(
+            binding
+            for binding in self.rank_bindings
+            if binding.domain == domain and expert_id in binding.expert_ids
+        )
+        if domain_plan.expert_parallel_mode == "expert_tp":
+            candidates = tuple(
+                binding
+                for binding in candidates
+                if binding.dp_rank == f_service_dp_rank
+            )
+        resolved = tuple(
+            sorted(candidates, key=lambda item: (item.dp_rank, item.tp_rank))
+        )
+        if len(resolved) != domain_plan.expert_tensor_parallel_size:
+            raise ConfigurationError(
+                f"expert={expert_id} in F domain={domain!r} resolves to "
+                f"{len(resolved)} ranks; expected Expert TP="
+                f"{domain_plan.expert_tensor_parallel_size}"
+            )
+        if len({binding.physical_identity for binding in resolved}) != len(resolved):
+            raise ConfigurationError(
+                f"expert={expert_id} in F domain={domain!r} resolves multiple "
+                "Expert TP ranks to the same physical worker"
+            )
+        return resolved
+
+    def component_execution(
+        self,
+        domain: str,
+        layer_id: int,
+        component_category: Literal["dense_ffn", "shared_expert"],
+        f_service_dp_rank: int,
+    ) -> tuple[AFRankBinding, ...]:
+        domain_plan = self.domain_runtime(domain)
+        if domain_plan.capability != "af_ffn":
+            raise ConfigurationError(
+                f"F component execution requires an F domain, got {domain!r}"
+            )
+        if component_category not in {"dense_ffn", "shared_expert"}:
+            raise ConfigurationError(
+                f"unsupported F TP component {component_category!r}; expected "
+                "'dense_ffn' or 'shared_expert'"
+            )
+        if not 0 <= f_service_dp_rank < domain_plan.data_parallel_size:
+            raise ConfigurationError(
+                f"F domain={domain!r} has no service replica "
+                f"dp_rank={f_service_dp_rank}"
+            )
+
+        layer = self.layer_plan(layer_id)
+        if component_category == "dense_ffn" and layer.layer_type != "dense":
+            raise ConfigurationError(
+                f"layer={layer_id} is {layer.layer_type}, not Dense FFN"
+            )
+        if component_category == "shared_expert" and (
+            layer.layer_type != "moe" or not layer.shared_intermediate_size
+        ):
+            raise ConfigurationError(
+                f"layer={layer_id} has no Shared Expert component"
+            )
+
+        resolved = tuple(
+            sorted(
+                (
+                    binding
+                    for binding in self.rank_bindings
+                    if binding.domain == domain
+                    and binding.dp_rank == f_service_dp_rank
+                ),
+                key=lambda binding: binding.tp_rank,
+            )
+        )
+        if len(resolved) != domain_plan.tensor_parallel_size:
+            raise ConfigurationError(
+                f"F component={component_category!r}, layer={layer_id}, "
+                f"domain={domain!r}, dp_rank={f_service_dp_rank} resolves to "
+                f"{len(resolved)} ranks; expected F TP="
+                f"{domain_plan.tensor_parallel_size}"
+            )
+        expected_group = tuple(binding.domain_rank for binding in resolved)
+        for binding in resolved:
+            if binding.tp_group != expected_group:
+                raise ConfigurationError(
+                    f"F component={component_category!r}, layer={layer_id} rank "
+                    f"{binding.rank_key!r} has TP group {binding.tp_group}; "
+                    f"expected {expected_group}"
+                )
+            state = self.physical_state(binding.physical_identity)
+            matches = tuple(
+                component
+                for component in state.components
+                if component.category == component_category
+                and component.layer_id == layer_id
+                and component.component_id in binding.component_ids
+            )
+            if len(matches) != 1:
+                raise ConfigurationError(
+                    f"F component={component_category!r}, layer={layer_id} does "
+                    f"not resolve uniquely on domain={domain!r}, "
+                    f"rank={binding.domain_rank}; found {len(matches)}"
+                )
+        if len({binding.physical_identity for binding in resolved}) != len(resolved):
+            raise ConfigurationError(
+                f"F component={component_category!r}, layer={layer_id}, "
+                f"domain={domain!r}, dp_rank={f_service_dp_rank} reuses a "
+                "physical worker inside its TP group"
+            )
+        return resolved
 
     def binding(self, domain: str, domain_rank: int) -> AFRankBinding:
         for binding in self.rank_bindings:
@@ -355,7 +815,15 @@ class AFRuntimePlan:
         self, domain: str, instance: str
     ) -> tuple[tuple[int, int, tuple[int, ...], tuple[str, ...]], ...]:
         by_expert: dict[int, list[AFRankBinding]] = {}
-        for binding in self.bindings_for_instance(domain, instance):
+        domain_plan = self.domain_runtime(domain)
+        bindings = (
+            tuple(
+                binding for binding in self.rank_bindings if binding.domain == domain
+            )
+            if domain_plan.expert_parallel_mode == "rank_reuse"
+            else self.bindings_for_instance(domain, instance)
+        )
+        for binding in bindings:
             for expert_id in binding.expert_ids:
                 by_expert.setdefault(expert_id, []).append(binding)
         return tuple(
@@ -382,14 +850,21 @@ class AFRuntimePlan:
                 f"domain={binding.domain}, rank={binding.domain_rank}: "
                 f"expected={binding.physical_identity}, actual={node.physical_workers[0]}"
             )
-        if node.tp_group and tuple(node.tp_group) != binding.tp_group:
+        expected_tp_group = binding.tp_group
+        if node.stage in {"expert", "routed_expert"}:
+            domain_plan = self.domain_runtime(binding.domain)
+            if domain_plan.expert_parallel_mode == "rank_reuse":
+                expected_tp_group = (binding.domain_rank,)
+        if node.tp_group and tuple(node.tp_group) != expected_tp_group:
             raise SimulationStateError(
                 f"runtime node {node.node_id!r} TP group mismatch for "
                 f"domain={binding.domain}, rank={binding.domain_rank}: "
-                f"expected={binding.tp_group}, actual={tuple(node.tp_group)}"
+                f"expected={expected_tp_group}, actual={tuple(node.tp_group)}"
             )
         expert_ids = tuple(getattr(node.local_work, "expert_ids", ()) or ())
-        if node.stage == "expert" and not set(expert_ids).issubset(binding.expert_ids):
+        if node.stage in {"expert", "routed_expert"} and not set(
+            expert_ids
+        ).issubset(binding.expert_ids):
             raise SimulationStateError(
                 f"runtime node {node.node_id!r} requests experts {expert_ids} on "
                 f"domain={binding.domain}, rank={binding.domain_rank}, "
@@ -397,51 +872,60 @@ class AFRuntimePlan:
             )
 
     def validate(self) -> None:
+        if tuple(layer.layer_id for layer in self.layers) != tuple(
+            range(self.total_layers)
+        ):
+            raise ConfigurationError("AF runtime layers must cover every model layer once")
         rank_keys = [binding.rank_key for binding in self.rank_bindings]
         if len(rank_keys) != len(set(rank_keys)):
             raise ConfigurationError("AF runtime plan contains duplicate rank bindings")
-        physical_ids = {state.physical_identity for state in self.physical_states}
-        if len(physical_ids) != len(self.physical_states):
-            raise ConfigurationError(
-                "AF runtime plan contains duplicate physical states"
-            )
+        physical_ids = [state.physical_identity for state in self.physical_states]
+        if len(physical_ids) != len(set(physical_ids)):
+            raise ConfigurationError("AF runtime plan contains duplicate physical states")
         state_by_physical = {
             state.physical_identity: state for state in self.physical_states
         }
+        layer_by_id = {layer.layer_id: layer for layer in self.layers}
         for binding in self.rank_bindings:
-            if binding.physical_identity not in physical_ids:
+            state = state_by_physical.get(binding.physical_identity)
+            if state is None or binding.rank_key not in state.bindings:
                 raise ConfigurationError(
                     f"AF runtime binding domain={binding.domain}, "
-                    f"rank={binding.domain_rank} has no physical state for "
-                    f"{binding.physical_identity!r}"
+                    f"rank={binding.domain_rank} has no matching physical state"
                 )
-            state = state_by_physical[binding.physical_identity]
-            if binding.rank_key not in state.bindings:
-                raise ConfigurationError(
-                    f"AF runtime domain={binding.domain}, rank={binding.domain_rank} "
-                    f"is missing from physical state {binding.physical_identity!r}"
-                )
-            component_ids = {item.component_id for item in state.components}
-            if not set(binding.component_ids).issubset(component_ids):
+            components = {
+                item.component_id: item for item in state.components
+            }
+            if not set(binding.component_ids).issubset(components):
                 raise ConfigurationError(
                     f"AF runtime domain={binding.domain}, rank={binding.domain_rank} "
                     "component ownership differs from physical ledger"
                 )
-            categories = {
-                item.category
-                for item in state.components
-                if item.component_id in binding.component_ids
-            }
             allowed = (
                 {"attention", "embedding_lm_head", "router"}
                 if binding.capability == "af_attention"
-                else {"dense_ffn", "routed_expert", "shared_expert"}
+                else {"dense_ffn", "routed_expert", "shared_expert", "router"}
             )
-            if not categories.issubset(allowed):
-                raise ConfigurationError(
-                    f"AF runtime domain={binding.domain}, rank={binding.domain_rank} "
-                    f"has invalid component categories {sorted(categories - allowed)}"
-                )
+            for component_id in binding.component_ids:
+                component = components[component_id]
+                if component.category not in allowed:
+                    raise ConfigurationError(
+                        f"AF runtime rank {binding.rank_key!r} has invalid component "
+                        f"category {component.category!r}"
+                    )
+                if component.layer_id is None:
+                    continue
+                layer = layer_by_id[component.layer_id]
+                if component.category == "router" and layer.layer_type != "moe":
+                    raise ConfigurationError("Dense layer cannot own a Router component")
+                if component.category == "dense_ffn" and layer.layer_type != "dense":
+                    raise ConfigurationError("MoE layer cannot own a Dense FFN component")
+                if component.category in {"routed_expert", "shared_expert"} and (
+                    layer.layer_type != "moe"
+                ):
+                    raise ConfigurationError(
+                        "Dense layer cannot own Routed/Shared Expert components"
+                    )
         for state in self.physical_states:
             expected_bindings = tuple(
                 sorted(
@@ -453,7 +937,13 @@ class AFRuntimePlan:
             if tuple(sorted(state.bindings)) != expected_bindings:
                 raise ConfigurationError(
                     f"AF runtime physical state {state.physical_identity!r} binding "
-                    f"mismatch: expected={expected_bindings}, actual={state.bindings}"
+                    "mismatch"
+                )
+            component_ids = [item.component_id for item in state.components]
+            if len(component_ids) != len(set(component_ids)):
+                raise ConfigurationError(
+                    f"AF runtime physical state {state.physical_identity!r} counts a "
+                    "component more than once"
                 )
             if state.model_bytes != sum(item.bytes for item in state.components):
                 raise ConfigurationError(
@@ -466,82 +956,128 @@ class AFRuntimePlan:
                     f"capacity: model_bytes={state.model_bytes}, "
                     f"capacity_bytes={state.capacity_bytes}"
                 )
+
         domain_by_name = {domain.name: domain for domain in self.domains}
         for domain in self.domains:
-            bindings = [
+            domain_bindings = tuple(
                 item for item in self.rank_bindings if item.domain == domain.name
-            ]
-            ep_size = (
-                domain.expert_parallel_size if domain.capability == "af_ffn" else 1
             )
             expected_count = (
-                domain.tensor_parallel_size * domain.data_parallel_size * ep_size
+                domain.tensor_parallel_size * domain.data_parallel_size
             )
-            if len(bindings) != expected_count:
+            if len(domain_bindings) != expected_count:
                 raise ConfigurationError(
                     f"AF runtime domain={domain.name} rank count mismatch: "
-                    f"expected={expected_count}, actual={len(bindings)}"
+                    f"expected base TP*DP={expected_count}, "
+                    f"actual={len(domain_bindings)}"
                 )
+            if domain.capability == "af_ffn" and domain.expert_parallel_mode not in {
+                "expert_tp",
+                "rank_reuse",
+            }:
+                raise ConfigurationError(
+                    f"AF runtime domain={domain.name} has unsupported EP mode"
+                )
+            if domain.capability == "af_attention":
+                if any(binding.ep_group for binding in domain_bindings):
+                    raise ConfigurationError(
+                        f"A domain={domain.name!r} must not have an Expert group"
+                    )
+                continue
+            if domain.expert_parallel_mode == "expert_tp":
+                expected_ep_size = 1
+                expected_expert_tp = domain.tensor_parallel_size
+            else:
+                expected_ep_size = expected_count
+                expected_expert_tp = 1
+            if domain.expert_parallel_size != expected_ep_size or (
+                domain.expert_tensor_parallel_size != expected_expert_tp
+            ):
+                raise ConfigurationError(
+                    f"F domain={domain.name!r} EP contract mismatch: mode="
+                    f"{domain.expert_parallel_mode}, EP={domain.expert_parallel_size}, "
+                    f"Expert TP={domain.expert_tensor_parallel_size}; expected "
+                    f"EP={expected_ep_size}, Expert TP={expected_expert_tp}"
+                )
+            world_group = tuple(
+                binding.domain_rank
+                for binding in sorted(
+                    domain_bindings, key=lambda binding: binding.domain_rank
+                )
+            )
+            for binding in domain_bindings:
+                expected_ep_group = (
+                    binding.tp_group
+                    if domain.expert_parallel_mode == "expert_tp"
+                    else world_group
+                )
+                if binding.ep_group != expected_ep_group:
+                    raise ConfigurationError(
+                        f"F rank {binding.rank_key!r} EP group mismatch: "
+                        f"expected={expected_ep_group}, actual={binding.ep_group}"
+                    )
+
         for replica in self.replicas:
             domain = domain_by_name.get(replica.domain)
             if domain is None:
                 raise ConfigurationError(
                     f"AF runtime replica references missing domain {replica.domain!r}"
                 )
-            bindings = [self.binding(*rank_key) for rank_key in replica.rank_keys]
+            bindings = tuple(
+                sorted(
+                    (self.binding(*rank_key) for rank_key in replica.rank_keys),
+                    key=lambda item: item.tp_rank,
+                )
+            )
             if any(item.dp_rank != replica.dp_rank for item in bindings):
                 raise ConfigurationError(
                     f"AF runtime domain={replica.domain}, replica={replica.dp_rank} "
                     "contains a rank from another DP replica"
                 )
-            expected_coordinates = {
-                (ep_rank, tp_rank)
-                for ep_rank in range(
-                    domain.expert_parallel_size if domain.capability == "af_ffn" else 1
-                )
-                for tp_rank in range(domain.tensor_parallel_size)
-            }
-            actual_coordinates = {(item.ep_rank, item.tp_rank) for item in bindings}
-            if actual_coordinates != expected_coordinates:
+            if {item.tp_rank for item in bindings} != set(
+                range(domain.tensor_parallel_size)
+            ):
                 raise ConfigurationError(
                     f"AF runtime domain={replica.domain}, replica={replica.dp_rank} "
-                    f"rank coordinates mismatch: expected={sorted(expected_coordinates)}, "
-                    f"actual={sorted(actual_coordinates)}"
+                    "does not contain exactly one base rank per TP coordinate"
                 )
+            expected_tp_group = tuple(item.domain_rank for item in bindings)
+            for binding in bindings:
+                expected_ep_rank = (
+                    binding.dp_rank * domain.tensor_parallel_size + binding.tp_rank
+                    if domain.capability == "af_ffn"
+                    and domain.expert_parallel_mode == "rank_reuse"
+                    else 0
+                )
+                if binding.ep_rank != expected_ep_rank:
+                    raise ConfigurationError(
+                        f"AF runtime rank {binding.rank_key!r} EP identity mismatch: "
+                        f"expected={expected_ep_rank}, actual={binding.ep_rank}"
+                    )
+                if binding.tp_group != expected_tp_group:
+                    raise ConfigurationError(
+                        f"AF runtime rank {binding.rank_key!r} TP group mismatch"
+                    )
             if replica.is_attention:
                 leaders = [item for item in bindings if item.is_scheduler_leader]
                 if len(leaders) != 1 or leaders[0].rank_key != replica.leader_rank_key:
                     raise ConfigurationError(
                         f"AF runtime domain={replica.domain}, replica={replica.dp_rank} "
-                        f"must have one scheduler leader; got "
-                        f"{[item.domain_rank for item in leaders]}"
+                        "must have exactly one scheduler leader"
                     )
-                expected_tp = tuple(item.domain_rank for item in bindings)
-                for binding in bindings:
-                    if binding.tp_group != expected_tp:
-                        raise ConfigurationError(
-                            f"AF runtime domain={binding.domain}, rank={binding.domain_rank} "
-                            f"TP group mismatch: expected={expected_tp}, "
-                            f"actual={binding.tp_group}"
-                        )
-                    if binding.kv_partition is None:
-                        raise ConfigurationError(
-                            f"AF runtime domain={binding.domain}, "
-                            f"rank={binding.domain_rank} has no KV-head partition"
-                        )
                 expected_partitions = kv_head_partitions(
                     num_kv_heads=self.num_kv_heads,
                     tensor_parallel_size=domain.tensor_parallel_size,
                     head_dim=self.head_dim,
                     num_layers=self.total_layers,
                     block_size=self.block_size,
-                    dtype_size_bytes=self.dtype_size_bytes,
+                    dtype_size_bytes=self.kv_dtype_size_bytes,
+                    mla_cache_width=self.mla.cache_width if self.mla else 0,
                 )
                 for binding in bindings:
                     if binding.kv_partition != expected_partitions[binding.tp_rank]:
                         raise ConfigurationError(
-                            f"AF runtime domain={binding.domain}, "
-                            f"rank={binding.domain_rank} KV-head partition mismatch"
+                            f"AF runtime rank {binding.rank_key!r} KV partition mismatch"
                         )
                 gpu_capacities = replica.gpu_capacity_by_rank()
                 cpu_capacities = replica.cpu_capacity_by_rank()
@@ -557,56 +1093,167 @@ class AFRuntimePlan:
                     )
             else:
                 if replica.leader_rank_key is not None:
+                    raise ConfigurationError("F replica must not own a scheduler leader")
+                if any(binding.kv_partition is not None for binding in bindings):
+                    raise ConfigurationError("F ranks must not own KV state")
+                if domain.expert_parallel_mode == "expert_tp" and self.num_experts:
+                    for expert_id in range(self.num_experts):
+                        owners = [
+                            item for item in bindings if expert_id in item.expert_ids
+                        ]
+                        if {item.tp_rank for item in owners} != set(
+                            range(domain.tensor_parallel_size)
+                        ):
+                            raise ConfigurationError(
+                                f"F domain={domain.name}, replica={replica.dp_rank}, "
+                                f"expert={expert_id} lacks exact Expert TP shards"
+                            )
+
+        for domain in self.domains:
+            if (
+                domain.capability != "af_ffn"
+                or domain.expert_parallel_mode != "rank_reuse"
+                or not self.num_experts
+            ):
+                continue
+            domain_bindings = tuple(
+                item for item in self.rank_bindings if item.domain == domain.name
+            )
+            expected_ep_group = tuple(
+                item.domain_rank
+                for item in sorted(domain_bindings, key=lambda item: item.domain_rank)
+            )
+            for binding in domain_bindings:
+                if binding.ep_group != expected_ep_group:
                     raise ConfigurationError(
-                        f"F runtime domain={replica.domain}, replica={replica.dp_rank} "
-                        "must not own a scheduler leader"
+                        f"rank-reuse F rank {binding.rank_key!r} EP group mismatch"
                     )
-                expert_to_ep: dict[int, set[int]] = {}
-                expert_to_tp: dict[int, set[int]] = {}
-                for binding in bindings:
-                    if binding.kv_partition is not None:
-                        raise ConfigurationError(
-                            f"F runtime domain={binding.domain}, "
-                            f"rank={binding.domain_rank} must not own KV state"
-                        )
-                    expected_tp_group = tuple(
-                        item.domain_rank
-                        for item in bindings
-                        if item.ep_rank == binding.ep_rank
-                    )
-                    expected_ep_group = tuple(
-                        item.domain_rank
-                        for item in bindings
-                        if item.tp_rank == binding.tp_rank
-                    )
-                    if binding.tp_group != expected_tp_group:
-                        raise ConfigurationError(
-                            f"F runtime domain={binding.domain}, "
-                            f"rank={binding.domain_rank} TP group mismatch"
-                        )
-                    if binding.ep_group != expected_ep_group:
-                        raise ConfigurationError(
-                            f"F runtime domain={binding.domain}, "
-                            f"rank={binding.domain_rank} EP group mismatch"
-                        )
-                    for expert_id in binding.expert_ids:
-                        expert_to_ep.setdefault(expert_id, set()).add(binding.ep_rank)
-                        expert_to_tp.setdefault(expert_id, set()).add(binding.tp_rank)
-                if set(expert_to_ep) != set(range(self.num_experts)):
+            for expert_id in range(self.num_experts):
+                owners = [
+                    item for item in domain_bindings if expert_id in item.expert_ids
+                ]
+                if len(owners) != 1:
                     raise ConfigurationError(
-                        f"F runtime domain={replica.domain}, replica={replica.dp_rank} "
-                        f"expert placement mismatch: expected={list(range(self.num_experts))}, "
-                        f"actual={sorted(expert_to_ep)}"
+                        f"rank-reuse F domain={domain.name}, expert={expert_id} must "
+                        f"resolve to one physical rank; got {len(owners)}"
                     )
-                for expert_id in expert_to_ep:
-                    if len(expert_to_ep[expert_id]) != 1 or expert_to_tp[
-                        expert_id
-                    ] != set(range(domain.tensor_parallel_size)):
-                        raise ConfigurationError(
-                            f"F runtime domain={replica.domain}, "
-                            f"replica={replica.dp_rank}, expert={expert_id} has "
-                            "inconsistent EP placement or TP shards"
+
+        for domain in self.domains:
+            if domain.capability != "af_ffn":
+                continue
+            for dp_rank in range(domain.data_parallel_size):
+                for layer in self.layers:
+                    if layer.layer_type == "dense":
+                        self.component_execution(
+                            domain.name, layer.layer_id, "dense_ffn", dp_rank
                         )
+                    elif layer.shared_intermediate_size:
+                        self.component_execution(
+                            domain.name, layer.layer_id, "shared_expert", dp_rank
+                        )
+                if domain.expert_parallel_mode == "expert_tp":
+                    for expert_id in range(self.num_experts):
+                        self.expert_execution(domain.name, expert_id, dp_rank)
+            if domain.expert_parallel_mode == "rank_reuse":
+                for expert_id in range(self.num_experts):
+                    self.expert_execution(domain.name, expert_id, 0)
+
+        for domain in self.domains:
+            for dp_rank in range(domain.data_parallel_size):
+                ownerships = self.ownerships_for_replica(domain.name, dp_rank)
+                cursor = 0
+                for ownership in ownerships:
+                    binding = self.binding(
+                        ownership.domain, ownership.domain_rank
+                    )
+                    if ownership.physical_worker != binding.physical_identity:
+                        raise ConfigurationError(
+                            f"AF tensor ownership for rank {binding.rank_key!r} "
+                            "references a different physical worker"
+                        )
+                    expected_residual = binding.capability == "af_attention"
+                    if ownership.retains_residual != expected_residual:
+                        raise ConfigurationError(
+                            f"AF tensor ownership for rank {binding.rank_key!r} "
+                            f"retains_residual={ownership.retains_residual}; "
+                            f"expected={expected_residual}"
+                        )
+                    if ownership.interval.start != cursor:
+                        raise ConfigurationError(
+                            f"AF tensor ownership for domain={domain.name}, "
+                            f"dp_rank={dp_rank} has a gap or overlap"
+                        )
+                    cursor = ownership.interval.end
+                if cursor != self.hidden_size:
+                    raise ConfigurationError(
+                        f"AF tensor ownership for domain={domain.name}, "
+                        f"dp_rank={dp_rank} does not cover hidden_size={self.hidden_size}"
+                    )
+
+        ownership_by_rank = {
+            (item.domain, item.domain_rank): item for item in self.tensor_ownerships
+        }
+        destination_keys = [
+            (
+                item.phase,
+                item.source_domain,
+                item.source_rank,
+                item.target_domain,
+                item.target_rank,
+                item.interval.start,
+                item.interval.end,
+                item.source_layout,
+                item.target_layout,
+            )
+            for item in self.partial_destinations
+        ]
+        if len(destination_keys) != len(set(destination_keys)):
+            raise ConfigurationError("AF runtime has duplicate partial destinations")
+        for destination in self.partial_destinations:
+            source = ownership_by_rank.get(
+                (destination.source_domain, destination.source_rank)
+            )
+            target = ownership_by_rank.get(
+                (destination.target_domain, destination.target_rank)
+            )
+            if source is None or target is None:
+                raise ConfigurationError(
+                    "AF partial destination references a missing tensor owner"
+                )
+            if source.dp_rank != destination.source_dp_rank or (
+                target.dp_rank != destination.target_dp_rank
+            ):
+                raise ConfigurationError(
+                    "AF partial destination DP owner does not match its rank"
+                )
+            expected_interval = source.interval.intersection(target.interval)
+            if expected_interval != destination.interval:
+                raise ConfigurationError(
+                    f"AF partial destination {destination.source_domain}:"
+                    f"{destination.source_rank} -> {destination.target_domain}:"
+                    f"{destination.target_rank} has interval "
+                    f"{destination.interval}; expected {expected_interval}"
+                )
+
+        collective_keys = [
+            (item.domain, item.dp_rank, item.after_stage)
+            for item in self.collective_plans
+        ]
+        if len(collective_keys) != len(set(collective_keys)):
+            raise ConfigurationError("AF runtime has ambiguous collective plans")
+        for collective in self.collective_plans:
+            if not collective.participant_ranks:
+                raise ConfigurationError("AF collective must have participants")
+            for rank, physical in zip(
+                collective.participant_ranks, collective.physical_workers
+            ):
+                binding = self.binding(collective.domain, rank)
+                if binding.dp_rank != collective.dp_rank or (
+                    binding.physical_identity != physical
+                ):
+                    raise ConfigurationError(
+                        f"AF collective {collective.operation!r} endpoint mismatch"
+                    )
 
     def summary(self, replica_managers: Mapping[ReplicaKey, Any] | None = None) -> dict:
         managers = replica_managers or {}
@@ -664,6 +1311,53 @@ class AFRuntimePlan:
             "model": self.model,
             "block_size": self.block_size,
             "dtype": self.dtype,
+            "effective_dtypes": self.effective_dtypes.as_dict(),
+            "link_effective_dtypes": {
+                name: effective.as_dict()
+                for name, effective in self.link_effective_dtypes
+            },
+            "model_shape": {
+                "total_layers": self.total_layers,
+                "hidden_size": self.hidden_size,
+                "num_attention_heads": self.num_attention_heads,
+                "num_kv_heads": self.num_kv_heads,
+                "head_dim": self.head_dim,
+                "mla": vars(self.mla) if self.mla else None,
+            },
+            "domains": [
+                {
+                    "name": domain.name,
+                    "capability": domain.capability,
+                    "tensor_parallel_size": domain.tensor_parallel_size,
+                    "data_parallel_size": domain.data_parallel_size,
+                    "expert_parallel_size": domain.expert_parallel_size,
+                    "expert_parallel_mode": domain.expert_parallel_mode,
+                    "expert_placement_strategy": (
+                        domain.expert_placement_strategy
+                    ),
+                    "base_world_size": (
+                        domain.tensor_parallel_size * domain.data_parallel_size
+                    ),
+                    "expert_tensor_parallel_size": (
+                        domain.expert_tensor_parallel_size
+                    ),
+                }
+                for domain in self.domains
+            ],
+            "rank_bindings": [
+                binding.as_dict() for binding in self.rank_bindings
+            ],
+            "layers": [layer.as_dict() for layer in self.layers],
+            "request_owners": [owner.as_dict() for owner in self.request_owners],
+            "tensor_ownerships": [
+                ownership.as_dict() for ownership in self.tensor_ownerships
+            ],
+            "partial_destinations": [
+                destination.as_dict() for destination in self.partial_destinations
+            ],
+            "collective_plans": [
+                collective.as_dict() for collective in self.collective_plans
+            ],
             "physical_workers": physical,
             "replicas": replicas,
         }
@@ -741,6 +1435,7 @@ def kv_head_partitions(
     num_layers: int,
     block_size: int,
     dtype_size_bytes: int,
+    mla_cache_width: int = 0,
 ) -> tuple[AFKVHeadPartition, ...]:
     for name, value in (
         ("num_kv_heads", num_kv_heads),
@@ -752,6 +1447,13 @@ def kv_head_partitions(
     ):
         if type(value) is not int or value < 1:
             raise ConfigurationError(f"AF KV partition {name} must be positive")
+    if mla_cache_width:
+        if type(mla_cache_width) is not int or mla_cache_width < 1 or num_kv_heads != 1:
+            raise ConfigurationError("MLA cache requires positive latent+RoPE width and one shared cache")
+        token_bytes = mla_cache_width * dtype_size_bytes * num_layers
+        return tuple(AFKVHeadPartition(tp_rank=rank, global_head_ids=(0,),
+            replica_factor=tensor_parallel_size, bytes_per_token=token_bytes,
+            bytes_per_block=token_bytes*block_size) for rank in range(tensor_parallel_size))
     if num_kv_heads >= tensor_parallel_size:
         if num_kv_heads % tensor_parallel_size:
             raise ConfigurationError(
@@ -802,39 +1504,123 @@ def compile_af_runtime_plan(
         raise ConfigurationError("AF runtime plan requires af.enabled=true")
     if not 0 <= watermark < 1:
         raise ConfigurationError("AF runtime watermark must be in [0, 1)")
-    dtype_size = _dtype_size(dtype)
     try:
+        model_dtype = canonicalize_dtype(dtype, role="activation_dtype")
         model_conf = roofline.models[model]
+    except ValueError as exc:
+        raise ConfigurationError(f"invalid AF runtime dtype: {exc}") from exc
     except (AttributeError, KeyError) as exc:
         raise ConfigurationError(
             f"AF runtime model metadata missing for {model!r}"
         ) from exc
+
+    link_dtypes = tuple(
+        (
+            link.name,
+            cluster_config.af.resolve_dtypes(
+                model_dtype=model_dtype,
+                link=link,
+                model_kv_cache_dtype=getattr(model_conf, "kv_cache_dtype", None),
+            ),
+        )
+        for link in cluster_config.af.links
+    )
+    if not link_dtypes:
+        raise ConfigurationError("AF runtime plan requires at least one AF link")
+    decode_link = cluster_config.phase_to_af_link.get("decode")
+    primary_link_name = decode_link.name if decode_link is not None else link_dtypes[0][0]
+    effective_dtypes = next(
+        effective for name, effective in link_dtypes if name == primary_link_name
+    )
+    weight_bytes = dtype_size_bytes(
+        effective_dtypes.weight_dtype, role="weight_dtype"
+    )
+    kv_bytes = dtype_size_bytes(
+        effective_dtypes.kv_cache_dtype, role="kv_cache_dtype"
+    )
+
     hidden = _positive_model_int(model_conf, "Dmodel")
     total_layers = _positive_model_int(model_conf, "Nlayer")
     attention_heads = moe_config.num_attention_heads or _positive_model_int(
         model_conf, "Nhead"
     )
-    if hidden % attention_heads:
+    mla = (MLADimensions.from_model(model_conf)
+           if getattr(model_conf, "attention_type", "").lower() == "mla" else None)
+    if not mla and hidden % attention_heads:
         raise ConfigurationError(
             f"AF runtime Dmodel={hidden} is not divisible by Nhead={attention_heads}"
         )
-    head_dim = hidden // attention_heads
-    kv_heads = moe_config.num_key_value_heads or _num_kv_heads(model_conf)
+    head_dim = mla.head_dim if mla else hidden // attention_heads
+    kv_heads = 1 if mla else (moe_config.num_key_value_heads or _num_kv_heads(model_conf))
     intermediate, intermediate_source = _intermediate_size(
         model_conf, moe_config, hidden
     )
     moe_intermediate = moe_config.moe_intermediate_size or intermediate
+    shared_intermediate = moe_intermediate * (
+        moe_config.num_shared_experts if moe_config.enabled else 0
+    )
     vocab_size = int(
         getattr(model_conf, "Vocab", getattr(model_conf, "Vocab_Size", 50000))
     )
     if vocab_size < 1:
         raise ConfigurationError("AF runtime vocabulary size must be positive")
 
-    worker_by_physical: dict[str, WorkerConfig] = {}
-    for worker in worker_configs:
-        if worker.physical_worker_ref is not None:
-            worker_by_physical[worker.physical_worker_ref.identity] = worker
+    moe_layer_ids = set(moe_config.moe_layer_indices(total_layers))
+    if moe_config.enabled and len(moe_layer_ids) != moe_config.num_moe_layers:
+        raise ConfigurationError(
+            "AF runtime MoE layer metadata exceeds the model layer range: "
+            f"declared={moe_config.num_moe_layers}, resolved={len(moe_layer_ids)}, "
+            f"total_layers={total_layers}"
+        )
+    layers = tuple(
+        AFLayerRuntime(
+            layer_id=layer_id,
+            mla=mla,
+            tie_word_embeddings=bool(getattr(model_conf, "tie_word_embeddings", True)),
+            layer_type="moe" if layer_id in moe_layer_ids else "dense",
+            hidden_size=hidden,
+            num_attention_heads=attention_heads,
+            num_kv_heads=kv_heads,
+            head_dim=head_dim,
+            dense_intermediate_size=intermediate,
+            routed_intermediate_size=moe_intermediate,
+            shared_intermediate_size=(
+                shared_intermediate if layer_id in moe_layer_ids else 0
+            ),
+            num_experts=(moe_config.num_experts if layer_id in moe_layer_ids else 0),
+            top_k=(
+                moe_config.num_experts_per_tok if layer_id in moe_layer_ids else 1
+            ),
+            num_shared_experts=(
+                moe_config.num_shared_experts if layer_id in moe_layer_ids else 0
+            ),
+        )
+        for layer_id in range(total_layers)
+    )
+    _validate_parallel_shapes(
+        cluster_config=cluster_config,
+        hidden=hidden,
+        attention_heads=attention_heads,
+        kv_heads=kv_heads,
+        head_dim=head_dim,
+        mla_cache_width=mla.cache_width if mla else 0,
+        intermediate=intermediate,
+        moe_intermediate=moe_intermediate,
+        shared_intermediate=shared_intermediate,
+        has_dense=any(layer.layer_type == "dense" for layer in layers),
+        has_moe=bool(moe_layer_ids),
+    )
 
+    worker_by_physical = {
+        worker.physical_worker_ref.identity: worker
+        for worker in worker_configs
+        if worker.physical_worker_ref is not None
+    }
+    domain_configs = tuple(
+        domain
+        for domain in cluster_config.af.execution_domains
+        if domain.capability in {"af_attention", "af_ffn"}
+    )
     domains = tuple(
         AFDomainRuntime(
             name=domain.name,
@@ -842,24 +1628,34 @@ def compile_af_runtime_plan(
             tensor_parallel_size=domain.parallel.tensor_parallel_size,
             data_parallel_size=domain.parallel.data_parallel_size,
             expert_parallel_size=(
-                domain.parallel.expert_parallel_size
+                domain.expert_parallel.expert_parallel_size
                 if domain.capability == "af_ffn"
                 else 1
             ),
             expert_placement_strategy=domain.parallel.expert_placement_strategy,
+            expert_parallel_mode=domain.expert_parallel.mode,
+            expert_tensor_parallel_size=(
+                domain.expert_parallel.expert_tensor_parallel_size
+            ),
         )
-        for domain in cluster_config.af.execution_domains
-        if domain.capability in {"af_attention", "af_ffn"}
+        for domain in domain_configs
     )
 
-    component_by_id: dict[str, AFModelComponent] = {}
-    components_by_rank: dict[RankKey, tuple[AFModelComponent, ...]] = {}
     preliminary: list[dict[str, Any]] = []
     kv_by_rank: dict[RankKey, AFKVHeadPartition] = {}
-    for domain in cluster_config.af.execution_domains:
-        if domain.capability not in {"af_attention", "af_ffn"}:
-            continue
+    component_by_id: dict[str, AFModelComponent] = {}
+    for domain in domain_configs:
         tp_size = domain.parallel.tensor_parallel_size
+        domain_mappings = tuple(
+            sorted(
+                (
+                    mapping
+                    for instance in domain.logical_instances
+                    for mapping in instance.rank_mapping
+                ),
+                key=lambda item: item.domain_rank,
+            )
+        )
         partitions = (
             kv_head_partitions(
                 num_kv_heads=kv_heads,
@@ -867,21 +1663,23 @@ def compile_af_runtime_plan(
                 head_dim=head_dim,
                 num_layers=total_layers,
                 block_size=block_size,
-                dtype_size_bytes=dtype_size,
+                dtype_size_bytes=kv_bytes,
+                mla_cache_width=mla.cache_width if mla else 0,
             )
             if domain.capability == "af_attention"
             else ()
         )
+        expert_view = domain.expert_parallel
+        experts_by_rank = _experts_by_ep(
+            moe_config.num_experts if moe_config.enabled else 0,
+            expert_view.expert_parallel_size,
+            domain.parallel.expert_placement_strategy,
+        )
         for instance in domain.logical_instances:
-            mappings = sorted(
-                instance.rank_mapping,
-                key=lambda mapping: (mapping.ep_rank, mapping.tp_rank),
+            mappings = tuple(
+                sorted(instance.rank_mapping, key=lambda item: item.tp_rank)
             )
-            experts_by_ep = _experts_by_ep(
-                moe_config.num_experts if moe_config.enabled else 0,
-                domain.parallel.expert_parallel_size,
-                domain.parallel.expert_placement_strategy,
-            )
+            tp_group = tuple(item.domain_rank for item in mappings)
             for mapping in mappings:
                 physical = mapping.physical_worker.identity
                 worker = worker_by_physical.get(physical)
@@ -890,46 +1688,41 @@ def compile_af_runtime_plan(
                         f"AF runtime domain={domain.name}, rank={mapping.domain_rank} "
                         f"references missing physical worker {physical!r}"
                     )
-                tp_group = tuple(
-                    item.domain_rank
-                    for item in mappings
-                    if item.ep_rank == mapping.ep_rank
-                )
-                ep_group = tuple(
-                    item.domain_rank
-                    for item in mappings
-                    if item.tp_rank == mapping.tp_rank
-                )
-                expert_ids = (
-                    tuple(experts_by_ep.get(mapping.ep_rank, ()))
-                    if domain.capability == "af_ffn"
-                    else ()
-                )
+                if domain.capability == "af_ffn" and expert_view.mode == "rank_reuse":
+                    expert_ids = tuple(experts_by_rank.get(mapping.ep_rank, ()))
+                    ep_group = tuple(item.domain_rank for item in domain_mappings)
+                elif domain.capability == "af_ffn":
+                    expert_ids = (
+                        tuple(range(moe_config.num_experts))
+                        if moe_config.enabled
+                        else ()
+                    )
+                    ep_group = tp_group
+                else:
+                    expert_ids = ()
+                    ep_group = ()
+                rank_key = (domain.name, mapping.domain_rank)
+                if partitions:
+                    kv_by_rank[rank_key] = partitions[mapping.tp_rank]
                 components = _components_for_binding(
                     capability=domain.capability,
+                    router_location=cluster_config.af.router_location,
                     tp_rank=mapping.tp_rank,
                     tp_size=tp_size,
-                    is_leader=(mapping.tp_rank == 0 and mapping.ep_rank == 0),
+                    dp_rank=mapping.dp_rank,
+                    is_leader=(mapping.tp_rank == 0),
                     expert_ids=expert_ids,
+                    layers=layers,
                     hidden=hidden,
-                    total_layers=total_layers,
-                    dense_layers=(
-                        total_layers - moe_config.num_moe_layers
-                        if moe_config.enabled
-                        else total_layers
-                    ),
-                    moe_layers=(moe_config.num_moe_layers if moe_config.enabled else 0),
-                    intermediate=intermediate,
                     intermediate_source=intermediate_source,
-                    moe_intermediate=moe_intermediate,
-                    num_experts=(moe_config.num_experts if moe_config.enabled else 0),
-                    num_shared_experts=(
-                        moe_config.num_shared_experts if moe_config.enabled else 0
-                    ),
                     vocab_size=vocab_size,
-                    dtype_size=dtype_size,
+                    weight_dtype_size=weight_bytes,
+                    kv_partition=kv_by_rank.get(rank_key),
+                    expert_tp_size=expert_view.expert_tensor_parallel_size,
+                    expert_tp_rank=(
+                        mapping.tp_rank if expert_view.mode == "expert_tp" else 0
+                    ),
                 )
-                rank_key = (domain.name, mapping.domain_rank)
                 for component in components:
                     previous = component_by_id.get(component.component_id)
                     if previous is not None and previous != component:
@@ -938,9 +1731,6 @@ def compile_af_runtime_plan(
                             f"metadata: {previous} != {component}"
                         )
                     component_by_id[component.component_id] = component
-                components_by_rank[rank_key] = components
-                if partitions:
-                    kv_by_rank[rank_key] = partitions[mapping.tp_rank]
                 preliminary.append(
                     {
                         "domain": domain,
@@ -958,8 +1748,9 @@ def compile_af_runtime_plan(
     physical_bindings: dict[str, list[RankKey]] = {}
     physical_kv_bytes: dict[str, list[int]] = {}
     for item in preliminary:
+        domain = item["domain"]
         mapping = item["mapping"]
-        rank_key = (item["domain"].name, mapping.domain_rank)
+        rank_key = (domain.name, mapping.domain_rank)
         physical = mapping.physical_worker.identity
         physical_bindings.setdefault(physical, []).append(rank_key)
         ledger = physical_components.setdefault(physical, {})
@@ -969,7 +1760,7 @@ def compile_af_runtime_plan(
         if partition is not None:
             physical_kv_bytes.setdefault(physical, []).append(partition.bytes_per_block)
 
-    physical_states = []
+    physical_states: list[AFPhysicalRuntimeState] = []
     for physical, rank_keys in sorted(physical_bindings.items()):
         worker = worker_by_physical[physical]
         try:
@@ -983,21 +1774,25 @@ def compile_af_runtime_plan(
                 f"worker={physical!r}, hardware={worker.hardware!r}"
             ) from exc
         components = tuple(
-            physical_components.get(physical, {}).get(component_id)
-            for component_id in sorted(physical_components.get(physical, {}))
-        )
-        components = tuple(
-            component for component in components if component is not None
+            physical_components[physical][component_id]
+            for component_id in sorted(physical_components[physical])
         )
         model_bytes = sum(component.bytes for component in components)
         if model_bytes >= capacity_bytes:
             domains_and_ranks = ",".join(
                 f"{domain}:{rank}" for domain, rank in rank_keys
             )
+            component_bytes: dict[str, int] = {}
+            for component in components:
+                component_bytes[component.category] = (
+                    component_bytes.get(component.category, 0) + component.bytes
+                )
             raise ConfigurationError(
                 f"AF model does not fit before execution: domain/rank={domains_and_ranks}, "
                 f"physical_worker={physical}, hardware={worker.hardware}, "
-                f"model_bytes={model_bytes}, capacity_bytes={capacity_bytes}"
+                f"component_bytes={component_bytes}, model_bytes={model_bytes}, "
+                f"capacity_bytes={capacity_bytes}, required_bytes={model_bytes}, "
+                f"available_bytes={capacity_bytes}"
             )
         physical_states.append(
             AFPhysicalRuntimeState(
@@ -1012,43 +1807,38 @@ def compile_af_runtime_plan(
         )
     state_by_physical = {state.physical_identity: state for state in physical_states}
 
-    bindings = []
-    for item in preliminary:
-        domain: ExecutionDomainConfig = item["domain"]
-        mapping: DomainRankMapping = item["mapping"]
-        rank_key = (domain.name, mapping.domain_rank)
-        bindings.append(
-            AFRankBinding(
-                domain=domain.name,
-                capability=domain.capability,
-                instance=item["instance"],
-                domain_rank=mapping.domain_rank,
-                tp_rank=mapping.tp_rank,
-                pp_rank=mapping.pp_rank,
-                dp_rank=mapping.dp_rank,
-                ep_rank=mapping.ep_rank,
-                physical_worker=mapping.physical_worker,
-                hardware=item["worker"].hardware,
-                tp_group=item["tp_group"],
-                ep_group=item["ep_group"],
-                is_scheduler_leader=(
-                    domain.capability == "af_attention"
-                    and mapping.tp_rank == 0
-                    and mapping.ep_rank == 0
-                ),
-                expert_ids=item["expert_ids"],
-                component_ids=tuple(
-                    component.component_id for component in item["components"]
-                ),
-                kv_partition=kv_by_rank.get(rank_key),
-            )
+    bindings = tuple(
+        AFRankBinding(
+            domain=item["domain"].name,
+            capability=item["domain"].capability,
+            instance=item["instance"],
+            domain_rank=item["mapping"].domain_rank,
+            tp_rank=item["mapping"].tp_rank,
+            pp_rank=item["mapping"].pp_rank,
+            dp_rank=item["mapping"].dp_rank,
+            ep_rank=item["mapping"].ep_rank,
+            physical_worker=item["mapping"].physical_worker,
+            hardware=item["worker"].hardware,
+            tp_group=item["tp_group"],
+            ep_group=item["ep_group"],
+            is_scheduler_leader=(
+                item["domain"].capability == "af_attention"
+                and item["mapping"].tp_rank == 0
+            ),
+            expert_ids=item["expert_ids"],
+            component_ids=tuple(
+                component.component_id for component in item["components"]
+            ),
+            kv_partition=kv_by_rank.get(
+                (item["domain"].name, item["mapping"].domain_rank)
+            ),
         )
+        for item in preliminary
+    )
     binding_by_key = {binding.rank_key: binding for binding in bindings}
 
-    replicas = []
-    for domain in cluster_config.af.execution_domains:
-        if domain.capability not in {"af_attention", "af_ffn"}:
-            continue
+    replicas: list[AFReplicaRuntime] = []
+    for domain in domain_configs:
         for instance in domain.logical_instances:
             instance_bindings = tuple(
                 sorted(
@@ -1056,15 +1846,14 @@ def compile_af_runtime_plan(
                         binding_by_key[(domain.name, mapping.domain_rank)]
                         for mapping in instance.rank_mapping
                     ),
-                    key=lambda binding: (binding.ep_rank, binding.tp_rank),
+                    key=lambda binding: binding.tp_rank,
                 )
             )
-            local_gpu = []
-            local_cpu = []
+            local_gpu: list[tuple[RankKey, int]] = []
+            local_cpu: list[tuple[RankKey, int]] = []
             for binding in instance_bindings:
                 if binding.kv_partition is None:
-                    gpu_blocks = 0
-                    cpu_blocks = 0
+                    gpu_blocks = cpu_blocks = 0
                 else:
                     state = state_by_physical[binding.physical_identity]
                     raw_gpu_blocks = (
@@ -1112,13 +1901,45 @@ def compile_af_runtime_plan(
                 )
             )
 
+    tensor_ownerships = tuple(
+        AFTensorOwnership(
+            domain=binding.domain,
+            domain_rank=binding.domain_rank,
+            dp_rank=binding.dp_rank,
+            tp_rank=binding.tp_rank,
+            physical_worker=binding.physical_identity,
+            interval=_tensor_interval(
+                hidden,
+                next(
+                    domain.tensor_parallel_size
+                    for domain in domains
+                    if domain.name == binding.domain
+                ),
+                binding.tp_rank,
+            ),
+            layout="sharded",
+            canonical_producer=(binding.tp_rank == 0),
+            retains_residual=(binding.capability == "af_attention"),
+        )
+        for binding in bindings
+    )
+    request_owners = _compile_request_owners(cluster_config, bindings)
+    partial_destinations = _compile_partial_destinations(
+        cluster_config, tensor_ownerships
+    )
+    collective_plans = _compile_collective_plans(
+        cluster_config, binding_by_key
+    )
+
     plan = AFRuntimePlan(
-        schema_version="1.0",
+        mla=mla,
+        schema_version="2.0",
         model=model,
         block_size=block_size,
-        dtype=dtype,
-        dtype_size_bytes=dtype_size,
+        effective_dtypes=effective_dtypes,
         total_layers=total_layers,
+        hidden_size=hidden,
+        num_attention_heads=attention_heads,
         num_kv_heads=kv_heads,
         head_dim=head_dim,
         num_experts=(moe_config.num_experts if moe_config.enabled else 0),
@@ -1130,110 +1951,382 @@ def compile_af_runtime_plan(
             sorted(replicas, key=lambda replica: (replica.domain, replica.dp_rank))
         ),
         physical_states=tuple(physical_states),
+        layers=layers,
+        request_owners=request_owners,
+        tensor_ownerships=tensor_ownerships,
+        partial_destinations=partial_destinations,
+        collective_plans=collective_plans,
+        link_effective_dtypes=link_dtypes,
     )
     plan.validate()
     return plan
 
 
+def _validate_parallel_shapes(
+    *,
+    cluster_config: ClusterConfig,
+    hidden: int,
+    attention_heads: int,
+    kv_heads: int,
+    head_dim: int,
+    mla_cache_width: int,
+    intermediate: int,
+    moe_intermediate: int,
+    shared_intermediate: int,
+    has_dense: bool,
+    has_moe: bool,
+) -> None:
+    for domain in cluster_config.af.execution_domains:
+        if domain.capability not in {"af_attention", "af_ffn"}:
+            continue
+        tp_size = domain.parallel.tensor_parallel_size
+        if hidden % tp_size:
+            raise ConfigurationError(
+                f"AF runtime hidden_size={hidden} is not divisible by "
+                f"domain={domain.name!r} TP={tp_size}; uneven hidden shards are "
+                "not implemented"
+            )
+        if domain.capability == "af_attention":
+            if attention_heads % tp_size:
+                raise ConfigurationError(
+                    f"AF runtime query heads={attention_heads} are not divisible by "
+                    f"A domain={domain.name!r} TP={tp_size}"
+                )
+            kv_head_partitions(
+                num_kv_heads=kv_heads,
+                tensor_parallel_size=tp_size,
+                head_dim=head_dim,
+                mla_cache_width=mla_cache_width,
+                num_layers=1,
+                block_size=1,
+                dtype_size_bytes=1,
+            )
+            continue
+        if has_dense and intermediate % tp_size:
+            raise ConfigurationError(
+                f"AF runtime Dense FFN intermediate={intermediate} is not divisible "
+                f"by F domain={domain.name!r} TP={tp_size}"
+            )
+        if shared_intermediate and shared_intermediate % tp_size:
+            raise ConfigurationError(
+                f"AF runtime Shared FFN intermediate={shared_intermediate} is not "
+                f"divisible by F domain={domain.name!r} TP={tp_size}"
+            )
+        if (
+            has_moe
+            and domain.expert_parallel.expert_tensor_parallel_size > 1
+            and moe_intermediate
+            % domain.expert_parallel.expert_tensor_parallel_size
+        ):
+            raise ConfigurationError(
+                f"AF runtime Routed Expert intermediate={moe_intermediate} is not "
+                f"divisible by Expert TP="
+                f"{domain.expert_parallel.expert_tensor_parallel_size} in "
+                f"domain={domain.name!r}"
+            )
+
+
+def _tensor_interval(hidden: int, tp_size: int, tp_rank: int) -> AFTensorInterval:
+    if hidden % tp_size:
+        raise ConfigurationError(
+            f"AF hidden ownership requires hidden={hidden} divisible by TP={tp_size}"
+        )
+    width = hidden // tp_size
+    return AFTensorInterval(tp_rank * width, (tp_rank + 1) * width)
+
+
+def _compile_request_owners(
+    cluster_config: ClusterConfig,
+    bindings: tuple[AFRankBinding, ...],
+) -> tuple[AFRequestOwner, ...]:
+    by_key = {binding.rank_key: binding for binding in bindings}
+    owners: list[AFRequestOwner] = []
+    for phase, (a_domain, _) in sorted(cluster_config.phase_to_af_domains.items()):
+        for instance in sorted(
+            a_domain.logical_instances,
+            key=lambda item: min(mapping.dp_rank for mapping in item.rank_mapping),
+        ):
+            leader_mapping = min(instance.rank_mapping, key=lambda item: item.tp_rank)
+            leader = by_key[(a_domain.name, leader_mapping.domain_rank)]
+            owners.append(
+                AFRequestOwner(
+                    phase=phase,
+                    domain=a_domain.name,
+                    instance=instance.name,
+                    dp_rank=leader.dp_rank,
+                    leader_rank=leader.domain_rank,
+                    physical_worker=leader.physical_identity,
+                )
+            )
+    return tuple(owners)
+
+
+def _compile_partial_destinations(
+    cluster_config: ClusterConfig,
+    ownerships: tuple[AFTensorOwnership, ...],
+) -> tuple[AFPartialDestination, ...]:
+    destinations: list[AFPartialDestination] = []
+    for phase, (a_domain, f_domain) in sorted(
+        cluster_config.phase_to_af_domains.items()
+    ):
+        a_owners = tuple(item for item in ownerships if item.domain == a_domain.name)
+        f_owners = tuple(item for item in ownerships if item.domain == f_domain.name)
+        for source in f_owners:
+            for target in a_owners:
+                interval = source.interval.intersection(target.interval)
+                if interval is None:
+                    continue
+                destinations.append(
+                    AFPartialDestination(
+                        phase=phase,
+                        source_domain=source.domain,
+                        source_rank=source.domain_rank,
+                        source_dp_rank=source.dp_rank,
+                        target_domain=target.domain,
+                        target_rank=target.domain_rank,
+                        target_dp_rank=target.dp_rank,
+                        interval=interval,
+                    )
+                )
+    return tuple(
+        sorted(
+            destinations,
+            key=lambda item: (
+                item.phase,
+                item.source_domain,
+                item.source_rank,
+                item.target_domain,
+                item.target_rank,
+                item.interval.start,
+            ),
+        )
+    )
+
+
+def _compile_collective_plans(
+    cluster_config: ClusterConfig,
+    binding_by_key: Mapping[RankKey, AFRankBinding],
+) -> tuple[AFResolvedCollectivePlan, ...]:
+    resources = cluster_config.af_communication_resources
+    plans: list[AFResolvedCollectivePlan] = []
+    for domain in cluster_config.af.execution_domains:
+        if domain.capability not in {"af_attention", "af_ffn"}:
+            continue
+        for replica in domain.logical_instances:
+            dp_ranks = {mapping.dp_rank for mapping in replica.rank_mapping}
+            if len(dp_ranks) != 1:
+                raise ConfigurationError(
+                    f"AF runtime logical instance {replica.name!r} spans DP replicas"
+                )
+            dp_rank = next(iter(dp_ranks))
+            for collective in domain.communication_plan:
+                if collective.resource_group is None or collective.resource_lane is None:
+                    raise ConfigurationError(
+                        f"AF collective {collective.operation!r} in domain "
+                        f"{domain.name!r} requires resource_group and resource_lane"
+                    )
+                key = (collective.resource_group, collective.resource_lane)
+                resource = resources.get(key)
+                if resource is None:
+                    raise ConfigurationError(
+                        f"AF collective {collective.operation!r} in domain "
+                        f"{domain.name!r} references missing communication lane {key!r}"
+                    )
+                participant_ranks = domain.resolve_collective_participants(
+                    collective, dp_rank
+                )
+                participant_bindings = tuple(
+                    binding_by_key[(domain.name, rank)] for rank in participant_ranks
+                )
+                plans.append(
+                    AFResolvedCollectivePlan(
+                        domain=domain.name,
+                        dp_rank=dp_rank,
+                        after_stage=collective.after_stage,
+                        operation=collective.operation,
+                        participant_ranks=participant_ranks,
+                        physical_workers=tuple(
+                            binding.physical_identity
+                            for binding in participant_bindings
+                        ),
+                        network=collective.network or resource.network,
+                        resource_group=collective.resource_group,
+                        resource_lane=collective.resource_lane,
+                        payload_bytes=collective.payload_bytes,
+                    )
+                )
+    return tuple(
+        sorted(
+            plans,
+            key=lambda item: (item.domain, item.dp_rank, item.after_stage),
+        )
+    )
+
+
 def _components_for_binding(
     *,
     capability: str,
+    router_location: str,
     tp_rank: int,
     tp_size: int,
+    dp_rank: int,
     is_leader: bool,
     expert_ids: tuple[int, ...],
+    layers: tuple[AFLayerRuntime, ...],
     hidden: int,
-    total_layers: int,
-    dense_layers: int,
-    moe_layers: int,
-    intermediate: int,
     intermediate_source: str,
-    moe_intermediate: int,
-    num_experts: int,
-    num_shared_experts: int,
     vocab_size: int,
-    dtype_size: int,
+    weight_dtype_size: int,
+    kv_partition: AFKVHeadPartition | None,
+    expert_tp_size: int,
+    expert_tp_rank: int,
 ) -> tuple[AFModelComponent, ...]:
+    _ = dp_rank
     components: list[AFModelComponent] = []
-    if capability == "af_attention":
-        components.append(
-            _component(
-                f"attention.layers.tp{tp_rank}-of-{tp_size}",
-                "attention",
-                4 * total_layers * hidden * hidden * dtype_size,
-                tp_size,
-                "4 * layers * hidden^2 * dtype / A_TP",
-            )
-        )
-        components.append(
-            _component(
-                f"embedding_lm_head.tied.tp{tp_rank}-of-{tp_size}",
-                "embedding_lm_head",
-                vocab_size * hidden * dtype_size,
-                tp_size,
-                "vocab * hidden * dtype / A_TP (tied)",
-            )
-        )
-        if is_leader and moe_layers and num_experts:
+    if is_leader and capability == ("af_attention" if router_location == "a" else "af_ffn"):
+        for layer in layers:
+            if layer.layer_type != "moe":
+                continue
             components.append(
                 AFModelComponent(
-                    component_id="router.layers.leader",
+                    component_id=f"layer.{layer.layer_id}.router.leader",
                     category="router",
-                    bytes=moe_layers * hidden * num_experts * dtype_size,
-                    formula="moe_layers * hidden * experts * dtype (A leader only)",
+                    bytes=hidden * layer.num_experts * weight_dtype_size,
+                    formula=f"hidden * experts * weight_dtype ({router_location.upper()} leader only)",
+                    layer_id=layer.layer_id,
+                    shape=(
+                        ("hidden_size", hidden),
+                        ("num_experts", layer.num_experts),
+                    ),
                 )
             )
+    if capability == "af_attention":
+        if kv_partition is None:
+            raise ConfigurationError("A binding requires a KV-head partition")
+        q_heads = layers[0].num_attention_heads // tp_size
+        q_width = q_heads * layers[0].head_dim
+        kv_width = kv_partition.local_head_count * layers[0].head_dim
+        attention_elements = 2 * hidden * q_width + 2 * hidden * kv_width
+        mla = layers[0].mla
+        if mla:
+            attention_elements = mla.weight_elements(q_heads, hidden)
+        for layer in layers:
+            components.append(
+                AFModelComponent(
+                    component_id=f"layer.{layer.layer_id}.attention.tp{tp_rank}-of-{tp_size}",
+                    category="attention",
+                    bytes=attention_elements * weight_dtype_size,
+                    formula=("MLA replicated Q/KV down + head-sharded Q/KV up and O + latent norms" if mla else
+                        "H*(Q_local+2*KV_local)+Q_local*H, using exact Q/K/V/O "
+                        "dimensions"
+                    ),
+                    layer_id=layer.layer_id,
+                    shape=(
+                        ("hidden_size", hidden),
+                        ("q_heads_local", q_heads),
+                        ("kv_heads_local", kv_partition.local_head_count),
+                        ("head_dim", layer.head_dim),
+                    ),
+                )
+            )
+        components.append(
+            AFModelComponent(
+                component_id=f"embedding_lm_head.{'tied' if layers[0].tie_word_embeddings else 'untied'}.tp{tp_rank}-of-{tp_size}",
+                category="embedding_lm_head",
+                bytes=(vocab_size * hidden // tp_size) * weight_dtype_size * (1 if layers[0].tie_word_embeddings else 2),
+                formula="vocab * hidden * weight_dtype / A_TP * (1 if tied else 2)",
+                shape=(
+                    ("vocab_size", vocab_size),
+                    ("hidden_size", hidden),
+                    ("tp_size", tp_size),
+                ),
+            )
+        )
         return tuple(components)
 
     if capability != "af_ffn":
         raise ConfigurationError(f"unsupported AF component capability {capability!r}")
-    if dense_layers:
-        components.append(
-            _component(
-                f"dense_ffn.layers.tp{tp_rank}-of-{tp_size}",
-                "dense_ffn",
-                2 * dense_layers * hidden * intermediate * dtype_size,
-                tp_size,
-                f"2 * dense_layers * hidden * intermediate * dtype / F_TP; "
-                f"intermediate_source={intermediate_source}",
+    for layer in layers:
+        if layer.layer_type == "dense":
+            local_intermediate = layer.dense_intermediate_size // tp_size
+            components.append(
+                AFModelComponent(
+                    component_id=(
+                        f"layer.{layer.layer_id}.dense_ffn.tp{tp_rank}-of-{tp_size}"
+                    ),
+                    category="dense_ffn",
+                    bytes=3 * hidden * local_intermediate * weight_dtype_size,
+                    formula=(
+                        "3 * hidden * local_intermediate * weight_dtype (SwiGLU "
+                        f"gate/up/down); intermediate_source={intermediate_source}"
+                    ),
+                    layer_id=layer.layer_id,
+                    shape=(
+                        ("hidden_size", hidden),
+                        ("intermediate_size", layer.dense_intermediate_size),
+                        ("local_intermediate_size", local_intermediate),
+                    ),
+                )
             )
+            continue
+        local_expert_intermediate = (
+            layer.routed_intermediate_size // expert_tp_size
         )
-    for expert_id in expert_ids:
-        components.append(
-            _component(
-                f"routed_expert.{expert_id}.tp{tp_rank}-of-{tp_size}",
-                "routed_expert",
-                2 * moe_layers * hidden * moe_intermediate * dtype_size,
-                tp_size,
-                "2 * moe_layers * hidden * moe_intermediate * dtype / F_TP",
+        for expert_id in expert_ids:
+            components.append(
+                AFModelComponent(
+                    component_id=(
+                        f"layer.{layer.layer_id}.routed_expert.{expert_id}."
+                        f"tp{expert_tp_rank}-of-{expert_tp_size}"
+                    ),
+                    category="routed_expert",
+                    bytes=(
+                        3
+                        * hidden
+                        * local_expert_intermediate
+                        * weight_dtype_size
+                    ),
+                    formula=(
+                        "3 * hidden * local_expert_intermediate * weight_dtype "
+                        "(SwiGLU gate/up/down)"
+                    ),
+                    layer_id=layer.layer_id,
+                    shape=(
+                        ("hidden_size", hidden),
+                        ("intermediate_size", layer.routed_intermediate_size),
+                        ("local_intermediate_size", local_expert_intermediate),
+                        ("expert_id", expert_id),
+                    ),
+                )
             )
-        )
-    for shared_id in range(num_shared_experts):
-        components.append(
-            _component(
-                f"shared_expert.{shared_id}.tp{tp_rank}-of-{tp_size}",
-                "shared_expert",
-                2 * moe_layers * hidden * moe_intermediate * dtype_size,
-                tp_size,
-                "2 * moe_layers * hidden * moe_intermediate * dtype / F_TP",
+        if layer.shared_intermediate_size:
+            local_shared_intermediate = layer.shared_intermediate_size // tp_size
+            components.append(
+                AFModelComponent(
+                    component_id=(
+                        f"layer.{layer.layer_id}.shared_expert.tp{tp_rank}-of-{tp_size}"
+                    ),
+                    category="shared_expert",
+                    bytes=(
+                        3
+                        * hidden
+                        * local_shared_intermediate
+                        * weight_dtype_size
+                    ),
+                    formula=(
+                        "3 * hidden * local_shared_intermediate * weight_dtype "
+                        "for fused shared experts"
+                    ),
+                    layer_id=layer.layer_id,
+                    shape=(
+                        ("hidden_size", hidden),
+                        ("intermediate_size", layer.shared_intermediate_size),
+                        ("local_intermediate_size", local_shared_intermediate),
+                        ("num_shared_experts", layer.num_shared_experts),
+                    ),
+                )
             )
-        )
     return tuple(components)
-
-
-def _component(
-    component_id: str,
-    category: str,
-    unsharded_bytes: int,
-    shard_count: int,
-    formula: str,
-) -> AFModelComponent:
-    return AFModelComponent(
-        component_id=component_id,
-        category=category,
-        bytes=int(math.ceil(unsharded_bytes / shard_count)),
-        formula=formula,
-    )
 
 
 def _experts_by_ep(
@@ -1255,27 +2348,6 @@ def _experts_by_ep(
     else:
         raise ConfigurationError(f"unsupported expert placement strategy {strategy!r}")
     return {rank: tuple(experts) for rank, experts in result.items()}
-
-
-def _dtype_size(dtype: str) -> int:
-    if not isinstance(dtype, str) or not dtype.strip():
-        raise ConfigurationError("AF runtime dtype must be non-empty")
-    normalized = dtype.lower()
-    sizes = {
-        "fp32": 4,
-        "float32": 4,
-        "fp16": 2,
-        "float16": 2,
-        "bf16": 2,
-        "bfloat16": 2,
-        "fp8": 1,
-        "int8": 1,
-    }
-    if normalized not in sizes:
-        raise ConfigurationError(
-            f"AF runtime dtype {dtype!r} has no explicit byte size"
-        )
-    return sizes[normalized]
 
 
 def _positive_model_int(model_conf: Any, name: str) -> int:

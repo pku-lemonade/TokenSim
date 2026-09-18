@@ -132,7 +132,8 @@ class AFParallelExecutionOracleTest(unittest.TestCase):
         self.assertEqual(operations.count("af_f_to_a"), 1)
         self.assertEqual(operations.count("ep_dispatch"), 0)
         self.assertEqual(operations.count("ep_combine"), 0)
-        self.assertEqual(operations.count("tp_collective"), 3)
+        # Rank-reuse EP uses Expert TP=1, so only the A TP reduction remains.
+        self.assertEqual(operations.count("tp_collective"), 1)
         self.assertEqual(request.af_a_owners, {"a-domain": "a1"})
         self.assertEqual(iteration.blocks[0].placement.f_instance, "f0")
 
@@ -143,7 +144,7 @@ class AFParallelExecutionOracleTest(unittest.TestCase):
         expert_queries = [query for query in compute.queries if query.stage == "expert"]
         self.assertEqual(
             {(query.ep_rank, query.local_token_count) for query in expert_queries},
-            {(0, 10), (1, 2)},
+            {(0, 10), (2, 2)},
         )
         combine = next(event for event in events if event.operation == "af_f_to_a")
         predecessors = {
@@ -154,7 +155,7 @@ class AFParallelExecutionOracleTest(unittest.TestCase):
         self.assertEqual(
             combine.ready_at, max(event.end_at for event in predecessors.values())
         )
-        self.assertAlmostEqual(iteration.makespan, 4.25)
+        self.assertAlmostEqual(iteration.makespan, 3.75)
         executor.trace.validate_invariants(iteration.iteration_id)
 
         self.assertEqual(
@@ -162,8 +163,6 @@ class AFParallelExecutionOracleTest(unittest.TestCase):
             [
                 "tp_collective",
                 "af_a_to_f",
-                "tp_collective",
-                "tp_collective",
                 "af_f_to_a",
             ],
         )

@@ -6,6 +6,7 @@ from typing import Any, Mapping
 
 from TokenSim.operator_data.analytical import Calibration, HardwareProfile
 from TokenSim.operator_data.generator import (
+    CalibrationRule,
     EvidenceGrade,
     Observation,
     OperatorDataGenerator,
@@ -64,6 +65,10 @@ def main(argv: list[str] | None = None) -> int:
         hardware_profiles=profiles,
         sources=sources,
         calibrations=calibrations,
+        shape_calibrations=[CalibrationRule(
+            table_name=item["table_name"], key_match=item["key_match"],
+            calibration=Calibration(**item["calibration"]))
+            for item in document.get("shape_calibrations", [])],
     )
     generator.generate(
         args.output,

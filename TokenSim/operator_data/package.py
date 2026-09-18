@@ -5,13 +5,17 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
 
+from TokenSim.dtypes import canonicalize_dtype
 from TokenSim.operator_data.schema import (
     INTEGER_FIELDS,
     LATENCY_UNIT,
     SCHEMA_VERSION,
     STRING_FIELDS,
     TABLE_SPECS,
+    OPTIONAL_TABLES,
+    validate_batch_key,
     analysis_filename,
+    dtype_role_for_field,
     perf_filename,
 )
 
@@ -74,14 +78,10 @@ class OperatorDataPackage:
         metadata = _require_mapping(_load_yaml(metadata_path), metadata_path)
         schema_version = metadata.get("schema_version")
         if schema_version != SCHEMA_VERSION:
-            raise OperatorDataValidationError(
-                f"{metadata_path}: unsupported schema_version={schema_version!r}; "
-                f"expected {SCHEMA_VERSION}"
-            )
+            raise _schema_migration_error(metadata_path, schema_version)
         if hardware.get("schema_version") != SCHEMA_VERSION:
-            raise OperatorDataValidationError(
-                f"{hardware_path}: unsupported schema_version="
-                f"{hardware.get('schema_version')!r}; expected {SCHEMA_VERSION}"
+            raise _schema_migration_error(
+                hardware_path, hardware.get("schema_version")
             )
         dataset_version = metadata.get("dataset_version")
         if not isinstance(dataset_version, str) or not dataset_version:
@@ -124,6 +124,8 @@ class OperatorDataPackage:
         for table_name, spec in TABLE_SPECS.items():
             perf_path = root_path / perf_filename(table_name)
             analysis_path = root_path / analysis_filename(table_name)
+            if table_name in OPTIONAL_TABLES and not perf_path.exists() and not analysis_path.exists():
+                continue
             for required in (perf_path, analysis_path):
                 if not required.is_file():
                     raise OperatorDataValidationError(
@@ -138,6 +140,11 @@ class OperatorDataPackage:
                 require_latency="latency_us" in spec.value_fields,
             )
             _validate_unique_keys(perf_path, checked, spec.key_fields)
+            for row in checked:
+                try:
+                    validate_batch_key(table_name, row)
+                except ValueError as exc:
+                    raise OperatorDataValidationError(f"{perf_path}: {exc}") from exc
             tables[table_name] = tuple(checked)
 
             analysis_rows = _read_parquet(analysis_path)
@@ -227,7 +234,7 @@ def _validate_manifest(
     manifest: Mapping[str, Any], path: Path, dataset_version: str
 ) -> Mapping[str, Any]:
     if manifest.get("schema_version") != SCHEMA_VERSION:
-        raise OperatorDataValidationError(f"{path}: invalid schema_version")
+        raise _schema_migration_error(path, manifest.get("schema_version"))
     if manifest.get("dataset_version") != dataset_version:
         raise OperatorDataValidationError(
             f"{path}: dataset_version does not match generation_meta.yaml"
@@ -253,11 +260,26 @@ def _validate_rows(
         missing = [field for field in required_fields if field not in raw]
         if missing:
             raise OperatorDataValidationError(
-                f"{path}: row {index} missing required fields {missing}"
+                f"{path}: operator-data schema v{SCHEMA_VERSION} migration required; "
+                f"row {index} missing required fields {missing}; regenerate the package"
             )
         row = dict(raw)
+        if "fixed_latency_us" in required_fields:
+            timing_scope = row.get("timing_scope", "legacy_unspecified")
+            if timing_scope not in {"legacy_unspecified", "transport_service", "eager_interval"}:
+                raise OperatorDataValidationError(f"{path}: row {index} invalid communication timing_scope")
+            row["timing_scope"] = timing_scope
         for field in required_fields:
             value = row[field]
+            dtype_role = dtype_role_for_field(field, row)
+            if dtype_role is not None:
+                try:
+                    value = canonicalize_dtype(str(value), role=dtype_role)
+                except ValueError as exc:
+                    raise OperatorDataValidationError(
+                        f"{path}: row {index} has invalid {field}: {exc}"
+                    ) from exc
+                row[field] = value
             if field in STRING_FIELDS and field != "source_id":
                 value = value.strip().lower() if isinstance(value, str) else value
                 row[field] = value
@@ -300,6 +322,14 @@ def _validate_rows(
             )
         checked.append(row)
     return checked
+
+
+def _schema_migration_error(path: Path, actual: object) -> OperatorDataValidationError:
+    return OperatorDataValidationError(
+        f"{path}: operator-data schema migration required; "
+        f"found schema_version={actual!r}, expected {SCHEMA_VERSION}; "
+        "regenerate the package and model manifest"
+    )
 
 
 def _validate_unique_keys(

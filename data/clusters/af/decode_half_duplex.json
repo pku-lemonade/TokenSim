@@ -31,16 +31,28 @@
         "phases": ["decode"],
         "af_block_size": 2,
         "trace_enabled": true,
+        "weight_dtype": "bf16",
+        "activation_dtype": "bf16",
+        "kv_cache_dtype": "bf16",
+        "communication_fabrics": [
+            {
+                "resource_group": "shared-af-fabric",
+                "network": "af_net",
+                "duplex": "half",
+                "lanes": [
+                    {"name": "shared", "capacity": 1}
+                ]
+            }
+        ],
         "links": [
             {
                 "name": "decode-attention-ffn",
                 "phases": ["decode"],
                 "attention_group": "decode-attention-pool",
                 "ffn_group": "decode-ffn-pool",
-                "network": "af_net",
                 "resource_group": "shared-af-fabric",
-                "duplex": "half",
-                "half_duplex_capacity": 1
+                "a_to_f_dtype": "bf16",
+                "f_to_a_dtype": "bf16"
             }
         ]
     }

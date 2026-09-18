@@ -1,0 +1,164 @@
+{
+  "num_workers": 9,
+  "networks": {
+    "af_net": "af-network-profile"
+  },
+  "worker_groups": [
+    {
+      "name": "prefill-pool",
+      "capabilities": ["prefill"],
+      "hardware": "prefill-device",
+      "num_workers": 1,
+      "network": "af_net"
+    },
+    {
+      "name": "decode-attention-pool",
+      "capabilities": ["af_attention"],
+      "hardware": "attention-device",
+      "num_workers": 4,
+      "network": "af_net"
+    },
+    {
+      "name": "decode-ffn-pool",
+      "capabilities": ["af_ffn"],
+      "hardware": "ffn-device",
+      "num_workers": 4,
+      "network": "af_net"
+    }
+  ],
+  "af": {
+    "enabled": true,
+    "phases": ["decode"],
+    "af_block_size": 1,
+    "trace_enabled": true,
+    "weight_dtype": "bf16",
+    "activation_dtype": "bf16",
+    "kv_cache_dtype": "bf16",
+    "communication_fabrics": [
+      {
+        "resource_group": "af-fabric",
+        "network": "af_net",
+        "duplex": "full",
+        "lanes": [
+          {"name": "a_to_f", "capacity": 1},
+          {"name": "f_to_a", "capacity": 1}
+        ]
+      },
+      {
+        "resource_group": "a-collective-fabric",
+        "network": "af_net",
+        "duplex": "half",
+        "lanes": [
+          {"name": "collective", "capacity": 1}
+        ]
+      },
+      {
+        "resource_group": "f-collective-fabric",
+        "network": "af_net",
+        "duplex": "half",
+        "lanes": [
+          {"name": "collective", "capacity": 1}
+        ]
+      }
+    ],
+    "links": [
+      {
+        "name": "decode-attention-ffn",
+        "phases": ["decode"],
+        "attention_group": "decode-attention-pool",
+        "ffn_group": "decode-ffn-pool",
+        "attention_domain": "decode-a",
+        "ffn_domain": "decode-f",
+        "resource_group": "af-fabric",
+        "a_to_f_dtype": "bf16",
+        "f_to_a_dtype": "bf16"
+      }
+    ],
+    "execution_domains": [
+      {
+        "name": "decode-a",
+        "capability": "af_attention",
+        "phases": ["decode"],
+        "worker_group": "decode-attention-pool",
+        "parallel": {
+          "tensor_parallel_size": 2,
+          "pipeline_parallel_size": 1,
+          "data_parallel_size": 2
+        },
+        "logical_instances": [
+          {
+            "name": "a-dp0",
+            "rank_mapping": [
+              {"domain_rank": 0, "tp_rank": 0, "pp_rank": 0, "dp_rank": 0, "ep_rank": 0, "physical_worker": {"group_name": "decode-attention-pool", "worker_index": 0}},
+              {"domain_rank": 1, "tp_rank": 1, "pp_rank": 0, "dp_rank": 0, "ep_rank": 0, "physical_worker": {"group_name": "decode-attention-pool", "worker_index": 1}}
+            ]
+          },
+          {
+            "name": "a-dp1",
+            "rank_mapping": [
+              {"domain_rank": 2, "tp_rank": 0, "pp_rank": 0, "dp_rank": 1, "ep_rank": 0, "physical_worker": {"group_name": "decode-attention-pool", "worker_index": 2}},
+              {"domain_rank": 3, "tp_rank": 1, "pp_rank": 0, "dp_rank": 1, "ep_rank": 0, "physical_worker": {"group_name": "decode-attention-pool", "worker_index": 3}}
+            ]
+          }
+        ],
+        "communication_plan": [
+          {
+            "operation": "all_reduce",
+            "after_stage": "a_compute",
+            "participants": [0, 1],
+            "resource_group": "a-collective-fabric",
+            "resource_lane": "collective",
+            "network": "af_net"
+          },
+          {
+            "operation": "all_gather",
+            "after_stage": "residual",
+            "participants": [0, 1],
+            "resource_group": "a-collective-fabric",
+            "resource_lane": "collective",
+            "network": "af_net"
+          }
+        ]
+      },
+      {
+        "name": "decode-f",
+        "capability": "af_ffn",
+        "phases": ["decode"],
+        "worker_group": "decode-ffn-pool",
+        "parallel": {
+          "tensor_parallel_size": 2,
+          "pipeline_parallel_size": 1,
+          "data_parallel_size": 2,
+          "expert_parallel_size": 1,
+          "expert_placement_strategy": "linear"
+        },
+        "logical_instances": [
+          {
+            "name": "f-dp0",
+            "rank_mapping": [
+              {"domain_rank": 0, "tp_rank": 0, "pp_rank": 0, "dp_rank": 0, "ep_rank": 0, "physical_worker": {"group_name": "decode-ffn-pool", "worker_index": 0}},
+              {"domain_rank": 1, "tp_rank": 1, "pp_rank": 0, "dp_rank": 0, "ep_rank": 0, "physical_worker": {"group_name": "decode-ffn-pool", "worker_index": 1}}
+            ]
+          },
+          {
+            "name": "f-dp1",
+            "rank_mapping": [
+              {"domain_rank": 2, "tp_rank": 0, "pp_rank": 0, "dp_rank": 1, "ep_rank": 0, "physical_worker": {"group_name": "decode-ffn-pool", "worker_index": 2}},
+              {"domain_rank": 3, "tp_rank": 1, "pp_rank": 0, "dp_rank": 1, "ep_rank": 0, "physical_worker": {"group_name": "decode-ffn-pool", "worker_index": 3}}
+            ]
+          }
+        ],
+        "communication_plan": [
+          {
+            "operation": "all_reduce",
+            "after_stage": "expert_compute",
+            "participants": [0, 1],
+            "resource_group": "f-collective-fabric",
+            "resource_lane": "collective",
+            "network": "af_net"
+          }
+        ]
+      }
+    ]
+  }
+}

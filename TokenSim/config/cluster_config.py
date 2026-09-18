@@ -1,9 +1,12 @@
 import json
+import math
+from dataclasses import InitVar
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, Mapping
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic.dataclasses import dataclass, Field
+from pydantic_core import ArgsKwargs
 
 from TokenSim.config.constants import (
     AF_PHASE_ORDER,
@@ -16,7 +19,108 @@ from TokenSim.config.constants import (
 )
 from TokenSim.config.kv_transfer_config import KVTransferConfig
 from TokenSim.config.parallel_config import ParallelConfig, ParallelRankInfo
+from TokenSim.dtypes import canonicalize_dtype, dtype_size_bytes
 from TokenSim.errors import ConfigurationError
+
+
+_AF_CONFIG_DTYPE_FIELDS = frozenset(
+    {"af_dtype", "weight_dtype", "activation_dtype", "kv_cache_dtype"}
+)
+_AF_LINK_DTYPE_FIELDS = frozenset({"a_to_f_dtype", "f_to_a_dtype"})
+_NEW_DTYPE_FIELDS = frozenset(
+    {
+        "weight_dtype",
+        "activation_dtype",
+        "kv_cache_dtype",
+        "a_to_f_dtype",
+        "f_to_a_dtype",
+    }
+)
+_COLLECTIVE_OPERATIONS = frozenset(
+    {"all_reduce", "all_gather", "reduce_scatter"}
+)
+
+
+def _capture_explicit_fields(
+    value: Any,
+    *,
+    field_names: frozenset[str],
+    positional_names: tuple[str, ...],
+    init_var_name: str,
+) -> Any:
+    """Pass raw field presence through Pydantic default filling."""
+    if isinstance(value, ArgsKwargs):
+        args = tuple(value.args or ())
+        kwargs = dict(value.kwargs or {})
+        if init_var_name in kwargs:
+            # dataclasses.replace passes every init field plus the persisted
+            # InitVar. Default None values in that reconstruction are not raw
+            # user input; non-None dtype values remain explicit.
+            explicit = {
+                name
+                for name in field_names
+                if kwargs.get(name) is not None
+            }
+        else:
+            explicit = {
+                positional_names[index]
+                for index in range(min(len(args), len(positional_names)))
+                if positional_names[index] in field_names
+            }
+            explicit.update(field_names.intersection(kwargs))
+        kwargs[init_var_name] = tuple(sorted(explicit))
+        return ArgsKwargs(args, kwargs)
+    if isinstance(value, Mapping):
+        values = dict(value)
+        values[init_var_name] = tuple(sorted(field_names.intersection(values)))
+        return values
+    return value
+
+
+def _canonical_config_dtype(value: str, role: str) -> str:
+    try:
+        registry_role = role if role in _NEW_DTYPE_FIELDS else None
+        return canonicalize_dtype(value, role=registry_role)
+    except ValueError as exc:
+        message = str(exc)
+        if role == "af_dtype":
+            message = message.replace("dtype=", "af_dtype=", 1)
+        raise ConfigurationError(message) from exc
+
+
+@dataclass(frozen=True)
+class AFEffectiveDTypes:
+    weight_dtype: str
+    activation_dtype: str
+    kv_cache_dtype: str
+    a_to_f_dtype: str
+    f_to_a_dtype: str
+    sources: tuple[tuple[str, str], ...]
+    legacy_mapped: bool = False
+    deprecated_fields: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        for role in _NEW_DTYPE_FIELDS:
+            object.__setattr__(
+                self, role, _canonical_config_dtype(getattr(self, role), role)
+            )
+
+    @property
+    def source_by_role(self) -> dict[str, str]:
+        return dict(self.sources)
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            role: getattr(self, role) for role in sorted(_NEW_DTYPE_FIELDS)
+        } | {
+            "bytes_per_element": {
+                role: dtype_size_bytes(getattr(self, role), role=role)
+                for role in sorted(_NEW_DTYPE_FIELDS)
+            },
+            "source_by_role": self.source_by_role,
+            "legacy_mapped": self.legacy_mapped,
+            "deprecated_fields": self.deprecated_fields,
+        }
 
 
 @dataclass
@@ -133,6 +237,92 @@ class AFCommunicationResourceConfig:
 
 
 @dataclass(frozen=True)
+class AFCommunicationLaneConfig:
+    name: str
+    capacity: int
+
+    @field_validator("capacity", mode="before")
+    @classmethod
+    def _validate_capacity_type(cls, value: Any) -> int:
+        if type(value) is not int:
+            raise ConfigurationError(
+                "communication fabric lane capacity must be a positive integer"
+            )
+        return value
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.name, str) or not self.name.strip():
+            raise ConfigurationError(
+                "communication fabric lane name must be a non-empty string"
+            )
+        if self.capacity < 1:
+            raise ConfigurationError(
+                f"communication fabric lane {self.name!r} capacity must be a "
+                "positive integer"
+            )
+
+
+@dataclass(frozen=True)
+class AFCommunicationFabricConfig:
+    resource_group: str
+    network: str
+    duplex: Literal["full", "half"]
+    lanes: tuple[AFCommunicationLaneConfig, ...]
+
+    def __post_init__(self) -> None:
+        for field_name in ("resource_group", "network"):
+            value = getattr(self, field_name)
+            if not isinstance(value, str) or not value.strip():
+                raise ConfigurationError(
+                    f"communication fabric {field_name} must be a non-empty string"
+                )
+        if self.duplex not in {"full", "half"}:
+            raise ConfigurationError(
+                f"communication fabric {self.resource_group!r} duplex must be "
+                "'full' or 'half'"
+            )
+        if not self.lanes:
+            raise ConfigurationError(
+                f"communication fabric {self.resource_group!r} lanes must be non-empty"
+            )
+        names = [lane.name for lane in self.lanes]
+        if len(names) != len(set(names)):
+            raise ConfigurationError(
+                f"communication fabric {self.resource_group!r} has duplicate lane names"
+            )
+
+    def lane(self, name: str) -> AFCommunicationLaneConfig:
+        for lane in self.lanes:
+            if lane.name == name:
+                return lane
+        raise ConfigurationError(
+            f"communication fabric {self.resource_group!r} has no resource lane "
+            f"{name!r}; available lanes={sorted(lane.name for lane in self.lanes)}"
+        )
+
+    @property
+    def signature(self) -> tuple[str, str, tuple[tuple[str, int], ...]]:
+        return (
+            self.network,
+            self.duplex,
+            tuple(sorted((lane.name, lane.capacity) for lane in self.lanes)),
+        )
+
+    def communication_resources(self) -> tuple[AFCommunicationResourceConfig, ...]:
+        return tuple(
+            AFCommunicationResourceConfig(
+                resource_group=self.resource_group,
+                resource_key=(self.resource_group, lane.name),
+                network=self.network,
+                duplex=self.duplex,
+                direction=lane.name,
+                capacity=lane.capacity,
+            )
+            for lane in self.lanes
+        )
+
+
+@dataclass(frozen=True)
 class PhysicalWorkerRef:
     group_name: str
     worker_index: int
@@ -150,6 +340,31 @@ class PhysicalWorkerRef:
     @property
     def identity(self) -> str:
         return f"{self.group_name}:{self.worker_index}"
+
+
+@dataclass(frozen=True)
+class DomainExpertParallelView:
+    mode: Literal["expert_tp", "rank_reuse"]
+    expert_parallel_size: int
+    expert_tensor_parallel_size: int
+    base_world_size: int
+    base_tensor_parallel_size: int
+
+    def ep_rank(self, *, dp_rank: int, tp_rank: int) -> int:
+        data_parallel_size = self.base_world_size // self.base_tensor_parallel_size
+        if not 0 <= dp_rank < data_parallel_size:
+            raise ConfigurationError(
+                f"dp_rank={dp_rank} is outside rank-reuse DP size "
+                f"{data_parallel_size}"
+            )
+        if not 0 <= tp_rank < self.base_tensor_parallel_size:
+            raise ConfigurationError(
+                f"tp_rank={tp_rank} is outside rank-reuse TP size "
+                f"{self.base_tensor_parallel_size}"
+            )
+        if self.mode == "expert_tp":
+            return 0
+        return dp_rank * self.base_tensor_parallel_size + tp_rank
 
 
 @dataclass(frozen=True)
@@ -187,11 +402,43 @@ class DomainParallelConfig:
         return self.ranks_per_dp_group * self.data_parallel_size
 
     def ranks_per_replica(self, capability: str) -> int:
-        ep_size = self.expert_parallel_size if capability == "af_ffn" else 1
-        return self.tensor_parallel_size * ep_size
+        _ = capability
+        return self.ranks_per_dp_group
 
     def required_rank_count(self, capability: str) -> int:
-        return self.ranks_per_replica(capability) * self.data_parallel_size
+        _ = capability
+        return self.world_size
+
+    def expert_parallel_view(
+        self, capability: str, *, context: str = "execution domain"
+    ) -> DomainExpertParallelView:
+        if capability != "af_ffn":
+            if self.expert_parallel_size != 1:
+                raise ConfigurationError(
+                    f"{context} expert_parallel_size is only valid for af_ffn"
+                )
+            return DomainExpertParallelView(
+                mode="expert_tp",
+                expert_parallel_size=1,
+                expert_tensor_parallel_size=self.tensor_parallel_size,
+                base_world_size=self.world_size,
+                base_tensor_parallel_size=self.tensor_parallel_size,
+            )
+        allowed = {1, self.world_size}
+        if self.expert_parallel_size not in allowed:
+            raise ConfigurationError(
+                f"{context} only supports expert_parallel_size=1 or "
+                f"expert_parallel_size=TP*DP={self.world_size}; got "
+                f"{self.expert_parallel_size}"
+            )
+        rank_reuse = self.expert_parallel_size == self.world_size and self.world_size > 1
+        return DomainExpertParallelView(
+            mode="rank_reuse" if rank_reuse else "expert_tp",
+            expert_parallel_size=self.expert_parallel_size,
+            expert_tensor_parallel_size=(1 if rank_reuse else self.tensor_parallel_size),
+            base_world_size=self.world_size,
+            base_tensor_parallel_size=self.tensor_parallel_size,
+        )
 
 
 @dataclass(frozen=True)
@@ -235,28 +482,44 @@ class LogicalInstanceConfig:
 @dataclass(frozen=True)
 class DomainCollectiveConfig:
     operation: str
-    after_stage: Literal["a_compute", "expert_compute"]
+    after_stage: str
     participants: tuple[int, ...]
     resource_group: str | None = None
+    resource_lane: str | None = None
     network: str | None = None
     payload_bytes: int | None = None
 
     def __post_init__(self) -> None:
-        if not isinstance(self.operation, str) or not self.operation.strip():
+        if self.operation not in _COLLECTIVE_OPERATIONS:
             raise ConfigurationError(
-                "domain collective operation must be a non-empty string"
+                f"domain collective operation must be one of "
+                f"{sorted(_COLLECTIVE_OPERATIONS)}; got {self.operation!r}"
+            )
+        if not isinstance(self.after_stage, str) or not self.after_stage.strip():
+            raise ConfigurationError(
+                f"domain collective {self.operation!r} after_stage must be a "
+                "non-empty string"
             )
         if not self.participants or any(
             type(rank) is not int or rank < 0 for rank in self.participants
         ):
             raise ConfigurationError(
                 f"domain collective {self.operation!r} participants must be "
-                "non-empty non-negative ranks"
+                "non-empty non-negative replica-local tp_rank offsets"
             )
         if len(self.participants) != len(set(self.participants)):
             raise ConfigurationError(
                 f"domain collective {self.operation!r} participants contains duplicates"
             )
+        for field_name in ("resource_group", "resource_lane", "network"):
+            value = getattr(self, field_name)
+            if value is not None and (
+                not isinstance(value, str) or not value.strip()
+            ):
+                raise ConfigurationError(
+                    f"domain collective {self.operation!r} {field_name} must be a "
+                    "non-empty string when provided"
+                )
         if self.payload_bytes is not None and (
             type(self.payload_bytes) is not int or self.payload_bytes < 0
         ):
@@ -283,6 +546,39 @@ class ExecutionDomainConfig:
     @property
     def required_rank_count(self) -> int:
         return self.parallel.required_rank_count(self.capability)
+
+    @property
+    def expert_parallel(self) -> DomainExpertParallelView:
+        return self.parallel.expert_parallel_view(
+            self.capability, context=f"execution domain {self.name!r}"
+        )
+
+    def resolve_collective_participants(
+        self, collective: DomainCollectiveConfig, dp_rank: int
+    ) -> tuple[int, ...]:
+        instance = next(
+            (
+                item
+                for item in self.logical_instances
+                if {mapping.dp_rank for mapping in item.rank_mapping} == {dp_rank}
+            ),
+            None,
+        )
+        if instance is None:
+            raise ConfigurationError(
+                f"execution domain {self.name!r} has no DP replica {dp_rank}"
+            )
+        mapping_by_tp = {
+            mapping.tp_rank: mapping.domain_rank for mapping in instance.rank_mapping
+        }
+        missing = set(collective.participants) - set(mapping_by_tp)
+        if missing:
+            raise ConfigurationError(
+                f"execution domain {self.name!r} collective {collective.operation!r} "
+                f"has unresolved replica-local tp_rank participants {sorted(missing)} "
+                f"for dp_rank={dp_rank}"
+            )
+        return tuple(mapping_by_tp[rank] for rank in collective.participants)
 
     def __post_init__(self) -> None:
         for field_name in ("name", "worker_group"):
@@ -312,14 +608,43 @@ class AFLinkConfig:
     phases: tuple[str, ...]
     attention_group: str
     ffn_group: str
-    network: str
     resource_group: str
-    duplex: str = "full"
+    network: str | None = None
+    duplex: str | None = None
     a_to_f_capacity: int | None = None
     f_to_a_capacity: int | None = None
     half_duplex_capacity: int | None = None
     attention_domain: str | None = None
     ffn_domain: str | None = None
+    a_to_f_dtype: str | None = None
+    f_to_a_dtype: str | None = None
+    dtype_presence_input: InitVar[tuple[str, ...]] = ()
+
+
+    @model_validator(mode="before")
+    @classmethod
+    def _capture_dtype_presence(cls, value: Any) -> Any:
+        return _capture_explicit_fields(
+            value,
+            field_names=_AF_LINK_DTYPE_FIELDS,
+            positional_names=(
+                "name",
+                "phases",
+                "attention_group",
+                "ffn_group",
+                "resource_group",
+                "network",
+                "duplex",
+                "a_to_f_capacity",
+                "f_to_a_capacity",
+                "half_duplex_capacity",
+                "attention_domain",
+                "ffn_domain",
+                "a_to_f_dtype",
+                "f_to_a_dtype",
+            ),
+            init_var_name="dtype_presence_input",
+        )
 
     @field_validator(
         "a_to_f_capacity",
@@ -333,12 +658,13 @@ class AFLinkConfig:
             raise ConfigurationError("AF link capacity must be a positive integer")
         return value
 
-    def __post_init__(self) -> None:
+    def __post_init__(self, dtype_presence_input: tuple[str, ...]) -> None:
+        self._explicit_dtype_fields = frozenset(dtype_presence_input)
+        self.dtype_presence_input = tuple(sorted(self._explicit_dtype_fields))
         for field_name in (
             "name",
             "attention_group",
             "ffn_group",
-            "network",
             "resource_group",
         ):
             value = getattr(self, field_name)
@@ -347,6 +673,25 @@ class AFLinkConfig:
                     f"AF link {self.name!r} field {field_name} must be a non-empty string"
                 )
         self.phases = _normalize_phases(self.phases, f"AF link {self.name!r} phases")
+        for role in self._explicit_dtype_fields:
+            value = getattr(self, role)
+            setattr(self, role, _canonical_config_dtype(value, role))
+        self._inline_fabric_declared = any(
+            value is not None
+            for value in (
+                self.network,
+                self.duplex,
+                self.a_to_f_capacity,
+                self.f_to_a_capacity,
+                self.half_duplex_capacity,
+            )
+        )
+        if not self._inline_fabric_declared:
+            return
+        if not isinstance(self.network, str) or not self.network.strip():
+            raise ConfigurationError(
+                f"AF link {self.name!r} inline fabric requires network"
+            )
         if self.duplex not in {"full", "half"}:
             raise ConfigurationError(
                 f"AF link {self.name!r} duplex must be 'full' or 'half'"
@@ -383,7 +728,84 @@ class AFLinkConfig:
                 )
 
     @property
+    def explicit_dtype_fields(self) -> frozenset[str]:
+        return self._explicit_dtype_fields
+
+    @property
+    def has_inline_fabric(self) -> bool:
+        return self._inline_fabric_declared
+
+    def inline_fabric(self) -> AFCommunicationFabricConfig:
+        if not self.has_inline_fabric:
+            raise ConfigurationError(
+                f"AF link {self.name!r} has no inline communication fabric"
+            )
+        if self.duplex == "half":
+            lanes = (
+                AFCommunicationLaneConfig(
+                    name="shared", capacity=self.half_duplex_capacity
+                ),
+            )
+        else:
+            lanes = (
+                AFCommunicationLaneConfig(
+                    name="a_to_f", capacity=self.a_to_f_capacity
+                ),
+                AFCommunicationLaneConfig(
+                    name="f_to_a", capacity=self.f_to_a_capacity
+                ),
+            )
+        return AFCommunicationFabricConfig(
+            resource_group=self.resource_group,
+            network=self.network,
+            duplex=self.duplex,
+            lanes=lanes,
+        )
+
+    def bind_fabric(self, fabric: AFCommunicationFabricConfig) -> None:
+        if fabric.resource_group != self.resource_group:
+            raise ConfigurationError(
+                f"AF link {self.name!r} expected resource_group "
+                f"{self.resource_group!r}, got {fabric.resource_group!r}"
+            )
+        if self.has_inline_fabric:
+            inline = self.inline_fabric()
+            if inline.network != fabric.network or inline.duplex != fabric.duplex:
+                raise ConfigurationError(
+                    f"AF resource_group {self.resource_group!r} conflicts between "
+                    f"link {self.name!r} and communication fabric registry"
+                )
+            for lane in inline.lanes:
+                resolved = fabric.lane(lane.name)
+                if resolved.capacity != lane.capacity:
+                    raise ConfigurationError(
+                        f"AF resource_group {self.resource_group!r} lane "
+                        f"{lane.name!r} conflicts between link {self.name!r} and "
+                        "communication fabric registry"
+                    )
+        required_lanes = (
+            ("shared",) if fabric.duplex == "half" else ("a_to_f", "f_to_a")
+        )
+        for lane_name in required_lanes:
+            fabric.lane(lane_name)
+        self.network = fabric.network
+        self.duplex = fabric.duplex
+        if fabric.duplex == "half":
+            self.half_duplex_capacity = fabric.lane("shared").capacity
+            self.a_to_f_capacity = None
+            self.f_to_a_capacity = None
+        else:
+            self.a_to_f_capacity = fabric.lane("a_to_f").capacity
+            self.f_to_a_capacity = fabric.lane("f_to_a").capacity
+            self.half_duplex_capacity = None
+
+    @property
     def effective_capacities(self) -> tuple[int, ...]:
+        if self.duplex is None:
+            raise ConfigurationError(
+                f"AF link {self.name!r} has not resolved communication fabric "
+                f"{self.resource_group!r}"
+            )
         if self.duplex == "half":
             return (self.half_duplex_capacity,)
         return (self.a_to_f_capacity, self.f_to_a_capacity)
@@ -421,11 +843,39 @@ class AFLinkConfig:
 
 
 @dataclass
+class AFCommunicationTimingConfig:
+    """Host costs are separate from the transfer provider's transport service."""
+
+    enabled: bool = False
+    host_submit_us: float = 5.0
+    host_completion_us: float = 0.0
+    host_resource_scope: Literal["per_worker", "shared"] = "per_worker"
+
+    @field_validator("enabled", mode="before")
+    @classmethod
+    def _validate_enabled(cls, value):
+        if type(value) is not bool:
+            raise ConfigurationError("communication_timing.enabled must be boolean")
+        return value
+
+    @field_validator("host_submit_us", "host_completion_us", mode="before")
+    @classmethod
+    def _validate_duration(cls, value, info):
+        if (isinstance(value, bool) or not isinstance(value, (int, float))
+                or not math.isfinite(value) or value < 0):
+            raise ConfigurationError(f"communication_timing.{info.field_name} must be finite and non-negative")
+        return float(value)
+
+
+@dataclass
 class AFConfig:
     enabled: bool = False
     phases: tuple[str, ...] = AF_PHASE_ORDER
     af_block_size: int = 1
     links: list[AFLinkConfig] = Field(default_factory=list)
+    communication_fabrics: list[AFCommunicationFabricConfig] = Field(
+        default_factory=list
+    )
     execution_domains: list[ExecutionDomainConfig] = Field(default_factory=list)
     trace_enabled: bool = True
     latency_provider: str = "injected"
@@ -434,6 +884,47 @@ class AFConfig:
     operator_data_backend: str = "analytical"
     operator_link_group: str = "af-fabric"
     operator_group_size: int = 2
+    af_dtype: str | None = None
+    weight_dtype: str | None = None
+    activation_dtype: str | None = None
+    kv_cache_dtype: str | None = None
+    dtype_presence_input: InitVar[tuple[str, ...]] = ()
+
+    # Explicit legacy mode supports backends that execute separate expert calls.
+    routed_expert_execution: Literal["grouped", "per_expert"] = "grouped"
+    router_location: Literal["a", "f"] = "a"
+    transport_router_logits: bool = False
+    communication_timing: AFCommunicationTimingConfig = Field(
+        default_factory=AFCommunicationTimingConfig
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _capture_dtype_presence(cls, value: Any) -> Any:
+        return _capture_explicit_fields(
+            value,
+            field_names=_AF_CONFIG_DTYPE_FIELDS,
+            positional_names=(
+                "enabled",
+                "phases",
+                "af_block_size",
+                "links",
+                "communication_fabrics",
+                "execution_domains",
+                "trace_enabled",
+                "latency_provider",
+                "operator_data_path",
+                "operator_manifest_path",
+                "operator_data_backend",
+                "operator_link_group",
+                "operator_group_size",
+                "af_dtype",
+                "weight_dtype",
+                "activation_dtype",
+                "kv_cache_dtype",
+            ),
+            init_var_name="dtype_presence_input",
+        )
 
     @field_validator("enabled", "trace_enabled", mode="before")
     @classmethod
@@ -458,7 +949,9 @@ class AFConfig:
             )
         return value
 
-    def __post_init__(self) -> None:
+    def __post_init__(self, dtype_presence_input: tuple[str, ...]) -> None:
+        self._explicit_dtype_fields = frozenset(dtype_presence_input)
+        self.dtype_presence_input = tuple(sorted(self._explicit_dtype_fields))
         if type(self.enabled) is not bool:
             raise ConfigurationError("af.enabled must be a boolean")
         if type(self.trace_enabled) is not bool:
@@ -492,6 +985,107 @@ class AFConfig:
                 raise ConfigurationError(
                     "af.latency_provider='operator_data' requires " + ", ".join(missing)
                 )
+        for field_name in self._explicit_dtype_fields:
+            value = getattr(self, field_name)
+            setattr(self, field_name, _canonical_config_dtype(value, field_name))
+        self.validate_dtype_style()
+
+    @property
+    def explicit_dtype_fields(self) -> frozenset[str]:
+        return self._explicit_dtype_fields
+
+    def validate_dtype_style(self) -> None:
+        explicit_new = set(self._explicit_dtype_fields).intersection(
+            _NEW_DTYPE_FIELDS
+        )
+        for link in self.links:
+            explicit_new.update(link.explicit_dtype_fields)
+        if "af_dtype" in self._explicit_dtype_fields and explicit_new:
+            raise ConfigurationError(
+                "legacy af_dtype cannot be combined with explicit dtype role fields; "
+                f"remove af_dtype or {sorted(explicit_new)}"
+            )
+
+    def resolve_dtypes(
+        self,
+        *,
+        model_dtype: str,
+        link: AFLinkConfig | None = None,
+        model_kv_cache_dtype: str | None = None,
+    ) -> AFEffectiveDTypes:
+        self.validate_dtype_style()
+        model_value = _canonical_config_dtype(model_dtype, "activation_dtype")
+        if "af_dtype" in self._explicit_dtype_fields:
+            legacy = self.af_dtype
+            return AFEffectiveDTypes(
+                weight_dtype=legacy,
+                activation_dtype=legacy,
+                kv_cache_dtype=legacy,
+                a_to_f_dtype=legacy,
+                f_to_a_dtype=legacy,
+                sources=tuple(
+                    (role, "legacy:af_dtype") for role in sorted(_NEW_DTYPE_FIELDS)
+                ),
+                legacy_mapped=True,
+                deprecated_fields=("af_dtype",),
+            )
+
+        weight = self.weight_dtype or model_value
+        activation = self.activation_dtype or model_value
+        if self.kv_cache_dtype is not None:
+            kv_cache = self.kv_cache_dtype
+            kv_source = "af.kv_cache_dtype"
+        elif model_kv_cache_dtype is not None:
+            kv_cache = _canonical_config_dtype(
+                model_kv_cache_dtype, "kv_cache_dtype"
+            )
+            kv_source = "model.kv_cache_dtype"
+        else:
+            kv_cache = activation
+            kv_source = "af.activation_dtype"
+        a_to_f = (
+            link.a_to_f_dtype
+            if link is not None and link.a_to_f_dtype is not None
+            else activation
+        )
+        f_to_a = (
+            link.f_to_a_dtype
+            if link is not None and link.f_to_a_dtype is not None
+            else activation
+        )
+        sources = {
+            "weight_dtype": (
+                "af.weight_dtype"
+                if "weight_dtype" in self._explicit_dtype_fields
+                else "model.dtype"
+            ),
+            "activation_dtype": (
+                "af.activation_dtype"
+                if "activation_dtype" in self._explicit_dtype_fields
+                else "model.dtype"
+            ),
+            "kv_cache_dtype": kv_source,
+            "a_to_f_dtype": (
+                "af.link.a_to_f_dtype"
+                if link is not None
+                and "a_to_f_dtype" in link.explicit_dtype_fields
+                else "af.activation_dtype"
+            ),
+            "f_to_a_dtype": (
+                "af.link.f_to_a_dtype"
+                if link is not None
+                and "f_to_a_dtype" in link.explicit_dtype_fields
+                else "af.activation_dtype"
+            ),
+        }
+        return AFEffectiveDTypes(
+            weight_dtype=weight,
+            activation_dtype=activation,
+            kv_cache_dtype=kv_cache,
+            a_to_f_dtype=a_to_f,
+            f_to_a_dtype=f_to_a,
+            sources=tuple(sorted(sources.items())),
+        )
 
 
 def _normalize_phases(phases: tuple[str, ...], context: str) -> tuple[str, ...]:
@@ -532,8 +1126,10 @@ class ClusterConfig:
     def __post_init__(self) -> None:
         self._normalize_group_names()
         self._validate_groups()
+        self.af.validate_dtype_style()
         if self.af.enabled:
             self._normalize_execution_domains()
+            self._normalize_communication_fabrics()
             self._validate_af_topology()
             self._validate_execution_domains()
 
@@ -608,6 +1204,62 @@ class ClusterConfig:
             )
         self.af.execution_domains = domains
 
+    def _normalize_communication_fabrics(self) -> None:
+        fabrics: dict[str, AFCommunicationFabricConfig] = {}
+        sources: dict[str, str] = {}
+        for fabric in self.af.communication_fabrics:
+            group = fabric.resource_group
+            if group in fabrics:
+                raise ConfigurationError(
+                    f"duplicate communication fabric resource_group {group!r}"
+                )
+            fabrics[group] = fabric
+            sources[group] = "communication fabric registry"
+
+        for link in self.af.links:
+            if not link.has_inline_fabric:
+                continue
+            inline = link.inline_fabric()
+            existing = fabrics.get(link.resource_group)
+            if existing is None:
+                fabrics[link.resource_group] = inline
+                sources[link.resource_group] = f"AF link {link.name!r}"
+                continue
+            if (
+                existing.network != inline.network
+                or existing.duplex != inline.duplex
+            ):
+                raise ConfigurationError(
+                    f"AF resource_group {link.resource_group!r} conflicts between "
+                    f"{sources[link.resource_group]} and AF link {link.name!r}"
+                )
+            for lane in inline.lanes:
+                try:
+                    existing_lane = existing.lane(lane.name)
+                except ConfigurationError as exc:
+                    raise ConfigurationError(
+                        f"AF resource_group {link.resource_group!r} conflicts between "
+                        f"{sources[link.resource_group]} and AF link {link.name!r}: "
+                        f"missing lane {lane.name!r}"
+                    ) from exc
+                if existing_lane.capacity != lane.capacity:
+                    raise ConfigurationError(
+                        f"AF resource_group {link.resource_group!r} conflicts between "
+                        f"{sources[link.resource_group]} and AF link {link.name!r}: "
+                        f"lane {lane.name!r} capacity differs"
+                    )
+
+        for link in self.af.links:
+            fabric = fabrics.get(link.resource_group)
+            if fabric is None:
+                raise ConfigurationError(
+                    f"AF link {link.name!r} references missing communication fabric "
+                    f"resource_group={link.resource_group!r}"
+                )
+            link.bind_fabric(fabric)
+        self.af.communication_fabrics = list(fabrics.values())
+        self._communication_fabric_sources = dict(sources)
+
     @staticmethod
     def _single_rank_instances(
         group: WorkerGroupConfig,
@@ -664,14 +1316,7 @@ class ClusterConfig:
                     f"pipeline_parallel_size={domain.parallel.pipeline_parallel_size}; "
                     "AF phase one only supports pipeline_parallel_size=1"
                 )
-            if (
-                domain.parallel.expert_parallel_size != 1
-                and domain.capability != "af_ffn"
-            ):
-                raise ConfigurationError(
-                    f"execution domain {domain.name!r} expert_parallel_size is only "
-                    "valid for af_ffn"
-                )
+            _ = domain.expert_parallel
             if len(domain.logical_instances) != domain.parallel.data_parallel_size:
                 raise ConfigurationError(
                     f"execution domain {domain.name!r} logical_instances count must "
@@ -767,23 +1412,59 @@ class ClusterConfig:
                     f"{sorted(missing_workers)}; every worker in group "
                     f"{domain.worker_group!r} must map to exactly one logical instance rank"
                 )
+            collective_stages: set[str] = set()
+            fabrics = {
+                fabric.resource_group: fabric
+                for fabric in self.af.communication_fabrics
+            }
             for collective in domain.communication_plan:
-                invalid = set(collective.participants) - expected_domain_ranks
+                if collective.after_stage in collective_stages:
+                    raise ConfigurationError(
+                        f"execution domain {domain.name!r} has ambiguous collective "
+                        f"plans after_stage={collective.after_stage!r}"
+                    )
+                collective_stages.add(collective.after_stage)
+                expected_tp_ranks = set(
+                    range(domain.parallel.tensor_parallel_size)
+                )
+                invalid = set(collective.participants) - expected_tp_ranks
                 if invalid:
                     raise ConfigurationError(
                         f"execution domain {domain.name!r} collective "
-                        f"{collective.operation!r} has out-of-range participants "
-                        f"{sorted(invalid)}"
+                        f"{collective.operation!r} has out-of-range replica-local "
+                        f"tp_rank participants {sorted(invalid)} for "
+                        f"TP={domain.parallel.tensor_parallel_size}"
                     )
+                if collective.resource_group is None:
+                    raise ConfigurationError(
+                        f"execution domain {domain.name!r} collective "
+                        f"{collective.operation!r} requires resource_group"
+                    )
+                fabric = fabrics.get(collective.resource_group)
+                if fabric is None:
+                    raise ConfigurationError(
+                        f"execution domain {domain.name!r} collective "
+                        f"{collective.operation!r} references missing communication "
+                        f"fabric resource_group={collective.resource_group!r}"
+                    )
+                if collective.resource_lane is None:
+                    raise ConfigurationError(
+                        f"execution domain {domain.name!r} collective "
+                        f"{collective.operation!r} requires explicit resource_lane"
+                    )
+                fabric.lane(collective.resource_lane)
                 if (
                     collective.network is not None
-                    and collective.network not in self.networks
+                    and collective.network != fabric.network
                 ):
                     raise ConfigurationError(
                         f"execution domain {domain.name!r} collective "
-                        f"{collective.operation!r} references unknown network "
-                        f"{collective.network!r}"
+                        f"{collective.operation!r} network={collective.network!r} "
+                        f"conflicts with fabric {collective.resource_group!r} "
+                        f"network={fabric.network!r}"
                     )
+                for dp_rank in range(domain.parallel.data_parallel_size):
+                    domain.resolve_collective_participants(collective, dp_rank)
 
     @staticmethod
     def _validate_domain_rank_mapping(
@@ -795,12 +1476,10 @@ class ClusterConfig:
         ranks_per_replica = domain.ranks_per_replica
         rank_in_replica = mapping.domain_rank % ranks_per_replica
         expected_dp = mapping.domain_rank // ranks_per_replica
-        expected_ep = (
-            rank_in_replica // parallel.tensor_parallel_size
-            if domain.capability == "af_ffn"
-            else 0
-        )
         expected_tp = rank_in_replica % parallel.tensor_parallel_size
+        expected_ep = domain.expert_parallel.ep_rank(
+            dp_rank=expected_dp, tp_rank=expected_tp
+        )
         actual = (
             mapping.tp_rank,
             mapping.pp_rank,
@@ -832,6 +1511,17 @@ class ClusterConfig:
             phase: [] for phase in self.af.phases
         }
         resource_signatures: dict[str, tuple[str, str, tuple[int, ...], str]] = {}
+
+        for fabric in self.af.communication_fabrics:
+            if fabric.network not in self.networks:
+                source = getattr(self, "_communication_fabric_sources", {}).get(
+                    fabric.resource_group,
+                    f"communication fabric {fabric.resource_group!r}",
+                )
+                raise ConfigurationError(
+                    f"{source} references "
+                    f"unknown network {fabric.network!r}"
+                )
 
         for link in self.af.links:
             if link.name in link_names:
@@ -973,9 +1663,13 @@ class ClusterConfig:
         resources: dict[tuple[str, str], AFCommunicationResourceConfig] = {}
         if not self.af.enabled:
             return resources
-        for link in self.af.links:
-            for resource in link.communication_resources():
-                resources.setdefault(resource.resource_key, resource)
+        for fabric in self.af.communication_fabrics:
+            for resource in fabric.communication_resources():
+                if resource.resource_key in resources:
+                    raise ConfigurationError(
+                        f"duplicate AF communication resource {resource.resource_key!r}"
+                    )
+                resources[resource.resource_key] = resource
         return resources
 
     @classmethod

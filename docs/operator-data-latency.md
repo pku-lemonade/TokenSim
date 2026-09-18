@@ -15,9 +15,9 @@ latency = calibration_multiplier * roofline_time + calibration_offset
 
 同一 shape 有 A 级算子/层级实测时，实测结果优先；公式结果为 C 级，只补齐缺测 shape。B 级公开端到端基准只检查整体量级，不拆成单算子值。D 级项目假设只能用于敏感性分析。
 
-运行时先 exact match，再按表执行单维内部插值：GEMM 只沿 `m`，Prefill Attention 只沿 `input_seq_len`，Decode Attention 只沿 `context_len`，MoE 只沿 `num_tokens`。Elementwise 不插值，所有表第一版都不外推。失败会报告完整 key，不回退旧模型。
+运行时先 exact match，再按表执行受限的单维内部插值：GEMM 只沿 `m`，Prefill Attention 只沿 `input_seq_len`，Decode Attention 只沿单个 request 的 `context_len`，Routed/Shared Expert 各自只沿 `num_tokens`。Weighted combine、residual、encode/decode 等 elementwise operation 不插值，所有表第一版都不外推。查询失败会报告完整 key，不回退旧模型或运行时 analytical 公式。
 
-A rank 查询组合其 TP-local QKV、Attention core、输出投影与必要 elementwise；Router/Top-K 是所选 A replica leader 上的独立查询，使用该 A worker 的 `device_type`；F expert rank 查询只组合实际 routed local tokens 对应的 expert 与必要 elementwise。三类 breakdown 互不重叠。Manifest 的 `component_includes` 用于阻止 fused kernel 重复包含 softmax、SwiGLU、投影或 Router。TP collective、A-to-F/F-to-A 和 EP dispatch/combine 不进入 compute sum；包括 `EP=1` 在内，dispatch/combine 都产生独立 query，provider 可将其 service time 估为 0。缺失 `local_shape` 或 `local_token_count` 会明确失败，不使用完整 workload fallback。
+Compute provider 按互斥 operation 组合 A Attention、A Router、F Dense FFN、F Routed Expert、F Shared Expert、A weighted combine、A residual、encode/decode 和 layout work。Routed Expert 使用已经完成 Top-K 展开的逐 Expert assignment workload；Shared Expert 使用原始 token 数，并以扩大的 intermediate 表示多个 Shared Experts；weighted combine 保留每条 input edge 的 Expert、Top-K index 和 routing weight，再把 `T*K` 条 Routed partials恢复为 `T` 个 token outputs。Residual 只在 A 侧按原始 token 数计算一次。Manifest 的 `component_includes` 用于阻止 fused kernel 重复包含 softmax、SwiGLU、投影或 Router。Collective 和跨域 transfer 均不进入 compute sum。
 
 通信 service time 为：
 
@@ -25,9 +25,11 @@ A rank 查询组合其 TP-local QKV、Attention core、输出投影与必要 ele
 fixed_latency + payload_bytes / effective_bandwidth
 ```
 
-运行时通信 query 使用 `af_a_to_f`、`af_f_to_a` 和 `tp_collective`。Router 在 A 侧先产生 routed workload；A-to-F 直接连接 A leader 与 active F Expert ranks，同时完成跨域传输和 EP dispatch，F-to-A 同时完成 EP gather/combine，因此同一 payload 不会再通过 `ep_dispatch`/`ep_combine` 搬第二遍。两个方向的 payload 都按 routed token count 计算；存在 histogram 时取计数之和，否则取 `token_count * top_k`。`payload_bytes` 由 planner 唯一计算，provider 只按该 payload 和链路参数返回 service time；它不重算 Top-K、不增加 transfer，也不计算 queue time。全/半双工、容量和多个 AF blocks 的竞争仍由 AF executor 的 SimPy resource 产生。
+运行时通信 query 明确区分 `a_to_f`、`f_to_a`、`all_reduce`、`all_gather` 和 `reduce_scatter`。A-to-F 是 Routed dispatch 与 Shared input 的唯一跨域传输；F-to-A 只返回 Routed/Shared partials，数学 weighted combine 随后在 A 侧单独计时。每个方向一层只有一个 logical stage，但 planner 会按真实 producer、endpoint、stable tensor item 和 global hidden interval 展开独立 legs。Payload 来自逐 token assignments、Shared input 和 tensor ownership，不能由 histogram 或无 owner 的总 token 数猜测，也不会再生成搬运相同数据的 `ep_dispatch`/`ep_combine`。
 
-MoE 表的 `num_tokens` 表示已经完成 Top-K 展开的 routed token-expert assignments，不是 Router 输入 token 数。Provider 保留 F rank 上的逐 Expert workload，按每个 Expert 的 routed count 查询后聚合；Expert 公式不再乘第二次 `top_k`。MoE 的 intermediate dimension 以及 Dense FFN 的 gate/up、SwiGLU、down shapes 都按 F domain `tp_size` 切成本 rank 的形状，TP collective 另行计时。
+Endpoint-leg query 携带实际 wire payload；provider 只应用链路固定时延和带宽。Collective query 携带每 rank logical input/output bytes、实际 participants、operation、fabric 和 lane；ring/tree 等 wire-volume 系数只由 provider 应用一次。Provider 不创建 placement、依赖或 queue time。全/半双工、lane capacity 和多个 AF blocks 的竞争由 executor 的 SimPy resources 产生。
+
+五类 dtype 角色独立进入数据键和审计信息：GEMM/Expert 同时保留 weight 与 activation dtype，Attention 额外保留 KV Cache dtype，通信使用对应方向 dtype。传输 dtype 与 activation dtype 不同时，发送 encode 和接收 decode 是独立 compute queries，不隐藏在带宽服务时间中。SwiGLU 公式使用 gate/up/down 三个矩阵；MHA/GQA/MQA 使用实际 Q/K/V/O dimensions；Decode Attention 按每个 request 的 context 和 sliding window 分别计算后聚合。
 
 ## 数据包内容
 
@@ -59,6 +61,8 @@ python -m TokenSim.operator_data.cli validate .operator-data-example
 
 样例中的计算值是未校准公式，链路值也是示例，不能作为 Groq/Ada 物理性能结论。实际使用时必须替换 source、硬件版本、kernel/backend、shape manifest、实测 observation 和 calibration/holdout。
 
+示例 package 是正式 Decode 与 AF-Prefill compatibility 共用的超集，因此仍可包含 legacy F-side `residual_add` record。正式 Decode 的 `dense_ffn`、`routed_expert` 和 `shared_expert` composition 不会消费该 record；residual 只由 A-side `residual` operation计时。
+
 AF 集群配置显式选择正式 provider：
 
 ```json
@@ -79,12 +83,10 @@ AF 集群配置显式选择正式 provider：
 
 ## 验证边界
 
-完整机制 E2E 会真实生成并加载 Parquet，经 `LLMEngine`、scheduler、AF executor、资源竞争和 trace 完成 Prefill/Decode：
+完整机制 E2E 会真实生成并加载 Parquet，经 `LLMEngine`、scheduler、AF executor、资源竞争和 trace 完成 Decode AF。Decode-only 配置下 Prefill 保持既有完整模型 aggregate 路径；显式 AF-Prefill 使用 compatibility 路径，不宣称具有新的逐 rank 精度：
 
 ```powershell
 python -m unittest tests.test_operator_data_latency_provider
 ```
 
-测试可证明 exact/interpolation、A/F 组合、通信公式、queue/service 分离和 trace 自洽。只有拿到独立 kernel、链路或真实系统 trace 后，才能报告物理准确性；否则结论必须写为“机制与模型自洽通过，物理准确性待实测”。
-
-本 change 的实现验收结果为：operator-data 专项测试 20/20、AF 配置与 executor 回归 48/48、仓库完整 Python 测试 181/181 通过。当前未收到 Ada/Groq 的独立 kernel holdout、链路 benchmark 或真实系统 trace，因此当前精度状态正式记录为：**机制与模型自洽通过，物理准确性待实测**。测试中的 `measured:test` 和 example source 都是确定性 fixture，不是硬件 ground truth。
+测试覆盖 exact/interpolation/missing、Dense/MoE/Shared/Combine 的互斥组成、endpoint payload、collective wire volume、queue/service 分离和 trace 自洽。验收数字以当前测试命令的实际输出为准，文档不固化可能过期的通过数量。只有拿到独立 kernel、链路或真实系统 trace 后，才能报告物理准确性；否则结论必须写为“机制与模型自洽通过，物理准确性待实测”。测试中的 `measured:test` 和 example source 都是确定性 fixture，不是硬件 ground truth。

@@ -5,6 +5,7 @@ from TokenSim.operator_data.analytical import (
     estimate_operator,
 )
 from TokenSim.operator_data.generator import (
+    CalibrationRule,
     EvidenceGrade,
     Observation,
     OperatorDataGenerator,
@@ -30,6 +31,7 @@ from TokenSim.operator_data.providers import (
 __all__ = [
     "AnalyticalEstimate",
     "Calibration",
+    "CalibrationRule",
     "EvidenceGrade",
     "HardwareProfile",
     "LookupResult",

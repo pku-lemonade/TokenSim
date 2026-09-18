@@ -3,8 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Literal, Mapping
 
+from TokenSim.dtypes import canonicalize_dtype
 from TokenSim.operator_data.package import OperatorDataPackage
-from TokenSim.operator_data.schema import TABLE_SPECS
+from TokenSim.operator_data.schema import TABLE_SPECS, dtype_role_for_field, validate_batch_key
 
 
 class MissingOperatorDataError(LookupError):
@@ -41,6 +42,9 @@ class OperatorDataLookup:
         spec = TABLE_SPECS[table_name]
         normalized = self._normalize_key(table_name, key)
         exact_key = tuple(normalized[field] for field in spec.key_fields)
+        if table_name not in self._exact:
+            raise MissingOperatorDataError(table_name, normalized,
+                "batch table missing; regenerate operator data for the execution shapes")
         row = self._exact[table_name].get(exact_key)
         if row is not None:
             return self._result_from_row(normalized, row)
@@ -78,9 +82,23 @@ class OperatorDataLookup:
         normalized: dict[str, Any] = {}
         for field in spec.key_fields:
             value = key[field]
+            dtype_role = dtype_role_for_field(field, key)
+            if dtype_role is not None:
+                try:
+                    value = canonicalize_dtype(str(value), role=dtype_role)
+                except ValueError as exc:
+                    raise MissingOperatorDataError(
+                        table_name,
+                        key,
+                        f"invalid dtype field {field!r}: {exc}",
+                    ) from exc
             if isinstance(value, str):
                 value = value.strip().lower()
             normalized[field] = value
+        try:
+            validate_batch_key(table_name, normalized)
+        except ValueError as exc:
+            raise MissingOperatorDataError(table_name, normalized, str(exc)) from exc
         return normalized
 
     @staticmethod
@@ -130,11 +148,20 @@ class OperatorDataLookup:
             "left_weight": 1.0 - weight,
             "right_weight": weight,
         }
+        values = {"latency_us": latency_us, "source_id": source_id}
+        # Preserve decomposition only when both endpoints have the same method.
+        for name in ("timing_method", "calibration_applied"):
+            if name in left and left.get(name) == right.get(name):
+                values[name] = left[name]
+        if (values.get("calibration_applied") is True
+                and left.get("fixed_overhead_us") is not None
+                and right.get("fixed_overhead_us") is not None):
+            values["fixed_overhead_us"] = (1 - weight) * left["fixed_overhead_us"] + weight * right["fixed_overhead_us"]
         return LookupResult(
             latency_us=latency_us,
             match_type="interpolated",
             source_id=source_id,
             key=dict(key),
             interpolation=interpolation,
-            values={"latency_us": latency_us, "source_id": source_id},
+            values=values,
         )

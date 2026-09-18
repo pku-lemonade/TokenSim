@@ -24,17 +24,29 @@
         "phases": ["prefill", "decode"],
         "af_block_size": 4,
         "trace_enabled": true,
+        "weight_dtype": "bf16",
+        "activation_dtype": "bf16",
+        "kv_cache_dtype": "bf16",
+        "communication_fabrics": [
+            {
+                "resource_group": "af-fabric",
+                "network": "af_net",
+                "duplex": "full",
+                "lanes": [
+                    {"name": "a_to_f", "capacity": 1},
+                    {"name": "f_to_a", "capacity": 1}
+                ]
+            }
+        ],
         "links": [
             {
                 "name": "attention-ffn",
                 "phases": ["prefill", "decode"],
                 "attention_group": "attention-pool",
                 "ffn_group": "ffn-pool",
-                "network": "af_net",
                 "resource_group": "af-fabric",
-                "duplex": "full",
-                "a_to_f_capacity": 1,
-                "f_to_a_capacity": 1
+                "a_to_f_dtype": "bf16",
+                "f_to_a_dtype": "bf16"
             }
         ]
     }

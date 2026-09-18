@@ -4,6 +4,7 @@ import types
 import unittest
 import json
 from argparse import Namespace
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, mock_open, patch
@@ -24,10 +25,13 @@ from TokenSim.config.psla_config import MetricData, PSLAConfig
 from TokenSim.errors import ConfigurationError, SimulationStateError
 from TokenSim.llm.llm_engine import AFComputeWorker, LLMEngine, Task
 from TokenSim.llm.llm_request import Request, reset_g_time
+from TokenSim.moe.config import MoEModelConfig
 from util.request import LLMSource
 from util.results import export_result, get_af_stats
 
 import benchmark
+
+from tests.test_af_parallel_planning import _cluster, _formal_runtime_plan
 
 
 class FixedComputeProvider:
@@ -41,7 +45,20 @@ class FixedComputeProvider:
     ):
         router = f / 3 if router is None else router
         expert = f - router if expert is None else expert
-        self.durations = {"a": a, "router": router, "expert": expert}
+        self.durations = {
+            "a": a,
+            "attention": a,
+            "router": router,
+            "expert": expert,
+            "dense_ffn": f,
+            "routed_expert": expert,
+            "shared_expert": f,
+            "weighted_combine": 0.0,
+            "residual": 0.0,
+            "encode": 0.0,
+            "decode": 0.0,
+            "layout": 0.0,
+        }
         self.queries = []
 
     def estimate(self, query):
@@ -67,6 +84,9 @@ class FixedTransferProvider:
             "ep_dispatch": dispatch,
             "ep_combine": combine,
             "tp_collective": collective,
+            "all_reduce": collective,
+            "all_gather": collective,
+            "reduce_scatter": collective,
         }
         self.queries = []
 
@@ -340,6 +360,9 @@ def _explicit_domain_cluster(*, with_collective=True):
                         "operation": "all_reduce",
                         "after_stage": "a_compute",
                         "participants": [0, 1],
+                        "network": "af-net",
+                        "resource_group": "fabric",
+                        "resource_lane": "a_to_f",
                     }
                 ]
                 if with_collective
@@ -351,22 +374,26 @@ def _explicit_domain_cluster(*, with_collective=True):
             "capability": "af_ffn",
             "phases": ["prefill", "decode"],
             "worker_group": "f-pool",
-            "parallel": {"expert_parallel_size": 2},
+            "parallel": {
+                "tensor_parallel_size": 1,
+                "data_parallel_size": 2,
+                "expert_parallel_size": 2,
+            },
             "logical_instances": [
                 {
-                    "name": "f0",
+                    "name": f"f{index}",
                     "rank_mapping": [
                         {
                             "domain_rank": index,
                             "tp_rank": 0,
                             "pp_rank": 0,
-                            "dp_rank": 0,
+                            "dp_rank": index,
                             "ep_rank": index,
                             "physical_worker": physical("f-pool", index),
                         }
-                        for index in range(2)
                     ],
                 }
+                for index in range(2)
             ],
         },
     ]
@@ -451,6 +478,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
         self.assertNotIn("af_enabled", result)
         self.assertNotIn("af_iteration_count", result)
         self.assertNotIn("af_trace", result)
+        self.assertNotIn("af_phase_fidelity", result)
 
     def test_llm_engine_runs_prefill_and_decode_through_af_executor(self):
         reset_g_time()
@@ -523,6 +551,13 @@ class AFExecutorEndToEndTest(unittest.TestCase):
         self.assertTrue(af_stats["af_enabled"])
         self.assertEqual(af_stats["af_iteration_count"], 2)
         self.assertEqual(len(af_stats["af_trace"]), 2)
+        self.assertEqual(
+            af_stats["af_phase_fidelity"],
+            {
+                "prefill": "af_prefill_compatibility",
+                "decode": "decode_af_rank_local",
+            },
+        )
 
         with (
             patch("builtins.open", mock_open()),
@@ -553,6 +588,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
         self.assertTrue(result["af_enabled"])
         self.assertEqual(result["af_iteration_count"], 2)
         self.assertEqual(result["af_trace"][0]["events"][0]["stage"], "a")
+        self.assertEqual(result["af_phase_fidelity"], af_stats["af_phase_fidelity"])
 
     def test_multiblock_multilayer_engine_advances_each_request_once_per_iteration(
         self,
@@ -1158,6 +1194,166 @@ class AFExecutorEndToEndTest(unittest.TestCase):
         )
         self.assertEqual(layer_one_a.ready_at, layer_zero_return.end_at)
         self.assertAlmostEqual(iteration.makespan, 0.014)
+
+    def test_formal_decode_endpoint_legs_do_not_wait_for_unrelated_producers(self):
+        cluster = _cluster(a_tp=1, a_dp=1, f_tp=2, f_dp=1, f_ep=2)
+        moe_config = MoEModelConfig(
+            is_moe_model=True,
+            num_experts=2,
+            num_experts_per_tok=1,
+            num_moe_layers=1,
+            moe_intermediate_size=32,
+            num_shared_experts=1,
+            intermediate_size=64,
+            hidden_size=16,
+            num_attention_heads=8,
+            num_key_value_heads=8,
+        )
+        runtime_plan = _formal_runtime_plan(cluster, moe_config)
+        env = simpy.Environment()
+        compute = FixedComputeProvider(0.0, 0.0, router=0.0, expert=0.001)
+        compute.durations["shared_expert"] = 0.010
+        transfer = FixedTransferProvider(0.0, 0.001, collective=0.0)
+        executor = AFExecutor(
+            env=env,
+            cluster_config=cluster,
+            worker_configs=cluster.workers(),
+            compute_provider=compute,
+            transfer_provider=transfer,
+            model_id="TestModel",
+            dtype="fp16",
+            total_layers=2,
+            hidden_size=16,
+            moe_config=moe_config,
+            runtime_plan=runtime_plan,
+        )
+        request = Request(1, prefill_len=8, decode_len=3, block_size=4)
+        request.generation_idx = 1
+        iteration = executor.submit(0, [request], "decode")
+
+        env.process(executor.run_iteration(iteration))
+        env.run()
+
+        events = executor.trace.events_for(iteration.iteration_id)
+        layer_zero = [event for event in events if event.layer_id == 0]
+        same_endpoint_returns = [
+            event
+            for event in layer_zero
+            if event.operation == "af_f_to_a"
+            and event.source_endpoint.domain_rank == 0
+            and event.target_endpoint.domain_rank == 0
+        ]
+        self.assertEqual(len(same_endpoint_returns), 2)
+        routed_return = next(
+            event
+            for event in same_endpoint_returns
+            if any(
+                ":routed:" in tensor_slice.tensor_item_id
+                for tensor_slice in event.tensor_slices
+            )
+        )
+        shared_return = next(
+            event
+            for event in same_endpoint_returns
+            if any(
+                tensor_slice.tensor_item_id.endswith(":shared")
+                for tensor_slice in event.tensor_slices
+            )
+        )
+        self.assertEqual(len(routed_return.predecessor_ids), 1)
+        self.assertEqual(len(shared_return.predecessor_ids), 1)
+        self.assertNotEqual(
+            routed_return.predecessor_ids, shared_return.predecessor_ids
+        )
+        by_node = {event.node_id: event for event in layer_zero}
+        shared_producer = by_node[shared_return.predecessor_ids[0]]
+        self.assertLess(routed_return.start_at, shared_producer.end_at)
+
+        combine = next(
+            event for event in layer_zero if event.stage == "weighted_combine"
+        )
+        self.assertEqual(
+            set(combine.predecessor_ids),
+            {routed_return.node_id, shared_return.node_id},
+        )
+        self.assertEqual(
+            combine.ready_at,
+            max(by_node[node_id].end_at for node_id in combine.predecessor_ids),
+        )
+        layer_zero_terminal = next(
+            event for event in layer_zero if event.stage == "residual"
+        )
+        layer_one_attention = [
+            event
+            for event in events
+            if event.layer_id == 1 and event.stage == "attention"
+        ]
+        self.assertTrue(
+            all(
+                event.ready_at == layer_zero_terminal.end_at
+                for event in layer_one_attention
+            )
+        )
+        self.assertAlmostEqual(iteration.makespan, 0.013)
+        executor.trace.validate_invariants(iteration.iteration_id)
+
+    def test_formal_dag_semantics_are_checked_when_trace_is_disabled(self):
+        cluster = _cluster(a_tp=1, a_dp=1, f_tp=1, f_dp=1, f_ep=1)
+        cluster.af.trace_enabled = False
+        moe_config = MoEModelConfig(
+            is_moe_model=True,
+            num_experts=2,
+            num_experts_per_tok=1,
+            num_moe_layers=1,
+            moe_intermediate_size=32,
+            num_shared_experts=1,
+            intermediate_size=64,
+            hidden_size=16,
+            num_attention_heads=8,
+            num_key_value_heads=8,
+        )
+        runtime_plan = _formal_runtime_plan(cluster, moe_config)
+        env = simpy.Environment()
+        compute = FixedComputeProvider(0.0, 0.0)
+        transfer = FixedTransferProvider(0.0, 0.0)
+        executor = AFExecutor(
+            env=env,
+            cluster_config=cluster,
+            worker_configs=cluster.workers(),
+            compute_provider=compute,
+            transfer_provider=transfer,
+            model_id="TestModel",
+            dtype="fp16",
+            total_layers=2,
+            hidden_size=16,
+            moe_config=moe_config,
+            runtime_plan=runtime_plan,
+        )
+        request = Request(1, prefill_len=8, decode_len=3, block_size=4)
+        request.generation_idx = 1
+        iteration = executor.submit(0, [request], "decode")
+        block = iteration.blocks[0]
+        dag = executor.plan_builder.build_layer(block, 0, cluster.af.links[0])
+        combine = next(node for node in dag.nodes if node.stage == "weighted_combine")
+        corrupted = replace(
+            combine,
+            local_work=replace(combine.local_work, output_token_count=0),
+        )
+        object.__setattr__(
+            dag,
+            "nodes",
+            tuple(corrupted if node is combine else node for node in dag.nodes),
+        )
+        executor.plan_builder.build_layer = MagicMock(return_value=dag)
+
+        env.process(executor.run_iteration(iteration))
+        with self.assertRaisesRegex(SimulationStateError, "weighted combine"):
+            env.run()
+
+        self.assertFalse(executor.trace.enabled)
+        self.assertEqual(executor.trace.events, [])
+        self.assertEqual(compute.queries, [])
+        self.assertEqual(transfer.queries, [])
 
     def test_full_duplex_overlaps_opposite_directions_but_half_does_not(self):
         makespans = {}

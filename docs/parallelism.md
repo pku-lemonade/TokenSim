@@ -94,26 +94,27 @@ configuration. See [MoE](moe.md).
 ### AF execution domains
 
 AF uses a stricter topology than the non-AF path. One logical instance is one
-DP replica: an A replica contains `TP` ranks, while an F replica contains
-`EP * TP` ranks. F expert placement is fully replicated inside every DP
-replica. The AF planner executes rank-local work and TP collectives; these sizes
-are not configuration-only metadata. The A replica leader runs Router/Top-K
-after A TP compute/collective. A-to-F directly scatters routed activations from
-that leader to the resident Expert ranks, and F-to-A gathers the partial Expert
-results back for combination. These two cross-domain nodes are the EP
-dispatch/combine; the same payload is not moved again through synthetic
-F-internal nodes.
+DP replica, and every A or F replica contains `TP` base ranks. EP never adds
+physical ranks. With `EP=1`, each F DP replica holds a TP-sharded copy of the
+Expert set and Expert TP equals F TP. With rank reuse
+`EP=F_TP*F_DP`, Experts are placed across the existing F world and Expert TP is
+one; the stable identity is `ep_rank=dp_rank*F_TP+tp_rank`. Intermediate EP
+values are rejected. The AF planner executes rank-local work and explicit
+collectives; these sizes are not configuration-only metadata.
 
-An Expert histogram counts routed token-expert assignments, so its total is
-`source_tokens * top_k`. Expert compute consumes that count directly and never
-multiplies by `top_k` again. F-domain TP shards the Expert or dense FFN
-intermediate dimension on every rank; the corresponding TP collective remains
-a separate communication cost.
+Decode AF uses immutable per-layer routing assignments as execution facts. An
+Expert histogram is only their derived statistic, with total
+`source_tokens * top_k`; it cannot reconstruct token owners or routing weights.
+Expert compute consumes assignment counts directly and never multiplies by
+`top_k` again. Shared Expert, weighted combine, residual, and the next layer use
+the original token count. F-domain TP shards the Expert or dense FFN
+intermediate dimension exactly; non-divisible shard axes fail before planning.
 
 AF currently requires `PP=1` in both domains because pipeline stages,
 activation send/receive and bubble scheduling are not implemented for the
 Attention-FFN split. See [AF separation](af-separation.md) and the executable
-`data/clusters/af/tp2_dp2_ep2.json` example.
+`data/clusters/af/decode_tp2_dp2_ep1.json` and
+`data/clusters/af/decode_tp2_dp2_ep4_rank_reuse.json` examples.
 
 When AF is enabled, domain-local parallel values override the unrelated global
 `parallel_config` for AF ranks. `AFRuntimePlan` is compiled once and shared by
@@ -137,6 +138,14 @@ at startup instead of creating conflicting logical state on the same devices.
 The result field `af_runtime_state` reports the compiled topology, component
 bytes, local KV bytes/capacity/usage, and replica logical capacity/usage. It is
 the memory counterpart to the compute/communication events in `af_trace`.
+`af_phase_fidelity` reports whether each phase used Decode rank-local AF,
+Prefill aggregate execution, or the retained AF-Prefill compatibility path.
+
+AF keeps weight, activation, KV-cache, A-to-F, and F-to-A dtypes as separate
+roles. Cross-domain format changes are explicit encode/decode compute nodes.
+AF endpoint legs and TP collectives resolve to an exact communication fabric
+and lane; collectives only contend with AF traffic when the configuration
+explicitly shares that lane.
 
 ## Configuration Precedence
 

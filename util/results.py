@@ -42,6 +42,9 @@ def get_af_stats(engine: LLMEngine) -> dict[str, Any]:
     executor = getattr(engine, "af_executor", None)
     summaries = getattr(engine, "af_iteration_summaries", [])
     runtime_summary = getattr(engine, "af_runtime_summary", None)
+    cluster_config = getattr(engine, "cluster_config", None)
+    af_config = getattr(cluster_config, "af", None)
+    phases = set(getattr(af_config, "phases", ())) if executor is not None else set()
     return {
         "af_enabled": executor is not None,
         "af_iteration_count": len(summaries),
@@ -51,6 +54,22 @@ def get_af_stats(engine: LLMEngine) -> dict[str, Any]:
         "af_runtime_state": (
             runtime_summary()
             if executor is not None and callable(runtime_summary)
+            else None
+        ),
+        "af_phase_fidelity": (
+            {
+                "prefill": (
+                    "af_prefill_compatibility"
+                    if "prefill" in phases
+                    else "prefill_aggregate"
+                ),
+                "decode": (
+                    "decode_af_rank_local"
+                    if "decode" in phases
+                    else "decode_aggregate"
+                ),
+            }
+            if executor is not None
             else None
         ),
     }
@@ -450,6 +469,7 @@ def export_result(
             "af_iteration_count",
             "af_trace",
             "af_runtime_state",
+            "af_phase_fidelity",
         ):
             result_dict.pop(field_name, None)
 

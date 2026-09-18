@@ -114,6 +114,7 @@ class LLMResult:
     af_iteration_count: int = 0
     af_trace: list[dict[str, Any]] | None = None
     af_runtime_state: dict[str, Any] | None = None
+    af_phase_fidelity: dict[str, str] | None = None
 
     @classmethod
     def from_file(cls, filename):
