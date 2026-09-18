@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Sequence
 
-from TokenSim.comm.collectives import CollectiveEstimate, CollectiveModel, CollectiveQuery
+from TokenSim.comm.collectives import CollectiveEstimate, CollectiveModel, CollectiveQuery, EPAllToAllQuery
 from TokenSim.config.parallel_config import ParallelConfig, ParallelRankInfo
 from TokenSim.hardware.topology import TopologyPlacement
 
@@ -192,15 +192,52 @@ class ParallelCommunicator:
         self._record("pp_stage_transfer", target, bytes_ * count, latency, (self.worker_id, target), estimate)
         return latency
 
-    def estimate_ep_all2all(self, bytes_: int, count: int = 1) -> float:
-        if bytes_ <= 0 or count <= 0:
+    def estimate_ep_all2all(
+        self,
+        bytes_: int,
+        count: int = 1,
+        *,
+        num_tokens: int | None = None,
+        hidden_size: int | None = None,
+        top_k: int = 1,
+        num_experts: int = 1,
+        activation_bytes: float = 2.0,
+    ) -> float:
+        """Latency (seconds) of ``count`` MoE layers' dispatch+combine over the EP group.
+
+        With the MoE shape supplied, measured DeepEP tables are consulted through
+        :meth:`CollectiveModel.ep_all2all`; ``bytes_`` alone prices one plain
+        all-to-all per call (legacy behaviour, ``count`` calls).
+        """
+        if count <= 0:
             return 0.0
         group = self.ep_group()
         if len(group) <= 1:
             return 0.0
-        estimate = self._collective("all_to_all", bytes_, group)
+        layout = self.placement.layout(group)
+        if num_tokens is not None and hidden_size is not None:
+            if num_tokens <= 0:
+                return 0.0
+            estimate = self.collective_model.ep_all2all(
+                EPAllToAllQuery(
+                    layout=layout,
+                    num_tokens=int(num_tokens),
+                    hidden_size=int(hidden_size),
+                    top_k=int(top_k),
+                    num_experts=int(num_experts),
+                    dtype=self.dtype,
+                    mode=self.parallel_config.all2all_backend,
+                    activation_bytes=activation_bytes,
+                )
+            )
+            payload = int(estimate.message_bytes * 2)
+        else:
+            if bytes_ <= 0:
+                return 0.0
+            estimate = self._collective("all_to_all", bytes_, group)
+            payload = int(bytes_)
         latency = estimate.latency_s * count
-        self._record("ep_all2all", None, bytes_ * count, latency, group, estimate)
+        self._record("ep_all2all", None, payload * count, latency, group, estimate)
         return latency
 
     def estimate_point_to_point(self, bytes_: int, target_worker_id: int) -> float:

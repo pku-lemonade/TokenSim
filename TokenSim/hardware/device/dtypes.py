@@ -31,6 +31,18 @@ _DTYPE_ALIASES = {
     "int4_wo": "int4_wo",
     "nvfp4": "nvfp4",
     "fp4": "nvfp4",
+    # 4-bit weights with fp8 activations (TRT-LLM w4a8 AWQ / FP8 kernels).
+    "int4_a8": "int4_a8",
+    "w4a8": "int4_a8",
+    "w4afp8": "int4_a8",
+    "w4a8_awq": "int4_a8",
+    # OCP MX block-scaled 4-bit weights: fp8 activations (Blackwell tensor
+    # cores) or 16-bit activations (weight-only dequantization, Hopper).
+    "mxfp4": "mxfp4",
+    "w4a8_mxfp4_mxfp8": "mxfp4",
+    "w4a8_mxfp4_fp8": "mxfp4",
+    "mxfp4_wo": "mxfp4_wo",
+    "w4a16_mxfp4": "mxfp4_wo",
 }
 
 # Bytes per element for the *storage* dtype (weights or activations).
@@ -47,6 +59,9 @@ _DTYPE_BYTES = {
     "int4": 0.5,
     "int4_wo": 0.5,
     "nvfp4": 0.5,
+    "int4_a8": 0.5,
+    "mxfp4": 0.5,
+    "mxfp4_wo": 0.5,
 }
 
 # Which peak-compute entry a storage dtype executes on. Weight-only quantized
@@ -64,6 +79,21 @@ _COMPUTE_DTYPE = {
     "int4": "int4",
     "int4_wo": "fp16",
     "nvfp4": "nvfp4",
+    "int4_a8": "fp8",
+    "mxfp4": "nvfp4",
+    "mxfp4_wo": "fp16",
+}
+
+# When a device has no peak entry for a compute pipe, try these pipes in order.
+# fp16/bf16 share tensor cores everywhere; 4-bit pipes fall back to fp8 (the
+# activation precision) and int4 to int8. fp8 itself has no fallback because a
+# device without fp8 tensor cores cannot run fp8 GEMMs at all.
+COMPUTE_PIPE_FALLBACKS = {
+    "bf16": ("fp16",),
+    "fp16": ("bf16",),
+    "tf32": ("fp32",),
+    "nvfp4": ("fp8", "fp16", "bf16"),
+    "int4": ("int8", "fp16", "bf16"),
 }
 
 

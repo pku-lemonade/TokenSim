@@ -40,7 +40,7 @@ TokenSim/latency           OperatorTableLatencyBackend: per-rank local-shape ope
 At runtime, no roofline is recomputed from scratch. The query resolution order
 is fixed:
 
-> **Exact match** --> **Interpolation within the same discrete key** --> **Bounded extrapolation** (default max 16x, scaled linearly with operator size) --> **Analytical model for the device family**
+> **Exact match** --> **Interpolation within the same discrete key** --> **Bounded extrapolation** (default max 16x; the boundary row's measured efficiency is kept and the analytical model supplies the growth, AIConfigurator's rule) --> **Analytical model for the device family**
 
 Every step records a `match_type` (`exact` / `interpolated` / `extrapolated` /
 `analytical`). The result JSON aggregates these counts per table, and any
@@ -64,7 +64,7 @@ Evidence grades and acquisition methods are described in section 7.
 
 ### 2.2 Table Schemas
 
-There are six operator tables. Each table has a set of **key fields** that
+There are seven operator tables. Each table has a set of **key fields** that
 uniquely identify a row, a subset of those designated as **axes** (numeric
 fields along which interpolation is permitted), and the remainder acting as
 **discrete fields** (which must match exactly).
@@ -77,6 +77,7 @@ fields along which interpolation is permitted), and the remainder acting as
 | `moe` | `dtype, distribution, num_tokens, hidden_size, inter_size, top_k, num_experts, tp_size, ep_size` | `num_tokens` (log) | Fused/grouped expert FFN on one rank; `num_tokens` is pre-top-k-expansion count |
 | `elementwise` | `op_name, dtype, num_tokens, hidden_size` | `hidden_size` (log), `num_tokens` (log) | Memory-bound pointwise kernels |
 | `collective` | `dtype, operation, group_size, nodes, message_bytes` | `message_bytes` (log) | nccl-tests convention: full buffer, one out-of-place iteration |
+| `ep_all2all` | `dtype, phase, mode, ep_size, nodes, hidden_size, top_k, num_experts, num_tokens` | `num_experts` (log, bound 1024x), `top_k` (linear, bound 8x), `hidden_size` (log), `num_tokens` (log) | Measured DeepEP dispatch or combine for one rank sending `num_tokens` local tokens; `mode` is `deepep_high_throughput`, `deepep_low_latency`, or a framework-specific variant |
 
 #### 2.2.1 `gemm` Table
 
@@ -262,23 +263,33 @@ measurement grid rather than flattening it.
 
 ### 3.3 Stage 3: Bounded Extrapolation
 
-When the query value on an axis falls **outside** the measured range (above
-the maximum or below the minimum), the `LookupPolicy` controls the behavior:
+When the query lies outside the measured range on an interpolation axis, the
+lookup starts from the nearest boundary row and applies the policy's
+`extrapolate` mode (`LookupPolicy` in `TokenSim/operator_data/lookup.py`):
 
-| Policy | Behavior |
+| Mode | Behaviour |
 | --- | --- |
-| `extrapolate = "none"` | Raises `MissingOperatorDataError` immediately |
-| `extrapolate = "hold"` | Returns the boundary row's latency unchanged |
-| `extrapolate = "scale"` | Holds the boundary row and scales its latency by the ratio `target / boundary` -- but only when the axis uses log scale and the query exceeds the upper boundary (upward extrapolation). Below the boundary, the fixed cost dominates, so no scaling is applied. |
+| `extrapolate = "analytical"` (**default**) | Keep the boundary row's measured *efficiency* and let the analytical model carry the growth: `latency = measured(boundary) x analytical(target) / analytical(boundary)`. This is the rule AIConfigurator applies past its collected range ("hold the boundary utilisation, let SOL carry the growth"). It needs an analytical scaler; the operator-table backend supplies its device-family model, the collective model supplies its alpha-beta formula. Without a usable scaler the mode degrades to `scale`. |
+| `extrapolate = "scale"` | Multiply the boundary latency by `target / boundary` when the axis is logarithmic and the query exceeds the upper boundary (work grows with the axis); below the boundary the fixed cost dominates, so nothing is scaled. |
+| `extrapolate = "hold"` | Return the boundary row's latency unchanged. |
+| `extrapolate = "none"` | Raise `MissingOperatorDataError` immediately. |
+
+Why `analytical` is the default: linear scaling is right for the GEMM `m`
+axis but wrong for axes whose cost is not proportional to the value (decode
+attention against `context_len` has a large fixed part; collective latency
+against `message_bytes` follows an alpha-beta curve). Using the model's own
+growth keeps the extrapolated curve shaped like the physics while the measured
+point pins its level.
 
 The **`max_extrapolation_ratio`** parameter (default: **16.0**) caps how far
-extrapolation may go. If `target / boundary` (or its reciprocal) exceeds this
-ratio, a `MissingOperatorDataError` is raised instead, forcing a fallback to
-the analytical model. This prevents wildly inaccurate estimates from
-extrapolating small-batch measurements to large batches (or vice versa).
+extrapolation may go on any axis; an `AxisSpec` may override it for axes that
+barely move the cost (the DeepEP `num_experts` axis allows 1024x, `top_k` 8x).
+If `target / boundary` (or its reciprocal) exceeds the bound, the lookup raises
+`MissingOperatorDataError` and the query falls through to Stage 4.
 
-The `match_type` for any result that touched extrapolation is
-`"extrapolated"`.
+Results that touched extrapolation have `match_type = "extrapolated"`; the
+`detail["flags"]` set additionally records `analytical_scaled`,
+`linear_scaled` or `held` so a coverage report can tell the three apart.
 
 ### 3.4 Stage 4: Analytical Fallback
 
@@ -461,6 +472,29 @@ The model also reports whether the rank-local weights fit in SRAM; the
 generator turns this into an explicit `fits_on_chip` flag in the analysis
 table.
 
+#### Device-level overrides and their provenance
+
+A device YAML can override any analytical parameter in its `analytical:`
+block and must then declare where the numbers come from:
+
+```yaml
+analytical:
+  source_id: aiconfigurator-system-yaml   # declared in sources:
+  grade: C
+  memory_efficiency: 0.8        # AIConfigurator mem_bw_empirical_scaling_factor
+  kernel_launch_us: 3.0         # mem_empirical_constant_latency
+  collective_launch_us: 10.0    # node.p2p_latency
+memory:
+  reserved_bytes: {value: 4169138176, source_id: aiconfigurator-system-yaml, grade: C}
+```
+
+All NVIDIA GPU files carry these AIConfigurator-derived values as grade C
+defaults. `memory.reserved_bytes` (NCCL buffers plus framework workspace) is
+subtracted by `CacheConfig` before KV-cache blocks are computed, and
+`collective_launch_us` replaces the family default launch cost in the
+communication model. `DeviceSpec.analytical_grade` / `analytical_source_id`
+expose the provenance to results.
+
 ### 5.3 FLOPs and Bytes Formulas
 
 All work accounting is centralized in `TokenSim/operator_data/workload.py`.
@@ -599,6 +633,23 @@ Measured collective curves for A100, H100, H200, and GB300 (NCCL and custom
 all-reduce) are imported from AIConfigurator. V100 data comes from legacy
 spreadsheets.
 
+### 6.4.1 Expert-parallel dispatch and combine
+
+MoE layers under expert parallelism issue one dispatch and one combine per
+layer. `CollectiveModel.ep_all2all()` prices the pair from the `ep_all2all`
+table when the configured `all2all_backend` is a DeepEP mode
+(`deepep_high_throughput` / `deepep_low_latency`; the other DeepEP mode is
+tried when the requested one has no rows). The query key is this rank's token
+count, the model's hidden size, `top_k`, expert count, EP group size and the
+number of nodes the group spans; expert count and `top_k` are interpolation
+axes because DeepEP cost is driven by `num_tokens x top_k x hidden_size`.
+Without a measured row, or for `naive` / `allgather_reducescatter`, the pair
+is two analytical all-to-all collectives scaled by
+`EP_ALL2ALL_MODE_SCALE` (naive 1.5, allgather_reducescatter 1.0,
+deepep_high_throughput 0.7, deepep_low_latency 0.5; grade D, inherited from
+the legacy backend). Results record the outcome in
+`parallel_comm_match_type_counts`.
+
 ### 6.5 Validation Against Measurements
 
 | Configuration | Message size | Measured | Model |
@@ -653,6 +704,28 @@ Every data point in an operator package carries a `source_id` that maps to a
 `analytical`, `assumption`.
 
 ### 7.2 AIConfigurator Imports
+
+Two source layouts are accepted by `import-aiconfigurator`: the upstream
+database (`<system>/<family>/<backend>/<version>/*.parquet`) and a flat
+collector run directory (`*_perf.parquet` or `*_perf.txt` CSV staging files
+written by `collector/collect.py` and `network/collect_comm.sh` on your own
+node; see `scripts/collect/README.md`). Rows from a collector run are recorded
+as `method: measured` with `source_id` prefix `aiconfigurator-collector:`.
+
+Within one family the importer walks every version directory newest-first and
+keeps the first row seen per key, so a newer partial re-collection (for
+example the TensorRT-LLM 1.3.0rc23 MXFP4 MoE rows) is layered on top of the
+previous full collection instead of replacing it. This mirrors AIConfigurator's
+own backward-fill rule and is why the Hopper/Blackwell MoE tables hold 150k+
+rows rather than the few thousand of the newest directory alone.
+
+Imported systems and backends: `a100_sxm_80g`, `h100_sxm`, `h200_sxm`,
+`l40s`, `rtx_pro_6000_server`, `b200_sxm`, `b300_sxm`, `gb200`, `gb300` with
+`vllm`, `trtllm` and `sglang`; `intel_arc_pro_b60` with `vllm` (oneCCL
+collectives). `vllm` is the default when a cluster names no
+`operator_backend`; the precedence is vllm > trtllm > sglang > measured >
+analytical. The per-device status table and the reasons versions and kernels
+differ between systems live in `data/devices/README.md`.
 
 The `import-aiconfigurator` CLI command ingests measured operator data from
 AIConfigurator's system directories. This is the primary source of grade-A
@@ -716,6 +789,10 @@ python -m TokenSim.operator_data.cli import-aiconfigurator \
 
 ### 8.4 `import-nccl` -- Import NCCL-Tests Output
 
+`scripts/collect/run_nccl_tests.sh` drives nccl-tests (single or multi-node)
+and calls this command for every collective; `scripts/collect/run_aiconfigurator.sh`
+covers intra-node curves through the AIConfigurator collector.
+
 Parses nccl-tests stdout and imports collective timing data.
 
 ```bash
@@ -760,6 +837,10 @@ python -m TokenSim.operator_data.cli calibrate \
 ```
 
 ### 8.8 Simulation-Side Flags
+
+`--operator_backend` (or `worker_groups[].operator_backend`) selects which
+imported serving stack answers the queries; unset means `vllm` when the device
+has it, otherwise the next available backend (`trtllm`, `sglang`, ...).
 
 The benchmark runner accepts these latency-related flags:
 

@@ -42,6 +42,16 @@ from TokenSim.hardware.topology import GroupLayout, TopologySpec
 OPERATIONS = ("all_reduce", "all_gather", "reduce_scatter", "all_to_all", "send_recv", "broadcast")
 ALGORITHMS = ("auto", "ring", "tree", "direct")
 
+# Analytical scaling of the plain all-to-all estimate per ParallelConfig.all2all_backend
+# (project assumption, grade D; inherited from the legacy roofline backend).
+# Measured DeepEP tables replace these factors whenever they cover the query.
+EP_ALL2ALL_MODE_SCALE = {
+    "naive": 1.5,
+    "allgather_reducescatter": 1.0,
+    "deepep_high_throughput": 0.7,
+    "deepep_low_latency": 0.5,
+}
+
 # Software launch/synchronization cost of a collective on top of link latency.
 DEFAULT_LAUNCH_US = {"nvidia_gpu": 8.0, "groq_tsp": 0.5, "generic": 10.0}
 
@@ -76,6 +86,29 @@ class CollectiveQuery:
     @property
     def group_size(self) -> int:
         return self.layout.size
+
+
+@dataclass(frozen=True)
+class EPAllToAllQuery:
+    """One expert-parallel dispatch+combine pair for a MoE layer on one rank."""
+
+    layout: GroupLayout
+    num_tokens: int          # tokens this rank dispatches (before top-k expansion)
+    hidden_size: int
+    top_k: int
+    num_experts: int
+    dtype: str = "bf16"
+    mode: str = "allgather_reducescatter"
+    activation_bytes: float = 2.0
+
+    @property
+    def ep_size(self) -> int:
+        return self.layout.size
+
+    @property
+    def payload_bytes(self) -> float:
+        """Bytes one rank sends in one direction: every token goes to top_k experts."""
+        return float(self.num_tokens) * self.top_k * self.hidden_size * self.activation_bytes
 
 
 @dataclass(frozen=True)
@@ -195,6 +228,98 @@ class CollectiveModel:
             launch_us=self.launch_us,
         )
 
+    def ep_all2all(self, query: EPAllToAllQuery) -> CollectiveEstimate:
+        """Dispatch + combine of one MoE layer, measured DeepEP tables first.
+
+        The ``ep_all2all`` table is consulted for the requested ``mode`` (and, for
+        the two DeepEP modes, the other DeepEP mode as a fallback). Without a
+        measured row the pair is priced as two analytical all-to-all collectives
+        scaled by :data:`EP_ALL2ALL_MODE_SCALE`.
+        """
+        n = query.ep_size
+        if n <= 1 or query.num_tokens <= 0:
+            return CollectiveEstimate(0.0, "ep_all2all", n, 0.0, "analytical", "trivial")
+        measured = self._measured_ep_all2all(query)
+        if measured is not None:
+            return measured
+        payload = query.payload_bytes
+        base = self.analytical(CollectiveQuery("all_to_all", payload, query.layout, query.dtype))
+        scale = EP_ALL2ALL_MODE_SCALE.get(query.mode, 1.0)
+        return CollectiveEstimate(
+            latency_us=2.0 * base.latency_us * scale,
+            operation="ep_all2all",
+            group_size=n,
+            message_bytes=payload,
+            match_type="analytical",
+            source_id=f"analytical:ep_all2all:{query.mode}:{self.topology.topology_id}",
+            levels=base.levels,
+            launch_us=2.0 * base.launch_us,
+            detail={"mode": query.mode, "mode_scale": scale, "phases": ("dispatch", "combine")},
+        )
+
+    def _measured_ep_all2all(self, query: EPAllToAllQuery) -> CollectiveEstimate | None:
+        lookup = self.measured_lookup
+        if lookup is None or not lookup.has_table("ep_all2all"):
+            return None
+        layout = query.layout
+        nodes = int(math.prod(layout.fan[1:])) if layout.lowest_common_level >= 1 else 1
+        if query.mode.startswith("deepep"):
+            modes = [query.mode] + [m for m in ("deepep_high_throughput", "deepep_low_latency") if m != query.mode]
+        else:
+            return None
+        for mode in modes:
+            total = 0.0
+            sources: list[str] = []
+            match_types: list[str] = []
+            phases_ok = True
+            for phase in ("dispatch", "combine"):
+                key = {
+                    "dtype": query.dtype,
+                    "phase": phase,
+                    "mode": mode,
+                    "ep_size": query.ep_size,
+                    "nodes": nodes,
+                    "hidden_size": int(query.hidden_size),
+                    "top_k": int(query.top_k),
+                    "num_experts": int(query.num_experts),
+                    "num_tokens": int(query.num_tokens),
+                }
+
+                def growth_reference(_table: str, k: Mapping[str, Any]) -> float | None:
+                    probe = EPAllToAllQuery(
+                        layout, int(k["num_tokens"]), int(k["hidden_size"]), query.top_k,
+                        query.num_experts, query.dtype, mode, query.activation_bytes,
+                    )
+                    base = self.analytical(CollectiveQuery("all_to_all", probe.payload_bytes, layout, query.dtype))
+                    return base.latency_us
+
+                try:
+                    result = lookup.lookup("ep_all2all", key, scaler=growth_reference)
+                except Exception:
+                    phases_ok = False
+                    break
+                total += result.latency_us
+                sources.append(result.source_id)
+                match_types.append(result.match_type)
+            if not phases_ok:
+                continue
+            if all(m == "exact" for m in match_types):
+                match_type = "measured"
+            elif "extrapolated" in match_types:
+                match_type = "extrapolated"
+            else:
+                match_type = "interpolated"
+            return CollectiveEstimate(
+                latency_us=total,
+                operation="ep_all2all",
+                group_size=query.ep_size,
+                message_bytes=query.payload_bytes,
+                match_type=match_type,
+                source_id="+".join(dict.fromkeys(sources)),
+                detail={"mode": mode, "requested_mode": query.mode, "nodes": nodes, "phases": ("dispatch", "combine")},
+            )
+        return None
+
     def point_to_point(self, message_bytes: float, layout: GroupLayout) -> CollectiveEstimate:
         """One direct transfer between two ranks across their lowest common level."""
         if message_bytes <= 0 or layout.lowest_common_level < 0:
@@ -229,8 +354,16 @@ class CollectiveModel:
             "nodes": nodes,
             "message_bytes": int(round(query.message_bytes)),
         }
+        def growth_reference(_table: str, k: Mapping[str, Any]) -> float | None:
+            # Past the measured message-size range keep the boundary point's
+            # efficiency and follow the alpha-beta model's growth.
+            probe = CollectiveQuery(
+                query.operation, float(k["message_bytes"]), layout, query.dtype, query.algorithm
+            )
+            return self.analytical(probe).latency_us
+
         try:
-            result = lookup.lookup("collective", key)
+            result = lookup.lookup("collective", key, scaler=growth_reference)
         except Exception:
             return None
         return CollectiveEstimate(
@@ -240,7 +373,7 @@ class CollectiveModel:
             message_bytes=query.message_bytes,
             match_type="measured" if result.match_type == "exact" else result.match_type,
             source_id=result.source_id,
-            detail={"key": dict(result.key)},
+            detail={"key": dict(result.key), "flags": list(result.detail.get("flags", []))},
         )
 
     def _pick_algorithm(self, query: CollectiveQuery, level_default: str, fan: int, link: LinkClass, message_bytes: float) -> str:

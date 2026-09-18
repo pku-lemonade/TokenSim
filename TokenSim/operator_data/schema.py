@@ -8,6 +8,16 @@ LATENCY_UNIT = "us"
 VALUE_FIELDS = ("latency_us", "source_id")
 
 COLLECTIVE_OPERATIONS = ("all_reduce", "all_gather", "reduce_scatter", "all_to_all", "send_recv")
+EP_ALL2ALL_PHASES = ("dispatch", "combine")
+# Names of the expert-parallel all-to-all implementations. The first two map to
+# ParallelConfig.all2all_backend; the ``deepep_v2_*`` names are vLLM's split
+# context/generation DeepEP variants and are only reachable by explicit query.
+EP_ALL2ALL_MODES = (
+    "deepep_high_throughput",
+    "deepep_low_latency",
+    "deepep_v2_context",
+    "deepep_v2_generation",
+)
 ELEMENTWISE_OPS = (
     "rmsnorm",
     "layernorm",
@@ -22,14 +32,23 @@ ELEMENTWISE_OPS = (
 
 @dataclass(frozen=True)
 class AxisSpec:
-    """A key field along which controlled interpolation is permitted."""
+    """A key field along which controlled interpolation is permitted.
+
+    ``max_extrapolation_ratio`` overrides the lookup policy's bound for this
+    axis; ``None`` keeps the policy default. Axes whose value barely changes the
+    cost (the expert count of a DeepEP dispatch) can be left effectively
+    unbounded because the analytical growth reference is flat along them.
+    """
 
     name: str
     scale: str = "log"  # "log": geometric interpolation (sizes); "linear": arithmetic
+    max_extrapolation_ratio: float | None = None
 
     def __post_init__(self) -> None:
         if self.scale not in {"log", "linear"}:
             raise ValueError(f"axis {self.name!r}: scale must be log or linear")
+        if self.max_extrapolation_ratio is not None and self.max_extrapolation_ratio < 1.0:
+            raise ValueError(f"axis {self.name!r}: max_extrapolation_ratio must be >= 1")
 
 
 @dataclass(frozen=True)
@@ -140,6 +159,37 @@ TABLE_SPECS: Mapping[str, TableSpec] = {
         description=(
             "Measured collective time (nccl-tests convention: message_bytes is the full buffer, "
             "time is one out-of-place iteration) for group_size ranks spread over nodes."
+        ),
+    ),
+    "ep_all2all": TableSpec(
+        name="ep_all2all",
+        key_fields=(
+            "dtype",
+            "phase",
+            "mode",
+            "ep_size",
+            "nodes",
+            "hidden_size",
+            "top_k",
+            "num_experts",
+            "num_tokens",
+        ),
+        # DeepEP cost is driven by num_tokens x top_k x hidden_size; the expert
+        # count only sizes buffers, so it is an (outer) interpolation axis rather
+        # than a discrete key and queries for unmeasured expert counts still hit
+        # the nearest measured curve.
+        axes=(
+            AxisSpec("num_experts", max_extrapolation_ratio=1024.0),
+            AxisSpec("top_k", "linear", max_extrapolation_ratio=8.0),
+            AxisSpec("hidden_size"),
+            AxisSpec("num_tokens"),
+        ),
+        dtype_fields=("dtype",),
+        description=(
+            "Measured expert-parallel dispatch or combine time (DeepEP and similar kernels) for one "
+            "rank sending num_tokens local tokens, each routed to top_k of num_experts experts spread "
+            "over ep_size ranks on nodes nodes. mode names the kernel family "
+            "(deepep_high_throughput, deepep_low_latency, ...)."
         ),
     ),
 }

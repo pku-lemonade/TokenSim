@@ -15,8 +15,7 @@
             "role": "hybrid",
             "hardware": "gb300",
             "num_workers": 72,
-            "network": "rack",
-            "operator_backend": "trtllm"
+            "network": "rack"
         }
     ]
 }

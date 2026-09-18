@@ -150,6 +150,33 @@ class LookupTest(unittest.TestCase):
         self.assertEqual(beyond.match_type, "extrapolated")
         self.assertGreater(beyond.latency_us, hi)
 
+    def test_analytical_extrapolation_keeps_boundary_efficiency(self):
+        # Measured rows are exactly half of a synthetic "model" that grows
+        # linearly with m; past the range the ratio must stay 0.5.
+        def reference(table, key):
+            return 100.0 * key["m"] + 1000.0
+
+        rows = [
+            {"dtype": "bf16", "m": m, "n": 1024, "k": 1024, "latency_us": 0.5 * reference("gemm", {"m": m}), "source_id": "measured:test"}
+            for m in (8, 64, 256)
+        ]
+        package = OperatorDataPackage.from_rows(_meta(), {"gemm": rows})
+        lookup = OperatorLookup(package, analytical_scaler=reference)
+        beyond = lookup.lookup("gemm", {"dtype": "bf16", "m": 2048, "n": 1024, "k": 1024})
+        self.assertEqual(beyond.match_type, "extrapolated")
+        self.assertIn("analytical_scaled", beyond.detail["flags"])
+        self.assertAlmostEqual(beyond.latency_us, 0.5 * reference("gemm", {"m": 2048}))
+        # below the range the same rule applies (linear "scale" would not shrink)
+        below = lookup.lookup("gemm", {"dtype": "bf16", "m": 1, "n": 1024, "k": 1024})
+        self.assertAlmostEqual(below.latency_us, 0.5 * reference("gemm", {"m": 1}))
+        # a scaler that cannot price the key falls back to linear scaling
+        fallback = OperatorLookup(package, analytical_scaler=lambda table, key: None)
+        linear = fallback.lookup("gemm", {"dtype": "bf16", "m": 2048, "n": 1024, "k": 1024})
+        self.assertIn("linear_scaled", linear.detail["flags"])
+        self.assertAlmostEqual(linear.latency_us, 0.5 * reference("gemm", {"m": 256}) * 8)
+        held = OperatorLookup(package, LookupPolicy(extrapolate="hold")).lookup("gemm", {"dtype": "bf16", "m": 2048, "n": 1024, "k": 1024})
+        self.assertAlmostEqual(held.latency_us, 0.5 * reference("gemm", {"m": 256}))
+
     def test_missing_discrete_key_and_disabled_extrapolation_fail(self):
         with self.assertRaises(MissingOperatorDataError):
             self.lookup.lookup("gemm", {"dtype": "fp8", "m": 16, "n": 1024, "k": 1024})
@@ -204,6 +231,87 @@ class ManifestGeneratorTest(unittest.TestCase):
         merged = merge_packages(analytical, measured, prefer="extra")
         lookup = OperatorLookup(merged)
         self.assertEqual(lookup.lookup("gemm", {"dtype": "bf16", "m": 1, "n": 1024, "k": 1024}).source_id, "measured:test")
+
+
+class AIConfiguratorImportTest(unittest.TestCase):
+    def test_flat_collector_run_with_csv_staging_and_version_backfill(self):
+        import csv
+        from TokenSim.operator_data.importers.aiconfigurator import import_aiconfigurator_system
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            # flat collector run: CSV staging file exactly as collector/helper.log_perf writes it
+            with (root / "gemm_perf.txt").open("w", newline="") as handle:
+                writer = csv.DictWriter(handle, fieldnames=["framework", "version", "device", "op_name", "kernel_source", "gemm_dtype", "m", "n", "k", "latency"])
+                writer.writeheader()
+                writer.writerow({"framework": "TRTLLM", "version": "1.3.0rc20", "device": "NVIDIA A100", "op_name": "gemm", "kernel_source": "torch_flow", "gemm_dtype": "bfloat16", "m": 1, "n": 4096, "k": 4096, "latency": 0.05})
+                writer.writerow({"framework": "TRTLLM", "version": "1.3.0rc20", "device": "NVIDIA A100", "op_name": "gemm", "kernel_source": "cutlass", "gemm_dtype": "bfloat16", "m": 1, "n": 4096, "k": 4096, "latency": 0.04})
+                writer.writerow({"framework": "TRTLLM", "version": "1.3.0rc20", "device": "NVIDIA A100", "op_name": "gemm", "kernel_source": "torch_flow", "gemm_dtype": "w4a8_mxfp4_mxfp8", "m": 1, "n": 4096, "k": 4096, "latency": 0.03})
+            package = import_aiconfigurator_system(root, device_id="TestGPU", backend="trtllm", upstream_commit="abc")
+            rows = {(r["dtype"], r["m"]): r for r in package.tables["gemm"]}
+            self.assertAlmostEqual(rows[("bf16", 1)]["latency_us"], 40.0)  # fastest kernel wins, ms -> us
+            self.assertEqual(rows[("bf16", 1)]["kernel"], "cutlass")
+            self.assertIn(("mxfp4", 1), rows)
+            source = next(iter(package.meta.sources.values()))
+            self.assertEqual(source.method, "measured")
+            self.assertTrue(source.source_id.startswith("aiconfigurator-collector:TestGPU:gemm:trtllm:1.3.0rc20"))
+            self.assertEqual(package.meta.extra["aiconfigurator_layout"], "collector_run")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # upstream layout with a newer partial version that must not shadow the older full one
+            root = Path(tmpdir) / "sys"
+            import pyarrow as pa
+            import pyarrow.parquet as pq
+
+            def write(version, rows):
+                path = root / "moe" / "trtllm" / version
+                path.mkdir(parents=True)
+                pq.write_table(pa.Table.from_pylist(rows), path / "moe_perf.parquet")
+
+            base = {"framework": "TRTLLM", "device": "x", "op_name": "moe", "kernel_source": "k", "hidden_size": 4096, "inter_size": 1536, "topk": 8, "num_experts": 128, "moe_tp_size": 1, "moe_ep_size": 1, "distribution": "uniform"}
+            write("1.3.0rc20", [{**base, "version": "1.3.0rc20", "moe_dtype": "bfloat16", "num_tokens": t, "latency": 1.0 * t} for t in (1, 8, 64)])
+            write("1.3.0rc23", [{**base, "version": "1.3.0rc23", "moe_dtype": "bfloat16", "num_tokens": 8, "latency": 0.5}, {**base, "version": "1.3.0rc23", "moe_dtype": "w4a8_mxfp4_mxfp8", "num_tokens": 8, "latency": 0.2}])
+            package = import_aiconfigurator_system(root, device_id="TestGPU", backend="trtllm")
+            rows = {(r["dtype"], r["num_tokens"]): r for r in package.tables["moe"]}
+            self.assertEqual(len(rows), 4)  # 3 bf16 points (one replaced) + 1 mxfp4
+            self.assertAlmostEqual(rows[("bf16", 8)]["latency_us"], 500.0)  # newer version wins
+            self.assertAlmostEqual(rows[("bf16", 64)]["latency_us"], 64000.0)  # older version backfills
+            self.assertEqual(package.meta.extra["resolved_versions"]["moe"], ["1.3.0rc23", "1.3.0rc20"])
+
+
+class EPAllToAllImportTest(unittest.TestCase):
+    def test_deepep_tables_become_ep_all2all_rows(self):
+        from TokenSim.operator_data.importers.aiconfigurator import import_aiconfigurator_system
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir) / "sys"
+            comm_vllm = root / "comm" / "vllm" / "0.24.0"
+            comm_vllm.mkdir(parents=True)
+            base = {"framework": "vLLM", "version": "0.24.0", "device": "x", "op_name": "moe_a2a", "kernel_source": "deepep", "comm_dtype": "default", "ep_size": 8, "node_num": 1, "hidden_size": 4096, "topk": 8, "num_experts": 256, "sms": 20, "notify_us": 0.0}
+            rows = []
+            for tokens, lat in ((16, 40.0), (64, 60.0)):
+                rows.append({**base, "comm_backend": "deepep_ht", "phase": "dispatch", "num_tokens": tokens, "transmit_us": lat, "latency": lat})
+                rows.append({**base, "comm_backend": "deepep_ll", "phase": "combine", "num_tokens": tokens, "transmit_us": lat / 2, "latency": lat / 2})
+            pq.write_table(pa.Table.from_pylist(rows), comm_vllm / "moe_a2a_perf.parquet")
+            comm_sglang = root / "comm" / "sglang" / "0.5.14"
+            comm_sglang.mkdir(parents=True)
+            wide = [{"framework": "sglang", "version": "0.5.14", "device": "x", "op_name": "ll", "node_num": 2, "kernel_source": "deepep", "hidden_size": 7168, "num_token": 8, "num_topk": 8, "num_experts": 256, "combine_avg_t_us": 30.0, "combine_bandwidth_gbps": 1.0, "dispatch_avg_t_us": 20.0, "dispatch_bandwidth_gbps": 1.0}]
+            pq.write_table(pa.Table.from_pylist(wide), comm_sglang / "wideep_deepep_ll_perf.parquet")
+
+            vllm_pkg = import_aiconfigurator_system(root, device_id="TestGPU", backend="vllm")
+            rows = {(r["phase"], r["mode"], r["num_tokens"]): r for r in vllm_pkg.tables["ep_all2all"]}
+            # latency column is already in microseconds; dtype 'default' -> bf16
+            self.assertAlmostEqual(rows[("dispatch", "deepep_high_throughput", 16)]["latency_us"], 40.0)
+            self.assertAlmostEqual(rows[("combine", "deepep_low_latency", 64)]["latency_us"], 30.0)
+            self.assertEqual(rows[("dispatch", "deepep_high_throughput", 16)]["dtype"], "bf16")
+
+            sglang_pkg = import_aiconfigurator_system(root, device_id="TestGPU", backend="sglang", gpus_per_node=4)
+            rows = {(r["phase"], r["ep_size"], r["nodes"]): r for r in sglang_pkg.tables["ep_all2all"]}
+            self.assertAlmostEqual(rows[("dispatch", 8, 2)]["latency_us"], 20.0)
+            self.assertAlmostEqual(rows[("combine", 8, 2)]["latency_us"], 30.0)
+            self.assertEqual(rows[("combine", 8, 2)]["mode"], "deepep_low_latency")
 
 
 class NcclImportTest(unittest.TestCase):

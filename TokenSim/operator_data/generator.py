@@ -42,9 +42,9 @@ def generate_analytical_package(
     sources: dict[str, SourceRecord] = {}
 
     for table, keys in manifest.keys.items():
-        if table == "collective":
-            # Collectives are produced by the hierarchical communication model at
-            # runtime; only measured tables are stored for them.
+        if table in ("collective", "ep_all2all"):
+            # Communication is produced by the hierarchical communication model at
+            # runtime; only measured tables are stored for it.
             skipped[table] = len(keys)
             continue
         calibration = calibrations.get(table) or calibrations.get("default") or Calibration()

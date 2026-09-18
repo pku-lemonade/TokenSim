@@ -18,7 +18,7 @@ hardware/
   placement.py      build_topology_placement() — maps workers to topology indices
   device/
     __init__.py     re-exports all public symbols (import path unchanged)
-    dtypes.py       canonical dtype names, byte sizes, compute-pipeline mapping
+    dtypes.py       canonical dtype names, byte sizes, compute-pipeline mapping and fallbacks
     sourced_value.py  SourcedValue — a number with provenance
     spec.py         DeviceSpec — one accelerator's full specification
     catalog.py      DeviceCatalog — alias-aware collection of DeviceSpec
@@ -61,8 +61,32 @@ Parameters are grouped by device family (`nvidia_gpu`, `groq_tsp`, `generic`):
 | `memory_efficiency` | Fraction of peak memory bandwidth achieved | 0.85 | 0.90 |
 | `elementwise_memory_efficiency` | Memory bandwidth efficiency for elementwise ops | 0.70 | 0.90 |
 | `kernel_launch_us` | Fixed per-kernel launch overhead (microseconds) | 4.0 | 0.2 |
+| `collective_launch_us` | Software launch cost of one collective (microseconds) | 8.0 | 0.5 |
 | `gemm_small_m_knee` | Tensor core tile size; m below this wastes compute | 64.0 | 1.0 |
 
-All defaults are grade D. Device YAMLs can override individual parameters in
-their `analytical:` section, and `operator_data.cli calibrate` can fit them
-from measured data (producing grade C values).
+All family defaults are grade D. Device YAMLs override individual parameters
+in their `analytical:` section and declare the provenance of the overrides with
+`source_id` / `grade` keys inside that block (`DeviceSpec.analytical_source_id`,
+`DeviceSpec.analytical_grade`); the NVIDIA GPU files currently carry
+AIConfigurator's empirical corrections as grade C
+(`memory_efficiency 0.8`, `kernel_launch_us 3.0`, `collective_launch_us 10.0`).
+`operator_data.cli calibrate` fits the parameters from measured data.
+
+## Reserved device memory
+
+`memory.reserved_bytes` (a `SourcedValue`, default 0) is the part of device
+memory the serving runtime keeps for itself: NCCL buffers, CUDA context,
+framework workspace. `DeviceSpec.usable_memory_bytes` and `CacheConfig`
+subtract it before sizing the KV cache. The NVIDIA GPU files use
+AIConfigurator's 392 MB + 3.5 GB figure (grade C); the Intel B60 file uses its
+500 MiB value.
+
+## Compute-pipe fallbacks
+
+`DeviceSpec.peak_compute_for(dtype)` maps a storage dtype to the tensor pipe
+it executes on (`dtypes.py`): weight-only formats (`int8_wo`, `int4_wo`,
+`mxfp4_wo`) run on the fp16 pipe, `int4_a8` and `fp8_block` on fp8, `mxfp4` on
+the fp4 pipe. When a device lacks that pipe, `COMPUTE_PIPE_FALLBACKS` tries
+the next one (fp4 -> fp8 -> fp16, int4 -> int8 -> fp16, bf16 <-> fp16,
+tf32 -> fp32). fp8 itself has no fallback: a device without fp8 tensor cores
+raises instead of silently running fp8 GEMMs at fp16 speed.

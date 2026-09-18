@@ -18,8 +18,11 @@ Model Inference Systems](https://arxiv.org/abs/2503.08415)
 - P2P and Mooncake-compatible KV transfer connectors.
 - Mooncake memory-store and SSD offload simulation with admission and LRU eviction.
 - Operator-level latency tables (measured kernels first, analytical roofline
-  fallback) for A100/H100/H200/H20/RTX 4090/GB300 GPUs and the Groq TSP, plus an
-  optional LLMCompass backend.
+  fallback). Measured vLLM, TensorRT-LLM and SGLang tables ship for A100, H100,
+  H200, L40S, RTX PRO 6000, B200, B300, GB200 and GB300, vLLM tables for the
+  Intel Arc Pro B60, including NCCL/oneCCL collectives and DeepEP
+  dispatch/combine; catalog entries also cover A100 PCIe, A30, L4, H100 PCIe,
+  H20, RTX 4090, V100 and the Groq TSP (see `data/devices/README.md`).
 - Hierarchical interconnect topologies (chip / node / rack / cluster) with an
   alpha-beta collective model that scales to thousands of devices.
 
@@ -37,13 +40,6 @@ cd TokenSim
 conda create -n tokensim python=3.12
 conda activate tokensim
 pip install -r requirements.txt
-```
-
-The `LLMCompass` submodule is only required when using an LLMCompass template as
-the latency backend:
-
-```bash
-git submodule update --init LLMCompass
 ```
 
 ## Quick Start
@@ -119,7 +115,7 @@ The main configuration surfaces are:
 | Cluster | `data/clusters/**/*.json`, `--cluster` | Worker roles, hardware, networks, optional `topology`, `device_indices`, `operator_backend` |
 | KV transfer | `data/kv_transfer/*.json`, `--kv_transfer_config` | P2P, Mooncake store, SSD, and multi-connector settings |
 | Dataset | `--dataset_path`, `--workload_type` | Synthetic, `json_pairs`, or `qwen_jsonl` requests |
-| Latency | `--latency_backend`, `--latency_fallback`, `--operator_backend` | `operator_table` (default), `analytical`, or an LLMCompass template path |
+| Latency | `--latency_backend`, `--latency_fallback`, `--operator_backend` | `operator_table` (default) or `analytical`; fallback policy and which measured backend to load |
 
 Useful CLI options include:
 
@@ -145,6 +141,9 @@ public release should also review the current configuration examples.
   model, and the `operator_data` CLI.
 - [Data collection checklist](docs/data-collection-checklist.md): which kernels
   to measure on which device, and how to import the results.
+- [Collection scripts](scripts/collect/README.md): run the AIConfigurator
+  collector, the elementwise profiler and nccl-tests on your own GPUs and turn
+  the output into operator packages.
 - [Prefix cache](docs/prefix-cache.md): workload metadata, exact hit conditions,
   output-prefix reuse, and result metrics.
 - [MoE](docs/moe.md): model metadata, expert parallelism, routing distributions,
@@ -207,5 +206,6 @@ If you use TokenSim in your research, please cite:
 
 ## Acknowledgments
 
-TokenSim builds on SimPy and optionally integrates LLMCompass. We thank their
-developers and the TokenSim contributors.
+TokenSim builds on SimPy. Measured GPU kernel tables are imported from NVIDIA's
+AIConfigurator (Apache-2.0). We thank their developers and the TokenSim
+contributors.

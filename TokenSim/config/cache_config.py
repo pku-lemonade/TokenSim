@@ -59,11 +59,16 @@ class CacheConfig:
         self.model_param_size_unsharded = model.total_params() * weight_bytes
         self.model_param_size = self._rank_params() * weight_bytes
 
-        capacity = device.memory_capacity_bytes.value * usable_memory_fraction
+        # Runtime reserves (NCCL buffers, CUDA context, framework workspace)
+        # come off the top before the optional usable fraction is applied.
+        self.reserved_bytes = device.memory_reserved_bytes.value
+        capacity = max(0.0, device.memory_capacity_bytes.value - self.reserved_bytes) * usable_memory_fraction
+        self.usable_memory_bytes = capacity
         if capacity <= self.model_param_size:
             raise ConfigurationError(
                 f"model {model.model_id!r} does not fit on device {device.device_id!r}: "
-                + f"model_param_size={self.model_param_size:.3e}, device_memory={capacity:.3e}"
+                + f"model_param_size={self.model_param_size:.3e}, usable_memory={capacity:.3e} "
+                + f"(capacity={device.memory_capacity_bytes.value:.3e}, reserved={self.reserved_bytes:.3e})"
             )
         # FIXME: actual host memory can reach terabytes; it only serves as swap
         # space here, and a huge swap hides preemption effects, so it is bounded.
@@ -102,6 +107,8 @@ class CacheConfig:
             "num_gpu_blocks": self.num_gpu_blocks,
             "num_cpu_blocks": self.num_cpu_blocks,
             "model_param_size": self.model_param_size,
+            "reserved_bytes": self.reserved_bytes,
+            "usable_memory_bytes": self.usable_memory_bytes,
             "local_kv_heads": self.local_kv_heads,
             "num_layers_per_rank": self.num_layers_per_rank,
         }

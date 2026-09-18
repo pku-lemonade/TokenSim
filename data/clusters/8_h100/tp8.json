@@ -14,8 +14,7 @@
             "role": "hybrid",
             "hardware": "h100_sxm",
             "num_workers": 8,
-            "network": "netw1",
-            "operator_backend": "trtllm"
+            "network": "netw1"
         }
     ]
 }

@@ -4,6 +4,14 @@ family: nvidia_gpu
 display_name: NVIDIA A100-SXM4-80GB
 aliases: [A100, A100-80G, A100-SXM4-80GB, a100_sxm]
 sources:
+  aiconfigurator-system-yaml:
+    grade: C
+    reference: https://github.com/ai-dynamo/aiconfigurator/blob/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/a100_sxm.yaml
+    notes: >
+      Empirical corrections NVIDIA recorded while validating AIConfigurator against
+      TensorRT-LLM deployments: memory bandwidth efficiency 0.8, 3 us constant memory
+      latency per kernel, 10 us point-to-point latency for collectives, and a runtime
+      memory reserve of 392 MB NCCL buffers plus 3.5 GB framework workspace.
   nvidia-a100-product-page:
     grade: A
     reference: https://www.nvidia.com/en-us/data-center/a100/
@@ -22,11 +30,18 @@ memory:
   kind: hbm2e
   capacity_bytes: {value: 85899345920, source_id: nvidia-a100-product-page}     # 80 GiB
   bandwidth_bytes_per_s: {value: 2039.0e9, source_id: nvidia-a100-product-page}
+  reserved_bytes: {value: 4169138176, source_id: aiconfigurator-system-yaml, grade: C}   # 392 MB NCCL + 3.5 GB runtime reserve
 on_chip_memory:
   capacity_bytes: {value: 41943040, source_id: nvidia-a100-product-page}          # 40 MB L2
 interconnect:
   scale_up_link: nvlink3          # 600 GB/s bidirectional = 300 GB/s per direction
   scale_up_ports: 12
   host_link: pcie4_x16
+analytical:
+  source_id: aiconfigurator-system-yaml
+  grade: C
+  memory_efficiency: 0.8        # mem_bw_empirical_scaling_factor
+  kernel_launch_us: 3.0         # mem_empirical_constant_latency
+  collective_launch_us: 10.0    # p2p_latency
 step_overhead_us: {value: 0.0, source_id: assumption-gpu-analytical-v1, grade: D}
 power: {tdp_w: 400}
