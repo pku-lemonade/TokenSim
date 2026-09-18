@@ -1,0 +1,20 @@
+{
+    "num_workers": 8,
+    "topology": "hgx_h100_8x_ndr",
+    "networks": {
+        "netw1": "ib_ndr400"
+    },
+    "parallel_config": {
+        "tensor_parallel_size": 8,
+        "pipeline_parallel_size": 1,
+        "data_parallel_size": 1
+    },
+    "worker_groups": [
+        {
+            "role": "hybrid",
+            "hardware": "h100_sxm",
+            "num_workers": 8,
+            "network": "netw1"
+        }
+    ]
+}

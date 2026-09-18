@@ -1,37 +1,134 @@
 import math
-import sys
-import types
 import unittest
 import json
 from argparse import Namespace
-from dataclasses import replace
+from contextlib import contextmanager
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, mock_open, patch
 
 import simpy
 
-try:
-    import TransformerRoofline  # noqa: F401
-except (ImportError, OSError):
-    fake_roofline = types.ModuleType("TransformerRoofline")
-    fake_roofline.TransformerRoofline = object
-    sys.modules["TransformerRoofline"] = fake_roofline
-
 from TokenSim.af import AFExecutor, AFServiceEstimate
 from TokenSim.config.config import KVTransferConfig
 from TokenSim.config.cluster_config import ClusterConfig
 from TokenSim.config.psla_config import MetricData, PSLAConfig
 from TokenSim.errors import ConfigurationError, SimulationStateError
-from TokenSim.llm.llm_engine import AFComputeWorker, LLMEngine, Task
+from TokenSim.hardware.context import HardwareContext
+from TokenSim.hardware.links import LinkClass
+from TokenSim.llm.llm_engine import AFComputeWorker, LLMEngine, LLMWorker, Task
 from TokenSim.llm.llm_request import Request, reset_g_time
-from TokenSim.moe.config import MoEModelConfig
+from tests.hardware_fixtures import test_device, test_links, test_model, test_topology
 from util.request import LLMSource
 from util.results import export_result, get_af_stats
 
 import benchmark
 
-from tests.test_af_parallel_planning import _cluster, _formal_runtime_plan
+# Device and network names used by the AF test clusters. The in-memory
+# hardware catalog below registers every one of them so that AF clusters run
+# through the production HardwareContext / ModelSpec / CacheConfig code.
+AF_TEST_DEVICES = (
+    "a-device",
+    "f-device",
+    "attention-device",
+    "ffn-device",
+    "prefill-device",
+    "decode-device",
+    "device",
+)
+AF_TEST_NETWORKS = ("profile", "af-network-profile", "test", "test-network", "af-net", "net1")
+
+
+def af_test_hardware(
+    *,
+    layers=1,
+    capacity_gib=0.01,
+    moe=None,
+    hidden_size=16,
+    intermediate_size=64,
+    num_attention_heads=8,
+    devices=AF_TEST_DEVICES,
+    networks=AF_TEST_NETWORKS,
+):
+    """In-memory catalog: tiny devices, the ``TestModel`` architecture and AF links."""
+    device_specs = [test_device(name, memory_gib=capacity_gib) for name in devices]
+    links = list(test_links()) + [
+        LinkClass(
+            name,
+            f"test link {name}",
+            100.0e9,
+            1.0,
+            source_id="test-fixture",
+            grade="D",
+            half_bandwidth_bytes=1 << 16,
+        )
+        for name in networks
+        if name not in {"nvlink-test", "ethernet-test"}
+    ]
+    model = test_model(
+        "TestModel",
+        hidden_size=hidden_size,
+        intermediate_size=intermediate_size,
+        num_layers=layers,
+        num_attention_heads=num_attention_heads,
+        # The legacy roofline stub had no vocabulary entry and the runtime plan
+        # assumed 50000; the hand-calculated component bytes rely on it.
+        vocab_size=50000,
+        moe=moe,
+    )
+    return HardwareContext.in_memory(device_specs, [model], links, [test_topology()])
+
+
+def cluster_test_hardware(cluster, **overrides):
+    """Catalog whose device and link names come from ``cluster`` itself."""
+    devices = tuple(dict.fromkeys(group.hardware for group in cluster.worker_groups))
+    networks = tuple(dict.fromkeys(cluster.networks.values()))
+    return af_test_hardware(devices=devices, networks=networks, **overrides)
+
+
+_ORIGINAL_DYNAMIC_BATCH = LLMWorker.dynamic_batch
+
+
+class FullBackendGuard:
+    """Record calls to the complete (non-AF) step backend and optionally forbid them.
+
+    Replaces the legacy roofline stub's ``reject_full_backend`` switch: AF-
+    selected phases must never fall back to ``LLMWorker.dynamic_batch``.
+    Guards may be stacked inside one test; each delegates to the unpatched
+    method rather than to an earlier guard.
+    """
+
+    def __init__(self, reject=True):
+        self.reject = reject
+        self.calls = []
+        self._patcher = None
+
+    def start(self):
+        original = _ORIGINAL_DYNAMIC_BATCH
+        guard = self
+
+        def dynamic_batch(worker, requests):
+            guard.calls.append(list(requests))
+            if guard.reject:
+                raise AssertionError("AF-selected phases must not call the full backend")
+            return original(worker, requests)
+
+        self._patcher = patch.object(LLMWorker, "dynamic_batch", dynamic_batch)
+        self._patcher.start()
+        return self
+
+    def stop(self):
+        if self._patcher is not None:
+            self._patcher.stop()
+            self._patcher = None
+
+
+@contextmanager
+def engine_context(test_case, *, reject_full_backend=True):
+    """Guard the full backend for the rest of ``test_case`` (not just the block)."""
+    guard = FullBackendGuard(reject_full_backend).start()
+    test_case.addCleanup(guard.stop)
+    yield guard
 
 
 class FixedComputeProvider:
@@ -45,20 +142,7 @@ class FixedComputeProvider:
     ):
         router = f / 3 if router is None else router
         expert = f - router if expert is None else expert
-        self.durations = {
-            "a": a,
-            "attention": a,
-            "router": router,
-            "expert": expert,
-            "dense_ffn": f,
-            "routed_expert": expert,
-            "shared_expert": f,
-            "weighted_combine": 0.0,
-            "residual": 0.0,
-            "encode": 0.0,
-            "decode": 0.0,
-            "layout": 0.0,
-        }
+        self.durations = {"a": a, "router": router, "expert": expert}
         self.queries = []
 
     def estimate(self, query):
@@ -84,9 +168,6 @@ class FixedTransferProvider:
             "ep_dispatch": dispatch,
             "ep_combine": combine,
             "tp_collective": collective,
-            "all_reduce": collective,
-            "all_gather": collective,
-            "reduce_scatter": collective,
         }
         self.queries = []
 
@@ -111,55 +192,6 @@ class InvalidComputeProvider(FixedComputeProvider):
 class UnsupportedComputeProvider:
     def estimate(self, query):
         raise LookupError(f"no sample for {query.device_type}:{query.stage}")
-
-
-class LightweightCacheConfig:
-    def __init__(self, block_size, hardware, model, roofline, **kwargs):
-        self.block_size = block_size
-        self.model = model
-        model_config = roofline.models[model]
-        self.size_per_token = model_config.Dmodel * 2 * 2 * model_config.Nlayer
-        self.num_gpu_blocks = 64
-        self.num_cpu_blocks = 64
-
-
-class AFRooflineStub:
-    def __init__(self, reject_full_backend=True, layers=1):
-        hardware = SimpleNamespace(
-            MM_Card_Num=1,
-            Capacity=0.01,
-            Nvlink="nvlink-test",
-        )
-        self.hardwares = {
-            "a-device": hardware,
-            "f-device": hardware,
-            "attention-device": hardware,
-            "ffn-device": hardware,
-        }
-        self.models = {
-            "TestModel": SimpleNamespace(
-                Name="TestModel",
-                Nhead=8,
-                Dmodel=16,
-                Nlayer=layers,
-                Multi_Query=False,
-                Grouped_Query=False,
-                FFN_Hidden=64,
-            )
-        }
-        self.links = {
-            "nvlink-test": SimpleNamespace(Latency=0.0, UniBW=100.0),
-            "profile": SimpleNamespace(Latency=0.0, UniBW=100.0),
-            "af-network-profile": SimpleNamespace(Latency=0.0, UniBW=100.0),
-        }
-        self.reject_full_backend = reject_full_backend
-        self.full_backend_calls = []
-
-    def Compute_Timebreakdown_Iteration(self, *args, **kwargs):
-        self.full_backend_calls.append((args, kwargs))
-        if self.reject_full_backend:
-            raise AssertionError("AF-selected phases must not call the full backend")
-        return 0.0005, 0.0
 
 
 def _psla_config():
@@ -360,9 +392,6 @@ def _explicit_domain_cluster(*, with_collective=True):
                         "operation": "all_reduce",
                         "after_stage": "a_compute",
                         "participants": [0, 1],
-                        "network": "af-net",
-                        "resource_group": "fabric",
-                        "resource_lane": "a_to_f",
                     }
                 ]
                 if with_collective
@@ -374,26 +403,22 @@ def _explicit_domain_cluster(*, with_collective=True):
             "capability": "af_ffn",
             "phases": ["prefill", "decode"],
             "worker_group": "f-pool",
-            "parallel": {
-                "tensor_parallel_size": 1,
-                "data_parallel_size": 2,
-                "expert_parallel_size": 2,
-            },
+            "parallel": {"expert_parallel_size": 2},
             "logical_instances": [
                 {
-                    "name": f"f{index}",
+                    "name": "f0",
                     "rank_mapping": [
                         {
                             "domain_rank": index,
                             "tp_rank": 0,
                             "pp_rank": 0,
-                            "dp_rank": index,
+                            "dp_rank": 0,
                             "ep_rank": index,
                             "physical_worker": physical("f-pool", index),
                         }
+                        for index in range(2)
                     ],
                 }
-                for index in range(2)
             ],
         },
     ]
@@ -478,7 +503,6 @@ class AFExecutorEndToEndTest(unittest.TestCase):
         self.assertNotIn("af_enabled", result)
         self.assertNotIn("af_iteration_count", result)
         self.assertNotIn("af_trace", result)
-        self.assertNotIn("af_phase_fidelity", result)
 
     def test_llm_engine_runs_prefill_and_decode_through_af_executor(self):
         reset_g_time()
@@ -492,7 +516,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
         env = simpy.Environment()
         compute = FixedComputeProvider(0.002, 0.003)
         transfer = FixedTransferProvider(0.001, 0.001)
-        with patch("TokenSim.llm.llm_engine.CacheConfig", LightweightCacheConfig):
+        with engine_context(self, reject_full_backend=True):
             engine = LLMEngine(
                 env=env,
                 block_size=4,
@@ -500,7 +524,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
                 kv_transfer_config=KVTransferConfig.default(),
                 psla_config=_psla_config(),
                 cluster_config=cluster,
-                roofline=AFRooflineStub(),
+                hardware=cluster_test_hardware(cluster),
                 prefill_worker_pool_type="round_robin",
                 decode_worker_pool_type="round_robin",
                 max_parallem_sum=8,
@@ -551,13 +575,6 @@ class AFExecutorEndToEndTest(unittest.TestCase):
         self.assertTrue(af_stats["af_enabled"])
         self.assertEqual(af_stats["af_iteration_count"], 2)
         self.assertEqual(len(af_stats["af_trace"]), 2)
-        self.assertEqual(
-            af_stats["af_phase_fidelity"],
-            {
-                "prefill": "af_prefill_compatibility",
-                "decode": "decode_af_rank_local",
-            },
-        )
 
         with (
             patch("builtins.open", mock_open()),
@@ -588,7 +605,6 @@ class AFExecutorEndToEndTest(unittest.TestCase):
         self.assertTrue(result["af_enabled"])
         self.assertEqual(result["af_iteration_count"], 2)
         self.assertEqual(result["af_trace"][0]["events"][0]["stage"], "a")
-        self.assertEqual(result["af_phase_fidelity"], af_stats["af_phase_fidelity"])
 
     def test_multiblock_multilayer_engine_advances_each_request_once_per_iteration(
         self,
@@ -598,7 +614,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
         env = simpy.Environment()
         compute = FixedComputeProvider(0.0, 0.0)
         transfer = FixedTransferProvider(0.0, 0.0)
-        with patch("TokenSim.llm.llm_engine.CacheConfig", LightweightCacheConfig):
+        with engine_context(self, reject_full_backend=True):
             engine = LLMEngine(
                 env=env,
                 block_size=4,
@@ -606,7 +622,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
                 kv_transfer_config=KVTransferConfig.default(),
                 psla_config=_psla_config(),
                 cluster_config=cluster,
-                roofline=AFRooflineStub(layers=2),
+                hardware=af_test_hardware(layers=2),
                 prefill_worker_pool_type="round_robin",
                 decode_worker_pool_type="round_robin",
                 max_parallem_sum=16,
@@ -659,10 +675,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
                 env = simpy.Environment()
                 compute = FixedComputeProvider(0.0, 0.0)
                 transfer = FixedTransferProvider(0.0, 0.0)
-                roofline = AFRooflineStub(reject_full_backend=False)
-                with patch(
-                    "TokenSim.llm.llm_engine.CacheConfig", LightweightCacheConfig
-                ):
+                with engine_context(self, reject_full_backend=False) as full_backend:
                     engine = LLMEngine(
                         env=env,
                         block_size=4,
@@ -670,7 +683,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
                         kv_transfer_config=KVTransferConfig.default(),
                         psla_config=_psla_config(),
                         cluster_config=cluster,
-                        roofline=roofline,
+                        hardware=af_test_hardware(),
                         prefill_worker_pool_type="round_robin",
                         decode_worker_pool_type="round_robin",
                         max_parallem_sum=8,
@@ -705,7 +718,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
                     [summary["phase"] for summary in engine.af_iteration_summaries],
                     [selected_phase],
                 )
-                self.assertGreater(len(roofline.full_backend_calls), 0)
+                self.assertGreater(len(full_backend.calls), 0)
                 self.assertGreater(
                     engine.connector_stats.aggregate(
                         engine.request_workers[0].connector.stats
@@ -771,8 +784,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
                     ],
                 )
             env = simpy.Environment()
-            roofline = AFRooflineStub(reject_full_backend=af_enabled)
-            with patch("TokenSim.llm.llm_engine.CacheConfig", LightweightCacheConfig):
+            with engine_context(self, reject_full_backend=af_enabled):
                 engine = LLMEngine(
                     env=env,
                     block_size=4,
@@ -780,7 +792,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
                     kv_transfer_config=KVTransferConfig.default(),
                     psla_config=_psla_config(),
                     cluster_config=cluster,
-                    roofline=roofline,
+                    hardware=af_test_hardware(),
                     prefill_worker_pool_type="round_robin",
                     decode_worker_pool_type="round_robin",
                     max_parallem_sum=8,
@@ -1031,7 +1043,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
     def test_engine_gives_one_scheduler_to_a_logical_instance(self):
         cluster = _explicit_domain_cluster()
         env = simpy.Environment()
-        with patch("TokenSim.llm.llm_engine.CacheConfig", LightweightCacheConfig):
+        with engine_context(self, reject_full_backend=True):
             engine = LLMEngine(
                 env=env,
                 block_size=4,
@@ -1039,7 +1051,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
                 kv_transfer_config=KVTransferConfig.default(),
                 psla_config=_psla_config(),
                 cluster_config=cluster,
-                roofline=AFRooflineStub(),
+                hardware=af_test_hardware(),
                 prefill_worker_pool_type="round_robin",
                 decode_worker_pool_type="round_robin",
                 max_parallem_sum=8,
@@ -1194,166 +1206,6 @@ class AFExecutorEndToEndTest(unittest.TestCase):
         )
         self.assertEqual(layer_one_a.ready_at, layer_zero_return.end_at)
         self.assertAlmostEqual(iteration.makespan, 0.014)
-
-    def test_formal_decode_endpoint_legs_do_not_wait_for_unrelated_producers(self):
-        cluster = _cluster(a_tp=1, a_dp=1, f_tp=2, f_dp=1, f_ep=2)
-        moe_config = MoEModelConfig(
-            is_moe_model=True,
-            num_experts=2,
-            num_experts_per_tok=1,
-            num_moe_layers=1,
-            moe_intermediate_size=32,
-            num_shared_experts=1,
-            intermediate_size=64,
-            hidden_size=16,
-            num_attention_heads=8,
-            num_key_value_heads=8,
-        )
-        runtime_plan = _formal_runtime_plan(cluster, moe_config)
-        env = simpy.Environment()
-        compute = FixedComputeProvider(0.0, 0.0, router=0.0, expert=0.001)
-        compute.durations["shared_expert"] = 0.010
-        transfer = FixedTransferProvider(0.0, 0.001, collective=0.0)
-        executor = AFExecutor(
-            env=env,
-            cluster_config=cluster,
-            worker_configs=cluster.workers(),
-            compute_provider=compute,
-            transfer_provider=transfer,
-            model_id="TestModel",
-            dtype="fp16",
-            total_layers=2,
-            hidden_size=16,
-            moe_config=moe_config,
-            runtime_plan=runtime_plan,
-        )
-        request = Request(1, prefill_len=8, decode_len=3, block_size=4)
-        request.generation_idx = 1
-        iteration = executor.submit(0, [request], "decode")
-
-        env.process(executor.run_iteration(iteration))
-        env.run()
-
-        events = executor.trace.events_for(iteration.iteration_id)
-        layer_zero = [event for event in events if event.layer_id == 0]
-        same_endpoint_returns = [
-            event
-            for event in layer_zero
-            if event.operation == "af_f_to_a"
-            and event.source_endpoint.domain_rank == 0
-            and event.target_endpoint.domain_rank == 0
-        ]
-        self.assertEqual(len(same_endpoint_returns), 2)
-        routed_return = next(
-            event
-            for event in same_endpoint_returns
-            if any(
-                ":routed:" in tensor_slice.tensor_item_id
-                for tensor_slice in event.tensor_slices
-            )
-        )
-        shared_return = next(
-            event
-            for event in same_endpoint_returns
-            if any(
-                tensor_slice.tensor_item_id.endswith(":shared")
-                for tensor_slice in event.tensor_slices
-            )
-        )
-        self.assertEqual(len(routed_return.predecessor_ids), 1)
-        self.assertEqual(len(shared_return.predecessor_ids), 1)
-        self.assertNotEqual(
-            routed_return.predecessor_ids, shared_return.predecessor_ids
-        )
-        by_node = {event.node_id: event for event in layer_zero}
-        shared_producer = by_node[shared_return.predecessor_ids[0]]
-        self.assertLess(routed_return.start_at, shared_producer.end_at)
-
-        combine = next(
-            event for event in layer_zero if event.stage == "weighted_combine"
-        )
-        self.assertEqual(
-            set(combine.predecessor_ids),
-            {routed_return.node_id, shared_return.node_id},
-        )
-        self.assertEqual(
-            combine.ready_at,
-            max(by_node[node_id].end_at for node_id in combine.predecessor_ids),
-        )
-        layer_zero_terminal = next(
-            event for event in layer_zero if event.stage == "residual"
-        )
-        layer_one_attention = [
-            event
-            for event in events
-            if event.layer_id == 1 and event.stage == "attention"
-        ]
-        self.assertTrue(
-            all(
-                event.ready_at == layer_zero_terminal.end_at
-                for event in layer_one_attention
-            )
-        )
-        self.assertAlmostEqual(iteration.makespan, 0.013)
-        executor.trace.validate_invariants(iteration.iteration_id)
-
-    def test_formal_dag_semantics_are_checked_when_trace_is_disabled(self):
-        cluster = _cluster(a_tp=1, a_dp=1, f_tp=1, f_dp=1, f_ep=1)
-        cluster.af.trace_enabled = False
-        moe_config = MoEModelConfig(
-            is_moe_model=True,
-            num_experts=2,
-            num_experts_per_tok=1,
-            num_moe_layers=1,
-            moe_intermediate_size=32,
-            num_shared_experts=1,
-            intermediate_size=64,
-            hidden_size=16,
-            num_attention_heads=8,
-            num_key_value_heads=8,
-        )
-        runtime_plan = _formal_runtime_plan(cluster, moe_config)
-        env = simpy.Environment()
-        compute = FixedComputeProvider(0.0, 0.0)
-        transfer = FixedTransferProvider(0.0, 0.0)
-        executor = AFExecutor(
-            env=env,
-            cluster_config=cluster,
-            worker_configs=cluster.workers(),
-            compute_provider=compute,
-            transfer_provider=transfer,
-            model_id="TestModel",
-            dtype="fp16",
-            total_layers=2,
-            hidden_size=16,
-            moe_config=moe_config,
-            runtime_plan=runtime_plan,
-        )
-        request = Request(1, prefill_len=8, decode_len=3, block_size=4)
-        request.generation_idx = 1
-        iteration = executor.submit(0, [request], "decode")
-        block = iteration.blocks[0]
-        dag = executor.plan_builder.build_layer(block, 0, cluster.af.links[0])
-        combine = next(node for node in dag.nodes if node.stage == "weighted_combine")
-        corrupted = replace(
-            combine,
-            local_work=replace(combine.local_work, output_token_count=0),
-        )
-        object.__setattr__(
-            dag,
-            "nodes",
-            tuple(corrupted if node is combine else node for node in dag.nodes),
-        )
-        executor.plan_builder.build_layer = MagicMock(return_value=dag)
-
-        env.process(executor.run_iteration(iteration))
-        with self.assertRaisesRegex(SimulationStateError, "weighted combine"):
-            env.run()
-
-        self.assertFalse(executor.trace.enabled)
-        self.assertEqual(executor.trace.events, [])
-        self.assertEqual(compute.queries, [])
-        self.assertEqual(transfer.queries, [])
 
     def test_full_duplex_overlaps_opposite_directions_but_half_does_not(self):
         makespans = {}

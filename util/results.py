@@ -42,10 +42,7 @@ def get_af_stats(engine: LLMEngine) -> dict[str, Any]:
     executor = getattr(engine, "af_executor", None)
     summaries = getattr(engine, "af_iteration_summaries", [])
     runtime_summary = getattr(engine, "af_runtime_summary", None)
-    cluster_config = getattr(engine, "cluster_config", None)
-    af_config = getattr(cluster_config, "af", None)
-    phases = set(getattr(af_config, "phases", ())) if executor is not None else set()
-    return {
+    stats: dict[str, Any] = {
         "af_enabled": executor is not None,
         "af_iteration_count": len(summaries),
         "af_trace": (
@@ -56,23 +53,24 @@ def get_af_stats(engine: LLMEngine) -> dict[str, Any]:
             if executor is not None and callable(runtime_summary)
             else None
         ),
-        "af_phase_fidelity": (
-            {
-                "prefill": (
-                    "af_prefill_compatibility"
-                    if "prefill" in phases
-                    else "prefill_aggregate"
-                ),
-                "decode": (
-                    "decode_af_rank_local"
-                    if "decode" in phases
-                    else "decode_aggregate"
-                ),
-            }
-            if executor is not None
-            else None
-        ),
+        "af_latency_providers": None,
+        "af_operator_stats": None,
     }
+    if executor is None:
+        return stats
+    # Provenance of the AF service times: which provider answered and, for the
+    # operator-table provider, the same match-type / missing-shape accounting
+    # the step-level backend reports.
+    providers: dict[str, Any] = {}
+    for name in ("compute", "transfer"):
+        provider = getattr(engine, f"af_{name}_provider", None)
+        describe = getattr(provider, "describe", None)
+        if callable(describe):
+            providers[name] = describe()
+    stats["af_latency_providers"] = providers or None
+    stats_dict = getattr(getattr(engine, "af_compute_provider", None), "stats_dict", None)
+    stats["af_operator_stats"] = stats_dict() if callable(stats_dict) else None
+    return stats
 
 
 def get_connector_stats(engine: LLMEngine) -> dict[str, float | int]:
@@ -138,6 +136,37 @@ def get_parallel_stats(engine: LLMEngine) -> dict[str, Any]:
         "parallel_per_rank_utilization": per_rank,
         "parallel_dp_placement_counts": dp_counts,
         **stats_dict,
+    }
+
+
+def get_latency_stats(engine: LLMEngine) -> dict[str, Any]:
+    """Provenance of the latency estimates: backend, datasets, match types, missing shapes."""
+    from TokenSim.latency.operator_table import OperatorStats
+
+    aggregate = OperatorStats()
+    descriptions: dict[str, dict[str, Any]] = {}
+    for worker in getattr(engine, "workers", []):
+        backend = getattr(worker, "latency_backend", None)
+        if backend is None:
+            continue
+        stats = getattr(backend, "stats", None)
+        if isinstance(stats, OperatorStats):
+            aggregate = aggregate.aggregate(stats)
+        else:
+            fallback = getattr(backend, "fallback_backend", None)
+            fallback_stats = getattr(fallback, "stats", None)
+            if isinstance(fallback_stats, OperatorStats):
+                aggregate = aggregate.aggregate(fallback_stats)
+        try:
+            description = backend.describe()
+        except Exception:  # pragma: no cover - defensive
+            description = {"backend": type(backend).__name__}
+        device_id = getattr(getattr(worker, "device", None), "device_id", getattr(worker, "hardware", "?"))
+        descriptions.setdefault(str(device_id), description)
+    return {
+        "latency_backends": descriptions,
+        **aggregate.as_dict(),
+        "operator_missing_shapes": aggregate.missing_shape_records()[:200],
     }
 
 
@@ -223,6 +252,7 @@ def print_all_stats(
     print_mooncake_stats(engine)
     print_parallel_stats(engine)
     print_moe_stats(engine)
+    print_operator_latency_stats(engine)
     # Print SLO statistics.
     print_slo_stats(duration, g_time)
 
@@ -349,6 +379,24 @@ def print_moe_stats(engine: LLMEngine):
     )
 
 
+def print_operator_latency_stats(engine: LLMEngine):
+    stats = get_latency_stats(engine)
+    backends = stats.get("latency_backends", {})
+    print(
+        "Latency: "
+        + f"backends={ {k: v.get('backend') + ':' + str(v.get('operator_backend')) for k, v in backends.items()} }, "
+        + f"queries={stats.get('operator_query_count', 0)}, "
+        + f"match_types={stats.get('operator_match_type_counts', {})}, "
+        + f"missing_shapes={stats.get('operator_missing_shape_count', 0)}"
+    )
+    components = stats.get("operator_component_seconds", {})
+    if components:
+        print(
+            "Latency breakdown (s): "
+            + ", ".join(f"{name}={value:.4f}" for name, value in components.items())
+        )
+
+
 def print_slo_stats(
     dur: float,
     timing: LLMTime,
@@ -416,6 +464,7 @@ def export_result(
     moe_stats = get_moe_stats(engine)
     mooncake_stats = get_mooncake_stats(engine)
     af_stats = get_af_stats(engine)
+    latency_stats = get_latency_stats(engine)
 
     result = LLMResult(
         qps=args.qps,
@@ -443,6 +492,7 @@ def export_result(
         **moe_stats,
         **mooncake_stats,
         **af_stats,
+        **latency_stats,
     )
 
     if args.results_path == "":
@@ -469,10 +519,18 @@ def export_result(
             "af_iteration_count",
             "af_trace",
             "af_runtime_state",
-            "af_phase_fidelity",
+            "af_latency_providers",
+            "af_operator_stats",
         ):
             result_dict.pop(field_name, None)
 
     result_file = results_path / f"result_{args.qps}.json"
     with open(result_file, "w") as f:
         json.dump(result_dict, f, indent=4)
+    missing = latency_stats.get("operator_missing_shapes") or []
+    if missing:
+        # Shapes the tables could not answer: the collection checklist for the
+        # next profiling run on the target device.
+        missing_file = results_path / f"missing_shapes_{args.qps}.json"
+        with open(missing_file, "w") as f:
+            json.dump(missing, f, indent=2)

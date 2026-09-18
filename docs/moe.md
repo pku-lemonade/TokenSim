@@ -1,9 +1,14 @@
 # Mixture-of-Experts Simulation
 
 TokenSim models MoE layer placement, routed expert compute, expert load
-imbalance, and expert-parallel all-to-all communication. A MoE run needs both a
-model entry in `TransformerRoofline/hardware_models.json` and MoE metadata in a
-PSLA file under `data/psla/`.
+imbalance, and expert-parallel all-to-all communication. A MoE run needs a
+model entry in `data/models/*.yaml` (MoE fields under `moe:`) or MoE metadata in
+the PSLA file under `data/psla/`; PSLA metadata overrides the catalog entry.
+Expert compute comes from the `moe` operator table (or the analytical model)
+queried with the layer's token count, `top_k`, expert count and the effective
+`tp_size`/`ep_size`; the routing histogram scales it by the per-rank load
+imbalance and the dispatch/combine all-to-all is priced by the communication
+model.
 
 ## Quick Start
 
@@ -72,8 +77,15 @@ strategies are:
 - `round_robin`: expert `i` is placed on rank `i % ep_rank_count`.
 
 Supported all-to-all models are `naive`, `allgather_reducescatter`,
-`deepep_high_throughput`, and `deepep_low_latency`. They apply different latency
-scales to the same topology-derived transfer. CLI flags override cluster values:
+`deepep_high_throughput`, and `deepep_low_latency`. The two DeepEP modes are
+priced from the device package's measured `ep_all2all` table (AIConfigurator's
+DeepEP dispatch/combine curves, keyed by tokens per rank, hidden size, `top_k`,
+expert count, EP size and node count) when the selected operator backend ships
+one; otherwise every mode falls back to two topology-derived all-to-all
+transfers scaled by `EP_ALL2ALL_MODE_SCALE`. Real deployments use the
+high-throughput kernels for prefill and the low-latency kernels for decode;
+TokenSim currently applies one mode to both phases. CLI flags override cluster
+values:
 
 ```bash
 --enable_expert_parallel \

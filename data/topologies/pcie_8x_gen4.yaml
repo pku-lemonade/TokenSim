@@ -1,0 +1,17 @@
+schema_version: 1
+topology_id: pcie_8x_gen4
+description: "8 PCIe Gen4 x16 GPUs without NVLink (A100 PCIe, A30, L40S, L4): peers exchange data through PCIe switches or the host root complex; one HDR200 NIC per pair of GPUs."
+source_id: assumption-network-v1
+levels:
+  - name: node
+    size: 8
+    link: pcie4_x16
+    fabric: switched
+    oversubscription: 2.0
+    collective_algorithm: ring
+  - name: cluster
+    size: null
+    link: ib_hdr200
+    fabric: fat_tree
+    links_per_endpoint: 4
+    oversubscription: 1.0

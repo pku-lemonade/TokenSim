@@ -29,13 +29,6 @@ from TokenSim.config.constants import (
 )
 from TokenSim.errors import ConfigurationError
 
-try:
-    import TransformerRoofline  # noqa: F401
-except (ImportError, OSError):
-    fake_roofline = types.ModuleType("TransformerRoofline")
-    fake_roofline.TransformerRoofline = object
-    sys.modules["TransformerRoofline"] = fake_roofline
-
 import benchmark
 
 
@@ -1235,7 +1228,11 @@ class AFLoadingAndEntryPointTest(unittest.TestCase):
         env = MagicMock(now=0)
         args = argparse.Namespace(
             cluster="cluster.json",
-            latency_backend="roofline",
+            latency_backend="operator_table",
+            latency_fallback="table_first",
+            operator_backend=None,
+            decode_context_bucket=128,
+            data_root="./data",
             kv_transfer_config=None,
             model_config_path="model.json",
             verbose="none",
@@ -1255,7 +1252,7 @@ class AFLoadingAndEntryPointTest(unittest.TestCase):
             patch.object(benchmark, "reset_g_time"),
             patch.object(benchmark.ClusterConfig, "from_file", return_value=cluster),
             patch.object(benchmark.PSLAConfig, "from_file", return_value=model),
-            patch.object(benchmark, "TransformerRoofline"),
+            patch.object(benchmark.HardwareContext, "load", return_value=MagicMock()),
             patch.object(benchmark.simpy, "Environment", return_value=env),
             patch.object(benchmark, "build_parallel_config", return_value=MagicMock()),
             patch.object(benchmark, "validate_moe_parallel_config"),
@@ -1279,14 +1276,14 @@ class AFLoadingAndEntryPointTest(unittest.TestCase):
             patch.object(benchmark, "reset_g_time"),
             patch.object(benchmark.ClusterConfig, "from_file", return_value=_cluster()),
             patch.object(benchmark, "get_latency_backend_type") as latency_backend,
-            patch.object(benchmark, "TransformerRoofline") as roofline,
+            patch.object(benchmark.HardwareContext, "load") as hardware_load,
             patch.object(benchmark.simpy, "Environment") as environment,
             self.assertRaisesRegex(ConfigurationError, "compute latency provider"),
         ):
             benchmark.main(args)
 
         latency_backend.assert_not_called()
-        roofline.assert_not_called()
+        hardware_load.assert_not_called()
         environment.assert_not_called()
 
     def test_benchmark_injects_complete_af_runtime_into_engine(self):
@@ -1301,7 +1298,11 @@ class AFLoadingAndEntryPointTest(unittest.TestCase):
             af_compute_provider=compute_provider,
             af_transfer_provider=transfer_provider,
             af_dtype="bf16",
-            latency_backend="roofline",
+            latency_backend="operator_table",
+            latency_fallback="table_first",
+            operator_backend=None,
+            decode_context_bucket=128,
+            data_root="./data",
             kv_transfer_config=None,
             model_config_path="model.json",
             verbose="none",
@@ -1321,7 +1322,7 @@ class AFLoadingAndEntryPointTest(unittest.TestCase):
             patch.object(benchmark, "reset_g_time"),
             patch.object(benchmark.ClusterConfig, "from_file", return_value=cluster),
             patch.object(benchmark.PSLAConfig, "from_file", return_value=model),
-            patch.object(benchmark, "TransformerRoofline"),
+            patch.object(benchmark.HardwareContext, "load", return_value=MagicMock()),
             patch.object(benchmark.simpy, "Environment", return_value=env),
             patch.object(benchmark, "build_parallel_config", return_value=MagicMock()),
             patch.object(benchmark, "validate_moe_parallel_config"),

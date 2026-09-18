@@ -1,0 +1,43 @@
+schema_version: 1
+device_id: b200_sxm
+family: nvidia_gpu
+display_name: NVIDIA B200 SXM (HGX B200)
+aliases: [B200, B200-SXM, HGX-B200, NVIDIA B200]
+sources:
+  nvidia-hgx-b200-datasheet:
+    grade: A
+    reference: https://resources.nvidia.com/en-us-hgx-b200/hgx-b200-datasheet
+    notes: >
+      8-GPU totals: FP4 144|72 PFLOPS (sparse|dense), FP8 72 PFLOPS, INT8 72 POPS,
+      FP16/BF16 36 PFLOPS, TF32 18 PFLOPS (sparsity convention), FP32 600 TFLOPS,
+      up to 1.4 TB HBM3e at 62 TB/s. Per GPU dense: FP16 2.25 PF, FP8 4.5 PF, NVFP4 9 PF.
+  aiconfigurator-system-yaml:
+    grade: C
+    reference: https://github.com/ai-dynamo/aiconfigurator/blob/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/b200_sxm.yaml
+    notes: >
+      Empirical corrections NVIDIA recorded while validating AIConfigurator against TensorRT-LLM deployments: memory bandwidth efficiency 0.8, 3 us constant memory latency per kernel, 10 us point-to-point latency for collectives, and a runtime memory reserve of 392 MB NCCL buffers plus 3.5 GB framework workspace. Memory capacity 180 GiB and 7.7 TB/s are the upstream system values (nvidia-smi on the collection host).
+peak_compute:
+  fp16: {value: 2.25e15, source_id: nvidia-hgx-b200-datasheet}
+  bf16: {value: 2.25e15, source_id: nvidia-hgx-b200-datasheet}
+  fp8: {value: 4.5e15, source_id: nvidia-hgx-b200-datasheet}
+  int8: {value: 4.5e15, source_id: nvidia-hgx-b200-datasheet}
+  nvfp4: {value: 9.0e15, source_id: nvidia-hgx-b200-datasheet}
+  tf32: {value: 1.125e15, source_id: nvidia-hgx-b200-datasheet}
+  fp32: {value: 75.0e12, source_id: nvidia-hgx-b200-datasheet}
+memory:
+  kind: hbm3e
+  capacity_bytes: {value: 193273528320, source_id: aiconfigurator-system-yaml, grade: C}    # 180 GiB
+  bandwidth_bytes_per_s: {value: 7700.0e9, source_id: aiconfigurator-system-yaml, grade: C}
+  reserved_bytes: {value: 4169138176, source_id: aiconfigurator-system-yaml, grade: C}   # 392 MB NCCL + 3.5 GB runtime reserve
+interconnect:
+  scale_up_link: nvlink5          # 1.8 TB/s bidirectional = 900 GB/s per direction
+  scale_up_ports: 18
+  host_link: pcie6_x16
+analytical:
+  source_id: aiconfigurator-system-yaml
+  grade: C
+  memory_efficiency: 0.8        # mem_bw_empirical_scaling_factor
+  kernel_launch_us: 3.0         # mem_empirical_constant_latency
+  collective_launch_us: 10.0    # p2p_latency
+step_overhead_us: {value: 0.0, source_id: aiconfigurator-system-yaml, grade: D}
+power: {tdp_w: 1000}

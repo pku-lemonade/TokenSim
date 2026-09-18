@@ -740,7 +740,14 @@ class ParallelExecutionPlanner:
         layer_id: int,
         link: AFLinkConfig,
     ) -> AFExecutionDAG:
-        if self.runtime_plan is not None and block.phase == "decode":
+        # The operator-table engine can run without frozen per-layer routing
+        # snapshots; in that compatibility mode use the histogram-based AF
+        # graph. Formal V3 decode supplies snapshots and takes the runtime graph.
+        if (
+            self.runtime_plan is not None
+            and block.phase == "decode"
+            and (not getattr(self.runtime_plan, "num_experts", 0) or block.routing_snapshots)
+        ):
             return self._build_runtime_layer(block, layer_id, link)
         return self._build_legacy_layer(block, layer_id, link)
 

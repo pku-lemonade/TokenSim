@@ -4,7 +4,7 @@
 
 本版本已经把 Attention-FFN（AF）分离配置接入可运行的 SimPy executor。它支持 Prefill、Decode 或两阶段 AF，能够明确 A/F worker group、通信网络、全/半双工以及物理竞争域，并输出可重建流水行为的结构化 trace。
 
-当前 executor 需要调用方注入 compute 与 communication latency provider。Decode AF planner 按逐层模型元数据把 Dense 与 MoE 层展开为逐 rank DAG；provider 只估算一个 rank 的局部计算或一次已规划通信。Decode-only AF 下，Prefill 继续走完整模型 aggregate 路径，结果分别标记为 `decode_af_rank_local` 与 `prefill_aggregate`。仓库测试使用带 `test-stub` source ID 的确定性 provider 验证调度机制；这些数值不是 Groq 或其他硬件的物理性能结论。缺少 provider 或必要模型元数据时，`benchmark.py` 会在产生 AF 事件前明确失败，不会静默回退到完整 iteration 时延。
+当前 executor 需要调用方注入 compute 与 communication latency provider。并行 planner 把 TP、DP 和 EP 配置展开为逐 rank DAG；provider 只估算一个 rank 的局部计算或一次已规划通信。仓库测试使用带 `test-stub` source ID 的确定性 provider 验证调度机制；这些数值不是 Groq 或其他硬件的物理性能结论。缺少 provider 或必要模型元数据时，`benchmark.py` 会在产生 AF 事件前明确失败，不会静默回退到完整 iteration 时延。
 
 ## 配置模型
 
@@ -38,29 +38,18 @@
 
 ## Executor 运行语义
 
-scheduler 选出的同阶段 requests 按 `af_block_size` 连续组成 blocks。Decode AF 对每层读取真实 layer type，并生成不同依赖链：
+scheduler 选出的同阶段 requests 按 `af_block_size` 连续组成 blocks。每个 block 对模型的每一层严格执行：
 
 ```text
-Dense:
-A Attention -> A collective -> A-to-F endpoint legs
-            -> F Dense FFN -> F collective -> F-to-A owner legs
-            -> A residual/layout
-
-MoE:
-A Attention -> A collective -> A leader Router/Top-K
-            -> A-to-F routed/shared endpoint legs
-            -> F Routed Expert branches ----+
-            -> F Shared Expert TP branch ---+-> F-to-A owner legs
-            -> A weighted combine/shared sum -> A residual/layout
+A TP rank-local compute
+-> required A TP collective
+-> A leader Router/Top-K
+-> one A-to-F / EP dispatch
+-> routed expert rank-local compute and required F TP collective
+-> one F-to-A / EP combine
 ```
 
-Router/Top-K 固定在所选 A replica 的 leader，并等待 A TP compute/collective 完成。每个 MoE layer、phase 和 Decode step 都冻结独立的逐 token routing snapshot；每条 assignment 保留 request/token、A owner、Expert 与 routing weight，histogram 只能从 assignments 派生并用于统计，不能替代正式执行数据。
-
-A-to-F 是 Routed dispatch 和 Shared input 的唯一跨域传输，F-to-A 是 Routed/Shared partial return 的唯一跨域传输。每个方向在一层中只有一个 logical stage，但会按 producer、endpoint、token item 和 global hidden interval 展开为多条可调度 legs；每条 leg 只等待自己的 producer。F-to-A 不做数学 combine：partial 到达对应 A tensor owner 后，A rank 本地执行 weighted combine、Shared sum 和一次 residual。不同 TP sizes 通过 `[start, end)` hidden interval 的交集切分，不把完整 hidden 重复发给每个 rank，也不生成第二套 `ep_dispatch`/`ep_combine` 通信。
-
-A 域持有 request、KV、activation owner 和 residual，首次 admission 后不能在没有 KV transfer 的情况下换 A DP replica。A owner 与 F service replica 使用彼此独立的全局 round-robin；rank-reuse EP 下只有 Routed branches 可按 Expert placement 跨 F world，Dense/Shared 仍使用选中的 F DP replica。
-
-Shared Expert 位于 F 域，对每个原始 token 恰好执行一次，与 Routed branches 并行。`top_k=K` 时 Routed 总工作量是 `T*K` assignments，而 Shared、combine、residual 和下一层仍是 `T` tokens。
+Router/Top-K 固定在所选 A replica 的 `tp_rank=0, ep_rank=0` leader，并等待 A TP compute/collective 完成。Router 产生的 routed workload 同时决定 Expert 负载、跨域 endpoints 和 payload；存在 histogram 时 routed token count 为 histogram 计数之和，否则为 `token_count * top_k`。A-to-F 直接从 A leader 发到 active F Expert ranks，本身就是 EP dispatch；F-to-A 从这些 ranks 返回 partial Expert results，本身就是 EP gather/combine。Planner 不再生成重复搬运同一 payload 的 F-internal dispatch/combine 节点。每层始终只有一个 `af_a_to_f` 和一个 `af_f_to_a`，且两个方向都按 routed token count 计算 payload。同一 block 只有在 F-to-A 返回 A 域后才能进入下一层。A 域持有 request/KV ownership，首次 admission 后不能在没有 KV transfer 的情况下换 A DP replica；F replica 按全局 round-robin 在 block 提交顺序中预选。
 
 ## AF 并行拓扑
 
@@ -68,25 +57,11 @@ AF 第一阶段支持 TP、DP 和 F 域 EP，明确不支持 PP。任何 A/F exe
 
 - 每个 `LogicalInstanceConfig` 表示一个 DP replica，而不是重复包含整个 DP world。
 - A replica 有 `TP` 个 ranks，坐标为 `(dp_rank, ep_rank=0, tp_rank, pp_rank=0)`。
-- F replica 同样只有 `TP` 个基础 ranks；EP 只解释这些已有 ranks，不增加 physical worker。
-- A 域必须为 `EP=1`。F 域仅支持 `EP=1` 或 `EP=F_TP*F_DP`：前者在每个 F DP replica 内复制完整 Expert 集并以 F TP 切分单个 Expert，后者用 `ep_rank=dp_rank*F_TP+tp_rank` 把 Expert 放到现有 F world，单个 Expert 的 TP 为 1。
+- F replica 有 `EP * TP` 个 ranks，坐标为 `(dp_rank, ep_rank, tp_rank, pp_rank=0)`。
+- A 域必须为 `EP=1`。F 域在每个 DP replica 内完整复制 expert placement，支持 `linear` 或 `round_robin`。
 - `domain_rank` 在整个 domain 唯一，每个 physical worker 只能映射一个 rank。
 
-完整可加载示例见 `data/clusters/af/decode_tp2_dp2_ep1.json` 与 `data/clusters/af/decode_tp2_dp2_ep4_rank_reuse.json`。两者的 A 域与 F 域都是 `TP=2, DP=2`，所以各有 4 个 physical ranks；将 F EP 从 1 改为 4 只改变 Expert placement 和 Expert TP，不会把 F worker 数从 4 乘到 16。每个 logical instance 只包含自己 `dp_rank` 下的两个 TP ranks。
-
-从仓库根目录运行最小 Decode-only Engine 验证：
-
-```powershell
-python -m unittest tests.test_af_engine_integration.AFEngineIntegrationTest.test_decode_only_connects_runtime_plan_dtypes_and_providers -v
-```
-
-该命令使用确定性测试 provider，经真实 Engine、Scheduler 和 AF executor 执行一次完整 Prefill 与后续 Decode。断言 Prefill 保持 `prefill_aggregate`，Decode 使用 `decode_af_rank_local`，并检查逐层 metadata、五类 dtype、provider query、request/KV 单次推进和最终结果标记。测试数值只验证执行语义，不代表目标硬件性能。
-
-所有实际 TP shard axis 必须精确整除。唯一例外是 KV heads 少于 A TP 且复制组可无歧义划分；例如 8 个 query heads 配 TP=3 会在 runtime plan 前失败，而不是用 `ceil` 伪造第 9 个 head。
-
-### Dtype 角色
-
-AF 分别配置 `weight_dtype`、`activation_dtype`、`kv_cache_dtype`、`a_to_f_dtype` 和 `f_to_a_dtype`。前三个是 runtime/model 角色，后两个通常写在 link 上。所有值经过同一 registry 规范化，FP8/BF16/FP16/FP32 分别按 1/2/2/4 bytes 记账。旧 `af_dtype` 只在没有任何新字段时映射到五个角色并标记弃用；与新字段混用会失败。传输 dtype 与 activation dtype 不同时，DAG 显式加入发送 encode 和接收 decode compute，链路 provider 不隐藏这部分时间。
+完整可加载示例见 `data/clusters/af/tp2_dp2_ep2.json`。其中 A 域 `TP=2, DP=2`，所以有 4 个 ranks；F 域 `TP=2, DP=2, EP=2`，所以有 8 个 ranks。旧配置若让每个 instance 都覆盖 `TP*DP` ranks，需要拆成两个 instances：`a0` 只保留 `dp_rank=0` 的 TP ranks，`a1` 只保留 `dp_rank=1` 的 TP ranks；F 域同理，每个 instance 只保留自己的 `EP*TP` ranks。
 
 ### Runtime plan、Scheduler 与 KV 状态
 
@@ -152,35 +127,23 @@ worker group 支持以下 capability：
 
 ### AF link
 
-全双工 fabric 与 link 示例：
+全双工 link 示例：
 
 ```json
 {
-  "communication_fabrics": [{
-    "resource_group": "af-fabric",
-    "network": "af_net",
-    "duplex": "full",
-    "lanes": [
-      {"name": "a_to_f", "capacity": 1},
-      {"name": "f_to_a", "capacity": 1}
-    ]
-  }],
-  "links": [{
-    "name": "attention-ffn",
-    "phases": ["decode"],
-    "attention_group": "attention-pool",
-    "ffn_group": "ffn-pool",
-    "network": "af_net",
-    "resource_group": "af-fabric",
-    "a_to_f_dtype": "fp8",
-    "f_to_a_dtype": "bf16"
-  }]
+  "name": "attention-ffn",
+  "phases": ["prefill", "decode"],
+  "attention_group": "attention-pool",
+  "ffn_group": "ffn-pool",
+  "network": "af_net",
+  "resource_group": "af-fabric",
+  "duplex": "full",
+  "a_to_f_capacity": 1,
+  "f_to_a_capacity": 1
 }
 ```
 
-半双工 fabric 只声明一个 `shared` lane。每个所选阶段必须恰好由一条 link 覆盖；第一版不定义同阶段多 link 的路由策略。A/F 端点必须不同，并分别声明 `af_attention` 与 `af_ffn`。
-
-必要 TP collective 由 execution domain 的 `communication_plan` 显式声明 `operation`、触发 stage、replica-local `participants`、`network`、`resource_group` 和 `resource_lane`。`participants` 在每个 DP replica 内映射为实际 domain ranks。Planner 传每 rank logical bytes，provider只应用一次 all-reduce/all-gather/reduce-scatter wire-volume 规则。缺 fabric/lane 时立即失败，不能借用 A-to-F 链路；collective 若显式选择与 AF 相同的 lane，才会与该方向竞争。
+半双工使用 `duplex="half"` 和 `half_duplex_capacity`，不得同时提供方向容量。每个所选阶段必须恰好由一条 link 覆盖；第一版不定义同阶段多 link 的路由策略。A/F 端点必须不同，并分别声明 `af_attention` 与 `af_ffn`。
 
 只选择一个 AF 阶段时，另一阶段必须保留完整执行能力：Decode-only 需要 `prefill`，Prefill-only 需要 `decode_full`。
 
@@ -216,61 +179,62 @@ total_duration   = queue_duration + service_duration
 
 ## 计算时延数据契约
 
-### 离线生成与运行时查询
+### provider 选择
 
-后续 operator-data change 必须将数据生成和 TokenSim 运行分开：
+`af.latency_provider` 决定 AF executor 的 compute/transfer provider 来源：
 
-1. `shape_manifests/<experiment-id>.yaml` 定义目标 shape。
-2. 离线生成器根据实测、workload 公式、硬件参数和校准系数生成数据。
-3. `*_perf.parquet` 只保存查询主键、`latency_us` 和 `source_id`。
-4. `*_analysis.parquet` 保存 FLOPs、搬运量、理论时间、校准系数和瓶颈。
-5. `generation_meta.yaml` 保存硬件参数、公式版本、单位、来源和行数。
-6. TokenSim 运行时只查表，不重新计算 roofline。
+| 取值 | 含义 |
+| --- | --- |
+| `injected`（默认） | 调用方注入 provider；仓库测试用带 `test-stub` source ID 的确定性 provider 验证调度机制 |
+| `operator_table` | Engine 用硬件目录构建正式 provider：计算查 `data/operator_data/<device>/<backend>` 的算子表，缺失 shape 回退到设备族解析模型；通信用 `data/topologies/links.yaml` 的链路类和分层 collective 模型 |
 
-第一版分表：
+`operator_table` 模式下还可以设置 `af.operator_backend`（覆盖全局 `--operator_backend`，例如 `vllm`、`trtllm`、`sglang`）和 `af.latency_fallback`（`table_first` / `table_only` / `analytical_only`，覆盖全局 `--latency_fallback`）。worker group 的 `hardware` 必须是 `data/devices` 中的 `device_id`，`networks` 的值必须是链路类 ID：
 
-| 表 | 主要主键 | 允许的插值 |
-| --- | --- | --- |
-| GEMM | dtype、m、n、k | 相同 dtype/n/k 下对 m 一维内插 |
-| Prefill Attention | dtype、batch、input_seq_len、head 配置、window | 对 input_seq_len 一维内插 |
-| Decode Attention | weight/activation/KV dtype、batch、context_len、head 配置、window | 对单 request 的 context_len 一维内插 |
-| MoE | dtype、phase、distribution、tokens、模型/专家/TP/EP | 对 num_tokens 一维内插 |
-| 逐元素算子 | op、dtype、tokens、hidden size | 第一版不得跨 op 或 dtype 插值 |
+```json
+{
+  "networks": {"af_net": "ib_ndr400"},
+  "worker_groups": [{"name": "attention-pool", "capabilities": ["af_attention"], "hardware": "h100_sxm", "num_workers": 4, "network": "af_net"}],
+  "af": {"enabled": true, "latency_provider": "operator_table", "operator_backend": "vllm"}
+}
+```
 
-查询顺序固定为精确匹配、表覆盖范围内受控一维插值、明确缺失错误。第一版禁止外推，也禁止运行时公式或默认时间兜底。返回结果至少包含：
+设备缺失、后端不存在或网络名没有对应链路类时，Engine 在事件循环前失败。`benchmark.py` 只在 `injected` 模式下要求调用方提供 provider；`operator_table` 模式与注入的 provider 不能同时使用。
+
+算子表的格式、查表顺序（精确匹配 → 受控插值 → 有界外推 → 解析模型）与数据来源见 [operator-latency-model.md](operator-latency-model.md)；每次查询返回：
 
 ```text
 latency_us
-match_type = exact | interpolated
+match_type = exact | interpolated | extrapolated | analytical
 source_id
 ```
 
-`match_type` 表示查询方式；`source_id` 表示证据来源，两者不能混用。缺失错误必须输出完整主键，交由离线生成器补表。
+`match_type` 表示查询方式，`source_id` 表示证据来源，两者不能混用。AF 事件记录的 `match_type` 是该阶段所有算子中最差的一项，`dataset_version` 是设备数据包版本（无数据包时为 `analytical:<device_id>`）。结果 JSON 的 `af_latency_providers` 记录两个 provider 的描述，`af_operator_stats` 与 step 级 backend 一样给出 match type 计数和缺失 shape。
 
 ### A/F 组合边界
 
-A 阶段查询：
+A 阶段（`a_rank_compute`，按 A domain 的 TP 切分 rank 本地形状）：
 
-- Attention（内部只组合一次 Q/K/V、Attention core 和 output projection）；
-- MoE layer 的 A leader Router/Top-K；
-- MoE weighted combine/Shared sum；
-- 每个原始 token 一次 residual；
-- 必要的 layout 与跨 dtype encode/decode。
+- RMSNorm、QKV GEMM `(T, (q+2kv)/tp, h)`、RoPE；
+- Attention 核心：Prefill 按 request 长度分组查 `context_attention`，Decode 按 context 长度分组查 `generation_attention`，使用真实 KV head 维度；
+- 输出投影 GEMM `(T, h, q/tp)`、Residual Add。
 
-F 阶段查询：
+Router 阶段（A leader，`router_topk`）：F 侧 RMSNorm 和 Router GEMM `(T, experts, h)`；dense 模型只有 RMSNorm。
 
-- Dense layer 的 Dense FFN；
-- MoE layer 的逐 Expert Routed work；
-- 按原始 token 执行的 Shared Expert TP branch；
-- 必要的跨 dtype encode/decode。
+F 阶段（`expert_rank_compute`，按 F domain 的 TP 切分）：
 
-所有 composition 互斥：F Expert 不包含 Router、residual 或通信，Routed workload 已是 assignments 数，Shared/residual 使用原始 token 数。A→F dispatch、F→A partial return 和必要 TP collective 是独立通信事件；F→A 不执行 weighted combine，也不会再生成同 payload 的 F-internal dispatch/combine。
+- MoE：一次 `moe` 表查询。`T` 是本 rank 已展开 Top-K 的 routed assignments，平衡的 EP group 会把 `N` 个输入 token 变成每 rank `N * top_k / ep_size` 个 assignments，所以查表用等效输入 token 数 `T * ep_size / top_k`，与 step 级 backend 的 MoE 语义一致；
+- dense FFN：gate/up GEMM、SwiGLU、down GEMM；
+- Residual Add。
 
-GQA/MQA 必须使用真实 KV head 维度。Decode Attention 先对每个 request 使用自己的 `min(context_len, window_size)`（无 window 时用完整 context），再聚合工作量，不能以平均值或 batch 最大值替代所有 requests。MoE 满足 `sum(T_e)=T*k`，其中 `T_e` 是已展开的 routed assignments；Expert 公式直接使用 `T_e`，不再乘一次 `k`。外部 assignments 与 histogram 同时存在时必须完全匹配；只有 histogram 时只能报告统计，不能驱动 ownership combine。
+Attention 核心不重复包含 QKV 和输出投影；MoE expert 不包含 Router 或通信；shared experts 只进入 runtime plan 的显存账本，不单独计时。A→F/EP dispatch、F→A/EP combine 和必要的 TP collective 是独立通信事件，一层不会再额外生成同 payload 的 F-internal dispatch/combine。
 
-Groq 第一版候选公开峰值包括 FP16 188 TFLOPs、INT8 750 TOPS、230 MB SRAM、80 TB/s SRAM 带宽和 480 GB/s 芯片网络带宽。每项写入 `hardware.yaml` 前必须保存原始来源，并区分公开规格、项目假设和待确认参数；峰值不能冒充算子实测。
+### 通信 service time
 
-AIConfigurator 只作为分表 schema、查询和元数据组织参考；InferSim 只作为 FLOPs、内存搬运和通信量组合参考。两者不是运行时依赖，也不是物理精度 ground truth。
+- `af_a_to_f` / `af_f_to_a`：`service = latency_us + payload_bytes / (bandwidth_per_direction * efficiency(payload))`，链路类来自 AF link 的 `network` 在 `networks` 中映射到的 ID；
+- `tp_collective`：参与 rank 的物理 worker 映射到拓扑 device index，交给分层 alpha-beta collective 模型计算 all-reduce（设备数据包有实测 NCCL 曲线时优先），没有拓扑放置时退化为同一链路类上的 ring；
+- payload 由 planner 唯一计算，provider 只返回 service time，不重算 Top-K、不计算 queue time。全/半双工、容量和多个 AF blocks 的竞争仍由 AF executor 的 SimPy resource 产生。
+
+Groq 等 SRAM 架构的峰值、链路参数同样写在 `data/devices` 与 `data/topologies` 的 YAML 中，并带 `source_id` 与证据等级；峰值不能冒充算子实测。
 
 ## 端到端验证矩阵
 
@@ -278,9 +242,8 @@ AF executor 的测试从真实配置加载，经 Engine、worker、scheduler、�
 
 | 场景 | 主要断言 |
 | --- | --- |
-| 单 block、Dense 层 | 无 Router/Expert/weighted combine，A Attention→F Dense→A residual 依赖正确 |
-| 单 block、MoE 层 | assignments、Routed/Shared 并行、owner return、A combine/residual完整 |
-| 单 block、多层 | Dense/MoE DAG分别选择，下一层等待全部 A-side terminals |
+| 单 block、单层 | A TP→A Router→A-F/EP Dispatch→Expert→F-A/EP Combine 依赖顺序严格正确；每层只有两次跨域 payload 搬运 |
+| 单 block、多层 | 每层边界清晰，层间状态不丢失，iteration barrier 正确 |
 | 双 block 流水 | 独立计算/通信按依赖重叠，makespan 与 oracle 一致 |
 | A 慢、F 快 | A 是稳态瓶颈，F 不产生虚假并发 |
 | A 快、F 慢 | F 队列与等待符合容量，request 不重复推进 |
@@ -290,7 +253,7 @@ AF executor 的测试从真实配置加载，经 Engine、worker、scheduler、�
 | Prefill | token_count 为 request 实际 Prefill token 总和 |
 | Decode | 每 request 每轮一个 token，轮末 barrier 正确 |
 | 非 AF 回归 | AF 默认关闭，原 Prefill/Decode、KV、MoE 和 latency 行为不变 |
-| TP=2, DP=2, EP=1/4 | Expert-TP 与 rank-reuse 两种模式的局部 shape、replica 选择、KV shards、组件驻留、owner return、join 与 makespan 可核对 |
+| TP=2, DP=2, EP=2 | 局部 shape、replica 选择、KV shards、A/F component bytes、Expert 驻留、边界传输次数、join 与 makespan 可核对 |
 
 每项必须断言：
 
@@ -303,23 +266,41 @@ AF executor 的测试从真实配置加载，经 Engine、worker、scheduler、�
 - trace 区间完整、无负时长；
 - 最终 makespan 和请求完成状态。
 
-### Deterministic DAG oracle
-
-确定性测试为每种 typed operation 注入固定 service time，但期望 makespan 必须从完整 DAG 和实际资源队列推导，不能沿用旧五段式求和。MoE oracle 至少包含：
+### 固定双 block oracle
 
 ```text
-A Attention ranks -> A collective -> Router
-                    -> A-to-F endpoint legs
-                    -> Routed branches ----+
-                    -> Shared TP branch ---+-> F-to-A owner legs
-                    -> per-owner weighted combine -> residual -> optional layout
+A compute = 2 ms
+A Router  = 1 ms
+A -> F    = 1 ms
+F Expert  = 2 ms
+F -> A    = 1 ms
 ```
 
-Dense oracle以 Dense FFN branch 替换 Router/Routed/Shared/weighted combine。单 block 的完成时间是全部 A-side terminal 的最晚结束时间；多 block iteration 的 makespan 是最晚 block completion，而不是所有 rank、assignment 或 block service time 的和。两个 ready blocks 只有在依赖或同一 `(resource_group, resource_lane)` / physical compute slot 上冲突时才串行，其他 branches 应允许重叠。
+容量为 1 时，单 block 为 7 ms，两个 block 完全串行为 14 ms。正确流水应为：
 
-每个 oracle 都从 trace 重新计算以下事实：每个 node 的 ready time 等于全部直接前驱的最晚结束时间，`queue=start-ready`，`service=end-start`，同容量资源的 service intervals 不非法重叠，owner combine 等待自己的全部 Routed/Shared partials，下一层等待前一层全部 A-side terminals。修改 service time、duplex、lane capacity、F rank 数或 routing skew 后，makespan 差异必须能由这些区间精确解释。固定值只验证执行机制，不代表真实硬件性能。
+```text
+block 0: A[0,2]  Router[4,5]  A->F[5,6]  Expert[6,8]   F->A[8,9]
+block 1: A[2,4]  Router[5,6]  A->F[6,7]  Expert[8,10]  F->A[10,11]
+```
 
-兼容回归还覆盖 Decode-only 下的完整 Prefill aggregate path、显式 AF-Prefill compatibility、trace on/off、AF disabled、provider 缺失/unsupported/非法值、request/KV 单次推进，以及失败后同一 SimPy environment 的恢复运行。
+两个 blocks 同时提交时，它们的 A compute 先进入同一个 A worker 队列，因此 block 0 的 Router 在两个 A compute 之后取得该 worker。最终 makespan 必须精确为 11 ms。该 oracle 证明执行机制正确，不证明真实硬件时延准确。
+
+当前确定性 E2E 矩阵的已验证结果如下，时间均来自 SimPy event records：
+
+| 场景 | makespan | 关键 queue/service 与通过条件 |
+| --- | ---: | --- |
+| 单 block，2/1/1/2/1 ms | 7 ms | A、A Router、A-to-F/EP dispatch、F Expert、F-to-A/EP combine 五段非零 service 严格相接，不生成独立 dispatch/combine 事件 |
+| 双 block，2/1/1/2/1 ms | 11 ms | 两次 A compute 和 Router 竞争同一 A worker；block 1 的 Expert 等待 F worker |
+| A 慢 4 ms，F 快 1 ms，3 blocks | 13 ms | 主要等待落在共享 A slot，A service 区间不重叠 |
+| A 快 1 ms，F 慢 4 ms，3 blocks | 13 ms | 主要等待落在 F pool，F service 区间不重叠 |
+| full-duplex，双向各 3 ms | 10 ms | A-to-F 与 F-to-A 在独立方向键上合法重叠 |
+| half-duplex，双向各 3 ms | 13 ms | 相反方向串行，两个 return transfer 各等待 3 ms |
+| 同 resource group 的两条 links | 9 ms | 相同方向键跨 link 竞争 |
+| 不同 resource groups 的两条 links | 6 ms | 两条 link 的方向资源独立 |
+| 1 个 F worker，两个 blocks 的 Router/Expert 为 1/2 ms | 5 ms | Router 在 A worker 串行，两个 Expert 在同一 F worker 串行 |
+| 2 个 F workers，两个 blocks 的 Router/Expert 为 1/2 ms | 4 ms | Router 仍在 A worker 串行，两个 Expert 分配到不同 F workers 并行 |
+
+测试还覆盖 Prefill-only、Decode-only、两阶段、不同 A groups 的阶段间 KV transfer、trace on/off、AF disabled、provider 缺失/unsupported/非法值，以及失败后同一 SimPy environment 的恢复运行。
 
 分析报告还应检查通信隐藏候选条件：
 
@@ -365,7 +346,7 @@ microbenchmark 数据必须覆盖：
 - 单传输与并发传输；
 - 本地、跨设备和跨节点；
 - resource group 竞争；
-- A→F routed/shared endpoint legs、F→A owner-specific partial-return legs与必要的 TP collective。
+- A→F/EP dispatch、F→A/EP combine 与必要的 TP collective。
 
 `service_duration` 对照链路实测，`queue_duration` 对照确定性事件 oracle，total 必须等于二者之和。没有目标链路数据时只能声明模型自洽，不能声明物理准确。
 
@@ -391,12 +372,12 @@ microbenchmark 数据必须覆盖：
 
 Codex 可以实现并运行配置测试、确定性 E2E oracle、trace invariant、表格一致性、calibration/holdout 切分、误差报告和敏感性分析脚本。Codex 不能生成目标硬件的物理 ground truth；算子 benchmark、链路 benchmark 和真实系统 trace 必须来自实际测量或可追溯公开资料。
 
-`add-af-executor` 实现 AF block/executor、共享 SimPy 资源、结构化 trace 和确定性 E2E harness。`add-operator-data-latency-provider` 已增加以下正式性能数据能力，详细使用方式见 [operator-data-latency.md](operator-data-latency.md)：
+`add-af-executor` 实现 AF block/executor、共享 SimPy 资源、结构化 trace 和确定性 E2E harness。正式性能数据能力由仓库统一的算子表栈提供（`TokenSim/af/operator_provider.py`）：
 
-- Groq `hardware.yaml`、shape manifest、离线生成器和 Parquet 数据；
-- 实测 kernel 匹配、插值、公式校准和 A/F 延迟组合 provider；
-- kernel/link 数据采集、校准和真实系统对照。
+- 设备目录 `data/devices`、链路类 `data/topologies/links.yaml`、算子数据包 `data/operator_data`；
+- `OperatorTableAFComputeProvider` 通过与 step 级 backend 共享的 `OperatorResolver` 查表、插值、外推并回退解析模型；
+- `TopologyAFTransferProvider` 用链路类和 collective 模型给出通信 service time。
 
-正式 provider 通过现有 compute/transfer query 与 `AFServiceEstimate` 接口接入。`source_id`、dataset、match/composition metadata 只用于可追溯性和误差分析，不参与 executor 的资源选择或调度。运行时使用 `pyarrow` 加载离线生成的 Parquet，但不依赖 AIConfigurator 或 InferSim。
+正式 provider 通过现有 compute/transfer query 与 `AFServiceEstimate` 接口接入。`source_id`、dataset、match/composition metadata 只用于可追溯性和误差分析，不参与 executor 的资源选择或调度。运行时不依赖 AIConfigurator 或 InferSim；AIConfigurator 的实测表通过离线导入进入 `data/operator_data`。
 
-仓库完整回归在 Windows 上使用测试模块内的 `TransformerRoofline` 占位实现，因为仓库携带的原生扩展是 Linux CPython 3.11 `.so`，不能由本机 CPython 3.13 直接加载。占位只解除平台导入限制；Prefill、Decode、KV transfer、并行、MoE、trace timestamp 和 latency baseline 的 Python 行为仍由完整测试套件执行。
+仓库测试通过 `HardwareContext.in_memory` 构建微型设备目录和 `TestModel`，AF 集群在生产的 HardwareContext / ModelSpec / CacheConfig 代码路径上运行，不再需要任何原生扩展占位。
