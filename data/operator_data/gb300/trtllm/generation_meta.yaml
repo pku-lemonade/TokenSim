@@ -1,0 +1,124 @@
+schema_version: 1
+latency_unit: us
+dataset_version: aiconfigurator-gb300-trtllm-latest
+device_id: gb300
+backend: trtllm
+framework_version: 1.3.0rc20
+notes: 'Imported from NVIDIA AIConfigurator measured kernel database. Resolved versions:
+  {''gemm'': [''1.3.0rc20''], ''context_attention'': [''1.3.0rc20''], ''generation_attention'':
+  [''1.3.0rc20''], ''moe'': [''1.3.0rc23'', ''1.3.0rc20''], ''moe_wideep'': [''wideep_moe_perf.parquet:1.3.0rc10''],
+  ''ep_all2all'': [''moe_a2a:1.3.0rc11''], ''collective_nccl'': [''2.29.2'', ''2.27''],
+  ''collective_custom'': [''1.3.0rc20'']}. Rows dropped (unsupported dtype/kernel):
+  {}.'
+sources:
+- source_id: aiconfigurator:gb300:gemm:trtllm:1.3.0rc20
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/gb300/gemm/trtllm/1.3.0rc20
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: gb300
+  backend: trtllm:1.3.0rc20
+- source_id: aiconfigurator:gb300:attention:trtllm:1.3.0rc20
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/gb300/attention/trtllm/1.3.0rc20
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: gb300
+  backend: trtllm:1.3.0rc20
+- source_id: aiconfigurator:gb300:moe:trtllm:1.3.0rc23
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/gb300/moe/trtllm/1.3.0rc23
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: gb300
+  backend: trtllm:1.3.0rc23
+- source_id: aiconfigurator:gb300:moe:trtllm:1.3.0rc20
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/gb300/moe/trtllm/1.3.0rc20
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: gb300
+  backend: trtllm:1.3.0rc20
+- source_id: aiconfigurator:gb300:moe:trtllm:1.3.0rc10
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/gb300/moe/trtllm/1.3.0rc10
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: gb300
+  backend: trtllm:1.3.0rc10
+- source_id: aiconfigurator:gb300:comm:trtllm:1.3.0rc11
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/gb300/comm/trtllm/1.3.0rc11
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: gb300
+  backend: trtllm:1.3.0rc11
+- source_id: aiconfigurator:gb300:comm:nccl:2.29.2
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/gb300/comm/nccl/2.29.2
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: gb300
+  backend: nccl:2.29.2
+- source_id: aiconfigurator:gb300:comm:nccl:2.27
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/gb300/comm/nccl/2.27
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: gb300
+  backend: nccl:2.27
+- source_id: aiconfigurator:gb300:comm:trtllm:1.3.0rc20
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/gb300/comm/trtllm/1.3.0rc20
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: gb300
+  backend: trtllm:1.3.0rc20
+calibration: {}
+tables:
+  gemm:
+    rows: 130156
+  context_attention:
+    rows: 69417
+  generation_attention:
+    rows: 50522
+  moe:
+    rows: 184815
+  ep_all2all:
+    rows: 704
+  collective:
+    rows: 428
+aiconfigurator_system: gb300
+aiconfigurator_layout: database
+aiconfigurator_commit: f254959eb89e2f206b8f9a77051644d7c1cbdb89
+resolved_versions:
+  gemm:
+  - 1.3.0rc20
+  context_attention:
+  - 1.3.0rc20
+  generation_attention:
+  - 1.3.0rc20
+  moe:
+  - 1.3.0rc23
+  - 1.3.0rc20
+  moe_wideep:
+  - wideep_moe_perf.parquet:1.3.0rc10
+  ep_all2all:
+  - moe_a2a:1.3.0rc11
+  collective_nccl:
+  - 2.29.2
+  - '2.27'
+  collective_custom:
+  - 1.3.0rc20
+dropped_rows: {}
+dropped_dtypes: {}
+license: Apache-2.0 (NVIDIA AIConfigurator); see data/operator_data/LICENSES.md

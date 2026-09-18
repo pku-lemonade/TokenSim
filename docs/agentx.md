@@ -33,9 +33,9 @@ cache metrics, recomputation, parallelism, MoE, and Mooncake tier metrics.
 
 ## Runtime
 
-The bundled roofline extension requires Python 3.11. The wrapper selects a
-working Python 3.11 environment, including a conda environment named
-`tokensim11`, or honors `TOKENSIM_PYTHON`:
+The operator-table runtime requires Python 3.11. The wrapper selects a working
+Python 3.11 environment, including a conda environment named `tokensim11`, or
+honors `TOKENSIM_PYTHON`:
 
 ```bash
 TOKENSIM_PYTHON=/path/to/python3.11 ./scripts/run_python.sh ./benchmark.py --help

@@ -107,7 +107,7 @@ def get_parallel_stats(engine: LLMEngine) -> dict[str, Any]:
 
 
 def get_cache_capacity_stats(engine: LLMEngine) -> dict[str, int | float]:
-    """Report usable KV capacity once per data-parallel replica."""
+    """Report KV capacity once per data-parallel replica."""
     replica_workers: dict[int, Any] = {}
     for worker in getattr(engine, "workers", []):
         if getattr(worker, "tp_rank", 0) != 0 or getattr(worker, "pp_rank", 0) != 0:
@@ -115,6 +115,7 @@ def get_cache_capacity_stats(engine: LLMEngine) -> dict[str, int | float]:
         replica_workers.setdefault(getattr(worker, "dp_rank", 0), worker)
     if not replica_workers:
         return {}
+
     capacities: list[int] = []
     first_cache = None
     for worker in replica_workers.values():
@@ -123,9 +124,7 @@ def get_cache_capacity_stats(engine: LLMEngine) -> dict[str, int | float]:
         if cache is None or block_manager is None:
             continue
         first_cache = first_cache or cache
-        capacities.append(
-            int(block_manager.num_total_gpu_blocks) * int(cache.block_size)
-        )
+        capacities.append(int(block_manager.num_total_gpu_blocks) * int(cache.block_size))
     if not capacities or first_cache is None:
         return {}
     return {
@@ -133,9 +132,38 @@ def get_cache_capacity_stats(engine: LLMEngine) -> dict[str, int | float]:
         "kv_cache_bytes_per_token_per_rank": int(first_cache.size_per_token),
         "kv_cache_capacity_tokens_per_dp_rank": min(capacities),
         "kv_cache_capacity_tokens_total": sum(capacities),
-        "model_param_size_bytes_per_rank": float(
-            getattr(first_cache, "model_param_size", 0)
-        ),
+        "model_param_size_bytes_per_rank": float(getattr(first_cache, "model_param_size", 0)),
+    }
+
+
+def get_latency_stats(engine: LLMEngine) -> dict[str, Any]:
+    """Provenance of the latency estimates: backend, datasets, match types, missing shapes."""
+    from TokenSim.latency.operator_table import OperatorStats
+
+    aggregate = OperatorStats()
+    descriptions: dict[str, dict[str, Any]] = {}
+    for worker in getattr(engine, "workers", []):
+        backend = getattr(worker, "latency_backend", None)
+        if backend is None:
+            continue
+        stats = getattr(backend, "stats", None)
+        if isinstance(stats, OperatorStats):
+            aggregate = aggregate.aggregate(stats)
+        else:
+            fallback = getattr(backend, "fallback_backend", None)
+            fallback_stats = getattr(fallback, "stats", None)
+            if isinstance(fallback_stats, OperatorStats):
+                aggregate = aggregate.aggregate(fallback_stats)
+        try:
+            description = backend.describe()
+        except Exception:  # pragma: no cover - defensive
+            description = {"backend": type(backend).__name__}
+        device_id = getattr(getattr(worker, "device", None), "device_id", getattr(worker, "hardware", "?"))
+        descriptions.setdefault(str(device_id), description)
+    return {
+        "latency_backends": descriptions,
+        **aggregate.as_dict(),
+        "operator_missing_shapes": aggregate.missing_shape_records()[:200],
     }
 
 
@@ -172,6 +200,15 @@ def get_mooncake_stats(engine: LLMEngine) -> dict[str, Any]:
             seen_stats.add(stats_id)
             aggregate = aggregate.aggregate(stats)
     return aggregate.as_dict()
+
+
+def _flatten_connectors(connector: Any) -> list[Any]:
+    if connector is None:
+        return []
+    result = [connector]
+    for child in getattr(connector, "children", []):
+        result.extend(_flatten_connectors(child))
+    return result
 
 
 def get_agentx_metrics(
@@ -299,6 +336,7 @@ def print_all_stats(
     print_mooncake_stats(engine)
     print_parallel_stats(engine)
     print_moe_stats(engine)
+    print_operator_latency_stats(engine)
     # Print SLO statistics.
     print_slo_stats(duration, g_time)
 
@@ -425,6 +463,24 @@ def print_moe_stats(engine: LLMEngine):
     )
 
 
+def print_operator_latency_stats(engine: LLMEngine):
+    stats = get_latency_stats(engine)
+    backends = stats.get("latency_backends", {})
+    print(
+        "Latency: "
+        + f"backends={ {k: v.get('backend') + ':' + str(v.get('operator_backend')) for k, v in backends.items()} }, "
+        + f"queries={stats.get('operator_query_count', 0)}, "
+        + f"match_types={stats.get('operator_match_type_counts', {})}, "
+        + f"missing_shapes={stats.get('operator_missing_shape_count', 0)}"
+    )
+    components = stats.get("operator_component_seconds", {})
+    if components:
+        print(
+            "Latency breakdown (s): "
+            + ", ".join(f"{name}={value:.4f}" for name, value in components.items())
+        )
+
+
 def print_slo_stats(
     dur: float,
     timing: LLMTime,
@@ -502,6 +558,7 @@ def export_result(
     cache_capacity_stats = get_cache_capacity_stats(engine)
     moe_stats = get_moe_stats(engine)
     mooncake_stats = get_mooncake_stats(engine)
+    latency_stats = get_latency_stats(engine)
 
     result = LLMResult(
         qps=args.qps,
@@ -529,12 +586,7 @@ def export_result(
         **cache_capacity_stats,
         **moe_stats,
         **mooncake_stats,
-        agentx_metrics=get_agentx_metrics(
-            args,
-            requests,
-            duration,
-            num_gpus=len(engine.workers),
-        ),
+        **latency_stats,
     )
 
     if args.results_path == "":
@@ -563,3 +615,10 @@ def export_result(
     result_file = results_path / result_name
     with open(result_file, "w") as f:
         json.dump(result_dict, f, indent=4)
+    missing = latency_stats.get("operator_missing_shapes") or []
+    if missing:
+        # Shapes the tables could not answer: the collection checklist for the
+        # next profiling run on the target device.
+        missing_file = results_path / f"missing_shapes_{args.qps}.json"
+        with open(missing_file, "w") as f:
+            json.dump(missing, f, indent=2)

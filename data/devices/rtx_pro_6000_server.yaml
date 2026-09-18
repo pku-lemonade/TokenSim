@@ -1,0 +1,38 @@
+schema_version: 1
+device_id: rtx_pro_6000_server
+family: nvidia_gpu
+display_name: NVIDIA RTX PRO 6000 Blackwell Server Edition
+aliases: [RTX-PRO-6000, RTX PRO 6000, rtx_pro_6000]
+sources:
+  nvidia-rtx-pro-6000-server-page:
+    grade: A
+    reference: https://www.nvidia.com/en-us/data-center/rtx-pro-6000-blackwell-server-edition/
+    notes: 96 GB GDDR7 with ECC, PCIe Gen5 x16, 600 W, compute capability 12.0. The product page quotes AI TOPS with sparsity; dense tensor figures below come from the upstream system file.
+  aiconfigurator-system-yaml:
+    grade: C
+    reference: https://github.com/ai-dynamo/aiconfigurator/blob/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/rtx_pro_6000_server.yaml
+    notes: >
+      Empirical corrections NVIDIA recorded while validating AIConfigurator against TensorRT-LLM deployments: memory bandwidth efficiency 0.8, 3 us constant memory latency per kernel, 10 us point-to-point latency for collectives, and a runtime memory reserve of 392 MB NCCL buffers plus 3.5 GB framework workspace. Peak tensor throughput (BF16 467.8, FP8/INT8 935.6, FP4 1871.2 TFLOPS dense) and 1.792 TB/s GDDR7 bandwidth were scaled by NVIDIA to the 2430 MHz max SM clock observed on the collection host; NVIDIA's public page lists 1.6 TB/s, so verify before publishing.
+peak_compute:
+  fp16: {value: 467.8e12, source_id: aiconfigurator-system-yaml, grade: C}
+  bf16: {value: 467.8e12, source_id: aiconfigurator-system-yaml, grade: C}
+  fp8: {value: 935.6e12, source_id: aiconfigurator-system-yaml, grade: C}
+  int8: {value: 935.6e12, source_id: aiconfigurator-system-yaml, grade: C}
+  nvfp4: {value: 1871.2e12, source_id: aiconfigurator-system-yaml, grade: C}
+  fp32: {value: 117.0e12, source_id: nvidia-rtx-pro-6000-server-page, grade: B}
+memory:
+  kind: gddr7
+  capacity_bytes: {value: 102641958912, source_id: aiconfigurator-system-yaml, grade: C}    # 97,887 MiB
+  bandwidth_bytes_per_s: {value: 1792.0e9, source_id: aiconfigurator-system-yaml, grade: C}
+  reserved_bytes: {value: 4169138176, source_id: aiconfigurator-system-yaml, grade: C}   # 392 MB NCCL + 3.5 GB runtime reserve
+interconnect:
+  scale_up_link: null
+  host_link: pcie5_x16
+analytical:
+  source_id: aiconfigurator-system-yaml
+  grade: C
+  memory_efficiency: 0.8        # mem_bw_empirical_scaling_factor
+  kernel_launch_us: 3.0         # mem_empirical_constant_latency
+  collective_launch_us: 10.0    # p2p_latency
+step_overhead_us: {value: 0.0, source_id: aiconfigurator-system-yaml, grade: D}
+power: {tdp_w: 600}

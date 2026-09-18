@@ -1,0 +1,159 @@
+schema_version: 1
+latency_unit: us
+dataset_version: aiconfigurator-h100_sxm-sglang-latest
+device_id: h100_sxm
+backend: sglang
+framework_version: 0.5.14
+notes: 'Imported from NVIDIA AIConfigurator measured kernel database. Resolved versions:
+  {''gemm'': [''0.5.14'', ''0.5.6.post2''], ''context_attention'': [''0.5.14''], ''generation_attention'':
+  [''0.5.14''], ''moe'': [''0.5.14'', ''0.5.10''], ''moe_wideep'': [''wideep_generation_moe_perf.parquet:0.5.10'',
+  ''wideep_generation_moe_perf.parquet:0.5.6.post2'', ''wideep_context_moe_perf.parquet:0.5.10'',
+  ''wideep_context_moe_perf.parquet:0.5.6.post2''], ''ep_all2all'': [''wideep_deepep_ll:0.5.12'',
+  ''wideep_deepep_ll:0.5.6.post2'', ''wideep_deepep_normal:0.5.12'', ''wideep_deepep_normal:0.5.6.post2''],
+  ''collective_nccl'': [''2.29.2'', ''2.27.3'', ''2.23''], ''collective_custom'':
+  [''0.5.14'']}. Rows dropped (unsupported dtype/kernel): {''collective'': 69}.'
+sources:
+- source_id: aiconfigurator:h100_sxm:gemm:sglang:0.5.14
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/h100_sxm/gemm/sglang/0.5.14
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: h100_sxm
+  backend: sglang:0.5.14
+- source_id: aiconfigurator:h100_sxm:gemm:sglang:0.5.6.post2
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/h100_sxm/gemm/sglang/0.5.6.post2
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: h100_sxm
+  backend: sglang:0.5.6.post2
+- source_id: aiconfigurator:h100_sxm:attention:sglang:0.5.14
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/h100_sxm/attention/sglang/0.5.14
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: h100_sxm
+  backend: sglang:0.5.14
+- source_id: aiconfigurator:h100_sxm:moe:sglang:0.5.14
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/h100_sxm/moe/sglang/0.5.14
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: h100_sxm
+  backend: sglang:0.5.14
+- source_id: aiconfigurator:h100_sxm:moe:sglang:0.5.10
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/h100_sxm/moe/sglang/0.5.10
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: h100_sxm
+  backend: sglang:0.5.10
+- source_id: aiconfigurator:h100_sxm:moe:sglang:0.5.6.post2
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/h100_sxm/moe/sglang/0.5.6.post2
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: h100_sxm
+  backend: sglang:0.5.6.post2
+- source_id: aiconfigurator:h100_sxm:comm:sglang:0.5.12
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/h100_sxm/comm/sglang/0.5.12
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: h100_sxm
+  backend: sglang:0.5.12
+- source_id: aiconfigurator:h100_sxm:comm:sglang:0.5.6.post2
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/h100_sxm/comm/sglang/0.5.6.post2
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: h100_sxm
+  backend: sglang:0.5.6.post2
+- source_id: aiconfigurator:h100_sxm:comm:nccl:2.29.2
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/h100_sxm/comm/nccl/2.29.2
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: h100_sxm
+  backend: nccl:2.29.2
+- source_id: aiconfigurator:h100_sxm:comm:nccl:2.27.3
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/h100_sxm/comm/nccl/2.27.3
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: h100_sxm
+  backend: nccl:2.27.3
+- source_id: aiconfigurator:h100_sxm:comm:nccl:2.23
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/h100_sxm/comm/nccl/2.23
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: h100_sxm
+  backend: nccl:2.23
+- source_id: aiconfigurator:h100_sxm:comm:sglang:0.5.14
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/h100_sxm/comm/sglang/0.5.14
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: h100_sxm
+  backend: sglang:0.5.14
+calibration: {}
+tables:
+  gemm:
+    rows: 111490
+  context_attention:
+    rows: 35090
+  generation_attention:
+    rows: 40468
+  moe:
+    rows: 137195
+  ep_all2all:
+    rows: 1486
+  collective:
+    rows: 573
+aiconfigurator_system: h100_sxm
+aiconfigurator_layout: database
+aiconfigurator_commit: f254959eb89e2f206b8f9a77051644d7c1cbdb89
+resolved_versions:
+  gemm:
+  - 0.5.14
+  - 0.5.6.post2
+  context_attention:
+  - 0.5.14
+  generation_attention:
+  - 0.5.14
+  moe:
+  - 0.5.14
+  - 0.5.10
+  moe_wideep:
+  - wideep_generation_moe_perf.parquet:0.5.10
+  - wideep_generation_moe_perf.parquet:0.5.6.post2
+  - wideep_context_moe_perf.parquet:0.5.10
+  - wideep_context_moe_perf.parquet:0.5.6.post2
+  ep_all2all:
+  - wideep_deepep_ll:0.5.12
+  - wideep_deepep_ll:0.5.6.post2
+  - wideep_deepep_normal:0.5.12
+  - wideep_deepep_normal:0.5.6.post2
+  collective_nccl:
+  - 2.29.2
+  - 2.27.3
+  - '2.23'
+  collective_custom:
+  - 0.5.14
+dropped_rows:
+  collective: 69
+dropped_dtypes: {}
+license: Apache-2.0 (NVIDIA AIConfigurator); see data/operator_data/LICENSES.md

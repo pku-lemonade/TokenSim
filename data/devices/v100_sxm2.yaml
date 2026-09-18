@@ -1,0 +1,43 @@
+schema_version: 1
+device_id: v100_sxm2
+family: nvidia_gpu
+display_name: NVIDIA V100-SXM2-32GB
+aliases: [V100, V100-SXM2, V100-32GB]
+sources:
+  aiconfigurator-system-yaml:
+    grade: C
+    reference: https://github.com/ai-dynamo/aiconfigurator/blob/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/a100_sxm.yaml
+    notes: >
+      Empirical corrections NVIDIA recorded while validating AIConfigurator against
+      TensorRT-LLM deployments: memory bandwidth efficiency 0.8, 3 us constant memory
+      latency per kernel, 10 us point-to-point latency for collectives, and a runtime
+      memory reserve of 392 MB NCCL buffers plus 3.5 GB framework workspace. Applied from the A100-SXM4-80GB system file; Volta is not in the upstream database and the values are only used by the analytical fallback.
+  nvidia-v100-datasheet:
+    grade: A
+    reference: https://images.nvidia.com/content/technologies/volta/pdf/volta-v100-datasheet-update-us-1165301-r5.pdf
+    notes: 125 TFLOPS tensor FP16, 900 GB/s HBM2, 32 GB, NVLink 300 GB/s bidirectional, 300 W.
+  assumption-gpu-analytical-v1:
+    grade: D
+    reference: docs/operator-latency-model.md#analytical-defaults
+peak_compute:
+  fp16: {value: 125.0e12, source_id: nvidia-v100-datasheet}
+  fp32: {value: 15.7e12, source_id: nvidia-v100-datasheet}
+memory:
+  kind: hbm2
+  capacity_bytes: {value: 34359738368, source_id: nvidia-v100-datasheet}
+  bandwidth_bytes_per_s: {value: 900.0e9, source_id: nvidia-v100-datasheet}
+  reserved_bytes: {value: 4169138176, source_id: aiconfigurator-system-yaml, grade: C}   # 392 MB NCCL + 3.5 GB runtime reserve
+on_chip_memory:
+  capacity_bytes: {value: 6291456, source_id: nvidia-v100-datasheet}
+interconnect:
+  scale_up_link: nvlink2
+  scale_up_ports: 6
+  host_link: pcie3_x16
+analytical:
+  source_id: aiconfigurator-system-yaml
+  grade: C
+  memory_efficiency: 0.8        # mem_bw_empirical_scaling_factor
+  kernel_launch_us: 3.0         # mem_empirical_constant_latency
+  collective_launch_us: 10.0    # p2p_latency
+step_overhead_us: {value: 0.0, source_id: assumption-gpu-analytical-v1, grade: D}
+power: {tdp_w: 300}

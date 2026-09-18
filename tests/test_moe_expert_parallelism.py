@@ -12,54 +12,18 @@ import simpy
 from TokenSim.config.config import CacheConfig, ClusterConfig, ParallelConfig, ParallelRankInfo, WorkerGroupConfig
 from TokenSim.config.psla_config import MetricData, PSLAConfig
 from TokenSim.errors import ConfigurationError, WorkloadValidationError
-from TokenSim.latency import RooflineLatencyBackend
+from TokenSim.latency import OperatorTableLatencyBackend
 from TokenSim.llm.llm_engine import LLMEngine, Task
 from TokenSim.llm.llm_request import Request, g_time, reset_g_time
 from TokenSim.moe import ExpertRouting, build_expert_placement, normalize_expert_histogram
 from benchmark import build_parallel_config, validate_moe_parallel_config
+from tests.hardware_fixtures import moe_test_model, test_device, test_hardware
 from util.request import LLMSource
 from util.results import export_result, get_moe_stats
 from TokenSim.workload.loaders import load_json_pairs_workload
 
-
-class _MoERoofline:
-    def __init__(self) -> None:
-        self.hardwares = {
-            "TestGPU": SimpleNamespace(
-                Name="TestGPU",
-                MM_Card_Num=1,
-                MM_TFLOPS=100,
-                Capacity=1,
-                Nvlink="nvlink-test",
-            )
-        }
-        self.models = {
-            "MoEModel": SimpleNamespace(
-                Name="MoEModel",
-                Nhead=8,
-                Dmodel=128,
-                Nlayer=4,
-                Max_Token=4096,
-                Multi_Query=False,
-                Grouped_Query=False,
-                FFN_Hidden=256,
-            )
-        }
-        self.links = {
-            "nvlink-test": SimpleNamespace(Latency=1e-6, UniBW=100.0),
-            "ethernet-test": SimpleNamespace(Latency=2e-5, UniBW=10.0),
-        }
-
-    def Compute_Timebreakdown_Iteration(
-        self,
-        prefill_len,
-        generation_idx,
-        batch_size,
-        model,
-        hardware,
-        Pipeline_Stage,
-    ):
-        return 0.001, 0.0002
+_DEVICE = test_device("TestGPU", memory_gib=1.0)
+_MOE_MODEL = moe_test_model()
 
 
 def _moe_psla(parallel_config: ParallelConfig | None = None) -> PSLAConfig:
@@ -144,14 +108,13 @@ class MoEConfigTest(unittest.TestCase):
 class MoEPlacementRoutingTest(unittest.TestCase):
     def test_linear_and_round_robin_placement(self):
         moe = _moe_psla().moe_config
-        linear_parallel = ParallelConfig(
-            tensor_parallel_size=2,
-            data_parallel_size=2,
-            enable_expert_parallel=True,
-        )
         linear = build_expert_placement(
             moe,
-            linear_parallel,
+            ParallelConfig(
+                tensor_parallel_size=2,
+                data_parallel_size=2,
+                enable_expert_parallel=True,
+            ),
             total_layers=4,
         )
         rr = build_expert_placement(
@@ -165,14 +128,8 @@ class MoEPlacementRoutingTest(unittest.TestCase):
             total_layers=4,
         )
 
-        self.assertEqual(linear.rank_to_experts, {0: [0, 1], 1: [2, 3]})
-        self.assertEqual(rr.rank_to_experts, {0: [0, 2], 1: [1, 3]})
-        self.assertEqual(
-            linear.experts_for_rank(
-                ParallelRankInfo.from_global_rank(2, linear_parallel)
-            ),
-            [0, 1],
-        )
+        self.assertEqual(linear.rank_to_experts, {0: [0], 1: [1], 2: [2], 3: [3]})
+        self.assertEqual(rr.rank_to_experts, {0: [0], 1: [1], 2: [2], 3: [3]})
         self.assertEqual(linear.pp_stage_to_moe_layers[0], [1, 2])
 
     def test_routing_histogram_deterministic_and_validated(self):
@@ -224,38 +181,37 @@ class MoEPlacementRoutingTest(unittest.TestCase):
 
 class MoEMemoryLatencyIntegrationTest(unittest.TestCase):
     def test_expert_weights_are_sharded_and_kv_bytes_preserved(self):
-        roofline = _MoERoofline()
-        config = ParallelConfig(tensor_parallel_size=2, data_parallel_size=2)
-        moe = _moe_psla().moe_config
-        placement = build_expert_placement(moe, config, total_layers=4)
+        config = ParallelConfig(tensor_parallel_size=2, data_parallel_size=2, enable_expert_parallel=True)
+        model = _MOE_MODEL
+        placement = build_expert_placement(model.moe, config, total_layers=model.num_layers)
         rank0 = ParallelRankInfo.from_global_rank(0, config)
         rank1 = ParallelRankInfo.from_global_rank(1, config)
 
-        cache0 = CacheConfig(16, "TestGPU", "MoEModel", roofline, config, rank0, moe, placement)
-        cache1 = CacheConfig(16, "TestGPU", "MoEModel", roofline, config, rank1, moe, placement)
+        cache0 = CacheConfig(16, _DEVICE, model, config, rank0, placement)
+        cache1 = CacheConfig(16, _DEVICE, model, config, rank1, placement)
 
         self.assertEqual(cache0.size_per_token, cache1.size_per_token)
         self.assertEqual(cache0.local_kv_heads, cache1.local_kv_heads)
         self.assertLess(cache0.model_param_size, cache0.model_param_size_unsharded)
+        # Each EP rank owns one of four experts, so routed expert bytes are a quarter.
+        self.assertEqual(len(placement.experts_for_rank(rank0)), 1)
 
-    def test_latency_records_moe_compute_all2all_and_imbalance(self):
-        roofline = _MoERoofline()
+    def test_latency_records_moe_compute_and_imbalance(self):
         config = ParallelConfig(
             tensor_parallel_size=2,
             data_parallel_size=2,
             enable_expert_parallel=True,
         )
-        moe = _moe_psla().moe_config
-        placement = build_expert_placement(moe, config, total_layers=4)
+        model = _MOE_MODEL
+        placement = build_expert_placement(model.moe, config, total_layers=model.num_layers)
         rank = ParallelRankInfo.from_global_rank(0, config)
-        backend = RooflineLatencyBackend(
-            roofline,
-            "MoEModel",
-            "TestGPU",
-            config,
-            rank,
-            moe_config=moe,
+        backend = OperatorTableLatencyBackend(
+            device=_DEVICE,
+            model=model,
+            parallel_config=config,
+            rank_info=rank,
             expert_placement=placement,
+            fallback="analytical_only",
         )
         req = Request(
             0,
@@ -269,14 +225,18 @@ class MoEMemoryLatencyIntegrationTest(unittest.TestCase):
         stats = backend.moe_stats.as_dict()
 
         self.assertGreater(latency, 0)
+        self.assertEqual(backend.moe_layers_local, 2)
+        self.assertEqual(backend.dense_layers_local, 2)
+        self.assertTrue(backend.ep_enabled)
         self.assertGreater(stats["moe_compute_latency"], 0)
-        self.assertGreater(stats["moe_all2all_latency"], 0)
+        self.assertGreater(stats["moe_straggler_latency"], 0)
         self.assertGreater(stats["moe_expert_load_imbalance_ratio"], 1)
+        self.assertGreater(backend.stats.component_seconds["moe"], 0)
 
     def test_engine_runs_and_exports_moe_metrics(self):
         reset_g_time()
         env = simpy.Environment()
-        roofline = _MoERoofline()
+        hardware = test_hardware(_DEVICE, models=[_MOE_MODEL])
         config = ParallelConfig(
             tensor_parallel_size=2,
             data_parallel_size=2,
@@ -303,11 +263,12 @@ class MoEMemoryLatencyIntegrationTest(unittest.TestCase):
             psla_config=psla,
             cluster_config=cluster,
             parallel_config=config,
-            roofline=roofline,
+            hardware=hardware,
             prefill_worker_pool_type="round_robin",
             decode_worker_pool_type="round_robin",
             max_parallem_sum=8,
             max_occupy_ratio=1,
+            latency_backend_type="analytical",
         )
         requests = [Request(0, 16, 2, block_size=16)]
         env.process(LLMSource(env, engine, requests, qps=1, distribution="burst"))
@@ -328,7 +289,7 @@ class MoEMemoryLatencyIntegrationTest(unittest.TestCase):
 
         self.assertTrue(stats["effective_moe_config"]["is_moe_model"])
         self.assertGreater(stats["moe_compute_latency"], 0)
-        self.assertGreater(stats["moe_all2all_latency"], 0)
+        self.assertGreater(stats["moe_all2all_event_count"], 0)
         with tempfile.TemporaryDirectory() as tmpdir:
             args = argparse.Namespace(
                 qps=1,

@@ -1,0 +1,40 @@
+schema_version: 1
+device_id: l40s
+family: nvidia_gpu
+display_name: NVIDIA L40S
+aliases: [L40S, NVIDIA L40S]
+sources:
+  nvidia-l40s-datasheet:
+    grade: A
+    reference: https://www.nvidia.com/en-us/data-center/l40s/
+    notes: FP16 362.05 TFLOPS dense (733 sparse), FP8 733 TFLOPS, INT8 733 TOPS, TF32 183, FP32 91.6, 48 GB GDDR6 864 GB/s, PCIe Gen4 x16, 350 W, no NVLink.
+  aiconfigurator-system-yaml:
+    grade: C
+    reference: https://github.com/ai-dynamo/aiconfigurator/blob/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/l40s.yaml
+    notes: >
+      Empirical corrections NVIDIA recorded while validating AIConfigurator against TensorRT-LLM deployments: memory bandwidth efficiency 0.8, 3 us constant memory latency per kernel, 10 us point-to-point latency for collectives, and a runtime memory reserve of 392 MB NCCL buffers plus 3.5 GB framework workspace.
+peak_compute:
+  fp16: {value: 362.05e12, source_id: nvidia-l40s-datasheet}
+  bf16: {value: 362.05e12, source_id: nvidia-l40s-datasheet}
+  fp8: {value: 733.0e12, source_id: nvidia-l40s-datasheet}
+  int8: {value: 733.0e12, source_id: nvidia-l40s-datasheet}
+  tf32: {value: 183.0e12, source_id: nvidia-l40s-datasheet}
+  fp32: {value: 91.6e12, source_id: nvidia-l40s-datasheet}
+memory:
+  kind: gddr6
+  capacity_bytes: {value: 51539607552, source_id: nvidia-l40s-datasheet}     # 48 GiB
+  bandwidth_bytes_per_s: {value: 864.0e9, source_id: nvidia-l40s-datasheet}
+  reserved_bytes: {value: 4169138176, source_id: aiconfigurator-system-yaml, grade: C}   # 392 MB NCCL + 3.5 GB runtime reserve
+on_chip_memory:
+  capacity_bytes: {value: 100663296, source_id: nvidia-l40s-datasheet}      # 96 MB L2
+interconnect:
+  scale_up_link: null
+  host_link: pcie4_x16
+analytical:
+  source_id: aiconfigurator-system-yaml
+  grade: C
+  memory_efficiency: 0.8        # mem_bw_empirical_scaling_factor
+  kernel_launch_us: 3.0         # mem_empirical_constant_latency
+  collective_launch_us: 10.0    # p2p_latency
+step_overhead_us: {value: 0.0, source_id: aiconfigurator-system-yaml, grade: D}
+power: {tdp_w: 350}

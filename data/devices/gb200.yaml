@@ -1,0 +1,47 @@
+schema_version: 1
+device_id: gb200
+family: nvidia_gpu
+display_name: NVIDIA GB200 (Grace Blackwell, NVL72)
+aliases: [GB200, GB200-NVL72, NVIDIA GB200]
+sources:
+  nvidia-gb200-nvl72-page:
+    grade: A
+    reference: https://www.nvidia.com/en-us/data-center/gb200-nvl72/
+    notes: >
+      Rack-level totals for 72 GPUs: FP4 1,440 PFLOPS, FP8/FP6 720 PFLOPS, INT8 720 POPS,
+      FP16/BF16 360 PFLOPS, TF32 180 PFLOPS (sparsity convention), FP32 5,760 TFLOPS,
+      up to 13.4 TB HBM3e at 576 TB/s, NVLink 130 TB/s.
+  derived-gb200-per-gpu:
+    grade: C
+    reference: docs/operator-latency-model.md
+    notes: Per-GPU dense = rack sparse total / 72 / 2 (FP4 uses the dense figure). FP16 2.5 PF, FP8 5 PF, NVFP4 10 PF, INT8 5 POPS, FP32 80 TF, 8 TB/s.
+  aiconfigurator-system-yaml:
+    grade: C
+    reference: https://github.com/ai-dynamo/aiconfigurator/blob/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/gb200.yaml
+    notes: >
+      Empirical corrections NVIDIA recorded while validating AIConfigurator against TensorRT-LLM deployments: memory bandwidth efficiency 0.8, 3 us constant memory latency per kernel, 10 us point-to-point latency for collectives, and a runtime memory reserve of 392 MB NCCL buffers plus 3.5 GB framework workspace. Memory capacity 189,471 MiB is the upstream nvidia-smi reading; 4 GPUs per compute tray, 72 per NVLink domain.
+peak_compute:
+  fp16: {value: 2.5e15, source_id: derived-gb200-per-gpu, grade: C}
+  bf16: {value: 2.5e15, source_id: derived-gb200-per-gpu, grade: C}
+  fp8: {value: 5.0e15, source_id: derived-gb200-per-gpu, grade: C}
+  nvfp4: {value: 10.0e15, source_id: derived-gb200-per-gpu, grade: C}
+  int8: {value: 5.0e15, source_id: derived-gb200-per-gpu, grade: C}
+  tf32: {value: 1.25e15, source_id: derived-gb200-per-gpu, grade: C}
+  fp32: {value: 80.0e12, source_id: derived-gb200-per-gpu, grade: C}
+memory:
+  kind: hbm3e
+  capacity_bytes: {value: 198674743296, source_id: aiconfigurator-system-yaml, grade: C}    # 189,471 MiB
+  bandwidth_bytes_per_s: {value: 8000.0e9, source_id: derived-gb200-per-gpu, grade: C}
+  reserved_bytes: {value: 4169138176, source_id: aiconfigurator-system-yaml, grade: C}   # 392 MB NCCL + 3.5 GB runtime reserve
+interconnect:
+  scale_up_link: nvlink5
+  scale_up_ports: 18
+  host_link: pcie5_x16
+analytical:
+  source_id: aiconfigurator-system-yaml
+  grade: C
+  memory_efficiency: 0.8        # mem_bw_empirical_scaling_factor
+  kernel_launch_us: 3.0         # mem_empirical_constant_latency
+  collective_launch_us: 10.0    # p2p_latency
+step_overhead_us: {value: 0.0, source_id: aiconfigurator-system-yaml, grade: D}
+power: {tdp_w: 1200}

@@ -9,6 +9,7 @@ from types import SimpleNamespace
 
 import simpy
 
+from TokenSim.comm.collectives import CollectiveModel
 from TokenSim.config.config import (
     CacheConfig,
     ClusterConfig,
@@ -18,56 +19,49 @@ from TokenSim.config.config import (
     local_kv_heads,
 )
 from TokenSim.config.psla_config import MetricData, PSLAConfig
-from TokenSim.config.cache_config import attach_roofline_model_extensions
 from TokenSim.errors import ConfigurationError
-from TokenSim.latency import RooflineLatencyBackend
+from TokenSim.hardware.topology import TopologyPlacement
+from TokenSim.latency import OperatorTableLatencyBackend
 from TokenSim.llm.llm_engine import LLMEngine, Task
 from TokenSim.llm.llm_request import Request, g_time, reset_g_time
 from TokenSim.parallel import ParallelCommunicator
 from TokenSim.placement import DataParallelWorkerPool, RoundRobinWorkerPool
 from benchmark import build_parallel_config
+from tests.hardware_fixtures import (
+    test_device,
+    test_hardware,
+    test_links,
+    test_model,
+    test_topology,
+)
 from util.request import LLMSource
 from util.results import export_result, get_parallel_stats
 
+_DEVICE = test_device("TestGPU", memory_gib=0.05)
+_MODEL = test_model("TestModel", hidden_size=16, intermediate_size=32, num_layers=4, num_attention_heads=8)
 
-class _ParallelRoofline:
-    def __init__(self) -> None:
-        self.hardwares = {
-            "TestGPU": SimpleNamespace(
-                MM_Card_Num=1,
-                Capacity=0.001,
-                Nvlink="nvlink-test",
-            )
-        }
-        self.models = {
-            "TestModel": SimpleNamespace(
-                Name="TestModel",
-                Nhead=8,
-                Dmodel=16,
-                Nlayer=4,
-                Multi_Query=False,
-                Grouped_Query=False,
-            )
-        }
-        self.links = {
-            "nvlink-test": SimpleNamespace(Latency=1e-6, UniBW=100.0),
-            "ethernet-test": SimpleNamespace(Latency=2e-5, UniBW=10.0),
-        }
-        self.calls = []
 
-    def Compute_Timebreakdown_Iteration(
-        self,
-        prefill_len,
-        generation_idx,
-        batch_size,
-        model,
-        hardware,
-        Pipeline_Stage,
-    ):
-        self.calls.append(
-            (prefill_len, generation_idx, batch_size, model, hardware, Pipeline_Stage)
-        )
-        return 0.001, 0.0002
+def _hardware():
+    return test_hardware(_DEVICE, models=[_MODEL])
+
+
+def _placement(node_size: int = 8, mapping: dict[int, int] | None = None) -> TopologyPlacement:
+    return TopologyPlacement(test_topology(node_size), mapping or {})
+
+
+def _communicator(workers, worker_id, rank, config, placement=None):
+    from TokenSim.hardware.links import LinkCatalog
+
+    placement = placement or _placement()
+    model = CollectiveModel(placement.topology, LinkCatalog(test_links()), family="nvidia_gpu")
+    return ParallelCommunicator(
+        placement=placement,
+        collective_model=model,
+        workers=workers,
+        worker_id=worker_id,
+        rank_info=rank,
+        parallel_config=config,
+    )
 
 
 def _psla(parallel_config: ParallelConfig | None = None) -> PSLAConfig:
@@ -172,190 +166,134 @@ class ParallelConfigTest(unittest.TestCase):
 
 
 class ParallelMemoryTest(unittest.TestCase):
-    def test_compiled_roofline_model_extensions_are_restored(self):
-        roofline = _ParallelRoofline()
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = Path(tmpdir) / "models.json"
-            path.write_text(
-                json.dumps(
-                    {
-                        "models": [
-                            {
-                                "Name": "TestModel",
-                                "KV_Cache_Dim": 16,
-                                "KV_Cache_Dtype_Bytes": 2,
-                                "KV_Cache_Value_Count": 1,
-                                "KV_Cache_Sharded": True,
-                            }
-                        ]
-                    }
-                )
-            )
-            attach_roofline_model_extensions(roofline, path)
-
-        self.assertEqual(roofline.models["TestModel"].KV_Cache_Dim, 16)
-
-    def test_compiled_roofline_model_extensions_are_restored(self):
-        roofline = _ParallelRoofline()
-        with tempfile.TemporaryDirectory() as tmpdir:
-            path = Path(tmpdir) / "models.json"
-            path.write_text(
-                json.dumps(
-                    {
-                        "models": [
-                            {
-                                "Name": "TestModel",
-                                "KV_Cache_Dim": 16,
-                                "KV_Cache_Dtype_Bytes": 2,
-                                "KV_Cache_Value_Count": 1,
-                                "KV_Cache_Sharded": True,
-                            }
-                        ]
-                    }
-                )
-            )
-            attach_roofline_model_extensions(roofline, path)
-
-        self.assertEqual(roofline.models["TestModel"].KV_Cache_Dim, 16)
-
     def test_cache_config_shards_weight_layers_and_kv_heads(self):
-        roofline = _ParallelRoofline()
         config = ParallelConfig(tensor_parallel_size=2, pipeline_parallel_size=2)
         rank = ParallelRankInfo.from_global_rank(3, config)
 
-        cache = CacheConfig(16, "TestGPU", "TestModel", roofline, config, rank)
+        cache = CacheConfig(16, _DEVICE, _MODEL, config, rank)
 
         self.assertEqual(cache.num_layers_per_rank, 2)
         self.assertEqual(cache.local_kv_heads, 4)
+        # 4 local heads x head_dim 2 x (K,V) x fp16 x 2 local layers
         self.assertEqual(cache.size_per_token, 4 * 2 * 2 * 2 * 2)
-        self.assertEqual(cache.model_param_size, cache.model_param_size_unsharded / 4)
+        self.assertAlmostEqual(cache.model_param_size, cache.model_param_size_unsharded / 4)
 
     def test_unsupported_kv_head_divisibility_fails(self):
         with self.assertRaises(ConfigurationError):
             local_kv_heads(3, 2)
 
-    def test_compressed_kv_geometry_is_sharded_across_tp_ranks(self):
-        roofline = _ParallelRoofline()
-        roofline.models["TestModel"].KV_Cache_Dim = 16
-        roofline.models["TestModel"].KV_Cache_Dtype_Bytes = 2
-        roofline.models["TestModel"].KV_Cache_Value_Count = 1
-        roofline.models["TestModel"].KV_Cache_Sharded = True
-        config = ParallelConfig(tensor_parallel_size=2, pipeline_parallel_size=2)
-        rank = ParallelRankInfo.from_global_rank(3, config)
+    def test_reserved_memory_reduces_kv_blocks(self):
+        from TokenSim.hardware.device import DeviceSpec
 
-        cache = CacheConfig(16, "TestGPU", "TestModel", roofline, config, rank)
-
-        self.assertEqual(cache.size_per_token_unsharded, 16 * 2 * 4)
-        self.assertEqual(cache.size_per_token, 8 * 2 * 2)
-
-    def test_explicit_kv_capacity_override_is_block_aligned(self):
-        roofline = _ParallelRoofline()
-        cache = CacheConfig(
-            16,
-            "TestGPU",
-            "TestModel",
-            roofline,
-            ParallelConfig(tensor_parallel_size=2, pipeline_parallel_size=2),
-            ParallelRankInfo(global_rank=0),
-            capacity_tokens_override=1000,
+        plain = CacheConfig(16, _DEVICE, _MODEL)
+        reserved_device = DeviceSpec.simple(
+            "ReservedGPU",
+            family="nvidia_gpu",
+            peak_flops=100e12,
+            memory_capacity_bytes=_DEVICE.memory_capacity_bytes.value,
+            memory_bandwidth_bytes_per_s=1e12,
+            memory_reserved_bytes=_DEVICE.memory_capacity_bytes.value / 2,
         )
+        reserved = CacheConfig(16, reserved_device, _MODEL)
 
-        self.assertEqual(cache.num_gpu_blocks, 62)
+        self.assertLess(reserved.num_gpu_blocks, plain.num_gpu_blocks)
+        self.assertAlmostEqual(reserved.usable_memory_bytes, plain.usable_memory_bytes / 2)
+        self.assertEqual(reserved.to_dict()["reserved_bytes"], reserved_device.memory_reserved_bytes.value)
+
+    def test_kv_heads_replicate_when_fewer_than_tp(self):
+        self.assertEqual(local_kv_heads(1, 4), 1)
+        self.assertEqual(local_kv_heads(8, 4), 2)
 
 
 class ParallelLatencyTest(unittest.TestCase):
-    def test_roofline_uses_parallel_config_and_records_sync_events(self):
-        roofline = _ParallelRoofline()
+    def test_backend_records_tp_and_pp_sync_events_across_topology_levels(self):
         config = ParallelConfig(tensor_parallel_size=2, pipeline_parallel_size=2)
         rank = ParallelRankInfo.from_global_rank(0, config)
         workers = [
-            SimpleNamespace(
-                id=0,
-                network="net1",
-                nettype="ethernet-test",
-                hardware="TestGPU",
-                dp_rank=0,
-                tp_rank=0,
-                pp_rank=0,
-            ),
-            SimpleNamespace(
-                id=1,
-                network="net2",
-                nettype="ethernet-test",
-                hardware="TestGPU",
-                dp_rank=0,
-                tp_rank=1,
-                pp_rank=0,
-            ),
-            SimpleNamespace(
-                id=2,
-                network="net2",
-                nettype="ethernet-test",
-                hardware="TestGPU",
-                dp_rank=0,
-                tp_rank=0,
-                pp_rank=1,
-            ),
+            SimpleNamespace(id=0, dp_rank=0, tp_rank=0, pp_rank=0),
+            SimpleNamespace(id=1, dp_rank=0, tp_rank=1, pp_rank=0),
+            SimpleNamespace(id=2, dp_rank=0, tp_rank=0, pp_rank=1),
         ]
-        communicator = ParallelCommunicator(
-            roofline=roofline,
-            workers=workers,
-            worker_id=0,
-            rank_info=rank,
+        # worker 0 and 1 share a node; worker 2 sits on another node
+        placement = _placement(node_size=2, mapping={0: 0, 1: 1, 2: 2})
+        communicator = _communicator(workers, 0, rank, config, placement)
+        backend = OperatorTableLatencyBackend(
+            device=_DEVICE,
+            model=_MODEL,
             parallel_config=config,
-            hardware="TestGPU",
-        )
-        backend = RooflineLatencyBackend(
-            roofline,
-            "TestModel",
-            "TestGPU",
-            config,
-            rank,
-            communicator,
+            rank_info=rank,
+            communicator=communicator,
+            fallback="analytical_only",
         )
         request = Request(0, prefill_len=16, decode_len=1, block_size=16)
 
-        backend.estimate_step_latency([request])
+        latency = backend.estimate_step_latency([request])
 
-        self.assertTrue(all(call[-1] == 2 for call in roofline.calls))
-        self.assertTrue(
-            all("tokensim_parallel_tp2_pp2" in call[-2] for call in roofline.calls)
-        )
-        self.assertEqual(
-            roofline.hardwares["TestGPU__tokensim_parallel_tp2_pp2"].MM_Card_Num,
-            2,
-        )
-        self.assertEqual(communicator.stats.roofline_conversion_count, 1)
-        self.assertEqual(communicator.stats.sync_event_count, 3)
+        self.assertGreater(latency, 0)
+        self.assertEqual(backend.layers_local, 2)
+        self.assertEqual(communicator.stats.tp_shard_event_count, 1)
+        self.assertEqual(communicator.stats.sync_event_count, 2)
         self.assertGreater(communicator.stats.tp_collective_latency, 0)
         self.assertGreater(communicator.stats.pp_transfer_latency, 0)
         self.assertEqual(
             communicator.stats.link_type_counts,
-            {"network": communicator.stats.sync_event_count},
+            {"node": 1, "cluster": 1},
         )
+        self.assertEqual(backend.describe()["fallback"], "analytical_only")
+        self.assertEqual(backend.stats.match_type_counts["analytical"], sum(backend.stats.match_type_counts.values()))
 
-    def test_tensor_parallel_converts_projection_and_attention_compute(self):
-        baseline_roofline = _ParallelRoofline()
-        tp_roofline = _ParallelRoofline()
+    def test_tensor_parallel_shards_compute(self):
         request = Request(0, prefill_len=16, decode_len=1, block_size=16)
 
-        baseline = RooflineLatencyBackend(
-            baseline_roofline,
-            "TestModel",
-            "TestGPU",
-            ParallelConfig(),
+        baseline = OperatorTableLatencyBackend(
+            device=_DEVICE, model=_MODEL, parallel_config=ParallelConfig(), fallback="analytical_only"
         )
-        tp_backend = RooflineLatencyBackend(
-            tp_roofline,
-            "TestModel",
-            "TestGPU",
-            ParallelConfig(tensor_parallel_size=2),
+        tp_backend = OperatorTableLatencyBackend(
+            device=_DEVICE,
+            model=_MODEL,
+            parallel_config=ParallelConfig(tensor_parallel_size=2),
+            fallback="analytical_only",
         )
 
         baseline_latency = baseline.estimate_step_latency([request])
         tp_latency = tp_backend.estimate_step_latency([request])
 
+        # Without a communicator no all-reduce cost is added, so the TP shard
+        # must be strictly cheaper than the unsharded model.
         self.assertLess(tp_latency, baseline_latency)
+        self.assertEqual(tp_backend.heads_local, 4)
+        self.assertEqual(tp_backend.inter_local, 16)
+
+    def test_ep_all2all_uses_moe_shape_and_records_event(self):
+        config = ParallelConfig(tensor_parallel_size=1, data_parallel_size=4, enable_expert_parallel=True, all2all_backend="deepep_low_latency")
+        rank = ParallelRankInfo.from_global_rank(0, config)
+        workers = [SimpleNamespace(id=i, dp_rank=i, tp_rank=0, pp_rank=0) for i in range(4)]
+        communicator = _communicator(workers, 0, rank, config, _placement(node_size=4))
+
+        latency = communicator.estimate_ep_all2all(0, count=2, num_tokens=16, hidden_size=4096, top_k=2, num_experts=8)
+        plain = communicator.estimate_ep_all2all(16 * 2 * 4096 * 2, count=1)
+
+        self.assertGreater(latency, 0)
+        self.assertEqual(communicator.stats.sync_event_count, 2)
+        self.assertGreater(communicator.stats.ep_all2all_latency, 0)
+        # deepep_low_latency scales the analytical all-to-all by 0.5 per phase, two phases per layer
+        self.assertAlmostEqual(latency, 2 * 2 * 0.5 * plain)
+
+    def test_collective_cost_grows_with_group_size_and_topology_span(self):
+        from TokenSim.comm.collectives import CollectiveQuery
+        from TokenSim.hardware.links import LinkCatalog
+
+        topology = test_topology(node_size=4)
+        model = CollectiveModel(topology, LinkCatalog(test_links()), family="nvidia_gpu")
+        message = 1 << 20
+        intra = model.estimate(CollectiveQuery("all_reduce", message, topology.group_layout([0, 1, 2, 3])))
+        inter = model.estimate(CollectiveQuery("all_reduce", message, topology.group_layout([0, 1, 2, 3, 4, 5, 6, 7])))
+        pair = model.estimate(CollectiveQuery("all_reduce", message, topology.group_layout([0, 1])))
+
+        self.assertLess(pair.latency_us, intra.latency_us)
+        self.assertLess(intra.latency_us, inter.latency_us)
+        self.assertEqual([level.level for level in inter.levels], ["node", "cluster"])
+        self.assertEqual(inter.match_type, "analytical")
 
 
 class DataParallelPlacementTest(unittest.TestCase):
@@ -379,7 +317,7 @@ class ParallelIntegrationTest(unittest.TestCase):
     def test_parallel_engine_runs_and_exports_metrics(self):
         reset_g_time()
         env = simpy.Environment()
-        roofline = _ParallelRoofline()
+        hardware = _hardware()
         config = ParallelConfig(tensor_parallel_size=2, pipeline_parallel_size=2)
         cluster = ClusterConfig(
             num_workers=4,
@@ -401,11 +339,12 @@ class ParallelIntegrationTest(unittest.TestCase):
             psla_config=_psla(),
             cluster_config=cluster,
             parallel_config=config,
-            roofline=roofline,
+            hardware=hardware,
             prefill_worker_pool_type="round_robin",
             decode_worker_pool_type="round_robin",
             max_parallem_sum=8,
             max_occupy_ratio=1,
+            latency_backend_type="analytical",
         )
         requests = [Request(0, 16, 2, block_size=16)]
         env.process(LLMSource(env, engine, requests, qps=1, distribution="burst"))
@@ -426,7 +365,8 @@ class ParallelIntegrationTest(unittest.TestCase):
 
         self.assertEqual(stats["parallel_expected_rank_count"], 4)
         self.assertEqual(stats["parallel_actual_rank_count"], 4)
-        self.assertGreaterEqual(stats["parallel_sync_event_count"], 3)
+        self.assertGreaterEqual(stats["parallel_sync_event_count"], 2)
+        self.assertGreater(stats["parallel_tp_collective_latency"], 0)
         with tempfile.TemporaryDirectory() as tmpdir:
             args = argparse.Namespace(
                 qps=1,
@@ -450,7 +390,9 @@ class ParallelIntegrationTest(unittest.TestCase):
             result = json.loads((Path(tmpdir) / "result_1.json").read_text())
         self.assertEqual(result["parallel_config"]["tensor_parallel_size"], 2)
         self.assertEqual(result["parallel_config"]["pipeline_parallel_size"], 2)
-        self.assertGreaterEqual(result["parallel_sync_event_count"], 3)
+        self.assertGreaterEqual(result["parallel_sync_event_count"], 2)
+        self.assertEqual(result["latency_backends"]["TestGPU"]["backend"], "operator_table")
+        self.assertGreater(result["operator_query_count"], 0)
 
 
 if __name__ == "__main__":

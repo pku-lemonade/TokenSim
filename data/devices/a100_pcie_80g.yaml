@@ -1,0 +1,39 @@
+schema_version: 1
+device_id: a100_pcie_80g
+family: nvidia_gpu
+display_name: NVIDIA A100-PCIE-80GB
+aliases: [A100-PCIe, A100-PCIE-80GB, a100_pcie]
+sources:
+  nvidia-a100-product-page:
+    grade: A
+    reference: https://www.nvidia.com/en-us/data-center/a100/
+    notes: A100 80GB PCIe column - 312 TFLOPS FP16 dense, 1,935 GB/s HBM2e, 300 W, PCIe Gen4 64 GB/s; NVLink bridge only joins GPU pairs.
+  aiconfigurator-system-yaml:
+    grade: C
+    reference: https://github.com/ai-dynamo/aiconfigurator/blob/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/a100_pcie.yaml
+    notes: >
+      Empirical corrections NVIDIA recorded while validating AIConfigurator against TensorRT-LLM deployments: memory bandwidth efficiency 0.8, 3 us constant memory latency per kernel, 10 us point-to-point latency for collectives, and a runtime memory reserve of 392 MB NCCL buffers plus 3.5 GB framework workspace. Upstream database has no measured tables for this system (empty data directory).
+peak_compute:
+  fp16: {value: 312.0e12, source_id: nvidia-a100-product-page}
+  bf16: {value: 312.0e12, source_id: nvidia-a100-product-page}
+  tf32: {value: 156.0e12, source_id: nvidia-a100-product-page}
+  int8: {value: 624.0e12, source_id: nvidia-a100-product-page}
+  fp32: {value: 19.5e12, source_id: nvidia-a100-product-page}
+memory:
+  kind: hbm2e
+  capacity_bytes: {value: 85899345920, source_id: nvidia-a100-product-page}
+  bandwidth_bytes_per_s: {value: 1935.0e9, source_id: nvidia-a100-product-page}
+  reserved_bytes: {value: 4169138176, source_id: aiconfigurator-system-yaml, grade: C}   # 392 MB NCCL + 3.5 GB runtime reserve
+on_chip_memory:
+  capacity_bytes: {value: 41943040, source_id: nvidia-a100-product-page}
+interconnect:
+  scale_up_link: null             # NVLink bridge covers pairs only; peers talk over PCIe
+  host_link: pcie4_x16
+analytical:
+  source_id: aiconfigurator-system-yaml
+  grade: C
+  memory_efficiency: 0.8        # mem_bw_empirical_scaling_factor
+  kernel_launch_us: 3.0         # mem_empirical_constant_latency
+  collective_launch_us: 10.0    # p2p_latency
+step_overhead_us: {value: 0.0, source_id: aiconfigurator-system-yaml, grade: D}
+power: {tdp_w: 300}

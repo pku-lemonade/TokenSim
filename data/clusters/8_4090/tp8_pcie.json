@@ -1,0 +1,20 @@
+{
+    "num_workers": 8,
+    "topology": "pcie_8x_4090",
+    "networks": {
+        "netw1": "ethernet100Gb"
+    },
+    "parallel_config": {
+        "tensor_parallel_size": 8,
+        "pipeline_parallel_size": 1,
+        "data_parallel_size": 1
+    },
+    "worker_groups": [
+        {
+            "role": "hybrid",
+            "hardware": "rtx_4090",
+            "num_workers": 8,
+            "network": "netw1"
+        }
+    ]
+}

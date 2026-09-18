@@ -21,9 +21,7 @@ class ExpertPlacement:
         return self.rank_to_experts.get(self.ep_rank_for_rank_info(rank_info), [])
 
     def ep_rank_for_rank_info(self, rank_info: ParallelRankInfo) -> int:
-        # Data-parallel groups are model replicas. Expert placement repeats in
-        # each replica, so EP rank is local to the TP/EP group.
-        return rank_info.tp_rank
+        return rank_info.dp_rank * self.tensor_parallel_size + rank_info.tp_rank
 
     def moe_layers_for_pp_rank(self, pp_rank: int) -> list[int]:
         return self.pp_stage_to_moe_layers.get(pp_rank, [])
@@ -81,7 +79,7 @@ def build_expert_placement(
 def effective_ep_rank_count(parallel_config: ParallelConfig) -> int:
     if not parallel_config.enable_expert_parallel:
         return 1
-    return parallel_config.tensor_parallel_size
+    return parallel_config.tensor_parallel_size * parallel_config.data_parallel_size
 
 
 def rank_ep_rank(
@@ -91,7 +89,7 @@ def rank_ep_rank(
     tp_size = parallel_config.tensor_parallel_size if parallel_config else None
     if tp_size is None:
         raise ConfigurationError("parallel_config is required to compute EP rank")
-    return rank_info.tp_rank
+    return rank_info.dp_rank * tp_size + rank_info.tp_rank
 
 
 def _assign_experts(

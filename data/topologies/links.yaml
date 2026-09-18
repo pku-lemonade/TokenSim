@@ -1,0 +1,148 @@
+schema_version: 1
+# Link classes referenced by device specs and topology levels.
+# bandwidth_per_direction_bytes_per_s is the per-endpoint injection bandwidth in
+# one direction. latency_us is the hardware hop latency; software launch cost of
+# collectives is modelled separately (see comm/collectives.py).
+# half_bandwidth_bytes is the message size at which streaming reaches half of
+# peak and collective_efficiency the fraction of peak a large collective
+# attains (nccl-tests busbw / peak). Both are grade-D defaults eyeballed from
+# the AIConfigurator nccl tables; re-fit them with `operator_data.cli calibrate`.
+links:
+  nvlink2:
+    display_name: NVLink 2 via NVSwitch (V100 DGX-2) or hybrid cube mesh, aggregate per GPU
+    bandwidth_per_direction_bytes_per_s: 150.0e9
+    latency_us: 1.5
+    duplex: full
+    half_bandwidth_bytes: 4194304
+    collective_efficiency: 0.45
+    source_id: nvidia-v100-datasheet
+    notes: 300 GB/s bidirectional total across 6 links.
+  pcie3_x16:
+    display_name: PCIe 3.0 x16
+    bandwidth_per_direction_bytes_per_s: 16.0e9
+    latency_us: 3.0
+    duplex: full
+    half_bandwidth_bytes: 1048576
+    collective_efficiency: 0.70
+    source_id: pcie-sig-spec
+  nvlink3:
+    display_name: NVLink 3 via NVSwitch (A100), aggregate per GPU
+    bandwidth_per_direction_bytes_per_s: 300.0e9
+    latency_us: 1.0
+    duplex: full
+    half_bandwidth_bytes: 4194304
+    collective_efficiency: 0.45
+    source_id: nvidia-a100-product-page
+    notes: 600 GB/s bidirectional total across 12 links.
+  nvlink4:
+    display_name: NVLink 4 via NVSwitch (H100/H200/H20), aggregate per GPU
+    bandwidth_per_direction_bytes_per_s: 450.0e9
+    latency_us: 1.0
+    duplex: full
+    half_bandwidth_bytes: 4194304
+    collective_efficiency: 0.5
+    source_id: nvidia-h100-datasheet
+    notes: 900 GB/s bidirectional total across 18 links.
+  nvlink5:
+    display_name: NVLink 5 via NVSwitch (GB200/GB300 NVL72), aggregate per GPU
+    bandwidth_per_direction_bytes_per_s: 900.0e9
+    latency_us: 1.0
+    duplex: full
+    half_bandwidth_bytes: 4194304
+    collective_efficiency: 0.4
+    source_id: nvidia-gb300-nvl72-page
+    notes: 1.8 TB/s bidirectional per GPU; 72-GPU single NVLink domain.
+  pcie4_x16:
+    display_name: PCIe 4.0 x16
+    bandwidth_per_direction_bytes_per_s: 32.0e9
+    latency_us: 3.0
+    duplex: full
+    half_bandwidth_bytes: 1048576
+    collective_efficiency: 0.7
+    source_id: pcie-sig-spec
+    notes: 64 GB/s bidirectional; GPU-to-GPU traffic through host root complex or PCIe switch.
+  pcie5_x16:
+    display_name: PCIe 5.0 x16
+    bandwidth_per_direction_bytes_per_s: 64.0e9
+    latency_us: 3.0
+    duplex: full
+    half_bandwidth_bytes: 1048576
+    collective_efficiency: 0.7
+    source_id: pcie-sig-spec
+  pcie5_x8:
+    display_name: PCIe 5.0 x8
+    bandwidth_per_direction_bytes_per_s: 32.0e9
+    latency_us: 3.0
+    duplex: full
+    half_bandwidth_bytes: 1048576
+    collective_efficiency: 0.70
+    source_id: pcie-sig-spec
+  pcie6_x16:
+    display_name: PCIe 6.0 x16
+    bandwidth_per_direction_bytes_per_s: 128.0e9
+    latency_us: 3.0
+    duplex: full
+    half_bandwidth_bytes: 1048576
+    collective_efficiency: 0.7
+    source_id: pcie-sig-spec
+  ib_hdr200:
+    display_name: InfiniBand HDR 200 Gb/s NIC
+    bandwidth_per_direction_bytes_per_s: 25.0e9
+    latency_us: 4.0
+    duplex: full
+    half_bandwidth_bytes: 8388608
+    collective_efficiency: 0.85
+    source_id: nvidia-connectx-6-datasheet
+  ib_ndr400:
+    display_name: InfiniBand NDR 400 Gb/s NIC
+    bandwidth_per_direction_bytes_per_s: 50.0e9
+    latency_us: 3.0
+    duplex: full
+    half_bandwidth_bytes: 8388608
+    collective_efficiency: 0.85
+    source_id: nvidia-connectx-7-datasheet
+  ethernet100Gb:
+    display_name: 100 GbE RoCE NIC
+    bandwidth_per_direction_bytes_per_s: 12.5e9
+    latency_us: 10.0
+    duplex: full
+    half_bandwidth_bytes: 8388608
+    collective_efficiency: 0.8
+    source_id: legacy-tokensim-links
+    notes: Name kept for compatibility with existing cluster JSON files.
+  ethernet400Gb:
+    display_name: 400 GbE RoCE NIC
+    bandwidth_per_direction_bytes_per_s: 50.0e9
+    latency_us: 6.0
+    duplex: full
+    half_bandwidth_bytes: 8388608
+    collective_efficiency: 0.8
+    source_id: assumption-network-v1
+    grade: D
+  ethernet800Gb:
+    display_name: 800 Gb/s NIC (ConnectX-8 SuperNIC)
+    bandwidth_per_direction_bytes_per_s: 100.0e9
+    latency_us: 5.0
+    duplex: full
+    half_bandwidth_bytes: 8388608
+    collective_efficiency: 0.8
+    source_id: nvidia-gb300-nvl72-page
+    notes: GB300 NVL72 provides 800 Gb/s per GPU through ConnectX-8.
+  groq_c2c_25g:
+    display_name: Groq RealScale C2C link, 4 lanes x 25 Gbps
+    bandwidth_per_direction_bytes_per_s: 12.5e9
+    latency_us: 0.5
+    duplex: full
+    half_bandwidth_bytes: 65536
+    collective_efficiency: 0.95
+    source_id: isca2022-realscale
+    notes: Software-scheduled deterministic link; per-link, per-direction. Latency is a project assumption.
+  groq_c2c_30g:
+    display_name: Groq RealScale C2C link, 4 lanes x 30 Gbps (product maximum)
+    bandwidth_per_direction_bytes_per_s: 15.0e9
+    latency_us: 0.5
+    duplex: full
+    half_bandwidth_bytes: 65536
+    collective_efficiency: 0.95
+    source_id: isca2022-realscale
+    grade: B

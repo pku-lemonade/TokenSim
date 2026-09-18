@@ -13,3 +13,6 @@ dataset/agentx/
 
 .codex
 .claude
+
+# generated experiment artifacts
+*.egg-info

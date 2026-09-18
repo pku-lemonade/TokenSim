@@ -1,204 +1,124 @@
-import json
-from pathlib import Path
+from __future__ import annotations
+
 from typing import Any
 
-from TransformerRoofline import TransformerRoofline
-
 from TokenSim.config.constants import _GB
+from TokenSim.config.model_config import ModelSpec
 from TokenSim.config.parallel_config import ParallelConfig, ParallelRankInfo
 from TokenSim.errors import ConfigurationError
-from TokenSim.moe.config import MoEModelConfig
+from TokenSim.hardware.device import DeviceSpec, dtype_bytes
 from TokenSim.moe.placement import ExpertPlacement
 
-
-_MODEL_EXTENSION_FIELDS = (
-    "KV_Cache_Dim",
-    "KV_Cache_Dtype_Bytes",
-    "KV_Cache_Value_Count",
-    "KV_Cache_Sharded",
-)
-
-
-def attach_roofline_model_extensions(
-    roofline: TransformerRoofline,
-    hardware_models_path: str | Path,
-) -> None:
-    """Restore model metadata ignored by the compiled roofline JSON schema."""
-    payload = json.loads(Path(hardware_models_path).read_text())
-    for model_data in payload.get("models", []):
-        model = roofline.models.get(model_data.get("Name"))
-        if model is None:
-            continue
-        for field_name in _MODEL_EXTENSION_FIELDS:
-            if field_name in model_data:
-                setattr(model, field_name, model_data[field_name])
+# Host memory is modelled as a bounded swap space; see the note in __init__.
+_HOST_SWAP_BYTES = 32768 * _GB
 
 
 class CacheConfig:
+    """Per-rank memory accounting: KV bytes per token and available KV blocks."""
+
     def __init__(
         self,
         block_size: int,
-        hardware: str,
-        model: str,
-        roofline: TransformerRoofline,
+        device: DeviceSpec,
+        model: ModelSpec,
         parallel_config: ParallelConfig | None = None,
         rank_info: ParallelRankInfo | None = None,
-        moe_config: MoEModelConfig | None = None,
         expert_placement: ExpertPlacement | None = None,
-        capacity_tokens_override: int | None = None,
+        usable_memory_fraction: float = 1.0,
+        kv_cache_capacity_tokens_per_dp_rank: int | None = None,
     ):
-        # block size
         self.block_size: int = block_size
-        self.model: str = model
+        self.device = device
+        self.model_spec = model
+        self.model: str = model.model_id
         self.parallel_config = parallel_config or ParallelConfig.default()
         self.rank_info = rank_info or ParallelRankInfo()
-        self.moe_config = moe_config or MoEModelConfig()
         self.expert_placement = expert_placement
-        hardware_conf = roofline.hardwares[hardware]
-        model_conf = roofline.models[model]
-        self.total_num_layers = model_conf.Nlayer
+        self.moe_config = model.moe
+
+        self.total_num_layers = model.num_layers
         self.num_layers_per_rank = stage_layer_count(
-            model_conf.Nlayer,
+            model.num_layers,
             self.parallel_config.pipeline_parallel_size,
             self.rank_info.pp_rank,
         )
-        self.num_kv_heads = num_kv_heads(model_conf)
+        self.num_kv_heads = model.num_key_value_heads
         self.local_kv_heads = local_kv_heads(
             self.num_kv_heads,
             self.parallel_config.tensor_parallel_size,
         )
-        self.head_dim = model_conf.Dmodel / model_conf.Nhead
-        compressed_kv_dim = getattr(model_conf, "KV_Cache_Dim", None)
-        if compressed_kv_dim is None:
-            self.size_per_token_unsharded = (
-                model_conf.Dmodel * 2 * 2 * model_conf.Nlayer
-            )
-            self.size_per_token = int(
-                self.local_kv_heads * self.head_dim * 2 * 2 * self.num_layers_per_rank
-            )
-        else:
-            compressed_kv_dim = int(compressed_kv_dim)
-            dtype_bytes = int(getattr(model_conf, "KV_Cache_Dtype_Bytes", 2))
-            value_count = int(getattr(model_conf, "KV_Cache_Value_Count", 1))
-            sharded = bool(getattr(model_conf, "KV_Cache_Sharded", True))
-            if compressed_kv_dim <= 0 or dtype_bytes <= 0 or value_count <= 0:
-                raise ConfigurationError(
-                    "compressed KV cache dimensions and element sizes must be positive"
-                )
-            if sharded:
-                tp_size = self.parallel_config.tensor_parallel_size
-                if compressed_kv_dim % tp_size != 0:
-                    raise ConfigurationError(
-                        f"KV_Cache_Dim={compressed_kv_dim} is not divisible by "
-                        f"tensor_parallel_size {tp_size}"
-                    )
-                local_kv_dim = compressed_kv_dim // tp_size
-            else:
-                local_kv_dim = compressed_kv_dim
-            self.size_per_token_unsharded = (
-                compressed_kv_dim * dtype_bytes * value_count * model_conf.Nlayer
-            )
-            self.size_per_token = int(
-                local_kv_dim * dtype_bytes * value_count * self.num_layers_per_rank
-            )
-
-        self.model_param_size_unsharded = self._estimate_unsharded_model_params(
-            model_conf,
+        self.head_dim = model.head_dim
+        kv_bytes = dtype_bytes(model.kv_cache_dtype)
+        self.size_per_token_unsharded = int(
+            2 * model.kv_dim * kv_bytes * model.num_layers
         )
-        self.model_param_size = self._estimate_rank_model_params(model_conf)
-        # num blocks
-        # FIXME: actual host memory size can reach terrabytes, much larger than accelerator memory
-        # however in our application, host memory serves as swap space, and leveraging large swap space is not desirable for performance
-        #  so the number is set small so out simulation exits early
-        gpu_memory_bytes = hardware_conf.MM_Card_Num * hardware_conf.Capacity * _GB
-        if gpu_memory_bytes <= self.model_param_size:
+        self.size_per_token = int(
+            self.local_kv_heads * self.head_dim * 2 * kv_bytes * self.num_layers_per_rank
+        )
+
+        weight_bytes = dtype_bytes(model.dtype)
+        self.model_param_size_unsharded = model.total_params() * weight_bytes
+        self.model_param_size = self._rank_params() * weight_bytes
+
+        # Runtime reserves (NCCL buffers, CUDA context, framework workspace)
+        # come off the top before the optional usable fraction is applied.
+        self.reserved_bytes = device.memory_reserved_bytes.value
+        capacity = max(0.0, device.memory_capacity_bytes.value - self.reserved_bytes) * usable_memory_fraction
+        self.usable_memory_bytes = capacity
+        if capacity <= self.model_param_size:
             raise ConfigurationError(
-                f"model {model!r} does not fit on hardware {hardware!r}: "
-                + f"model_param_size={self.model_param_size}, gpu_memory={gpu_memory_bytes}"
+                f"model {model.model_id!r} does not fit on device {device.device_id!r}: "
+                + f"model_param_size={self.model_param_size:.3e}, usable_memory={capacity:.3e} "
+                + f"(capacity={device.memory_capacity_bytes.value:.3e}, reserved={self.reserved_bytes:.3e})"
             )
+        # FIXME: actual host memory can reach terabytes; it only serves as swap
+        # space here, and a huge swap hides preemption effects, so it is bounded.
         self.num_cpu_blocks: int = int(
-            min(32768, 32768 * _GB / self.size_per_token // self.block_size)
+            min(32768, _HOST_SWAP_BYTES / self.size_per_token // self.block_size)
         )
-        self.num_gpu_blocks: int = (
-            (gpu_memory_bytes - self.model_param_size)
-            / self.size_per_token
-            // self.block_size
+        self.num_gpu_blocks: int = int(
+            (capacity - self.model_param_size) / self.size_per_token // self.block_size
         )
-        if capacity_tokens_override is not None:
-            if capacity_tokens_override <= 0:
+        if kv_cache_capacity_tokens_per_dp_rank is not None:
+            if kv_cache_capacity_tokens_per_dp_rank <= 0:
                 raise ConfigurationError("KV cache capacity override must be positive")
-            self.num_gpu_blocks = capacity_tokens_override // self.block_size
-
-    def _estimate_unsharded_model_params(self, model_conf) -> float:
-        if not self.moe_config.enabled:
-            return (
-                12 * model_conf.Nlayer * model_conf.Dmodel * model_conf.Dmodel
-                + 50000 * model_conf.Dmodel
-            ) * 2
-        dense_layers = model_conf.Nlayer - self.moe_config.num_moe_layers
-        hidden = self.moe_config.hidden_size or model_conf.Dmodel
-        dense_ffn = self.moe_config.intermediate_size or getattr(
-            model_conf,
-            "FFN_Hidden",
-            4 * hidden,
-        )
-        moe_ffn = self.moe_config.moe_intermediate_size or dense_ffn
-        dense_params = (
-            4 * model_conf.Nlayer * hidden * hidden
-            + 2 * dense_layers * hidden * dense_ffn
-            + 50000 * hidden
-        )
-        routed_expert_params = (
-            2
-            * self.moe_config.num_moe_layers
-            * self.moe_config.num_experts
-            * hidden
-            * moe_ffn
-        )
-        shared_expert_params = (
-            2
-            * self.moe_config.num_moe_layers
-            * self.moe_config.num_shared_experts
-            * hidden
-            * moe_ffn
-        )
-        return (dense_params + routed_expert_params + shared_expert_params) * 2
-
-    def _estimate_rank_model_params(self, model_conf) -> float:
-        if not self.moe_config.enabled or self.expert_placement is None:
-            return self.model_param_size_unsharded / (
-                self.parallel_config.tensor_parallel_size
-                * self.parallel_config.pipeline_parallel_size
+            self.num_gpu_blocks = (
+                kv_cache_capacity_tokens_per_dp_rank // self.block_size
             )
-        hidden = self.moe_config.hidden_size or model_conf.Dmodel
-        dense_ffn = self.moe_config.intermediate_size or getattr(
-            model_conf,
-            "FFN_Hidden",
-            4 * hidden,
-        )
-        moe_ffn = self.moe_config.moe_intermediate_size or dense_ffn
+
+    # -- parameter sharding ----------------------------------------------------
+
+    def _rank_params(self) -> float:
+        model = self.model_spec
+        tp = self.parallel_config.tensor_parallel_size
+        pp = self.parallel_config.pipeline_parallel_size
+        if not model.is_moe or self.expert_placement is None:
+            return model.total_params() / (tp * pp)
         owned_moe_layers = len(
             self.expert_placement.moe_layers_for_pp_rank(self.rank_info.pp_rank)
         )
-        total_moe_layers_in_stage = owned_moe_layers
-        dense_layers_in_stage = max(
-            0, self.num_layers_per_rank - total_moe_layers_in_stage
-        )
-        dense_params = (
-            4 * self.num_layers_per_rank * hidden * hidden
-            + 2 * dense_layers_in_stage * hidden * dense_ffn
-            + (50000 * hidden / self.parallel_config.pipeline_parallel_size)
-        )
-        shared_params = (
-            2 * owned_moe_layers * self.moe_config.num_shared_experts * hidden * moe_ffn
-        )
-        owned_experts = self.expert_placement.experts_for_rank(self.rank_info)
-        routed_params = 2 * owned_moe_layers * len(owned_experts) * hidden * moe_ffn
-        return (
-            (dense_params + shared_params + routed_params)
-            * 2
-            / self.parallel_config.tensor_parallel_size
-        )
+        dense_layers = max(0, self.num_layers_per_rank - owned_moe_layers)
+        params = self.num_layers_per_rank * model.attention_params_per_layer()
+        params += dense_layers * model.dense_ffn_params_per_layer()
+        params += owned_moe_layers * model.moe.num_shared_experts * model.expert_params()
+        params += owned_moe_layers * model.hidden_size * model.moe.num_experts  # router
+        owned_experts = len(self.expert_placement.experts_for_rank(self.rank_info))
+        params += owned_moe_layers * owned_experts * model.expert_params()
+        params += model.embedding_params() / pp
+        return params / tp
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "block_size": self.block_size,
+            "size_per_token": self.size_per_token,
+            "num_gpu_blocks": self.num_gpu_blocks,
+            "num_cpu_blocks": self.num_cpu_blocks,
+            "model_param_size": self.model_param_size,
+            "reserved_bytes": self.reserved_bytes,
+            "usable_memory_bytes": self.usable_memory_bytes,
+            "local_kv_heads": self.local_kv_heads,
+            "num_layers_per_rank": self.num_layers_per_rank,
+        }
 
 
 def stage_layer_count(total_layers: int, pp_size: int, pp_rank: int) -> int:
@@ -207,26 +127,22 @@ def stage_layer_count(total_layers: int, pp_size: int, pp_rank: int) -> int:
     return base + (1 if pp_rank < remainder else 0)
 
 
-# MHA/GQA/MQA
-def num_kv_heads(model_conf: Any) -> int:
-    if getattr(model_conf, "Multi_Query", False):
-        return 1
-    if getattr(model_conf, "Grouped_Query", False):
-        grouped_num = int(getattr(model_conf, "Grouped_Num", 1))
-        if grouped_num < 1:
-            raise ConfigurationError("Grouped_Num must be at least 1")
-        if model_conf.Nhead % grouped_num != 0:
-            raise ConfigurationError(
-                f"Nhead={model_conf.Nhead} is not divisible by Grouped_Num={grouped_num}"
-            )
-        return int(model_conf.Nhead // grouped_num)
-    return int(model_conf.Nhead)
+def num_kv_heads(model: ModelSpec) -> int:
+    return int(model.num_key_value_heads)
 
 
 def local_kv_heads(kv_heads: int, tensor_parallel_size: int) -> int:
-    if kv_heads % tensor_parallel_size != 0:
+    """KV heads held by one TP rank; heads are replicated when kv_heads < tp."""
+    if tensor_parallel_size <= kv_heads:
+        if kv_heads % tensor_parallel_size != 0:
+            raise ConfigurationError(
+                f"KV heads {kv_heads} are not divisible by tensor_parallel_size "
+                + f"{tensor_parallel_size}"
+            )
+        return kv_heads // tensor_parallel_size
+    if tensor_parallel_size % kv_heads != 0:
         raise ConfigurationError(
-            f"KV heads {kv_heads} are not divisible by tensor_parallel_size "
-            + f"{tensor_parallel_size}"
+            f"tensor_parallel_size {tensor_parallel_size} must be a multiple of KV heads "
+            + f"{kv_heads} when replicating KV heads"
         )
-    return kv_heads // tensor_parallel_size
+    return 1

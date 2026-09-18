@@ -1,0 +1,30 @@
+{
+    "num_workers": 16,
+    "topology": "hgx_h100_8x_ndr",
+    "networks": {
+        "node0": "ib_ndr400",
+        "node1": "ib_ndr400"
+    },
+    "parallel_config": {
+        "tensor_parallel_size": 8,
+        "pipeline_parallel_size": 1,
+        "data_parallel_size": 2,
+        "data_parallel_size_local": 2
+    },
+    "worker_groups": [
+        {
+            "role": "hybrid",
+            "hardware": "h100_sxm",
+            "num_workers": 8,
+            "network": "node0",
+            "device_indices": [0, 1, 2, 3, 4, 5, 6, 7]
+        },
+        {
+            "role": "hybrid",
+            "hardware": "h100_sxm",
+            "num_workers": 8,
+            "network": "node1",
+            "device_indices": [8, 9, 10, 11, 12, 13, 14, 15]
+        }
+    ]
+}
