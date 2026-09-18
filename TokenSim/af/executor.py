@@ -24,6 +24,7 @@ from TokenSim.af.planning import (
 )
 from TokenSim.af.resources import AFResourceRegistry
 from TokenSim.af.runtime import AFRuntimePlan
+from TokenSim.hardware.device import dtype_bytes
 from TokenSim.af.trace import AFTraceEvent, AFTraceRecorder
 from TokenSim.config.cluster_config import AFLinkConfig, ClusterConfig, WorkerConfig
 from TokenSim.errors import ConfigurationError, SimulationStateError
@@ -83,7 +84,7 @@ class AFExecutor:
         self.plan_builder = ParallelExecutionPlanner(
             cluster_config,
             hidden_size=hidden_size,
-            dtype_size_bytes=self._dtype_size(dtype),
+            dtype_size_bytes=int(dtype_bytes(dtype)),
             num_experts=(moe_config.num_experts if moe_config is not None else 0),
             top_k=(moe_config.num_experts_per_tok if moe_config is not None else 1),
             runtime_plan=runtime_plan,
@@ -92,10 +93,6 @@ class AFExecutor:
         self._next_iteration_id = 0
         self.active_iterations: dict[int, AFIteration] = {}
         self.active_stages: dict[tuple[int, int, str], dict[str, object]] = {}
-
-    @staticmethod
-    def _dtype_size(dtype: str) -> int:
-        return {"fp32": 4, "float32": 4, "int8": 1}.get(dtype.lower(), 2)
 
     @staticmethod
     def _validate_runtime(
@@ -350,18 +347,6 @@ class AFExecutor:
         finally:
             if not done_event.triggered:
                 done_event.succeed()
-
-    def _run_dag_node(
-        self,
-        block: AFBlock,
-        layer_id: int,
-        link: AFLinkConfig,
-        node: ExecutionNode,
-        predecessors: tuple[simpy.Event, ...],
-    ):
-        if predecessors:
-            yield self.env.all_of(predecessors)
-        yield from self._run_planned_step(block, layer_id, link, node)
 
     def _run_planned_step(
         self,

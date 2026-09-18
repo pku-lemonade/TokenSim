@@ -287,11 +287,6 @@ class AFRuntimePlan:
             f"AF runtime plan has no replica {instance!r} in domain {domain!r}"
         )
 
-    def scheduler_replica_for_physical(
-        self, physical_identity: str
-    ) -> AFReplicaRuntime:
-        return self.scheduler_replicas_for_physical(physical_identity)[0]
-
     def scheduler_replicas_for_physical(
         self, physical_identity: str
     ) -> tuple[AFReplicaRuntime, ...]:

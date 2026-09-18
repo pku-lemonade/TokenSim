@@ -560,9 +560,6 @@ class OperatorTableLatencyBackend(LatencyBackend):
     def _query(self, table: str, key: Mapping[str, Any]) -> OperatorEstimate:
         return self.resolver.query(table, key)
 
-    def _analytical(self, table: str, key: Mapping[str, Any], **context: Any) -> OperatorEstimate:
-        return self.resolver.analytical_estimate(table, key, **context)
-
     @property
     def _cache(self) -> dict[tuple, OperatorEstimate]:
         return self.resolver._cache
