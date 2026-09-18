@@ -2,8 +2,7 @@
 
 Every function returns an :class:`OperatorWork`. These formulas are the single
 source of truth for the analytical estimators, the ``*_analysis`` tables, and
-the documentation; the numbers below intentionally match
-``docs/task-TokenSim-Groq-Operator-Data.md``.
+the documentation; see ``docs/operator-latency-model.md`` for the derivations.
 """
 
 from __future__ import annotations
@@ -38,8 +37,9 @@ def activation_bytes_for(dtype: str) -> float:
     canonical = normalize_dtype(dtype)
     if canonical.endswith("_wo"):
         return dtype_bytes(ACTIVATION_DTYPE_FOR_WEIGHT_ONLY)
-    if canonical in {"int4", "nvfp4"}:
-        # 4-bit activations are not used for LLM inference; assume fp8 activations.
+    if canonical in {"int4", "nvfp4", "mxfp4", "int4_a8"}:
+        # 4-bit activations are not used for LLM inference; these formats pair
+        # 4-bit weights with fp8 activations.
         return 1.0
     return dtype_bytes(canonical)
 

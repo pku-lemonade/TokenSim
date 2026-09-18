@@ -128,6 +128,7 @@ def cmd_import_aiconfigurator(args: argparse.Namespace) -> int:
         dataset_version=args.dataset_version,
         include_custom_allreduce=not args.no_custom_allreduce,
         upstream_commit=args.upstream_commit,
+        gpus_per_node=args.gpus_per_node,
     )
     out = Path(args.out) if args.out else Path(args.data_root) / "operator_data" / args.device / args.backend
     package.write(out)
@@ -278,6 +279,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--dataset-version", dest="dataset_version")
     p.add_argument("--upstream-commit", dest="upstream_commit", default="main")
     p.add_argument("--no-custom-allreduce", dest="no_custom_allreduce", action="store_true")
+    p.add_argument("--gpus-per-node", dest="gpus_per_node", type=int, default=8, help="EP ranks per node assumed for SGLang wide-EP DeepEP tables")
     p.add_argument("--out")
     p.set_defaults(func=cmd_import_aiconfigurator)
 

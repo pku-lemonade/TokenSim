@@ -7,13 +7,15 @@ from typing import Any, Iterable, Mapping
 
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware._yaml import positive_number, require
-from TokenSim.hardware.device.dtypes import compute_dtype, normalize_dtype
-from TokenSim.hardware.device.sourced_value import SourcedValue
+from TokenSim.hardware.device.dtypes import COMPUTE_PIPE_FALLBACKS, compute_dtype, normalize_dtype
+from TokenSim.hardware.device.sourced_value import EVIDENCE_GRADES, SourcedValue
 
 DEFAULT_ANALYTICAL_PARAMETERS: dict[str, dict[str, float]] = {
     # Fraction of peak throughput a well-tuned kernel reaches at large shapes,
-    # bandwidth efficiency for streaming kernels, and a per-kernel launch cost.
-    # These are project defaults (grade D) until a calibration replaces them.
+    # bandwidth efficiency for streaming kernels, a per-kernel launch cost and
+    # the software launch cost of one collective. These are project defaults
+    # (grade D) until a device YAML overrides them with sourced values or a
+    # calibration replaces them.
     "nvidia_gpu": {
         "gemm_mfu": 0.70,
         "attention_mfu": 0.45,
@@ -21,6 +23,7 @@ DEFAULT_ANALYTICAL_PARAMETERS: dict[str, dict[str, float]] = {
         "memory_efficiency": 0.85,
         "elementwise_memory_efficiency": 0.70,
         "kernel_launch_us": 4.0,
+        "collective_launch_us": 8.0,
         "gemm_small_m_knee": 64.0,
     },
     "groq_tsp": {
@@ -30,6 +33,7 @@ DEFAULT_ANALYTICAL_PARAMETERS: dict[str, dict[str, float]] = {
         "memory_efficiency": 0.90,
         "elementwise_memory_efficiency": 0.90,
         "kernel_launch_us": 0.2,
+        "collective_launch_us": 0.5,
         "gemm_small_m_knee": 1.0,
     },
     "generic": {
@@ -39,11 +43,17 @@ DEFAULT_ANALYTICAL_PARAMETERS: dict[str, dict[str, float]] = {
         "memory_efficiency": 0.80,
         "elementwise_memory_efficiency": 0.60,
         "kernel_launch_us": 5.0,
+        "collective_launch_us": 10.0,
         "gemm_small_m_knee": 64.0,
     },
 }
 
 SUPPORTED_FAMILIES = tuple(DEFAULT_ANALYTICAL_PARAMETERS)
+
+# Keys inside a YAML ``analytical:`` block that describe provenance rather
+# than a parameter value.
+_ANALYTICAL_META_KEYS = ("source_id", "grade", "notes")
+DEFAULT_ANALYTICAL_SOURCE = "assumption:family-defaults"
 
 
 @dataclass(frozen=True)
@@ -66,6 +76,16 @@ class DeviceSpec:
     sources: Mapping[str, Mapping[str, Any]] = field(default_factory=dict)
     tdp_w: float | None = None
     extra: Mapping[str, Any] = field(default_factory=dict)
+    # Device memory that the serving runtime keeps for itself (NCCL buffers,
+    # CUDA context, framework workspace) and that is never available for
+    # weights or KV cache.
+    memory_reserved_bytes: SourcedValue = field(
+        default_factory=lambda: SourcedValue(0.0, "assumption:no-reserved-memory", "D")
+    )
+    # Provenance of the values in ``analytical`` (family defaults are grade D;
+    # a YAML block with ``source_id``/``grade`` upgrades them).
+    analytical_source_id: str = DEFAULT_ANALYTICAL_SOURCE
+    analytical_grade: str = "D"
 
     @classmethod
     def from_mapping(cls, raw: Mapping[str, Any], context: str = "device") -> "DeviceSpec":
@@ -91,9 +111,31 @@ class DeviceSpec:
         on_chip = raw.get("on_chip_memory") or {}
         interconnect = raw.get("interconnect") or {}
         analytical = dict(DEFAULT_ANALYTICAL_PARAMETERS[family])
-        for key, value in (raw.get("analytical") or {}).items():
-            analytical[str(key)] = float(value)
+        analytical_raw = raw.get("analytical") or {}
+        if not isinstance(analytical_raw, Mapping):
+            raise ConfigurationError(f"{context}: analytical must be a mapping")
+        analytical_source_id = str(analytical_raw.get("source_id", DEFAULT_ANALYTICAL_SOURCE))
+        analytical_grade = str(analytical_raw.get("grade", "D")).upper()
+        if analytical_grade not in EVIDENCE_GRADES:
+            raise ConfigurationError(f"{context}: analytical.grade must be one of {EVIDENCE_GRADES}")
+        for key, value in analytical_raw.items():
+            if key in _ANALYTICAL_META_KEYS:
+                continue
+            try:
+                analytical[str(key)] = float(value)
+            except (TypeError, ValueError) as exc:
+                raise ConfigurationError(f"{context}: analytical.{key} must be numeric") from exc
         sources = {str(k): dict(v) for k, v in (raw.get("sources") or {}).items()}
+        if analytical_source_id != DEFAULT_ANALYTICAL_SOURCE and sources and analytical_source_id not in sources:
+            raise ConfigurationError(
+                f"{context}: analytical.source_id {analytical_source_id!r} is not declared in sources"
+            )
+        memory_reserved = SourcedValue.parse_optional_zero(
+            memory.get("reserved_bytes"),
+            "memory.reserved_bytes",
+            context,
+            default_source="assumption:no-reserved-memory",
+        )
         step_overhead = SourcedValue.parse_optional_zero(
             raw.get("step_overhead_us"),
             "step_overhead_us",
@@ -140,6 +182,9 @@ class DeviceSpec:
             ),
             sources=sources,
             tdp_w=float(power["tdp_w"]) if power.get("tdp_w") is not None else None,
+            memory_reserved_bytes=memory_reserved,
+            analytical_source_id=analytical_source_id,
+            analytical_grade=analytical_grade,
             extra={
                 str(k): v
                 for k, v in raw.items()
@@ -178,6 +223,7 @@ class DeviceSpec:
         aliases: Iterable[str] = (),
         analytical: Mapping[str, float] | None = None,
         source_id: str = "test-fixture",
+        memory_reserved_bytes: float = 0.0,
     ) -> "DeviceSpec":
         """Build an in-memory device for tests and quick experiments."""
         params = dict(DEFAULT_ANALYTICAL_PARAMETERS.get(family, DEFAULT_ANALYTICAL_PARAMETERS["generic"]))
@@ -198,6 +244,7 @@ class DeviceSpec:
             host_link=host_link,
             step_overhead_us=SourcedValue(step_overhead_us, source_id, "D"),
             analytical=params,
+            memory_reserved_bytes=SourcedValue(memory_reserved_bytes, source_id, "D"),
         )
 
     # -- queries -----------------------------------------------------------
@@ -207,13 +254,17 @@ class DeviceSpec:
         pipe = compute_dtype(dtype)
         if pipe in self.peak_compute:
             return self.peak_compute[pipe]
-        # bf16 and fp16 share tensor pipes on every device we model.
-        fallback = {"bf16": "fp16", "fp16": "bf16", "tf32": "fp32"}.get(pipe)
-        if fallback and fallback in self.peak_compute:
-            return self.peak_compute[fallback]
+        for fallback in COMPUTE_PIPE_FALLBACKS.get(pipe, ()):
+            if fallback in self.peak_compute:
+                return self.peak_compute[fallback]
         raise ConfigurationError(
             f"device {self.device_id!r} has no peak compute for dtype {dtype!r} (pipe {pipe!r})"
         )
+
+    @property
+    def usable_memory_bytes(self) -> float:
+        """Device memory left for weights and KV cache after runtime reserves."""
+        return max(0.0, self.memory_capacity_bytes.value - self.memory_reserved_bytes.value)
 
     @property
     def weights_resident_on_chip(self) -> bool:
@@ -235,4 +286,8 @@ class DeviceSpec:
             "scale_up_link": self.scale_up_link,
             "host_link": self.host_link,
             "step_overhead_us": self.step_overhead_us.value,
+            "memory_reserved_bytes": self.memory_reserved_bytes.value,
+            "analytical": dict(self.analytical),
+            "analytical_source_id": self.analytical_source_id,
+            "analytical_grade": self.analytical_grade,
         }

@@ -4,6 +4,14 @@ family: nvidia_gpu
 display_name: NVIDIA H100 80GB HBM3
 aliases: [H100, H100-SXM, H100-80G, NVIDIA H100 80GB HBM3]
 sources:
+  aiconfigurator-system-yaml:
+    grade: C
+    reference: https://github.com/ai-dynamo/aiconfigurator/blob/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/h100_sxm.yaml
+    notes: >
+      Empirical corrections NVIDIA recorded while validating AIConfigurator against
+      TensorRT-LLM deployments: memory bandwidth efficiency 0.8, 3 us constant memory
+      latency per kernel, 10 us point-to-point latency for collectives, and a runtime
+      memory reserve of 392 MB NCCL buffers plus 3.5 GB framework workspace.
   nvidia-h100-datasheet:
     grade: A
     reference: https://resources.nvidia.com/en-us-tensor-core/nvidia-tensor-core-gpu-datasheet
@@ -22,11 +30,18 @@ memory:
   kind: hbm3
   capacity_bytes: {value: 85899345920, source_id: nvidia-h100-datasheet}
   bandwidth_bytes_per_s: {value: 3352.0e9, source_id: nvidia-h100-datasheet}
+  reserved_bytes: {value: 4169138176, source_id: aiconfigurator-system-yaml, grade: C}   # 392 MB NCCL + 3.5 GB runtime reserve
 on_chip_memory:
   capacity_bytes: {value: 52428800, source_id: nvidia-h100-datasheet}           # 50 MB L2
 interconnect:
   scale_up_link: nvlink4          # 900 GB/s bidirectional = 450 GB/s per direction
   scale_up_ports: 18
   host_link: pcie5_x16
+analytical:
+  source_id: aiconfigurator-system-yaml
+  grade: C
+  memory_efficiency: 0.8        # mem_bw_empirical_scaling_factor
+  kernel_launch_us: 3.0         # mem_empirical_constant_latency
+  collective_launch_us: 10.0    # p2p_latency
 step_overhead_us: {value: 0.0, source_id: assumption-gpu-analytical-v1, grade: D}
 power: {tdp_w: 700}

@@ -77,8 +77,15 @@ strategies are:
 - `round_robin`: expert `i` is placed on rank `i % ep_rank_count`.
 
 Supported all-to-all models are `naive`, `allgather_reducescatter`,
-`deepep_high_throughput`, and `deepep_low_latency`. They apply different latency
-scales to the same topology-derived transfer. CLI flags override cluster values:
+`deepep_high_throughput`, and `deepep_low_latency`. The two DeepEP modes are
+priced from the device package's measured `ep_all2all` table (AIConfigurator's
+DeepEP dispatch/combine curves, keyed by tokens per rank, hidden size, `top_k`,
+expert count, EP size and node count) when the selected operator backend ships
+one; otherwise every mode falls back to two topology-derived all-to-all
+transfers scaled by `EP_ALL2ALL_MODE_SCALE`. Real deployments use the
+high-throughput kernels for prefill and the low-latency kernels for decode;
+TokenSim currently applies one mode to both phases. CLI flags override cluster
+values:
 
 ```bash
 --enable_expert_parallel \

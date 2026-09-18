@@ -138,7 +138,10 @@ class HardwareContext:
         return self._packages[key]
 
 
-_BACKEND_PRIORITY = ("trtllm", "vllm", "sglang", "measured", "cuda", "groq", "analytical")
+# Preferred operator-data backend when a cluster does not name one. vLLM first
+# (project default, decided 2026-09-18), then the other serving stacks, then
+# locally measured and finally analytical packages.
+_BACKEND_PRIORITY = ("vllm", "trtllm", "sglang", "measured", "cuda", "groq", "analytical")
 
 
 def _preferred_backend(backends: list[str]) -> str:

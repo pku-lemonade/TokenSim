@@ -5,9 +5,9 @@ device_id: a100_sxm_80g
 backend: trtllm
 framework_version: 1.0.0
 notes: 'Imported from NVIDIA AIConfigurator measured kernel database. Resolved versions:
-  {''gemm'': ''1.0.0'', ''context_attention'': ''1.0.0'', ''generation_attention'':
-  ''1.0.0'', ''moe'': ''1.0.0'', ''collective_nccl'': ''2.27.3'', ''collective_custom'':
-  ''1.0.0''}. Rows dropped (unsupported dtype/kernel): {}.'
+  {''gemm'': [''1.0.0''], ''context_attention'': [''1.0.0''], ''generation_attention'':
+  [''1.0.0''], ''moe'': [''1.0.0''], ''collective_nccl'': [''2.27.3''], ''collective_custom'':
+  [''1.0.0'']}. Rows dropped (unsupported dtype/kernel): {}.'
 sources:
 - source_id: aiconfigurator:a100_sxm:gemm:trtllm:1.0.0
   grade: A
@@ -62,14 +62,21 @@ tables:
   collective:
     rows: 573
 aiconfigurator_system: a100_sxm
+aiconfigurator_layout: database
 aiconfigurator_commit: f254959eb89e2f206b8f9a77051644d7c1cbdb89
 resolved_versions:
-  gemm: 1.0.0
-  context_attention: 1.0.0
-  generation_attention: 1.0.0
-  moe: 1.0.0
-  collective_nccl: 2.27.3
-  collective_custom: 1.0.0
+  gemm:
+  - 1.0.0
+  context_attention:
+  - 1.0.0
+  generation_attention:
+  - 1.0.0
+  moe:
+  - 1.0.0
+  collective_nccl:
+  - 2.27.3
+  collective_custom:
+  - 1.0.0
 dropped_rows: {}
 dropped_dtypes: {}
 license: Apache-2.0 (NVIDIA AIConfigurator); see data/operator_data/LICENSES.md

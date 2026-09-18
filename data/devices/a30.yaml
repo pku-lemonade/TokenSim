@@ -1,0 +1,37 @@
+schema_version: 1
+device_id: a30
+family: nvidia_gpu
+display_name: NVIDIA A30
+aliases: [A30, NVIDIA A30]
+sources:
+  nvidia-a30-datasheet:
+    grade: A
+    reference: https://www.nvidia.com/en-us/data-center/products/a30-gpu/
+    notes: FP16 165 TFLOPS dense (330 sparse), INT8 330 TOPS, TF32 82, FP32 10.3, 24 GB HBM2 933 GB/s, PCIe Gen4, 165 W; NVLink bridge joins pairs only.
+  aiconfigurator-system-yaml:
+    grade: C
+    reference: https://github.com/ai-dynamo/aiconfigurator/blob/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/a30.yaml
+    notes: >
+      Empirical corrections NVIDIA recorded while validating AIConfigurator against TensorRT-LLM deployments: memory bandwidth efficiency 0.8, 3 us constant memory latency per kernel, 10 us point-to-point latency for collectives, and a runtime memory reserve of 392 MB NCCL buffers plus 3.5 GB framework workspace. Upstream database has no measured tables for this system (empty data directory).
+peak_compute:
+  fp16: {value: 165.0e12, source_id: nvidia-a30-datasheet}
+  bf16: {value: 165.0e12, source_id: nvidia-a30-datasheet}
+  int8: {value: 330.0e12, source_id: nvidia-a30-datasheet}
+  tf32: {value: 82.0e12, source_id: nvidia-a30-datasheet}
+  fp32: {value: 10.3e12, source_id: nvidia-a30-datasheet}
+memory:
+  kind: hbm2
+  capacity_bytes: {value: 25769803776, source_id: nvidia-a30-datasheet}
+  bandwidth_bytes_per_s: {value: 933.0e9, source_id: nvidia-a30-datasheet}
+  reserved_bytes: {value: 4169138176, source_id: aiconfigurator-system-yaml, grade: C}   # 392 MB NCCL + 3.5 GB runtime reserve
+interconnect:
+  scale_up_link: null
+  host_link: pcie4_x16
+analytical:
+  source_id: aiconfigurator-system-yaml
+  grade: C
+  memory_efficiency: 0.8        # mem_bw_empirical_scaling_factor
+  kernel_launch_us: 3.0         # mem_empirical_constant_latency
+  collective_launch_us: 10.0    # p2p_latency
+step_overhead_us: {value: 0.0, source_id: aiconfigurator-system-yaml, grade: D}
+power: {tdp_w: 165}

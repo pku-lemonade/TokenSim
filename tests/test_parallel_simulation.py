@@ -154,6 +154,24 @@ class ParallelMemoryTest(unittest.TestCase):
         with self.assertRaises(ConfigurationError):
             local_kv_heads(3, 2)
 
+    def test_reserved_memory_reduces_kv_blocks(self):
+        from TokenSim.hardware.device import DeviceSpec
+
+        plain = CacheConfig(16, _DEVICE, _MODEL)
+        reserved_device = DeviceSpec.simple(
+            "ReservedGPU",
+            family="nvidia_gpu",
+            peak_flops=100e12,
+            memory_capacity_bytes=_DEVICE.memory_capacity_bytes.value,
+            memory_bandwidth_bytes_per_s=1e12,
+            memory_reserved_bytes=_DEVICE.memory_capacity_bytes.value / 2,
+        )
+        reserved = CacheConfig(16, reserved_device, _MODEL)
+
+        self.assertLess(reserved.num_gpu_blocks, plain.num_gpu_blocks)
+        self.assertAlmostEqual(reserved.usable_memory_bytes, plain.usable_memory_bytes / 2)
+        self.assertEqual(reserved.to_dict()["reserved_bytes"], reserved_device.memory_reserved_bytes.value)
+
     def test_kv_heads_replicate_when_fewer_than_tp(self):
         self.assertEqual(local_kv_heads(1, 4), 1)
         self.assertEqual(local_kv_heads(8, 4), 2)
@@ -217,6 +235,21 @@ class ParallelLatencyTest(unittest.TestCase):
         self.assertLess(tp_latency, baseline_latency)
         self.assertEqual(tp_backend.heads_local, 4)
         self.assertEqual(tp_backend.inter_local, 16)
+
+    def test_ep_all2all_uses_moe_shape_and_records_event(self):
+        config = ParallelConfig(tensor_parallel_size=1, data_parallel_size=4, enable_expert_parallel=True, all2all_backend="deepep_low_latency")
+        rank = ParallelRankInfo.from_global_rank(0, config)
+        workers = [SimpleNamespace(id=i, dp_rank=i, tp_rank=0, pp_rank=0) for i in range(4)]
+        communicator = _communicator(workers, 0, rank, config, _placement(node_size=4))
+
+        latency = communicator.estimate_ep_all2all(0, count=2, num_tokens=16, hidden_size=4096, top_k=2, num_experts=8)
+        plain = communicator.estimate_ep_all2all(16 * 2 * 4096 * 2, count=1)
+
+        self.assertGreater(latency, 0)
+        self.assertEqual(communicator.stats.sync_event_count, 2)
+        self.assertGreater(communicator.stats.ep_all2all_latency, 0)
+        # deepep_low_latency scales the analytical all-to-all by 0.5 per phase, two phases per layer
+        self.assertAlmostEqual(latency, 2 * 2 * 0.5 * plain)
 
     def test_collective_cost_grows_with_group_size_and_topology_span(self):
         from TokenSim.comm.collectives import CollectiveQuery

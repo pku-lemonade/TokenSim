@@ -69,6 +69,14 @@ links:
     half_bandwidth_bytes: 1048576
     collective_efficiency: 0.7
     source_id: pcie-sig-spec
+  pcie5_x8:
+    display_name: PCIe 5.0 x8
+    bandwidth_per_direction_bytes_per_s: 32.0e9
+    latency_us: 3.0
+    duplex: full
+    half_bandwidth_bytes: 1048576
+    collective_efficiency: 0.70
+    source_id: pcie-sig-spec
   pcie6_x16:
     display_name: PCIe 6.0 x16
     bandwidth_per_direction_bytes_per_s: 128.0e9

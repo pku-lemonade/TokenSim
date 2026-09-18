@@ -1,0 +1,83 @@
+schema_version: 1
+latency_unit: us
+dataset_version: aiconfigurator-l40s-vllm-latest
+device_id: l40s
+backend: vllm
+framework_version: 0.24.0
+notes: 'Imported from NVIDIA AIConfigurator measured kernel database. Resolved versions:
+  {''gemm'': [''0.24.0''], ''context_attention'': [''0.24.0''], ''generation_attention'':
+  [''0.24.0''], ''moe'': [''0.24.0''], ''collective_nccl'': [''2.27.3''], ''collective_custom'':
+  [''0.22.0'']}. Rows dropped (unsupported dtype/kernel): {''collective'': 69}.'
+sources:
+- source_id: aiconfigurator:l40s:gemm:vllm:0.24.0
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/l40s/gemm/vllm/0.24.0
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: l40s
+  backend: vllm:0.24.0
+- source_id: aiconfigurator:l40s:attention:vllm:0.24.0
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/l40s/attention/vllm/0.24.0
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: l40s
+  backend: vllm:0.24.0
+- source_id: aiconfigurator:l40s:moe:vllm:0.24.0
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/l40s/moe/vllm/0.24.0
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: l40s
+  backend: vllm:0.24.0
+- source_id: aiconfigurator:l40s:comm:nccl:2.27.3
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/l40s/comm/nccl/2.27.3
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: l40s
+  backend: nccl:2.27.3
+- source_id: aiconfigurator:l40s:comm:vllm:0.22.0
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/l40s/comm/vllm/0.22.0
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: l40s
+  backend: vllm:0.22.0
+calibration: {}
+tables:
+  gemm:
+    rows: 107066
+  context_attention:
+    rows: 50158
+  generation_attention:
+    rows: 60523
+  moe:
+    rows: 48317
+  collective:
+    rows: 573
+aiconfigurator_system: l40s
+aiconfigurator_layout: database
+aiconfigurator_commit: f254959eb89e2f206b8f9a77051644d7c1cbdb89
+resolved_versions:
+  gemm:
+  - 0.24.0
+  context_attention:
+  - 0.24.0
+  generation_attention:
+  - 0.24.0
+  moe:
+  - 0.24.0
+  collective_nccl:
+  - 2.27.3
+  collective_custom:
+  - 0.22.0
+dropped_rows:
+  collective: 69
+dropped_dtypes: {}
+license: Apache-2.0 (NVIDIA AIConfigurator); see data/operator_data/LICENSES.md

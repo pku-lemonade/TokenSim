@@ -149,8 +149,14 @@ class OperatorTableLatencyBackend(LatencyBackend):
         self.expert_placement = expert_placement
         self.package = package if fallback != "analytical_only" else None
         self.fallback = fallback
-        self.lookup = OperatorLookup(self.package, lookup_policy) if self.package is not None else None
         self.analytical = analytical_model_for(device.family)
+        # Out-of-range table queries keep the boundary row's measured efficiency
+        # and follow the analytical model's growth (see LookupPolicy).
+        self.lookup = (
+            OperatorLookup(self.package, lookup_policy, analytical_scaler=self._analytical_reference_us)
+            if self.package is not None
+            else None
+        )
         self.decode_context_bucket = max(1, int(decode_context_bucket))
         self.stats = OperatorStats()
         self.moe_stats = MoEStats(
@@ -327,7 +333,17 @@ class OperatorTableLatencyBackend(LatencyBackend):
                 allreduce_count += self.moe_layers_local
             latency += self.communicator.estimate_tp_collective(hidden_bytes, count=allreduce_count)
         if self.ep_enabled and moe_comm_bytes > 0 and self.moe_layers_local:
-            latency += self.communicator.estimate_ep_all2all(moe_comm_bytes, count=2 * self.moe_layers_local)
+            # One dispatch + one combine per MoE layer; measured DeepEP rows are
+            # keyed by this rank's token count and the expert configuration.
+            latency += self.communicator.estimate_ep_all2all(
+                moe_comm_bytes,
+                count=self.moe_layers_local,
+                num_tokens=tokens,
+                hidden_size=self.model.hidden_size,
+                top_k=self.model.moe.num_experts_per_tok,
+                num_experts=self.model.moe.num_experts,
+                activation_bytes=self.activation_bytes,
+            )
         if self.parallel_config.pipeline_parallel_size > 1:
             latency += self.communicator.estimate_pp_stage_transfer(hidden_bytes)
         return latency
@@ -481,6 +497,13 @@ class OperatorTableLatencyBackend(LatencyBackend):
         result = self.analytical.estimate(table, key, self.device, calibration, **context)
         return OperatorEstimate(result.latency_us, "analytical", result.source_id)
 
+    def _analytical_reference_us(self, table: str, key: Mapping[str, Any]) -> float | None:
+        """Uncalibrated analytical latency used as the growth reference for extrapolation."""
+        try:
+            return self.analytical.estimate(table, key, self.device, Calibration(), gated=self.model.gated).latency_us
+        except Exception:
+            return None
+
     def _remember(self, identity: tuple, estimate: OperatorEstimate) -> None:
         if len(self._cache) >= self._CACHE_LIMIT:
             self._cache.clear()
@@ -507,4 +530,11 @@ class OperatorTableLatencyBackend(LatencyBackend):
 def collective_model_for(device: DeviceSpec, placement, links, package: OperatorDataPackage | None) -> CollectiveModel:
     """Build the collective model a worker on ``device`` should use."""
     measured = OperatorLookup(package) if package is not None and "collective" in package.tables else None
-    return CollectiveModel(placement.topology, links, family=device.family, measured_lookup=measured)
+    launch_us = device.analytical.get("collective_launch_us")
+    return CollectiveModel(
+        placement.topology,
+        links,
+        family=device.family,
+        measured_lookup=measured,
+        launch_us=float(launch_us) if launch_us is not None else None,
+    )

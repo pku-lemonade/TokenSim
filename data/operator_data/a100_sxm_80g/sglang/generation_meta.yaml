@@ -1,0 +1,83 @@
+schema_version: 1
+latency_unit: us
+dataset_version: aiconfigurator-a100_sxm-sglang-latest
+device_id: a100_sxm_80g
+backend: sglang
+framework_version: 0.5.10
+notes: 'Imported from NVIDIA AIConfigurator measured kernel database. Resolved versions:
+  {''gemm'': [''0.5.10''], ''context_attention'': [''0.5.10''], ''generation_attention'':
+  [''0.5.10''], ''moe'': [''0.5.10''], ''collective_nccl'': [''2.27.3''], ''collective_custom'':
+  [''0.5.10'']}. Rows dropped (unsupported dtype/kernel): {''collective'': 69}.'
+sources:
+- source_id: aiconfigurator:a100_sxm:gemm:sglang:0.5.10
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/a100_sxm/gemm/sglang/0.5.10
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: a100_sxm_80g
+  backend: sglang:0.5.10
+- source_id: aiconfigurator:a100_sxm:attention:sglang:0.5.10
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/a100_sxm/attention/sglang/0.5.10
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: a100_sxm_80g
+  backend: sglang:0.5.10
+- source_id: aiconfigurator:a100_sxm:moe:sglang:0.5.10
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/a100_sxm/moe/sglang/0.5.10
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: a100_sxm_80g
+  backend: sglang:0.5.10
+- source_id: aiconfigurator:a100_sxm:comm:nccl:2.27.3
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/a100_sxm/comm/nccl/2.27.3
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: a100_sxm_80g
+  backend: nccl:2.27.3
+- source_id: aiconfigurator:a100_sxm:comm:sglang:0.5.10
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/a100_sxm/comm/sglang/0.5.10
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: a100_sxm_80g
+  backend: sglang:0.5.10
+calibration: {}
+tables:
+  gemm:
+    rows: 35742
+  context_attention:
+    rows: 5627
+  generation_attention:
+    rows: 5093
+  moe:
+    rows: 50139
+  collective:
+    rows: 573
+aiconfigurator_system: a100_sxm
+aiconfigurator_layout: database
+aiconfigurator_commit: f254959eb89e2f206b8f9a77051644d7c1cbdb89
+resolved_versions:
+  gemm:
+  - 0.5.10
+  context_attention:
+  - 0.5.10
+  generation_attention:
+  - 0.5.10
+  moe:
+  - 0.5.10
+  collective_nccl:
+  - 2.27.3
+  collective_custom:
+  - 0.5.10
+dropped_rows:
+  collective: 69
+dropped_dtypes: {}
+license: Apache-2.0 (NVIDIA AIConfigurator); see data/operator_data/LICENSES.md
