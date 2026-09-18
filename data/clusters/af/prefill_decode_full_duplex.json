@@ -1,33 +1,44 @@
 {
     "num_workers": 6,
     "networks": {
-        "af_net": "af-network-profile"
+        "af_net": "ib_ndr400"
     },
     "worker_groups": [
         {
             "name": "attention-pool",
-            "capabilities": ["af_attention"],
-            "hardware": "attention-device",
+            "capabilities": [
+                "af_attention"
+            ],
+            "hardware": "h100_sxm",
             "num_workers": 4,
             "network": "af_net"
         },
         {
             "name": "ffn-pool",
-            "capabilities": ["af_ffn"],
-            "hardware": "ffn-device",
+            "capabilities": [
+                "af_ffn"
+            ],
+            "hardware": "h100_sxm",
             "num_workers": 2,
             "network": "af_net"
         }
     ],
     "af": {
         "enabled": true,
-        "phases": ["prefill", "decode"],
+        "phases": [
+            "prefill",
+            "decode"
+        ],
         "af_block_size": 4,
         "trace_enabled": true,
+        "latency_provider": "operator_table",
         "links": [
             {
                 "name": "attention-ffn",
-                "phases": ["prefill", "decode"],
+                "phases": [
+                    "prefill",
+                    "decode"
+                ],
                 "attention_group": "attention-pool",
                 "ffn_group": "ffn-pool",
                 "network": "af_net",

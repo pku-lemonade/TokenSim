@@ -39,7 +39,11 @@ from TokenSim.kv_transfer import (
     KVConnectorMetadata,
     P2PConnector,
 )
+from TokenSim.hardware import HardwareContext
+from TokenSim.hardware.placement import build_topology_placement
+from TokenSim.hardware.topology import TopologyPlacement
 from TokenSim.latency import build_latency_backend
+from TokenSim.latency.operator_table import collective_model_for
 from TokenSim.llm.llm_request import Request, RequestStatus
 from TokenSim.llm.llm_scheduler import (
     LLMDynamicScheduler,
@@ -55,8 +59,7 @@ from TokenSim.placement import (
 )
 from TokenSim.parallel import ParallelCommunicator
 from TokenSim.moe import MoEModelConfig, ExpertPlacement, build_expert_placement
-
-from TransformerRoofline import TransformerRoofline
+from TokenSim.config.model_config import ModelSpec
 
 
 logger = logging.getLogger(__name__)
@@ -211,15 +214,19 @@ class LLMWorker(Worker):
         block_size: int,
         batching: str,
         kv_transfer_config: KVTransferConfig,
-        roofline: TransformerRoofline,
+        hardware: HardwareContext,
+        model_spec: ModelSpec,
+        placement: TopologyPlacement,
         max_parallem_sum: int,
         max_occupy_ratio: float = 1,
         parallel_config: ParallelConfig | None = None,
         moe_config: MoEModelConfig | None = None,
         expert_placement: ExpertPlacement | None = None,
-        latency_backend_type: str = "roofline",
+        latency_backend_type: str = "operator_table",
+        latency_fallback: str = "table_first",
+        operator_backend: str | None = None,
+        decode_context_bucket: int = 128,
         random_seed: int = 0,
-        wrapped_llmcompass_vars: tuple[Any, Any, Any] | None = None,
         runtime_role: str | None = None,
         cache_config_override: AFCacheConfig | None = None,
         block_manager: ReplicaKVBlockManager | None = None,
@@ -227,18 +234,20 @@ class LLMWorker(Worker):
         runtime_state=None,
     ):
         super().__init__(env, id)
-        self.roofline = roofline
+        self.hardware_context = hardware
         self.engine = engine
 
         self.role = runtime_role or worker_config.role
         self.name = worker_config.name
         self.capabilities = worker_config.capabilities
         self.hardware = worker_config.hardware
+        self.device = hardware.device(worker_config.hardware)
         self.network = worker_config.network
         self.nettype = worker_config.nettype
         self.model = psla_config.model
+        self.model_spec = model_spec
         self.parallel_config = parallel_config or ParallelConfig.default()
-        self.moe_config = moe_config or psla_config.moe_config
+        self.moe_config = moe_config or model_spec.moe
         self.expert_placement = expert_placement
         self.af_runtime_bindings = runtime_bindings
         self.af_runtime_state = runtime_state
@@ -267,54 +276,56 @@ class LLMWorker(Worker):
         self.dp_rank = self.rank_info.dp_rank
         self.rank_in_dp_group = self.rank_info.rank_in_dp_group
         self.kv_cache_group_id = self.rank_info.kv_cache_group_id
+        self.placement = placement
+        self.device_index = placement.device_index(self.id)
 
         self.block_size = block_size
         if cache_config_override is not None:
+            # AF attention replicas size their KV ledger from the runtime plan.
             self.cache_config = cache_config_override
         else:
-            try:
-                self.cache_config = CacheConfig(
-                    self.block_size,
-                    self.hardware,
-                    self.model,
-                    self.roofline,
-                    parallel_config=self.parallel_config,
-                    rank_info=self.rank_info,
-                    moe_config=self.moe_config,
-                    expert_placement=self.expert_placement,
-                )
-            except TypeError as exc:
-                if "unexpected keyword argument" not in str(exc):
-                    raise
-                self.cache_config = CacheConfig(
-                    self.block_size,
-                    self.hardware,
-                    self.model,
-                    self.roofline,
-                )
+            self.cache_config = CacheConfig(
+                self.block_size,
+                self.device,
+                self.model_spec,
+                parallel_config=self.parallel_config,
+                rank_info=self.rank_info,
+                expert_placement=self.expert_placement,
+            )
         self.preempted_cnt = 0
         self.pending_connector_metadata: KVConnectorMetadata | None = None
+
+        backend_name = worker_config.operator_backend or operator_backend
+        self.operator_package = (
+            hardware.operator_package(self.device.device_id, backend_name)
+            if latency_backend_type != "analytical"
+            else None
+        )
+        self.collective_model = collective_model_for(
+            self.device, self.placement, hardware.links, self.operator_package
+        )
         self.parallel_communicator = ParallelCommunicator(
-            roofline=self.roofline,
+            placement=self.placement,
+            collective_model=self.collective_model,
             workers=self.engine.workers,
             worker_id=self.id,
             rank_info=self.rank_info,
             parallel_config=self.parallel_config,
-            hardware=self.hardware,
+            dtype=self.model_spec.dtype,
         )
 
         self.latency_backend = build_latency_backend(
             backend_type=latency_backend_type,
-            roofline=self.roofline,
-            model=self.model,
-            hardware=self.hardware,
+            device=self.device,
+            model=self.model_spec,
+            package=self.operator_package,
             parallel_config=self.parallel_config,
             rank_info=self.rank_info,
             communicator=self.parallel_communicator,
-            moe_config=self.moe_config,
             expert_placement=self.expert_placement,
+            fallback=latency_fallback,
+            decode_context_bucket=decode_context_bucket,
             random_seed=random_seed + id,
-            wrapped_llmcompass_vars=wrapped_llmcompass_vars,
         )
         runtime_experts = {
             expert_id
@@ -379,40 +390,11 @@ class LLMWorker(Worker):
                 self.engine.record_request_completion("decode", request)
 
     def estimate_transfer_latency(self, remote_id: int, num_blocks: int) -> float:
-        if num_blocks == 0:
+        """Seconds to move ``num_blocks`` KV blocks to another worker."""
+        if num_blocks == 0 or self.id == remote_id:
             return 0.0
-        hardwares = self.roofline.hardwares
-        links = self.roofline.links
-
-        if self.id == remote_id:
-            return 0.0
-
-        remote_worker = self.engine.workers[remote_id]
-        if self.network == remote_worker.network:
-            latency = max(
-                links[hardwares[self.hardware].Nvlink].Latency,
-                links[hardwares[remote_worker.hardware].Nvlink].Latency,
-            )
-            bandwidth = min(
-                links[hardwares[self.hardware].Nvlink].UniBW,
-                links[hardwares[remote_worker.hardware].Nvlink].UniBW,
-            )
-        else:
-            latency = max(
-                links[self.nettype].Latency, links[remote_worker.nettype].Latency
-            )
-            bandwidth = min(
-                links[self.nettype].UniBW, links[remote_worker.nettype].UniBW
-            )
-
-        return (
-            latency
-            + num_blocks
-            * self.cache_config.block_size
-            * self.cache_config.size_per_token
-            / _GB
-            / bandwidth
-        )
+        bytes_ = int(num_blocks * self.cache_config.block_size * self.cache_config.size_per_token)
+        return self.parallel_communicator.estimate_point_to_point(bytes_, remote_id)
 
     def run(self):
         while True:
@@ -521,19 +503,21 @@ class LLMEngine(Worker):
         kv_transfer_config: KVTransferConfig,
         psla_config: PSLAConfig,
         cluster_config: ClusterConfig,
-        roofline: TransformerRoofline,
+        hardware: HardwareContext,
         prefill_worker_pool_type: str,
         decode_worker_pool_type: str,
         max_parallem_sum: int,
         max_occupy_ratio: float = 1,
         parallel_config: ParallelConfig | None = None,
-        latency_backend_type: str = "roofline",
-        wrapped_llmcompass_vars: tuple[Any, Any, Any] | None = None,
+        latency_backend_type: str = "operator_table",
+        latency_fallback: str = "table_first",
+        operator_backend: str | None = None,
+        decode_context_bucket: int = 128,
         random_seed: int = 0,
         debug_print: bool = False,
         af_compute_provider: AFComputeLatencyProvider | None = None,
         af_transfer_provider: AFTransferLatencyProvider | None = None,
-        af_dtype: str = "fp16",
+        af_dtype: str | None = None,
     ):
         super().__init__(env, -1)
 
@@ -545,24 +529,33 @@ class LLMEngine(Worker):
             "least_gpu_memory": LeastGpuMemoryWorkerPool,
             "balanced_load": BalancedLoadWorkerPool,
         }
+        self.hardware = hardware
         self.parallel_config = parallel_config or ParallelConfig.default()
         self.debug_printer = RequestCompletionDebugPrinter(debug_print)
-        self.moe_config = psla_config.moe_config
+        self.model_spec = hardware.model(psla_config.model).with_moe_override(
+            psla_config.moe_config
+        )
+        self.moe_config = self.model_spec.moe
+        # AF activations / KV default to the model's weight dtype so that the
+        # AF stages query the same table rows as the step-level backend.
+        af_dtype = af_dtype or self.model_spec.dtype
         self.expert_placement = build_expert_placement(
             self.moe_config,
             self.parallel_config,
-            total_layers=getattr(roofline.models[psla_config.model], "Nlayer", None),
+            total_layers=self.model_spec.num_layers,
         )
+        self.latency_backend_type = latency_backend_type
+        self.latency_fallback = latency_fallback
 
         self.cluster_config = cluster_config
         worker_configs = cluster_config.workers(self.parallel_config)
+        self.placement = build_topology_placement(cluster_config, worker_configs, hardware)
         self.af_runtime_plan: AFRuntimePlan | None = (
             compile_af_runtime_plan(
                 cluster_config=cluster_config,
                 worker_configs=worker_configs,
-                roofline=roofline,
-                model=psla_config.model,
-                moe_config=self.moe_config,
+                model=self.model_spec,
+                hardware=hardware,
                 block_size=block_size,
                 dtype=af_dtype,
             )
@@ -647,15 +640,19 @@ class LLMEngine(Worker):
                     block_size=block_size,
                     batching=batching,
                     kv_transfer_config=kv_transfer_config,
-                    roofline=roofline,
+                    hardware=hardware,
+                    model_spec=self.model_spec,
+                    placement=self.placement,
                     max_parallem_sum=max_parallem_sum,
                     max_occupy_ratio=max_occupy_ratio,
                     parallel_config=worker_parallel_config,
                     moe_config=self.moe_config,
                     expert_placement=self.expert_placement,
                     latency_backend_type=latency_backend_type,
+                    latency_fallback=latency_fallback,
+                    operator_backend=operator_backend,
+                    decode_context_bucket=decode_context_bucket,
                     random_seed=random_seed,
-                    wrapped_llmcompass_vars=wrapped_llmcompass_vars,
                     runtime_role=self._runtime_role(worker_config),
                     cache_config_override=cache_config_override,
                     block_manager=block_manager,
@@ -676,11 +673,17 @@ class LLMEngine(Worker):
             worker.parallel_communicator.workers = self.workers
 
         if cluster_config.af.enabled:
-            model_metadata = roofline.models[psla_config.model]
-            total_layers = getattr(model_metadata, "Nlayer", None)
-            hidden_size = psla_config.hidden_size or getattr(
-                model_metadata, "Dmodel", None
+            af_compute_provider, af_transfer_provider = self._resolve_af_providers(
+                af_compute_provider,
+                af_transfer_provider,
+                worker_configs,
+                af_dtype=af_dtype,
+                operator_backend=operator_backend,
+                latency_fallback=latency_fallback,
+                latency_backend_type=latency_backend_type,
             )
+            self.af_compute_provider = af_compute_provider
+            self.af_transfer_provider = af_transfer_provider
             self.af_executor = AFExecutor(
                 env=env,
                 cluster_config=cluster_config,
@@ -689,8 +692,8 @@ class LLMEngine(Worker):
                 transfer_provider=af_transfer_provider,
                 model_id=psla_config.model,
                 dtype=af_dtype,
-                total_layers=total_layers,
-                hidden_size=hidden_size,
+                total_layers=self.model_spec.num_layers,
+                hidden_size=self.model_spec.hidden_size,
                 resources=self.af_resources,
                 moe_config=self.moe_config,
                 random_seed=random_seed,
@@ -718,6 +721,38 @@ class LLMEngine(Worker):
 
         self.connector_stats = ConnectorStats()
         self.action = self.env.process(self.run())
+
+    def _resolve_af_providers(
+        self,
+        compute_provider: AFComputeLatencyProvider | None,
+        transfer_provider: AFTransferLatencyProvider | None,
+        worker_configs: list[WorkerConfig],
+        *,
+        af_dtype: str,
+        operator_backend: str | None,
+        latency_fallback: str,
+        latency_backend_type: str,
+    ) -> tuple[AFComputeLatencyProvider | None, AFTransferLatencyProvider | None]:
+        """Build operator-table providers unless the caller injected both."""
+        af_config = self.cluster_config.af
+        if af_config.latency_provider != "operator_table" or (
+            compute_provider is not None and transfer_provider is not None
+        ):
+            return compute_provider, transfer_provider
+        from TokenSim.af.operator_provider import build_operator_table_af_providers
+
+        built_compute, built_transfer = build_operator_table_af_providers(
+            hardware=self.hardware,
+            model=self.model_spec,
+            cluster_config=self.cluster_config,
+            worker_configs=worker_configs,
+            placement=self.placement,
+            dtype=af_dtype,
+            operator_backend=af_config.operator_backend or operator_backend,
+            fallback=af_config.latency_fallback or latency_fallback,
+            latency_backend_type=latency_backend_type,
+        )
+        return compute_provider or built_compute, transfer_provider or built_transfer
 
     def _is_request_owning_config(self, worker_config: WorkerConfig) -> bool:
         return any(

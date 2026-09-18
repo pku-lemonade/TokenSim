@@ -1,0 +1,83 @@
+schema_version: 1
+latency_unit: us
+dataset_version: aiconfigurator-rtx_pro_6000_server-vllm-latest
+device_id: rtx_pro_6000_server
+backend: vllm
+framework_version: 0.24.0
+notes: 'Imported from NVIDIA AIConfigurator measured kernel database. Resolved versions:
+  {''gemm'': [''0.24.0''], ''context_attention'': [''0.24.0''], ''generation_attention'':
+  [''0.24.0''], ''moe'': [''0.24.0''], ''collective_nccl'': [''2.29.2''], ''collective_custom'':
+  [''0.24.0'']}. Rows dropped (unsupported dtype/kernel): {''collective'': 69}.'
+sources:
+- source_id: aiconfigurator:rtx_pro_6000_server:gemm:vllm:0.24.0
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/rtx_pro_6000_server/gemm/vllm/0.24.0
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: rtx_pro_6000_server
+  backend: vllm:0.24.0
+- source_id: aiconfigurator:rtx_pro_6000_server:attention:vllm:0.24.0
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/rtx_pro_6000_server/attention/vllm/0.24.0
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: rtx_pro_6000_server
+  backend: vllm:0.24.0
+- source_id: aiconfigurator:rtx_pro_6000_server:moe:vllm:0.24.0
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/rtx_pro_6000_server/moe/vllm/0.24.0
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: rtx_pro_6000_server
+  backend: vllm:0.24.0
+- source_id: aiconfigurator:rtx_pro_6000_server:comm:nccl:2.29.2
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/rtx_pro_6000_server/comm/nccl/2.29.2
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: rtx_pro_6000_server
+  backend: nccl:2.29.2
+- source_id: aiconfigurator:rtx_pro_6000_server:comm:vllm:0.24.0
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/rtx_pro_6000_server/comm/vllm/0.24.0
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: rtx_pro_6000_server
+  backend: vllm:0.24.0
+calibration: {}
+tables:
+  gemm:
+    rows: 107744
+  context_attention:
+    rows: 50163
+  generation_attention:
+    rows: 60301
+  moe:
+    rows: 48006
+  collective:
+    rows: 573
+aiconfigurator_system: rtx_pro_6000_server
+aiconfigurator_layout: database
+aiconfigurator_commit: f254959eb89e2f206b8f9a77051644d7c1cbdb89
+resolved_versions:
+  gemm:
+  - 0.24.0
+  context_attention:
+  - 0.24.0
+  generation_attention:
+  - 0.24.0
+  moe:
+  - 0.24.0
+  collective_nccl:
+  - 2.29.2
+  collective_custom:
+  - 0.24.0
+dropped_rows:
+  collective: 69
+dropped_dtypes: {}
+license: Apache-2.0 (NVIDIA AIConfigurator); see data/operator_data/LICENSES.md

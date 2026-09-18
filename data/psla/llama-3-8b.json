@@ -1,0 +1,13 @@
+{
+    "name": "llama3-8b",
+    "model": "llama-3-8b",
+    "qps": 10,
+    "distribution": "uniform",
+    "prefill_mean_len": 512,
+    "prefill_range_len": 256,
+    "decode_mean_len": 128,
+    "decode_range_len": 64,
+    "decode_len_distribution": "uniform",
+    "first_token_latency": {"max": 10, "p50": 2, "p99": 3},
+    "decode_token_latency": {"p50": 0.02, "p99": 0.05, "max": 1}
+}

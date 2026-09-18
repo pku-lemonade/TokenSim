@@ -1,49 +1,35 @@
-from TokenSim.operator_data.analytical import (
-    AnalyticalEstimate,
-    Calibration,
-    HardwareProfile,
-    estimate_operator,
-)
-from TokenSim.operator_data.generator import (
-    EvidenceGrade,
-    Observation,
-    OperatorDataGenerator,
-    SourceRecord,
-    ValidationReport,
-)
+"""Operator latency tables: offline generation, validation, and runtime lookup.
+
+Layout of a data package (``data/operator_data/<device>/<backend>/<version>/``)::
+
+    generation_meta.yaml           dataset identity, sources, calibration, row counts
+    gemm_perf.parquet              runtime tables: query key + latency_us + source_id
+    context_attention_perf.parquet
+    generation_attention_perf.parquet
+    moe_perf.parquet
+    elementwise_perf.parquet
+    collective_perf.parquet
+    *_analysis.parquet             optional: FLOPs, bytes, roofline terms, bottleneck
+
+The runtime never recomputes rooflines for rows that exist in a table; the
+analytical model is only consulted, and reported as such, when a table has no
+usable data for a shape.
+"""
+
 from TokenSim.operator_data.lookup import (
     LookupResult,
     MissingOperatorDataError,
-    OperatorDataLookup,
+    OperatorLookup,
 )
-from TokenSim.operator_data.package import (
-    OperatorDataPackage,
-    OperatorDataValidationError,
-)
-from TokenSim.operator_data.providers import (
-    ModelOperatorManifest,
-    OperatorDataComputeLatencyProvider,
-    OperatorDataTransferLatencyProvider,
-    build_operator_data_providers,
-)
+from TokenSim.operator_data.package import OperatorDataPackage, PackageMeta
+from TokenSim.operator_data.schema import TABLE_SPECS, TableSpec
 
 __all__ = [
-    "AnalyticalEstimate",
-    "Calibration",
-    "EvidenceGrade",
-    "HardwareProfile",
     "LookupResult",
     "MissingOperatorDataError",
-    "ModelOperatorManifest",
-    "Observation",
-    "OperatorDataComputeLatencyProvider",
-    "OperatorDataGenerator",
-    "OperatorDataLookup",
     "OperatorDataPackage",
-    "OperatorDataTransferLatencyProvider",
-    "OperatorDataValidationError",
-    "SourceRecord",
-    "ValidationReport",
-    "build_operator_data_providers",
-    "estimate_operator",
+    "OperatorLookup",
+    "PackageMeta",
+    "TABLE_SPECS",
+    "TableSpec",
 ]

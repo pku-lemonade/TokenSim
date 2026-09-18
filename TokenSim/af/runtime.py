@@ -12,9 +12,10 @@ from TokenSim.config.cluster_config import (
     WorkerConfig,
 )
 from TokenSim.config.constants import _GB
+from TokenSim.config.model_config import ModelSpec
 from TokenSim.config.parallel_config import ParallelConfig, ParallelRankInfo
 from TokenSim.errors import ConfigurationError, SimulationStateError
-from TokenSim.moe.config import MoEModelConfig
+from TokenSim.hardware.device import dtype_bytes
 
 
 RankKey = tuple[str, int]
@@ -791,44 +792,37 @@ def compile_af_runtime_plan(
     *,
     cluster_config: ClusterConfig,
     worker_configs: list[WorkerConfig],
-    roofline: Any,
-    model: str,
-    moe_config: MoEModelConfig,
+    model: ModelSpec,
+    hardware: Any,
     block_size: int,
     dtype: str = "fp16",
     watermark: float = 0.01,
 ) -> AFRuntimePlan:
+    """Bind execution domains to physical workers and size their model/KV state.
+
+    ``model`` is the resolved :class:`ModelSpec` (MoE overrides already
+    applied) and ``hardware`` the :class:`HardwareContext` whose device catalog
+    provides each worker's usable memory.
+    """
     if not cluster_config.af.enabled:
         raise ConfigurationError("AF runtime plan requires af.enabled=true")
     if not 0 <= watermark < 1:
         raise ConfigurationError("AF runtime watermark must be in [0, 1)")
-    dtype_size = _dtype_size(dtype)
-    try:
-        model_conf = roofline.models[model]
-    except (AttributeError, KeyError) as exc:
+    if not isinstance(model, ModelSpec):
         raise ConfigurationError(
-            f"AF runtime model metadata missing for {model!r}"
-        ) from exc
-    hidden = _positive_model_int(model_conf, "Dmodel")
-    total_layers = _positive_model_int(model_conf, "Nlayer")
-    attention_heads = moe_config.num_attention_heads or _positive_model_int(
-        model_conf, "Nhead"
-    )
-    if hidden % attention_heads:
-        raise ConfigurationError(
-            f"AF runtime Dmodel={hidden} is not divisible by Nhead={attention_heads}"
+            f"AF runtime plan requires a ModelSpec, got {type(model).__name__}"
         )
-    head_dim = hidden // attention_heads
-    kv_heads = moe_config.num_key_value_heads or _num_kv_heads(model_conf)
-    intermediate, intermediate_source = _intermediate_size(
-        model_conf, moe_config, hidden
-    )
-    moe_intermediate = moe_config.moe_intermediate_size or intermediate
-    vocab_size = int(
-        getattr(model_conf, "Vocab", getattr(model_conf, "Vocab_Size", 50000))
-    )
-    if vocab_size < 1:
-        raise ConfigurationError("AF runtime vocabulary size must be positive")
+    dtype_size = _dtype_size(dtype)
+    moe_config = model.moe
+    hidden = model.hidden_size
+    total_layers = model.num_layers
+    head_dim = model.head_dim
+    kv_heads = model.num_key_value_heads
+    intermediate, intermediate_source = model.intermediate_size, "model.intermediate_size"
+    moe_intermediate = model.moe_intermediate_size
+    vocab_size = model.vocab_size
+    moe_layers = len(model.moe_layer_indices())
+    dense_layers = total_layers - moe_layers
 
     worker_by_physical: dict[str, WorkerConfig] = {}
     for worker in worker_configs:
@@ -913,12 +907,8 @@ def compile_af_runtime_plan(
                     expert_ids=expert_ids,
                     hidden=hidden,
                     total_layers=total_layers,
-                    dense_layers=(
-                        total_layers - moe_config.num_moe_layers
-                        if moe_config.enabled
-                        else total_layers
-                    ),
-                    moe_layers=(moe_config.num_moe_layers if moe_config.enabled else 0),
+                    dense_layers=dense_layers,
+                    moe_layers=moe_layers,
                     intermediate=intermediate,
                     intermediate_source=intermediate_source,
                     moe_intermediate=moe_intermediate,
@@ -973,14 +963,12 @@ def compile_af_runtime_plan(
     for physical, rank_keys in sorted(physical_bindings.items()):
         worker = worker_by_physical[physical]
         try:
-            hardware_conf = roofline.hardwares[worker.hardware]
-            capacity_bytes = int(
-                hardware_conf.MM_Card_Num * hardware_conf.Capacity * _GB
-            )
-        except (AttributeError, KeyError, TypeError, ValueError) as exc:
+            device = hardware.device(worker.hardware)
+            capacity_bytes = int(device.usable_memory_bytes)
+        except (AttributeError, ConfigurationError, TypeError, ValueError) as exc:
             raise ConfigurationError(
                 f"AF runtime hardware capacity metadata missing for "
-                f"worker={physical!r}, hardware={worker.hardware!r}"
+                f"worker={physical!r}, hardware={worker.hardware!r}: {exc}"
             ) from exc
         components = tuple(
             physical_components.get(physical, {}).get(component_id)
@@ -1114,7 +1102,7 @@ def compile_af_runtime_plan(
 
     plan = AFRuntimePlan(
         schema_version="1.0",
-        model=model,
+        model=model.model_id,
         block_size=block_size,
         dtype=dtype,
         dtype_size_bytes=dtype_size,
@@ -1258,66 +1246,17 @@ def _experts_by_ep(
 
 
 def _dtype_size(dtype: str) -> int:
+    """Whole-byte size of the AF activation/KV dtype (sub-byte formats are rejected)."""
     if not isinstance(dtype, str) or not dtype.strip():
         raise ConfigurationError("AF runtime dtype must be non-empty")
-    normalized = dtype.lower()
-    sizes = {
-        "fp32": 4,
-        "float32": 4,
-        "fp16": 2,
-        "float16": 2,
-        "bf16": 2,
-        "bfloat16": 2,
-        "fp8": 1,
-        "int8": 1,
-    }
-    if normalized not in sizes:
+    try:
+        size = dtype_bytes(dtype)
+    except Exception as exc:  # unknown alias
         raise ConfigurationError(
             f"AF runtime dtype {dtype!r} has no explicit byte size"
+        ) from exc
+    if size < 1 or int(size) != size:
+        raise ConfigurationError(
+            f"AF runtime dtype {dtype!r} is a sub-byte format; KV partitions need whole bytes"
         )
-    return sizes[normalized]
-
-
-def _positive_model_int(model_conf: Any, name: str) -> int:
-    value = getattr(model_conf, name, None)
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise ConfigurationError(f"AF runtime model metadata {name} is missing")
-    value = int(value)
-    if value < 1:
-        raise ConfigurationError(f"AF runtime model metadata {name} must be positive")
-    return value
-
-
-def _num_kv_heads(model_conf: Any) -> int:
-    if _as_bool(getattr(model_conf, "Multi_Query", False)):
-        return 1
-    if _as_bool(getattr(model_conf, "Grouped_Query", False)):
-        grouped = int(getattr(model_conf, "Grouped_Num", 0))
-        attention_heads = _positive_model_int(model_conf, "Nhead")
-        if grouped < 1 or attention_heads % grouped:
-            raise ConfigurationError(
-                f"AF runtime invalid grouped-query metadata: Nhead={attention_heads}, "
-                f"Grouped_Num={grouped}"
-            )
-        return attention_heads // grouped
-    return _positive_model_int(model_conf, "Nhead")
-
-
-def _as_bool(value: Any) -> bool:
-    if isinstance(value, str):
-        return value.strip().lower() in {"1", "true", "yes"}
-    return bool(value)
-
-
-def _intermediate_size(
-    model_conf: Any, moe_config: MoEModelConfig, hidden: int
-) -> tuple[int, str]:
-    if moe_config.intermediate_size is not None:
-        return int(moe_config.intermediate_size), "moe_config.intermediate_size"
-    model_value = getattr(model_conf, "FFN_Hidden", None)
-    if model_value is not None:
-        value = int(model_value)
-        if value < 1:
-            raise ConfigurationError("AF runtime FFN_Hidden must be positive")
-        return value, "model.FFN_Hidden"
-    return 4 * hidden, "analytical_default_4x_hidden"
+    return int(size)

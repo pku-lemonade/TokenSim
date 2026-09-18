@@ -8,10 +8,10 @@ from types import SimpleNamespace
 import simpy
 
 from tests.test_af_executor import (
-    AFRooflineStub,
     FixedComputeProvider,
     FixedTransferProvider,
     _psla_config,
+    af_test_hardware,
 )
 from tests.test_af_parallel_planning import _cluster
 from TokenSim.af.runtime import AFCacheConfig
@@ -32,11 +32,9 @@ from util.request import LLMSource
 from util.results import get_af_stats
 
 
-def _runtime_roofline(*, layers=2, capacity=0.1):
-    roofline = AFRooflineStub(layers=layers)
-    for hardware in roofline.hardwares.values():
-        hardware.Capacity = capacity
-    return roofline
+def _runtime_hardware(*, layers=2, capacity=0.1):
+    """Catalog with ``capacity`` GiB per device and a ``layers``-layer TestModel."""
+    return af_test_hardware(layers=layers, capacity_gib=capacity)
 
 
 def _moe_config():
@@ -57,18 +55,18 @@ def _moe_config():
 def _runtime_plan(
     cluster=None,
     *,
-    roofline=None,
+    hardware=None,
     moe_config=None,
     dtype="fp16",
 ):
     cluster = cluster or _cluster()
-    roofline = roofline or _runtime_roofline()
+    hardware = hardware or _runtime_hardware()
+    model = hardware.model("TestModel").with_moe_override(moe_config or _moe_config())
     return compile_af_runtime_plan(
         cluster_config=cluster,
         worker_configs=cluster.workers(),
-        roofline=roofline,
-        model="TestModel",
-        moe_config=moe_config or _moe_config(),
+        model=model,
+        hardware=hardware,
         block_size=4,
         dtype=dtype,
     )
@@ -92,7 +90,7 @@ def _engine(cluster, *, moe_config=None):
         kv_transfer_config=KVTransferConfig.default(),
         psla_config=psla,
         cluster_config=cluster,
-        roofline=_runtime_roofline(),
+        hardware=_runtime_hardware(),
         prefill_worker_pool_type="round_robin",
         decode_worker_pool_type="round_robin",
         max_parallem_sum=8,
@@ -159,9 +157,6 @@ def _split_phase_alias_cluster():
 class AFRuntimeStateRegressionTest(unittest.TestCase):
     def test_domain_tp_builds_rank_local_state_when_global_tp_is_one(self):
         cluster = _cluster(a_tp=2, a_dp=1, f_tp=1, f_dp=1, f_ep=1)
-        roofline = AFRooflineStub()
-        for hardware in roofline.hardwares.values():
-            hardware.Capacity = 0.01
         engine = LLMEngine(
             env=simpy.Environment(),
             block_size=4,
@@ -169,7 +164,7 @@ class AFRuntimeStateRegressionTest(unittest.TestCase):
             kv_transfer_config=KVTransferConfig.default(),
             psla_config=_psla_config(),
             cluster_config=cluster,
-            roofline=roofline,
+            hardware=_runtime_hardware(layers=1, capacity=0.01),
             prefill_worker_pool_type="round_robin",
             decode_worker_pool_type="round_robin",
             max_parallem_sum=8,
@@ -239,7 +234,7 @@ class AFRuntimeStateRegressionTest(unittest.TestCase):
             kv_transfer_config=KVTransferConfig.default(),
             psla_config=_psla_config(),
             cluster_config=cluster,
-            roofline=_runtime_roofline(),
+            hardware=_runtime_hardware(),
             prefill_worker_pool_type="round_robin",
             decode_worker_pool_type="round_robin",
             max_parallem_sum=8,
@@ -374,12 +369,15 @@ class AFRuntimePlanTest(unittest.TestCase):
             ConfigurationError,
             "domain/rank=.*physical_worker=.*model_bytes=.*capacity_bytes",
         ):
-            _runtime_plan(roofline=_runtime_roofline(capacity=0.000001))
+            _runtime_plan(hardware=_runtime_hardware(capacity=0.000001))
 
-        roofline = _runtime_roofline()
-        del roofline.models["TestModel"].Dmodel
-        with self.assertRaisesRegex(ConfigurationError, "Dmodel is missing"):
-            _runtime_plan(roofline=roofline)
+        unknown_hardware = _cluster()
+        for group in unknown_hardware.worker_groups:
+            group.hardware = "missing-device"
+        with self.assertRaisesRegex(
+            ConfigurationError, "hardware capacity metadata missing"
+        ):
+            _runtime_plan(unknown_hardware)
         with self.assertRaisesRegex(ConfigurationError, "no explicit byte size"):
             _runtime_plan(dtype="mystery")
 

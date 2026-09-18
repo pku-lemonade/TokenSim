@@ -29,6 +29,10 @@ class WorkerConfig:
     capabilities: tuple[str, ...] = ()
     rank_info: ParallelRankInfo | None = None
     physical_worker_ref: "PhysicalWorkerRef | None" = None
+    # Explicit topology device index (optional) and the operator-data backend
+    # (e.g. vllm, trtllm, analytical) whose tables price this worker's kernels.
+    device_index: int | None = None
+    operator_backend: str | None = None
 
 
 @dataclass
@@ -39,6 +43,10 @@ class WorkerGroupConfig:
     network: str = "net1"
     name: str | None = None
     capabilities: tuple[str, ...] = ()
+    # Explicit topology device indices for the group's workers (optional).
+    device_indices: list[int] | None = None
+    # Which operator-data backend (e.g. trtllm, vllm, analytical) to use.
+    operator_backend: str | None = None
 
     @field_validator("num_workers", mode="before")
     @classmethod
@@ -64,6 +72,14 @@ class WorkerGroupConfig:
             raise ConfigurationError(f"{context} hardware must be a non-empty string")
         if not isinstance(self.network, str) or not self.network.strip():
             raise ConfigurationError(f"{context} network must be a non-empty string")
+        if self.device_indices is not None and len(self.device_indices) != self.num_workers:
+            raise ConfigurationError(
+                f"{context} device_indices must have num_workers entries"
+            )
+        if self.operator_backend is not None and (
+            not isinstance(self.operator_backend, str) or not self.operator_backend.strip()
+        ):
+            raise ConfigurationError(f"{context} operator_backend must be a non-empty string")
 
         declared = tuple(self.capabilities)
         if len(declared) != len(set(declared)):
@@ -110,6 +126,12 @@ class WorkerGroupConfig:
                     group_name=self.name or f"unbound:{self.role or 'af'}",
                     worker_index=worker_index,
                 ),
+                device_index=(
+                    self.device_indices[worker_index]
+                    if self.device_indices is not None
+                    else None
+                ),
+                operator_backend=self.operator_backend,
             )
             for worker_index in range(self.num_workers)
         ]
@@ -420,6 +442,10 @@ class AFLinkConfig:
         )
 
 
+AF_LATENCY_PROVIDERS = ("injected", "operator_table")
+AF_LATENCY_FALLBACKS = ("table_first", "table_only", "analytical_only")
+
+
 @dataclass
 class AFConfig:
     enabled: bool = False
@@ -428,12 +454,16 @@ class AFConfig:
     links: list[AFLinkConfig] = Field(default_factory=list)
     execution_domains: list[ExecutionDomainConfig] = Field(default_factory=list)
     trace_enabled: bool = True
+    # ``injected``: the caller supplies compute/transfer providers (tests).
+    # ``operator_table``: the engine prices AF stages from the device operator
+    # tables in ``data/operator_data`` and AF transfers from the link classes
+    # in ``data/topologies/links.yaml``.
     latency_provider: str = "injected"
-    operator_data_path: str | None = None
-    operator_manifest_path: str | None = None
-    operator_data_backend: str = "analytical"
-    operator_link_group: str = "af-fabric"
-    operator_group_size: int = 2
+    # Operator-data backend for AF devices (defaults to the run-wide choice).
+    operator_backend: str | None = None
+    # ``table_first`` | ``table_only`` | ``analytical_only`` (defaults to the
+    # run-wide ``--latency_fallback``).
+    latency_fallback: str | None = None
 
     @field_validator("enabled", "trace_enabled", mode="before")
     @classmethod
@@ -449,15 +479,6 @@ class AFConfig:
             raise ConfigurationError("af_block_size must be a positive integer")
         return value
 
-    @field_validator("operator_group_size", mode="before")
-    @classmethod
-    def _validate_operator_group_size_type(cls, value: Any) -> int:
-        if type(value) is not int:
-            raise ConfigurationError(
-                "af.operator_group_size must be a positive integer"
-            )
-        return value
-
     def __post_init__(self) -> None:
         if type(self.enabled) is not bool:
             raise ConfigurationError("af.enabled must be a boolean")
@@ -466,32 +487,18 @@ class AFConfig:
         self.phases = _normalize_phases(self.phases, "af.phases")
         if self.af_block_size < 1:
             raise ConfigurationError("af_block_size must be a positive integer")
-        if self.latency_provider not in {"injected", "operator_data"}:
+        if self.latency_provider not in AF_LATENCY_PROVIDERS:
             raise ConfigurationError(
-                "af.latency_provider must be 'injected' or 'operator_data'"
+                "af.latency_provider must be one of " + ", ".join(AF_LATENCY_PROVIDERS)
             )
-        if self.operator_group_size < 1:
-            raise ConfigurationError(
-                "af.operator_group_size must be a positive integer"
-            )
-        for field_name in (
-            "operator_data_backend",
-            "operator_link_group",
+        if self.operator_backend is not None and (
+            not isinstance(self.operator_backend, str) or not self.operator_backend.strip()
         ):
-            value = getattr(self, field_name)
-            if not isinstance(value, str) or not value.strip():
-                raise ConfigurationError(f"af.{field_name} must be a non-empty string")
-        if self.latency_provider == "operator_data":
-            missing = [
-                field_name
-                for field_name in ("operator_data_path", "operator_manifest_path")
-                if not isinstance(getattr(self, field_name), str)
-                or not getattr(self, field_name).strip()
-            ]
-            if missing:
-                raise ConfigurationError(
-                    "af.latency_provider='operator_data' requires " + ", ".join(missing)
-                )
+            raise ConfigurationError("af.operator_backend must be a non-empty string")
+        if self.latency_fallback is not None and self.latency_fallback not in AF_LATENCY_FALLBACKS:
+            raise ConfigurationError(
+                "af.latency_fallback must be one of " + ", ".join(AF_LATENCY_FALLBACKS)
+            )
 
 
 def _normalize_phases(phases: tuple[str, ...], context: str) -> tuple[str, ...]:
@@ -518,6 +525,9 @@ class ClusterConfig:
     worker_groups: list[WorkerGroupConfig] = Field(default_factory=list)
     kv_transfer: KVTransferConfig | None = None
     parallel_config: ParallelConfig | None = None
+    # Optional catalog topology id (data/topologies/*.yaml). When omitted a
+    # two-level topology is synthesized from ``networks``.
+    topology: str | None = None
     af: AFConfig = Field(default_factory=AFConfig)
 
     @field_validator("num_workers", mode="before")

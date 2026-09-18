@@ -179,59 +179,62 @@ total_duration   = queue_duration + service_duration
 
 ## 计算时延数据契约
 
-### 离线生成与运行时查询
+### provider 选择
 
-后续 operator-data change 必须将数据生成和 TokenSim 运行分开：
+`af.latency_provider` 决定 AF executor 的 compute/transfer provider 来源：
 
-1. `shape_manifests/<experiment-id>.yaml` 定义目标 shape。
-2. 离线生成器根据实测、workload 公式、硬件参数和校准系数生成数据。
-3. `*_perf.parquet` 只保存查询主键、`latency_us` 和 `source_id`。
-4. `*_analysis.parquet` 保存 FLOPs、搬运量、理论时间、校准系数和瓶颈。
-5. `generation_meta.yaml` 保存硬件参数、公式版本、单位、来源和行数。
-6. TokenSim 运行时只查表，不重新计算 roofline。
+| 取值 | 含义 |
+| --- | --- |
+| `injected`（默认） | 调用方注入 provider；仓库测试用带 `test-stub` source ID 的确定性 provider 验证调度机制 |
+| `operator_table` | Engine 用硬件目录构建正式 provider：计算查 `data/operator_data/<device>/<backend>` 的算子表，缺失 shape 回退到设备族解析模型；通信用 `data/topologies/links.yaml` 的链路类和分层 collective 模型 |
 
-第一版分表：
+`operator_table` 模式下还可以设置 `af.operator_backend`（覆盖全局 `--operator_backend`，例如 `vllm`、`trtllm`、`sglang`）和 `af.latency_fallback`（`table_first` / `table_only` / `analytical_only`，覆盖全局 `--latency_fallback`）。worker group 的 `hardware` 必须是 `data/devices` 中的 `device_id`，`networks` 的值必须是链路类 ID：
 
-| 表 | 主要主键 | 允许的插值 |
-| --- | --- | --- |
-| GEMM | dtype、m、n、k | 相同 dtype/n/k 下对 m 一维内插 |
-| Prefill Attention | dtype、batch、input_seq_len、head 配置、window | 对 input_seq_len 一维内插 |
-| Decode Attention | dtype、batch、context_len、head 配置、window | 对 context_len 一维内插 |
-| MoE | dtype、phase、distribution、tokens、模型/专家/TP/EP | 对 num_tokens 一维内插 |
-| 逐元素算子 | op、dtype、tokens、hidden size | 第一版不得跨 op 或 dtype 插值 |
+```json
+{
+  "networks": {"af_net": "ib_ndr400"},
+  "worker_groups": [{"name": "attention-pool", "capabilities": ["af_attention"], "hardware": "h100_sxm", "num_workers": 4, "network": "af_net"}],
+  "af": {"enabled": true, "latency_provider": "operator_table", "operator_backend": "vllm"}
+}
+```
 
-查询顺序固定为精确匹配、表覆盖范围内受控一维插值、明确缺失错误。第一版禁止外推，也禁止运行时公式或默认时间兜底。返回结果至少包含：
+设备缺失、后端不存在或网络名没有对应链路类时，Engine 在事件循环前失败。`benchmark.py` 只在 `injected` 模式下要求调用方提供 provider；`operator_table` 模式与注入的 provider 不能同时使用。
+
+算子表的格式、查表顺序（精确匹配 → 受控插值 → 有界外推 → 解析模型）与数据来源见 [operator-latency-model.md](operator-latency-model.md)；每次查询返回：
 
 ```text
 latency_us
-match_type = exact | interpolated
+match_type = exact | interpolated | extrapolated | analytical
 source_id
 ```
 
-`match_type` 表示查询方式；`source_id` 表示证据来源，两者不能混用。缺失错误必须输出完整主键，交由离线生成器补表。
+`match_type` 表示查询方式，`source_id` 表示证据来源，两者不能混用。AF 事件记录的 `match_type` 是该阶段所有算子中最差的一项，`dataset_version` 是设备数据包版本（无数据包时为 `analytical:<device_id>`）。结果 JSON 的 `af_latency_providers` 记录两个 provider 的描述，`af_operator_stats` 与 step 级 backend 一样给出 match type 计数和缺失 shape。
 
 ### A/F 组合边界
 
-A 阶段查询：
+A 阶段（`a_rank_compute`，按 A domain 的 TP 切分 rank 本地形状）：
 
-- QKV GEMM；
-- Attention 核心；
-- 输出投影 GEMM；
-- 必要的 RMSNorm、RoPE、Residual Add 和 data reorder。
-- A leader 上独立计时的 Router/Gating GEMM。
+- RMSNorm、QKV GEMM `(T, (q+2kv)/tp, h)`、RoPE；
+- Attention 核心：Prefill 按 request 长度分组查 `context_attention`，Decode 按 context 长度分组查 `generation_attention`，使用真实 KV head 维度；
+- 输出投影 GEMM `(T, h, q/tp)`、Residual Add。
 
-F 阶段查询：
+Router 阶段（A leader，`router_topk`）：F 侧 RMSNorm 和 Router GEMM `(T, experts, h)`；dense 模型只有 RMSNorm。
 
-- MoE grouped/fused expert 计算；
-- 必要的逐元素算子。
+F 阶段（`expert_rank_compute`，按 F domain 的 TP 切分）：
 
-Attention 核心不重复包含 QKV 和输出投影；MoE expert 不包含 Router 或通信；softmax 与 fused SwiGLU 只在其所属聚合算子中计时一次。A→F/EP dispatch、F→A/EP combine 和必要的 TP collective 是独立通信事件，一层不会再额外生成同 payload 的 F-internal dispatch/combine。
+- MoE：一次 `moe` 表查询。`T` 是本 rank 已展开 Top-K 的 routed assignments，平衡的 EP group 会把 `N` 个输入 token 变成每 rank `N * top_k / ep_size` 个 assignments，所以查表用等效输入 token 数 `T * ep_size / top_k`，与 step 级 backend 的 MoE 语义一致；
+- dense FFN：gate/up GEMM、SwiGLU、down GEMM；
+- Residual Add。
 
-GQA/MQA 必须使用真实 KV head 维度。Decode `context_len` 使用长度桶上界或 batch 最大 KV 长度，不使用平均长度。MoE 满足 `sum(T_e)=T*k`，其中 `T_e` 是已展开的 routed assignments；Expert 公式直接使用 `T_e`，不再乘一次 `k`。外部 Prefill/Decode histogram 必须分别匹配当前 step 的总量，否则在 workload 边界失败。
+Attention 核心不重复包含 QKV 和输出投影；MoE expert 不包含 Router 或通信；shared experts 只进入 runtime plan 的显存账本，不单独计时。A→F/EP dispatch、F→A/EP combine 和必要的 TP collective 是独立通信事件，一层不会再额外生成同 payload 的 F-internal dispatch/combine。
 
-Groq 第一版候选公开峰值包括 FP16 188 TFLOPs、INT8 750 TOPS、230 MB SRAM、80 TB/s SRAM 带宽和 480 GB/s 芯片网络带宽。每项写入 `hardware.yaml` 前必须保存原始来源，并区分公开规格、项目假设和待确认参数；峰值不能冒充算子实测。
+### 通信 service time
 
-AIConfigurator 只作为分表 schema、查询和元数据组织参考；InferSim 只作为 FLOPs、内存搬运和通信量组合参考。两者不是运行时依赖，也不是物理精度 ground truth。
+- `af_a_to_f` / `af_f_to_a`：`service = latency_us + payload_bytes / (bandwidth_per_direction * efficiency(payload))`，链路类来自 AF link 的 `network` 在 `networks` 中映射到的 ID；
+- `tp_collective`：参与 rank 的物理 worker 映射到拓扑 device index，交给分层 alpha-beta collective 模型计算 all-reduce（设备数据包有实测 NCCL 曲线时优先），没有拓扑放置时退化为同一链路类上的 ring；
+- payload 由 planner 唯一计算，provider 只返回 service time，不重算 Top-K、不计算 queue time。全/半双工、容量和多个 AF blocks 的竞争仍由 AF executor 的 SimPy resource 产生。
+
+Groq 等 SRAM 架构的峰值、链路参数同样写在 `data/devices` 与 `data/topologies` 的 YAML 中，并带 `source_id` 与证据等级；峰值不能冒充算子实测。
 
 ## 端到端验证矩阵
 
@@ -369,12 +372,12 @@ microbenchmark 数据必须覆盖：
 
 Codex 可以实现并运行配置测试、确定性 E2E oracle、trace invariant、表格一致性、calibration/holdout 切分、误差报告和敏感性分析脚本。Codex 不能生成目标硬件的物理 ground truth；算子 benchmark、链路 benchmark 和真实系统 trace 必须来自实际测量或可追溯公开资料。
 
-`add-af-executor` 实现 AF block/executor、共享 SimPy 资源、结构化 trace 和确定性 E2E harness。`add-operator-data-latency-provider` 已增加以下正式性能数据能力，详细使用方式见 [operator-data-latency.md](operator-data-latency.md)：
+`add-af-executor` 实现 AF block/executor、共享 SimPy 资源、结构化 trace 和确定性 E2E harness。正式性能数据能力由仓库统一的算子表栈提供（`TokenSim/af/operator_provider.py`）：
 
-- Groq `hardware.yaml`、shape manifest、离线生成器和 Parquet 数据；
-- 实测 kernel 匹配、插值、公式校准和 A/F 延迟组合 provider；
-- kernel/link 数据采集、校准和真实系统对照。
+- 设备目录 `data/devices`、链路类 `data/topologies/links.yaml`、算子数据包 `data/operator_data`；
+- `OperatorTableAFComputeProvider` 通过与 step 级 backend 共享的 `OperatorResolver` 查表、插值、外推并回退解析模型；
+- `TopologyAFTransferProvider` 用链路类和 collective 模型给出通信 service time。
 
-正式 provider 通过现有 compute/transfer query 与 `AFServiceEstimate` 接口接入。`source_id`、dataset、match/composition metadata 只用于可追溯性和误差分析，不参与 executor 的资源选择或调度。运行时使用 `pyarrow` 加载离线生成的 Parquet，但不依赖 AIConfigurator 或 InferSim。
+正式 provider 通过现有 compute/transfer query 与 `AFServiceEstimate` 接口接入。`source_id`、dataset、match/composition metadata 只用于可追溯性和误差分析，不参与 executor 的资源选择或调度。运行时不依赖 AIConfigurator 或 InferSim；AIConfigurator 的实测表通过离线导入进入 `data/operator_data`。
 
-仓库完整回归在 Windows 上使用测试模块内的 `TransformerRoofline` 占位实现，因为仓库携带的原生扩展是 Linux CPython 3.11 `.so`，不能由本机 CPython 3.13 直接加载。占位只解除平台导入限制；Prefill、Decode、KV transfer、并行、MoE、trace timestamp 和 latency baseline 的 Python 行为仍由完整测试套件执行。
+仓库测试通过 `HardwareContext.in_memory` 构建微型设备目录和 `TestModel`，AF 集群在生产的 HardwareContext / ModelSpec / CacheConfig 代码路径上运行，不再需要任何原生扩展占位。

@@ -8,6 +8,7 @@ import simpy
 
 from TokenSim.af.builder import AFBlockBuilder, phase_for_requests
 from TokenSim.af.latency import (
+    AF_MATCH_TYPES,
     AFComputeLatencyProvider,
     AFComputeQuery,
     AFServiceEstimate,
@@ -497,7 +498,7 @@ class AFExecutor:
             target_device=target_device,
             network=step.network or link.network,
             operation=step.operation,
-            link_group=self.cluster_config.af.operator_link_group,
+            link_group=link.resource_group,
             group_size=max(1, len(step.domain_ranks)),
             payload_bytes=step.payload_bytes,
             source_domain=step.source_domain,
@@ -643,7 +644,7 @@ class AFExecutor:
                 f"{block.iteration_id}, block={block.block_id}, layer={layer_id}, "
                 f"stage={stage}"
             )
-        if estimate.match_type not in {"exact", "interpolated"}:
+        if estimate.match_type not in AF_MATCH_TYPES:
             raise SimulationStateError(
                 f"AF provider returned invalid match_type={estimate.match_type!r} "
                 f"for iteration={block.iteration_id}, block={block.block_id}, "

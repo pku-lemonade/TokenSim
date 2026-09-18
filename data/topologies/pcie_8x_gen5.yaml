@@ -1,0 +1,17 @@
+schema_version: 1
+topology_id: pcie_8x_gen5
+description: "8 PCIe Gen5 x16 GPUs without NVLink (H100 PCIe, RTX PRO 6000 Server): peers exchange data through PCIe switches; one NDR400 NIC per pair of GPUs."
+source_id: assumption-network-v1
+levels:
+  - name: node
+    size: 8
+    link: pcie5_x16
+    fabric: switched
+    oversubscription: 2.0
+    collective_algorithm: ring
+  - name: cluster
+    size: null
+    link: ib_ndr400
+    fabric: fat_tree
+    links_per_endpoint: 4
+    oversubscription: 1.0

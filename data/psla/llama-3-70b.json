@@ -1,0 +1,13 @@
+{
+    "name": "llama3-70b",
+    "model": "llama-3-70b",
+    "qps": 5,
+    "distribution": "uniform",
+    "prefill_mean_len": 1024,
+    "prefill_range_len": 512,
+    "decode_mean_len": 256,
+    "decode_range_len": 128,
+    "decode_len_distribution": "uniform",
+    "first_token_latency": {"max": 10, "p50": 2, "p99": 3},
+    "decode_token_latency": {"p50": 0.05, "p99": 0.1, "max": 1}
+}

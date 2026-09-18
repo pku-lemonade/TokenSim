@@ -1,33 +1,134 @@
 import math
-import sys
-import types
 import unittest
 import json
 from argparse import Namespace
+from contextlib import contextmanager
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, mock_open, patch
 
 import simpy
 
-try:
-    import TransformerRoofline  # noqa: F401
-except (ImportError, OSError):
-    fake_roofline = types.ModuleType("TransformerRoofline")
-    fake_roofline.TransformerRoofline = object
-    sys.modules["TransformerRoofline"] = fake_roofline
-
 from TokenSim.af import AFExecutor, AFServiceEstimate
 from TokenSim.config.config import KVTransferConfig
 from TokenSim.config.cluster_config import ClusterConfig
 from TokenSim.config.psla_config import MetricData, PSLAConfig
 from TokenSim.errors import ConfigurationError, SimulationStateError
-from TokenSim.llm.llm_engine import AFComputeWorker, LLMEngine, Task
+from TokenSim.hardware.context import HardwareContext
+from TokenSim.hardware.links import LinkClass
+from TokenSim.llm.llm_engine import AFComputeWorker, LLMEngine, LLMWorker, Task
 from TokenSim.llm.llm_request import Request, reset_g_time
+from tests.hardware_fixtures import test_device, test_links, test_model, test_topology
 from util.request import LLMSource
 from util.results import export_result, get_af_stats
 
 import benchmark
+
+# Device and network names used by the AF test clusters. The in-memory
+# hardware catalog below registers every one of them so that AF clusters run
+# through the production HardwareContext / ModelSpec / CacheConfig code.
+AF_TEST_DEVICES = (
+    "a-device",
+    "f-device",
+    "attention-device",
+    "ffn-device",
+    "prefill-device",
+    "decode-device",
+    "device",
+)
+AF_TEST_NETWORKS = ("profile", "af-network-profile", "test", "test-network", "af-net", "net1")
+
+
+def af_test_hardware(
+    *,
+    layers=1,
+    capacity_gib=0.01,
+    moe=None,
+    hidden_size=16,
+    intermediate_size=64,
+    num_attention_heads=8,
+    devices=AF_TEST_DEVICES,
+    networks=AF_TEST_NETWORKS,
+):
+    """In-memory catalog: tiny devices, the ``TestModel`` architecture and AF links."""
+    device_specs = [test_device(name, memory_gib=capacity_gib) for name in devices]
+    links = list(test_links()) + [
+        LinkClass(
+            name,
+            f"test link {name}",
+            100.0e9,
+            1.0,
+            source_id="test-fixture",
+            grade="D",
+            half_bandwidth_bytes=1 << 16,
+        )
+        for name in networks
+        if name not in {"nvlink-test", "ethernet-test"}
+    ]
+    model = test_model(
+        "TestModel",
+        hidden_size=hidden_size,
+        intermediate_size=intermediate_size,
+        num_layers=layers,
+        num_attention_heads=num_attention_heads,
+        # The legacy roofline stub had no vocabulary entry and the runtime plan
+        # assumed 50000; the hand-calculated component bytes rely on it.
+        vocab_size=50000,
+        moe=moe,
+    )
+    return HardwareContext.in_memory(device_specs, [model], links, [test_topology()])
+
+
+def cluster_test_hardware(cluster, **overrides):
+    """Catalog whose device and link names come from ``cluster`` itself."""
+    devices = tuple(dict.fromkeys(group.hardware for group in cluster.worker_groups))
+    networks = tuple(dict.fromkeys(cluster.networks.values()))
+    return af_test_hardware(devices=devices, networks=networks, **overrides)
+
+
+_ORIGINAL_DYNAMIC_BATCH = LLMWorker.dynamic_batch
+
+
+class FullBackendGuard:
+    """Record calls to the complete (non-AF) step backend and optionally forbid them.
+
+    Replaces the legacy roofline stub's ``reject_full_backend`` switch: AF-
+    selected phases must never fall back to ``LLMWorker.dynamic_batch``.
+    Guards may be stacked inside one test; each delegates to the unpatched
+    method rather than to an earlier guard.
+    """
+
+    def __init__(self, reject=True):
+        self.reject = reject
+        self.calls = []
+        self._patcher = None
+
+    def start(self):
+        original = _ORIGINAL_DYNAMIC_BATCH
+        guard = self
+
+        def dynamic_batch(worker, requests):
+            guard.calls.append(list(requests))
+            if guard.reject:
+                raise AssertionError("AF-selected phases must not call the full backend")
+            return original(worker, requests)
+
+        self._patcher = patch.object(LLMWorker, "dynamic_batch", dynamic_batch)
+        self._patcher.start()
+        return self
+
+    def stop(self):
+        if self._patcher is not None:
+            self._patcher.stop()
+            self._patcher = None
+
+
+@contextmanager
+def engine_context(test_case, *, reject_full_backend=True):
+    """Guard the full backend for the rest of ``test_case`` (not just the block)."""
+    guard = FullBackendGuard(reject_full_backend).start()
+    test_case.addCleanup(guard.stop)
+    yield guard
 
 
 class FixedComputeProvider:
@@ -91,55 +192,6 @@ class InvalidComputeProvider(FixedComputeProvider):
 class UnsupportedComputeProvider:
     def estimate(self, query):
         raise LookupError(f"no sample for {query.device_type}:{query.stage}")
-
-
-class LightweightCacheConfig:
-    def __init__(self, block_size, hardware, model, roofline, **kwargs):
-        self.block_size = block_size
-        self.model = model
-        model_config = roofline.models[model]
-        self.size_per_token = model_config.Dmodel * 2 * 2 * model_config.Nlayer
-        self.num_gpu_blocks = 64
-        self.num_cpu_blocks = 64
-
-
-class AFRooflineStub:
-    def __init__(self, reject_full_backend=True, layers=1):
-        hardware = SimpleNamespace(
-            MM_Card_Num=1,
-            Capacity=0.01,
-            Nvlink="nvlink-test",
-        )
-        self.hardwares = {
-            "a-device": hardware,
-            "f-device": hardware,
-            "attention-device": hardware,
-            "ffn-device": hardware,
-        }
-        self.models = {
-            "TestModel": SimpleNamespace(
-                Name="TestModel",
-                Nhead=8,
-                Dmodel=16,
-                Nlayer=layers,
-                Multi_Query=False,
-                Grouped_Query=False,
-                FFN_Hidden=64,
-            )
-        }
-        self.links = {
-            "nvlink-test": SimpleNamespace(Latency=0.0, UniBW=100.0),
-            "profile": SimpleNamespace(Latency=0.0, UniBW=100.0),
-            "af-network-profile": SimpleNamespace(Latency=0.0, UniBW=100.0),
-        }
-        self.reject_full_backend = reject_full_backend
-        self.full_backend_calls = []
-
-    def Compute_Timebreakdown_Iteration(self, *args, **kwargs):
-        self.full_backend_calls.append((args, kwargs))
-        if self.reject_full_backend:
-            raise AssertionError("AF-selected phases must not call the full backend")
-        return 0.0005, 0.0
 
 
 def _psla_config():
@@ -464,7 +516,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
         env = simpy.Environment()
         compute = FixedComputeProvider(0.002, 0.003)
         transfer = FixedTransferProvider(0.001, 0.001)
-        with patch("TokenSim.llm.llm_engine.CacheConfig", LightweightCacheConfig):
+        with engine_context(self, reject_full_backend=True):
             engine = LLMEngine(
                 env=env,
                 block_size=4,
@@ -472,7 +524,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
                 kv_transfer_config=KVTransferConfig.default(),
                 psla_config=_psla_config(),
                 cluster_config=cluster,
-                roofline=AFRooflineStub(),
+                hardware=cluster_test_hardware(cluster),
                 prefill_worker_pool_type="round_robin",
                 decode_worker_pool_type="round_robin",
                 max_parallem_sum=8,
@@ -562,7 +614,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
         env = simpy.Environment()
         compute = FixedComputeProvider(0.0, 0.0)
         transfer = FixedTransferProvider(0.0, 0.0)
-        with patch("TokenSim.llm.llm_engine.CacheConfig", LightweightCacheConfig):
+        with engine_context(self, reject_full_backend=True):
             engine = LLMEngine(
                 env=env,
                 block_size=4,
@@ -570,7 +622,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
                 kv_transfer_config=KVTransferConfig.default(),
                 psla_config=_psla_config(),
                 cluster_config=cluster,
-                roofline=AFRooflineStub(layers=2),
+                hardware=af_test_hardware(layers=2),
                 prefill_worker_pool_type="round_robin",
                 decode_worker_pool_type="round_robin",
                 max_parallem_sum=16,
@@ -623,10 +675,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
                 env = simpy.Environment()
                 compute = FixedComputeProvider(0.0, 0.0)
                 transfer = FixedTransferProvider(0.0, 0.0)
-                roofline = AFRooflineStub(reject_full_backend=False)
-                with patch(
-                    "TokenSim.llm.llm_engine.CacheConfig", LightweightCacheConfig
-                ):
+                with engine_context(self, reject_full_backend=False) as full_backend:
                     engine = LLMEngine(
                         env=env,
                         block_size=4,
@@ -634,7 +683,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
                         kv_transfer_config=KVTransferConfig.default(),
                         psla_config=_psla_config(),
                         cluster_config=cluster,
-                        roofline=roofline,
+                        hardware=af_test_hardware(),
                         prefill_worker_pool_type="round_robin",
                         decode_worker_pool_type="round_robin",
                         max_parallem_sum=8,
@@ -669,7 +718,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
                     [summary["phase"] for summary in engine.af_iteration_summaries],
                     [selected_phase],
                 )
-                self.assertGreater(len(roofline.full_backend_calls), 0)
+                self.assertGreater(len(full_backend.calls), 0)
                 self.assertGreater(
                     engine.connector_stats.aggregate(
                         engine.request_workers[0].connector.stats
@@ -735,8 +784,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
                     ],
                 )
             env = simpy.Environment()
-            roofline = AFRooflineStub(reject_full_backend=af_enabled)
-            with patch("TokenSim.llm.llm_engine.CacheConfig", LightweightCacheConfig):
+            with engine_context(self, reject_full_backend=af_enabled):
                 engine = LLMEngine(
                     env=env,
                     block_size=4,
@@ -744,7 +792,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
                     kv_transfer_config=KVTransferConfig.default(),
                     psla_config=_psla_config(),
                     cluster_config=cluster,
-                    roofline=roofline,
+                    hardware=af_test_hardware(),
                     prefill_worker_pool_type="round_robin",
                     decode_worker_pool_type="round_robin",
                     max_parallem_sum=8,
@@ -995,7 +1043,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
     def test_engine_gives_one_scheduler_to_a_logical_instance(self):
         cluster = _explicit_domain_cluster()
         env = simpy.Environment()
-        with patch("TokenSim.llm.llm_engine.CacheConfig", LightweightCacheConfig):
+        with engine_context(self, reject_full_backend=True):
             engine = LLMEngine(
                 env=env,
                 block_size=4,
@@ -1003,7 +1051,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
                 kv_transfer_config=KVTransferConfig.default(),
                 psla_config=_psla_config(),
                 cluster_config=cluster,
-                roofline=AFRooflineStub(),
+                hardware=af_test_hardware(),
                 prefill_worker_pool_type="round_robin",
                 decode_worker_pool_type="round_robin",
                 max_parallem_sum=8,

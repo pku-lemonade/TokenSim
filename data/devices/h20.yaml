@@ -1,0 +1,52 @@
+schema_version: 1
+device_id: h20
+family: nvidia_gpu
+display_name: NVIDIA H20 96GB
+aliases: [H20, HGX-H20, NVIDIA H20]
+sources:
+  aiconfigurator-system-yaml:
+    grade: C
+    reference: https://github.com/ai-dynamo/aiconfigurator/blob/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/h100_sxm.yaml
+    notes: >
+      Empirical corrections NVIDIA recorded while validating AIConfigurator against
+      TensorRT-LLM deployments: memory bandwidth efficiency 0.8, 3 us constant memory
+      latency per kernel, 10 us point-to-point latency for collectives, and a runtime
+      memory reserve of 392 MB NCCL buffers plus 3.5 GB framework workspace. Applied from the H100 SXM system file (same GH100 silicon, NVLink 4 and NCCL stack); H20 is not in the upstream database.
+  third-party-h20-specs:
+    grade: B
+    reference: https://flopper.io/gpu/nvidia-h20-96gb/spec-sheet
+    notes: >
+      NVIDIA publishes no public H20 datasheet. Figures collected from reseller
+      spec sheets and press coverage of the November 2023 SemiAnalysis
+      disclosure: 148 TFLOPS FP16 dense, 296 TFLOPS FP8, 96 GB HBM3 at 4.0 TB/s,
+      NVLink 900 GB/s, 400 W. Some resellers list 600 GB/s NVLink; treat the
+      NVLink figure as unconfirmed until measured on the target system.
+  assumption-gpu-analytical-v1:
+    grade: D
+    reference: docs/operator-latency-model.md#analytical-defaults
+peak_compute:
+  fp16: {value: 148.0e12, source_id: third-party-h20-specs, grade: B}
+  bf16: {value: 148.0e12, source_id: third-party-h20-specs, grade: B}
+  fp8: {value: 296.0e12, source_id: third-party-h20-specs, grade: B}
+  int8: {value: 296.0e12, source_id: third-party-h20-specs, grade: B}
+  tf32: {value: 74.0e12, source_id: third-party-h20-specs, grade: B}
+  fp32: {value: 44.0e12, source_id: third-party-h20-specs, grade: B}
+memory:
+  kind: hbm3
+  capacity_bytes: {value: 103079215104, source_id: third-party-h20-specs, grade: B}   # 96 GiB
+  bandwidth_bytes_per_s: {value: 4000.0e9, source_id: third-party-h20-specs, grade: B}
+  reserved_bytes: {value: 4169138176, source_id: aiconfigurator-system-yaml, grade: C}   # 392 MB NCCL + 3.5 GB runtime reserve
+on_chip_memory:
+  capacity_bytes: {value: 62914560, source_id: third-party-h20-specs, grade: B}        # 60 MB L2
+interconnect:
+  scale_up_link: nvlink4
+  scale_up_ports: 18
+  host_link: pcie5_x16
+analytical:
+  source_id: aiconfigurator-system-yaml
+  grade: C
+  memory_efficiency: 0.8        # mem_bw_empirical_scaling_factor
+  kernel_launch_us: 3.0         # mem_empirical_constant_latency
+  collective_launch_us: 10.0    # p2p_latency
+step_overhead_us: {value: 0.0, source_id: assumption-gpu-analytical-v1, grade: D}
+power: {tdp_w: 400}

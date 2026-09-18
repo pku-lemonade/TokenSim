@@ -17,3 +17,6 @@ tmp
 tests/.codex-tmp/
 tests/.tmp/
 tests/tmp*/
+
+# generated experiment artifacts
+*.egg-info

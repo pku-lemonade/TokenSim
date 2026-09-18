@@ -1,0 +1,19 @@
+schema_version: 1
+model_id: bert-base
+display_name: BERT-base (encoder, used for Groq public validation)
+aliases: [BERT-base, bert_base_uncased]
+sources:
+  hf-bert-base-uncased-config:
+    grade: A
+    reference: https://huggingface.co/google-bert/bert-base-uncased/blob/main/config.json
+hidden_size: 768
+intermediate_size: 3072
+num_layers: 12
+num_attention_heads: 12
+num_key_value_heads: 12
+head_dim: 64
+vocab_size: 30522
+activation: gelu
+max_position_embeddings: 512
+dtype: fp16
+kv_cache_dtype: fp16

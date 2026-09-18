@@ -1,0 +1,59 @@
+schema_version: 1
+device_id: gb300
+family: nvidia_gpu
+display_name: NVIDIA GB300 (Blackwell Ultra B300 GPU)
+aliases: [GB300, B300, GB300-NVL72, Blackwell-Ultra, NVIDIA GB300]
+sources:
+  aiconfigurator-system-yaml:
+    grade: C
+    reference: https://github.com/ai-dynamo/aiconfigurator/blob/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/gb300.yaml
+    notes: >
+      Empirical corrections NVIDIA recorded while validating AIConfigurator against
+      TensorRT-LLM deployments: memory bandwidth efficiency 0.8, 3 us constant memory
+      latency per kernel, 10 us point-to-point latency for collectives, and a runtime
+      memory reserve of 392 MB NCCL buffers plus 3.5 GB framework workspace.
+  nvidia-gb300-nvl72-page:
+    grade: A
+    reference: https://www.nvidia.com/en-gb/data-center/gb300-nvl72
+    notes: >
+      Rack-level totals for 72 GPUs: FP4 1440|1080 PFLOPS (sparse|dense),
+      FP8/FP6 720 PFLOPS, INT8 24 POPS, FP16/BF16 360 PFLOPS, TF32 180 PFLOPS,
+      FP32 6 PFLOPS (tensor figures other than FP4 follow the sparsity convention),
+      20 TB HBM3e at 576 TB/s, NVLink 130 TB/s.
+  derived-gb300-per-gpu:
+    grade: C
+    reference: docs/operator-latency-model.md#gb300-derivation
+    notes: >
+      Per-GPU dense figures = rack sparse total / 72 / 2 (FP4: dense total / 72).
+      FP16 dense 2.5 PFLOPS, FP8 5 PFLOPS, NVFP4 15 PFLOPS, INT8 0.167 POPS,
+      FP32 83 TFLOPS, HBM3e 288 GB at 8 TB/s, NVLink 5 at 1.8 TB/s bidirectional.
+      SemiAnalysis notes FP8/BF16 throughput carries over from GB200. Verify against
+      the Blackwell Ultra technical brief before publishing GB300 numbers.
+  assumption-gpu-analytical-v1:
+    grade: D
+    reference: docs/operator-latency-model.md#analytical-defaults
+peak_compute:
+  fp16: {value: 2.5e15, source_id: derived-gb300-per-gpu, grade: C}
+  bf16: {value: 2.5e15, source_id: derived-gb300-per-gpu, grade: C}
+  fp8: {value: 5.0e15, source_id: derived-gb300-per-gpu, grade: C}
+  nvfp4: {value: 15.0e15, source_id: derived-gb300-per-gpu, grade: C}
+  int8: {value: 0.167e15, source_id: derived-gb300-per-gpu, grade: C}
+  tf32: {value: 1.25e15, source_id: derived-gb300-per-gpu, grade: C}
+  fp32: {value: 83.0e12, source_id: derived-gb300-per-gpu, grade: C}
+memory:
+  kind: hbm3e
+  capacity_bytes: {value: 309237645312, source_id: derived-gb300-per-gpu, grade: C}    # 288 GiB
+  bandwidth_bytes_per_s: {value: 8000.0e9, source_id: derived-gb300-per-gpu, grade: C}
+  reserved_bytes: {value: 4169138176, source_id: aiconfigurator-system-yaml, grade: C}   # 392 MB NCCL + 3.5 GB runtime reserve
+interconnect:
+  scale_up_link: nvlink5          # 1.8 TB/s bidirectional = 900 GB/s per direction
+  scale_up_ports: 18
+  host_link: pcie6_x16
+analytical:
+  source_id: aiconfigurator-system-yaml
+  grade: C
+  memory_efficiency: 0.8        # mem_bw_empirical_scaling_factor
+  kernel_launch_us: 3.0         # mem_empirical_constant_latency
+  collective_launch_us: 10.0    # p2p_latency
+step_overhead_us: {value: 0.0, source_id: assumption-gpu-analytical-v1, grade: D}
+power: {tdp_w: 1400}

@@ -6,6 +6,10 @@ from typing import Literal, Mapping, Protocol
 
 from TokenSim.af.models import AFPhase
 
+# How a provider answered: measured row, interpolated between rows, extrapolated
+# beyond the measured range, or the device family's analytical formula.
+AF_MATCH_TYPES = ("exact", "interpolated", "extrapolated", "analytical")
+
 
 @dataclass(frozen=True)
 class AFComputeQuery:
@@ -69,7 +73,7 @@ class AFServiceEstimate:
     source_id: str
     payload_bytes: int | None = None
     dataset_version: str = "test-stub"
-    match_type: Literal["exact", "interpolated"] = "exact"
+    match_type: Literal["exact", "interpolated", "extrapolated", "analytical"] = "exact"
     details: Mapping[str, object] = field(default_factory=dict)
 
 
@@ -83,29 +87,28 @@ class AFTransferLatencyProvider(Protocol):
 
 def resolve_af_latency_providers(
     af_config,
-    cluster_path: str | Path,
+    cluster_path: str | Path | None = None,
     compute_provider: AFComputeLatencyProvider | None = None,
     transfer_provider: AFTransferLatencyProvider | None = None,
 ) -> tuple[AFComputeLatencyProvider | None, AFTransferLatencyProvider | None]:
+    """Validate the provider selection made by ``af.latency_provider``.
+
+    ``injected`` returns the caller's providers unchanged. ``operator_table``
+    rejects injected providers and returns ``(None, None)``: the providers need
+    the hardware catalog, the resolved model and the worker placement, so
+    :class:`TokenSim.llm.llm_engine.LLMEngine` builds them via
+    :func:`TokenSim.af.operator_provider.build_operator_table_af_providers`.
+    """
+    del cluster_path  # kept for call-site compatibility; paths are no longer needed
     if af_config.latency_provider == "injected":
         return compute_provider, transfer_provider
+    if af_config.latency_provider != "operator_table":
+        raise ValueError(
+            f"unsupported af.latency_provider={af_config.latency_provider!r}"
+        )
     if compute_provider is not None or transfer_provider is not None:
         raise ValueError(
-            "AF operator_data configuration cannot be combined with injected "
+            "AF operator_table configuration cannot be combined with injected "
             "latency providers"
         )
-    from TokenSim.operator_data.providers import build_operator_data_providers
-
-    config_path = Path(cluster_path).resolve()
-
-    def resolve(value: str) -> Path:
-        path = Path(value)
-        return path if path.is_absolute() else config_path.parent / path
-
-    return build_operator_data_providers(
-        resolve(af_config.operator_data_path),
-        resolve(af_config.operator_manifest_path),
-        af_config.operator_data_backend,
-        af_config.operator_link_group,
-        af_config.operator_group_size,
-    )
+    return None, None
