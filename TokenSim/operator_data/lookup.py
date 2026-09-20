@@ -12,6 +12,21 @@ from TokenSim.operator_data.schema import TABLE_SPECS, AxisSpec, TableSpec
 
 MATCH_TYPES = ("exact", "interpolated", "extrapolated")
 EXTRAPOLATION_MODES = ("none", "hold", "scale", "analytical")
+# How a consumer of the tables (operator backend, collective model) treats a
+# query that no measured row answers: fall back to the analytical model and
+# report the miss, raise, or never consult tables at all.
+FALLBACK_POLICIES = ("table_first", "table_only", "analytical_only")
+# Why a lookup failed; the missing-shape report groups by these.
+MISSING_KINDS = (
+    "table_absent",          # the package ships no rows for this table
+    "discrete_key",          # rows exist, none for this dtype/heads/... combination
+    "out_of_range",          # an axis value lies beyond the extrapolation bound
+    "extrapolation_disabled",
+    "interpolation_disabled",
+    "no_measured_mode",      # the configured algorithm/mode is analytical by design
+    "malformed_key",
+    "unknown_table",
+)
 
 # Returns the analytical (model-based) latency in microseconds for a fully
 # specified key, or ``None`` when the model cannot price that key.
@@ -19,10 +34,15 @@ AnalyticalScaler = Callable[[str, Mapping[str, Any]], "float | None"]
 
 
 class MissingOperatorDataError(LookupError):
-    def __init__(self, table_name: str, key: Mapping[str, Any], reason: str) -> None:
+    def __init__(
+        self, table_name: str, key: Mapping[str, Any], reason: str, kind: str = "discrete_key"
+    ) -> None:
+        if kind not in MISSING_KINDS:
+            raise ValueError(f"unknown missing-data kind {kind!r}")
         self.table_name = table_name
         self.key = dict(key)
         self.reason = reason
+        self.kind = kind
         super().__init__(f"{table_name} lookup failed for key={self.key}: {reason}")
 
 
@@ -87,24 +107,15 @@ class OperatorLookup:
         self.package = package
         self.policy = policy or LookupPolicy()
         self.analytical_scaler = analytical_scaler
-        self._exact: dict[str, dict[tuple[Any, ...], Mapping[str, Any]]] = {}
-        self._grids: dict[str, dict[tuple[Any, ...], dict]] = {}
-        for table_name, rows in package.tables.items():
-            spec = TABLE_SPECS[table_name]
-            exact: dict[tuple[Any, ...], Mapping[str, Any]] = {}
-            grids: dict[tuple[Any, ...], dict] = {}
-            for row in rows:
-                exact[tuple(row[f] for f in spec.key_fields)] = row
-                discrete = tuple(row[f] for f in spec.discrete_fields)
-                node = grids.setdefault(discrete, {})
-                for axis in spec.axes[:-1]:
-                    node = node.setdefault(row[axis.name], {})
-                if spec.axes:
-                    node[row[spec.axes[-1].name]] = row
-                else:
-                    grids[discrete] = row  # type: ignore[assignment]
-            self._exact[table_name] = exact
-            self._grids[table_name] = grids
+        # The index is owned by the (immutable) package and shared by every
+        # lookup created for it; see OperatorDataPackage.lookup_index.
+        index = package.lookup_index
+        self._exact: Mapping[str, Mapping[tuple[Any, ...], Mapping[str, Any]]] = {
+            name: table.exact for name, table in index.items()
+        }
+        self._grids: Mapping[str, Mapping[tuple[Any, ...], Any]] = {
+            name: table.grids for name, table in index.items()
+        }
 
     # -- public API --------------------------------------------------------
 
@@ -122,12 +133,14 @@ class OperatorLookup:
     ) -> LookupResult:
         """Resolve ``key``; ``scaler`` overrides the instance-level analytical scaler."""
         if table_name not in TABLE_SPECS:
-            raise MissingOperatorDataError(table_name, key, "unknown table")
+            raise MissingOperatorDataError(table_name, key, "unknown table", kind="unknown_table")
         spec = TABLE_SPECS[table_name]
         normalized = self._normalize_key(spec, key)
         exact = self._exact.get(table_name)
         if not exact:
-            raise MissingOperatorDataError(table_name, normalized, "table has no rows in this package")
+            raise MissingOperatorDataError(
+                table_name, normalized, "table has no rows in this package", kind="table_absent"
+            )
         row = exact.get(tuple(normalized[f] for f in spec.key_fields))
         if row is not None:
             return LookupResult(
@@ -139,7 +152,10 @@ class OperatorLookup:
             )
         if not self.policy.interpolate or not spec.axes:
             raise MissingOperatorDataError(
-                table_name, normalized, "exact record missing and interpolation is disabled"
+                table_name,
+                normalized,
+                "exact record missing and interpolation is disabled",
+                kind="interpolation_disabled",
             )
         discrete = tuple(normalized[f] for f in spec.discrete_fields)
         grid = self._grids[table_name].get(discrete)
@@ -150,6 +166,7 @@ class OperatorLookup:
                 normalized,
                 f"no rows share the discrete key {dict(zip(spec.discrete_fields, discrete))}; "
                 f"available discrete keys: {available}",
+                kind="discrete_key",
             )
         latency, sources, flags = self._resolve(
             spec, list(spec.axes), grid, normalized, table_name, scaler or self.analytical_scaler
@@ -182,7 +199,9 @@ class OperatorLookup:
     def _normalize_key(spec: TableSpec, key: Mapping[str, Any]) -> dict[str, Any]:
         missing = [f for f in spec.key_fields if f not in key]
         if missing:
-            raise MissingOperatorDataError(spec.name, key, f"key is missing fields {missing}")
+            raise MissingOperatorDataError(
+                spec.name, key, f"key is missing fields {missing}", kind="malformed_key"
+            )
         normalized: dict[str, Any] = {}
         for f in spec.key_fields:
             value = key[f]
@@ -233,6 +252,7 @@ class OperatorLookup:
                 key,
                 f"{axis.name}={target} outside measured range {values[0]}..{values[-1]} "
                 "and extrapolation is disabled",
+                kind="extrapolation_disabled",
             )
         boundary = values[-1] if upper == [] else values[0]
         ratio = float(target) / float(boundary) if boundary else 1.0
@@ -243,6 +263,7 @@ class OperatorLookup:
                 key,
                 f"{axis.name}={target} is {ratio:.2f}x the measured boundary {boundary}; "
                 f"exceeds max_extrapolation_ratio={max_ratio}",
+                kind="out_of_range",
             )
         latency, sources, flags = self._resolve(spec, rest, node[boundary], key, table_name, scaler)
         flags = flags | {"extrapolated"}

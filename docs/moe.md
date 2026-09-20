@@ -64,14 +64,31 @@ Expert parallelism is configured inside the cluster's `parallel_config`:
   "pipeline_parallel_size": 1,
   "data_parallel_size": 4,
   "enable_expert_parallel": true,
+  "expert_parallel_scope": "global",
+  "expert_parallel_size": 8,
   "expert_placement_strategy": "linear",
   "all2all_backend": "allgather_reducescatter"
 }
 ```
 
-When enabled, experts are distributed across `TP * DP` expert ranks. Pipeline
-parallelism assigns MoE layers to their owning PP stage. Supported placement
-strategies are:
+`expert_parallel_scope` says which ranks share one copy of the experts:
+
+| Scope | Expert-parallel group | Typical deployment |
+| --- | --- | --- |
+| `global` (default) | every `TP * DP` rank of a pipeline stage; one wide-EP group fed by all DP replicas | vLLM / SGLang wide EP |
+| `per_dp` | the `TP` ranks of one data-parallel replica; `DP` independent groups, each holding all experts | InferenceX AgentX points: 64 GPUs = 8 x (TP8, EP8) with DP attention |
+
+`expert_parallel_size` is the number of ranks in one group. It may be omitted
+(the whole scope), but stating it makes the configuration self-checking: a
+`per_dp` group must have exactly `tensor_parallel_size` ranks, and a `global`
+group must be a multiple of `tensor_parallel_size` that divides `TP * DP`
+(groups of whole replicas). Any other value is a configuration error, so a
+cluster file cannot silently turn EP8 into EP64. The scope also decides how
+many tokens a MoE layer sees: with `global` the group processes every
+replica's tokens in lockstep, with `per_dp` only the replica's own tokens.
+
+Pipeline parallelism assigns MoE layers to their owning PP stage. Supported
+placement strategies are:
 
 - `linear`: contiguous expert ID ranges per expert rank.
 - `round_robin`: expert `i` is placed on rank `i % ep_rank_count`.
@@ -89,9 +106,16 @@ values:
 
 ```bash
 --enable_expert_parallel \
+--expert_parallel_scope per_dp \
+--expert_parallel_size 8 \
 --expert_placement_strategy round_robin \
 --all2all_backend deepep_low_latency
 ```
+
+The dispatch/combine group is exactly the expert-parallel group, so with
+`per_dp` on an 8-GPU-per-node cluster the DeepEP query is `ep_size=8, nodes=1`
+over NVLink; results export the group and the topology level it spans under
+`parallel_groups` (`ep_group_size`, `ep_group_count`, `ep_group_link`).
 
 Using `--enable_expert_parallel` with a dense model is a configuration error.
 See [Parallelism](parallelism.md) for the rank count and topology rules.

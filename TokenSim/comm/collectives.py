@@ -38,6 +38,8 @@ from typing import Any, Mapping
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.links import LinkCatalog, LinkClass
 from TokenSim.hardware.topology import GroupLayout, TopologySpec
+from TokenSim.operator_data.coverage import MissingShapeReport
+from TokenSim.operator_data.lookup import FALLBACK_POLICIES, MissingOperatorDataError
 
 OPERATIONS = ("all_reduce", "all_gather", "reduce_scatter", "all_to_all", "send_recv", "broadcast")
 ALGORITHMS = ("auto", "ring", "tree", "direct")
@@ -146,6 +148,15 @@ class CollectiveEstimate:
 
 
 class CollectiveModel:
+    """Prices collectives from measured tables first, the alpha-beta model otherwise.
+
+    ``fallback`` follows the operator backend's policy: ``table_first`` uses
+    the formula when no measured row answers a query and records the miss in
+    ``missing_report``; ``table_only`` raises :class:`MissingOperatorDataError`
+    instead, so a run can never silently rest on communication formulas;
+    ``analytical_only`` never consults the tables.
+    """
+
     def __init__(
         self,
         topology: TopologySpec,
@@ -155,15 +166,21 @@ class CollectiveModel:
         family: str = "generic",
         measured_lookup: Any | None = None,
         measured_nodes_field: str = "nodes",
+        fallback: str = "table_first",
+        missing_report: MissingShapeReport | None = None,
     ) -> None:
         topology.validate_links(links)
+        if fallback not in FALLBACK_POLICIES:
+            raise ConfigurationError(f"fallback must be one of {FALLBACK_POLICIES}, got {fallback!r}")
         self.topology = topology
         self.links = links
         self.launch_us = DEFAULT_LAUNCH_US.get(family, DEFAULT_LAUNCH_US["generic"]) if launch_us is None else launch_us
         self.family = family
-        # Optional OperatorLookup with a populated ``collective`` table.
-        self.measured_lookup = measured_lookup
+        # Optional OperatorLookup with ``collective`` and/or ``ep_all2all`` tables.
+        self.measured_lookup = measured_lookup if fallback != "analytical_only" else None
         self.measured_nodes_field = measured_nodes_field
+        self.fallback = fallback
+        self.missing_report = missing_report
 
     # -- public API ----------------------------------------------------------
 
@@ -243,6 +260,18 @@ class CollectiveModel:
         if measured is not None:
             return measured
         payload = query.payload_bytes
+        if not query.mode.startswith("deepep"):
+            # naive / allgather_reducescatter are priced by formula by design;
+            # still surface it so a critical path on formulas is never silent.
+            self._miss(
+                MissingOperatorDataError(
+                    "ep_all2all",
+                    self._ep_all2all_key(query, query.mode, "dispatch"),
+                    f"all2all_backend {query.mode!r} has no measured ep_all2all table; "
+                    "use a deepep_* mode for measured dispatch/combine",
+                    kind="no_measured_mode",
+                )
+            )
         base = self.analytical(CollectiveQuery("all_to_all", payload, query.layout, query.dtype))
         scale = EP_ALL2ALL_MODE_SCALE.get(query.mode, 1.0)
         return CollectiveEstimate(
@@ -257,33 +286,55 @@ class CollectiveModel:
             detail={"mode": query.mode, "mode_scale": scale, "phases": ("dispatch", "combine")},
         )
 
+    def _nodes(self, layout: GroupLayout) -> int:
+        return int(math.prod(layout.fan[1:])) if layout.lowest_common_level >= 1 else 1
+
+    def _ep_all2all_key(self, query: EPAllToAllQuery, mode: str, phase: str) -> dict[str, Any]:
+        return {
+            "dtype": query.dtype,
+            "phase": phase,
+            "mode": mode,
+            "ep_size": query.ep_size,
+            "nodes": self._nodes(query.layout),
+            "hidden_size": int(query.hidden_size),
+            "top_k": int(query.top_k),
+            "num_experts": int(query.num_experts),
+            "num_tokens": int(query.num_tokens),
+        }
+
+    def _miss(self, error: MissingOperatorDataError) -> None:
+        """Apply the fallback policy to a query no measured row answers."""
+        if self.fallback == "table_only":
+            raise error
+        if self.fallback == "table_first" and self.missing_report is not None:
+            self.missing_report.record_error(error)
+
     def _measured_ep_all2all(self, query: EPAllToAllQuery) -> CollectiveEstimate | None:
+        if not query.mode.startswith("deepep"):
+            return None
         lookup = self.measured_lookup
         if lookup is None or not lookup.has_table("ep_all2all"):
+            self._miss(
+                MissingOperatorDataError(
+                    "ep_all2all",
+                    self._ep_all2all_key(query, query.mode, "dispatch"),
+                    "table has no rows in this package",
+                    kind="table_absent",
+                )
+            )
             return None
         layout = query.layout
-        nodes = int(math.prod(layout.fan[1:])) if layout.lowest_common_level >= 1 else 1
-        if query.mode.startswith("deepep"):
-            modes = [query.mode] + [m for m in ("deepep_high_throughput", "deepep_low_latency") if m != query.mode]
-        else:
-            return None
+        nodes = self._nodes(layout)
+        # The other DeepEP kernel family stands in when the requested one has no rows.
+        modes = [query.mode] + [m for m in ("deepep_high_throughput", "deepep_low_latency") if m != query.mode]
+        last_error: MissingOperatorDataError | None = None
         for mode in modes:
             total = 0.0
             sources: list[str] = []
             match_types: list[str] = []
             phases_ok = True
             for phase in ("dispatch", "combine"):
-                key = {
-                    "dtype": query.dtype,
-                    "phase": phase,
-                    "mode": mode,
-                    "ep_size": query.ep_size,
-                    "nodes": nodes,
-                    "hidden_size": int(query.hidden_size),
-                    "top_k": int(query.top_k),
-                    "num_experts": int(query.num_experts),
-                    "num_tokens": int(query.num_tokens),
-                }
+                key = self._ep_all2all_key(query, mode, phase)
 
                 def growth_reference(_table: str, k: Mapping[str, Any]) -> float | None:
                     probe = EPAllToAllQuery(
@@ -295,7 +346,9 @@ class CollectiveModel:
 
                 try:
                     result = lookup.lookup("ep_all2all", key, scaler=growth_reference)
-                except Exception:
+                except MissingOperatorDataError as exc:
+                    if mode == query.mode:
+                        last_error = exc
                     phases_ok = False
                     break
                 total += result.latency_us
@@ -318,6 +371,8 @@ class CollectiveModel:
                 source_id="+".join(dict.fromkeys(sources)),
                 detail={"mode": mode, "requested_mode": query.mode, "nodes": nodes, "phases": ("dispatch", "combine")},
             )
+        if last_error is not None:
+            self._miss(last_error)
         return None
 
     def point_to_point(self, message_bytes: float, layout: GroupLayout) -> CollectiveEstimate:
@@ -340,20 +395,23 @@ class CollectiveModel:
     # -- internals -------------------------------------------------------------
 
     def _measured(self, query: CollectiveQuery) -> CollectiveEstimate | None:
-        lookup = self.measured_lookup
-        if lookup is None or not lookup.has_table("collective"):
-            return None
         layout = query.layout
-        nodes = 1
-        if layout.lowest_common_level >= 1:
-            nodes = int(math.prod(layout.fan[1:]))
         key = {
             "dtype": query.dtype,
             "operation": query.operation,
             "group_size": query.group_size,
-            "nodes": nodes,
+            "nodes": self._nodes(layout),
             "message_bytes": int(round(query.message_bytes)),
         }
+        lookup = self.measured_lookup
+        if lookup is None or not lookup.has_table("collective"):
+            self._miss(
+                MissingOperatorDataError(
+                    "collective", key, "table has no rows in this package", kind="table_absent"
+                )
+            )
+            return None
+
         def growth_reference(_table: str, k: Mapping[str, Any]) -> float | None:
             # Past the measured message-size range keep the boundary point's
             # efficiency and follow the alpha-beta model's growth.
@@ -364,7 +422,8 @@ class CollectiveModel:
 
         try:
             result = lookup.lookup("collective", key, scaler=growth_reference)
-        except Exception:
+        except MissingOperatorDataError as exc:
+            self._miss(exc)
             return None
         return CollectiveEstimate(
             latency_us=result.latency_us,

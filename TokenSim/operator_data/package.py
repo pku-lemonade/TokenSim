@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
+from functools import cached_property
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
@@ -146,11 +147,50 @@ class PackageMeta:
 
 
 @dataclass(frozen=True)
+class TableIndex:
+    """Rows of one table indexed for lookup.
+
+    ``exact`` maps the full key tuple to its row; ``grids`` maps the discrete
+    key to a nested dict walking the table's axes in declared order, so that
+    interpolation resolves the outermost axis first.
+    """
+
+    exact: Mapping[tuple[Any, ...], Mapping[str, Any]]
+    grids: Mapping[tuple[Any, ...], Any]
+
+    @classmethod
+    def build(cls, spec: TableSpec, rows: Iterable[Mapping[str, Any]]) -> "TableIndex":
+        exact: dict[tuple[Any, ...], Mapping[str, Any]] = {}
+        grids: dict[tuple[Any, ...], Any] = {}
+        for row in rows:
+            exact[tuple(row[f] for f in spec.key_fields)] = row
+            discrete = tuple(row[f] for f in spec.discrete_fields)
+            if not spec.axes:
+                grids[discrete] = row
+                continue
+            node = grids.setdefault(discrete, {})
+            for axis in spec.axes[:-1]:
+                node = node.setdefault(row[axis.name], {})
+            node[row[spec.axes[-1].name]] = row
+        return cls(exact=exact, grids=grids)
+
+
+@dataclass(frozen=True)
 class OperatorDataPackage:
     root: Path | None
     meta: PackageMeta
     tables: Mapping[str, tuple[Mapping[str, Any], ...]]
     analysis: Mapping[str, tuple[Mapping[str, Any], ...]] = field(default_factory=dict)
+
+    @cached_property
+    def lookup_index(self) -> Mapping[str, TableIndex]:
+        """Per-table lookup index, built once and shared by every ``OperatorLookup``.
+
+        Indexing a few hundred thousand rows takes seconds; a 64-rank run
+        creates two lookups per worker, so the index must not be rebuilt per
+        consumer. The package is immutable, so sharing is safe.
+        """
+        return {name: TableIndex.build(TABLE_SPECS[name], rows) for name, rows in self.tables.items()}
 
     @property
     def dataset_version(self) -> str:

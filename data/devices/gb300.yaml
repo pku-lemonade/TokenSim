@@ -2,7 +2,7 @@ schema_version: 1
 device_id: gb300
 family: nvidia_gpu
 display_name: NVIDIA GB300 (Blackwell Ultra B300 GPU)
-aliases: [GB300, B300, GB300-NVL72, Blackwell-Ultra, NVIDIA GB300]
+aliases: [GB300, GB300-NVL72, NVIDIA GB300]
 sources:
   aiconfigurator-system-yaml:
     grade: C

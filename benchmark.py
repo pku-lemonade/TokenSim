@@ -12,7 +12,9 @@ from util.request import get_requests, LLMSource
 from util.tqdm import TqdmManager
 from TokenSim.llm.llm_engine import LLMEngine
 from TokenSim.llm.llm_request import g_time, reset_g_time, Request
+from TokenSim.llm.llm_scheduler import DEFAULT_MAX_NUM_BATCHED_TOKENS
 from TokenSim.config.config import ClusterConfig, KVTransferConfig, ParallelConfig
+from TokenSim.config.parallel_config import EXPERT_PARALLEL_SCOPES
 from TokenSim.config.psla_config import PSLAConfig
 from TokenSim.errors import ConfigurationError, SimulationStateError
 from TokenSim.hardware import HardwareContext
@@ -178,6 +180,7 @@ def main(
         decode_context_bucket=args.decode_context_bucket,
         random_seed=args.random_seed,
         debug_print=getattr(args, "debug_print", False),
+        max_num_batched_tokens=max_num_batched_tokens(args),
     )
     replay = None
     if is_agentx:
@@ -222,6 +225,7 @@ def main(
         env.run(until=source_process)
     else:
         env.run()
+    engine.raise_if_failed()
     simulator_wall_time = time.perf_counter() - wall_start
 
     if replay is not None:
@@ -261,6 +265,13 @@ def main(
 LATENCY_BACKEND_KEYWORDS = ("operator_table", "analytical")
 
 
+def max_num_batched_tokens(args: argparse.Namespace) -> int | None:
+    """Per-step token budget of the paged-attention scheduler; ``None`` disables chunking."""
+    if not getattr(args, "chunked_prefill", True):
+        return None
+    return int(getattr(args, "max_num_batched_tokens", DEFAULT_MAX_NUM_BATCHED_TOKENS))
+
+
 def get_latency_backend_type(latency_backend: str) -> str:
     """Map the CLI value to a backend type."""
     if latency_backend in LATENCY_BACKEND_KEYWORDS:
@@ -286,6 +297,8 @@ def build_parallel_config(
         data_parallel_rank=getattr(args, "data_parallel_rank", None),
         data_parallel_size_local=getattr(args, "data_parallel_size_local", None),
         enable_expert_parallel=getattr(args, "enable_expert_parallel", None),
+        expert_parallel_scope=getattr(args, "expert_parallel_scope", None),
+        expert_parallel_size=getattr(args, "expert_parallel_size", None),
         expert_placement_strategy=getattr(args, "expert_placement_strategy", None),
         all2all_backend=getattr(args, "all2all_backend", None),
     )
@@ -343,6 +356,21 @@ if __name__ == "__main__":
     )
     parser.add_argument("--max_parallem_sum", type=int, default=99999)
     parser.add_argument("--max_occupy_ratio", type=float, default=1.0)
+    parser.add_argument(
+        "--max_num_batched_tokens",
+        type=int,
+        default=DEFAULT_MAX_NUM_BATCHED_TOKENS,
+        help=(
+            "Token budget of one paged-attn step (vLLM V1 chunked prefill): decodes are "
+            "served first, prompts longer than the remaining budget are prefilled in chunks."
+        ),
+    )
+    parser.add_argument(
+        "--chunked_prefill",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Disable to prefill every prompt in a single step regardless of length.",
+    )
     parser.add_argument("--tensor_parallel_size", type=int, default=None)
     parser.add_argument("--pipeline_parallel_size", type=int, default=None)
     parser.add_argument("--data_parallel_size", type=int, default=None)
@@ -352,6 +380,18 @@ if __name__ == "__main__":
         "--enable_expert_parallel",
         action=argparse.BooleanOptionalAction,
         default=None,
+    )
+    parser.add_argument(
+        "--expert_parallel_scope",
+        choices=list(EXPERT_PARALLEL_SCOPES),
+        default=None,
+        help="Which ranks share one copy of the experts: every TP x DP rank (global) or one DP replica (per_dp).",
+    )
+    parser.add_argument(
+        "--expert_parallel_size",
+        type=int,
+        default=None,
+        help="Ranks per expert-parallel group; validated against the TP/DP layout and the scope.",
     )
     parser.add_argument(
         "--expert_placement_strategy",

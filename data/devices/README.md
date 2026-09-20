@@ -89,6 +89,9 @@ analytical values with device-specific fits.
 ## Adding a device
 
 1. Copy the closest YAML, change `device_id`, `display_name`, `aliases`.
+   Plain product numbers (`B200`, `B300`, `H100`) are aliases of the SXM/HGX
+   part; superchip entries (`gb200`, `gb300`) only claim `GB...` names, so a
+   cluster that says `B300` never resolves to the NVL72 superchip.
 2. Fill `peak_compute` per dtype (dense figures; halve NVIDIA sparsity numbers),
    `memory`, optional `on_chip_memory`, `interconnect` (link ids from
    `data/topologies/links.yaml`), `power`.

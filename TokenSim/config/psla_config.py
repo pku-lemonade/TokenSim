@@ -42,6 +42,10 @@ class LLMResult:
     recomputation_count: int = 0
     recomputed_tokens: int = 0
     recompute_service_time: float = 0
+    # Chunked prefill: context-building steps taken by all prompts and the
+    # per-step token budget in force (None: whole prompts in one step).
+    prefill_chunk_count: int = 0
+    max_num_batched_tokens: int | None = None
     simulator_wall_time: float = 0
     simulated_time: float = 0
     reuse_hit_blocks: int = 0
@@ -69,6 +73,7 @@ class LLMResult:
     parallel_actual_rank_count: int = 1
     parallel_per_rank_utilization: list[dict] | None = None
     parallel_dp_placement_counts: dict[int, int] | None = None
+    parallel_groups: dict[str, Any] | None = None
     parallel_latency_total: float = 0
     parallel_tp_collective_latency: float = 0
     parallel_pp_transfer_latency: float = 0
@@ -83,6 +88,8 @@ class LLMResult:
     operator_table_match_counts: dict[str, Any] | None = None
     operator_component_seconds: dict[str, float] | None = None
     operator_missing_shape_count: int = 0
+    operator_missing_shape_groups: int = 0
+    operator_missing_per_table: dict[str, Any] | None = None
     operator_step_count: int = 0
     operator_missing_shapes: list[dict[str, Any]] | None = None
     effective_moe_config: dict | None = None

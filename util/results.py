@@ -96,12 +96,21 @@ def get_parallel_stats(engine: LLMEngine) -> dict[str, Any]:
     else:
         config_dict = parallel_config.to_dict()
         expected_ranks = parallel_config.world_size
+    # TP/EP group membership and the topology level each spans, taken from
+    # rank 0; homogeneous clusters lay every group out the same way.
+    groups: dict[str, Any] = {}
+    for worker in workers:
+        communicator = getattr(worker, "parallel_communicator", None)
+        if communicator is not None:
+            groups = communicator.describe()
+            break
     return {
         "parallel_config": config_dict,
         "parallel_expected_rank_count": expected_ranks,
         "parallel_actual_rank_count": len(workers),
         "parallel_per_rank_utilization": per_rank,
         "parallel_dp_placement_counts": dp_counts,
+        "parallel_groups": groups,
         **stats_dict,
     }
 
@@ -163,8 +172,23 @@ def get_latency_stats(engine: LLMEngine) -> dict[str, Any]:
     return {
         "latency_backends": descriptions,
         **aggregate.as_dict(),
+        # Grouped by table and discrete key with the requested axis ranges;
+        # the full report goes to missing_shapes_<qps>.json.
         "operator_missing_shapes": aggregate.missing_shape_records()[:200],
     }
+
+
+def analytical_share_by_table(latency_stats: dict[str, Any]) -> dict[str, float]:
+    """Fraction of each table's queries that fell back to the analytical model."""
+    shares: dict[str, float] = {}
+    for table, counts in (latency_stats.get("operator_table_match_counts") or {}).items():
+        total = sum(counts.values())
+        if total:
+            shares[table] = counts.get("analytical", 0) / total
+    comm = latency_stats.get("parallel_comm_match_type_counts") or {}
+    if sum(comm.values()):
+        shares["comm"] = comm.get("analytical", 0) / sum(comm.values())
+    return shares
 
 
 def get_moe_stats(engine: LLMEngine) -> dict[str, Any]:
@@ -434,12 +458,15 @@ def print_mooncake_stats(engine: LLMEngine):
 def print_parallel_stats(engine: LLMEngine):
     stats = get_parallel_stats(engine)
     config = stats.get("parallel_config", {})
+    groups = stats.get("parallel_groups", {})
     print(
         "Parallel: "
         + f"config={config}, "
         + f"ranks={stats.get('parallel_actual_rank_count')}/"
         + f"{stats.get('parallel_expected_rank_count')}, "
         + f"dp_placements={stats.get('parallel_dp_placement_counts')}, "
+        + f"tp_group={groups.get('tp_group_fan')}@{groups.get('tp_group_link')}, "
+        + f"ep_group={groups.get('ep_group_size')}x{groups.get('ep_group_count')}@{groups.get('ep_group_link')}, "
         + f"sync_events={stats.get('parallel_sync_event_count', 0)}, "
         + f"sync_latency={stats.get('parallel_latency_total', 0)}"
     )
@@ -465,14 +492,28 @@ def print_moe_stats(engine: LLMEngine):
 
 def print_operator_latency_stats(engine: LLMEngine):
     stats = get_latency_stats(engine)
+    stats.update(get_parallel_stats(engine))
     backends = stats.get("latency_backends", {})
     print(
         "Latency: "
         + f"backends={ {k: v.get('backend') + ':' + str(v.get('operator_backend')) for k, v in backends.items()} }, "
         + f"queries={stats.get('operator_query_count', 0)}, "
         + f"match_types={stats.get('operator_match_type_counts', {})}, "
-        + f"missing_shapes={stats.get('operator_missing_shape_count', 0)}"
+        + f"missing_shapes={stats.get('operator_missing_shape_count', 0)} "
+        + f"in {stats.get('operator_missing_shape_groups', 0)} groups"
     )
+    formula_share = {
+        table: f"{share:.0%}" for table, share in analytical_share_by_table(stats).items() if share > 0
+    }
+    if formula_share:
+        # Loud on purpose: any share here is simulated time resting on formulas
+        # rather than measurements, see missing_shapes_<qps>.json.
+        print(f"Latency WARNING analytical share per table: {formula_share}")
+    for group in stats.get("operator_missing_shapes", [])[:5]:
+        print(
+            f"  missing {group['table']} {group['key']} axes={group['axes']} "
+            + f"queries={group['query_count']} kinds={group['kinds']}"
+        )
     components = stats.get("operator_component_seconds", {})
     if components:
         print(
@@ -580,6 +621,8 @@ def export_result(
         recomputation_count=sum(req.recomputation_count for req in requests),
         recomputed_tokens=sum(req.recomputed_tokens_total for req in requests),
         recompute_service_time=sum(req.recompute_service_time for req in requests),
+        prefill_chunk_count=sum(req.prefill_chunks for req in requests),
+        max_num_batched_tokens=getattr(engine, "max_num_batched_tokens", None),
         **prefix_reuse_stats,
         **connector_stats,
         **parallel_stats,
@@ -621,10 +664,21 @@ def export_result(
     result_file = results_path / result_name
     with open(result_file, "w") as f:
         json.dump(result_dict, f, indent=4)
-    missing = latency_stats.get("operator_missing_shapes") or []
-    if missing:
-        # Shapes the tables could not answer: the collection checklist for the
-        # next profiling run on the target device.
+    if latency_stats.get("operator_missing_shape_groups"):
+        # Shapes the tables could not answer, grouped by table and discrete key
+        # with the requested axis ranges: the collection checklist for the next
+        # profiling run on the target device (compute and communication alike).
         missing_file = results_path / f"missing_shapes_{args.qps}.json"
         with open(missing_file, "w") as f:
-            json.dump(missing, f, indent=2)
+            json.dump(_missing_shape_report(engine), f, indent=2)
+
+
+def _missing_shape_report(engine: LLMEngine) -> dict[str, Any]:
+    from TokenSim.operator_data.coverage import MissingShapeReport
+
+    report = MissingShapeReport()
+    for worker in getattr(engine, "workers", []):
+        worker_report = getattr(worker, "missing_report", None)
+        if worker_report is not None:
+            report = report.merge(worker_report)
+    return report.to_dict()
