@@ -10,10 +10,20 @@ from TokenSim.moe.config import MoEModelConfig
 
 @dataclass
 class ExpertPlacement:
+    """Which expert ids every expert-parallel rank owns, and where MoE layers live.
+
+    Every expert-parallel group (see ``ParallelConfig.expert_parallel_scope``)
+    holds a full copy of the experts laid out identically, so ``rank_to_experts``
+    is keyed by the rank's position inside its group and shared by all groups.
+    """
+
     strategy: str
+    scope: str
     ep_rank_count: int
+    ep_group_count: int
     tensor_parallel_size: int
     num_experts: int
+    parallel_config: ParallelConfig = field(repr=False, compare=False)
     rank_to_experts: dict[int, list[int]] = field(default_factory=dict)
     pp_stage_to_moe_layers: dict[int, list[int]] = field(default_factory=dict)
 
@@ -21,7 +31,10 @@ class ExpertPlacement:
         return self.rank_to_experts.get(self.ep_rank_for_rank_info(rank_info), [])
 
     def ep_rank_for_rank_info(self, rank_info: ParallelRankInfo) -> int:
-        return rank_info.dp_rank * self.tensor_parallel_size + rank_info.tp_rank
+        return self.parallel_config.expert_parallel_rank(rank_info.dp_rank, rank_info.tp_rank)
+
+    def ep_group_for_rank_info(self, rank_info: ParallelRankInfo) -> int:
+        return self.parallel_config.expert_parallel_group(rank_info.dp_rank, rank_info.tp_rank)
 
     def moe_layers_for_pp_rank(self, pp_rank: int) -> list[int]:
         return self.pp_stage_to_moe_layers.get(pp_rank, [])
@@ -32,7 +45,9 @@ class ExpertPlacement:
     def to_dict(self) -> dict[str, Any]:
         return {
             "strategy": self.strategy,
+            "scope": self.scope,
             "ep_rank_count": self.ep_rank_count,
+            "ep_group_count": self.ep_group_count,
             "tensor_parallel_size": self.tensor_parallel_size,
             "num_experts": self.num_experts,
             "rank_to_experts": {
@@ -50,46 +65,27 @@ def build_expert_placement(
     parallel_config: ParallelConfig,
     total_layers: int | None = None,
 ) -> ExpertPlacement:
-    strategy = parallel_config.expert_placement_strategy or "linear"
-    if strategy not in {"linear", "round_robin"}:
-        raise ConfigurationError(
-            "expert_placement_strategy must be 'linear' or 'round_robin'"
-        )
-    ep_rank_count = effective_ep_rank_count(parallel_config)
-    rank_to_experts = _assign_experts(
-        strategy=strategy,
-        num_experts=moe_config.num_experts if moe_config.enabled else 0,
-        ep_rank_count=ep_rank_count,
-    )
-    pp_stage_to_moe_layers = _assign_moe_layers(
-        moe_config=moe_config,
-        parallel_config=parallel_config,
-        total_layers=total_layers,
-    )
+    num_experts = moe_config.num_experts if moe_config.enabled else 0
+    ep_rank_count = parallel_config.expert_parallel_group_size
     return ExpertPlacement(
-        strategy=strategy,
+        strategy=parallel_config.expert_placement_strategy,
+        scope=parallel_config.expert_parallel_scope,
         ep_rank_count=ep_rank_count,
+        ep_group_count=parallel_config.expert_parallel_group_count,
         tensor_parallel_size=parallel_config.tensor_parallel_size,
-        num_experts=moe_config.num_experts if moe_config.enabled else 0,
-        rank_to_experts=rank_to_experts,
-        pp_stage_to_moe_layers=pp_stage_to_moe_layers,
+        num_experts=num_experts,
+        parallel_config=parallel_config,
+        rank_to_experts=_assign_experts(
+            strategy=parallel_config.expert_placement_strategy,
+            num_experts=num_experts,
+            ep_rank_count=ep_rank_count,
+        ),
+        pp_stage_to_moe_layers=_assign_moe_layers(
+            moe_config=moe_config,
+            parallel_config=parallel_config,
+            total_layers=total_layers,
+        ),
     )
-
-
-def effective_ep_rank_count(parallel_config: ParallelConfig) -> int:
-    if not parallel_config.enable_expert_parallel:
-        return 1
-    return parallel_config.tensor_parallel_size * parallel_config.data_parallel_size
-
-
-def rank_ep_rank(
-    rank_info: ParallelRankInfo,
-    parallel_config: ParallelConfig | None = None,
-) -> int:
-    tp_size = parallel_config.tensor_parallel_size if parallel_config else None
-    if tp_size is None:
-        raise ConfigurationError("parallel_config is required to compute EP rank")
-    return rank_info.dp_rank * tp_size + rank_info.tp_rank
 
 
 def _assign_experts(
@@ -98,11 +94,11 @@ def _assign_experts(
     num_experts: int,
     ep_rank_count: int,
 ) -> dict[int, list[int]]:
-    if num_experts <= 0:
-        return {rank: [] for rank in range(ep_rank_count)}
     if ep_rank_count < 1:
         raise ConfigurationError("effective EP rank count must be at least 1")
-    result = {rank: [] for rank in range(ep_rank_count)}
+    result: dict[int, list[int]] = {rank: [] for rank in range(ep_rank_count)}
+    if num_experts <= 0:
+        return result
     if strategy == "linear":
         base = num_experts // ep_rank_count
         remainder = num_experts % ep_rank_count
@@ -125,7 +121,7 @@ def _assign_moe_layers(
     parallel_config: ParallelConfig,
     total_layers: int | None,
 ) -> dict[int, list[int]]:
-    result = {rank: [] for rank in range(parallel_config.pipeline_parallel_size)}
+    result: dict[int, list[int]] = {rank: [] for rank in range(parallel_config.pipeline_parallel_size)}
     if not moe_config.enabled:
         return result
     for layer_id in moe_config.moe_layer_indices(total_layers):

@@ -10,7 +10,9 @@ Model Inference Systems](https://arxiv.org/abs/2503.08415)
 
 ## Features
 
-- Static, dynamic, and paged-attention batching with preemption and recomputation.
+- Static, dynamic, and paged-attention batching with preemption and recomputation;
+  the paged-attention scheduler follows vLLM V1 chunked prefill (a per-step token
+  budget shared by decode tokens and prefill chunks, `--max_num_batched_tokens`).
 - Prefix KV-cache reuse driven by block hashes in JSON and JSONL workloads.
 - Hybrid and disaggregated prefill/decode worker layouts.
 - Tensor, pipeline, data, and expert parallel simulation.
@@ -108,7 +110,7 @@ The main configuration surfaces are:
 | Surface | Location or option | Purpose |
 | --- | --- | --- |
 | Workload defaults | `data/psla/*.json`, `--model` | Which catalog model to run, length distributions, SLOs, and MoE metadata |
-| Models | `data/models/*.yaml` | Architecture (hidden size, heads, KV heads, FFN, MoE) transcribed from HF configs |
+| Models | `data/models/*.yaml` | Architecture (hidden size, heads, KV heads, FFN, MoE) transcribed from HF configs; weight `dtype` plus `activation_dtype` / `kv_cache_dtype` |
 | Devices | `data/devices/*.yaml` | Peak compute per dtype, memory, on-chip SRAM, interconnect ports, sourced values |
 | Topologies | `data/topologies/*.yaml`, `links.yaml` | Link classes and chip/node/rack/cluster hierarchies |
 | Operator data | `data/operator_data/<device>/<backend>/` | Measured or analytical latency tables; see [operator latency model](docs/operator-latency-model.md) |
@@ -125,7 +127,13 @@ Useful CLI options include:
 - `--prefill_mean_len`, `--decode_mean_len`: synthetic request lengths.
 - `--tensor_parallel_size`, `--pipeline_parallel_size`, `--data_parallel_size`:
   override parallel dimensions from the model or cluster config.
-- `--enable_expert_parallel`: enable or disable expert parallelism.
+- `--max_num_batched_tokens`: token budget of one paged-attention step
+  (default 8192); prompts longer than the remaining budget are prefilled in
+  chunks while decodes keep flowing. `--no-chunked_prefill` restores
+  whole-prompt prefill steps.
+- `--enable_expert_parallel`: enable or disable expert parallelism;
+  `--expert_parallel_scope global|per_dp` and `--expert_parallel_size` choose
+  and assert the expert-parallel group (see `docs/moe.md`).
 - `--moe_routing_distribution`: `uniform`, `skew`, `hot`, or `burst`.
 - `--trace_timestamp_scale`, `--trace_target_qps`: mutually exclusive controls
   for replaying timestamped traces.

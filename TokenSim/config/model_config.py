@@ -32,6 +32,7 @@ class ModelSpec:
     activation: str = "swiglu"
     max_position_embeddings: int = 4096
     dtype: str = "fp16"
+    activation_dtype: str | None = None
     kv_cache_dtype: str = "fp16"
     sliding_window: int = 0
     tie_word_embeddings: bool = False
@@ -61,6 +62,11 @@ class ModelSpec:
                 f"model {self.model_id!r}: activation must be one of {sorted(ACTIVATIONS)}"
             )
         object.__setattr__(self, "dtype", normalize_dtype(self.dtype))
+        object.__setattr__(
+            self,
+            "activation_dtype",
+            normalize_dtype(self.activation_dtype or self.dtype),
+        )
         object.__setattr__(self, "kv_cache_dtype", normalize_dtype(self.kv_cache_dtype))
         if not self.display_name:
             object.__setattr__(self, "display_name", self.model_id)
@@ -173,6 +179,9 @@ class ModelSpec:
             activation=str(raw.get("activation", "swiglu")).lower(),
             max_position_embeddings=int(raw.get("max_position_embeddings", 4096)),
             dtype=str(raw.get("dtype", "fp16")),
+            activation_dtype=(
+                str(raw["activation_dtype"]) if raw.get("activation_dtype") is not None else None
+            ),
             kv_cache_dtype=str(raw.get("kv_cache_dtype", raw.get("dtype", "fp16"))),
             sliding_window=int(raw.get("sliding_window", 0) or 0),
             tie_word_embeddings=bool(raw.get("tie_word_embeddings", False)),
@@ -213,6 +222,7 @@ class ModelSpec:
             "vocab_size": self.vocab_size,
             "activation": self.activation,
             "dtype": self.dtype,
+            "activation_dtype": self.activation_dtype,
             "kv_cache_dtype": self.kv_cache_dtype,
             "is_moe": self.is_moe,
             "total_params": self.total_params(),

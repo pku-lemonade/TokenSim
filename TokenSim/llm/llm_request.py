@@ -234,6 +234,15 @@ class Request:
     decode_service_time_sum: float = field(default=0.0, repr=False)
     prefill_batch_size: float = field(default=0.0, repr=False)
     decode_batch_sum: float = field(default=0.0, repr=False)
+    # Per-step scheduling state (vLLM V1 semantics). ``num_computed_tokens`` is
+    # the number of context tokens whose KV is present on the worker (prefix
+    # hits included); ``scheduled_tokens`` is what the scheduler assigned to
+    # the current step: one token for a decode step, the next chunk of the
+    # remaining context for a (chunked) prefill or recompute step.
+    num_computed_tokens: int = field(default=0, repr=False)
+    scheduled_tokens: int = field(default=0, repr=False)
+    # Context-building steps this request's prompt took (1 without chunking).
+    prefill_chunks: int = 0
     tqdm_submit_func = None
 
     def __post_init__(self):
@@ -279,6 +288,35 @@ class Request:
         return self.generation_idx == self.decode_len
 
     @property
+    def remaining_context_tokens(self) -> int:
+        """Context tokens still to compute before this request can sample a token."""
+        return max(0, self.context_len - self.num_computed_tokens)
+
+    @property
+    def is_context_build(self) -> bool:
+        """True while the prompt, or a preempted context, is being (re)computed."""
+        return self.is_prefill or self.needs_recompute
+
+    @property
+    def step_tokens(self) -> int:
+        """Tokens this request computes in the current step.
+
+        The scheduler assigns ``scheduled_tokens`` (a decode token or a context
+        chunk); a request nobody scheduled, as with the legacy schedulers or
+        direct calls, computes its whole remaining context at once.
+        """
+        return self.scheduled_tokens or max(1, self.remaining_context_tokens)
+
+    def start_context_build(self, cached_tokens: int) -> None:
+        """Record the context already present in KV when the request is admitted.
+
+        At least one token is always computed (the last position's logits are
+        needed), which is vLLM's cap on full-prompt prefix hits.
+        """
+        self.num_computed_tokens = min(max(0, cached_tokens), max(0, self.context_len - 1))
+        self.scheduled_tokens = 0
+
+    @property
     def num_physical_token_blocks(self):
         return len(self._physical_token_blocks)
 
@@ -320,9 +358,39 @@ class Request:
         self.arrival_at = env.now
         self._last_event_at = env.now
 
+    def advance(
+        self, env: simpy.Environment, latency: float, batch: int, timing_recorder=None
+    ):
+        """Apply one scheduler step to this request.
+
+        A step computes ``scheduled_tokens`` of context: a decode token, a
+        prefill chunk or a recompute chunk. Only the step that completes the
+        context samples a token (:meth:`step`); partial chunks just accumulate
+        service time, so TTFT spans every chunk plus the waits between them.
+        Returns the completed :class:`RequestTime` when the request finishes.
+        """
+        tokens = self.step_tokens
+        self.scheduled_tokens = 0
+        self.num_computed_tokens += tokens
+        if self.is_prefill:
+            self.prefill_chunks += 1
+        if self.num_computed_tokens < self.context_len:
+            if self.needs_recompute:
+                self.recompute_service_time += latency
+            else:
+                self.prefill_service_time += latency
+            return None
+        if self.needs_recompute:
+            # The pass that restores the context also yields the next token;
+            # its service time is booked as recompute, not decode.
+            self.finish_recompute(latency)
+            latency = 0.0
+        return self.step(env, latency, batch, timing_recorder)
+
     def step(
         self, env: simpy.Environment, latency: float, batch: int, timing_recorder=None
     ):
+        """Sample one token: bookkeeping for wall time, service time and batch size."""
         self.generation_idx += 1
         self._append_tokens(1)
         step_time = env.now - self._last_event_at
@@ -330,7 +398,7 @@ class Request:
         self.total_time += step_time
         if self.generation_idx == 1:
             self.prefill_latency = step_time
-            self.prefill_service_time = latency
+            self.prefill_service_time += latency
             self.prefill_batch_size = batch
         else:
             self.decode_time_sum += step_time
@@ -351,8 +419,11 @@ class Request:
         return None
 
     def prepare_recompute(self) -> None:
+        """Preemption released the KV: the whole context must be rebuilt."""
         self.needs_recompute = True
         self.recompute_tokens = self.context_len
+        self.num_computed_tokens = 0
+        self.scheduled_tokens = 0
 
     def finish_recompute(self, latency: float) -> None:
         self.needs_recompute = False

@@ -9,9 +9,15 @@ from TokenSim.llm.llm_comm import KVConnectorMetadata, KVConnectorWorkerMetadata
 from TokenSim.llm.llm_request import Request, RequestStatus
 from TokenSim.block.block_manager import BlockManager
 from TokenSim.config.config import CacheConfig, KVTransferConfig
+from TokenSim.errors import ConfigurationError
 from TokenSim.kv_transfer import NoopConnector
 
 logger = logging.getLogger(__name__)
+
+# Token budget of one paged-attention step (vLLM V1 ``max_num_batched_tokens``
+# for online serving; SGLang's ``chunked_prefill_size`` on large GPUs uses the
+# same value). Prompts longer than the budget are prefilled over several steps.
+DEFAULT_MAX_NUM_BATCHED_TOKENS = 8192
 
 
 class SchedulePhase(Enum):
@@ -19,15 +25,34 @@ class SchedulePhase(Enum):
     PREFILL = auto()
     DECODE = auto()
     RECOMPUTE = auto()
+    # Chunked prefill: decode tokens and prefill/recompute chunks in one step.
+    MIXED = auto()
 
 
 @dataclass
 class ScheduleOutput:
     running: list[Request]
     preempted: list[Request]
+    # Requests admitted (or re-admitted after preemption) in this step. KV
+    # connectors plan their loads and saves for these.
     scheduled: list[Request]
     connector_metadata: KVConnectorMetadata
     phase: SchedulePhase = SchedulePhase.IDLE
+
+
+def step_phase(requests: list[Request]) -> SchedulePhase:
+    """Phase label of a step: one of the pure phases or MIXED."""
+    kinds = set()
+    for req in requests:
+        if req.needs_recompute:
+            kinds.add(SchedulePhase.RECOMPUTE)
+        elif req.is_prefill:
+            kinds.add(SchedulePhase.PREFILL)
+        else:
+            kinds.add(SchedulePhase.DECODE)
+    if not kinds:
+        return SchedulePhase.IDLE
+    return kinds.pop() if len(kinds) == 1 else SchedulePhase.MIXED
 
 
 class LLMScheduler(ABC):
@@ -47,17 +72,12 @@ class LLMScheduler(ABC):
 
     def schedule_output(self) -> ScheduleOutput:
         running, preempted = self.schedule()
-        phase = SchedulePhase.IDLE
-        if running:
-            phase = (
-                SchedulePhase.PREFILL if running[0].is_prefill else SchedulePhase.DECODE
-            )
         output = ScheduleOutput(
             running=running,
             preempted=preempted or [],
             scheduled=running if not preempted else [],
             connector_metadata=KVConnectorMetadata(),
-            phase=phase,
+            phase=step_phase(running),
         )
         output.connector_metadata = self.connector.build_connector_meta(output)
         return output
@@ -154,6 +174,17 @@ class LLMPrefillScheduler(LLMScheduler):
 
 
 class LLMPagedAttnScheduler(LLMScheduler):
+    """Continuous batching with paged KV blocks and chunked prefill.
+
+    Ported from vLLM's V1 scheduler: every step has a token budget
+    (``max_num_batched_tokens``). Running requests are served first in arrival
+    order, decodes taking one token each and in-progress prefills or recomputes
+    taking the next chunk of their context; the remaining budget admits
+    waiting requests, whose first chunk may also be partial. ``None`` disables
+    the budget, so every prompt is prefilled in one step (the legacy
+    behaviour).
+    """
+
     def __init__(
         self,
         id: int,
@@ -161,12 +192,18 @@ class LLMPagedAttnScheduler(LLMScheduler):
         max_parallem_sum=None,
         max_occupy_ratio: float = 1,
         connector=None,
+        max_num_batched_tokens: int | None = DEFAULT_MAX_NUM_BATCHED_TOKENS,
     ):
         super().__init__(connector=connector)
 
         self.id = id
         self.cache_config = cache_config
         self.max_parallem_sum = max_parallem_sum
+        if max_num_batched_tokens is not None and max_num_batched_tokens < 1:
+            raise ConfigurationError("max_num_batched_tokens must be at least 1")
+        self.max_num_batched_tokens = max_num_batched_tokens
+        # Requests admitted by the most recent schedule() call.
+        self.last_admitted: list[Request] = []
 
         self.block_manager: BlockManager = BlockManager(
             block_size=self.cache_config.block_size,
@@ -181,18 +218,39 @@ class LLMPagedAttnScheduler(LLMScheduler):
             set_releaser(self._release_delayed_blocks)
 
     def schedule(self) -> tuple[list[Request], list[Request]]:
-        """The scheduler FSM for dynamic scheduling, basically being ported
-            from the vLLM's Scheduler.schedule() method.
+        """Build one step.
 
-            currently we donnot consider requests whose decode length exceeds
-            the max_len limitation.
-
-        Return:
-            A list of candidate requests for the next decode step.
+        Returns the requests computing tokens in this step (each with
+        ``scheduled_tokens`` set) and the requests preempted while making room
+        for decode slots. Running requests that got no budget stay in
+        ``self.running`` untouched; admissions of this step are recorded in
+        ``self.last_admitted``.
         """
+        budget = self.max_num_batched_tokens
         scheduled: list[Request] = []
-        admission_phase: SchedulePhase | None = None
-        while self.waiting:
+        preempted: list[Request] = []
+        self.last_admitted = []
+
+        # 1. Running requests, oldest first: decode tokens and context chunks.
+        # [TODO: xuechao] sort self.running according to some priority policy.
+        queue = sorted(self.running, key=lambda req: req.arrival_time or 0.0)
+        self.running = []
+        while queue:
+            req = queue.pop(0)
+            tokens = self._step_tokens(req, budget)
+            if tokens == 0:
+                # Out of budget: the request keeps its place for the next step.
+                self.running.append(req)
+                continue
+            if not req.is_context_build and not self._reserve_decode_slot(req, queue, preempted):
+                continue
+            req.scheduled_tokens = tokens
+            budget = None if budget is None else budget - tokens
+            scheduled.append(req)
+            self.running.append(req)
+
+        # 2. Admissions while budget and KV blocks last (head-of-line order).
+        while self.waiting and (budget is None or budget > 0):
             if not self._is_occupy_below_usage():
                 break
             if (
@@ -200,95 +258,90 @@ class LLMPagedAttnScheduler(LLMScheduler):
                 and len(self.running) >= self.max_parallem_sum
             ):
                 break
-
             req = self.waiting[0]
-            req_phase = (
-                SchedulePhase.RECOMPUTE
-                if req.needs_recompute
-                else SchedulePhase.PREFILL
-            )
-            if admission_phase is not None and req_phase != admission_phase:
-                break
-
             if not self.block_manager.can_allocate(req):
                 break
 
             req = self.waiting.pop(0)
-            local_plan = self.block_manager.kv_cache_manager.plan_reuse(req)
-            num_external_tokens = self.connector.get_num_new_matched_tokens(
-                req,
-                local_plan.hit_tokens,
-            )
-            if req.needs_recompute:
-                req.recompute_tokens = max(
-                    0,
-                    req.context_len - local_plan.hit_tokens - num_external_tokens,
-                )
-            self.block_manager.allocate(req)
-            self.connector.update_state_after_alloc(
-                req,
-                self.block_manager.block_table.get_blocks(req.id),
-                num_external_tokens,
-            )
-            req.status = RequestStatus.RUNNING
-            self.running.append(req)
+            self._admit(req)
+            tokens = self._step_tokens(req, budget)
+            req.scheduled_tokens = tokens
+            budget = None if budget is None else budget - tokens
             scheduled.append(req)
-            admission_phase = req_phase
+            self.running.append(req)
+            self.last_admitted.append(req)
 
-            # if sum([req.prefill_len for req in scheduled]) >= self.max_parallem_sum:
-            #     break
+        return scheduled, preempted
 
-        if scheduled:
-            return scheduled, []
+    def _admit(self, req: Request) -> None:
+        """Allocate KV blocks for the whole context and record what is already cached."""
+        local_plan = self.block_manager.kv_cache_manager.plan_reuse(req)
+        num_external_tokens = self.connector.get_num_new_matched_tokens(
+            req,
+            local_plan.hit_tokens,
+        )
+        if req.needs_recompute:
+            req.recompute_tokens = max(
+                0,
+                req.context_len - local_plan.hit_tokens - num_external_tokens,
+            )
+        self.block_manager.allocate(req)
+        self.connector.update_state_after_alloc(
+            req,
+            self.block_manager.block_table.get_blocks(req.id),
+            num_external_tokens,
+        )
+        if req.needs_recompute:
+            to_compute = req.recompute_tokens
+        elif req.is_prefill:
+            to_compute = req.prefill_compute_len
+        else:
+            # KV arrived through a connector (prefill/decode disaggregation):
+            # only the newest token is computed here.
+            to_compute = 1
+        req.start_context_build(req.context_len - to_compute)
+        req.status = RequestStatus.RUNNING
 
-        # [TODO: xuechao] sort self.running according to some priority policy.
-        self.running = sorted(self.running, key=lambda req: req.arrival_time)
+    def _step_tokens(self, req: Request, budget: int | None) -> int:
+        """Tokens ``req`` computes this step: its remaining context, capped by the budget."""
+        remaining = max(1, req.remaining_context_tokens)
+        return remaining if budget is None else min(remaining, budget)
 
-        # Reserve new token slots for the running sequence groups.
-        running: list[Request] = []
-        preempted: list[Request] = []
+    def _reserve_decode_slot(
+        self,
+        req: Request,
+        queue: list[Request],
+        preempted: list[Request],
+    ) -> bool:
+        """Find a KV slot for the token ``req`` computes this step.
 
-        while self.running:
-            req = self.running.pop(0)
-            while True:
-                if self.block_manager.can_append_slot(req):
-                    # Append new slots to the sequence group.
-                    self.block_manager.append_slot(req)
-                    running.append(req)
-                    break
-                if self.running:
-                    # Preempt the lowest-priority sequence groups.
-                    victim_req = self.running.pop(-1)
-                    self._preempt(victim_req)
-                    preempted.append(victim_req)
-                else:
-                    # No other sequence groups can be preempted.
-                    # Preempt the current sequence group.
-                    self._preempt(req)
-                    preempted.append(req)
-                    break
-        self.running = running
-
-        return self.running, preempted
+        Preempts the youngest not-yet-scheduled running requests until a block
+        is free; preempts ``req`` itself when nobody else is left. Returns
+        whether ``req`` may run.
+        """
+        while True:
+            if self.block_manager.can_append_slot(req):
+                self.block_manager.append_slot(req)
+                return True
+            if queue:
+                victim = queue.pop(-1)
+                self._preempt(victim)
+                preempted.append(victim)
+            else:
+                self._preempt(req)
+                preempted.append(req)
+                return False
 
     def schedule_output(self) -> ScheduleOutput:
-        running, preempted = self.schedule()
-        phase = SchedulePhase.IDLE
-        if running:
-            if running[0].needs_recompute:
-                phase = SchedulePhase.RECOMPUTE
-            elif running[0].is_prefill:
-                phase = SchedulePhase.PREFILL
-            else:
-                phase = SchedulePhase.DECODE
+        scheduled, preempted = self.schedule()
         output = ScheduleOutput(
-            running=running,
-            preempted=preempted or [],
-            scheduled=running if not preempted else [],
+            running=scheduled,
+            preempted=preempted,
+            scheduled=list(self.last_admitted),
             connector_metadata=KVConnectorMetadata(
-                preempted_request_ids=[req.id for req in preempted or []],
+                preempted_request_ids=[req.id for req in preempted],
             ),
-            phase=phase,
+            phase=step_phase(scheduled),
         )
         output.connector_metadata = self.connector.build_connector_meta(output)
         if preempted and not output.connector_metadata.preempted_request_ids:

@@ -2,7 +2,7 @@ schema_version: 1
 device_id: b300_sxm
 family: nvidia_gpu
 display_name: NVIDIA B300 SXM (HGX B300, Blackwell Ultra)
-aliases: [B300-SXM, HGX-B300, NVIDIA B300]
+aliases: [B300, B300-SXM, HGX-B300, NVIDIA B300]
 sources:
   nvidia-hgx-b300-datasheet:
     grade: A

@@ -45,7 +45,9 @@ is fixed:
 Every step records a `match_type` (`exact` / `interpolated` / `extrapolated` /
 `analytical`). The result JSON aggregates these counts per table, and any
 missing shapes are exported to `missing_shapes_<qps>.json` as the collection
-manifest for the next profiling round.
+manifest for the next profiling round. The same rule applies to
+communication: `collective` and `ep_all2all` lookups go through the same
+policy, so a run never rests on formulas without saying so (section 3.5).
 
 ---
 
@@ -284,6 +286,14 @@ point pins its level.
 The **`max_extrapolation_ratio`** parameter (default: **16.0**) caps how far
 extrapolation may go on any axis; an `AxisSpec` may override it for axes that
 barely move the cost (the DeepEP `num_experts` axis allows 1024x, `top_k` 8x).
+The attention sequence axes (`context_attention.input_seq_len`,
+`generation_attention.context_len`) allow 64x: the AIConfigurator tables stop
+at 16k prefill and 128k decode tokens while agentic traces reach about 1M, and
+AIConfigurator itself extrapolates these axes with no cap by holding the
+boundary efficiency and letting the SOL formula carry the O(s²) growth (the
+kernels are compute-bound well before 16k). With chunked prefill (section 4.2)
+prefill queries stay inside the measured range anyway; the bound mainly serves
+decode attention over very long contexts and unchunked runs.
 If `target / boundary` (or its reciprocal) exceeds the bound, the lookup raises
 `MissingOperatorDataError` and the query falls through to Stage 4.
 
@@ -299,14 +309,29 @@ device-family-specific analytical model (section 5).
 
 ### 3.5 Fallback Policy Configuration
 
-The `OperatorTableLatencyBackend` accepts a `fallback` parameter that
-controls the overall resolution strategy:
+`--latency_fallback` selects one of `FALLBACK_POLICIES`
+(`TokenSim/operator_data/lookup.py`). A worker applies the same policy to its
+`OperatorTableLatencyBackend` (gemm, attention, moe, elementwise) and to its
+`CollectiveModel` (`collective`, `ep_all2all`):
 
 | Fallback | Behavior |
 | --- | --- |
-| `table_first` (default) | Try table lookup; on failure, use analytical model |
-| `table_only` | Table lookup only; raise an error on failure |
-| `analytical_only` | Skip tables entirely; use analytical model for everything |
+| `table_first` (default) | Try table lookup; on failure, use the analytical model **and record the miss** in the worker's `MissingShapeReport` |
+| `table_only` | Table lookup only; raise `MissingOperatorDataError` on the first miss, including a communication query with no measured row |
+| `analytical_only` | Skip tables entirely; use analytical model for everything (`--latency_backend analytical`) |
+
+Every miss carries a `kind` (`MISSING_KINDS`): `table_absent` (the package has
+no rows for that table, e.g. no `elementwise` data), `discrete_key` (rows
+exist but not for this dtype / head layout / `ep_size, nodes`), `out_of_range`
+(an axis lies beyond `max_extrapolation_ratio`), `no_measured_mode` (the
+configured `all2all_backend` is priced by formula by design), plus the
+disabled-interpolation/extrapolation cases. The report groups misses by
+`(table, discrete key)`, records the requested range of every axis, the
+number of queries and a few example keys, and is written to
+`missing_shapes_<qps>.json` (section 9). Compute and communication misses share
+one report per worker, so the file is the complete collection checklist for
+the run. The run summary prints the analytical share per table as a warning
+whenever it is non-zero.
 
 ### 3.6 Result Caching
 
@@ -314,6 +339,13 @@ The backend maintains an LRU-like cache (up to 262,144 entries) keyed by
 `(table_name, sorted_key_tuple)`. Cache entries are reused across steps,
 which is important because decode steps with steady-state batch sizes repeat
 the same GEMM and elementwise queries every step.
+
+The lookup index itself (exact-match map plus per-axis interpolation grid,
+`OperatorDataPackage.lookup_index`) is built once per loaded package and
+shared by every `OperatorLookup` created for it. A Blackwell vLLM package has
+about 320k rows and indexes in roughly 1.5 s; a 64-rank cluster creates two
+lookups per worker (operator backend and collective model), so sharing keeps
+start-up at seconds instead of minutes.
 
 ---
 
@@ -323,6 +355,17 @@ The `OperatorTableLatencyBackend` (`TokenSim/latency/operator_table.py`)
 decomposes each scheduler step into individual operator queries. It maps the
 model architecture and parallel configuration to per-operator lookups with
 TP-local dimensions.
+
+### 4.0 Weight and Activation Dtypes
+
+`ModelSpec.dtype` is the weight (storage) dtype and keys the `gemm` and `moe`
+tables. `ModelSpec.activation_dtype` (default: `dtype`) keys everything that
+moves activations: `context_attention` / `generation_attention`
+(`attn_dtype`), `elementwise`, the activation byte count behind TP/PP/EP
+payloads, and the `dtype` of `collective` / `ep_all2all` lookups. Low-precision
+checkpoints (fp8, nvfp4, mxfp4) should set `activation_dtype: bf16` in their
+catalog entry; otherwise the communication and attention queries ask for
+`nvfp4` rows that no table has and fall back to formulas.
 
 ### 4.1 Local Dimensions Under Tensor Parallelism
 
@@ -340,14 +383,49 @@ moe_layers_local = MoE layer count from ExpertPlacement for this PP rank
 dense_layers_local = layers_local - moe_layers_local
 ```
 
-### 4.2 Prefill / Recompute Path
+### 4.2 Step Composition and Chunked Prefill
 
-For a prefill step with `T` total tokens across `B` requests:
+`LLMPagedAttnScheduler` builds every step under a token budget,
+`max_num_batched_tokens` (default 8192, vLLM V1's online-serving default;
+`--no-chunked_prefill` removes the budget). Running requests are served first
+in arrival order: a request that has already sampled takes one decode token, a
+request whose context is still being built (prefill, or recompute after a
+preemption) takes the next chunk `min(remaining_context_tokens, budget_left)`.
+Whatever budget is left admits waiting requests, whose first chunk may be
+partial. A step therefore mixes decode tokens and prefill chunks
+(`SchedulePhase.MIXED`), and a prompt longer than the budget is spread over
+several steps; only the step that completes the context samples a token, so
+TTFT covers all chunks and the waits between them.
+
+Every request carries `num_computed_tokens` (context tokens whose KV is
+present, prefix hits included) and `scheduled_tokens` (this step's share);
+`Request.step_tokens` is the latter, or the whole remaining context for a
+request nobody scheduled (legacy schedulers). The backend prices a step from
+these two numbers:
+
+| Query | Rule |
+| --- | --- |
+| `T` for GEMM, elementwise, MoE and communication | `sum(step_tokens)` over the batch |
+| decode-shaped attention (`step_tokens == 1`, request already sampled) | `generation_attention(batch=count, context_len=bucket(kv_len))` |
+| context chunk (`q_len = step_tokens`, `kv_len = num_computed_tokens + q_len`) | requests grouped by `(q_len, kv_len)`: `context_attention(batch=count, input_seq_len=q_len)`, scaled by the FLOPs ratio when `kv_len > q_len` (cached prefix and earlier chunks alike) |
+| LM head rows | requests sampling this step: decodes plus the last chunk of each context build |
+
+Chunking keeps `input_seq_len <= max_num_batched_tokens`, so long prompts stay
+inside the measured prefill range of the tables (16384 for the AIConfigurator
+Blackwell/Hopper data) instead of being extrapolated; the growth with context
+length lives in the FLOPs ratio, the same correction AIConfigurator applies for
+prefixes. This is also how the serving stacks execute a 600k-token prompt.
+Approximations: KV blocks for the whole prompt are allocated at admission
+rather than per chunk, and a KV connector plans its save of a prompt when the
+request is admitted (executed after the first chunk) rather than after the
+last one.
+
+For a step with `T` tokens and `B` sampling requests:
 
 | Component | Operator Queries |
 | --- | --- |
 | **Attention block** (per layer) | `rmsnorm(T, h)` + `gemm(T, q_local + 2*kv_local, h)` + `rope(T, q_local + kv_local)` + attention core + `gemm(T, h, q_local)` + `residual_add(T, h)` |
-| **Attention core** | Requests grouped by `(query_len, kv_len)`. Each group issues one `context_attention(batch=count, input_seq_len=query_len)`. Prefix-cache hits (`kv_len > query_len`) scale the measured latency by the analytical FLOPs ratio. |
+| **Attention core** | Context chunks grouped by `(query_len, kv_len)` issue one `context_attention(batch=count, input_seq_len=query_len)` each, scaled by the analytical FLOPs ratio when `kv_len > query_len`; decode tokens are bucketed by context length (4.3). |
 | **Dense FFN** (per dense layer) | `rmsnorm(T, h)` + `gemm(T, g*inter_local, h)` + `swiglu(T, inter_local)` + `gemm(T, h, inter_local)` + `residual_add(T, h)` |
 | **MoE layer** | `rmsnorm(T, h)` + router `gemm(T, E, h)` + `moe(num_tokens=T*DP_if_EP, tp, ep)` x imbalance + `residual_add(T, h)` |
 | **lm_head** (last PP stage only) | `gemm(B, vocab_local, h)` + `rmsnorm(B, h)` |
@@ -356,18 +434,19 @@ For a prefill step with `T` total tokens across `B` requests:
 
 #### Prefix-Cache Scaling
 
-When `kv_len > query_len` (prefix-cache hit), the table value for
-`input_seq_len = query_len` underestimates the work because queries also
-attend to the cached prefix. The backend computes the analytical FLOPs ratio
-between the full-range attention and the query-only attention, then scales the
-measured latency by `max(1.0, full_flops / base_flops)`.
+When `kv_len > query_len` (prefix-cache hit, or a later chunk of a long
+prompt), the table value for `input_seq_len = query_len` underestimates the
+work because queries also attend to the tokens already in KV. The backend
+computes the analytical FLOPs ratio between the full-range attention and the
+query-only attention, then scales the measured latency by
+`max(1.0, full_flops / base_flops)`.
 
-### 4.3 Decode Path
+### 4.3 Decode Tokens
 
-For a decode step, `T = B` (one token per request). The key difference from
-prefill is how attention is handled:
+A request that has already sampled contributes one token per step. The key
+difference from context chunks is how attention is handled:
 
-**Context-length bucketing**: Decode requests are grouped by context length
+**Context-length bucketing**: Decode tokens are grouped by context length
 into buckets of `decode_context_bucket` (default 128) width, rounding up.
 Each bucket issues a single `generation_attention(batch=count,
 context_len=bucket_ceiling)` lookup. This avoids an explosion of unique
@@ -387,10 +466,13 @@ For MoE layers, the step waits for the slowest expert rank. The backend:
 5. Queries again at `tokens * imbalance` to estimate the busiest rank's time
 6. The straggler cost is `(busiest_time - balanced_time) * moe_layers_local`
 
-When expert parallelism crosses DP replicas, the system assumes all DP
-replicas advance in lockstep, so the EP group sees
-`tokens * data_parallel_size` input tokens. This is an explicit modeling
-assumption.
+The `moe` table is keyed by the tokens entering the layer for the whole
+expert-parallel group. TP ranks of a replica see the same tokens, so the group
+receives `tokens * replicas_per_group` where `replicas_per_group =
+expert_parallel_group_size / tensor_parallel_size`: 1 for
+`expert_parallel_scope = per_dp`, `data_parallel_size` for a full `global`
+group. Replicas that share a group are assumed to advance in lockstep; this is
+an explicit modeling assumption.
 
 ### 4.5 Avoiding Double-Counting
 
@@ -627,7 +709,10 @@ When the device's operator package contains a `collective` table and the
 query's `(dtype, operation, group_size, nodes)` matches, the model uses the
 measured curve directly (via the same interpolation engine from section 3) and
 tags the result as `match_type = "measured"`. This avoids the formula
-entirely.
+entirely. A query without a measured row follows the worker's fallback policy
+(section 3.5): `table_first` prices it with the formula below and records the
+miss (`collective`, discrete key `dtype, operation, group_size, nodes`,
+requested `message_bytes` range), `table_only` raises.
 
 Measured collective curves for A100, H100, H200, and GB300 (NCCL and custom
 all-reduce) are imported from AIConfigurator. V100 data comes from legacy
@@ -647,8 +732,16 @@ Without a measured row, or for `naive` / `allgather_reducescatter`, the pair
 is two analytical all-to-all collectives scaled by
 `EP_ALL2ALL_MODE_SCALE` (naive 1.5, allgather_reducescatter 1.0,
 deepep_high_throughput 0.7, deepep_low_latency 0.5; grade D, inherited from
-the legacy backend). Results record the outcome in
-`parallel_comm_match_type_counts`.
+the legacy backend). Both cases are reported: a DeepEP query with no row is a
+`discrete_key` / `out_of_range` miss keyed by `mode, ep_size, nodes`, a
+non-DeepEP mode is a `no_measured_mode` miss, and under `table_only` either
+raises. Results record the outcome in `parallel_comm_match_type_counts`.
+
+The EP group is the expert-parallel group of `ParallelConfig`
+(`expert_parallel_scope`, `expert_parallel_size`): with `per_dp` on an 8-GPU
+node the query is `ep_size=8, nodes=1`, which the B200/B300/H100/H200 packages
+cover; a `global` group over 8 nodes asks for `ep_size=64, nodes=8`, which
+only the SGLang H100/H200 tables answer.
 
 ### 6.5 Validation Against Measurements
 
@@ -865,14 +958,36 @@ information:
 | `operator_match_type_counts` | Aggregate counts of `exact`, `interpolated`, `extrapolated`, `analytical` across all operator queries |
 | `operator_table_match_counts` | Same counts broken down per table (gemm, context_attention, etc.) |
 | `operator_component_seconds` | Cumulative wall-clock seconds attributed to each component: `gemm`, `attention`, `moe`, `elementwise`, `lm_head`, `comm`, `overhead` |
-| `operator_missing_shape_count` | Number of unique shapes that could not be resolved from tables |
+| `operator_missing_shape_count` | Number of unique shapes (compute and communication) that could not be resolved from tables |
+| `operator_missing_shape_groups` | Number of `(table, discrete key)` groups those shapes fall into |
+| `operator_missing_per_table` | Per table: missing groups, shapes and queries |
+| `operator_missing_shapes` | The first 200 groups (see below) |
+| `parallel_groups` | TP/EP group of rank 0 and the topology level each spans (`ep_group_size`, `ep_group_link`, ...) |
 | `parallel_link_type_counts` | Communication event counts by link type |
 | `parallel_comm_match_type_counts` | Communication match type breakdown (measured vs analytical) |
 
-Missing shapes are exported separately to `missing_shapes_<qps>.json`. Each
-entry includes the table name, the query key, and the reason for failure.
-This file serves as the collection manifest for the next profiling round:
-measure these shapes and add them to the package to improve coverage.
+The full missing-shape report is exported to `missing_shapes_<qps>.json`:
+
+```json
+{
+  "group_count": 3, "shape_count": 41, "query_count": 4096,
+  "per_table": {"context_attention": {"groups": 1, "shapes": 38, "queries": 38}, ...},
+  "groups": [
+    {"table": "context_attention",
+     "key": {"attn_dtype": "bf16", "kv_cache_dtype": "bf16", "num_kv_heads": 1, "head_dim": 64, "window_size": 0},
+     "axes": {"batch_size": [1, 1], "input_seq_len": [267904, 664960], "num_heads": [16, 16]},
+     "query_count": 38, "shape_count": 38, "kinds": {"out_of_range": 38},
+     "reason": "input_seq_len=267904 is 16.35x the measured boundary 16384; ...",
+     "examples": [{"...": "..."}]}
+  ]
+}
+```
+
+Each group names the table, the discrete key the collection run must
+reproduce, the range every interpolation axis was requested over, how often
+the group was hit and why. This file is the collection manifest for the next
+profiling round: measure these shapes and add them to the package to improve
+coverage.
 
 ---
 
@@ -884,9 +999,13 @@ measure these shapes and add them to the package to improve coverage.
 - **Prefix-cache attention**: Prefill attention for prefix-cache hits (where
   `kv_len > query_len`) is estimated by scaling the measured padded-batch
   value using the analytical FLOPs ratio.
-- **EP cross-DP lockstep assumption**: When expert parallelism spans data
-  parallel replicas, all replicas are assumed to advance in lockstep, making
-  the EP group's token count equal to `tokens * data_parallel_size`.
+- **EP cross-DP lockstep assumption**: When an expert-parallel group spans
+  data parallel replicas (`expert_parallel_scope = global`), those replicas
+  are assumed to advance in lockstep, making the group's token count equal to
+  `tokens * replicas_per_group`. `per_dp` groups never cross replicas.
+- **No MoE tensor parallelism inside an EP group**: experts are split
+  `expert_parallel_size` ways with `moe_tp = 1`; a `per_dp` group must equal
+  the replica's TP size.
 - **No link contention in step time**: Link contention and queuing effects
   from pipelined micro-batches (e.g., A/F link sharing) are not modeled in
   the per-step service time. These belong to the executor layer's SimPy-based
