@@ -685,16 +685,40 @@ class ExpertRouting:
         )
         cached = self._normalized_cache.get(cache_key)
         if cached is None:
-            cached = normalize_expert_histogram(
+            cached = self._normalize_step_histogram(
+                request,
+                phase,
                 provided,
-                num_experts=self.moe_config.num_experts,
-                request_id=request.id,
-                expected_route_count=expected_route_count,
+                token_count,
             )
             if len(self._normalized_cache) >= self._SYNTHETIC_CACHE_LIMIT:
                 self._normalized_cache.clear()
             self._normalized_cache[cache_key] = cached
         return dict(cached)
+
+    def _normalize_step_histogram(
+        self,
+        request: Request,
+        phase: RoutingPhase,
+        provided: Any,
+        token_count: int,
+    ) -> dict[int, int]:
+        source_tokens = request.prefill_compute_len if phase == "prefill" else 1
+        histogram = normalize_expert_histogram(
+            provided,
+            num_experts=self.moe_config.num_experts,
+            request_id=request.id,
+            expected_route_count=(
+                source_tokens * self.moe_config.num_experts_per_tok
+            ),
+        )
+        if token_count != source_tokens:
+            histogram = _scaled_histogram(
+                histogram,
+                token_count / max(1, source_tokens),
+                target_count=token_count * self.moe_config.num_experts_per_tok,
+            )
+        return histogram
 
     @staticmethod
     def _provided_histogram(request: Request, phase: RoutingPhase) -> Any:
@@ -724,6 +748,9 @@ class ExpertRouting:
 
     @staticmethod
     def _token_count(request: Request, phase: RoutingPhase) -> int:
+        scheduled_tokens = int(getattr(request, "scheduled_tokens", 0))
+        if scheduled_tokens > 0:
+            return scheduled_tokens
         if getattr(request, "needs_recompute", False):
             return max(0, int(request.recompute_tokens))
         if phase == "prefill":
@@ -734,6 +761,9 @@ class ExpertRouting:
         self, request: Request, phase: RoutingPhase
     ) -> tuple[int, ...]:
         token_count = self._token_count(request, phase)
+        if int(getattr(request, "scheduled_tokens", 0)) > 0:
+            start = max(0, int(getattr(request, "num_computed_tokens", 0)))
+            return tuple(range(start, start + token_count))
         if getattr(request, "needs_recompute", False):
             start = max(0, int(request.context_len) - token_count)
             return tuple(range(start, start + token_count))
@@ -806,14 +836,11 @@ class ExpertRouting:
             provided = histogram_sources[request_id]
             if provided is None:
                 continue
-            expected = normalize_expert_histogram(
+            expected = self._normalize_step_histogram(
+                request,
+                snapshot.phase,
                 provided,
-                num_experts=self.moe_config.num_experts,
-                request_id=request_id,
-                expected_route_count=(
-                    len(request_tokens[request_id])
-                    * self.moe_config.num_experts_per_tok
-                ),
+                len(request_tokens[request_id]),
             )
             actual = Counter(
                 assignment.expert_id
@@ -893,6 +920,24 @@ class ExpertRouting:
             expert_id = cold_experts[index % len(cold_experts)]
             histogram[expert_id] = histogram.get(expert_id, 0) + 1
         return histogram
+
+
+def _scaled_histogram(
+    histogram: dict[int, int],
+    share: float,
+    *,
+    target_count: int | None = None,
+) -> dict[int, int]:
+    raw = {expert_id: count * share for expert_id, count in histogram.items()}
+    scaled = {expert_id: int(value) for expert_id, value in raw.items()}
+    target = round(sum(histogram.values()) * share) if target_count is None else target_count
+    remainder = target - sum(scaled.values())
+    for expert_id in sorted(raw, key=lambda item: (-(raw[item] - scaled[item]), item)):
+        if remainder <= 0:
+            break
+        scaled[expert_id] += 1
+        remainder -= 1
+    return {expert_id: count for expert_id, count in scaled.items() if count > 0}
 
 
 def _invalid_histogram(request_id: int | None, detail: str) -> WorkloadValidationError:
