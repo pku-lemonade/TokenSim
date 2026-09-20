@@ -20,3 +20,7 @@ tests/tmp*/
 
 # generated experiment artifacts
 *.egg-info
+outputs/
+.codex-test-op/
+.tmp-op-runtime/
+.tmp-tests/

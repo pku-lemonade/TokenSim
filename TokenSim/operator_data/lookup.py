@@ -8,7 +8,7 @@ from typing import Callable
 
 from TokenSim.hardware.device import normalize_dtype
 from TokenSim.operator_data.package import OperatorDataPackage
-from TokenSim.operator_data.schema import TABLE_SPECS, AxisSpec, TableSpec
+from TokenSim.operator_data.schema import TABLE_SPECS, AxisSpec, TableSpec, normalize_table_key_value
 
 MATCH_TYPES = ("exact", "interpolated", "extrapolated")
 EXTRAPOLATION_MODES = ("none", "hold", "scale", "analytical")
@@ -192,6 +192,10 @@ class OperatorLookup:
                 value = value.strip().lower()
             elif isinstance(value, float) and value.is_integer():
                 value = int(value)
+            try:
+                value = normalize_table_key_value(spec.name, f, value)
+            except ValueError as exc:
+                raise MissingOperatorDataError(spec.name, key, str(exc)) from exc
             normalized[f] = value
         return normalized
 

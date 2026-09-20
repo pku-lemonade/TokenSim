@@ -181,6 +181,16 @@ class AFEffectiveDTypes:
     f_to_a_dtype: str = "fp16"
     sources: tuple[tuple[str, str], ...] = ()
 
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "weight_dtype": self.weight_dtype,
+            "activation_dtype": self.activation_dtype,
+            "kv_cache_dtype": self.kv_cache_dtype,
+            "a_to_f_dtype": self.a_to_f_dtype,
+            "f_to_a_dtype": self.f_to_a_dtype,
+            "sources": dict(self.sources),
+        }
+
 
 @dataclass(frozen=True)
 class AFCommunicationTimingConfig:
@@ -304,7 +314,9 @@ class LogicalInstanceConfig:
 @dataclass(frozen=True)
 class DomainCollectiveConfig:
     operation: str
-    after_stage: Literal["a_compute", "expert_compute"]
+    # A-domain collectives may follow attention compute or its residual
+    # materialization; F-domain collectives follow expert compute.
+    after_stage: Literal["a_compute", "residual", "expert_compute"]
     participants: tuple[int, ...]
     resource_group: str | None = None
     resource_lane: str | None = None
@@ -370,6 +382,32 @@ class ExecutionDomainConfig:
             base_world_size=world,
             base_tensor_parallel_size=base,
         )
+
+    def resolve_collective_participants(
+        self, collective: DomainCollectiveConfig, dp_rank: int
+    ) -> tuple[int, ...]:
+        instance = next(
+            (
+                item for item in self.logical_instances
+                if {mapping.dp_rank for mapping in item.rank_mapping} == {dp_rank}
+            ),
+            None,
+        )
+        if instance is None:
+            raise ConfigurationError(
+                f"execution domain {self.name!r} has no DP replica {dp_rank}"
+            )
+        mapping_by_tp = {
+            mapping.tp_rank: mapping.domain_rank for mapping in instance.rank_mapping if mapping.ep_rank == 0
+        }
+        missing = set(collective.participants) - set(mapping_by_tp)
+        if missing:
+            raise ConfigurationError(
+                f"execution domain {self.name!r} collective {collective.operation!r} "
+                f"has unresolved replica-local tp_rank participants {sorted(missing)} "
+                f"for dp_rank={dp_rank}"
+            )
+        return tuple(mapping_by_tp[rank] for rank in collective.participants)
 
     def __post_init__(self) -> None:
         for field_name in ("name", "worker_group"):
@@ -532,6 +570,8 @@ class AFConfig:
     # run-wide ``--latency_fallback``).
     latency_fallback: str | None = None
     router_location: str = "a"
+    routed_expert_execution: str = "grouped"
+    transport_router_logits: bool = False
     weight_dtype: str | None = None
     activation_dtype: str | None = None
     kv_cache_dtype: str | None = None
@@ -575,6 +615,10 @@ class AFConfig:
             )
         if self.router_location not in {"a", "f"}:
             raise ConfigurationError("af.router_location must be 'a' or 'f'")
+        if self.routed_expert_execution not in {"grouped", "per_expert"}:
+            raise ConfigurationError("af.routed_expert_execution must be 'grouped' or 'per_expert'")
+        if type(self.transport_router_logits) is not bool:
+            raise ConfigurationError("af.transport_router_logits must be a boolean")
 
 
 def _normalize_phases(phases: tuple[str, ...], context: str) -> tuple[str, ...]:

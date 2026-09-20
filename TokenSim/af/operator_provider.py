@@ -23,6 +23,7 @@ links is produced by the executor's SimPy resources.
 from __future__ import annotations
 
 import math
+import json
 from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping, Sequence
@@ -49,7 +50,7 @@ from TokenSim.latency.operator_table import (
 )
 from TokenSim.operator_data.lookup import LookupPolicy
 
-TRANSFER_OPERATIONS = ("af_a_to_f", "af_f_to_a", "ep_dispatch", "ep_combine", "tp_collective")
+TRANSFER_OPERATIONS = ("af_a_to_f", "af_f_to_a", "ep_dispatch", "ep_combine", "tp_collective", "all_reduce", "all_gather", "reduce_scatter")
 _MATCH_RANK = {name: rank for rank, name in enumerate(AF_MATCH_TYPES)}
 _COLLECTIVE_MATCH = {"measured": "exact"}
 
@@ -72,6 +73,22 @@ def _compose_source_id(source_ids: Iterable[str]) -> str:
     return "compose:" + ":".join(unique)
 
 
+def _compose_dataset_version(versions: Iterable[str]) -> str:
+    unique = tuple(dict.fromkeys(v for v in versions if v))
+    if not unique:
+        return "unknown"
+    if len(unique) == 1:
+        return unique[0]
+    return "compose:" + ":".join(unique)
+
+
+def _estimate_dataset_version(resolver: OperatorResolver, estimate: OperatorEstimate) -> str:
+    """Label analytical estimates separately from a package row."""
+    if estimate.match_type == "analytical":
+        return f"analytical:{resolver.device.device_id}"
+    return resolver.dataset_version or f"unknown:{resolver.device.device_id}"
+
+
 @dataclass(frozen=True)
 class OperatorComponent:
     """One operator of an AF stage and how it was priced."""
@@ -82,6 +99,7 @@ class OperatorComponent:
     latency_us: float
     match_type: str
     source_id: str
+    dataset_version: str = ""
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -91,6 +109,7 @@ class OperatorComponent:
             "latency_us": self.latency_us,
             "match_type": self.match_type,
             "source_id": self.source_id,
+            "dataset_version": self.dataset_version,
         }
 
 
@@ -192,12 +211,25 @@ class OperatorTableAFComputeProvider:
         tokens, tp_size = self._validate_local_work(query)
         resolver = self.resolver_for(query.device_type)
         dtype = normalize_dtype(query.dtype)
-        if query.stage == "a":
+        if self.model.attention_type == "mla":
+            components = self._mla_stage(resolver, query, tokens, tp_size, dtype)
+        elif query.stage in {"a", "attention"}:
             components = self._attention_components(resolver, query, tokens, tp_size, dtype)
         elif query.stage == "router":
             components = self._router_components(resolver, query, tokens, dtype)
-        elif query.stage == "expert":
+        elif query.stage in {"expert", "routed_expert"}:
             components = self._expert_components(resolver, query, tokens, tp_size, dtype)
+        elif query.stage == "weighted_combine":
+            edges = query.input_edge_count or tokens * max(1, self.model.moe.num_experts_per_tok)
+            components = [self._elementwise(
+                resolver, "weighted_combine", "weighted_combine", edges,
+                self.model.hidden_size, dtype,
+            )]
+        elif query.stage == "residual":
+            components = [self._elementwise(
+                resolver, "residual_add", "residual_add", tokens,
+                self.model.hidden_size, dtype,
+            )]
         else:
             raise ValueError(f"unsupported AF compute stage={query.stage!r}")
         latency_us = sum(component.latency_us for component in components)
@@ -205,7 +237,11 @@ class OperatorTableAFComputeProvider:
         return AFServiceEstimate(
             service_duration=latency_us / 1e6,
             source_id=_compose_source_id(component.source_id for component in components),
-            dataset_version=resolver.dataset_version or f"analytical:{resolver.device.device_id}",
+            dataset_version=(
+                _compose_dataset_version(component.dataset_version for component in components)
+                if self.model.attention_type == "mla"
+                else resolver.dataset_version or f"analytical:{resolver.device.device_id}"
+            ),
             match_type=match_type,
             details={
                 "provider": "operator_table",
@@ -225,6 +261,87 @@ class OperatorTableAFComputeProvider:
                 "total_latency_us": latency_us,
             },
         )
+
+    def _mla_stage(self, resolver, query, tokens, tp, dtype):
+        model, h = self.model, self.model.hidden_size
+        if dtype != model.dtype or (query.weight_dtype and query.weight_dtype != dtype):
+            raise ConfigurationError("MLA adapter currently requires identical BF16 weight/activation dtype")
+        if query.stage in {"a", "attention"}:
+            return self._mla_attention(resolver, query, tokens, tp, dtype)
+        if query.stage == "router":
+            return [self._gemm(resolver, "router", tokens, model.moe.num_experts, h, dtype),
+                    self._elementwise(resolver, "router_topk", "topk", tokens, model.moe.num_experts, dtype)]
+        if query.stage in {"dense_ffn", "shared_expert"}:
+            width = model.intermediate_size if query.stage == "dense_ffn" else model.moe_intermediate_size*model.moe.num_shared_experts
+            if width % tp:
+                raise ConfigurationError(f"MLA FFN width={width} must divide TP={tp}")
+            width //= tp
+            return [self._gemm(resolver, "gate_up", tokens, 2*width, h, dtype),
+                    self._elementwise(resolver, "swiglu", "swiglu", tokens, width, dtype),
+                    self._gemm(resolver, "down", tokens, h, width, dtype)]
+        if query.stage in {"expert", "routed_expert"}:
+            workload = self._validate_expert_workload(query, tokens, model.moe.num_experts)
+            if model.moe_intermediate_size % tp:
+                raise ConfigurationError("MLA expert intermediate must divide TP")
+            key = dict(dtype=dtype, hidden_size=h, inter_size=model.moe_intermediate_size//tp,
+                       expert_tokens=json.dumps(sorted(count for _, count in workload), separators=(",", ":")))
+            return [self._component(resolver, "routed_grouped_swiglu", "routed_experts", key)]
+        if query.stage == "weighted_combine":
+            edges = query.input_edge_count or tokens*model.moe.num_experts_per_tok
+            return [self._elementwise(resolver, "weighted_combine", "weighted_combine", edges, int(query.local_shape["hidden_size"]), dtype)]
+        if query.stage == "residual":
+            return [self._elementwise(resolver, "residual_add", "residual_add", tokens, int(query.local_shape["hidden_size"]), dtype)]
+        if query.stage == "layout" and query.operation == "post_attention_norm":
+            return [self._elementwise(resolver, "post_attention_norm", "rmsnorm", tokens, h, dtype)]
+        raise ConfigurationError(f"Unsupported MLA stage={query.stage} operation={query.operation}")
+
+    def _mla_attention(self, resolver, query, tokens, tp, dtype):
+        model = self.model
+        model.validate_mla_tp(tp)
+        dims, h = model.mla_dimensions, model.hidden_size
+        heads = model.num_attention_heads // tp
+        lengths = tuple(query.context_lengths)
+        if not lengths or any(type(v) is not int or v <= 0 for v in lengths):
+            raise ConfigurationError("MLA requires positive context lengths")
+        if query.phase == "decode":
+            if len(lengths) != tokens:
+                raise ConfigurationError("MLA decode requires one context length per token")
+            query_len, mode = 1, "absorbed"
+        elif query.phase == "prefill" and len(set(lengths)) == 1 and sum(lengths) == tokens:
+            query_len, mode = lengths[0], "expanded"
+        else:
+            raise ConfigurationError("MLA prefill smoke requires equal full sequences; no cached/chunked prefill")
+        components = []
+        def gemm(name, m, n, k, groups=None):
+            key = dict(dtype=dtype, m=m, n=n, k=k)
+            if groups is not None:
+                key["groups"] = groups
+            components.append(self._component(resolver, name, "batched_gemm" if groups else "gemm", key))
+        def elem(name, op, width):
+            components.append(self._elementwise(resolver, name, op, tokens, width, dtype))
+        elem("a_rmsnorm", "rmsnorm", h)
+        gemm("mla_q_down", tokens, dims.q_lora_rank, h)
+        elem("mla_q_norm", "rmsnorm", dims.q_lora_rank)
+        gemm("mla_q_up", tokens, heads*dims.head_dim, dims.q_lora_rank)
+        gemm("mla_kv_down", tokens, dims.cache_width, h)
+        elem("mla_kv_norm", "rmsnorm", dims.kv_lora_rank)
+        elem("mla_rope", "rope", (heads+1)*dims.rope_head_dim)
+        if query.phase == "decode":
+            gemm("mla_q_absorb", tokens, dims.kv_lora_rank, dims.nope_head_dim, heads)
+        else:
+            gemm("mla_kv_expand", tokens, heads*(dims.nope_head_dim+dims.v_head_dim), dims.kv_lora_rank)
+        histogram = Counter(lengths)
+        key = dict(attn_dtype=dtype, kv_cache_dtype=model.kv_cache_dtype,
+                   phase=query.phase, execution_mode=mode, batch_size=len(lengths), query_len=query_len,
+                   context_lengths=json.dumps(sorted((v,c/len(lengths)) for v,c in histogram.items()), separators=(",", ":")),
+                   num_heads=heads, kv_lora_rank=dims.kv_lora_rank, rope_head_dim=dims.rope_head_dim,
+                   nope_head_dim=dims.nope_head_dim, v_head_dim=dims.v_head_dim)
+        components.append(self._component(resolver, "mla_attention_core", "mla_attention", key))
+        if query.phase == "decode":
+            gemm("mla_value_expand", tokens, dims.v_head_dim, dims.kv_lora_rank, heads)
+        gemm("output_projection", tokens, h, heads*dims.v_head_dim)
+        elem("attention_residual", "residual_add", h)
+        return components
 
     def _attention_components(
         self,
@@ -348,6 +465,7 @@ class OperatorTableAFComputeProvider:
                     latency_us=estimate.latency_us,
                     match_type=estimate.match_type,
                     source_id=estimate.source_id,
+                    dataset_version=_estimate_dataset_version(resolver, estimate),
                 )
             )
         else:
@@ -400,6 +518,7 @@ class OperatorTableAFComputeProvider:
             latency_us=estimate.latency_us,
             match_type=estimate.match_type,
             source_id=estimate.source_id,
+            dataset_version=_estimate_dataset_version(resolver, estimate),
         )
 
     # -- validation ------------------------------------------------------------
@@ -440,7 +559,8 @@ class OperatorTableAFComputeProvider:
             )
         expected_hidden = (
             self.model.hidden_size
-            if query.stage == "router"
+            if query.stage in {"router", "attention", "dense_ffn", "shared_expert", "routed_expert"}
+            or (query.stage == "layout" and query.operation == "post_attention_norm")
             else math.ceil(self.model.hidden_size / values["tp_size"])
         )
         if values["hidden_size"] != expected_hidden:
@@ -555,7 +675,7 @@ class TopologyAFTransferProvider:
             raise ValueError(f"operation {query.operation!r} requires explicit payload_bytes")
         if type(query.payload_bytes) is not int or query.payload_bytes < 0:
             raise ValueError("transfer payload_bytes must be a non-negative integer")
-        if query.operation == "tp_collective":
+        if query.operation in {"tp_collective", "all_reduce", "all_gather", "reduce_scatter"}:
             return self._collective(query)
         link = self.link_class(query.network)
         payload = query.payload_bytes
@@ -586,6 +706,7 @@ class TopologyAFTransferProvider:
 
     def _collective(self, query: AFTransferQuery) -> AFServiceEstimate:
         payload = query.payload_bytes or 0
+        operation = "all_reduce" if query.operation == "tp_collective" else query.operation
         worker_ids = [self._worker_ids[item] for item in query.physical_endpoints if item in self._worker_ids]
         group_size = max(2, query.group_size or len(worker_ids) or 2)
         if payload == 0:
@@ -593,7 +714,7 @@ class TopologyAFTransferProvider:
         if self.placement is not None and len(worker_ids) >= 2 and len(set(worker_ids)) == len(worker_ids):
             model = self._collective_model_for(query.physical_endpoints[0])
             layout = self.placement.layout(worker_ids)
-            estimate = model.estimate(CollectiveQuery("all_reduce", float(payload), layout, self.dtype))
+            estimate = model.estimate(CollectiveQuery(operation, float(payload), layout, self.dtype))
             return self._collective_estimate(
                 estimate.latency_us,
                 estimate.source_id,
@@ -608,7 +729,8 @@ class TopologyAFTransferProvider:
             )
         # No placement: a ring all-reduce over the AF link class.
         link = self.link_class(query.network)
-        ring_bytes = 2.0 * (group_size - 1) / group_size * payload
+        ring_bytes = ((2.0 * (group_size - 1) / group_size) if operation == "all_reduce" else
+                      (group_size - 1) if operation == "all_gather" else (group_size - 1)/group_size) * payload
         service_us = link.transfer_us(ring_bytes)
         return self._collective_estimate(
             service_us,
@@ -616,7 +738,7 @@ class TopologyAFTransferProvider:
             f"links:{link.link_id}",
             "analytical",
             query,
-            {"algorithm": "ring", "group_size": group_size, "link": link.link_id},
+            {"algorithm": "ring", "operation": operation, "logical_bytes": payload, "wire_bytes": ring_bytes, "group_size": group_size, "link": link.link_id},
         )
 
     def _collective_estimate(

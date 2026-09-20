@@ -178,6 +178,40 @@ class AFExecutor:
                 return {}
             return self.expert_routing.histogram_for_step(list(block_requests))
 
+        layer_types = None
+        routing_snapshot_factory = None
+        if self.runtime_plan is not None and self.runtime_plan.mla is not None and self.expert_routing is not None:
+            moe_layers = getattr(self.runtime_plan, "moe_layers", None)
+            if moe_layers is None and getattr(self.runtime_plan, "layers", None):
+                moe_layers = tuple(
+                    layer.layer_id
+                    for layer in self.runtime_plan.layers
+                    if layer.layer_type == "moe"
+                )
+            if moe_layers is not None:
+                moe_set = set(moe_layers)
+                layer_types = {
+                    layer_id: ("moe" if layer_id in moe_set else "dense")
+                    for layer_id in range(self.total_layers)
+                }
+
+                def routing_snapshot_factory(
+                    iteration_id, snapshot_phase, layer_id, block_requests, placement
+                ):
+                    decode_step = max(
+                        int(getattr(request, "generation_idx", 0))
+                        for request in block_requests
+                    )
+                    return self.expert_routing.snapshot_for_layer(
+                        block_requests,
+                        iteration_id=iteration_id,
+                        phase=snapshot_phase,
+                        decode_step=decode_step,
+                        layer_id=layer_id,
+                        a_dp_rank=placement.a_dp_rank,
+                        a_tp_rank=0,
+                    )
+
         return self.builder.build(
             iteration_id=iteration_id,
             requests=requests,
@@ -187,6 +221,8 @@ class AFExecutor:
             phase=resolved_phase,
             placement_factory=placement_factory,
             histogram_factory=histogram_factory,
+            layer_types=layer_types,
+            routing_snapshot_factory=routing_snapshot_factory,
         )
 
     def run_iteration(self, iteration: AFIteration):
@@ -301,8 +337,13 @@ class AFExecutor:
                     done_event,
                 )
             )
-        final_done = done_events[dag.final_node_id]
-        yield self.env.any_of((final_done, failure_event))
+        # Tensor-parallel A execution may produce one terminal combine node
+        # per rank.  The DAG makespan is defined by the last terminal, so wait
+        # for all terminal nodes instead of requiring a single sink.
+        terminal_done = self.env.all_of(
+            tuple(done_events[node_id] for node_id in dag.terminal_node_ids)
+        )
+        yield self.env.any_of((terminal_done, failure_event))
         if failures:
             for process in processes.values():
                 if process.is_alive:
@@ -399,6 +440,11 @@ class AFExecutor:
             expert_workload=local_work.expert_workload,
             tp_group=step.tp_group,
             ep_group=step.ep_group,
+            layer_type=step.layer_type,
+            original_token_count=local_work.original_token_count,
+            input_edge_count=local_work.input_edge_count,
+            output_token_count=local_work.output_token_count,
+            assignment_count=local_work.assignment_count,
         )
         stage_name = step.stage
         ready_at, start_at, end_at, estimate = yield from self._run_resources_stage(
@@ -447,6 +493,20 @@ class AFExecutor:
                 tp_group=step.tp_group,
                 ep_group=step.ep_group,
                 local_work=local_work.as_dict(),
+                layer_type=step.layer_type,
+                original_token_count=local_work.original_token_count,
+                assignment_count=local_work.assignment_count,
+                input_edge_count=local_work.input_edge_count,
+                output_token_count=local_work.output_token_count,
+                logical_stage_id=step.logical_stage_id,
+                source_endpoint=step.source_endpoint,
+                target_endpoint=step.target_endpoint,
+                tensor_slices=step.tensor_slices,
+                source_layout=step.source_layout,
+                target_layout=step.target_layout,
+                routing_edges=step.routing_edges,
+                source_dtype=local_work.source_dtype,
+                target_dtype=local_work.target_dtype,
             )
         )
         self.active_stages.pop((block.iteration_id, block.block_id, step.node_id), None)
@@ -459,7 +519,7 @@ class AFExecutor:
         step: ExecutionNode,
     ):
         keyed_resources = self.resources.communication_resources_for_step(
-            link, step.direction, step.resource_group
+            link, step.direction, step.resource_group, step.resource_lane
         )
         resource_ids = tuple(
             self.resources.format_link_resource(key) for key, _ in keyed_resources
@@ -522,9 +582,7 @@ class AFExecutor:
                 block_id=block.block_id,
                 layer_id=layer_id,
                 phase=block.phase,
-                event_type=(
-                    "collective" if step.direction == "tp_collective" else "transfer"
-                ),
+                event_type=("collective" if step.operation in {"tp_collective", "all_reduce", "all_gather", "reduce_scatter"} else "transfer"),
                 operation=step.operation,
                 direction=step.direction,
                 resource_id=resource_ids[0],
@@ -553,6 +611,14 @@ class AFExecutor:
                 ep_rank=step.ep_rank,
                 tp_group=step.tp_group,
                 ep_group=step.ep_group,
+                logical_stage_id=step.logical_stage_id,
+                layer_type=step.layer_type,
+                tensor_slices=step.tensor_slices,
+                source_endpoint=step.source_endpoint,
+                target_endpoint=step.target_endpoint,
+                source_layout=step.source_layout,
+                target_layout=step.target_layout,
+                routing_edges=step.routing_edges,
             )
         )
         self.active_stages.pop((block.iteration_id, block.block_id, step.node_id), None)
@@ -595,7 +661,12 @@ class AFExecutor:
         except Exception as exc:
             raise SimulationStateError(
                 f"AF estimate unsupported for iteration={block.iteration_id}, "
-                f"block={block.block_id}, layer={layer_id}, stage={stage}: {exc}"
+                f"block={block.block_id}, layer={layer_id}, stage={stage}, "
+                f"model={getattr(query, 'model_id', '?')}, "
+                f"domain={getattr(query, 'source_domain', '?')}, "
+                f"rank={getattr(query, 'tp_rank', '?')}, "
+                f"ep_rank={getattr(query, 'ep_rank', '?')}, "
+                f"operation={getattr(query, 'operation', '?')}: {exc}"
             ) from exc
         if not isinstance(estimate, AFServiceEstimate):
             raise SimulationStateError(

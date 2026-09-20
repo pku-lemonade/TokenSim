@@ -57,7 +57,7 @@ class GPURooflineModel:
                 details={"effective_m": max(m, knee)},
                 compute_flops_override=effective_flops,
             )
-        if table in {"context_attention", "generation_attention"}:
+        if table in {"context_attention", "generation_attention", "mla_attention"}:
             work = work_for_table(table, key)
             dtype = str(key["attn_dtype"])
             efficiency = float(params.get("attention_mfu", 0.45))
@@ -71,7 +71,13 @@ class GPURooflineModel:
                 calibration=calibration,
                 source_id=source_id,
             )
-        if table == "moe":
+        if table == "batched_gemm":
+            work = work_for_table(table, key)
+            return roofline_estimate(work=work, peak_ops_per_s=device.peak_compute_for(str(key["dtype"])).value,
+                bandwidth_bytes_per_s=bandwidth, compute_efficiency=float(params.get("gemm_mfu", 0.7)),
+                memory_efficiency=float(params.get("memory_efficiency", 0.85)), overhead_us=launch_us,
+                calibration=calibration, source_id=source_id)
+        if table in {"moe", "routed_experts"}:
             work = work_for_table(table, key, gated=gated, imbalance=imbalance)
             dtype = str(key["dtype"])
             return roofline_estimate(

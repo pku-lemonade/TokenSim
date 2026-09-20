@@ -746,7 +746,7 @@ class ParallelExecutionPlanner:
         if (
             self.runtime_plan is not None
             and block.phase == "decode"
-            and (not getattr(self.runtime_plan, "num_experts", 0) or block.routing_snapshots)
+            and (getattr(self.runtime_plan, "mla", None) is not None or block.routing_snapshots)
         ):
             return self._build_runtime_layer(block, layer_id, link)
         return self._build_legacy_layer(block, layer_id, link)
@@ -955,6 +955,24 @@ class ParallelExecutionPlanner:
         f_service_bindings = self.runtime_plan.bindings_for_instance(
             f_domain.name, f_instance.name
         )
+        if (
+            f_domain.capability == "af_ffn"
+            and f_domain.parallel.expert_parallel_size > 1
+        ):
+            # Dense FFN and shared-expert work is replicated across the EP
+            # ranks.  Keep one representative per base TP coordinate for
+            # those stages; routed experts below still resolve their owning EP
+            # rank through ``expert_execution``.
+            f_by_tp: dict[int, Any] = {}
+            for binding in sorted(
+                f_service_bindings, key=lambda item: item.domain_rank
+            ):
+                f_by_tp.setdefault(binding.tp_rank, binding)
+            f_base_bindings = tuple(
+                binding for _, binding in sorted(f_by_tp.items())
+            )
+        else:
+            f_base_bindings = f_service_bindings
         prefix = f"i{block.iteration_id}:b{block.block_id}:l{layer_id}"
         nodes: list[ExecutionNode] = []
 
@@ -993,6 +1011,37 @@ class ParallelExecutionPlanner:
             ),
         )
 
+        # DeepSeek-V3 applies one RMSNorm after attention and before the AF
+        # transfer/router.  Keep it as an explicit A-side node so its service
+        # time contends for the same worker and appears in the trace.
+        post_attention_ids: dict[int, str] = {}
+        post_attention_predecessors = (
+            (a_collective.node_id,)
+            if a_collective is not None
+            else tuple(attention_ids.values())
+        )
+        for binding in a_bindings:
+            node_id = f"{prefix}:post_attention_norm:r{binding.domain_rank}"
+            post_attention_ids[binding.domain_rank] = node_id
+            nodes.append(
+                self._runtime_compute_node(
+                    node_id=node_id,
+                    operation="post_attention_norm",
+                    stage="layout",
+                    predecessors=post_attention_predecessors,
+                    binding=binding,
+                    layer_type=layer.layer_type,
+                    layer_id=layer_id,
+                    token_count=block.token_count,
+                    original_token_count=block.token_count,
+                    output_token_count=block.token_count,
+                    shape={
+                        "tokens": block.token_count,
+                        "hidden_size": self.hidden_size,
+                    },
+                )
+            )
+
         if layer.layer_type == "dense":
             dag = self._build_runtime_dense_tail(
                 block=block,
@@ -1004,8 +1053,8 @@ class ParallelExecutionPlanner:
                 a_domain=a_domain,
                 f_domain=f_domain,
                 a_bindings=a_bindings,
-                f_bindings=f_service_bindings,
-                attention_ids=attention_ids,
+                f_bindings=f_base_bindings,
+                attention_ids=post_attention_ids,
                 a_collective=a_collective,
             )
         else:
@@ -1021,7 +1070,7 @@ class ParallelExecutionPlanner:
                 f_domain=f_domain,
                 a_bindings=a_bindings,
                 f_service_bindings=f_service_bindings,
-                attention_ids=attention_ids,
+                attention_ids=post_attention_ids,
                 a_collective=a_collective,
             )
         for node in dag.nodes:
@@ -1196,11 +1245,10 @@ class ParallelExecutionPlanner:
     ) -> AFExecutionDAG:
         tokens = tuple(snapshot.original_tokens)
         a_leader = min(a_bindings, key=lambda item: item.tp_rank)
-        a_ready = (
-            (a_collective.node_id,)
-            if a_collective is not None
-            else tuple(attention_ids.values())
-        )
+        # ``attention_ids`` is the post-attention norm frontier in the MLA
+        # runtime.  Using the collective directly here would leave those norm
+        # nodes as orphan terminals when TP>1.
+        a_ready = tuple(attention_ids.values())
         routing_edges = tuple(
             self._routing_edge(assignment) for assignment in snapshot.assignments
         )
@@ -1624,8 +1672,15 @@ class ParallelExecutionPlanner:
         shape: Mapping[str, int] | None = None,
     ) -> ExecutionNode:
         local_shape = dict(shape or {})
+        if local_shape and self.runtime_plan is not None:
+            base_shape = self.runtime_plan.local_shape(
+                binding.domain, binding.domain_rank, layer_id, operation
+            )
+            for name in ("global_hidden_size", "tp_size"):
+                local_shape.setdefault(name, base_shape.get(name, self.hidden_size))
         if not local_shape and operation in {
             "attention",
+            "router",
             "dense_ffn",
             "routed_expert",
             "shared_expert",
@@ -1659,6 +1714,8 @@ class ParallelExecutionPlanner:
                     "attention" if binding.capability == "af_attention" else "dense_ffn",
                 )["hidden_size"],
             }
+        local_shape.setdefault("global_hidden_size", self.hidden_size)
+        local_shape.setdefault("tp_size", max(1, len(binding.tp_group)))
         work = RankLocalWork(
             token_count=token_count,
             tensor_shape=tuple(sorted(local_shape.items())),
@@ -1806,7 +1863,7 @@ class ParallelExecutionPlanner:
             network=plan.network,
             resource_group=plan.resource_group,
             resource_lane=plan.resource_lane,
-            payload_bytes=plan.payload_bytes,
+            payload_bytes=plan.payload_bytes if plan.payload_bytes is not None else input_bytes,
             logical_input_bytes_per_rank=tuple(
                 (item.domain_rank, input_bytes) for item in participants
             ),
@@ -2434,6 +2491,23 @@ class ParallelExecutionPlanner:
         ):
             if ownership.domain_rank == binding.domain_rank:
                 return ownership
+        # In a rank-reuse F pool every EP rank keeps a replicated copy of the
+        # residual tensor. ``ownerships_for_replica`` intentionally collapses
+        # those identical intervals for coverage validation, but execution
+        # still needs the rank-specific physical owner when constructing
+        # output copies. Resolve that replicated record here.
+        domain_plan = self.runtime_plan.domain_runtime(binding.domain)
+        if (
+            domain_plan.capability == "af_ffn"
+            and domain_plan.expert_parallel_mode == "rank_reuse"
+        ):
+            for ownership in self.runtime_plan.tensor_ownerships:
+                if (
+                    ownership.domain == binding.domain
+                    and ownership.domain_rank == binding.domain_rank
+                    and ownership.dp_rank == binding.dp_rank
+                ):
+                    return ownership
         raise ConfigurationError(
             f"AF runtime has no tensor ownership for domain={binding.domain!r}, "
             f"rank={binding.domain_rank}"
@@ -2560,13 +2634,12 @@ class ParallelExecutionPlanner:
             resource_group=(profile.resource_group if profile else None)
             or link.resource_group,
             resource_lane=(
-                profile.resource_lane
-                if profile is not None
-                else "shared"
+                (profile.resource_lane if profile is not None else None)
+                or ("shared"
                 if link.duplex == "half"
                 else "a_to_f"
                 if domain.capability == "af_attention"
-                else "f_to_a"
+                else "f_to_a")
             ),
             payload_bytes=payload,
             metadata={

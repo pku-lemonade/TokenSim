@@ -36,6 +36,7 @@ from TokenSim.moe.stats import MoEStats
 from TokenSim.operator_data.analytical import Calibration, analytical_model_for
 from TokenSim.operator_data.lookup import LookupPolicy, MissingOperatorDataError, OperatorLookup
 from TokenSim.operator_data.package import OperatorDataPackage
+from TokenSim.operator_data.schema import TABLE_SPECS, normalize_table_key_value
 from TokenSim.operator_data.workload import activation_bytes_for, context_attention_work
 from TokenSim.parallel import ParallelCommunicator
 
@@ -164,7 +165,15 @@ class OperatorResolver:
         return self.package.backend if self.package else "analytical"
 
     def query(self, table: str, key: Mapping[str, Any]) -> OperatorEstimate:
-        identity = (table, tuple(sorted(key.items())))
+        if table not in TABLE_SPECS:
+            raise MissingOperatorDataError(table, key, "unknown table")
+        normalized_key = dict(key)
+        for field in TABLE_SPECS[table].key_fields:
+            if field in normalized_key:
+                normalized_key[field] = normalize_table_key_value(
+                    table, field, normalized_key[field]
+                )
+        identity = (table, tuple(sorted(normalized_key.items())))
         cached = self._cache.get(identity)
         if cached is not None:
             self.stats.record(table, cached.match_type)
@@ -172,14 +181,16 @@ class OperatorResolver:
         estimate: OperatorEstimate | None = None
         if self.lookup is not None and self.fallback != "analytical_only":
             try:
-                result = self.lookup.lookup(table, key)
+                result = self.lookup.lookup(table, normalized_key)
                 estimate = OperatorEstimate(result.latency_us, result.match_type, result.source_id)
             except MissingOperatorDataError as exc:
                 if self.fallback == "table_only":
                     raise
-                self.stats.record_missing(table, key, exc.reason)
+                self.stats.record_missing(table, normalized_key, exc.reason)
+        if estimate is None and self.fallback == "table_only":
+            raise MissingOperatorDataError(table, normalized_key, "no operator package for strict table lookup")
         if estimate is None:
-            estimate = self.analytical_estimate(table, key, gated=self.gated)
+            estimate = self.analytical_estimate(table, normalized_key, gated=self.gated)
         self._remember(identity, estimate)
         self.stats.record(table, estimate.match_type)
         return estimate

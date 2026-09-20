@@ -8,6 +8,7 @@ from TokenSim.errors import ConfigurationError
 from TokenSim.hardware._yaml import load_yaml_mapping, require
 from TokenSim.hardware.device import normalize_dtype
 from TokenSim.moe.config import MoEModelConfig
+from TokenSim.mla import MLADimensions
 
 GATED_ACTIVATIONS = {"swiglu", "geglu", "reglu"}
 ACTIVATIONS = GATED_ACTIVATIONS | {"gelu", "relu", "silu"}
@@ -39,8 +40,23 @@ class ModelSpec:
     moe: MoEModelConfig = field(default_factory=MoEModelConfig)
     sources: Mapping[str, Mapping[str, Any]] = field(default_factory=dict)
     display_name: str = ""
+    attention_type: str = "mha"
+    q_lora_rank: int = 0
+    kv_lora_rank: int = 0
+    rope_head_dim: int = 0
+    nope_head_dim: int = 0
+    v_head_dim: int = 0
 
     def __post_init__(self) -> None:
+        if self.attention_type not in {"mha", "gqa", "mqa", "mla"}:
+            raise ConfigurationError(f"model {self.model_id!r}: unknown attention_type={self.attention_type!r}")
+        if self.attention_type == "mla":
+            try:
+                dims = MLADimensions.from_model(self)
+            except ValueError as exc:
+                raise ConfigurationError(f"model {self.model_id!r}: {exc}") from exc
+            if self.head_dim != dims.head_dim:
+                raise ConfigurationError(f"model {self.model_id!r}: MLA head_dim must equal nope_head_dim + rope_head_dim")
         for name in (
             "hidden_size",
             "intermediate_size",
@@ -73,7 +89,22 @@ class ModelSpec:
 
     @property
     def kv_dim(self) -> int:
+        if self.attention_type == "mla":
+            return self.mla_dimensions.cache_width
         return self.num_key_value_heads * self.head_dim
+
+    @property
+    def mla_dimensions(self) -> MLADimensions:
+        if self.attention_type != "mla":
+            raise ConfigurationError(f"model {self.model_id!r} is not MLA")
+        return MLADimensions.from_model(self)
+
+    def validate_mla_tp(self, tp: int) -> None:
+        if type(tp) is not int or tp < 1 or self.num_attention_heads % tp:
+            raise ConfigurationError(f"model {self.model_id!r}: num_attention_heads={self.num_attention_heads} must divide TP={tp}")
+
+    def kv_elements_per_token(self) -> int:
+        return self.kv_dim if self.attention_type == "mla" else 2 * self.kv_dim
 
     @property
     def gated(self) -> bool:
@@ -105,6 +136,8 @@ class ModelSpec:
     # -- parameter accounting --------------------------------------------
 
     def attention_params_per_layer(self) -> int:
+        if self.attention_type == "mla":
+            return self.mla_dimensions.weight_elements(self.num_attention_heads, self.hidden_size)
         return self.hidden_size * (self.q_dim + 2 * self.kv_dim) + self.q_dim * self.hidden_size
 
     def dense_ffn_params_per_layer(self) -> int:
@@ -140,6 +173,9 @@ class ModelSpec:
         heads = int(require(raw, "num_attention_heads", context))
         hidden = int(require(raw, "hidden_size", context))
         head_dim = int(raw.get("head_dim") or hidden // heads)
+        attention_type = str(raw.get("attention_type", "mha")).lower()
+        if attention_type == "mla" and "head_dim" not in raw:
+            head_dim = int(raw.get("nope_head_dim", 0)) + int(raw.get("rope_head_dim", 0))
         moe_raw = raw.get("moe") or None
         moe = MoEModelConfig()
         if moe_raw:
@@ -180,6 +216,8 @@ class ModelSpec:
             moe=moe,
             sources={str(k): dict(v) for k, v in (raw.get("sources") or {}).items()},
             display_name=str(raw.get("display_name", model_id)),
+            attention_type=attention_type,
+            **{name: raw.get(name, 0) for name in MLADimensions.__dataclass_fields__},
         )
 
     def with_moe_override(self, moe_config: MoEModelConfig | None) -> "ModelSpec":
@@ -195,7 +233,7 @@ class ModelSpec:
             updates["num_attention_heads"] = moe_config.num_attention_heads
             heads = moe_config.num_attention_heads
             hidden = updates.get("hidden_size", self.hidden_size)
-            if hidden % heads == 0 and self.head_dim * self.num_attention_heads != hidden:
+            if self.attention_type != "mla" and hidden % heads == 0 and self.head_dim * self.num_attention_heads != hidden:
                 updates["head_dim"] = hidden // heads
         if moe_config.num_key_value_heads:
             updates["num_key_value_heads"] = moe_config.num_key_value_heads
@@ -204,6 +242,8 @@ class ModelSpec:
     def to_dict(self) -> dict[str, Any]:
         return {
             "model_id": self.model_id,
+            "display_name": self.display_name,
+            "aliases": list(self.aliases),
             "hidden_size": self.hidden_size,
             "intermediate_size": self.intermediate_size,
             "num_layers": self.num_layers,
@@ -212,10 +252,17 @@ class ModelSpec:
             "head_dim": self.head_dim,
             "vocab_size": self.vocab_size,
             "activation": self.activation,
+            "max_position_embeddings": self.max_position_embeddings,
             "dtype": self.dtype,
             "kv_cache_dtype": self.kv_cache_dtype,
+            "tie_word_embeddings": self.tie_word_embeddings,
             "is_moe": self.is_moe,
+            "moe": self.moe.to_dict(),
+            "sources": {key: dict(value) for key, value in self.sources.items()},
             "total_params": self.total_params(),
+            "attention_type": self.attention_type,
+            "mla_dimensions": ({name: getattr(self, name) for name in MLADimensions.__dataclass_fields__}
+                               if self.attention_type == "mla" else None),
         }
 
 

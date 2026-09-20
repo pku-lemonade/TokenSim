@@ -49,15 +49,24 @@ class CacheConfig:
         self.head_dim = model.head_dim
         kv_bytes = dtype_bytes(model.kv_cache_dtype)
         self.size_per_token_unsharded = int(
-            2 * model.kv_dim * kv_bytes * model.num_layers
+            model.kv_elements_per_token() * kv_bytes * model.num_layers
         )
         self.size_per_token = int(
             self.local_kv_heads * self.head_dim * 2 * kv_bytes * self.num_layers_per_rank
         )
 
+        if model.attention_type == "mla":
+            model.validate_mla_tp(self.parallel_config.tensor_parallel_size)
+            self.local_kv_heads = 1
+            self.size_per_token = int(model.kv_dim * kv_bytes * self.num_layers_per_rank)
+
         weight_bytes = dtype_bytes(model.dtype)
         self.model_param_size_unsharded = model.total_params() * weight_bytes
         self.model_param_size = self._rank_params() * weight_bytes
+        if model.attention_type == "mla":
+            tp = self.parallel_config.tensor_parallel_size
+            replicated = model.mla_dimensions.weight_elements(0, model.hidden_size)
+            self.model_param_size += self.num_layers_per_rank * replicated * (1 - 1 / tp) * weight_bytes
 
         # Runtime reserves (NCCL buffers, CUDA context, framework workspace)
         # come off the top before the optional usable fraction is applied.

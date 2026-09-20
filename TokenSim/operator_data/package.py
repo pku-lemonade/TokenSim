@@ -14,6 +14,8 @@ from TokenSim.operator_data.schema import (
     SCHEMA_VERSION,
     TABLE_SPECS,
     TableSpec,
+    ELEMENTWISE_OPS,
+    normalize_table_key_value,
 )
 
 META_FILENAME = "generation_meta.yaml"
@@ -278,6 +280,36 @@ def validate_rows(
                 clean[f] = normalize_dtype(str(value))
             else:
                 clean[f] = str(value).strip().lower()
+            try:
+                clean[f] = normalize_table_key_value(table_name, f, clean[f])
+            except ValueError as exc:
+                raise OperatorDataValidationError(
+                    f"{where}: row {index} field {f} is invalid: {exc}"
+                ) from exc
+        positive_fields = {
+            "groups", "m", "n", "k", "batch_size", "query_len", "context_lengths",
+            "input_seq_len", "context_len", "num_heads", "num_kv_heads", "head_dim",
+            "num_tokens", "hidden_size", "inter_size", "top_k", "num_experts",
+            "tp_size", "ep_size", "group_size", "message_bytes",
+        }
+        for f in spec.key_fields:
+            if f in positive_fields and f != "context_lengths" and clean[f] <= 0:
+                raise OperatorDataValidationError(
+                    f"{where}: row {index} field {f} must be positive"
+                )
+        if table_name == "elementwise" and clean["op_name"] not in ELEMENTWISE_OPS:
+            raise OperatorDataValidationError(
+                f"{where}: row {index} unsupported elementwise op_name {clean['op_name']!r}"
+            )
+        if table_name == "mla_attention":
+            if clean["phase"] not in {"decode", "prefill"}:
+                raise OperatorDataValidationError(
+                    f"{where}: row {index} phase must be decode or prefill"
+                )
+            if clean["execution_mode"] not in {"absorbed", "expanded"}:
+                raise OperatorDataValidationError(
+                    f"{where}: row {index} execution_mode must be absorbed or expanded"
+                )
         try:
             latency = float(row["latency_us"])
         except (TypeError, ValueError) as exc:
