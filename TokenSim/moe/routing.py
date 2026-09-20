@@ -89,6 +89,7 @@ class ExpertRouting:
             provided = getattr(request, "decode_expert_histogram", None)
         if provided is None:
             provided = getattr(request, "expert_histogram", None)
+        token_count = self._step_token_count(request)
         if provided is not None:
             # Decode re-reads the same trace-provided histogram every step;
             # normalize once per request. Callers must not mutate the result.
@@ -102,12 +103,17 @@ class ExpertRouting:
                 if len(self._normalized_cache) >= self._SYNTHETIC_CACHE_LIMIT:
                     self._normalized_cache.clear()
                 self._normalized_cache[request.id] = cached
+            total = request.prefill_compute_len if request.is_prefill else 1
+            if 0 < token_count < total:
+                # A prefill chunk routes its share of the prompt's histogram.
+                return _scaled_histogram(cached, token_count / total)
             return cached
-        if getattr(request, "needs_recompute", False):
-            token_count = request.recompute_tokens
-        else:
-            token_count = request.prefill_compute_len if request.is_prefill else 1
         return self.synthetic_histogram(token_count)
+
+    @staticmethod
+    def _step_token_count(request: Request) -> int:
+        """Tokens the request routes in this step (``Request.step_tokens``)."""
+        return int(request.step_tokens)
 
     def synthetic_histogram(self, token_count: int) -> dict[int, int]:
         route_count = max(0, int(token_count)) * self.moe_config.num_experts_per_tok
@@ -157,6 +163,11 @@ class ExpertRouting:
             expert_id = cold_experts[index % len(cold_experts)]
             histogram[expert_id] = histogram.get(expert_id, 0) + 1
         return histogram
+
+
+def _scaled_histogram(histogram: dict[int, int], share: float) -> dict[int, int]:
+    scaled = {expert_id: int(round(count * share)) for expert_id, count in histogram.items()}
+    return {expert_id: count for expert_id, count in scaled.items() if count > 0}
 
 
 def _invalid_histogram(request_id: int | None, detail: str) -> WorkloadValidationError:

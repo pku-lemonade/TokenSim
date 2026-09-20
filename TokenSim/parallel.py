@@ -135,6 +135,8 @@ class ParallelCommunicator:
         if cached is not None and len(self.workers) > 0:
             return cached
         me = self.rank_info
+        config = self.parallel_config
+        my_ep_group = config.expert_parallel_group(me.dp_rank, me.tp_rank)
         ids: list[int] = []
         for worker in self.workers:
             dp = getattr(worker, "dp_rank", None)
@@ -142,8 +144,12 @@ class ParallelCommunicator:
             pp = getattr(worker, "pp_rank", None)
             if kind == "tp" and dp == me.dp_rank and pp == me.pp_rank:
                 ids.append(worker.id)
-            elif kind == "ep" and pp == me.pp_rank:
-                ids.append(worker.id)
+            elif kind == "ep" and pp == me.pp_rank and dp is not None and tp is not None:
+                # Only ranks that share this rank's copy of the experts take
+                # part in dispatch/combine (per_dp: the replica's TP ranks;
+                # global: every rank of the stage).
+                if config.expert_parallel_group(dp, tp) == my_ep_group:
+                    ids.append(worker.id)
             elif kind == "pp_next":
                 next_pp = (me.pp_rank + 1) % self.parallel_config.pipeline_parallel_size
                 if dp == me.dp_rank and tp == me.tp_rank and pp == next_pp:
@@ -253,6 +259,7 @@ class ParallelCommunicator:
         self.stats.record_tp_shard()
 
     def describe(self) -> dict[str, Any]:
+        """Groups this rank communicates in and the topology level each spans."""
         tp = self.tp_group()
         ep = self.ep_group()
         return {
@@ -260,7 +267,12 @@ class ParallelCommunicator:
             "device_index": self.placement.device_index(self.worker_id),
             "tp_group": list(tp),
             "tp_group_fan": list(self.placement.layout(tp).fan) if tp else [],
+            "tp_group_link": self._link_type(tp) if tp else "local",
+            "ep_group": list(ep),
             "ep_group_size": len(ep),
+            "ep_group_fan": list(self.placement.layout(ep).fan) if ep else [],
+            "ep_group_link": self._link_type(ep) if ep else "local",
+            "ep_group_count": self.parallel_config.expert_parallel_group_count,
         }
 
     # -- internals ---------------------------------------------------------------

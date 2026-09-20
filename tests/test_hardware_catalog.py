@@ -56,6 +56,19 @@ class DeviceCatalogTest(unittest.TestCase):
             if device.analytical_grade != "D":
                 self.assertIn(device.analytical_source_id, device.sources)
 
+    def test_plain_product_numbers_resolve_to_the_sxm_part_not_the_superchip(self):
+        # A cluster that names "B300" must simulate HGX B300, not GB300 NVL72:
+        # the two differ in operator data, collective tables and topology.
+        catalog = DeviceCatalog.load("data/devices")
+        self.assertEqual(catalog.get("B200").device_id, "b200_sxm")
+        self.assertEqual(catalog.get("B300").device_id, "b300_sxm")
+        self.assertEqual(catalog.get("GB200").device_id, "gb200")
+        self.assertEqual(catalog.get("GB300").device_id, "gb300")
+        for device in catalog:
+            if device.device_id.startswith("gb"):
+                for alias in device.aliases:
+                    self.assertIn("GB", alias.upper(), f"{device.device_id} claims {alias!r}")
+
     def test_aiconfigurator_corrections_are_grade_c_on_nvidia_gpus(self):
         catalog = DeviceCatalog.load("data/devices")
         for name in ("a100_sxm_80g", "h100_sxm", "b200_sxm", "rtx_4090"):

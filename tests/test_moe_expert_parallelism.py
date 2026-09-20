@@ -101,8 +101,54 @@ class MoEConfigTest(unittest.TestCase):
 
         self.assertEqual(
             set(k for k in config.to_dict() if "expert" in k or "all2all" in k),
-            {"enable_expert_parallel", "expert_placement_strategy", "all2all_backend"},
+            {
+                "enable_expert_parallel",
+                "expert_parallel_scope",
+                "expert_parallel_size",
+                "expert_placement_strategy",
+                "all2all_backend",
+            },
         )
+
+    def test_expert_parallel_size_is_validated_against_scope_and_layout(self):
+        per_dp = ParallelConfig(
+            tensor_parallel_size=8,
+            data_parallel_size=8,
+            enable_expert_parallel=True,
+            expert_parallel_scope="per_dp",
+            expert_parallel_size=8,
+        )
+        wide = ParallelConfig(tensor_parallel_size=8, data_parallel_size=8, enable_expert_parallel=True)
+        paired = ParallelConfig(
+            tensor_parallel_size=8, data_parallel_size=8, enable_expert_parallel=True, expert_parallel_size=16
+        )
+
+        # per_dp: 8 replicas of EP8 over the replica's own TP ranks
+        self.assertEqual((per_dp.expert_parallel_group_size, per_dp.expert_parallel_group_count), (8, 8))
+        self.assertEqual(per_dp.expert_parallel_replicas_per_group, 1)
+        self.assertEqual(per_dp.expert_parallel_group(dp_rank=3, tp_rank=5), 3)
+        self.assertEqual(per_dp.expert_parallel_rank(dp_rank=3, tp_rank=5), 5)
+        # global (default): one wide-EP group over all 64 ranks fed by 8 replicas
+        self.assertEqual((wide.expert_parallel_group_size, wide.expert_parallel_group_count), (64, 1))
+        self.assertEqual(wide.expert_parallel_replicas_per_group, 8)
+        self.assertEqual(wide.expert_parallel_rank(dp_rank=3, tp_rank=5), 29)
+        # global with an explicit size: groups of whole replicas
+        self.assertEqual((paired.expert_parallel_group_size, paired.expert_parallel_group_count), (16, 4))
+        self.assertEqual(paired.expert_parallel_group(dp_rank=3, tp_rank=5), 1)
+        # EP disabled: everything collapses to one group of size 1
+        self.assertEqual(ParallelConfig(tensor_parallel_size=8).expert_parallel_group_size, 1)
+
+        for bad in (
+            {"expert_parallel_scope": "per_dp", "expert_parallel_size": 4},
+            {"expert_parallel_size": 4},
+            {"expert_parallel_size": 24},
+            {"expert_parallel_size": 8, "enable_expert_parallel": False},
+            {"expert_parallel_scope": "per_node"},
+        ):
+            with self.subTest(bad=bad), self.assertRaises(ConfigurationError):
+                ParallelConfig(
+                    **{"tensor_parallel_size": 8, "data_parallel_size": 8, "enable_expert_parallel": True, **bad}
+                )
 
 
 class MoEPlacementRoutingTest(unittest.TestCase):
@@ -131,6 +177,27 @@ class MoEPlacementRoutingTest(unittest.TestCase):
         self.assertEqual(linear.rank_to_experts, {0: [0], 1: [1], 2: [2], 3: [3]})
         self.assertEqual(rr.rank_to_experts, {0: [0], 1: [1], 2: [2], 3: [3]})
         self.assertEqual(linear.pp_stage_to_moe_layers[0], [1, 2])
+        self.assertEqual((linear.scope, linear.ep_rank_count, linear.ep_group_count), ("global", 4, 1))
+
+    def test_per_dp_scope_gives_every_replica_a_full_copy_of_the_experts(self):
+        moe = _moe_psla().moe_config
+        config = ParallelConfig(
+            tensor_parallel_size=2,
+            data_parallel_size=2,
+            enable_expert_parallel=True,
+            expert_parallel_scope="per_dp",
+            expert_parallel_size=2,
+        )
+        placement = build_expert_placement(moe, config, total_layers=4)
+
+        self.assertEqual((placement.scope, placement.ep_rank_count, placement.ep_group_count), ("per_dp", 2, 2))
+        self.assertEqual(placement.rank_to_experts, {0: [0, 1], 1: [2, 3]})
+        ranks = [ParallelRankInfo.from_global_rank(rank, config) for rank in range(4)]
+        # ranks (dp0,tp0) and (dp1,tp0) hold the same experts in different groups
+        self.assertEqual(placement.experts_for_rank(ranks[0]), placement.experts_for_rank(ranks[2]))
+        self.assertEqual([placement.ep_group_for_rank_info(r) for r in ranks], [0, 0, 1, 1])
+        self.assertEqual([placement.ep_rank_for_rank_info(r) for r in ranks], [0, 1, 0, 1])
+        self.assertEqual(placement.to_dict()["ep_group_count"], 2)
 
     def test_routing_histogram_deterministic_and_validated(self):
         routing = ExpertRouting(_moe_psla().moe_config, seed=1)
@@ -228,10 +295,42 @@ class MoEMemoryLatencyIntegrationTest(unittest.TestCase):
         self.assertEqual(backend.moe_layers_local, 2)
         self.assertEqual(backend.dense_layers_local, 2)
         self.assertTrue(backend.ep_enabled)
+        # wide EP over 2 replicas: the group sees both replicas' tokens
+        self.assertEqual(backend.moe_token_multiplier, 2)
         self.assertGreater(stats["moe_compute_latency"], 0)
         self.assertGreater(stats["moe_straggler_latency"], 0)
         self.assertGreater(stats["moe_expert_load_imbalance_ratio"], 1)
         self.assertGreater(backend.stats.component_seconds["moe"], 0)
+
+    def test_per_dp_expert_parallelism_does_not_multiply_moe_tokens(self):
+        model = _MOE_MODEL
+        wide = ParallelConfig(tensor_parallel_size=2, data_parallel_size=2, enable_expert_parallel=True)
+        per_dp = wide.override(expert_parallel_scope="per_dp", expert_parallel_size=2)
+        backends = {}
+        for name, config in (("wide", wide), ("per_dp", per_dp)):
+            backends[name] = OperatorTableLatencyBackend(
+                device=_DEVICE,
+                model=model,
+                parallel_config=config,
+                rank_info=ParallelRankInfo.from_global_rank(0, config),
+                expert_placement=build_expert_placement(model.moe, config, total_layers=model.num_layers),
+                fallback="analytical_only",
+            )
+        req = Request(0, prefill_len=16, decode_len=1, block_size=16)
+
+        self.assertEqual(backends["wide"].moe_token_multiplier, 2)
+        self.assertEqual(backends["per_dp"].moe_token_multiplier, 1)
+        self.assertEqual((backends["wide"].moe_ep, backends["per_dp"].moe_ep), (4, 2))
+        for backend in backends.values():
+            self.assertGreater(backend.estimate_step_latency([req]), 0)
+        # Both ranks route the same number of token-expert pairs (16 tokens x
+        # top-2 over 2 local experts vs 32 tokens x top-2 over 1), but the
+        # per-DP rank streams twice the expert weights.
+        self.assertGreaterEqual(
+            backends["per_dp"].stats.component_seconds["moe"],
+            backends["wide"].stats.component_seconds["moe"],
+        )
+        self.assertEqual(backends["per_dp"].moe_stats.as_dict()["moe_ep_rank_count"], 2)
 
     def test_engine_runs_and_exports_moe_metrics(self):
         reset_g_time()

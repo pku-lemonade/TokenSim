@@ -162,6 +162,13 @@ class PlacementPolicyTest(unittest.TestCase):
 
 
 class _LatencyRequest:
+    """Request stub carrying the per-step state the latency backend reads.
+
+    Without explicit ``scheduled_tokens`` the request is scheduled the way an
+    unchunked scheduler would: the whole remaining context (prefill compute
+    length, recompute length, or one decode token).
+    """
+
     def __init__(
         self,
         prefill_len: int,
@@ -170,6 +177,8 @@ class _LatencyRequest:
         prefill_compute_len: int | None = None,
         needs_recompute: bool = False,
         recompute_tokens: int = 0,
+        scheduled_tokens: int | None = None,
+        num_computed_tokens: int | None = None,
     ):
         self.id = 0
         self.prefill_len = prefill_len
@@ -180,6 +189,21 @@ class _LatencyRequest:
         )
         self.needs_recompute = needs_recompute
         self.recompute_tokens = recompute_tokens
+        self.context_len = prefill_len + generation_idx
+        if needs_recompute:
+            to_compute = recompute_tokens
+        elif is_prefill:
+            to_compute = max(1, self.prefill_compute_len)
+        else:
+            to_compute = 1
+        self.num_computed_tokens = (
+            self.context_len - to_compute if num_computed_tokens is None else num_computed_tokens
+        )
+        self.scheduled_tokens = to_compute if scheduled_tokens is None else scheduled_tokens
+
+    @property
+    def step_tokens(self) -> int:
+        return self.scheduled_tokens or max(1, self.context_len - self.num_computed_tokens)
 
 
 _DEVICE = test_device("TestGPU")
@@ -296,11 +320,34 @@ class LatencyBackendTest(unittest.TestCase):
         self.assertIn("context_attention", backend.stats.table_match_counts)
         self.assertNotIn("generation_attention", backend.stats.table_match_counts)
 
-    def test_zero_token_recompute_costs_nothing(self):
+    def test_unscheduled_request_computes_its_whole_remaining_context(self):
         backend = _analytical_backend()
-        request = _LatencyRequest(prefill_len=16, generation_idx=3, is_prefill=False, needs_recompute=True, recompute_tokens=0)
+        decode = _LatencyRequest(prefill_len=16, generation_idx=3, is_prefill=False, scheduled_tokens=0)
+        prompt = _LatencyRequest(prefill_len=256, generation_idx=0, is_prefill=True, scheduled_tokens=0)
 
-        self.assertEqual(backend.estimate_step_latency([request]), 0.0)
+        backend.estimate_step_latency([decode])
+        backend.estimate_step_latency([prompt])
+
+        self.assertEqual(sum(backend.stats.table_match_counts["generation_attention"].values()), 1)
+        context_keys = [dict(key[1]) for key in backend._cache if key[0] == "context_attention"]
+        self.assertEqual([key["input_seq_len"] for key in context_keys], [256])
+
+    def test_mixed_step_prices_decode_tokens_and_prefill_chunk_together(self):
+        backend = _analytical_backend()
+        decode = _LatencyRequest(prefill_len=100, generation_idx=4, is_prefill=False)
+        # second 32-token chunk of a 96-token prompt: attends to 64 tokens
+        chunk = _LatencyRequest(prefill_len=96, generation_idx=0, is_prefill=True, scheduled_tokens=32, num_computed_tokens=32)
+
+        latency = backend.estimate_step_latency([decode, chunk])
+
+        self.assertGreater(latency, 0)
+        self.assertEqual(sum(backend.stats.table_match_counts["generation_attention"].values()), 1)
+        self.assertEqual(sum(backend.stats.table_match_counts["context_attention"].values()), 1)
+        # GEMMs see 33 tokens; only the decode request samples (the chunk is not the last one)
+        gemm_keys = [key for key in backend._cache if key[0] == "gemm"]
+        m_values = {dict(key[1])["m"] for key in gemm_keys}
+        self.assertIn(33, m_values)
+        self.assertIn(1, m_values)  # lm_head rows
 
     def test_table_first_prefers_measured_rows_and_records_missing_shapes(self):
         package = _gemm_only_package()
@@ -427,9 +474,10 @@ class PagedAttentionSchedulerTest(unittest.TestCase):
         req1 = _request(1, prefill_len=16, decode_len=3)
         scheduler.add_requests([req0, req1])
         scheduler.schedule_output()
+        # the prefill step completes: both sample their first token
         for req in (req0, req1):
-            req.generation_idx = 1
-            req._append_tokens(1)
+            req.advance(type("Env", (), {"now": 1.0})(), 0.1, 2)
+        self.assertEqual((req0.generation_idx, req1.generation_idx), (1, 1))
 
         output = scheduler.schedule_output()
 

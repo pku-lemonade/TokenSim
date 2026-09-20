@@ -18,6 +18,9 @@ EP_ALL2ALL_MODES = (
     "deepep_v2_context",
     "deepep_v2_generation",
 )
+# How far past the measured sequence range attention queries may extrapolate
+# (LookupPolicy.max_extrapolation_ratio, 16x, applies to every other axis).
+ATTENTION_SEQ_EXTRAPOLATION_RATIO = 64.0
 ELEMENTWISE_OPS = (
     "rmsnorm",
     "layernorm",
@@ -89,6 +92,12 @@ TABLE_SPECS: Mapping[str, TableSpec] = {
         dtype_fields=("dtype",),
         description="C[m,n] = A[m,k] x B[k,n]; dtype is the weight/storage dtype (e.g. fp16, fp8, int8_wo).",
     ),
+    # Attention sequence axes may be extrapolated 64x past the measured range
+    # (AIConfigurator's own tables stop at 16k prefill / 128k decode tokens
+    # while agentic traces run to ~1M). Past the boundary the lookup keeps the
+    # boundary row's measured efficiency and lets the analytical model carry
+    # the O(s^2) growth, the rule AIConfigurator applies with no cap at all;
+    # by 16k the kernels are compute-bound, so efficiency is flat in length.
     # for prefill
     "context_attention": TableSpec(
         name="context_attention",
@@ -102,7 +111,11 @@ TABLE_SPECS: Mapping[str, TableSpec] = {
             "head_dim",
             "window_size",
         ),
-        axes=(AxisSpec("num_heads", "linear"), AxisSpec("batch_size"), AxisSpec("input_seq_len")),
+        axes=(
+            AxisSpec("num_heads", "linear"),
+            AxisSpec("batch_size"),
+            AxisSpec("input_seq_len", max_extrapolation_ratio=ATTENTION_SEQ_EXTRAPOLATION_RATIO),
+        ),
         dtype_fields=("attn_dtype", "kv_cache_dtype"),
         description="Prefill attention core (QK^T, softmax, PV) for batch_size sequences padded to input_seq_len.",
     ),
@@ -119,7 +132,11 @@ TABLE_SPECS: Mapping[str, TableSpec] = {
             "head_dim",
             "window_size",
         ),
-        axes=(AxisSpec("num_heads", "linear"), AxisSpec("batch_size"), AxisSpec("context_len")),
+        axes=(
+            AxisSpec("num_heads", "linear"),
+            AxisSpec("batch_size"),
+            AxisSpec("context_len", max_extrapolation_ratio=ATTENTION_SEQ_EXTRAPOLATION_RATIO),
+        ),
         dtype_fields=("attn_dtype", "kv_cache_dtype"),
         description="Decode attention core for batch_size single-token queries against context_len cached tokens each.",
     ),

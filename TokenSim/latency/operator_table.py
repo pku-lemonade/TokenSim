@@ -23,25 +23,25 @@ from TokenSim.config.model_config import ModelSpec
 from TokenSim.config.parallel_config import ParallelConfig, ParallelRankInfo
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.device import DeviceSpec, dtype_bytes
-from TokenSim.latency.base import (
-    LatencyBackend,
-    is_context_build,
-    request_context_tokens,
-    request_kv_len,
-)
+from TokenSim.latency.base import LatencyBackend, is_decode_step, step_kv_len, step_tokens
 from TokenSim.llm.llm_request import Request
 from TokenSim.moe.placement import ExpertPlacement
 from TokenSim.moe.routing import ExpertRouting
 from TokenSim.moe.stats import MoEStats
 from TokenSim.operator_data.analytical import Calibration, analytical_model_for
-from TokenSim.operator_data.lookup import LookupPolicy, MissingOperatorDataError, OperatorLookup
+from TokenSim.operator_data.coverage import MissingShapeReport
+from TokenSim.operator_data.lookup import (
+    FALLBACK_POLICIES,
+    LookupPolicy,
+    MissingOperatorDataError,
+    OperatorLookup,
+)
 from TokenSim.operator_data.package import OperatorDataPackage
 from TokenSim.operator_data.workload import activation_bytes_for, context_attention_work
 from TokenSim.parallel import ParallelCommunicator
 
 logger = logging.getLogger(__name__)
 
-FALLBACK_POLICIES = ("table_first", "table_only", "analytical_only")
 COMPONENTS = ("gemm", "attention", "moe", "elementwise", "lm_head", "comm", "overhead")
 
 _MOE_DISTRIBUTION_CANDIDATES = {
@@ -55,35 +55,35 @@ _MOE_DISTRIBUTION_CANDIDATES = {
 
 @dataclass
 class OperatorStats:
-    """Aggregated provenance and time breakdown of every operator estimate."""
+    """Aggregated provenance and time breakdown of every operator estimate.
+
+    ``missing`` is the collection checklist of shapes no table answered. The
+    worker shares the same report with its collective model, so communication
+    misses (collective, ep_all2all) land in the same list as compute misses.
+    """
 
     match_type_counts: Counter = field(default_factory=Counter)
     table_match_counts: dict[str, Counter] = field(default_factory=dict)
     component_seconds: Counter = field(default_factory=Counter)
-    missing_shapes: dict[tuple, dict[str, Any]] = field(default_factory=dict)
+    missing: MissingShapeReport = field(default_factory=MissingShapeReport)
     step_count: int = 0
-    _missing_limit: int = 4096
 
     def record(self, table: str, match_type: str) -> None:
         self.match_type_counts[match_type] += 1
         self.table_match_counts.setdefault(table, Counter())[match_type] += 1
 
-    def record_missing(self, table: str, key: Mapping[str, Any], reason: str) -> None:
-        identity = (table, tuple(sorted(key.items())))
-        if identity in self.missing_shapes or len(self.missing_shapes) >= self._missing_limit:
-            return
-        self.missing_shapes[identity] = {"table": table, "key": dict(key), "reason": reason}
+    def record_missing(self, error: MissingOperatorDataError) -> None:
+        self.missing.record_error(error)
 
     def record_component(self, component: str, seconds: float) -> None:
         self.component_seconds[component] += seconds
 
     def aggregate(self, other: "OperatorStats") -> "OperatorStats":
-        result = OperatorStats()
+        result = OperatorStats(missing=self.missing.merge(other.missing))
         result.match_type_counts = self.match_type_counts + other.match_type_counts
         for table, counter in list(self.table_match_counts.items()) + list(other.table_match_counts.items()):
             result.table_match_counts[table] = result.table_match_counts.get(table, Counter()) + counter
         result.component_seconds = self.component_seconds + other.component_seconds
-        result.missing_shapes = {**self.missing_shapes, **other.missing_shapes}
         result.step_count = self.step_count + other.step_count
         return result
 
@@ -96,12 +96,15 @@ class OperatorStats:
                 table: dict(counter) for table, counter in sorted(self.table_match_counts.items())
             },
             "operator_component_seconds": {k: self.component_seconds.get(k, 0.0) for k in COMPONENTS},
-            "operator_missing_shape_count": len(self.missing_shapes),
+            "operator_missing_shape_count": self.missing.shape_count,
+            "operator_missing_shape_groups": self.missing.group_count,
+            "operator_missing_per_table": self.missing.per_table(),
             "operator_step_count": self.step_count,
         }
 
     def missing_shape_records(self) -> list[dict[str, Any]]:
-        return list(self.missing_shapes.values())
+        """Missing shapes grouped by table and discrete key, most frequent first."""
+        return self.missing.records()
 
 
 @dataclass(frozen=True)
@@ -128,6 +131,7 @@ class OperatorTableLatencyBackend(LatencyBackend):
         lookup_policy: LookupPolicy | None = None,
         decode_context_bucket: int = 128,
         random_seed: int = 0,
+        missing_report: MissingShapeReport | None = None,
     ) -> None:
         if fallback not in FALLBACK_POLICIES:
             raise ConfigurationError(f"fallback must be one of {FALLBACK_POLICIES}, got {fallback!r}")
@@ -158,7 +162,7 @@ class OperatorTableLatencyBackend(LatencyBackend):
             else None
         )
         self.decode_context_bucket = max(1, int(decode_context_bucket))
-        self.stats = OperatorStats()
+        self.stats = OperatorStats(missing=missing_report or MissingShapeReport())
         self.moe_stats = MoEStats(
             effective_moe_config=model.moe.to_dict(),
             expert_placement=expert_placement.to_dict() if expert_placement else None,
@@ -193,7 +197,7 @@ class OperatorTableLatencyBackend(LatencyBackend):
             else 0
         )
         self.dense_layers_local = max(0, self.layers_local - self.moe_layers_local)
-        self.activation_bytes = activation_bytes_for(model.dtype)
+        self.activation_bytes = activation_bytes_for(model.activation_dtype)
         ep_enabled = (
             self.parallel_config.enable_expert_parallel
             and self.expert_placement is not None
@@ -202,23 +206,45 @@ class OperatorTableLatencyBackend(LatencyBackend):
         self.ep_enabled = bool(ep_enabled)
         self.moe_tp = 1 if ep_enabled else tp
         self.moe_ep = self.expert_placement.ep_rank_count if ep_enabled else 1
-        # All DP replicas dispatch into the same expert ranks; assume lockstep
-        # steps so the EP group sees data_parallel_size times this rank's tokens.
-        self.moe_token_multiplier = self.parallel_config.data_parallel_size if ep_enabled else 1
+        # Every DP replica inside this rank's expert-parallel group dispatches
+        # into the same expert ranks; assume lockstep steps, so the group sees
+        # ``replicas_per_group`` times this rank's tokens (1 with per-DP EP).
+        self.moe_token_multiplier = (
+            self.parallel_config.expert_parallel_replicas_per_group if ep_enabled else 1
+        )
         routing = model.moe.routing.distribution if model.moe.routing else "uniform"
         self.moe_distributions = _MOE_DISTRIBUTION_CANDIDATES.get(routing, ("uniform", "balanced"))
 
     # -- public API -------------------------------------------------------------
 
     def estimate_step_latency(self, requests: list[Request]) -> float:
+        """Latency of one step: decode tokens and prefill/recompute chunks may mix."""
         if not requests:
             return 0.0
-        if all(getattr(req, "needs_recompute", False) and req.recompute_tokens == 0 for req in requests):
-            return 0.0
         self.stats.step_count += 1
-        if is_context_build(requests):
-            return self._context_step(requests)
-        return self._decode_step(requests)
+        tokens = 0
+        sampling = 0
+        context_groups: Counter = Counter()
+        decode_buckets: Counter = Counter()
+        for req in requests:
+            q_len = step_tokens(req)
+            kv_len = step_kv_len(req)
+            tokens += q_len
+            if is_decode_step(req):
+                decode_buckets[self._bucket(kv_len)] += 1
+                sampling += 1
+            else:
+                # Chunk of a context build: q_len new tokens attending to the
+                # kv_len tokens present after this step (cached prefix, earlier
+                # chunks and the chunk itself).
+                context_groups[(q_len, kv_len)] += 1
+                if kv_len >= req.context_len:
+                    sampling += 1  # last chunk: logits for the next token
+        attention_us = sum(
+            self._attention_prefill(count, q_len, kv_len) for (q_len, kv_len), count in context_groups.items()
+        )
+        attention_us += sum(self._attention_decode(count, context) for context, count in decode_buckets.items())
+        return self._compose(tokens=tokens, requests=max(1, sampling), attention_us=attention_us, requests_list=requests)
 
     def describe(self) -> dict[str, Any]:
         return {
@@ -239,30 +265,17 @@ class OperatorTableLatencyBackend(LatencyBackend):
 
     # -- step composition -------------------------------------------------------
 
-    def _context_step(self, requests: list[Request]) -> float:
-        token_counts = [max(1, request_context_tokens(req)) for req in requests]
-        kv_lens = [max(1, request_kv_len(req)) for req in requests]
-        tokens = sum(token_counts)
-        attention_us = 0.0
-        # Group requests by (query_len, kv_len) so one lookup covers equal shapes.
-        groups: Counter = Counter(zip(token_counts, kv_lens))
-        for (q_len, kv_len), count in groups.items():
-            attention_us += self._attention_prefill(count, q_len, kv_len)
-        return self._compose(tokens=tokens, requests=len(requests), attention_us=attention_us, requests_list=requests)
-
-    def _decode_step(self, requests: list[Request]) -> float:
-        buckets: Counter = Counter()
-        for req in requests:
-            context = max(1, req.prefill_len + req.generation_idx)
-            buckets[self._bucket(context)] += 1
-        attention_us = sum(self._attention_decode(count, context) for context, count in buckets.items())
-        return self._compose(tokens=len(requests), requests=len(requests), attention_us=attention_us, requests_list=requests)
-
     def _bucket(self, context_len: int) -> int:
         step = self.decode_context_bucket
         return int(math.ceil(context_len / step) * step)
 
     def _compose(self, *, tokens: int, requests: int, attention_us: float, requests_list: list[Request]) -> float:
+        """Sum every operator of the layers on this rank for a step of ``tokens`` tokens.
+
+        ``requests`` is the number of sequences sampling a token this step (LM
+        head rows); ``attention_us`` is the attention core already resolved per
+        shape by the caller.
+        """
         model = self.model
         h = model.hidden_size
         T = tokens
@@ -360,13 +373,13 @@ class OperatorTableLatencyBackend(LatencyBackend):
             return 0.0
         return self._query(
             "elementwise",
-            {"op_name": op_name, "dtype": self.model.dtype, "num_tokens": int(tokens), "hidden_size": int(hidden)},
+            {"op_name": op_name, "dtype": self.model.activation_dtype, "num_tokens": int(tokens), "hidden_size": int(hidden)},
         ).latency_us
 
     def _attention_prefill(self, batch: int, q_len: int, kv_len: int) -> float:
         model = self.model
         key = {
-            "attn_dtype": model.dtype,
+            "attn_dtype": model.activation_dtype,
             "kv_cache_dtype": model.kv_cache_dtype,
             "batch_size": int(batch),
             "input_seq_len": int(q_len),
@@ -379,7 +392,7 @@ class OperatorTableLatencyBackend(LatencyBackend):
         if kv_len > q_len:
             # Prefix-cache hit: queries attend to cached keys as well. Scale by
             # the analytical work ratio because tables assume kv_len == q_len.
-            base = context_attention_work(batch, q_len, self.heads_local, self.kv_heads_local, model.head_dim, model.dtype, model.kv_cache_dtype, model.sliding_window)
+            base = context_attention_work(batch, q_len, self.heads_local, self.kv_heads_local, model.head_dim, model.activation_dtype, model.kv_cache_dtype, model.sliding_window)
             full_keys = float(min(kv_len, model.sliding_window) if model.sliding_window else kv_len)
             # queries q_len each attend to (kv_len - q_len) cached keys + causal part of their own block
             full_flops = 4.0 * batch * q_len * ((kv_len - q_len) + 0.5 * q_len) * self.q_dim_local
@@ -392,7 +405,7 @@ class OperatorTableLatencyBackend(LatencyBackend):
     def _attention_decode(self, batch: int, context_len: int) -> float:
         model = self.model
         key = {
-            "attn_dtype": model.dtype,
+            "attn_dtype": model.activation_dtype,
             "kv_cache_dtype": model.kv_cache_dtype,
             "batch_size": int(batch),
             "context_len": int(context_len),
@@ -465,10 +478,11 @@ class OperatorTableLatencyBackend(LatencyBackend):
                 self.stats.record("moe", estimate.match_type)
                 return estimate
         key = {**base_key, "distribution": self.moe_distributions[0]}
+        if last_error is None:
+            last_error = MissingOperatorDataError("moe", key, "no moe table", kind="table_absent")
         if self.fallback == "table_only":
-            raise MissingOperatorDataError("moe", key, str(last_error) if last_error else "no moe table")
-        if last_error is not None:
-            self.stats.record_missing("moe", key, last_error.reason)
+            raise last_error
+        self.stats.record_missing(last_error)
         return self._analytical("moe", key, gated=self.model.gated)
 
     def _query(self, table: str, key: Mapping[str, Any]) -> OperatorEstimate:
@@ -485,7 +499,7 @@ class OperatorTableLatencyBackend(LatencyBackend):
             except MissingOperatorDataError as exc:
                 if self.fallback == "table_only":
                     raise
-                self.stats.record_missing(table, key, exc.reason)
+                self.stats.record_missing(exc)
         if estimate is None:
             estimate = self._analytical(table, key, gated=self.model.gated)
         self._remember(identity, estimate)
@@ -527,9 +541,23 @@ class OperatorTableLatencyBackend(LatencyBackend):
         return per_rank
 
 
-def collective_model_for(device: DeviceSpec, placement, links, package: OperatorDataPackage | None) -> CollectiveModel:
-    """Build the collective model a worker on ``device`` should use."""
-    measured = OperatorLookup(package) if package is not None and "collective" in package.tables else None
+def collective_model_for(
+    device: DeviceSpec,
+    placement,
+    links,
+    package: OperatorDataPackage | None,
+    *,
+    fallback: str = "table_first",
+    missing_report: MissingShapeReport | None = None,
+) -> CollectiveModel:
+    """Build the collective model a worker on ``device`` should use.
+
+    ``fallback`` and ``missing_report`` are the worker's operator-table policy
+    and checklist, so communication misses are reported (or rejected under
+    ``table_only``) exactly like compute misses.
+    """
+    has_comm_tables = package is not None and bool({"collective", "ep_all2all"} & set(package.tables))
+    measured = OperatorLookup(package) if has_comm_tables else None
     launch_us = device.analytical.get("collective_launch_us")
     return CollectiveModel(
         placement.topology,
@@ -537,4 +565,6 @@ def collective_model_for(device: DeviceSpec, placement, links, package: Operator
         family=device.family,
         measured_lookup=measured,
         launch_us=float(launch_us) if launch_us is not None else None,
+        fallback=fallback,
+        missing_report=missing_report,
     )

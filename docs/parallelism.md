@@ -90,10 +90,14 @@ memory and communication modeling.
 
 ## Expert Parallelism
 
-EP is enabled with `enable_expert_parallel`. Experts are placed across
-`tensor_parallel_size * data_parallel_size` ranks, while MoE layers follow their
-PP stages. EP adds all-to-all and load-imbalance latency. It requires a MoE model
-configuration. See [MoE](moe.md).
+EP is enabled with `enable_expert_parallel`. `expert_parallel_scope` chooses
+the ranks that share one copy of the experts: `global` (default) spreads them
+over all `tensor_parallel_size * data_parallel_size` ranks of a pipeline stage,
+`per_dp` gives every data-parallel replica its own expert-parallel group over
+the replica's TP ranks. `expert_parallel_size` states the group size and is
+validated against that layout. MoE layers follow their PP stages. EP adds
+all-to-all and load-imbalance latency and requires a MoE model configuration.
+See [MoE](moe.md).
 
 ## Configuration Precedence
 
@@ -120,12 +124,15 @@ mapped onto the topology levels it spans and a hierarchical alpha-beta model
 (ring / tree / direct per level, NCCL-style) adds latency and bandwidth terms
 level by level. When the device's operator data contains a measured `collective`
 table for the same operation, dtype, group size and node count, the measured
-curve is used instead. Point-to-point KV transfers use the link of the lowest
-topology level shared by the two workers. See
-[operator-latency-model.md](operator-latency-model.md#5-通信模型).
+curve is used instead; a query without a measured row follows
+`--latency_fallback` (formula plus a recorded miss under `table_first`, an
+error under `table_only`). Point-to-point KV transfers use the link of the
+lowest topology level shared by the two workers. See
+[operator-latency-model.md](operator-latency-model.md#6-communication-model).
 
 Results export the effective `parallel_config`, expected and actual rank counts,
-per-rank TP/PP/DP IDs and utilization, DP placement counts, TP collective
+per-rank TP/PP/DP IDs and utilization, DP placement counts, the TP and EP group
+of rank 0 with the topology level each spans (`parallel_groups`), TP collective
 latency, PP transfer latency, EP all-to-all latency, total synchronization
 latency, synchronization event count, per-topology-level event counts
 (`parallel_link_type_counts`) and how many collective estimates came from

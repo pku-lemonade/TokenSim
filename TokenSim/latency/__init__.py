@@ -11,6 +11,7 @@ from TokenSim.latency.operator_table import (
     OperatorTableLatencyBackend,
 )
 from TokenSim.moe.placement import ExpertPlacement
+from TokenSim.operator_data.coverage import MissingShapeReport
 from TokenSim.operator_data.package import OperatorDataPackage
 from TokenSim.parallel import ParallelCommunicator
 
@@ -30,12 +31,15 @@ def build_latency_backend(
     fallback: str = "table_first",
     decode_context_bucket: int = 128,
     random_seed: int = 0,
+    missing_report: MissingShapeReport | None = None,
 ) -> LatencyBackend:
     """Create the latency backend for one worker.
 
     ``operator_table`` composes per-operator tables with analytical fallback
     (``fallback`` selects ``table_first``, ``table_only`` or ``analytical_only``);
     ``analytical`` is shorthand for ``operator_table`` with ``analytical_only``.
+    ``missing_report`` lets the worker share one missing-shape checklist between
+    this backend and its collective model.
     """
     if backend_type == "analytical":
         backend_type, fallback = "operator_table", "analytical_only"
@@ -56,7 +60,13 @@ def build_latency_backend(
         fallback=fallback,
         decode_context_bucket=decode_context_bucket,
         random_seed=random_seed,
+        missing_report=missing_report,
     )
+
+
+def effective_fallback(backend_type: str, fallback: str) -> str:
+    """The table policy a worker actually runs under (``analytical`` forces formulas)."""
+    return "analytical_only" if backend_type == "analytical" else fallback
 
 
 __all__ = [
@@ -67,4 +77,5 @@ __all__ = [
     "OperatorTableLatencyBackend",
     "backend_prefill_len",
     "build_latency_backend",
+    "effective_fallback",
 ]
