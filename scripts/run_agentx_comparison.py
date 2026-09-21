@@ -14,6 +14,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from benchmark import main as run_benchmark
+from TokenSim.llm.llm_scheduler import DEFAULT_MAX_NUM_BATCHED_TOKENS
 from TokenSim.workload.agentx import load_agentx_traces
 
 
@@ -76,6 +77,8 @@ def benchmark_args(
         decode_worker_pool_type="least_gpu_memory",
         max_parallem_sum=2_000_000,
         max_occupy_ratio=1.0,
+        max_num_batched_tokens=DEFAULT_MAX_NUM_BATCHED_TOKENS,
+        chunked_prefill=True,
         tensor_parallel_size=None,
         pipeline_parallel_size=None,
         data_parallel_size=None,
