@@ -161,7 +161,7 @@ class LookupTest(unittest.TestCase):
             for m in (8, 64, 256)
         ]
         package = OperatorDataPackage.from_rows(_meta(), {"gemm": rows})
-        lookup = OperatorLookup(package, analytical_scaler=reference)
+        lookup = OperatorLookup(package, LookupPolicy(extrapolate="analytical"), analytical_scaler=reference)
         beyond = lookup.lookup("gemm", {"dtype": "bf16", "m": 2048, "n": 1024, "k": 1024})
         self.assertEqual(beyond.match_type, "extrapolated")
         self.assertIn("analytical_scaled", beyond.detail["flags"])
@@ -170,12 +170,56 @@ class LookupTest(unittest.TestCase):
         below = lookup.lookup("gemm", {"dtype": "bf16", "m": 1, "n": 1024, "k": 1024})
         self.assertAlmostEqual(below.latency_us, 0.5 * reference("gemm", {"m": 1}))
         # a scaler that cannot price the key falls back to linear scaling
-        fallback = OperatorLookup(package, analytical_scaler=lambda table, key: None)
+        fallback = OperatorLookup(package, LookupPolicy(extrapolate="analytical"), analytical_scaler=lambda table, key: None)
         linear = fallback.lookup("gemm", {"dtype": "bf16", "m": 2048, "n": 1024, "k": 1024})
         self.assertIn("linear_scaled", linear.detail["flags"])
         self.assertAlmostEqual(linear.latency_us, 0.5 * reference("gemm", {"m": 256}) * 8)
         held = OperatorLookup(package, LookupPolicy(extrapolate="hold")).lookup("gemm", {"dtype": "bf16", "m": 2048, "n": 1024, "k": 1024})
         self.assertAlmostEqual(held.latency_us, 0.5 * reference("gemm", {"m": 256}))
+
+    def test_empirical_extrapolation_fits_sublinear_scaling(self):
+        # Measured rows grow as m^0.5 (sub-linear); empirical mode should
+        # recover this exponent and produce lower estimates than analytical.
+        import math as _math
+        rows = [
+            {"dtype": "bf16", "m": m, "n": 1024, "k": 1024,
+             "latency_us": 10.0 * _math.sqrt(m), "source_id": "measured:test"}
+            for m in (4, 16, 64, 256)
+        ]
+        package = OperatorDataPackage.from_rows(_meta(), {"gemm": rows})
+        # Empirical mode (new default).
+        empirical = OperatorLookup(package)
+        result = empirical.lookup("gemm", {"dtype": "bf16", "m": 2048, "n": 1024, "k": 1024})
+        self.assertEqual(result.match_type, "extrapolated")
+        self.assertIn("empirical_scaled", result.detail["flags"])
+        # The empirical fit should detect alpha~0.5, so the estimate at
+        # m=2048 should be close to 10 * sqrt(2048) ≈ 452.5.
+        expected = 10.0 * _math.sqrt(2048)
+        self.assertAlmostEqual(result.latency_us, expected, delta=expected * 0.1)
+        # In contrast, analytical (linear) would give: boundary_lat * (2048/256)
+        # = 10*sqrt(256) * 8 = 160 * 8 = 1280, much higher.
+        analytical = OperatorLookup(
+            package, LookupPolicy(extrapolate="analytical"),
+            analytical_scaler=lambda table, key: float(key["m"]),
+        )
+        ana_result = analytical.lookup("gemm", {"dtype": "bf16", "m": 2048, "n": 1024, "k": 1024})
+        self.assertGreater(ana_result.latency_us, result.latency_us * 1.5)
+
+    def test_empirical_falls_back_to_analytical_with_few_points(self):
+        # Only 2 measured points — too few for fitting.
+        def reference(table, key):
+            return 100.0 * key["m"]
+        rows = [
+            {"dtype": "bf16", "m": m, "n": 1024, "k": 1024,
+             "latency_us": 50.0 * m, "source_id": "measured:test"}
+            for m in (8, 64)
+        ]
+        package = OperatorDataPackage.from_rows(_meta(), {"gemm": rows})
+        lookup = OperatorLookup(package, analytical_scaler=reference)
+        result = lookup.lookup("gemm", {"dtype": "bf16", "m": 512, "n": 1024, "k": 1024})
+        self.assertEqual(result.match_type, "extrapolated")
+        # Should fall back to analytical since <3 points.
+        self.assertIn("analytical_scaled", result.detail["flags"])
 
     def test_missing_discrete_key_and_disabled_extrapolation_fail(self):
         with self.assertRaises(MissingOperatorDataError):

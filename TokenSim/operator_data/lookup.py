@@ -11,7 +11,7 @@ from TokenSim.operator_data.package import OperatorDataPackage
 from TokenSim.operator_data.schema import TABLE_SPECS, AxisSpec, TableSpec
 
 MATCH_TYPES = ("exact", "interpolated", "extrapolated")
-EXTRAPOLATION_MODES = ("none", "hold", "scale", "analytical")
+EXTRAPOLATION_MODES = ("none", "hold", "scale", "analytical", "empirical")
 # How a consumer of the tables (operator backend, collective model) treats a
 # query that no measured row answers: fall back to the analytical model and
 # report the miss, raise, or never consult tables at all.
@@ -71,6 +71,11 @@ class LookupPolicy:
       ``latency = measured(boundary) * analytical(target) / analytical(boundary)``.
       This is the strategy AIConfigurator uses past its collected range. It
       needs an :data:`AnalyticalScaler`; without one it behaves like ``scale``.
+    * ``empirical``: fit a power-law exponent from the measured data along
+      the extrapolated axis, then scale as ``(target / boundary) ** alpha``.
+      Captures sub-linear kernel scaling (e.g. FlashAttention) that the
+      roofline model overestimates. Falls back to ``analytical`` when fewer
+      than 3 measured points are available for fitting.
     * ``scale``: multiply the boundary latency by ``target / boundary`` on
       logarithmic axes when the target is larger (work grows with the axis).
     * ``hold``: return the boundary latency unchanged.
@@ -81,7 +86,7 @@ class LookupPolicy:
     """
 
     interpolate: bool = True
-    extrapolate: str = "analytical"
+    extrapolate: str = "empirical"
     max_extrapolation_ratio: float = 16.0
 
     def __post_init__(self) -> None:
@@ -269,6 +274,13 @@ class OperatorLookup:
         flags = flags | {"extrapolated"}
         if mode == "hold":
             return latency, sources, flags | {"held"}
+        if mode == "empirical":
+            alpha = self._fit_scaling_exponent(spec, rest, node, key, axis.name, table_name, scaler)
+            if alpha is not None and ratio > 1.0:
+                latency *= ratio ** alpha
+                return latency, sources, flags | {"empirical_scaled"}
+            # Fall through to analytical when fitting fails.
+            mode = "analytical"
         if mode == "analytical" and scaler is not None:
             growth = self._analytical_growth(table_name, key, axis.name, boundary, scaler)
             if growth is not None:
@@ -300,6 +312,59 @@ class OperatorLookup:
         if not (math.isfinite(at_target) and math.isfinite(at_boundary)) or at_boundary <= 0 or at_target <= 0:
             return None
         return at_target / at_boundary
+
+
+    def _fit_scaling_exponent(
+        self,
+        spec: TableSpec,
+        rest_axes: list[AxisSpec],
+        node: Any,
+        key: Mapping[str, Any],
+        axis_name: str,
+        table_name: str,
+        scaler: AnalyticalScaler | None,
+    ) -> float | None:
+        """Fit ``latency ~ value^alpha`` from the upper measured points on *axis_name*.
+
+        Returns the exponent *alpha*, or ``None`` when fewer than 3 points are
+        available (the fit would be unreliable).  Only the top quarter of the
+        measured range is used so the exponent reflects the scaling regime the
+        extrapolation continues, not early fixed-cost dominated points.
+        """
+        values = sorted(node)
+        if len(values) < 3:
+            return None
+        # Use the upper quarter of the range (at least 3 points).
+        quarter = max(3, len(values) // 4)
+        upper = values[-quarter:]
+        log_vals: list[float] = []
+        log_lats: list[float] = []
+        for v in upper:
+            if v <= 0:
+                continue
+            try:
+                lat, _, _ = self._resolve(spec, rest_axes, node[v], key, table_name, scaler)
+            except (MissingOperatorDataError, Exception):
+                continue
+            if lat <= 0 or not math.isfinite(lat):
+                continue
+            log_vals.append(math.log(float(v)))
+            log_lats.append(math.log(lat))
+        if len(log_vals) < 3:
+            return None
+        # Least-squares fit of log(lat) = alpha * log(val) + c.
+        n = len(log_vals)
+        sx = sum(log_vals)
+        sy = sum(log_lats)
+        sxx = sum(x * x for x in log_vals)
+        sxy = sum(x * y for x, y in zip(log_vals, log_lats))
+        denom = n * sxx - sx * sx
+        if abs(denom) < 1e-12:
+            return None
+        alpha = (n * sxy - sx * sy) / denom
+        # Clamp: negative alpha is nonsensical for work-growing axes, and
+        # alpha > 1.0 should use the roofline model instead.
+        return max(0.0, min(alpha, 1.0))
 
 
 def _blend_weight(axis: AxisSpec, lo: Any, hi: Any, target: Any) -> float:

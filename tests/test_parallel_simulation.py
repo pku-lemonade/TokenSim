@@ -88,6 +88,45 @@ class _PlacementWorker:
 
 
 class ParallelConfigTest(unittest.TestCase):
+    def test_agentx_clusters_use_per_dp_ep8_and_explicit_sxm_devices(self):
+        for accelerator in ("b200", "b300"):
+            cluster = ClusterConfig.from_file(
+                f"data/clusters/64_{accelerator}/tp8_dp8_ep.json"
+            )
+            config = cluster.parallel_config
+
+            self.assertIsNotNone(config)
+            self.assertEqual(config.expert_parallel_scope, "per_dp")
+            self.assertEqual(config.expert_parallel_group_size, 8)
+            self.assertEqual(config.expert_parallel_group_count, 8)
+            self.assertEqual(
+                {group.hardware for group in cluster.worker_groups},
+                {f"{accelerator}_sxm"},
+            )
+            self.assertEqual(set(cluster.networks.values()), {"ethernet800Gb"})
+
+    def test_total_kv_capacity_is_split_across_dp_replicas(self):
+        config = ParallelConfig(data_parallel_size=8)
+        cluster = ClusterConfig(
+            num_workers=8,
+            networks={"net1": "ethernet-test"},
+            kv_cache_capacity_tokens_total=21_943_624,
+        )
+
+        self.assertEqual(
+            cluster.effective_kv_cache_capacity_per_dp_rank(config),
+            2_742_953,
+        )
+
+    def test_total_and_per_dp_kv_capacity_are_mutually_exclusive(self):
+        with self.assertRaises(ConfigurationError):
+            ClusterConfig(
+                num_workers=1,
+                networks={"net1": "ethernet-test"},
+                kv_cache_capacity_tokens_total=1024,
+                kv_cache_capacity_tokens_per_dp_rank=128,
+            )
+
     def test_cli_overrides_cluster_and_model_parallel_config(self):
         args = argparse.Namespace(
             tensor_parallel_size=4,
@@ -130,9 +169,15 @@ class ParallelConfigTest(unittest.TestCase):
 
         workers = cluster.workers(config)
 
-        self.assertEqual(workers[0].rank_info, ParallelRankInfo(0, 0, 0, 0, 0, "dp0-pp0"))
-        self.assertEqual(workers[3].rank_info, ParallelRankInfo(3, 3, 1, 1, 0, "dp0-pp1"))
-        self.assertEqual(workers[4].rank_info, ParallelRankInfo(4, 0, 0, 0, 1, "dp1-pp0"))
+        self.assertEqual(
+            workers[0].rank_info, ParallelRankInfo(0, 0, 0, 0, 0, "dp0-pp0")
+        )
+        self.assertEqual(
+            workers[3].rank_info, ParallelRankInfo(3, 3, 1, 1, 0, "dp0-pp1")
+        )
+        self.assertEqual(
+            workers[4].rank_info, ParallelRankInfo(4, 0, 0, 0, 1, "dp1-pp0")
+        )
         with self.assertRaises(ConfigurationError):
             cluster.workers(ParallelConfig(tensor_parallel_size=3))
 

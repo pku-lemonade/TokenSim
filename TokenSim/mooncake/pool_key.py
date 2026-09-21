@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import hashlib
-import json
-from typing import Any
+from functools import cached_property
 
-from TokenSim.block.prefix_cache import PrefixCacheKey, build_prefix_keys
+from TokenSim.block.prefix_cache import build_prefix_keys, next_parent_hash
 from TokenSim.config.parallel_config import ParallelRankInfo
 from TokenSim.llm.llm_request import Request
 
@@ -28,7 +26,8 @@ class PoolKey:
     key_metadata: KeyMetadata
     chunk_hash: str
 
-    def to_string(self) -> str:
+    @cached_property
+    def string(self) -> str:
         md = self.key_metadata
         return (
             f"{md.model_name}"
@@ -42,6 +41,9 @@ class PoolKey:
             f"@group:{md.group_id}"
             f"@{self.chunk_hash}"
         )
+
+    def to_string(self) -> str:
+        return self.string
 
 
 def pool_keys_for_request(
@@ -58,12 +60,14 @@ def pool_keys_for_request(
         return []
     rank_info = rank_info or ParallelRankInfo()
     full_input_blocks = req.prefill_len // req.block_size
-    prefix_keys = build_prefix_keys(
-        req.hash_ids[:full_input_blocks],
-        model=model_name,
-        cache_salt=req.cache_salt,
-        reuse_group=req.reuse_group,
-    )
+    prefix_keys = list(req.input_cache_keys[:full_input_blocks])
+    if len(prefix_keys) != full_input_blocks:
+        prefix_keys = build_prefix_keys(
+            req.hash_ids[:full_input_blocks],
+            model=model_name,
+            cache_salt=req.cache_salt,
+            reuse_group=req.reuse_group,
+        )
     metadata = KeyMetadata(
         model_name=model_name,
         tp_rank=rank_info.tp_rank,
@@ -75,22 +79,8 @@ def pool_keys_for_request(
         pcp_rank=pcp_rank,
         dcp_rank=dcp_rank,
     )
-    return [
-        PoolKey(metadata, _prefix_key_digest(key))
-        for key in prefix_keys
-    ]
-
-
-def _prefix_key_digest(key: PrefixCacheKey) -> str:
-    return _stable_hash(
-        {
-            "parent_hash": key.parent_hash,
-            "block_signature": key.block_signature,
-            "extra_hash": key.extra_hash,
-        }
-    )
-
-
-def _stable_hash(value: Any) -> str:
-    payload = json.dumps(value, sort_keys=True, separators=(",", ":"), default=str)
-    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    if not prefix_keys:
+        return []
+    chunk_hashes = [key.parent_hash for key in prefix_keys[1:]]
+    chunk_hashes.append(next_parent_hash(prefix_keys[-1]))
+    return [PoolKey(metadata, chunk_hash) for chunk_hash in chunk_hashes]

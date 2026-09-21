@@ -186,7 +186,11 @@ class OperatorTableLatencyBackend(LatencyBackend):
         self.heads_local = math.ceil(model.num_attention_heads / tp)
         self.kv_heads_local = local_kv_heads(model.num_key_value_heads, tp)
         self.q_dim_local = self.heads_local * model.head_dim
-        self.kv_dim_local = self.kv_heads_local * model.head_dim
+        self.kv_dim_local = (
+            model.kv_dim // tp
+            if model.kv_cache_dim is not None
+            else self.kv_heads_local * model.head_dim
+        )
         self.inter_local = math.ceil(model.intermediate_size / tp)
         self.vocab_local = math.ceil(model.vocab_size / tp)
         self.layers_local = stage_layer_count(model.num_layers, pp, self.rank_info.pp_rank)

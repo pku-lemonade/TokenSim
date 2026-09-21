@@ -25,6 +25,7 @@ class CacheConfig:
         rank_info: ParallelRankInfo | None = None,
         expert_placement: ExpertPlacement | None = None,
         usable_memory_fraction: float = 1.0,
+        kv_cache_capacity_tokens_per_dp_rank: int | None = None,
     ):
         self.block_size: int = block_size
         self.device = device
@@ -51,9 +52,24 @@ class CacheConfig:
         self.size_per_token_unsharded = int(
             2 * model.kv_dim * kv_bytes * model.num_layers
         )
-        self.size_per_token = int(
-            self.local_kv_heads * self.head_dim * 2 * kv_bytes * self.num_layers_per_rank
-        )
+        if model.kv_cache_dim is not None:
+            if model.kv_dim % self.parallel_config.tensor_parallel_size != 0:
+                raise ConfigurationError(
+                    f"model {model.model_id!r}: kv_cache_dim must be divisible by "
+                    f"tensor_parallel_size {self.parallel_config.tensor_parallel_size}"
+                )
+            local_kv_dim = model.kv_dim // self.parallel_config.tensor_parallel_size
+            self.size_per_token = int(
+                local_kv_dim * 2 * kv_bytes * self.num_layers_per_rank
+            )
+        else:
+            self.size_per_token = int(
+                self.local_kv_heads
+                * self.head_dim
+                * 2
+                * kv_bytes
+                * self.num_layers_per_rank
+            )
 
         weight_bytes = dtype_bytes(model.dtype)
         self.model_param_size_unsharded = model.total_params() * weight_bytes
@@ -78,6 +94,12 @@ class CacheConfig:
         self.num_gpu_blocks: int = int(
             (capacity - self.model_param_size) / self.size_per_token // self.block_size
         )
+        if kv_cache_capacity_tokens_per_dp_rank is not None:
+            if kv_cache_capacity_tokens_per_dp_rank <= 0:
+                raise ConfigurationError("KV cache capacity override must be positive")
+            self.num_gpu_blocks = (
+                kv_cache_capacity_tokens_per_dp_rank // self.block_size
+            )
 
     # -- parameter sharding ----------------------------------------------------
 

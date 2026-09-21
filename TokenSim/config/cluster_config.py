@@ -72,9 +72,31 @@ class ClusterConfig:
     worker_groups: list[WorkerGroupConfig] = Field(default_factory=list)
     kv_transfer: KVTransferConfig | None = None
     parallel_config: ParallelConfig | None = None
+    # Optional explicit KV capacity.  A total capacity is divided across
+    # data-parallel replicas; a per-rank value takes precedence only when the
+    # total is omitted.
+    kv_cache_capacity_tokens_total: int | None = None
+    kv_cache_capacity_tokens_per_dp_rank: int | None = None
     # Optional catalog topology id (data/topologies/*.yaml). When omitted a
     # two-level topology is synthesized from ``networks``.
     topology: str | None = None
+
+    def __post_init__(self) -> None:
+        for field_name in (
+            "kv_cache_capacity_tokens_total",
+            "kv_cache_capacity_tokens_per_dp_rank",
+        ):
+            value = getattr(self, field_name)
+            if value is not None and value <= 0:
+                raise ConfigurationError(f"{field_name} must be positive when provided")
+        if (
+            self.kv_cache_capacity_tokens_total is not None
+            and self.kv_cache_capacity_tokens_per_dp_rank is not None
+        ):
+            raise ConfigurationError(
+                "kv_cache_capacity_tokens_total and "
+                "kv_cache_capacity_tokens_per_dp_rank are mutually exclusive"
+            )
 
     @classmethod
     def from_file(cls, filename):
@@ -97,6 +119,16 @@ class ClusterConfig:
             or model_parallel_config
             or ParallelConfig.default()
         )
+
+    def effective_kv_cache_capacity_per_dp_rank(
+        self,
+        parallel_config: ParallelConfig,
+    ) -> int | None:
+        if self.kv_cache_capacity_tokens_per_dp_rank is not None:
+            return self.kv_cache_capacity_tokens_per_dp_rank
+        if self.kv_cache_capacity_tokens_total is None:
+            return None
+        return self.kv_cache_capacity_tokens_total // parallel_config.data_parallel_size
 
     def workers(self, parallel_config: ParallelConfig | None = None):
         workers = [

@@ -250,32 +250,38 @@ class LLMPagedAttnScheduler(LLMScheduler):
             self.running.append(req)
 
         # 2. Admissions while budget and KV blocks last (head-of-line order).
-        while self.waiting and (budget is None or budget > 0):
-            if not self._is_occupy_below_usage():
-                break
-            if (
-                self.max_parallem_sum is not None
-                and len(self.running) >= self.max_parallem_sum
-            ):
-                break
-            req = self.waiting[0]
-            if not self.block_manager.can_allocate(req):
-                break
+        # vLLM V1: skip admissions when preemptions happened this step —
+        # admitting new work right after evicting running requests would
+        # thrash the KV cache.
+        if not preempted:
+            while self.waiting and (budget is None or budget > 0):
+                if not self._is_occupy_below_usage():
+                    break
+                if (
+                    self.max_parallem_sum is not None
+                    and len(self.running) >= self.max_parallem_sum
+                ):
+                    break
+                req = self.waiting[0]
+                if not self.block_manager.can_allocate(req):
+                    break
 
-            req = self.waiting.pop(0)
-            self._admit(req)
-            tokens = self._step_tokens(req, budget)
-            req.scheduled_tokens = tokens
-            budget = None if budget is None else budget - tokens
-            scheduled.append(req)
-            self.running.append(req)
-            self.last_admitted.append(req)
+                req = self.waiting.pop(0)
+                self._admit(req)
+                tokens = self._step_tokens(req, budget)
+                req.scheduled_tokens = tokens
+                budget = None if budget is None else budget - tokens
+                scheduled.append(req)
+                self.running.append(req)
+                self.last_admitted.append(req)
 
         return scheduled, preempted
 
     def _admit(self, req: Request) -> None:
         """Allocate KV blocks for the whole context and record what is already cached."""
         local_plan = self.block_manager.kv_cache_manager.plan_reuse(req)
+        # Reuse the already-built prefix chain in external-cache connectors.
+        req.input_cache_keys = list(local_plan.input_keys)
         num_external_tokens = self.connector.get_num_new_matched_tokens(
             req,
             local_plan.hit_tokens,
@@ -362,7 +368,13 @@ class LLMPagedAttnScheduler(LLMScheduler):
             self.running = [
                 req
                 for req in self.running
-                if req.id not in worker_output.finished_sending
+                if not (
+                    req.id in worker_output.finished_sending
+                    and (
+                        req.is_done
+                        or req.status == RequestStatus.WAITING_FOR_CONNECTOR_FREE
+                    )
+                )
             ]
 
     def _is_occupy_below_usage(self):

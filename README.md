@@ -121,7 +121,7 @@ The main configuration surfaces are:
 
 Useful CLI options include:
 
-- `--qps`: request arrival rate; required for every run.
+- `--qps`: open-loop request arrival rate; ignored by closed-loop AgentX replay.
 - `--batching`: `static`, `dynamic`, or `paged-attn`.
 - `--request_count`: number of generated or loaded requests.
 - `--prefill_mean_len`, `--decode_mean_len`: synthetic request lengths.
@@ -160,6 +160,8 @@ public release should also review the current configuration examples.
   connector composition, configuration fields, and timing behavior.
 - [Parallelism](docs/parallelism.md): worker roles, TP/PP/DP/EP configuration,
   rank mapping, communication modeling, and configuration precedence.
+- [AgentX](docs/agentx.md): WEKA traces, closed-loop session trees, B200/B300
+  sweeps, DRAM offload, metrics, and methodology limits.
 
 ## Workload Formats
 
@@ -171,6 +173,11 @@ prefix hashes, output hashes, reuse groups, or expert histograms. See
 `qwen_jsonl` reads one object per line with `input_length` and `output_length`.
 Optional fields include `timestamp`, request/chat identifiers, prefix metadata,
 and expert histograms. See `dataset/qwen_example.jsonl`.
+
+`agentx_weka` reads the SemiAnalysis WEKA JSONL format. It replays root and
+subagent streams in closed loop and requires the trace's native 64-token block
+size. The AgentX guide includes a full 393-trace, 64-GPU B200/B300 comparison
+runner and InferenceX delta report. See [the AgentX guide](docs/agentx.md).
 
 ## Results
 

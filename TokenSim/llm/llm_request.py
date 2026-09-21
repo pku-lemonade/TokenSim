@@ -209,6 +209,8 @@ class Request:
     decode_expert_histogram: dict[int, int] | list | None = None
     cache_salt: str | None = None
     reuse_group: str | None = None
+    measurement_phase: str = "profile"
+    record_timing: bool = True
     cached_prefill_blocks: int = 0
     cached_prefill_tokens: int = 0
     effective_prefill_tokens: int | None = None
@@ -226,6 +228,7 @@ class Request:
     # Online timing aggregates (replacing per-step time/service_time/batch
     # lists; accumulation order matches the old list arithmetic bit-for-bit).
     arrival_at: float | None = field(default=None, repr=False)
+    completed_at: float | None = field(default=None, repr=False)
     total_time: float = field(default=0.0, repr=False)
     prefill_latency: float = field(default=0.0, repr=False)
     decode_time_sum: float = field(default=0.0, repr=False)
@@ -250,6 +253,7 @@ class Request:
         self._logical_token_blocks: list[LogicalTokenBlock] = []
         self._append_tokens(self.prefill_len)
         self._last_event_at: float = 0.0
+        self.completion_event: simpy.Event | None = None
         if self.effective_prefill_tokens is None:
             self.effective_prefill_tokens = self.prefill_len
 
@@ -357,6 +361,8 @@ class Request:
     def arrive(self, env: simpy.Environment):
         self.arrival_at = env.now
         self._last_event_at = env.now
+        event_factory = getattr(env, "event", None)
+        self.completion_event = event_factory() if event_factory is not None else None
 
     def advance(
         self, env: simpy.Environment, latency: float, batch: int, timing_recorder=None
@@ -407,16 +413,28 @@ class Request:
             self.decode_service_time_sum += latency
             self.decode_batch_sum += batch
         if self.is_done:
+            self.completed_at = env.now
             request_time = self.complete_timing()
-            if timing_recorder is None:
-                from TokenSim.timing import DEFAULT_TIMING_RECORDER
+            if self.record_timing:
+                if timing_recorder is None:
+                    from TokenSim.timing import DEFAULT_TIMING_RECORDER
 
-                timing_recorder = DEFAULT_TIMING_RECORDER
-            timing_recorder.record_request(request_time)
+                    timing_recorder = DEFAULT_TIMING_RECORDER
+                timing_recorder.record_request(request_time)
+            if (
+                self.completion_event is not None
+                and not self.completion_event.triggered
+            ):
+                self.completion_event.succeed(request_time)
             if self.tqdm_submit_func:
                 self.tqdm_submit_func(1)
             return request_time
         return None
+
+    def release_logical_blocks(self) -> None:
+        """Drop bulky request-local state after the scheduler has finished it."""
+        self._logical_token_blocks.clear()
+        self.input_cache_keys.clear()
 
     def prepare_recompute(self) -> None:
         """Preemption released the KV: the whole context must be rebuilt."""

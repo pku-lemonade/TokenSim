@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-./benchmark.py \
+./scripts/run_python.sh ./benchmark.py \
     --batching paged-attn \
     --block_size 16 \
     --request_count 20 \
