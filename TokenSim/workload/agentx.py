@@ -47,6 +47,10 @@ class AgentXTrace:
     block_size: int
     roots: list[AgentXRequestSpec]
     subagents: list[AgentXSubagentPlan]
+    # Top-level root requests split into parallel streams by hash-id chain
+    # affinity.  Each stream is a sequential chain of requests that share a
+    # common prefix progression; distinct streams can run concurrently.
+    root_streams: list[list[AgentXRequestSpec]] = field(default_factory=list)
 
     @property
     def request_count(self) -> int:
@@ -209,7 +213,8 @@ def _parse_trace(record: dict[str, Any], record_index: int) -> AgentXTrace:
                 streams=_partition_streams(inner),
             )
         )
-    return AgentXTrace(trace_id, block_size, roots, subagents)
+    root_streams = _partition_streams(roots)
+    return AgentXTrace(trace_id, block_size, roots, subagents, root_streams)
 
 
 def _parse_request(
@@ -422,6 +427,7 @@ class AgentXReplay:
         self.warmup = warmup
         self.warmup_min_ratio = warmup_min_ratio
         self.warmup_max_ratio = warmup_max_ratio
+        self.random_seed = random_seed
         self.random = random.Random(random_seed)
         self.tqdm_submit_func = tqdm_submit_func
         self.requests: list[Request] = []
@@ -431,6 +437,14 @@ class AgentXReplay:
         self.play_count = 0
         self._next_request_id = 0
         self._idle_coordinator = _SystemIdleCoordinator(env, system_idle_gap_cap)
+        # Seed-shuffled trace pool: deterministic per seed, independent of
+        # dataset file order.  The pool is shuffled once; initial lane
+        # assignment and recycle both draw round-robin from this order.
+        self._shuffled_traces = list(traces)
+        self.random.shuffle(self._shuffled_traces)
+        # Record trace assignments for reproducibility diagnostics.
+        self.initial_trace_ids: list[str] = []
+        self.recycle_trace_ids: list[list[str]] = []
 
     @property
     def profile_elapsed(self) -> float:
@@ -449,12 +463,17 @@ class AgentXReplay:
             block_size=self.block_size,
         )
 
+    def _trace_for_lane(self, lane: int, play_id: int) -> AgentXTrace:
+        """Select a trace from the seed-shuffled pool for a given lane/play."""
+        idx = (lane + play_id * self.concurrency) % len(self._shuffled_traces)
+        return self._shuffled_traces[idx]
+
     def run(self):
         lane_cutoffs: list[float | None] = []
         if self.warmup:
             warmup_processes = []
             for lane in range(self.concurrency):
-                trace = self.traces[lane % len(self.traces)]
+                trace = self._trace_for_lane(lane, 0)
                 cutoff = self._warmup_cutoff(trace)
                 lane_cutoffs.append(cutoff)
                 warmup_processes.append(
@@ -510,7 +529,14 @@ class AgentXReplay:
                 break
             if self._profile_limit_reached():
                 break
-            trace = self.traces[(lane + play_id * self.concurrency) % len(self.traces)]
+            trace = self._trace_for_lane(lane, play_id)
+            # Record assignments for reproducibility.
+            if play_id == 0:
+                self.initial_trace_ids.append(trace.trace_id)
+            else:
+                while len(self.recycle_trace_ids) <= lane:
+                    self.recycle_trace_ids.append([])
+                self.recycle_trace_ids[lane].append(trace.trace_id)
             self.play_count += 1
             yield self.env.process(
                 self._run_trace(
@@ -530,13 +556,25 @@ class AgentXReplay:
         *,
         cutoff: float | None,
     ):
+        root_streams = trace.root_streams
+        if not root_streams:
+            root_streams = [trace.roots]
+
         start_root = 0
         if cutoff is not None:
             start_root = next(
                 (idx for idx, root in enumerate(trace.roots) if root.t > cutoff),
                 len(trace.roots),
             )
+
+        # Events keyed by flat root index: subagent completions that must be
+        # awaited before the root request at that index can proceed.
         branch_events: dict[int, list[simpy.Event]] = {}
+        # Events keyed by flat root index: signalled when that root request
+        # completes, so subagent spawns can trigger.
+        root_done_events: dict[int, simpy.Event] = {}
+        for idx in range(len(trace.roots)):
+            root_done_events[idx] = self.env.event()
 
         if cutoff is not None:
             for plan in trace.subagents:
@@ -566,51 +604,106 @@ class AgentXReplay:
                     plan_events.append(event)
                 branch_events.setdefault(plan.join_before, []).extend(plan_events)
 
-        ready_event = self._delay(
-            max(0.0, trace.roots[start_root].t - cutoff)
-            if cutoff is not None and start_root < len(trace.roots)
-            else 0.0
-        )
-        for root_index in range(start_root, len(trace.roots)):
-            dependencies: list[simpy.Event] = [ready_event]
-            dependencies.extend(branch_events.get(root_index, []))
-            yield simpy.events.AllOf(self.env, dependencies)
-            root = trace.roots[root_index]
+        # Run each root stream as an independent simpy process.
+        stream_processes = []
+        for stream_idx, stream in enumerate(root_streams):
+            proc = self.env.process(
+                self._run_root_stream(
+                    lane,
+                    play_id,
+                    trace,
+                    stream_idx,
+                    stream,
+                    start_root=start_root,
+                    cutoff=cutoff,
+                    branch_events=branch_events,
+                    root_done_events=root_done_events,
+                )
+            )
+            stream_processes.append(proc)
+
+        if stream_processes:
+            yield simpy.events.AllOf(self.env, stream_processes)
+
+        remaining = [event for events in branch_events.values() for event in events]
+        if remaining:
+            yield simpy.events.AllOf(self.env, remaining)
+
+    def _run_root_stream(
+        self,
+        lane: int,
+        play_id: int,
+        trace: AgentXTrace,
+        stream_idx: int,
+        stream: list[AgentXRequestSpec],
+        *,
+        start_root: int,
+        cutoff: float | None,
+        branch_events: dict[int, list[simpy.Event]],
+        root_done_events: dict[int, simpy.Event],
+    ):
+        """Run one root stream: requests execute sequentially within a stream,
+        but multiple root streams run in parallel."""
+        spec_id_to_flat: dict[int, int] = {
+            id(s): idx for idx, s in enumerate(trace.roots)
+        }
+        stream_id = f"root:{stream_idx}" if len(trace.root_streams) > 1 else "root"
+        previous: AgentXRequestSpec | None = None
+        for spec in stream:
+            flat_idx = spec_id_to_flat[id(spec)]
+            if flat_idx < start_root:
+                continue
+
+            # Wait for the inter-request delay within this stream.
+            if previous is not None:
+                yield self._delay(_end_to_start_delay(previous, spec))
+            elif cutoff is not None:
+                yield self._delay(max(0.0, spec.t - cutoff))
+            else:
+                yield self._delay(max(0.0, spec.t))
+
+            # Wait for subagent join barriers targeting this root index.
+            dependencies = branch_events.get(flat_idx, [])
+            if dependencies:
+                yield simpy.events.AllOf(self.env, dependencies)
+
             completed = yield self.env.process(
-                self._submit(lane, play_id, trace, "root", root_index, root)
+                self._submit(lane, play_id, trace, stream_id, flat_idx, spec)
             )
             if not completed:
                 break
+
+            # Signal that this root request is done.
+            done_event = root_done_events.get(flat_idx)
+            if done_event is not None and not done_event.triggered:
+                done_event.succeed()
+
+            # Spawn subagents that trigger after this root request.
             for plan in trace.subagents:
-                if plan.spawn_after != root_index:
+                if plan.spawn_after != flat_idx:
                     continue
                 if cutoff is not None and plan.spawn_t <= cutoff:
                     continue
-                ready_from = root.t + _api_duration(root.api_time)
+                ready_from = spec.t + _api_duration(spec.api_time)
                 plan_events: list[simpy.Event] = [
                     self._delay(max(0.0, plan.end_t - ready_from))
                 ]
-                for stream_index, stream in enumerate(plan.streams):
+                for child_stream_index, child_stream in enumerate(plan.streams):
                     event = self.env.process(
                         self._run_child_stream(
                             lane,
                             play_id,
                             trace,
                             plan,
-                            stream_index,
-                            stream,
+                            child_stream_index,
+                            child_stream,
                             ready_from=ready_from,
                         )
                     )
                     plan_events.append(event)
                 branch_events.setdefault(plan.join_before, []).extend(plan_events)
-            if root_index + 1 < len(trace.roots):
-                next_root = trace.roots[root_index + 1]
-                ready_event = self._delay(_end_to_start_delay(root, next_root))
 
-        remaining = [event for events in branch_events.values() for event in events]
-        if remaining:
-            yield simpy.events.AllOf(self.env, remaining)
+            previous = spec
 
     def _run_child_stream(
         self,

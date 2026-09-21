@@ -250,26 +250,30 @@ class LLMPagedAttnScheduler(LLMScheduler):
             self.running.append(req)
 
         # 2. Admissions while budget and KV blocks last (head-of-line order).
-        while self.waiting and (budget is None or budget > 0):
-            if not self._is_occupy_below_usage():
-                break
-            if (
-                self.max_parallem_sum is not None
-                and len(self.running) >= self.max_parallem_sum
-            ):
-                break
-            req = self.waiting[0]
-            if not self.block_manager.can_allocate(req):
-                break
+        # vLLM V1: skip admissions when preemptions happened this step —
+        # admitting new work right after evicting running requests would
+        # thrash the KV cache.
+        if not preempted:
+            while self.waiting and (budget is None or budget > 0):
+                if not self._is_occupy_below_usage():
+                    break
+                if (
+                    self.max_parallem_sum is not None
+                    and len(self.running) >= self.max_parallem_sum
+                ):
+                    break
+                req = self.waiting[0]
+                if not self.block_manager.can_allocate(req):
+                    break
 
-            req = self.waiting.pop(0)
-            self._admit(req)
-            tokens = self._step_tokens(req, budget)
-            req.scheduled_tokens = tokens
-            budget = None if budget is None else budget - tokens
-            scheduled.append(req)
-            self.running.append(req)
-            self.last_admitted.append(req)
+                req = self.waiting.pop(0)
+                self._admit(req)
+                tokens = self._step_tokens(req, budget)
+                req.scheduled_tokens = tokens
+                budget = None if budget is None else budget - tokens
+                scheduled.append(req)
+                self.running.append(req)
+                self.last_admitted.append(req)
 
         return scheduled, preempted
 

@@ -243,6 +243,9 @@ def main(
             "play_count": replay.play_count,
             "warmup_request_count": len(replay.warmup_requests),
             "warmup_duration_s": replay.profile_started_at or 0.0,
+            "random_seed": replay.random_seed,
+            "initial_trace_ids": replay.initial_trace_ids,
+            "recycle_trace_ids": replay.recycle_trace_ids,
         }
     else:
         duration = env.now

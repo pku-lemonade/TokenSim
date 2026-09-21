@@ -235,6 +235,13 @@ def _flatten_connectors(connector: Any) -> list[Any]:
     return result
 
 
+def _is_root_stream(stream_id: str | None) -> bool:
+    """True if stream_id belongs to a root stream (single or multi-stream)."""
+    return stream_id is not None and (
+        stream_id == "root" or stream_id.startswith("root:")
+    )
+
+
 def get_agentx_metrics(
     args: Any,
     requests: list[Request],
@@ -243,8 +250,19 @@ def get_agentx_metrics(
 ) -> dict[str, Any] | None:
     if getattr(args, "workload_type", None) != "agentx_weka":
         return None
+
+    root_requests = [
+        r for r in requests
+        if _is_root_stream(getattr(r, "agentx_stream_id", None))
+    ]
+    subagent_requests = [
+        r for r in requests
+        if not _is_root_stream(getattr(r, "agentx_stream_id", None))
+    ]
+
     ttft = [request.prefill_latency for request in requests]
     e2e = [request.total_time for request in requests]
+    # TPOT/ITL: mean inter-token latency excluding first token (matches vLLM).
     tpot = [
         request.decode_time_sum / (request.decode_len - 1)
         for request in requests
@@ -256,9 +274,20 @@ def get_agentx_metrics(
         for request in requests
         if request.total_time > 0
     ]
+
+    input_tokens = sum(request.prefill_len for request in requests)
     output_tokens = sum(request.decode_len for request in requests)
+    cached_input_tokens = sum(request.cached_prefill_tokens for request in requests)
+    computed_input_tokens = sum(
+        (request.effective_prefill_tokens or request.prefill_len)
+        for request in requests
+    )
     metadata = dict(getattr(args, "agentx_runtime_metadata", {}) or {})
-    return {
+
+    # In-flight request count at profile end (set by benchmark if available).
+    in_flight_at_cutoff = metadata.get("in_flight_at_cutoff", 0)
+
+    result: dict[str, Any] = {
         "methodology": "agentx-closed-loop-simulation",
         "official_submission_compatible": False,
         "concurrency": getattr(args, "agentx_concurrency", 1),
@@ -266,21 +295,30 @@ def get_agentx_metrics(
         "play_count": metadata.get("play_count", 0),
         "warmup_request_count": metadata.get("warmup_request_count", 0),
         "warmup_duration_s": metadata.get("warmup_duration_s", 0.0),
+        "random_seed": metadata.get("random_seed"),
+        "initial_trace_ids": metadata.get("initial_trace_ids", []),
+        "trace_sampling_strategy": "seed-shuffled-pool",
         "profile_duration_s": duration,
+        "in_flight_at_cutoff": in_flight_at_cutoff,
+        # --- Raw counts (always present for reconciliation) ---
         "request_count": len(requests),
-        "root_request_count": sum(
-            getattr(request, "agentx_stream_id", None) == "root" for request in requests
-        ),
-        "subagent_request_count": sum(
-            getattr(request, "agentx_stream_id", None) != "root" for request in requests
-        ),
-        "input_tokens": sum(request.prefill_len for request in requests),
+        "root_request_count": len(root_requests),
+        "subagent_request_count": len(subagent_requests),
+        "input_tokens": input_tokens,
         "output_tokens": output_tokens,
+        "cached_input_tokens": cached_input_tokens,
+        "computed_input_tokens": computed_input_tokens,
+        # --- Derived throughput ---
         "request_throughput_rps": len(requests) / duration if duration else 0.0,
+        "input_token_throughput_tps": input_tokens / duration if duration else 0.0,
+        "input_token_throughput_per_gpu_tps": (
+            input_tokens / duration / max(1, num_gpus) if duration else 0.0
+        ),
         "output_token_throughput_tps": output_tokens / duration if duration else 0.0,
         "output_token_throughput_per_gpu_tps": (
             output_tokens / duration / max(1, num_gpus) if duration else 0.0
         ),
+        # --- Latency distributions (all requests) ---
         "ttft_s": _percentile_summary(ttft),
         "tpot_s": _percentile_summary(tpot),
         "e2e_s": _percentile_summary(e2e),
@@ -289,6 +327,22 @@ def get_agentx_metrics(
             normalized_interactivity
         ),
     }
+
+    # --- Breakdown by root / subagent ---
+    for label, subset in [("root", root_requests), ("subagent", subagent_requests)]:
+        sub_ttft = [r.prefill_latency for r in subset]
+        sub_e2e = [r.total_time for r in subset]
+        sub_tpot = [
+            r.decode_time_sum / (r.decode_len - 1)
+            for r in subset if r.decode_len > 1
+        ]
+        result[f"{label}_ttft_s"] = _percentile_summary(sub_ttft)
+        result[f"{label}_tpot_s"] = _percentile_summary(sub_tpot)
+        result[f"{label}_e2e_s"] = _percentile_summary(sub_e2e)
+        result[f"{label}_output_tokens"] = sum(r.decode_len for r in subset)
+        result[f"{label}_input_tokens"] = sum(r.prefill_len for r in subset)
+
+    return result
 
 
 def _percentile_summary(values: list[float]) -> dict[str, float | int]:

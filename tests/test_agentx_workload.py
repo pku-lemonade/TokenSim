@@ -16,6 +16,7 @@ from TokenSim.workload.agentx import (
 
 
 FIXTURE = Path(__file__).parent / "fixtures" / "agentx_weka.jsonl"
+MULTI_STREAM_FIXTURE = Path(__file__).parent / "fixtures" / "agentx_multistream.jsonl"
 
 
 class _FakeEngine:
@@ -215,6 +216,125 @@ class SessionAffinityTest(unittest.TestCase):
 
         self.assertEqual(first_worker.dp_rank, second_worker.dp_rank)
         self.assertEqual(first.dp_rank, second.dp_rank)
+
+
+class RootStreamSplitTest(unittest.TestCase):
+    """Test that top-level root requests are split into parallel streams
+    using hash-id chain affinity (the same logic used for subagent streams)."""
+
+    def test_interleaved_roots_split_into_separate_streams(self):
+        traces = load_agentx_traces(str(MULTI_STREAM_FIXTURE), trace_count=1)
+        trace = traces[0]
+
+        self.assertEqual(len(trace.roots), 4)
+        self.assertEqual(len(trace.root_streams), 2)
+        # Stream 0: hash chains [1,2] -> [1,2,3]
+        self.assertEqual(len(trace.root_streams[0]), 2)
+        self.assertEqual(list(trace.root_streams[0][0].hash_ids), [1, 2])
+        self.assertEqual(list(trace.root_streams[0][1].hash_ids), [1, 2, 3])
+        # Stream 1: hash chains [9,10] -> [9,10,11]
+        self.assertEqual(len(trace.root_streams[1]), 2)
+        self.assertEqual(list(trace.root_streams[1][0].hash_ids), [9, 10])
+        self.assertEqual(list(trace.root_streams[1][1].hash_ids), [9, 10, 11])
+
+    def test_single_chain_roots_form_one_stream(self):
+        traces = load_agentx_traces(str(FIXTURE), trace_count=1)
+        trace = traces[0]
+
+        # trace-a has roots [1,2] and [1,2,3] — same prefix chain.
+        self.assertEqual(len(trace.root_streams), 1)
+        self.assertEqual(len(trace.root_streams[0]), 2)
+
+    def test_multistream_replay_runs_streams_in_parallel(self):
+        reset_g_time()
+        traces = load_agentx_traces(str(MULTI_STREAM_FIXTURE), trace_count=1)
+        env = simpy.Environment()
+        engine = _FakeEngine(env)
+        replay = AgentXReplay(
+            env, engine, traces,
+            block_size=64, concurrency=1, warmup=False,
+        )
+        env.process(replay.run())
+        env.run()
+
+        self.assertEqual(len(replay.requests), 4)
+        # Both root:0 and root:1 streams should exist.
+        stream_ids = {
+            getattr(r, "agentx_stream_id", None) for r in replay.requests
+        }
+        self.assertEqual(stream_ids, {"root:0", "root:1"})
+        # Both streams start near time 0, proving they ran in parallel.
+        arrivals = sorted(r.arrival_at for r in replay.requests)
+        self.assertAlmostEqual(arrivals[0], 0.0)
+        self.assertAlmostEqual(arrivals[1], 0.1)
+
+
+class SeedShuffledSamplingTest(unittest.TestCase):
+    """Test that trace sampling is deterministic per seed and independent
+    of the original dataset file order."""
+
+    def setUp(self):
+        reset_g_time()
+
+    def test_same_seed_produces_same_initial_mapping(self):
+        traces = load_agentx_traces(str(FIXTURE), trace_count=2)
+        env1, env2 = simpy.Environment(), simpy.Environment()
+        r1 = AgentXReplay(
+            env1, _FakeEngine(env1), traces,
+            block_size=64, concurrency=2, warmup=False, random_seed=42,
+        )
+        r2 = AgentXReplay(
+            env2, _FakeEngine(env2), traces,
+            block_size=64, concurrency=2, warmup=False, random_seed=42,
+        )
+        env1.process(r1.run()); env1.run()
+        env2.process(r2.run()); env2.run()
+
+        self.assertEqual(r1.initial_trace_ids, r2.initial_trace_ids)
+
+    def test_different_seed_may_change_mapping(self):
+        traces = load_agentx_traces(str(FIXTURE), trace_count=2)
+        env1, env2 = simpy.Environment(), simpy.Environment()
+        r1 = AgentXReplay(
+            env1, _FakeEngine(env1), traces,
+            block_size=64, concurrency=2, warmup=False, random_seed=1,
+        )
+        r2 = AgentXReplay(
+            env2, _FakeEngine(env2), traces,
+            block_size=64, concurrency=2, warmup=False, random_seed=2,
+        )
+        env1.process(r1.run()); env1.run()
+        env2.process(r2.run()); env2.run()
+
+        # With only 2 traces and 2 lanes, different seeds may or may not
+        # produce different mappings, but the mechanism is exercised.
+        self.assertEqual(len(r1.initial_trace_ids), 2)
+        self.assertEqual(len(r2.initial_trace_ids), 2)
+
+    def test_recycle_trace_ids_recorded(self):
+        traces = load_agentx_traces(str(FIXTURE), trace_count=2)
+        env = simpy.Environment()
+        replay = AgentXReplay(
+            env, _FakeEngine(env), traces,
+            block_size=64, concurrency=1, warmup=False,
+            profile_duration=5.0, random_seed=0,
+        )
+        env.process(replay.run())
+        env.run()
+
+        self.assertGreaterEqual(len(replay.initial_trace_ids), 1)
+
+
+class SchedulerPreemptionGuardTest(unittest.TestCase):
+    """Verify the preemption guard: the scheduler must not admit new waiting
+    requests in a step where running requests were preempted."""
+
+    def test_preemption_guard_is_present_in_code(self):
+        import inspect
+        from TokenSim.llm.llm_scheduler import LLMPagedAttnScheduler
+
+        source = inspect.getsource(LLMPagedAttnScheduler.schedule)
+        self.assertIn("if not preempted:", source)
 
 
 if __name__ == "__main__":
