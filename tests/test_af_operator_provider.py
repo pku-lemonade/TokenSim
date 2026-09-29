@@ -200,7 +200,7 @@ class OperatorTableComputeProviderTest(unittest.TestCase):
         # 6 routed assignments on one of 2 EP ranks with top_k 2 -> 6 balanced input tokens.
         self.assertEqual(moe["key"]["num_tokens"], 6)
         self.assertEqual(moe["key"]["routed_assignments"], 6)
-        self.assertEqual(moe["key"]["per_expert"], [[0, 4], [1, 2]])
+        self.assertEqual(moe["key"]["per_expert"], ((0, 4), (1, 2)))
         self.assertEqual((moe["key"]["ep_size"], moe["key"]["top_k"], moe["key"]["num_experts"]), (2, 2, 4))
         self.assertEqual(moe["key"]["inter_size"], 32)
 
@@ -272,8 +272,8 @@ class TopologyTransferProviderTest(unittest.TestCase):
         self.assertAlmostEqual(estimate.service_duration, link.transfer_us(4096) / 1e6)
         self.assertEqual(estimate.payload_bytes, 4096)
         self.assertEqual(estimate.match_type, "analytical")
-        self.assertEqual(estimate.details["link"], "profile")
-        self.assertEqual(estimate.dataset_version, "links:profile")
+        self.assertEqual(estimate.details["link"], "nvlink-test")
+        self.assertEqual(estimate.dataset_version, "topology:synth_af-net")
         back = self.provider.estimate(_transfer_query("af_f_to_a", payload_bytes=4096))
         self.assertEqual(back.service_duration, estimate.service_duration)
         self.assertEqual(self.provider.estimate(_transfer_query(payload_bytes=0)).service_duration, 0.0)
@@ -284,13 +284,69 @@ class TopologyTransferProviderTest(unittest.TestCase):
         self.assertEqual(placed.details["provider"], "collective_model")
         self.assertGreater(placed.service_duration, 0)
         self.assertIn(placed.match_type, AF_MATCH_TYPES)
-        unplaced = TopologyAFTransferProvider(self.hardware, self.cluster, self.workers, None)
+        with self.assertRaisesRegex(ConfigurationError, "requires placement"):
+            TopologyAFTransferProvider(self.hardware, self.cluster, self.workers, None)
+        values = _cluster_dict(attention_workers=2, ffn_workers=2)
+        values["af"]["transfer_topology_mode"] = "flat_link"
+        unplaced = TopologyAFTransferProvider(self.hardware, ClusterConfig(**values), self.workers, None)
         ring = unplaced.estimate(query)
         self.assertEqual(ring.details["algorithm"], "ring")
         self.assertGreater(ring.service_duration, 0)
         self.assertEqual(
             self.provider.estimate(replace(query, payload_bytes=0)).service_duration, 0.0
         )
+
+    def test_unknown_endpoint_cannot_silently_use_flat_link(self):
+        for payload in (0, 8192):
+            with self.subTest(payload=payload), self.assertRaisesRegex(ConfigurationError, "known physical endpoints"):
+                self.provider.estimate(_transfer_query(payload_bytes=payload, endpoints=("a-pool:0", "missing:0")))
+
+    def test_physical_endpoint_paths_distinguish_node_rack_and_cluster(self):
+        from TokenSim.hardware.topology import TopologyLevel, TopologyPlacement, TopologySpec
+        topology = TopologySpec("three-level-af", (
+            TopologyLevel("node", 4, "nvlink-test", links_per_endpoint=2),
+            TopologyLevel("rack", 2, "ethernet-test"),
+            TopologyLevel("cluster", None, "ethernet-test", oversubscription=2),
+        ))
+        times = []
+        for index, level in ((1, 0), (4, 1), (8, 2)):
+            placement = TopologyPlacement(topology, {0: 0, 1: 2, 2: index, 3: 16})
+            provider = TopologyAFTransferProvider(self.hardware, self.cluster, self.workers, placement)
+            estimate = provider.estimate(_transfer_query(payload_bytes=1 << 20))
+            self.assertEqual(estimate.details["lowest_common_level"], level)
+            times.append(estimate.service_duration)
+        self.assertLess(times[0], times[1])
+        self.assertLess(times[1], times[2])
+
+    def test_separated_collective_removes_software_launch_cost(self):
+        from TokenSim.config.cluster_config import AFCommunicationTimingConfig
+        query = _transfer_query("tp_collective", payload_bytes=8192, endpoints=("a-pool:0", "a-pool:1"))
+        legacy = self.provider.estimate(query)
+        self.cluster.af.communication_timing = AFCommunicationTimingConfig(enabled=True, host_submit_us=5)
+        # A provider pins its configuration; reconfiguration creates a new one.
+        self.assertIs(self.provider.estimate(query), legacy)
+        separated = TopologyAFTransferProvider(
+            self.hardware, self.cluster, self.workers, self.placement, dtype="fp16"
+        ).estimate(query)
+        self.assertEqual(separated.details["launch_us"], 0)
+        self.assertEqual(separated.details["timing_scope"], "transport_service")
+        self.assertAlmostEqual(legacy.service_duration - separated.service_duration,
+                               legacy.details["launch_us"] / 1e6)
+
+    def test_measured_collective_retains_declared_or_unspecified_scope(self):
+        from unittest.mock import patch
+        from TokenSim.comm.collectives import CollectiveEstimate
+        model = self.provider._collective_model_for("a-pool:0")
+        query = _transfer_query("tp_collective", payload_bytes=8192, endpoints=("a-pool:0", "a-pool:1"))
+        measured = CollectiveEstimate(10, "all_reduce", 2, 8192, "measured", "fixture:measured")
+        self.provider.cache_enabled = False
+        with patch.object(model, "estimate", return_value=measured):
+            for scope in ("legacy_unspecified", "eager_interval", "transport_service"):
+                model.timing_scope = scope
+                model.dataset_version = "measured-fixture-v1"
+                estimate = self.provider.estimate(query)
+                self.assertEqual(estimate.details["timing_scope"], scope)
+                self.assertEqual(estimate.dataset_version, "measured-fixture-v1")
 
     def test_unknown_network_or_operation_fail(self):
         values = _cluster_dict()
@@ -372,13 +428,13 @@ class ProviderSelectionTest(unittest.TestCase):
         env.run(until=monitor)
         self.assertTrue(request.is_done)
         self.assertEqual([summary["phase"] for summary in engine.af_iteration_summaries], ["prefill", "decode"])
-        events = [event for summary in engine.af_iteration_summaries for event in summary["events"]]
+        stats = get_af_stats(engine)
+        events = [event for summary in stats["af_trace"] for event in summary["events"]]
         self.assertTrue(events)
         self.assertTrue(all(event["match_type"] in AF_MATCH_TYPES for event in events))
         compute_events = [event for event in events if event["stage"] in {"a", "router", "expert"}]
         self.assertTrue(all(event["dataset_version"].startswith("analytical:") for event in compute_events))
         self.assertTrue(all(event["service_duration"] > 0 for event in compute_events))
-        stats = get_af_stats(engine)
         self.assertEqual(stats["af_latency_providers"]["compute"]["provider"], "operator_table")
         self.assertEqual(stats["af_latency_providers"]["transfer"]["provider"], "topology_links")
         self.assertGreater(stats["af_operator_stats"]["operator_query_count"], 0)

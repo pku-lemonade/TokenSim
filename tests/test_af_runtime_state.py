@@ -362,15 +362,21 @@ class AFRuntimePlanTest(unittest.TestCase):
             },
         )
 
-        roofline = _runtime_roofline()
-        roofline.models["TestModel"].Dmodel = 24
+        hardware = _runtime_hardware()
+        model = replace(
+            hardware.model("TestModel"),
+            hidden_size=24,
+        ).with_moe_override(replace(_moe_config(), hidden_size=24))
         with self.assertRaisesRegex(
             ConfigurationError, r"query heads=8.*A domain='a-domain' TP=3"
         ):
-            _runtime_plan(
-                _cluster(a_tp=3, a_dp=1, f_tp=1, f_dp=1, f_ep=1),
-                roofline=roofline,
-                moe_config=replace(_moe_config(), hidden_size=24),
+            compile_af_runtime_plan(
+                cluster_config=_cluster(a_tp=3, a_dp=1, f_tp=1, f_dp=1, f_ep=1),
+                worker_configs=_cluster(a_tp=3, a_dp=1, f_tp=1, f_dp=1, f_ep=1).workers(),
+                hardware=hardware,
+                model=model,
+                block_size=4,
+                dtype="fp16",
             )
 
         with self.assertRaisesRegex(ConfigurationError, "Routed Expert intermediate=33"):
@@ -508,7 +514,7 @@ class AFRuntimePlanTest(unittest.TestCase):
         f_ep1 = plan.physical_state("f-pool:2")
 
         self.assertEqual(a_leader.component_bytes()["attention"], 2048)
-        self.assertEqual(a_leader.component_bytes()["embedding_lm_head"], 800000)
+        self.assertEqual(a_leader.component_bytes()["embedding_lm_head"], 1600000)
         self.assertEqual(a_leader.component_bytes()["router"], 128)
         self.assertNotIn("router", a_follower.component_bytes())
         self.assertNotIn("routed_expert", a_leader.component_bytes())
@@ -562,7 +568,7 @@ class AFRuntimePlanTest(unittest.TestCase):
             with self.subTest(kv_heads=kv_heads):
                 plan = _runtime_plan(
                     cluster,
-                    roofline=_runtime_roofline(layers=1),
+                    hardware=_runtime_hardware(layers=1),
                     moe_config=replace(
                         _moe_config(),
                         num_moe_layers=1,
@@ -701,7 +707,7 @@ class AFRuntimePlanTest(unittest.TestCase):
         for group in unknown_hardware.worker_groups:
             group.hardware = "missing-device"
         with self.assertRaisesRegex(
-            ConfigurationError, "hardware capacity metadata missing"
+            ConfigurationError, "unknown hardware 'missing-device'"
         ):
             _runtime_plan(unknown_hardware)
         with self.assertRaisesRegex(ConfigurationError, "no explicit byte size"):

@@ -3,6 +3,8 @@ from collections import Counter
 from dataclasses import replace
 from types import SimpleNamespace
 
+from tests.test_af_executor import af_test_hardware
+
 from TokenSim.af.models import AFBlock, AFBlockPlacement
 from TokenSim.af.planning import (
     AFExecutionDAG,
@@ -192,27 +194,13 @@ def _block(histogram=((0, 10), (2, 2))):
 
 
 def _formal_runtime_plan(cluster, moe_config):
-    hardware = SimpleNamespace(Capacity=0.1, MM_Card_Num=1)
-    roofline = SimpleNamespace(
-        hardwares={"a-device": hardware, "f-device": hardware},
-        models={
-            "TestModel": SimpleNamespace(
-                Name="TestModel",
-                Nhead=8,
-                Dmodel=16,
-                Nlayer=2,
-                Multi_Query=False,
-                Grouped_Query=False,
-                FFN_Hidden=64,
-            )
-        },
-    )
+    hardware = af_test_hardware(layers=2, capacity_gib=0.1)
+    model = hardware.model("TestModel").with_moe_override(moe_config)
     return compile_af_runtime_plan(
         cluster_config=cluster,
         worker_configs=cluster.workers(),
-        roofline=roofline,
-        model="TestModel",
-        moe_config=moe_config,
+        hardware=hardware,
+        model=model,
         block_size=4,
         dtype="fp16",
     )
@@ -542,9 +530,9 @@ class ParallelExecutionPlannerTest(unittest.TestCase):
             },
             {(0, 0), (1, 0), (2, 1), (3, 1)},
         )
-        self.assertEqual(
-            dense.terminal_node_ids, ("i5:b0:l0:residual:layout",)
-        )
+        self.assertIn("i5:b0:l0:residual:layout", dense.terminal_node_ids)
+        self.assertIn("i5:b0:l0:post_attention_norm:r0", dense.terminal_node_ids)
+        self.assertIn("i5:b0:l0:post_attention_norm:r1", dense.terminal_node_ids)
 
         moe = planner.build_layer(block, 1, cluster.af.links[0])
         moe_stages = Counter(node.stage for node in moe.nodes)

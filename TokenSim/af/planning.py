@@ -12,6 +12,7 @@ from TokenSim.af.latency import (
     AFTensorSlice,
 )
 from TokenSim.af.models import AFBlock, AFBlockPlacement, AFExpertPlacement
+from TokenSim.af.snapshot import ConfigurationOwner, snapshot
 from TokenSim.config.cluster_config import (
     AFLinkConfig,
     DomainCollectiveConfig,
@@ -690,7 +691,12 @@ class IndependentRoundRobinAFReplicaSelector:
             )
 
 
-class ParallelExecutionPlanner:
+class ParallelExecutionPlanner(ConfigurationOwner):
+    _configuration_fields = (
+        "cluster_config", "runtime_plan", "hidden_size", "dtype_size_bytes",
+        "num_experts", "top_k",
+    )
+
     def __init__(
         self,
         cluster_config,
@@ -701,12 +707,15 @@ class ParallelExecutionPlanner:
         top_k: int = 1,
         runtime_plan: "AFRuntimePlan | None" = None,
     ) -> None:
-        self.cluster_config = cluster_config
+        self.cluster_config = snapshot(cluster_config)
         self.hidden_size = hidden_size
         self.dtype_size_bytes = dtype_size_bytes
         self.num_experts = num_experts
         self.top_k = max(1, top_k)
         self.runtime_plan = runtime_plan
+        from TokenSim.af.templates import TemplateCache
+        self.template_cache = TemplateCache()
+        self._runtime_links = {link.name: link for link in self.cluster_config.af.links}
 
     def placement(
         self,
@@ -740,14 +749,22 @@ class ParallelExecutionPlanner:
         layer_id: int,
         link: AFLinkConfig,
     ) -> AFExecutionDAG:
-        # The operator-table engine can run without frozen per-layer routing
-        # snapshots; in that compatibility mode use the histogram-based AF
-        # graph. Formal V3 decode supplies snapshots and takes the runtime graph.
-        if (
+        configured = self._runtime_links[link.name]
+        if link is not configured:
+            from TokenSim.af.estimate_cache import identity
+            if identity(link) != identity(configured):
+                raise ConfigurationError("AF link configuration changed; create a new runtime")
+            link = configured
+        formal_runtime = (
             self.runtime_plan is not None
-            and block.phase == "decode"
-            and (getattr(self.runtime_plan, "mla", None) is not None or block.routing_snapshots)
-        ):
+            and (block.phase == "decode" or self.runtime_plan.layers[0].mla is not None)
+            and block.placement is not None
+            and not block.placement.a_domain.startswith("implicit:")
+            and not block.placement.f_domain.startswith("implicit:")
+        )
+        if formal_runtime:
+            if self.cluster_config.af.dag_template_cache:
+                return self.template_cache.build(self, block, layer_id, link)
             return self._build_runtime_layer(block, layer_id, link)
         return self._build_legacy_layer(block, layer_id, link)
 

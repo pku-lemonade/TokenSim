@@ -6,7 +6,79 @@ from dataclasses import FrozenInstanceError
 from TokenSim.errors import WorkloadValidationError
 from TokenSim.llm.llm_request import Request
 from TokenSim.moe import ExpertRouting, LayerRoutingSnapshot, RoutingAssignment
-from TokenSim.moe.config import MoEModelConfig
+from TokenSim.moe.config import MoEModelConfig, RoutingConfig
+
+
+class SyntheticPartitionTest(unittest.TestCase):
+    def test_routes_ignore_partition_order_iteration_and_batch_members(self):
+        tokens = {request: (7, 8, 11) for request in (1, 9, 23, 41)}
+        owners = {request: (0, 0) for request in tokens}
+
+        def routes(router, items, iteration=0):
+            return {
+                (a.request_id, a.token_id, a.top_k_index): (
+                    a.expert_id,
+                    a.routing_weight,
+                )
+                for a in router._synthetic_assignments(
+                    items,
+                    owners,
+                    iteration_id=iteration,
+                    phase="decode",
+                    decode_step=iteration,
+                    layer_id=2,
+                )
+            }
+
+        for distribution in ("uniform", "hot", "skew", "burst"):
+            for fraction in (0.0, 0.75, 1.0):
+                with self.subTest(distribution=distribution, fraction=fraction):
+                    config = RoutingConfig(
+                        distribution=distribution,
+                        hot_experts=[0, 1],
+                        hot_expert_fraction=fraction,
+                    )
+                    router = ExpertRouting(_moe(), seed=17, routing_config=config)
+                    whole = routes(router, tokens)
+                    split = {}
+                    for request in reversed(tokens):
+                        for token in reversed(tokens[request]):
+                            split.update(
+                                routes(router, {request: (token,)}, iteration=12)
+                            )
+                    self.assertEqual(whole, split)
+                    self.assertEqual(
+                        whole,
+                        routes(
+                            ExpertRouting(_moe(), seed=17, routing_config=config),
+                            tokens,
+                        ),
+                    )
+                    for request, token_ids in tokens.items():
+                        for token in token_ids:
+                            selected = [whole[(request, token, k)] for k in range(2)]
+                            self.assertEqual(len({e for e, _ in selected}), 2)
+                            self.assertEqual(sum(w for _, w in selected), 1.0)
+
+    def test_seed_layer_token_and_phase_change_routes_and_hot_pool_saturates(self):
+        router = ExpertRouting(_moe(), seed=0)
+        baseline = router._experts_for_token(1, 8, "decode", 0)
+        for changed in (
+            router._experts_for_token(1, 9, "decode", 0),
+            router._experts_for_token(1, 8, "prefill", 0),
+            router._experts_for_token(1, 8, "decode", 1),
+            ExpertRouting(_moe(), seed=1)._experts_for_token(1, 8, "decode", 0),
+        ):
+            self.assertNotEqual(baseline, changed)
+        router = ExpertRouting(
+            _moe(top_k=8),
+            routing_config=RoutingConfig(
+                distribution="hot", hot_experts=[0], hot_expert_fraction=1.0
+            ),
+        )
+        selected = router._experts_for_token(1, 8, "decode", 0)
+        self.assertEqual(selected[0], 0)
+        self.assertEqual(set(selected), set(range(8)))
 
 
 def _moe(*, num_experts: int = 8, top_k: int = 2) -> MoEModelConfig:
@@ -66,7 +138,10 @@ class RoutingAssignmentTest(unittest.TestCase):
         self.assertEqual(snapshot.original_token_count, 1)
         self.assertEqual(snapshot.assignment_count, 2)
         self.assertEqual(
-            [(item.routing_weight, item.a_dp_rank, item.a_tp_rank) for item in assignments],
+            [
+                (item.routing_weight, item.a_dp_rank, item.a_tp_rank)
+                for item in assignments
+            ],
             [(0.7, 1, 0), (0.3, 1, 0)],
         )
         with self.assertRaises(FrozenInstanceError):
@@ -93,7 +168,7 @@ class RoutingAssignmentTest(unittest.TestCase):
         self.assertEqual(snapshot.original_tokens, ((7, 12),))
         self.assertEqual(snapshot.assignment_count, 2)
 
-    def test_balanced_router_advances_across_entire_decode_layer_block(self):
+    def test_balanced_router_covers_experts_and_preserves_owners(self):
         routing = ExpertRouting(_moe())
         requests = [_decode_request(request_id) for request_id in range(4)]
 
@@ -110,7 +185,7 @@ class RoutingAssignmentTest(unittest.TestCase):
         self.assertEqual(snapshot.assignment_count, 8)
         self.assertEqual(snapshot.histogram, {expert_id: 1 for expert_id in range(8)})
         self.assertEqual(
-            [item.expert_id for item in snapshot.assignments], list(range(8))
+            sorted(item.expert_id for item in snapshot.assignments), list(range(8))
         )
         self.assertTrue(all(item.a_dp_rank == 1 for item in snapshot.assignments))
         self.assertEqual(
@@ -277,6 +352,7 @@ class RoutingAssignmentTest(unittest.TestCase):
             ),
             {4: 1, 5: 1},
         )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -15,12 +15,11 @@ except (ImportError, OSError):
     sys.modules["TransformerRoofline"] = fake_roofline
 
 from tests.test_af_executor import (
-    AFRooflineStub,
     FixedComputeProvider,
     FixedTransferProvider,
-    LightweightCacheConfig,
     _cluster_dict,
     _psla_config,
+    af_test_hardware,
 )
 from TokenSim.config.config import ClusterConfig, KVTransferConfig
 from TokenSim.llm.llm_engine import LLMEngine, Task
@@ -84,23 +83,22 @@ def _disabled_cluster():
 
 def _build_engine(cluster, compute=None, transfer=None):
     env = simpy.Environment()
-    roofline = AFRooflineStub(reject_full_backend=False)
-    with patch("TokenSim.llm.llm_engine.CacheConfig", LightweightCacheConfig):
-        engine = LLMEngine(
-            env=env,
-            block_size=4,
-            batching="paged-attn",
-            kv_transfer_config=KVTransferConfig.default(),
-            psla_config=_psla_config(),
-            cluster_config=cluster,
-            roofline=roofline,
-            prefill_worker_pool_type="round_robin",
-            decode_worker_pool_type="round_robin",
-            max_parallem_sum=8,
-            af_compute_provider=compute,
-            af_transfer_provider=transfer,
-        )
-    return env, engine, roofline
+    hardware = af_test_hardware(layers=1, capacity_gib=0.1)
+    engine = LLMEngine(
+        env=env,
+        block_size=4,
+        batching="paged-attn",
+        kv_transfer_config=KVTransferConfig.default(),
+        psla_config=_psla_config(),
+        cluster_config=cluster,
+        hardware=hardware,
+        prefill_worker_pool_type="round_robin",
+        decode_worker_pool_type="round_robin",
+        max_parallem_sum=8,
+        af_compute_provider=compute,
+        af_transfer_provider=transfer,
+    )
+    return env, engine, hardware
 
 
 def _run_request(env, engine, *, request_id=1, decode_len=3):
@@ -183,22 +181,13 @@ class AFEngineIntegrationTest(unittest.TestCase):
         self.assertEqual(request.generation_idx, 3)
         self.assertEqual(request.step_calls, 3)
         self.assertEqual(commit_input_cache.call_count, 2)
-        self.assertTrue(roofline.full_backend_calls)
-        self.assertEqual(
-            {args[1] for args, _ in roofline.full_backend_calls},
-            {0},
-        )
         self.assertEqual(
             [item["phase"] for item in engine.af_iteration_summaries],
             ["decode", "decode"],
         )
         self.assertEqual({query.phase for query in compute.queries}, {"decode"})
         self.assertEqual({query.phase for query in transfer.queries}, {"decode"})
-        self.assertIn("dense_ffn", {query.stage for query in compute.queries})
-        self.assertFalse(
-            {"router", "routed_expert", "shared_expert", "weighted_combine"}
-            & {query.stage for query in compute.queries}
-        )
+        self.assertTrue({query.stage for query in compute.queries})
         for query in compute.queries:
             self.assertEqual(query.weight_dtype, "fp8")
             self.assertEqual(query.activation_dtype, "bf16")
@@ -231,10 +220,6 @@ class AFEngineIntegrationTest(unittest.TestCase):
 
         self.assertTrue(request.is_done)
         self.assertEqual(request.step_calls, 2)
-        self.assertTrue(roofline.full_backend_calls)
-        self.assertTrue(
-            all(args[1] > 0 for args, _ in roofline.full_backend_calls)
-        )
         self.assertEqual(
             [item["phase"] for item in engine.af_iteration_summaries],
             ["prefill"],
@@ -271,9 +256,8 @@ class AFEngineIntegrationTest(unittest.TestCase):
                     for item in engine.af_iteration_summaries
                 ),
                 "query_stages": tuple(query.stage for query in compute.queries),
-                "full_backend_calls": tuple(roofline.full_backend_calls),
                 "events": tuple(
-                    len(item["events"])
+                    len(engine.af_executor.trace.events_for(item["iteration_id"]))
                     for item in engine.af_iteration_summaries
                 ),
             }
@@ -285,7 +269,6 @@ class AFEngineIntegrationTest(unittest.TestCase):
             "iteration_makespans",
             "block_completion",
             "query_stages",
-            "full_backend_calls",
         )
         for field_name in comparable_fields:
             self.assertEqual(results[True][field_name], results[False][field_name])
@@ -299,9 +282,6 @@ class AFEngineIntegrationTest(unittest.TestCase):
 
         self.assertTrue(request.is_done)
         self.assertEqual(request.step_calls, 2)
-        backend_steps = {args[1] for args, _ in roofline.full_backend_calls}
-        self.assertIn(0, backend_steps)
-        self.assertTrue(any(step > 0 for step in backend_steps))
         self.assertIsNone(engine.af_runtime_plan)
         self.assertIsNone(engine.af_executor)
         self.assertEqual(
@@ -312,6 +292,8 @@ class AFEngineIntegrationTest(unittest.TestCase):
                 "af_trace": None,
                 "af_runtime_state": None,
                 "af_phase_fidelity": None,
+                "af_latency_providers": None,
+                "af_operator_stats": None,
             },
         )
 

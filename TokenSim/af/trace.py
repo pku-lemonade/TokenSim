@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import asdict, dataclass, field
+from math import isfinite
+import sys
 from typing import Any, Literal, Mapping
 
 from TokenSim.af.latency import (
@@ -13,6 +16,34 @@ from TokenSim.af.latency import (
 )
 from TokenSim.af.models import AFIteration, AFPhase
 from TokenSim.errors import SimulationStateError
+
+
+class _ResourceBusyTime:
+    """Incremental float sum, matching Python's sum used by the original summary.
+
+    Python 3.12+ uses compensated summation. Plain += would change exported
+    utilization in the last bits even when events and their order are identical.
+    """
+
+    __slots__ = ("total", "correction")
+
+    def __init__(self) -> None:
+        self.total = 0.0
+        self.correction = 0.0
+
+    def add(self, value: float) -> None:
+        combined = self.total + value
+        if sys.version_info >= (3, 12):
+            if abs(self.total) >= abs(value):
+                self.correction += (self.total - combined) + value
+            else:
+                self.correction += (value - combined) + self.total
+        self.total = combined
+
+    def value(self) -> float:
+        if self.correction and isfinite(self.correction):
+            return self.total + self.correction
+        return self.total
 
 
 @dataclass(frozen=True)
@@ -83,6 +114,12 @@ class AFTraceEvent:
 
 
 class AFTraceRecorder:
+    """Own the full event history and index it by iteration.
+
+    Append through record(), and reset through clear(). In-place replacement
+    in events is supported only when position and iteration identity are kept.
+    """
+
     def __init__(
         self,
         enabled: bool = True,
@@ -90,15 +127,24 @@ class AFTraceRecorder:
     ) -> None:
         self.enabled = enabled
         self.events: list[AFTraceEvent] = []
+        self.iteration_event_indices: dict[int, list[int]] = {}
         self.resource_capacities = dict(resource_capacities or {})
 
     def record(self, event: AFTraceEvent) -> None:
         if self.enabled:
+            index = len(self.events)
             self.events.append(event)
+            self.iteration_event_indices.setdefault(event.iteration_id, []).append(index)
+
+    def clear(self) -> None:
+        """Explicitly discard a drained batch, including its position indexes."""
+        self.events.clear()
+        self.iteration_event_indices.clear()
 
     def events_for(self, iteration_id: int) -> tuple[AFTraceEvent, ...]:
         return tuple(
-            event for event in self.events if event.iteration_id == iteration_id
+            self.events[index]
+            for index in self.iteration_event_indices.get(iteration_id, ())
         )
 
     def validate_invariants(self, iteration_id: int) -> None:
@@ -486,23 +532,20 @@ class AFTraceRecorder:
                 )
 
     def summarize(self, iteration: AFIteration) -> dict[str, Any]:
+        """Return aggregate metadata without materializing full event dictionaries."""
         events = self.events_for(iteration.iteration_id)
         utilization: dict[str, float] = {}
         makespan = iteration.makespan or 0.0
-        event_resources = {
-            resource_id
-            for event in events
-            for resource_id in (event.resource_ids or (event.resource_id,))
-        }
-        for resource_id in sorted(event_resources):
-            busy = sum(
-                event.service_duration
-                for event in events
-                if resource_id in (event.resource_ids or (event.resource_id,))
-            )
+        busy_by_resource: dict[str, _ResourceBusyTime] = {}
+        for event in events:
+            for resource_id in set(event.resource_ids or (event.resource_id,)):
+                if resource_id not in busy_by_resource:
+                    busy_by_resource[resource_id] = _ResourceBusyTime()
+                busy_by_resource[resource_id].add(event.service_duration)
+        for resource_id, busy in sorted(busy_by_resource.items()):
             capacity = self.resource_capacities.get(resource_id, 1)
             utilization[resource_id] = (
-                busy / (makespan * capacity) if makespan > 0 else 0.0
+                busy.value() / (makespan * capacity) if makespan > 0 else 0.0
             )
         return {
             "iteration_id": iteration.iteration_id,
@@ -513,8 +556,15 @@ class AFTraceRecorder:
             "block_completed_at": dict(iteration.block_completed_at),
             "barrier_wait": dict(iteration.barrier_wait),
             "resource_utilization": utilization,
-            "events": [event.as_dict() for event in events],
         }
+
+    def export_summary(self, summary: Mapping[str, Any]) -> dict[str, Any]:
+        """Materialize a detached public result at the export boundary only."""
+        result = deepcopy(dict(summary))
+        result["events"] = [
+            event.as_dict() for event in self.events_for(summary["iteration_id"])
+        ] if self.enabled else []
+        return result
 
 
 def _endpoint_identity(endpoint: AFEndpoint | None) -> tuple[object, ...] | None:

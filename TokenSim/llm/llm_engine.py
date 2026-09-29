@@ -1,4 +1,5 @@
 from __future__ import annotations
+from TokenSim.af.model_executor import ModelAFExecutor
 
 from dataclasses import dataclass
 from enum import Enum, auto
@@ -684,7 +685,8 @@ class LLMEngine(Worker):
             )
             self.af_compute_provider = af_compute_provider
             self.af_transfer_provider = af_transfer_provider
-            self.af_executor = AFExecutor(
+            executor_type = ModelAFExecutor if self.model_spec.attention_type == "mla" else AFExecutor
+            self.af_executor = executor_type(
                 env=env,
                 cluster_config=cluster_config,
                 worker_configs=worker_configs,
@@ -698,6 +700,7 @@ class LLMEngine(Worker):
                 moe_config=self.moe_config,
                 random_seed=random_seed,
                 runtime_plan=self.af_runtime_plan,
+                **({"model": self.model_spec} if executor_type is ModelAFExecutor else {}),
             )
 
         self.prefill_workers = self._build_worker_pool(
@@ -811,6 +814,7 @@ class LLMEngine(Worker):
             yield self.env.timeout(latency)
 
     def record_af_iteration(self, iteration: AFIteration) -> None:
+        """Keep aggregates here; complete trace events remain owned by the recorder."""
         if self.af_executor is None:
             return
         self.af_iteration_summaries.append(self.af_executor.trace.summarize(iteration))

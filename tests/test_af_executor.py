@@ -392,6 +392,9 @@ def _explicit_domain_cluster(*, with_collective=True):
                         "operation": "all_reduce",
                         "after_stage": "a_compute",
                         "participants": [0, 1],
+                        "network": "af-net",
+                        "resource_group": "fabric",
+                        "resource_lane": "a_to_f",
                     }
                 ]
                 if with_collective
@@ -403,14 +406,17 @@ def _explicit_domain_cluster(*, with_collective=True):
             "capability": "af_ffn",
             "phases": ["prefill", "decode"],
             "worker_group": "f-pool",
-            "parallel": {"expert_parallel_size": 2},
+            "parallel": {
+                "tensor_parallel_size": 2,
+                "expert_parallel_size": 2,
+            },
             "logical_instances": [
                 {
                     "name": "f0",
                     "rank_mapping": [
                         {
                             "domain_rank": index,
-                            "tp_rank": 0,
+                            "tp_rank": index,
                             "pp_rank": 0,
                             "dp_rank": 0,
                             "ep_rank": index,
@@ -658,7 +664,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
         self.assertEqual(len(engine.af_iteration_summaries), 2)
         self.assertTrue(
             all(
-                len(summary["events"]) == 20
+                len(engine.af_executor.trace.events_for(summary["iteration_id"])) == 20
                 for summary in engine.af_iteration_summaries
             )
         )

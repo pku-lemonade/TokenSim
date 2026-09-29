@@ -602,6 +602,18 @@ class AFCommunicationResourceTest(unittest.TestCase):
         cluster = _cluster(links=links)
         self.assertEqual(len(cluster.af_communication_resources), 2)
 
+    def test_shared_fabric_rejects_network_and_duplex_conflicts(self):
+        for overrides in (
+            dict(network="net2"),
+            dict(duplex="half", a_to_f_capacity=None, f_to_a_capacity=None,
+                 half_duplex_capacity=1),
+        ):
+            with self.subTest(overrides=overrides), self.assertRaisesRegex(ConfigurationError, "conflicts"):
+                _cluster(networks={"net1": "test-network", "net2": "test-network"}, links=[
+                    _full_link(name="prefill-link", phases=("prefill",)),
+                    _full_link(name="decode-link", phases=("decode",), **overrides),
+                ])
+
     def test_explicit_fabric_registry_supports_independent_collective_lane(self):
         fabric = AFCommunicationFabricConfig(
             resource_group="fabric",

@@ -15,7 +15,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 import simpy
 from TokenSim.af import AFTraceRecorder, build_operator_table_af_providers
-from scripts.deepseek_v3_runtime import V3Executor, configuration
+from scripts.deepseek_v3_runtime import configuration
+from TokenSim.af.model_executor import ModelAFExecutor
 
 
 def dump(path, value):
@@ -81,7 +82,7 @@ def run_case(args, qps):
     compute, transfer = build_operator_table_af_providers(hardware=config.hardware,
         model=config.model, cluster_config=config.cluster, worker_configs=config.workers,
         placement=config.placement, dtype='bf16', fallback='analytical_only')
-    executor = V3Executor(env, config.cluster, config.workers, compute, transfer,
+    executor = ModelAFExecutor(env, config.cluster, config.workers, compute, transfer,
         config.model.model_id, 'bf16', 61, config.model.hidden_size,
         moe_config=config.model.moe, random_seed=args.seed, runtime_plan=config.plan,
         trace_recorder=AFTraceRecorder(True))
@@ -118,7 +119,7 @@ def run_case(args, qps):
             validation['iterations'] += 1
             validation['events'] += len(events)
             # The next iteration has no trace dependency on this drained batch.
-            executor.trace.events.clear()
+            executor.trace.clear()
             return completions
 
         schedule(env, times, args.max_batch, serve, request_rows, batch_rows, queue_rows)

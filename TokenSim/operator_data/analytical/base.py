@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import math
+from numbers import Real
 from typing import Any, Mapping, Protocol
 
 from TokenSim.errors import ConfigurationError
@@ -17,6 +19,22 @@ class Calibration:
     calibration_id: str = "uncalibrated"
     grade: str = "D"
 
+    def __post_init__(self) -> None:
+        for name, value, positive in (
+            ("multiplier", self.multiplier, True),
+            ("offset_us", self.offset_us, False),
+        ):
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, Real)
+                or not math.isfinite(value)
+                or (value <= 0 if positive else value < 0)
+            ):
+                raise ConfigurationError(
+                    f"calibration {name} must be finite and "
+                    + ("positive" if positive else "nonnegative")
+                )
+
     def apply(self, roofline_us: float) -> float:
         value = roofline_us * self.multiplier + self.offset_us
         if value < 0:
@@ -30,8 +48,8 @@ class Calibration:
         if not raw:
             return cls()
         return cls(
-            multiplier=float(raw.get("multiplier", 1.0)),
-            offset_us=float(raw.get("offset_us", 0.0)),
+            multiplier=raw.get("multiplier", 1.0),
+            offset_us=raw.get("offset_us", 0.0),
             calibration_id=str(raw.get("calibration_id", "uncalibrated")),
             grade=str(raw.get("grade", "D")).upper(),
         )
@@ -107,7 +125,9 @@ def roofline_estimate(
         raise ConfigurationError("peak compute and bandwidth must be positive")
     flops = work.flops if compute_flops_override is None else compute_flops_override
     compute_time_us = flops / (peak_ops_per_s * max(compute_efficiency, 1e-9)) * 1e6
-    memory_time_us = work.total_bytes / (bandwidth_bytes_per_s * max(memory_efficiency, 1e-9)) * 1e6
+    memory_time_us = (
+        work.total_bytes / (bandwidth_bytes_per_s * max(memory_efficiency, 1e-9)) * 1e6
+    )
     bottleneck = "compute" if compute_time_us >= memory_time_us else "memory"
     roofline_us = max(compute_time_us, memory_time_us) + overhead_us
     return AnalyticalEstimate(

@@ -238,14 +238,17 @@ def work_for_table(table: str, key: Mapping[str, Any], *, gated: bool = True, im
             cache_write = b * query * (rank + rope) * cache_element_bytes
             kv = cache_read + cache_write
             activation = b*heads*(2*rank+rope)*dtype_bytes(str(key["attn_dtype"]))
-        elif key["phase"] == "prefill" and key["execution_mode"] == "expanded" and mean_length == query:
-            pairs = b*query*(query+1)/2
+        elif key["phase"] == "prefill" and key["execution_mode"] == "expanded" and mean_length >= query:
+            cached = mean_length - query
+            pairs = b*(query*cached + query*(query+1)/2)
             flops = 2.0*heads*pairs*(int(key["nope_head_dim"])+rope+value)+5.0*heads*pairs
             cache_element_bytes = dtype_bytes(str(key["kv_cache_dtype"]))
             # Prefill writes one latent+RoPE entry per token; the expanded
             # head representation is produced transiently by the attention
             # kernel and is not the persisted cache layout.
-            kv = b*query*(rank + rope)*cache_element_bytes
+            cache_read = b*cached*(rank + rope)*cache_element_bytes
+            cache_write = b*query*(rank + rope)*cache_element_bytes
+            kv = cache_read + cache_write
             activation = b*query*heads*(int(key["nope_head_dim"])+rope+value)*dtype_bytes(str(key["attn_dtype"]))
         else:
             raise ValueError("Unsupported MLA phase/execution mode/query length")

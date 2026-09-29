@@ -594,7 +594,12 @@ class AFRuntimePlan:
             for binding in self.rank_bindings
             if binding.domain == domain and expert_id in binding.expert_ids
         )
-        candidates = tuple(binding for binding in candidates if binding.dp_rank == f_service_dp_rank)
+        if domain_plan.expert_parallel_mode == "expert_tp":
+            candidates = tuple(
+                binding
+                for binding in candidates
+                if binding.dp_rank == f_service_dp_rank
+            )
         resolved = tuple(
             sorted(candidates, key=lambda item: (item.dp_rank, item.tp_rank))
         )
@@ -827,7 +832,13 @@ class AFRuntimePlan:
     ) -> tuple[tuple[int, int, tuple[int, ...], tuple[str, ...]], ...]:
         by_expert: dict[int, list[AFRankBinding]] = {}
         domain_plan = self.domain_runtime(domain)
-        bindings = self.bindings_for_instance(domain, instance)
+        bindings = (
+            tuple(
+                binding for binding in self.rank_bindings if binding.domain == domain
+            )
+            if domain_plan.expert_parallel_mode == "rank_reuse"
+            else self.bindings_for_instance(domain, instance)
+        )
         for binding in bindings:
             for expert_id in binding.expert_ids:
                 by_expert.setdefault(expert_id, []).append(binding)
@@ -856,6 +867,10 @@ class AFRuntimePlan:
                 f"expected={binding.physical_identity}, actual={node.physical_workers[0]}"
             )
         expected_tp_group = binding.tp_group
+        if node.stage in {"expert", "routed_expert"}:
+            domain_plan = self.domain_runtime(binding.domain)
+            if domain_plan.expert_parallel_mode == "rank_reuse":
+                expected_tp_group = (binding.domain_rank,)
         if node.tp_group and tuple(node.tp_group) != expected_tp_group:
             raise SimulationStateError(
                 f"runtime node {node.node_id!r} TP group mismatch for "
@@ -963,16 +978,58 @@ class AFRuntimePlan:
             domain_bindings = tuple(
                 item for item in self.rank_bindings if item.domain == domain.name
             )
-            ep_size = domain.expert_parallel_size if domain.capability == "af_ffn" else 1
-            expected = domain.tensor_parallel_size * domain.data_parallel_size * ep_size
-            if len(domain_bindings) != expected:
-                raise ConfigurationError(f"AF runtime domain={domain.name} rank count mismatch: expected={expected}, actual={len(domain_bindings)}")
+            expected_count = domain.tensor_parallel_size * domain.data_parallel_size
+            if len(domain_bindings) != expected_count:
+                raise ConfigurationError(
+                    f"AF runtime domain={domain.name} rank count mismatch: "
+                    f"expected base TP*DP={expected_count}, "
+                    f"actual={len(domain_bindings)}"
+                )
+            if domain.capability == "af_ffn" and domain.expert_parallel_mode not in {
+                "expert_tp",
+                "rank_reuse",
+            }:
+                raise ConfigurationError(
+                    f"AF runtime domain={domain.name} has unsupported EP mode"
+                )
+            if domain.capability == "af_attention":
+                if any(binding.ep_group for binding in domain_bindings):
+                    raise ConfigurationError(
+                        f"A domain={domain.name!r} must not have an Expert group"
+                    )
+                continue
+            if domain.expert_parallel_mode == "expert_tp":
+                expected_ep_size = 1
+                expected_expert_tp = domain.tensor_parallel_size
+            else:
+                expected_ep_size = expected_count
+                expected_expert_tp = 1
+            if domain.expert_parallel_size != expected_ep_size or (
+                domain.expert_tensor_parallel_size != expected_expert_tp
+            ):
+                raise ConfigurationError(
+                    f"F domain={domain.name!r} EP contract mismatch: mode="
+                    f"{domain.expert_parallel_mode}, EP={domain.expert_parallel_size}, "
+                    f"Expert TP={domain.expert_tensor_parallel_size}; expected "
+                    f"EP={expected_ep_size}, Expert TP={expected_expert_tp}"
+                )
+            world_group = tuple(
+                binding.domain_rank
+                for binding in sorted(
+                    domain_bindings, key=lambda binding: binding.domain_rank
+                )
+            )
             for binding in domain_bindings:
-                peers = tuple(sorted((b for b in domain_bindings if b.dp_rank == binding.dp_rank), key=lambda b: b.domain_rank))
-                tp_group = tuple(b.domain_rank for b in peers if b.ep_rank == binding.ep_rank)
-                ep_group = tuple(b.domain_rank for b in peers if b.tp_rank == binding.tp_rank) if domain.capability == "af_ffn" else ()
-                if binding.tp_group != tp_group or binding.ep_group != ep_group:
-                    raise ConfigurationError(f"AF runtime rank {binding.rank_key!r} TP/EP group mismatch")
+                expected_ep_group = (
+                    binding.tp_group
+                    if domain.expert_parallel_mode == "expert_tp"
+                    else world_group
+                )
+                if binding.ep_group != expected_ep_group:
+                    raise ConfigurationError(
+                        f"F rank {binding.rank_key!r} EP group mismatch: "
+                        f"expected={expected_ep_group}, actual={binding.ep_group}"
+                    )
 
         for replica in self.replicas:
             domain = domain_by_name.get(replica.domain)
@@ -991,10 +1048,30 @@ class AFRuntimePlan:
                     f"AF runtime domain={replica.domain}, replica={replica.dp_rank} "
                     "contains a rank from another DP replica"
                 )
-            ep_size = domain.expert_parallel_size if domain.capability == "af_ffn" else 1
-            expected_coordinates = {(ep, tp) for ep in range(ep_size) for tp in range(domain.tensor_parallel_size)}
-            if {(item.ep_rank, item.tp_rank) for item in bindings} != expected_coordinates:
-                raise ConfigurationError(f"AF runtime domain={domain.name} replica={replica.dp_rank} TP/EP coordinates mismatch")
+            if {item.tp_rank for item in bindings} != set(
+                range(domain.tensor_parallel_size)
+            ):
+                raise ConfigurationError(
+                    f"AF runtime domain={replica.domain}, replica={replica.dp_rank} "
+                    "does not contain exactly one base rank per TP coordinate"
+                )
+            expected_tp_group = tuple(item.domain_rank for item in bindings)
+            for binding in bindings:
+                expected_ep_rank = (
+                    binding.dp_rank * domain.tensor_parallel_size + binding.tp_rank
+                    if domain.capability == "af_ffn"
+                    and domain.expert_parallel_mode == "rank_reuse"
+                    else 0
+                )
+                if binding.ep_rank != expected_ep_rank:
+                    raise ConfigurationError(
+                        f"AF runtime rank {binding.rank_key!r} EP identity mismatch: "
+                        f"expected={expected_ep_rank}, actual={binding.ep_rank}"
+                    )
+                if binding.tp_group != expected_tp_group:
+                    raise ConfigurationError(
+                        f"AF runtime rank {binding.rank_key!r} TP group mismatch"
+                    )
             if replica.is_attention:
                 leaders = [item for item in bindings if item.is_scheduler_leader]
                 if len(leaders) != 1 or leaders[0].rank_key != replica.leader_rank_key:
@@ -1033,7 +1110,7 @@ class AFRuntimePlan:
                     raise ConfigurationError("F replica must not own a scheduler leader")
                 if any(binding.kv_partition is not None for binding in bindings):
                     raise ConfigurationError("F ranks must not own KV state")
-                if domain.expert_parallel_size == 1 and self.num_experts:
+                if domain.expert_parallel_mode == "expert_tp" and self.num_experts:
                     for expert_id in range(self.num_experts):
                         owners = [
                             item for item in bindings if expert_id in item.expert_ids
@@ -1045,6 +1122,37 @@ class AFRuntimePlan:
                                 f"F domain={domain.name}, replica={replica.dp_rank}, "
                                 f"expert={expert_id} lacks exact Expert TP shards"
                             )
+
+        for domain in self.domains:
+            if (
+                domain.capability != "af_ffn"
+                or domain.expert_parallel_mode != "rank_reuse"
+                or not self.num_experts
+            ):
+                continue
+            domain_bindings = tuple(
+                item for item in self.rank_bindings if item.domain == domain.name
+            )
+            expected_ep_group = tuple(
+                item.domain_rank
+                for item in sorted(
+                    domain_bindings, key=lambda item: item.domain_rank
+                )
+            )
+            for binding in domain_bindings:
+                if binding.ep_group != expected_ep_group:
+                    raise ConfigurationError(
+                        f"rank-reuse F rank {binding.rank_key!r} EP group mismatch"
+                    )
+            for expert_id in range(self.num_experts):
+                owners = [
+                    item for item in domain_bindings if expert_id in item.expert_ids
+                ]
+                if len(owners) != 1:
+                    raise ConfigurationError(
+                        f"rank-reuse F domain={domain.name}, expert={expert_id} must "
+                        f"resolve to one physical rank; got {len(owners)}"
+                    )
 
         for domain in self.domains:
             if domain.capability != "af_ffn":
@@ -1062,9 +1170,9 @@ class AFRuntimePlan:
                 if domain.expert_parallel_mode == "expert_tp":
                     for expert_id in range(self.num_experts):
                         self.expert_execution(domain.name, expert_id, dp_rank)
-            for dp_rank in range(domain.data_parallel_size):
+            if domain.expert_parallel_mode == "rank_reuse":
                 for expert_id in range(self.num_experts):
-                    self.expert_execution(domain.name, expert_id, dp_rank)
+                    self.expert_execution(domain.name, expert_id, 0)
 
         for domain in self.domains:
             for dp_rank in range(domain.data_parallel_size):
@@ -1528,7 +1636,9 @@ def compile_af_runtime_plan(
             ),
             expert_placement_strategy=domain.parallel.expert_placement_strategy,
             expert_parallel_mode=domain.expert_parallel.mode,
-            expert_tensor_parallel_size=domain.parallel.tensor_parallel_size,
+            expert_tensor_parallel_size=(
+                domain.expert_parallel.expert_tensor_parallel_size
+            ),
         )
         for domain in domain_configs
     )
@@ -1571,14 +1681,28 @@ def compile_af_runtime_plan(
             mappings = tuple(
                 sorted(instance.rank_mapping, key=lambda item: item.tp_rank)
             )
+            tp_group = tuple(item.domain_rank for item in mappings)
             for mapping in mappings:
-                tp_group = tuple(item.domain_rank for item in mappings if item.ep_rank == mapping.ep_rank)
                 physical = mapping.physical_worker.identity
                 worker = worker_by_physical.get(physical)
                 if worker is None:
-                    raise ConfigurationError(f"AF runtime missing physical worker {physical!r}")
-                expert_ids = tuple(experts_by_rank.get(mapping.ep_rank, ())) if domain.capability == "af_ffn" else ()
-                ep_group = tuple(item.domain_rank for item in mappings if item.tp_rank == mapping.tp_rank) if domain.capability == "af_ffn" else ()
+                    raise ConfigurationError(
+                        f"AF runtime domain={domain.name}, rank={mapping.domain_rank} "
+                        f"references missing physical worker {physical!r}"
+                    )
+                if domain.capability == "af_ffn" and expert_view.mode == "rank_reuse":
+                    expert_ids = tuple(experts_by_rank.get(mapping.ep_rank, ()))
+                    ep_group = tuple(item.domain_rank for item in domain_mappings)
+                elif domain.capability == "af_ffn":
+                    expert_ids = (
+                        tuple(range(moe_config.num_experts))
+                        if moe_config.enabled
+                        else ()
+                    )
+                    ep_group = tp_group
+                else:
+                    expert_ids = ()
+                    ep_group = ()
                 rank_key = (domain.name, mapping.domain_rank)
                 if partitions:
                     kv_by_rank[rank_key] = partitions[mapping.tp_rank]
@@ -1596,8 +1720,10 @@ def compile_af_runtime_plan(
                     vocab_size=vocab_size,
                     weight_dtype_size=weight_bytes,
                     kv_partition=kv_by_rank.get(rank_key),
-                    expert_tp_size=tp_size,
-                    expert_tp_rank=mapping.tp_rank,
+                    expert_tp_size=expert_view.expert_tensor_parallel_size,
+                    expert_tp_rank=(
+                        mapping.tp_rank if expert_view.mode == "expert_tp" else 0
+                    ),
                 )
                 for component in components:
                     previous = component_by_id.get(component.component_id)

@@ -465,11 +465,12 @@ class ExpertRouting:
         self.routing_config = replace(
             routing_config or moe_config.routing or RoutingConfig()
         )
+        self.seed = seed
         self.random = random.Random(seed)
         self._synthetic_cache: dict[int, dict[int, int]] = {}
-        self._normalized_cache: dict[
-            tuple[int, str, int, int, int], dict[int, int]
-        ] = {}
+        self._normalized_cache: dict[tuple[int, str, int, int, int], dict[int, int]] = (
+            {}
+        )
 
     def snapshot_for_layer(
         self,
@@ -730,9 +731,7 @@ class ExpertRouting:
             return max(0, int(request.prefill_compute_len))
         return 1
 
-    def _token_ids(
-        self, request: Request, phase: RoutingPhase
-    ) -> tuple[int, ...]:
+    def _token_ids(self, request: Request, phase: RoutingPhase) -> tuple[int, ...]:
         token_count = self._token_count(request, phase)
         if getattr(request, "needs_recompute", False):
             start = max(0, int(request.context_len) - token_count)
@@ -758,25 +757,12 @@ class ExpertRouting:
             for token_id in token_ids
         )
         top_k = self.moe_config.num_experts_per_tok
-        route_count = len(original_tokens) * top_k
-        expert_ids = self._synthetic_expert_ids(route_count)
         assignments: list[RoutingAssignment] = []
-        cursor = 0
         for request_id, token_id in original_tokens:
-            selected: set[int] = set()
+            expert_ids = self._experts_for_token(request_id, token_id, phase, layer_id)
             owner = request_owners[request_id]
             for top_k_index in range(top_k):
-                expert_id = expert_ids[cursor]
-                cursor += 1
-                if expert_id in selected:
-                    for offset in range(1, self.moe_config.num_experts + 1):
-                        candidate = (
-                            expert_id + offset
-                        ) % self.moe_config.num_experts
-                        if candidate not in selected:
-                            expert_id = candidate
-                            break
-                selected.add(expert_id)
+                expert_id = expert_ids[top_k_index]
                 assignments.append(
                     RoutingAssignment(
                         iteration_id=iteration_id,
@@ -847,20 +833,42 @@ class ExpertRouting:
         # Callers treat histograms as read-only; returning the cached dict is safe.
         return cached
 
-    def _synthetic_expert_ids(self, route_count: int) -> tuple[int, ...]:
-        if route_count <= 0:
-            return ()
-        distribution = self.routing_config.distribution
-        if distribution not in {"skew", "hot", "burst"}:
-            return tuple(
-                index % self.moe_config.num_experts for index in range(route_count)
-            )
-        histogram = self._hot_histogram(route_count)
-        return tuple(
-            expert_id
-            for expert_id, count in histogram.items()
-            for _ in range(count)
-        )
+    def _experts_for_token(
+        self, request_id: int, token_id: int, phase: RoutingPhase, layer_id: int
+    ) -> tuple[int, ...]:
+        """Stateless synthetic routing; scheduling/batch identities are excluded."""
+        count = self.moe_config.num_experts
+        top_k = self.moe_config.num_experts_per_tok
+        if self.routing_config.distribution == "uniform":
+            # Consecutive request IDs at the same token position cover experts
+            # cyclically, independently of how those requests are partitioned.
+            start = (
+                request_id * top_k
+                + token_id * top_k
+                + layer_id
+                + self.seed
+                + (1 if phase == "prefill" else 0)
+            ) % count
+            return tuple((start + index) % count for index in range(top_k))
+
+        # Local RNG makes hot/skew routing independent of call order as well.
+        rng = random.Random(f"{self.seed}:{phase}:{layer_id}:{request_id}:{token_id}")
+        hot = sorted(
+            {
+                expert
+                for expert in (self.routing_config.hot_experts or [0])
+                if 0 <= expert < count
+            }
+        ) or [0]
+        hot_set = set(hot)
+        cold = [expert for expert in range(count) if expert not in hot_set]
+        chosen = []
+        for _ in range(top_k):
+            prefer_hot = rng.random() < self.routing_config.hot_expert_fraction
+            pool = (hot if prefer_hot else cold) or (cold if prefer_hot else hot)
+            expert = pool.pop(rng.randrange(len(pool)))
+            chosen.append(expert)
+        return tuple(chosen)
 
     def _uniform_histogram(self, route_count: int) -> dict[int, int]:
         histogram = {expert_id: 0 for expert_id in range(self.moe_config.num_experts)}

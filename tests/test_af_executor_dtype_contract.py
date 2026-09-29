@@ -87,7 +87,7 @@ class AFExecutorDTypeContractTest(unittest.TestCase):
         compute = RecordingComputeProvider()
         transfer = RecordingTransferProvider()
         executor = _executor(
-            env, cluster, moe_config, plan, compute, transfer
+            env, cluster, moe_config, SimpleRuntimePlanView(plan), compute, transfer
         )
 
         self.assertEqual(executor.dtype, "bf16")
@@ -113,7 +113,6 @@ class AFExecutorDTypeContractTest(unittest.TestCase):
         f_binding = plan.binding("f-domain", 0)
         # Runtime-node validity is covered by runtime tests. This focused test
         # drives only the executor-to-provider query boundary.
-        executor.runtime_plan = SimpleRuntimePlanView(plan)
         compute_node = ExecutionNode(
             node_id="attention",
             operation="attention",
@@ -226,6 +225,8 @@ class AFExecutorDTypeContractTest(unittest.TestCase):
 
 class SimpleRuntimePlanView:
     def __init__(self, plan) -> None:
+        self.total_layers = plan.total_layers
+        self.hidden_size = plan.hidden_size
         self.effective_dtypes = plan.effective_dtypes
         self.link_effective_dtypes = plan.link_effective_dtypes
 

@@ -122,8 +122,13 @@ class CommunicationTimingTest(unittest.TestCase):
 
     def test_formal_mla_collectives_keep_completion_dependencies(self):
         from scripts.run_deepseek_mla import configuration
-        _, cluster, shape, moe, plan = configuration(a_tp=2, f_tp=2,
-            router_location='a', communication_timing=dict(enabled=True, host_submit_us=5.))
+        config = configuration(a_tp=2, f_tp=2)
+        cluster, shape, moe, plan = (
+            config.cluster, config.model, config.model.moe, config.plan
+        )
+        cluster.af.communication_timing = AFCommunicationTimingConfig(
+            enabled=True, host_submit_us=5.
+        )
         env = simpy.Environment()
         executor = AFExecutor(env, cluster, cluster.workers(), ZeroCompute(), WireOnly(),
             shape.model_id, 'bf16', total_layers=1, hidden_size=shape.hidden_size,

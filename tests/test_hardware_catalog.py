@@ -296,6 +296,30 @@ class CollectiveModelTest(unittest.TestCase):
         self.assertEqual(cross_node.levels[0].link, "ethernet-test")
         self.assertLess(same_node.latency_us, cross_node.latency_us)
 
+    def test_point_to_point_oversubscription_never_improves_latency(self):
+        from dataclasses import replace
+
+        topology = TopologySpec("three-level", (
+            TopologyLevel("node", 4, "nvlink-test", links_per_endpoint=2),
+            TopologyLevel("rack", 2, "ethernet-test"),
+            TopologyLevel("cluster", None, "ethernet-test"),
+        ))
+        for endpoints, level_index in (((0, 1), 0), ((0, 4), 1), ((0, 8), 2)):
+            for payload in (0, 1, 1 << 20):
+                with self.subTest(endpoints=endpoints, payload=payload):
+                    layout = topology.group_layout(endpoints)
+                    self.assertEqual(layout.lowest_common_level, level_index)
+                    previous = -1
+                    for oversubscription in (1, 2, 4):
+                        levels = list(topology.levels)
+                        levels[level_index] = replace(levels[level_index], oversubscription=oversubscription)
+                        model = CollectiveModel(replace(topology, levels=tuple(levels)), self.links)
+                        estimate = model.point_to_point(payload, layout)
+                        self.assertGreaterEqual(estimate.latency_us, previous)
+                        previous = estimate.latency_us
+                        if payload:
+                            self.assertEqual(estimate.levels[0].level, levels[level_index].name)
+
 
 if __name__ == "__main__":
     unittest.main()

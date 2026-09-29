@@ -34,6 +34,8 @@ from TokenSim.af.latency import (
     AFServiceEstimate,
     AFTransferQuery,
 )
+from TokenSim.af.snapshot import ConfigurationOwner, HardwareSnapshot, snapshot
+from TokenSim.af.estimate_cache import cached_estimate, initialize_cache
 from TokenSim.comm.collectives import CollectiveModel, CollectiveQuery
 from TokenSim.config.cache_config import local_kv_heads
 from TokenSim.config.model_config import ModelSpec
@@ -50,7 +52,7 @@ from TokenSim.latency.operator_table import (
 )
 from TokenSim.operator_data.lookup import LookupPolicy
 
-TRANSFER_OPERATIONS = ("af_a_to_f", "af_f_to_a", "ep_dispatch", "ep_combine", "tp_collective", "all_reduce", "all_gather", "reduce_scatter")
+TRANSFER_OPERATIONS = ("af_a_to_f", "af_f_to_a", "af_router_metadata", "ep_dispatch", "ep_combine", "tp_collective", "all_reduce", "all_gather", "reduce_scatter")
 _MATCH_RANK = {name: rank for rank, name in enumerate(AF_MATCH_TYPES)}
 _COLLECTIVE_MATCH = {"measured": "exact"}
 
@@ -113,7 +115,7 @@ class OperatorComponent:
         }
 
 
-class OperatorTableAFComputeProvider:
+class OperatorTableAFComputeProvider(ConfigurationOwner):
     """Price AF compute stages from the device operator tables.
 
     Stage decomposition (``T`` = this rank's tokens, ``h`` = hidden size,
@@ -133,6 +135,11 @@ class OperatorTableAFComputeProvider:
     runtime plan's memory ledger only).
     """
 
+    _configuration_fields = (
+        "hardware", "model", "fallback", "lookup_policy", "operator_backend",
+        "backend_by_device", "cluster_config", "placement", "dtype",
+    )
+
     def __init__(
         self,
         hardware: Any,
@@ -142,17 +149,19 @@ class OperatorTableAFComputeProvider:
         backend_by_device: Mapping[str, str | None] | None = None,
         fallback: str = "table_first",
         lookup_policy: LookupPolicy | None = None,
+        cache_enabled: bool = True,
     ) -> None:
         if fallback not in FALLBACK_POLICIES:
             raise ConfigurationError(
                 f"AF compute provider fallback must be one of {FALLBACK_POLICIES}, got {fallback!r}"
             )
-        self.hardware = hardware
-        self.model = model
+        self.hardware = HardwareSnapshot(hardware)
+        self.model = snapshot(model)
         self.operator_backend = operator_backend
-        self.backend_by_device = dict(backend_by_device or {})
+        self.backend_by_device = snapshot(dict(backend_by_device or {}))
         self.fallback = fallback
-        self.lookup_policy = lookup_policy
+        self.lookup_policy = snapshot(lookup_policy)
+        initialize_cache(self, cache_enabled)
         self._resolvers: dict[str, OperatorResolver] = {}
         routing = model.moe.routing.distribution if model.moe.routing else "uniform"
         self.moe_distributions = _MOE_DISTRIBUTION_CANDIDATES.get(routing, ("uniform", "balanced"))
@@ -188,7 +197,8 @@ class OperatorTableAFComputeProvider:
 
     def stats_dict(self) -> dict[str, Any]:
         stats = self.stats
-        return {**stats.as_dict(), "operator_missing_shapes": stats.missing_shape_records()[:200]}
+        return {**stats.as_dict(), "operator_missing_shapes": stats.missing_shape_records()[:200],
+                "estimate_requests": self.estimate_requests, "estimate_cache_hits": self.estimate_cache_hits}
 
     def describe(self) -> dict[str, Any]:
         return {
@@ -207,16 +217,38 @@ class OperatorTableAFComputeProvider:
 
     # -- estimates ------------------------------------------------------------
 
+    @cached_estimate
     def estimate(self, query: AFComputeQuery) -> AFServiceEstimate:
         tokens, tp_size = self._validate_local_work(query)
         resolver = self.resolver_for(query.device_type)
         dtype = normalize_dtype(query.dtype)
-        if self.model.attention_type == "mla":
+        if query.stage == "layout" and query.operation in {"embedding_lookup", "final_norm", "lm_head", "token_selection"}:
+            if query.operation == "lm_head":
+                if self.model.vocab_size % tp_size:
+                    raise ConfigurationError("vocab_size must divide attention TP")
+                components = [self._gemm(resolver, "lm_head", tokens, self.model.vocab_size // tp_size, self.model.hidden_size, dtype)]
+            else:
+                operation = {"embedding_lookup": "embedding_lookup", "final_norm": "rmsnorm", "token_selection": "argmax"}[query.operation]
+                width = self.model.vocab_size if operation == "argmax" else self.model.hidden_size
+                components = [self._elementwise(resolver, query.operation, operation, tokens, width, dtype)]
+        elif self.model.attention_type == "mla":
             components = self._mla_stage(resolver, query, tokens, tp_size, dtype)
         elif query.stage in {"a", "attention"}:
             components = self._attention_components(resolver, query, tokens, tp_size, dtype)
         elif query.stage == "router":
             components = self._router_components(resolver, query, tokens, dtype)
+        elif query.stage in {"dense_ffn", "shared_expert"}:
+            width = (self.model.intermediate_size if query.stage == "dense_ffn"
+                     else self.model.moe_intermediate_size * self.model.moe.num_shared_experts)
+            local_width = math.ceil(width / tp_size)
+            components = [self._gemm(resolver, "gate_up", tokens,
+                                     self.model.ffn_projection_count * local_width,
+                                     self.model.hidden_size, dtype)]
+            if self.model.gated:
+                components.append(self._elementwise(resolver, "swiglu", "swiglu", tokens, local_width, dtype))
+            components.append(self._gemm(resolver, "down", tokens, self.model.hidden_size, local_width, dtype))
+        elif query.stage == "layout" and query.operation == "post_attention_norm":
+            components = [self._elementwise(resolver, "post_attention_norm", "rmsnorm", tokens, self.model.hidden_size, dtype)]
         elif query.stage in {"expert", "routed_expert"}:
             components = self._expert_components(resolver, query, tokens, tp_size, dtype)
         elif query.stage == "weighted_combine":
@@ -307,10 +339,16 @@ class OperatorTableAFComputeProvider:
             if len(lengths) != tokens:
                 raise ConfigurationError("MLA decode requires one context length per token")
             query_len, mode = 1, "absorbed"
-        elif query.phase == "prefill" and len(set(lengths)) == 1 and sum(lengths) == tokens:
-            query_len, mode = lengths[0], "expanded"
+        elif query.phase == "prefill" and tokens % len(lengths) == 0:
+            query_len, mode = tokens // len(lengths), "expanded"
+            if query_len < 1 or any(length < query_len for length in lengths):
+                raise ConfigurationError(
+                    "MLA prefill requires each context length to cover the computed query"
+                )
         else:
-            raise ConfigurationError("MLA prefill smoke requires equal full sequences; no cached/chunked prefill")
+            raise ConfigurationError(
+                "MLA prefill requires an equal positive query length per request"
+            )
         components = []
         def gemm(name, m, n, k, groups=None):
             key = dict(dtype=dtype, m=m, n=n, k=k)
@@ -560,7 +598,7 @@ class OperatorTableAFComputeProvider:
         expected_hidden = (
             self.model.hidden_size
             if query.stage in {"router", "attention", "dense_ffn", "shared_expert", "routed_expert"}
-            or (query.stage == "layout" and query.operation == "post_attention_norm")
+            or (query.stage == "layout" and query.operation in {"post_attention_norm", "embedding_lookup", "final_norm", "lm_head", "token_selection"})
             else math.ceil(self.model.hidden_size / values["tp_size"])
         )
         if values["hidden_size"] != expected_hidden:
@@ -603,7 +641,7 @@ class OperatorTableAFComputeProvider:
         return workload
 
 
-class TopologyAFTransferProvider:
+class TopologyAFTransferProvider(ConfigurationOwner):
     """Price AF transfers from the catalog's link classes and collective model.
 
     ``af_a_to_f`` / ``af_f_to_a`` (and the legacy ``ep_dispatch`` /
@@ -614,6 +652,8 @@ class TopologyAFTransferProvider:
     (measured NCCL curves when the device package has them); without a
     placement it falls back to a ring on the same link class.
     """
+
+    _configuration_fields = OperatorTableAFComputeProvider._configuration_fields
 
     def __init__(
         self,
@@ -627,14 +667,15 @@ class TopologyAFTransferProvider:
         backend_by_device: Mapping[str, str | None] | None = None,
         fallback: str = "table_first",
     ) -> None:
-        self.hardware = hardware
-        self.cluster_config = cluster_config
-        self.placement = placement
+        self.hardware = HardwareSnapshot(hardware)
+        self.cluster_config = snapshot(cluster_config)
+        self.placement = snapshot(placement)
         self.dtype = normalize_dtype(dtype)
         self.operator_backend = operator_backend
-        self.backend_by_device = dict(backend_by_device or {})
+        self.backend_by_device = snapshot(dict(backend_by_device or {}))
         self.fallback = fallback
         self._worker_ids: dict[str, int] = {}
+        initialize_cache(self, cluster_config.af.service_estimate_cache)
         self._hardware_by_identity: dict[str, str] = {}
         for worker_id, worker in enumerate(worker_configs):
             ref = getattr(worker, "physical_worker_ref", None)
@@ -642,9 +683,11 @@ class TopologyAFTransferProvider:
                 continue
             self._worker_ids[ref.identity] = worker_id
             self._hardware_by_identity[ref.identity] = worker.hardware
-        self._collective_models: dict[str, CollectiveModel] = {}
+        self._collective_models: dict[tuple[str, bool], CollectiveModel] = {}
         # Fail before the event loop when an AF network has no link class.
         self.link_classes = {link.network: self.link_class(link.network) for link in cluster_config.af.links}
+        if placement is None and cluster_config.af.transfer_topology_mode != "flat_link":
+            raise ConfigurationError("AF physical topology requires placement; explicitly select flat_link for legacy link pricing")
 
     def link_class(self, network: str) -> LinkClass:
         link_id = self.cluster_config.networks.get(network)
@@ -668,6 +711,7 @@ class TopologyAFTransferProvider:
             "placement": self.placement.topology.topology_id if self.placement is not None else None,
         }
 
+    @cached_estimate
     def estimate(self, query: AFTransferQuery) -> AFServiceEstimate:
         if query.operation not in TRANSFER_OPERATIONS:
             raise ValueError(f"unsupported AF communication operation={query.operation!r}")
@@ -675,23 +719,77 @@ class TopologyAFTransferProvider:
             raise ValueError(f"operation {query.operation!r} requires explicit payload_bytes")
         if type(query.payload_bytes) is not int or query.payload_bytes < 0:
             raise ValueError("transfer payload_bytes must be a non-negative integer")
+        if self.cluster_config.af.transfer_topology_mode == "physical":
+            endpoints = query.physical_endpoints
+            if not endpoints or any(item not in self._worker_ids for item in endpoints):
+                raise ConfigurationError("AF physical topology requires known physical endpoints")
+            if len(set(endpoints)) != len(endpoints):
+                raise ConfigurationError("AF physical endpoints must be distinct")
+            if query.operation not in {"tp_collective", "all_reduce", "all_gather", "reduce_scatter"} and len(endpoints) != 2:
+                raise ConfigurationError("AF endpoint leg requires exactly two physical endpoints")
         if query.operation in {"tp_collective", "all_reduce", "all_gather", "reduce_scatter"}:
             return self._collective(query)
-        link = self.link_class(query.network)
+        # Validate the declared logical network even when physical placement
+        # provides a more specific path for pricing.
+        declared_link = self.link_class(query.network)
         payload = query.payload_bytes
-        service_us = link.transfer_us(payload) if payload > 0 else 0.0
+        worker_ids = [
+            self._worker_ids[item]
+            for item in query.physical_endpoints
+            if item in self._worker_ids
+        ]
+        path_details: dict[str, Any] = {}
+        if (
+            payload > 0
+            and self.placement is not None
+            and self.cluster_config.af.transfer_topology_mode == "physical"
+            and len(worker_ids) == 2
+            and len(set(worker_ids)) == 2
+        ):
+            model = self._collective_model_for(query.physical_endpoints[0])
+            point_to_point = model.point_to_point(
+                float(payload), self.placement.layout(worker_ids)
+            )
+            common = self.placement.layout(worker_ids).lowest_common_level
+            level = self.placement.topology.levels[common]
+            service_us = point_to_point.latency_us
+            path_details = {
+                "topology_id": self.placement.topology.topology_id,
+                "path_levels": [level.level for level in point_to_point.levels],
+                "path_links": [level.link for level in point_to_point.levels],
+                "lowest_common_level": common,
+                "links_per_endpoint": level.links_per_endpoint,
+                "oversubscription": level.oversubscription,
+            }
+            source_id = point_to_point.source_id
+            dataset_version = f"topology:{self.placement.topology.topology_id}"
+            link = None
+        else:
+            link = declared_link
+            service_us = link.transfer_us(payload) if payload > 0 else 0.0
+            source_id = f"link:{link.link_id}:{link.source_id}"
+            dataset_version = f"links:{link.link_id}"
         return AFServiceEstimate(
             service_duration=service_us / 1e6,
-            source_id=f"link:{link.link_id}:{link.source_id}",
+            source_id=source_id,
             payload_bytes=payload,
-            dataset_version=f"links:{link.link_id}",
+            dataset_version=dataset_version,
             match_type="analytical",
             details={
                 "provider": "topology_links",
-                "link": link.link_id,
-                "fixed_latency_us": link.latency_us,
-                "bandwidth_bytes_per_s": link.bandwidth_per_direction_bytes_per_s,
-                "efficiency": link.efficiency(payload),
+                "timing_scope": "transport_service",
+                "link": (
+                    link.link_id
+                    if link is not None
+                    else path_details.get("path_links", [None])[-1]
+                ),
+                "fixed_latency_us": link.latency_us if link is not None else None,
+                "bandwidth_bytes_per_s": (
+                    link.bandwidth_per_direction_bytes_per_s
+                    if link is not None
+                    else None
+                ),
+                "efficiency": link.efficiency(payload) if link is not None else None,
                 "payload_bytes": payload,
                 "operation": query.operation,
                 "direction": query.direction,
@@ -701,6 +799,7 @@ class TopologyAFTransferProvider:
                 "resource_identities": query.resource_identities,
                 "topology": dict(query.topology),
                 "total_latency_us": service_us,
+                **path_details,
             },
         )
 
@@ -711,20 +810,26 @@ class TopologyAFTransferProvider:
         group_size = max(2, query.group_size or len(worker_ids) or 2)
         if payload == 0:
             return self._collective_estimate(0.0, "collective:empty", "collective", "exact", query, {})
-        if self.placement is not None and len(worker_ids) >= 2 and len(set(worker_ids)) == len(worker_ids):
+        if self.cluster_config.af.transfer_topology_mode == "physical" and self.placement is not None and len(worker_ids) >= 2 and len(set(worker_ids)) == len(worker_ids):
             model = self._collective_model_for(query.physical_endpoints[0])
             layout = self.placement.layout(worker_ids)
-            estimate = model.estimate(CollectiveQuery(operation, float(payload), layout, self.dtype))
+            estimate = model.estimate(CollectiveQuery(operation, float(payload), layout, query.dtype))
+            measured = estimate.match_type != "analytical"
             return self._collective_estimate(
                 estimate.latency_us,
                 estimate.source_id,
-                f"collective:{self.placement.topology.topology_id}",
+                getattr(model, "dataset_version", "unknown") if measured else f"collective:{self.placement.topology.topology_id}",
                 _COLLECTIVE_MATCH.get(estimate.match_type, estimate.match_type),
                 query,
                 {
                     "algorithm_levels": [level.level for level in estimate.levels],
                     "group_size": estimate.group_size,
                     "launch_us": estimate.launch_us,
+                    "timing_scope": (
+                        getattr(model, "timing_scope", "legacy_unspecified") if measured
+                        else "transport_service" if estimate.launch_us == 0
+                        else "legacy_unspecified"
+                    ),
                 },
             )
         # No placement: a ring all-reduce over the AF link class.
@@ -758,6 +863,7 @@ class TopologyAFTransferProvider:
             match_type=match_type,
             details={
                 "provider": "collective_model",
+                "timing_scope": "transport_service",
                 "operation": query.operation,
                 "direction": query.direction,
                 "payload_bytes": query.payload_bytes,
@@ -773,14 +879,24 @@ class TopologyAFTransferProvider:
     def _collective_model_for(self, physical_identity: str) -> CollectiveModel:
         hardware_name = self._hardware_by_identity[physical_identity]
         device = self.hardware.device(hardware_name)
-        model = self._collective_models.get(device.device_id)
+        key = (device.device_id, self.cluster_config.af.communication_timing.enabled)
+        model = self._collective_models.get(key)
         if model is None:
             package = None
             if self.fallback != "analytical_only":
                 backend = self.backend_by_device.get(hardware_name, self.operator_backend)
                 package = self.hardware.operator_package(device.device_id, backend)
             model = collective_model_for(device, self.placement, self.hardware.links, package)
-            self._collective_models[device.device_id] = model
+            if self.cluster_config.af.communication_timing.enabled:
+                # The generic model includes software launch cost. In separated
+                # AF mode only the executor charges host submission/completion.
+                model.launch_us = 0.0
+            model.dataset_version = package.meta.dataset_version if package is not None else "unknown"
+            model.timing_scope = (
+                package.meta.extra.get("timing_scopes", {}).get("collective", "legacy_unspecified")
+                if package is not None else "legacy_unspecified"
+            )
+            self._collective_models[key] = model
         return model
 
 
@@ -814,6 +930,7 @@ def build_operator_table_af_providers(
         operator_backend=operator_backend,
         backend_by_device=backend_by_device,
         fallback=fallback,
+        cache_enabled=cluster_config.af.service_estimate_cache,
     )
     transfer = TopologyAFTransferProvider(
         hardware,

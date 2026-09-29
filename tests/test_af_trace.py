@@ -74,7 +74,8 @@ def _valid_events():
 class AFTraceInvariantTest(unittest.TestCase):
     def _recorder(self, events=None, capacities=None):
         recorder = AFTraceRecorder(True, capacities)
-        recorder.events.extend(events or _valid_events())
+        for event in events or _valid_events():
+            recorder.record(event)
         return recorder
 
     def test_valid_trace_passes(self):
