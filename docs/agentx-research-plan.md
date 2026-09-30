@@ -4,7 +4,7 @@
 > 执行顺序：参考数据与完整模型准备 → 请求回放 → GPU 分配与缓存复用 → 调度行为 → 算子耗时校准 → 完整曲线验证。
 > 源码基准：只读参考 `/home/zhuohang/Serving/vllm-note`，本轮记录 HEAD `30f5c01d4ebb`；不下载历史镜像、不修改或切换此目录。本文旧行号和旧 HEAD 下的源码结论需按此版本重新定位；历史运行日志仍作为实验事实保留。
 > 分支：`agentx-support`（基于 `b2b685a`）
-> 状态：**2026-09-30 已实现基准产物提取与矩阵对比工具，完成两个主检查点的完整参考产物核对；模拟器、完整模型与一小时模拟验收尚未完成。报告见 [基准与口径报告](agentx-reference-report.md)。复选框表示对应子任务实现进度。**
+> 状态：**2026-09-30 已完成基准产物核对，以及完整模型结构、dtype、权重显存和 8 GPU cluster 准备；请求回放、混合缓存与一小时模拟验收尚未完成。报告见 [基准与口径](agentx-reference-report.md)、[完整模型准备](agentx-full-model-report.md)。复选框表示对应子任务实现进度。**
 > 对照对象：InferenceX AgentX，完整 DeepSeek-V4-Pro（FP8 + MXFP4），vLLM + MTP；覆盖 B200/B300 多并发曲线及其 TP8、TP4、DEP8 等配置变化。主检查点为单节点 8 GPU DEP8：B200 并发 196、B300 并发 384。
 > 证据分层：历史配置和日志描述参考运行；本地源码决定本轮实现；二者存在版本差异时单列记录。【待核实／待验证】是实现中的技术检查，不是待用户批准；【估算】不是实测；【推断】须保留依据与适用范围。历史研究中的源码行号仅作定位线索，以函数和本轮版本为准。
 
@@ -793,23 +793,24 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 
 目标：去掉 proxy，模型结构、权重显存和拓扑与参考一致。
 
-- [ ] **完整模型与并行配置任务 1** 按 HF config 写完整的 ModelSpec（文件名待定，如 `data/models/deepseek-v4-pro.yaml`），包括：
+- [x] **完整模型与并行配置任务 1** 按 HF config 写完整的 ModelSpec（`data/models/deepseek-v4-pro.yaml`），包括：
   - 逐层 compress_ratio：30 层 CSA / 31 层 HCA / MTP 层 ratio 1；
   - MoE：前 3 层 hash-MoE + 58 层常规 MoE；384 专家 / top-6 / inter 3072 / 1 个 shared expert；
   - mHC（hc_mult 4）；q_lora 1536 / o_lora 1024 / o_groups 16；
   - indexer 64×128 top-1024；SWA 128；vocab 129280；nextn 1。
-- [ ] **完整模型与并行配置任务 2** `TokenSim/config/model_config.py` 支持逐层结构和逐算子 dtype map（FP8 block / MXFP4 / BF16 / FP32）。
-- [ ] **完整模型与并行配置任务 3** 权重显存按各部分 dtype 计算（改 `cache_config.py:74-76`）。EP8 下每 rank 放 48 个专家，其余部分复制。目标与日志 125.88 / 126.08 GiB 相差 ±2%。
+- [x] **完整模型与并行配置任务 2** `TokenSim/config/model_config.py` 支持逐层结构和逐算子 dtype map（FP8 block / MXFP4 / BF16 / FP32）。
+- [x] **完整模型与并行配置任务 3** 权重显存按各部分 dtype 计算（`weight_memory.py` 与 `cache_config.py`）。EP8 下每 rank 放 48 个专家，其余部分复制。计算 124.439211 GiB/rank，对日志差 −1.145% / −1.301%；不使用日志补偿系数。
 - [ ] **完整模型与并行配置任务 4** 删除 proxy（决策 9 已确认选 a）：
   - 删除 `data/models/deepseek-v4-proxy.yaml` 和 `data/psla/deepseek-v4-proxy.json`；
   - `scripts/run_agentx_comparison.py:73` 和 `scripts/run_agentx_sweep.sh:49` 改用完整模型；
   - 同时改掉两个脚本里的 block 64（:72 / :41）和 max_parallem_sum 2,000,000（:78 / :50）；
   - 其他引用 proxy 的文件（测试、文档、结果说明）在动手前全部列出，逐个处理；`results/agentx-empirical-extrap/` 下的旧结果不动，只在其说明里注明「proxy 模型，已弃用」。
-- [ ] **完整模型与并行配置任务 5** 新建 `data/clusters/8_b200/dep8.json` 和 `data/clusters/8_b300/dep8.json`：TP1×DP8×EP8，`expert_parallel_scope:"global"`，单节点 NVLink；去掉 KV 容量覆盖，容量改由 缓存容量与前缀命中 计算。
+- [x] **完整模型与并行配置任务 5** 新建 `data/clusters/8_b200/dep8.json` 和 `data/clusters/8_b300/dep8.json`：TP1×DP8×EP8，`expert_parallel_scope:"global"`，单节点 NVLink；去掉 KV 容量覆盖，容量改由 缓存容量与前缀命中 计算。
 - [ ] **完整模型与并行配置任务 6** 运行参数：block 256；max_num_seqs 49 / 96；max_num_batched_tokens 8192 / 16384。
 - [ ] **完整模型与并行配置任务 7** 两个 SKU 做完整测试（§5.1），结果标注为「管线基线」：此时算子和调度还没修正，只检查流程能否跑通、时间分解是否合理，不评价精度。
 
 完成标准：权重显存相差 ±2%；给出算子覆盖报告（每类算子命中表 / 插值 / 外推 / analytical 的比例）；两个 SKU 都完整跑完。
+2026-09-30 已完成结构／权重／cluster 准备，完整测试 269 项通过，并扫描全部 393 条 trace。发现旧 latent 缓存计法令 B200 无法准入最大输入，以及旧回放拒绝 64→256 block 转换；两项须随后续回放与缓存接入解决。一小时模拟和算子覆盖尚未验收，任务 4、6、7 继续保持未完成，不能用单位测试、配置审核或删减负载替代。
 依赖决策：7、8、9、10、14。
 
 ### 请求回放

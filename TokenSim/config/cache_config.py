@@ -35,6 +35,13 @@ class CacheConfig:
         self.rank_info = rank_info or ParallelRankInfo()
         self.expert_placement = expert_placement
         self.moe_config = model.moe
+        if (
+            model.deepseek_v4 is not None
+            and kv_cache_capacity_tokens_per_dp_rank is not None
+        ):
+            raise ConfigurationError(
+                "DeepSeek V4 cache capacity must be calculated from hardware and model, not overridden"
+            )
 
         self.total_num_layers = model.num_layers
         self.num_layers_per_rank = stage_layer_count(
@@ -71,14 +78,29 @@ class CacheConfig:
                 * self.num_layers_per_rank
             )
 
-        weight_bytes = dtype_bytes(model.dtype)
-        self.model_param_size_unsharded = model.total_params() * weight_bytes
-        self.model_param_size = self._rank_params() * weight_bytes
+        self.weight_memory_report = None
+        if model.deepseek_v4 is not None:
+            from TokenSim.config.weight_memory import deepseek_v4_weight_memory
+
+            self.weight_memory_report = deepseek_v4_weight_memory(
+                model, self.parallel_config, self.rank_info, self.expert_placement
+            )
+            self.model_param_size_unsharded = deepseek_v4_weight_memory(model)[
+                "total_bytes"
+            ]
+            self.model_param_size = self.weight_memory_report["total_bytes"]
+        else:
+            weight_bytes = dtype_bytes(model.dtype)
+            self.model_param_size_unsharded = model.total_params() * weight_bytes
+            self.model_param_size = self._rank_params() * weight_bytes
 
         # Runtime reserves (NCCL buffers, CUDA context, framework workspace)
         # come off the top before the optional usable fraction is applied.
         self.reserved_bytes = device.memory_reserved_bytes.value
-        capacity = max(0.0, device.memory_capacity_bytes.value - self.reserved_bytes) * usable_memory_fraction
+        capacity = (
+            max(0.0, device.memory_capacity_bytes.value - self.reserved_bytes)
+            * usable_memory_fraction
+        )
         self.usable_memory_bytes = capacity
         if capacity <= self.model_param_size:
             raise ConfigurationError(
@@ -115,7 +137,9 @@ class CacheConfig:
         dense_layers = max(0, self.num_layers_per_rank - owned_moe_layers)
         params = self.num_layers_per_rank * model.attention_params_per_layer()
         params += dense_layers * model.dense_ffn_params_per_layer()
-        params += owned_moe_layers * model.moe.num_shared_experts * model.expert_params()
+        params += (
+            owned_moe_layers * model.moe.num_shared_experts * model.expert_params()
+        )
         params += owned_moe_layers * model.hidden_size * model.moe.num_experts  # router
         owned_experts = len(self.expert_placement.experts_for_rank(self.rank_info))
         params += owned_moe_layers * owned_experts * model.expert_params()
@@ -133,6 +157,12 @@ class CacheConfig:
             "usable_memory_bytes": self.usable_memory_bytes,
             "local_kv_heads": self.local_kv_heads,
             "num_layers_per_rank": self.num_layers_per_rank,
+            "weight_memory": self.weight_memory_report,
+            "kv_layout": (
+                "legacy_uniform; native DeepSeek V4 hybrid cache integration pending"
+                if self.model_spec.deepseek_v4
+                else "uniform"
+            ),
         }
 
 
