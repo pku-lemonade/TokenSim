@@ -427,7 +427,41 @@ class HybridKVBlockManager:
         watermark = self.watermark_blocks if has_scheduled_requests else 0
         return len(self.free_slots) - zero_ref_hits >= needed + watermark
 
-    def can_allocate_external(self, req, local_plan, boundary, hits):
+    def remaining_admission_slots(self, req):
+        """vLLM SingleTypeKVCacheManager running-request reservation.
+
+        Window tables have skipped/null prefixes in the reference. Our sparse
+        tables omit those entries, so their virtual length is the last absolute
+        position plus one, not the number of physically held window pages.
+        """
+        if req.id not in self.tables:
+            return 0
+        tokens = min(req.context_len, self.layout.max_model_len)
+        remaining = 0
+        for group in self.layout.groups:
+            required = cdiv(tokens, group.block_tokens)
+            if group.window_tokens:
+                required = min(
+                    required,
+                    group.max_request_slots(
+                        self.layout.max_model_len, self.layout.max_in_flight_tokens
+                    ),
+                )
+            table = self.tables[req.id][group.group_id]
+            virtual_length = max(table, default=-1) + 1
+            remaining += max(0, required - virtual_length)
+        return remaining
+
+    def can_allocate_external(
+        self,
+        req,
+        local_plan,
+        boundary,
+        hits,
+        *,
+        reserved_blocks=0,
+        has_scheduled_requests=False,
+    ):
         """Include private DMA targets and the remaining full-input admission.
 
         Loaded windows replace local window positions. Shared local pages
@@ -460,7 +494,16 @@ class HybridKVBlockManager:
                     cdiv(req.context_len, group.block_tokens)
                     - boundary // group.block_tokens,
                 )
-        return local_free + destinations - reclaimed + future <= len(self.free_slots)
+        initial = local_free + destinations - reclaimed
+        watermark = self.watermark_blocks if has_scheduled_requests else 0
+        free = len(self.free_slots)
+        # kv_cache_manager.allocate_slots: full_sequence_must_fit first checks
+        # the whole input against current free capacity. reserved_blocks then
+        # fences the actual async allocation, not this whole-input envelope.
+        return (
+            initial + future + watermark <= free
+            and initial + watermark <= free - reserved_blocks
+        )
 
     def allocate(self, req):
         if req.id in self.tables:

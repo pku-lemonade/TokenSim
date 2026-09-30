@@ -12,7 +12,7 @@ sys.path.insert(0, str(ROOT))
 from util.agentx_accuracy import error_assessment
 
 
-def validate(directory, *, hardware=("b200", "b300")):
+def validate(directory, *, hardware=("b200", "b300"), verify_reservations=False):
     points = {}
     for sku, concurrency in (("b200", 196), ("b300", 384)):
         if sku not in hardware:
@@ -70,6 +70,17 @@ def validate(directory, *, hardware=("b200", "b300")):
             .splitlines()
         ]
         final = windows[-1]
+        if verify_reservations:
+            assert all(
+                w["inflight_prefills"] == 0
+                and w["inflight_prefill_reserved_slots"] == 0
+                for w in final["workers"]
+            )
+            assert all(
+                w["inflight_prefill_reserved_slots"] >= 0
+                for window in windows
+                for w in window["workers"]
+            )
         assert metrics["trace_count"] == 393 and metrics["issue_window_s"] == 3600
         assert metrics["cancel_unreturned"] == 0
         assert all(
@@ -155,6 +166,7 @@ def validate(directory, *, hardware=("b200", "b300")):
         "issue_window_seconds": 3600,
         "link_counters": "cumulative warmup+profiling; connector result counters reset after warmup",
         "checkpoints": points,
+        "inflight_reservations_verified": verify_reservations,
     }
 
 
@@ -250,11 +262,16 @@ if __name__ == "__main__":
     parser.add_argument("directory", type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--plot", type=Path)
+    parser.add_argument("--verify-reservations", action="store_true")
     parser.add_argument(
         "--hardware", choices=("b200", "b300"), nargs="+", default=("b200", "b300")
     )
     args = parser.parse_args()
-    result = validate(args.directory, hardware=args.hardware)
+    result = validate(
+        args.directory,
+        hardware=args.hardware,
+        verify_reservations=args.verify_reservations,
+    )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2) + "\n")
     if args.plot:

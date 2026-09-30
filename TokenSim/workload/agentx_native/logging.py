@@ -39,6 +39,8 @@ class NativeReplayLogs:
                     "running": len(worker.scheduler.running),
                     "waiting": len(worker.scheduler.waiting),
                     "loading": len(worker.scheduler.loading),
+                    "inflight_prefills": len(worker.scheduler.inflight_prefills),
+                    "inflight_prefill_reserved_slots": worker.scheduler._inflight_prefill_reserved_blocks(),
                     "external_cache": (
                         worker.connector.describe()
                         if getattr(worker.connector, "native_async", False)

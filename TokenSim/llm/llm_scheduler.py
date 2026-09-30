@@ -231,6 +231,8 @@ class LLMPagedAttnScheduler(LLMScheduler):
             "scheduled_decode_tokens": 0,
             "max_num_seqs_gate": 0,
             "full_input_gate": 0,
+            "async_load_reservation_gate": 0,
+            "max_inflight_prefill_reserved_slots": 0,
         }
         # Requests admitted by the most recent schedule() call.
         self.last_admitted: list[Request] = []
@@ -254,6 +256,7 @@ class LLMPagedAttnScheduler(LLMScheduler):
         self.max_occupy_ratio = max_occupy_ratio
         self.loading = {}
         self.loaded_waiting = []
+        self.inflight_prefills = {}
         set_releaser = getattr(self.connector, "set_block_releaser", None)
         if set_releaser is not None:
             set_releaser(self._release_delayed_blocks)
@@ -361,7 +364,7 @@ class LLMPagedAttnScheduler(LLMScheduler):
                         self.stats["deferred_waiting_prefills"] += 1
                         break
                 can_allocate = (
-                    self.block_manager.can_allocate_external(req, local_plan, *external)
+                    self._can_admit_external(req, local_plan, external)
                     if external and external[1]
                     else (
                         self.block_manager.can_allocate(
@@ -388,6 +391,11 @@ class LLMPagedAttnScheduler(LLMScheduler):
                         preempted.append(req)
                         break
                     self.block_manager.ensure_slots(req, tokens)
+                if (
+                    getattr(self.block_manager, "native_hybrid", False)
+                    and req.num_computed_tokens + tokens < req.context_len
+                ):
+                    self.inflight_prefills[req.id] = req
                 req.scheduled_tokens = tokens
                 budget = None if budget is None else budget - tokens
                 scheduled.append(req)
@@ -416,6 +424,7 @@ class LLMPagedAttnScheduler(LLMScheduler):
             req.external_cached_prefill_tokens = 0
             if external and external[1]:
                 self.connector.begin_load(req, *external)
+                self.inflight_prefills[req.id] = req
                 return
             if req.needs_recompute:
                 req.recompute_tokens = max(0, req.context_len - local_plan.hit_tokens)
@@ -449,6 +458,41 @@ class LLMPagedAttnScheduler(LLMScheduler):
             to_compute = 1
         req.start_context_build(req.context_len - to_compute)
         req.status = RequestStatus.RUNNING
+
+    def _spec_decode_step_blocks(self):
+        layout = getattr(self.block_manager, "layout", None)
+        if layout is None or not layout.speculative_tokens:
+            return 0
+        # Current source uses num_spec_tokens == num_lookahead_tokens for MTP.
+        width = 1 + 2 * layout.speculative_tokens
+        return (
+            width + self.block_manager.block_size - 1
+        ) // self.block_manager.block_size
+
+    def _inflight_prefill_reserved_blocks(self):
+        return sum(
+            self.block_manager.remaining_admission_slots(req)
+            + self._spec_decode_step_blocks()
+            for req in self.inflight_prefills.values()
+        )
+
+    def _can_admit_external(self, req, local_plan, external):
+        reserved = self._inflight_prefill_reserved_blocks()
+        self.stats["max_inflight_prefill_reserved_slots"] = max(
+            self.stats["max_inflight_prefill_reserved_slots"], reserved
+        )
+        args = dict(
+            reserved_blocks=reserved + self._spec_decode_step_blocks(),
+            has_scheduled_requests=bool(self.running),
+        )
+        allowed = self.block_manager.can_allocate_external(
+            req, local_plan, *external, **args
+        )
+        if not allowed and self.block_manager.can_allocate_external(
+            req, local_plan, *external, has_scheduled_requests=bool(self.running)
+        ):
+            self.stats["async_load_reservation_gate"] += 1
+        return allowed
 
     def _step_tokens(self, req: Request, budget: int | None) -> int:
         """Tokens ``req`` computes this step: its remaining context, capped by the budget."""
@@ -515,6 +559,8 @@ class LLMPagedAttnScheduler(LLMScheduler):
 
     def update(self, requests: list[Request]):
         for req in requests:
+            if not req.is_context_build:
+                self.inflight_prefills.pop(req.id, None)
             if req.generation_idx > 0:
                 self.block_manager.commit_input_cache(req)
         return super().update(requests)
@@ -541,6 +587,7 @@ class LLMPagedAttnScheduler(LLMScheduler):
     def _preempt(self, req: Request) -> None:
         if req.status != RequestStatus.RUNNING:
             logger.debug("preempting request %s with status %s", req.id, req.status)
+        self.inflight_prefills.pop(req.id, None)
         self.block_manager.release_request_blocks(req)
         req.prepare_recompute()
         req.status = RequestStatus.WAITING
@@ -555,6 +602,7 @@ class LLMPagedAttnScheduler(LLMScheduler):
         self.block_manager.release_reserved_blocks(num_blocks)
 
     def free(self, req: Request):
+        self.inflight_prefills.pop(req.id, None)
         block_ids = [
             block.block_number
             for block in self.block_manager.block_table.get_blocks(req.id)
@@ -570,6 +618,7 @@ class LLMPagedAttnScheduler(LLMScheduler):
         self.running = [r for r in self.running if r.id != req.id]
         self.waiting = [r for r in self.waiting if r.id != req.id]
         self.loading.pop(req.id, None)
+        self.inflight_prefills.pop(req.id, None)
         self.loaded_waiting = [r for r in self.loaded_waiting if r.id != req.id]
         blocks = self.block_manager.block_table.get_blocks(req.id)
         delayed, _ = self.connector.request_finished(
