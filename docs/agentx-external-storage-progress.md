@@ -1,6 +1,8 @@
 # 原生外部存储基础与当前接入缺口
 
-本次先实现供 SimpleCPU/Mooncake 使用的组感知、按字节限容的 LRU 存储及共享方向传输队列。它们尚未接入引擎，因此本次不是 CPU 后端的完整交付，也没有将既有 HBM 一小时结果作为 CPU 验收。
+2026-10-01 更新：这些原语与 import API 已用于真实引擎的 SimpleCPU 异步复制、写回及取消生命周期，详细记录见 [SimpleCPU 报告](agentx-simple-cpu-report.md)。CPU 的完整准入预留及 Mooncake 共享后端继续待实现。以下保留前两个基础提交的验收记录，不将它们混同为完整 CPU 后端验收。
+
+最初先实现供 SimpleCPU/Mooncake 使用的组感知、按字节限容的 LRU 存储及共享方向传输队列。当时尚未接入引擎，因此基础提交不是 CPU 后端的完整交付，也没有将既有 HBM 一小时结果作为 CPU 验收。
 
 `NativePageStore` 写入时预留并 pin，传输结束前不能查到；读传输同样 pin，LRU 不得驱逐在读写中的页。SimpleCPU 的分配单位是 GPU packed backing stride；Mooncake 对象按缓存组实际 payload 字节计容。`QueuedKVLink` 的调用方共享同一个方向队列，计入等待与服务时间；利用率可选 50%/75%/100%，75% 明确为假设。
 

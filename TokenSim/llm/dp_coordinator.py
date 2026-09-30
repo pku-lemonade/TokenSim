@@ -76,7 +76,12 @@ class DPStepCoordinator:
         self.changed = self.env.event()
 
     def has_work(self):
-        return any(w.scheduler.running or w.scheduler.waiting for w in self.workers)
+        return any(
+            w.scheduler.running
+            or w.scheduler.waiting
+            or getattr(w.scheduler, "loading", {})
+            for w in self.workers
+        )
 
     def cancel_at_boundary(self, worker, request):
         if worker.scheduler.cancel_request(request):

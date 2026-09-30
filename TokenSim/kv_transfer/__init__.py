@@ -9,6 +9,7 @@ from TokenSim.kv_transfer.connectors import (
     MultiConnector,
     NoopConnector,
     P2PConnector,
+    SimpleCPUOffloadConnector,
     SchedulerSideConnector,
     WorkerSideConnector,
 )
@@ -24,6 +25,7 @@ __all__ = [
     "MultiConnector",
     "NoopConnector",
     "P2PConnector",
+    "SimpleCPUOffloadConnector",
     "SchedulerSideConnector",
     "WorkerSideConnector",
 ]

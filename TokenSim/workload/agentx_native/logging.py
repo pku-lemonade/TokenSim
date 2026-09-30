@@ -38,6 +38,13 @@ class NativeReplayLogs:
                     "worker_id": worker.id,
                     "running": len(worker.scheduler.running),
                     "waiting": len(worker.scheduler.waiting),
+                    "loading": len(worker.scheduler.loading),
+                    "external_cache": (
+                        worker.connector.describe()
+                        if getattr(worker.connector, "native_async", False)
+                        else None
+                    ),
+                    "dma_pinned_slots": len(manager.transfer_references),
                     "defer_prefills": worker.scheduler.defer_prefills,
                     "prefill_capacity_bound": worker.scheduler.prefill_capacity_bound,
                     "scheduler_stats": dict(worker.scheduler.stats),

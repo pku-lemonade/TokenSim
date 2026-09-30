@@ -252,6 +252,8 @@ class LLMPagedAttnScheduler(LLMScheduler):
             )
 
         self.max_occupy_ratio = max_occupy_ratio
+        self.loading = {}
+        self.loaded_waiting = []
         set_releaser = getattr(self.connector, "set_block_releaser", None)
         if set_releaser is not None:
             set_releaser(self._release_delayed_blocks)
@@ -270,6 +272,17 @@ class LLMPagedAttnScheduler(LLMScheduler):
         preempted: list[Request] = []
         self.last_admitted = []
         self.stats["steps"] += 1
+        while self.loaded_waiting:
+            if (
+                self.max_parallem_sum is not None
+                and len(self.running) >= self.max_parallem_sum
+            ):
+                self.stats["max_num_seqs_gate"] += 1
+                break
+            req = self.loaded_waiting.pop(0)
+            self.loading.pop(req.id, None)
+            req.status = RequestStatus.RUNNING
+            self.running.append(req)
         self.defer_prefills = bool(
             throttle_prefills
             and not self.prefill_capacity_bound
@@ -334,26 +347,40 @@ class LLMPagedAttnScheduler(LLMScheduler):
                     self.stats["max_num_seqs_gate"] += 1
                     break
                 req = self.waiting[0]
+                native_async = getattr(self.connector, "native_async", False)
+                external = None
+                if native_async:
+                    local_plan = self.block_manager.plan_reuse(req)
+                    external = self.connector.probe(req, local_plan)
                 if self.defer_prefills:
                     plan = self.block_manager.kv_cache_manager.plan_reuse(req)
                     # A full hit that needs only its last token may still run
                     # on a deferred step (scheduler.py waiting gate).
-                    if req.context_len - plan.hit_tokens > 1:
+                    hit_tokens = external[0] if external else plan.hit_tokens
+                    if req.context_len - hit_tokens > 1:
                         self.stats["deferred_waiting_prefills"] += 1
                         break
                 can_allocate = (
-                    self.block_manager.can_allocate(
-                        req, has_scheduled_requests=bool(self.running)
+                    self.block_manager.can_allocate_external(req, local_plan, *external)
+                    if external and external[1]
+                    else (
+                        self.block_manager.can_allocate(
+                            req, has_scheduled_requests=bool(self.running)
+                        )
+                        if getattr(self.block_manager, "native_hybrid", False)
+                        else self.block_manager.can_allocate(req)
                     )
-                    if getattr(self.block_manager, "native_hybrid", False)
-                    else self.block_manager.can_allocate(req)
                 )
                 if not can_allocate:
                     self.stats["full_input_gate"] += 1
                     break
 
                 req = self.waiting.pop(0)
-                self._admit(req)
+                self._admit(req, external=external)
+                if req.status == RequestStatus.WAITING_FOR_KV:
+                    self.stats.setdefault("async_load_admissions", 0)
+                    self.stats["async_load_admissions"] += 1
+                    continue
                 tokens = self._step_tokens(req, budget)
                 if getattr(self.block_manager, "native_hybrid", False):
                     if not self.block_manager.can_ensure_slots(req, tokens):
@@ -380,9 +407,21 @@ class LLMPagedAttnScheduler(LLMScheduler):
             self.stats[key] += req.scheduled_tokens
         return scheduled, preempted
 
-    def _admit(self, req: Request) -> None:
+    def _admit(self, req: Request, *, external=None) -> None:
         """Allocate KV blocks for the whole context and record what is already cached."""
         local_plan = self.block_manager.kv_cache_manager.plan_reuse(req)
+        if getattr(self.connector, "native_async", False):
+            self.block_manager.allocate(req)
+            req.gpu_cached_prefill_tokens = local_plan.hit_tokens
+            req.external_cached_prefill_tokens = 0
+            if external and external[1]:
+                self.connector.begin_load(req, *external)
+                return
+            if req.needs_recompute:
+                req.recompute_tokens = max(0, req.context_len - local_plan.hit_tokens)
+            req.start_context_build(local_plan.hit_tokens)
+            req.status = RequestStatus.RUNNING
+            return
         # Reuse the already-built prefix chain in external-cache connectors.
         req.input_cache_keys = list(local_plan.input_keys)
         num_external_tokens = self.connector.get_num_new_matched_tokens(
@@ -530,6 +569,8 @@ class LLMPagedAttnScheduler(LLMScheduler):
     def cancel_request(self, req: Request) -> bool:
         self.running = [r for r in self.running if r.id != req.id]
         self.waiting = [r for r in self.waiting if r.id != req.id]
+        self.loading.pop(req.id, None)
+        self.loaded_waiting = [r for r in self.loaded_waiting if r.id != req.id]
         blocks = self.block_manager.block_table.get_blocks(req.id)
         delayed, _ = self.connector.request_finished(
             req, [b.block_number for b in blocks]
@@ -550,6 +591,8 @@ class LLMPagedAttnScheduler(LLMScheduler):
     def cpu_workload(self):
         """Return allocated CPU KV-cache capacity in GiB."""
         _GB = 1 << 30
+        if getattr(self.connector, "native_async", False):
+            return self.connector.store.used_bytes / _GB
         capacity = (
             self.block_manager.cpu_allocator.get_num_allocated_blocks()
             * self.cache_config.block_size

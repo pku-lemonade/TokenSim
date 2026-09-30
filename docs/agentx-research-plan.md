@@ -4,7 +4,7 @@
 > 执行顺序：参考数据与完整模型准备 → 请求回放 → GPU 分配与缓存复用 → 调度行为 → 算子耗时校准 → 完整曲线验证。
 > 源码基准：只读参考 `/home/zhuohang/Serving/vllm-note`，本轮记录 HEAD `30f5c01d4ebb`；不下载历史镜像、不修改或切换此目录。本文旧行号和旧 HEAD 下的源码结论需按此版本重新定位；历史运行日志仍作为实验事实保留。
 > 分支：`agentx-support`（基于 `b2b685a`）
-> 状态：**2026-09-30 已完成原始请求图、Native 回放／取消、GPU 混合缓存、consistent-hash 路由及 DP 同步，B200/B300 均完成完整 HBM 一小时管线基线；364 项测试通过。长 prefill 调度已接入，CPU 后端、MTP query 预算、原生算子与 MTP 成本、完整曲线及精度验收继续实施。报告见 [基准与口径](agentx-reference-report.md)、[完整模型准备](agentx-full-model-report.md)、[请求图与初始抽样](agentx-request-graph-report.md)、[执行回放](agentx-native-replay-report.md)、[混合 HBM 缓存](agentx-hybrid-cache-report.md)、[会话路由与 DP 同步](agentx-routing-dp-report.md)、[长 prefill 调度](agentx-prefill-scheduling-report.md)。复选框表示对应子任务实现进度。**
+> 状态：**2026-10-01 已完成请求图、Native 回放／取消、GPU 混合缓存、consistent-hash 路由、DP 同步及长 prefill 调度；SimpleCPU 异步复制与取消生命周期已接入，384 项测试通过。CPU 完整准入预留、Mooncake 原生共享后端、MTP、原生算子、完整曲线与精度验收继续实施。B200 的 CPU 管线暴露 2,098 次抢占，下一部分优先修复在途 prefill 的未来块承诺；没有将最终模型误差判为通过。报告见 [基准与口径](agentx-reference-report.md)、[完整模型准备](agentx-full-model-report.md)、[请求图](agentx-request-graph-report.md)、[执行回放](agentx-native-replay-report.md)、[混合 HBM 缓存](agentx-hybrid-cache-report.md)、[路由与 DP 同步](agentx-routing-dp-report.md)、[长 prefill 调度](agentx-prefill-scheduling-report.md)、[SimpleCPU 复制生命周期](agentx-simple-cpu-report.md)。复选框表示对应子任务实现进度。**
 > 对照对象：InferenceX AgentX，完整 DeepSeek-V4-Pro（FP8 + MXFP4），vLLM + MTP；覆盖 B200/B300 多并发曲线及其 TP8、TP4、DEP8 等配置变化。主检查点为单节点 8 GPU DEP8：B200 并发 196、B300 并发 384。
 > 证据分层：历史配置和日志描述参考运行；本地源码决定本轮实现；二者存在版本差异时单列记录。【待核实／待验证】是实现中的技术检查，不是待用户批准；【估算】不是实测；【推断】须保留依据与适用范围。历史研究中的源码行号仅作定位线索，以函数和本轮版本为准。
 
@@ -883,6 +883,7 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 
 目标：CPU 层的容量和命中与参考一致。
 
+- [x] **CPU 缓存卸载任务 1.1：SimpleCPU 复制生命周期** 接入本地按字节限容的 CPU 池、原生混合组 suffix lookup/import、确认计算后的 eager 写回、按方向竞争的异步复制和取消释放。加载中的请求不占 RUNNING 配额，复制完成后受 max_num_seqs 限制；GPU/CPU 命中分别记录。384 项测试通过，两个主点按完整一小时流程验证；完整 CPU 调度及最终精度仍未验收，见 SimpleCPU 报告。
 - [ ] **CPU 缓存卸载任务 1** 同时实现 SimpleCPU 与 Mooncake 的配置入口和 DRAM 池行为，容量和块数由模拟器计算。SimpleCPU 的本地容量与 Mooncake 的共享外部存储分别记录；日志中的 289,815 blocks 只用于核对，不能写成固定容量。
 - [ ] **CPU 缓存卸载任务 2** 按两种后端的源码分别对齐写回、命中加载、请求等待及异步重叠。传输带宽优先使用匹配实测；没有可信实测的链路采用已确认的 75% 理论带宽基线，并配置 50%/75%/100% 三档敏感性实验。保留带宽上限、效率假设、传输量、排队与竞争统计，不能将 75% 当作实测值。
 - [ ] **CPU 缓存卸载任务 3** 对比 external hit 趋势（B200 74.4%、B300 17.8%）。

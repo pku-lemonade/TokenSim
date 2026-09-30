@@ -290,10 +290,11 @@ class LLMWorker(Worker):
                 raise ConfigurationError(
                     "native DSV4 hybrid cache requires paged-attn scheduling"
                 )
-            if self.kv_transfer_config.kv_connector != "NoopConnector":
-                raise ConfigurationError(
-                    "native hybrid cache offload integration is not yet implemented for this connector"
-                )
+            if self.kv_transfer_config.kv_connector not in (
+                "NoopConnector",
+                "SimpleCPUOffloadConnector",
+            ):
+                raise ConfigurationError("unsupported native hybrid cache connector")
         self.connector = KVConnectorFactory.create_connector(
             self.kv_transfer_config,
             self.cache_config,
@@ -322,6 +323,8 @@ class LLMWorker(Worker):
             )
 
         self.status = WorkerStatus.WAITING
+        if getattr(self.connector, "native_async", False):
+            self.connector.bind_runtime(self)
         self.action = self.env.process(self.run())
 
     def workload(self):
@@ -385,6 +388,13 @@ class LLMWorker(Worker):
                                 f"worker {self.id} received STEP while {self.status}"
                             )
                         running, load_latency = self.prepare_step()
+                        if not running and getattr(
+                            self.connector, "native_async", False
+                        ):
+                            # Transfers advance independently; a worker with
+                            # only loading/capacity-blocked requests must yield.
+                            self.status = WorkerStatus.WAITING
+                            continue
                         if load_latency:
                             yield self.env.timeout(load_latency)
                         running = [req for req in running if not req.cancel_requested]

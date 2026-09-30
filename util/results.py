@@ -311,6 +311,9 @@ def get_agentx_metrics(
     input_tokens = sum(request.prefill_len for request in requests)
     output_tokens = sum(request.decode_len for request in requests)
     cached_input_tokens = sum(request.cached_prefill_tokens for request in requests)
+    external_input_tokens = sum(
+        request.external_cached_prefill_tokens for request in requests
+    )
     computed_input_tokens = sum(
         (request.effective_prefill_tokens or request.prefill_len)
         for request in requests
@@ -392,6 +395,22 @@ def get_agentx_metrics(
         "interactivity_tps": summary(interactivity),
         "e2e_normalized_interactivity_tps": summary(normalized_interactivity),
     }
+    # Native replay records the input-token decomposition per request. Older
+    # Mooncake paths expose their own counters; absent native observations
+    # must not silently become a zero CPU hit rate.
+    if metadata.get("replay_protocol"):
+        result.update(
+            gpu_cached_input_tokens=cached_input_tokens - external_input_tokens,
+            cpu_cached_input_tokens=external_input_tokens,
+            gpu_cache_hit_rate=(
+                (cached_input_tokens - external_input_tokens) / input_tokens
+                if input_tokens
+                else None
+            ),
+            cpu_cache_hit_rate=(
+                external_input_tokens / input_tokens if input_tokens else None
+            ),
+        )
 
     # --- Breakdown by root / subagent ---
     for label, subset in [("root", root_requests), ("subagent", subagent_requests)]:

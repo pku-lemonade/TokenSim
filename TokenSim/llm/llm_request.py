@@ -215,6 +215,8 @@ class Request:
     record_timing: bool = True
     cached_prefill_blocks: int = 0
     cached_prefill_tokens: int = 0
+    gpu_cached_prefill_tokens: int = 0
+    external_cached_prefill_tokens: int = 0
     effective_prefill_tokens: int | None = None
     reuse_hit_blocks: int = 0
     reuse_miss_blocks: int = 0

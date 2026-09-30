@@ -34,6 +34,11 @@ experiments:
     max_num_seqs: 49
     max_num_batched_tokens: 8192
     gpu_memory_utilization: 0.90
+    host_memory:
+      available_cpu_dram_mib: 3095781
+      cpu_budget_per_rank_bytes: 356125000000
+      hardware_source: configs/runners.yaml@843c6254ff69b567f772f6a5fd97675af3d04431
+      runtime_source: b200/agentic/vllm_command.txt
     reference:
       id: 440239
       artifact_subdir: b200
@@ -48,6 +53,11 @@ experiments:
     max_num_seqs: 96
     max_num_batched_tokens: 16384
     gpu_memory_utilization: 0.92
+    host_memory:
+      available_cpu_dram_mib: 2964436
+      cpu_budget_per_rank_bytes: 356125000000
+      hardware_source: configs/runners.yaml@c62f6e335bbe041a862670ff1d1fa747cdcecab9
+      runtime_source: b300/agentic/vllm_command.txt (historical per-rank key semantics)
     reference:
       id: 439522
       artifact_subdir: b300

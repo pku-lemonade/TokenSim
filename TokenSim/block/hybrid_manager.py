@@ -79,6 +79,8 @@ class HybridKVBlockManager:
         self.requests = {}
         self.keys = {}
         self.fine_keys = {}
+        self.transfer_references = {}
+        self.publish_callbacks = []
         self.block_table = BlockTable()
         self.kv_cache_manager = self
         self.gpu_allocator = self
@@ -302,6 +304,23 @@ class HybridKVBlockManager:
             self.peak_used_slots, self.num_total_gpu_blocks - len(self.free_slots)
         )
 
+    def pin_transfer(self, block):
+        """DMA owns a reference independently of the request's lifetime."""
+        self._acquire(block)
+        slot = block.block_number
+        self.transfer_references[slot] = self.transfer_references.get(slot, 0) + 1
+
+    def unpin_transfer(self, block):
+        slot = block.block_number
+        count = self.transfer_references.get(slot, 0)
+        if count <= 0:
+            raise SimulationStateError("invalid native DMA reference release")
+        if count == 1:
+            del self.transfer_references[slot]
+        else:
+            self.transfer_references[slot] = count - 1
+        self._release(block)
+
     def _allocate(self):
         if not self.free_slots:
             raise OutOfBlocksError("native hybrid shared pool exhausted")
@@ -352,6 +371,8 @@ class HybridKVBlockManager:
         block.block_hash, block.cached, block.is_full = key, True, True
         if existing is None:
             self.cache[key] = block
+        for callback in self.publish_callbacks:
+            callback(group, index, block, req)
 
     def _retained(self, group, index, computed, req):
         if not group.window_tokens:
@@ -405,6 +426,41 @@ class HybridKVBlockManager:
         )
         watermark = self.watermark_blocks if has_scheduled_requests else 0
         return len(self.free_slots) - zero_ref_hits >= needed + watermark
+
+    def can_allocate_external(self, req, local_plan, boundary, hits):
+        """Include private DMA targets and the remaining full-input admission.
+
+        Loaded windows replace local window positions. Shared local pages
+        cannot be reclaimed; zero-reference local hits first leave the queue.
+        """
+        local = {gid: dict(pairs) for gid, pairs in local_plan.group_hits}
+        destinations = sum(len(pairs) for _, pairs in hits)
+        reclaimed = sum(
+            local.get(gid, {}).get(index) is not None
+            and local[gid][index].ref_count == 0
+            for gid, pairs in hits
+            for index, _ in pairs
+        )
+        local_free = sum(
+            b.ref_count == 0 for _, pairs in local_plan.group_hits for _, b in pairs
+        )
+        future = 0
+        for group in self.layout.groups:
+            if group.window_tokens:
+                required = min(
+                    cdiv(req.context_len, group.block_tokens),
+                    group.max_request_slots(
+                        self.layout.max_model_len, self.layout.max_in_flight_tokens
+                    ),
+                )
+                future += max(0, required - boundary // group.block_tokens)
+            else:
+                future += max(
+                    0,
+                    cdiv(req.context_len, group.block_tokens)
+                    - boundary // group.block_tokens,
+                )
+        return local_free + destinations - reclaimed + future <= len(self.free_slots)
 
     def allocate(self, req):
         if req.id in self.tables:
@@ -569,7 +625,7 @@ class HybridKVBlockManager:
         return self.block_table.get_num_blocks(req.id)
 
     def validate_conservation(self):
-        references = {}
+        references = dict(self.transfer_references)
         for tables in self.tables.values():
             for table in tables.values():
                 for block in table.values():

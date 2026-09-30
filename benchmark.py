@@ -315,8 +315,34 @@ def main(
             env.run()
         engine.raise_if_failed()
         if native_agentx:
+            connectors = [
+                w.connector
+                for w in engine.workers
+                if getattr(w.connector, "native_async", False)
+            ]
+            # A cancellation acknowledges request ownership, while DMA owns
+            # independent references. Drain them within the existing 10-second
+            # cancellation allowance, without extending the metric window.
+            deadline = (
+                replay.issue_window_end_at
+                + replay.grace_period
+                + replay.cancellation_timeout
+            )
+            while any(c.loads or c.write_jobs or c.pending_writes for c in connectors):
+                if env.now >= deadline:
+                    raise SimulationStateError(
+                        "native KV transfers exceeded cancellation drain"
+                    )
+                env.run(
+                    until=env.any_of(
+                        [c.changed for c in connectors]
+                        + [env.timeout(deadline - env.now)]
+                    )
+                )
             for worker in engine.workers:
                 worker.scheduler.block_manager.validate_conservation()
+                if getattr(worker.connector, "native_async", False):
+                    worker.connector.store.validate()
     finally:
         if replay_logs is not None:
             replay_logs.snapshot(env, replay)
