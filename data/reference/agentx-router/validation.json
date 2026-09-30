@@ -1,0 +1,85 @@
+{
+  "source": {
+    "repository": "https://github.com/vllm-project/router",
+    "tag": "v0.1.14",
+    "revision": "0a6f74ec88c87b5477dac8e24466ab760b9f1f35",
+    "files": {
+      "src/policies/consistent_hash.rs": "7a4f1ab0599ba2c68d1b9347acb0342ee1bb7de53b01d7beed36901329f98bd0",
+      "src/policies/hash_key.rs": "cce152200d18b32ca080093e31182ae64a8884004f30994d9db2d0431f4522b7",
+      "src/routers/http/dp_utils.rs": "c4cdbc4915f5e06bdbfb19af518e12304e0383aee1e74990a2e937546751717f",
+      "LICENSE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    }
+  },
+  "backend_url": "http://localhost:8889",
+  "virtual_nodes_per_worker": 160,
+  "hash_key_header": "x-session-id, aliased from benchmark correlation ID",
+  "checkpoints": {
+    "b200": {
+      "requests": 32098,
+      "sessions": 2181,
+      "mismatches": 0,
+      "examples": [],
+      "log_sha256": "862786a7312ae14d2c93bd61fcba082425db99962c6c3551814beabed50af0e7"
+    },
+    "b300": {
+      "requests": 47269,
+      "sessions": 4618,
+      "mismatches": 0,
+      "examples": [],
+      "log_sha256": "e03bc6f678fe58150535592553fb104966c174dc06568362815c5a3486308fdc"
+    }
+  },
+  "observed_vectors": [
+    {
+      "key": "request:null",
+      "hash": 553418885264491882,
+      "expected_rank": 4
+    },
+    {
+      "key": "header:x-session-id:7739609b-c19c-4986-8829-4e95a8d39724",
+      "hash": 7401687981834328857,
+      "expected_rank": 0
+    },
+    {
+      "key": "header:x-session-id:bcf39436-1513-4ec1-8e59-535852a7bbfd",
+      "hash": 16519893795155660635,
+      "expected_rank": 2
+    },
+    {
+      "key": "header:x-session-id:fa79b4b0-d7f0-45e4-aa87-0d2606c71bee",
+      "hash": 12100544342204358028,
+      "expected_rank": 6
+    },
+    {
+      "key": "header:x-session-id:d9ad5f2b-5a1f-4ddc-961a-f82fbe20bd5f",
+      "hash": 16030444409999454617,
+      "expected_rank": 5
+    },
+    {
+      "key": "header:x-session-id:ea66ae38-a110-4120-b70d-04319825acba",
+      "hash": 6956764367959988734,
+      "expected_rank": 7
+    },
+    {
+      "key": "header:x-session-id:8b255613-08a5-495f-ae71-819c2b0050a1",
+      "hash": 1570529516114465013,
+      "expected_rank": 1
+    },
+    {
+      "key": "header:x-session-id:793a3866-9fc5-4062-929d-ef711d8d1f7e",
+      "hash": 9651981332247234100,
+      "expected_rank": 3
+    }
+  ],
+  "dp_source": {
+    "revision": "30f5c01d4ebb5c493ed86195db24d0ec5b3ce3d7",
+    "files": {
+      "vllm/v1/engine/core.py": "f116962c35d9d312b20b0b76c34a8cdaa6d3f1d31f2036db4e123957d2d1555b",
+      "vllm/config/parallel.py": "45feb706b3cdbef407df18dcddd6aa10ccb7c8cc823f33a32ea771ac3f596029",
+      "vllm/v1/worker/gpu_worker.py": "5658ac40e2b3f68427e670db90104563be6e21bdeb6f8ede8effdb911f6cc073",
+      "vllm/v1/worker/gpu_model_runner.py": "d4b0af5ff191726d9ba7189a826aeed79ba15174445cb8f6a2fd845b8bcbcb1f"
+    },
+    "finished_state_sync_interval": 16,
+    "dummy_query_width": "1+K"
+  }
+}

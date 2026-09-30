@@ -215,6 +215,18 @@ def main(
         max_parallem_sum=args.max_parallem_sum,
         max_occupy_ratio=args.max_occupy_ratio,
         gpu_memory_utilization=getattr(args, "gpu_memory_utilization", 1.0),
+        router_policy=(
+            ("consistent_hash" if native_agentx else "none")
+            if getattr(args, "router_policy", "auto") == "auto"
+            else args.router_policy
+        ),
+        router_backend_url=getattr(args, "router_backend_url", "http://localhost:8889"),
+        dp_lockstep=(
+            native_agentx
+            if getattr(args, "dp_lockstep", None) is None
+            else args.dp_lockstep
+        ),
+        dp_sync_interval=getattr(args, "dp_sync_interval", 16),
         latency_backend_type=latency_backend_type,
         latency_fallback=args.latency_fallback,
         operator_backend=args.operator_backend,
@@ -436,6 +448,14 @@ if __name__ == "__main__":
     parser.add_argument("--max_parallem_sum", type=int, default=99999)
     parser.add_argument("--max_occupy_ratio", type=float, default=1.0)
     parser.add_argument("--gpu_memory_utilization", type=float, default=1.0)
+    parser.add_argument(
+        "--router_policy", choices=["auto", "none", "consistent_hash"], default="auto"
+    )
+    parser.add_argument("--router_backend_url", default="http://localhost:8889")
+    parser.add_argument(
+        "--dp_lockstep", action=argparse.BooleanOptionalAction, default=None
+    )
+    parser.add_argument("--dp_sync_interval", type=int, default=16)
     parser.add_argument(
         "--max_num_batched_tokens",
         type=int,

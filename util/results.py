@@ -740,6 +740,14 @@ def export_result(
         recompute_service_time=sum(req.recompute_service_time for req in requests),
         prefill_chunk_count=sum(req.prefill_chunks for req in requests),
         max_num_batched_tokens=getattr(engine, "max_num_batched_tokens", None),
+        router_stats=(
+            engine.router.describe() if getattr(engine, "router", None) else None
+        ),
+        dp_step_stats=(
+            engine.dp_coordinator.describe()
+            if getattr(engine, "dp_coordinator", None)
+            else None
+        ),
         **prefix_reuse_stats,
         **connector_stats,
         **parallel_stats,

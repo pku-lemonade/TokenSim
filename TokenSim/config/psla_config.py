@@ -62,6 +62,8 @@ class LLMResult:
     kv_cache_capacity_token_kind: str | None = None
     kv_cache_bytes_per_token_kind: str | None = None
     worker_cache_budgets: list[dict[str, Any]] | None = None
+    router_stats: dict[str, Any] | None = None
+    dp_step_stats: dict[str, Any] | None = None
     model_param_size_bytes_per_rank: float = 0
     connector_transfer_count: int = 0
     connector_transfer_blocks: int = 0

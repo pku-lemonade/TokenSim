@@ -346,6 +346,10 @@ class LLMWorker(Worker):
         return self.parallel_communicator.estimate_point_to_point(bytes_, remote_id)
 
     def run(self):
+        coordinator = getattr(self.engine, "dp_coordinator", None)
+        if coordinator is not None and self.id in coordinator.worker_ids:
+            yield from coordinator.consume_messages(self)
+            return
         while True:
             if self.status == WorkerStatus.RUNNING and not self.msg_queue.items:
                 self.send_task(self, Task.STEP)
@@ -372,37 +376,19 @@ class LLMWorker(Worker):
                             raise SimulationStateError(
                                 f"worker {self.id} received STEP while {self.status}"
                             )
-                        self.connector.set_simulation_time(self.env.now)
-                        schedule_output = self.scheduler.schedule_output()
-                        connector_metadata = _merge_connector_metadata(
-                            schedule_output.connector_metadata,
-                            self.pending_connector_metadata,
-                        )
-                        self.pending_connector_metadata = None
-                        self.connector.handle_preemptions(connector_metadata)
-                        self.connector.bind_connector_metadata(connector_metadata)
-
-                        load_latency = self.connector.start_load_kv()
+                        running, load_latency = self.prepare_step()
                         if load_latency:
                             yield self.env.timeout(load_latency)
-
-                        if schedule_output.preempted:
-                            self.preempted_cnt += len(schedule_output.preempted)
-
-                        running = schedule_output.running
                         running = [req for req in running if not req.cancel_requested]
                         if running:
                             latency = self.dynamic_batch(running)
                             if latency:
                                 yield self.env.timeout(latency)
-                            self.step(running, latency)
-                            running = self.scheduler.update(running)
-                            self.connector.set_simulation_time(self.env.now)
-                            save_latency = self.connector.wait_for_save()
+                            save_latency = self.complete_step(running, latency)
                             if save_latency:
                                 yield self.env.timeout(save_latency)
-                            worker_meta = self.connector.build_connector_worker_meta()
-                            self.scheduler.update_connector_output(worker_meta)
+                            self.finalize_connector_step()
+                            running = self.scheduler.running
 
                             if self.role == "prefill":
                                 # Hand over requests whose prompt is complete;
@@ -449,6 +435,30 @@ class LLMWorker(Worker):
     def dynamic_batch(self, requests: list[Request]) -> float:
         return self.latency_backend.estimate_step_latency(requests)
 
+    def prepare_step(self):
+        self.connector.set_simulation_time(self.env.now)
+        output = self.scheduler.schedule_output()
+        metadata = _merge_connector_metadata(
+            output.connector_metadata, self.pending_connector_metadata
+        )
+        self.pending_connector_metadata = None
+        self.connector.handle_preemptions(metadata)
+        self.connector.bind_connector_metadata(metadata)
+        load_latency = self.connector.start_load_kv()
+        self.preempted_cnt += len(output.preempted)
+        return [r for r in output.running if not r.cancel_requested], load_latency
+
+    def complete_step(self, running, latency):
+        self.step(running, latency)
+        self.scheduler.update(running)
+        self.connector.set_simulation_time(self.env.now)
+        save_latency = self.connector.wait_for_save()
+        return save_latency
+
+    def finalize_connector_step(self):
+        metadata = self.connector.build_connector_worker_meta()
+        self.scheduler.update_connector_output(metadata)
+
     def _wait_for_cancel_release(self, req: Request):
         manager = getattr(self.scheduler, "block_manager", None)
         while manager is not None and manager.block_table.get_blocks(req.id):
@@ -484,6 +494,10 @@ class LLMEngine(Worker):
         debug_print: bool = False,
         max_num_batched_tokens: int | None = DEFAULT_MAX_NUM_BATCHED_TOKENS,
         gpu_memory_utilization: float = 1.0,
+        router_policy: str = "none",
+        router_backend_url: str = "http://localhost:8889",
+        dp_lockstep: bool = False,
+        dp_sync_interval: int = 16,
     ):
         super().__init__(env, -1)
 
@@ -576,6 +590,26 @@ class LLMEngine(Worker):
         # under table_only); the simulation stops and the caller re-raises it.
         self.failure: tuple[int, Exception] | None = None
         self.failure_event = self.env.event()
+        self.router = None
+        if router_policy == "consistent_hash":
+            from TokenSim.placement.consistent_hash import ConsistentHashRouter
+
+            self.router = ConsistentHashRouter(
+                self.prefill_workers.workers, backend_url=router_backend_url
+            )
+        elif router_policy != "none":
+            raise ConfigurationError(f"unsupported router policy: {router_policy}")
+        self.dp_coordinator = None
+        if dp_lockstep and self.parallel_config.data_parallel_size > 1:
+            if self.parallel_config.pipeline_parallel_size != 1:
+                raise ConfigurationError(
+                    "DP lockstep pipeline stages are not yet supported"
+                )
+            from TokenSim.llm.dp_coordinator import DPStepCoordinator
+
+            self.dp_coordinator = DPStepCoordinator(
+                env, self, self.prefill_workers.workers, sync_interval=dp_sync_interval
+            )
         self.action = self.env.process(self.run())
 
     def record_worker_failure(self, worker_id: int, error: Exception) -> None:
@@ -604,6 +638,10 @@ class LLMEngine(Worker):
         from TokenSim.parallel import ParallelStats
 
         self.connector_stats = ConnectorStats()
+        if self.router is not None:
+            self.router.reset_stats()
+        if self.dp_coordinator is not None:
+            self.dp_coordinator.reset_stats()
         seen_mooncake_stats: set[int] = set()
         for worker in self.workers:
             worker.preempted_cnt = 0
@@ -722,6 +760,17 @@ class LLMEngine(Worker):
     def _send_to_prefill_worker(self, requests: list[Request] | None) -> None:
         requests = [req for req in requests or [] if not req.cancel_requested]
         if not requests:
+            return
+        if self.router is not None:
+            groups = {}
+            for request in requests:
+                worker = self.router.select(request)
+                self.prefill_workers.placement_decision_count += 1
+                if hasattr(self.prefill_workers, "dp_placement_counts"):
+                    self.prefill_workers._record(worker)
+                groups.setdefault(worker.id, (worker, []))[1].append(request)
+            for worker, batch in groups.values():
+                self.send_task(worker, Task.ADD, batch)
             return
         worker = self.prefill_workers.select_prefill_worker(
             requests[0] if requests else None

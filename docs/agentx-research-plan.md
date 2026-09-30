@@ -4,7 +4,7 @@
 > 执行顺序：参考数据与完整模型准备 → 请求回放 → GPU 分配与缓存复用 → 调度行为 → 算子耗时校准 → 完整曲线验证。
 > 源码基准：只读参考 `/home/zhuohang/Serving/vllm-note`，本轮记录 HEAD `30f5c01d4ebb`；不下载历史镜像、不修改或切换此目录。本文旧行号和旧 HEAD 下的源码结论需按此版本重新定位；历史运行日志仍作为实验事实保留。
 > 分支：`agentx-support`（基于 `b2b685a`）
-> 状态：**2026-09-30 已完成原始请求图、Native 回放／取消与 GPU 混合缓存，B200/B300 均完成完整 HBM 一小时管线基线；341 项测试通过。CPU 后端、正式路由／DP 同步、调度、原生算子与 MTP 成本、完整曲线及精度验收继续实施。报告见 [基准与口径](agentx-reference-report.md)、[完整模型准备](agentx-full-model-report.md)、[请求图与初始抽样](agentx-request-graph-report.md)、[执行回放](agentx-native-replay-report.md)、[混合 HBM 缓存](agentx-hybrid-cache-report.md)。复选框表示对应子任务实现进度。**
+> 状态：**2026-09-30 已完成原始请求图、Native 回放／取消、GPU 混合缓存、consistent-hash 路由及 DP 同步，B200/B300 均完成完整 HBM 一小时管线基线；355 项测试通过。CPU 后端、调度、原生算子与 MTP 成本、完整曲线及精度验收继续实施。报告见 [基准与口径](agentx-reference-report.md)、[完整模型准备](agentx-full-model-report.md)、[请求图与初始抽样](agentx-request-graph-report.md)、[执行回放](agentx-native-replay-report.md)、[混合 HBM 缓存](agentx-hybrid-cache-report.md)、[会话路由与 DP 同步](agentx-routing-dp-report.md)。复选框表示对应子任务实现进度。**
 > 对照对象：InferenceX AgentX，完整 DeepSeek-V4-Pro（FP8 + MXFP4），vLLM + MTP；覆盖 B200/B300 多并发曲线及其 TP8、TP4、DEP8 等配置变化。主检查点为单节点 8 GPU DEP8：B200 并发 196、B300 并发 384。
 > 证据分层：历史配置和日志描述参考运行；本地源码决定本轮实现；二者存在版本差异时单列记录。【待核实／待验证】是实现中的技术检查，不是待用户批准；【估算】不是实测；【推断】须保留依据与适用范围。历史研究中的源码行号仅作定位线索，以函数和本轮版本为准。
 
@@ -371,7 +371,7 @@ B200 各 rank：
   - AgentX 运行参数：block 64，chunked prefill，prefill 池 round_robin，decode 池 least_gpu_memory。
 - **vLLM 行为**（以下为旧 HEAD `8b6de0eb9a` 的核对记录；须在本轮只读基准 `30f5c01d4ebb` 重新定位）：
   - **节流**：基类的节流函数返回 False（`vllm/v1/engine/core.py:603-605`）；DP 下被覆写为 `interval > 1 and step_counter % interval != 0` 时节流（:2189-2196）。
-  - **step_counter**：在 `_has_global_unfinished_reqs` 里每步 +1，每 32 步做一次 all-reduce（:2283-2292）；所有 DP rank 上的值相同，wave 结束时重置（:2265）。没有请求的 rank 跑 `execute_dummy_batch`（:2225-2240）。
+  - **step_counter**：在 `_has_global_unfinished_reqs` 里每步 +1，旧 HEAD 每 32 步做一次 all-reduce（:2283-2292）；当前 `30f5c01d4ebb` 默认 16 步，且第 1 步也检查；所有 DP rank 上的值相同，wave 结束时重置（:2265）。没有请求的 rank 跑 `execute_dummy_batch`（:2225-2240）。
   - **scheduler**（`vllm/v1/core/sched/scheduler.py`）：
     - 预算（:529-532）；
     - defer 条件（:552-556）：节流步 && 非 capacity_bound && running 中存在非 prefill-chunk 的请求（即有 decode）；
@@ -826,7 +826,7 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 - [ ] **请求回放任务 3（诊断方案已确认）** 增加按参考 `credit_issued_ns` 固定发出时间的可选诊断模式，用于分离回放时序与引擎速度误差。处理耗时仍由模拟器计算，不叠加历史 API 耗时；记录参考身份、时间起点和缺失映射。按需在两个主检查点运行完整一小时，结果标为诊断，不能替代正式闭环结果。
 - [x] **请求回放任务 4** 以全部 393 条 trace 为负载池，按 aiperf 的起点抽样和会话复用规则回放，保留依赖与等待；窗口内回放完一棵请求树后，继续从共享抽样器领取下一条。既不强制全部从第一轮开始，也不以遍历全部原始请求作为结束条件。
 - [x] **请求回放任务 5** 分别报告预热与正式测量的发出、成功、错误、取消和收尾后残留请求数，以及使用过的 trace 数、唯一原始请求数和回放次数。按参考口径处理预热、宽限期和取消；未被窗口选中的原始请求不算模拟失败。
-- [ ] **请求回放任务 6** 将会话拆分、请求间依赖和跨请求流等待关系作为 GPU 路由的输入，先核对这些关系，再进行会话到 GPU 的映射与缓存复用验证。
+- [x] **请求回放任务 6** 将会话拆分、请求间依赖和跨请求流等待关系作为 GPU 路由的输入，先核对这些关系，再进行会话到 GPU 的映射与缓存复用验证。
 - [x] **请求回放任务 7（已完成内部解析及完整管线验证）** 参考 AIPerf 的 `weka_trace.py` 和 `replay_dependencies.py`，在 TokenSim 内部实现等价解析，直接读取原始 trace：
   - 保留原始请求身份、输入输出长度、前缀 hash 序列及其作用域；解析主会话、subagent、并行请求流和独立的辅助请求，建立稳定的会话 ID 与原始请求映射。
   - 对齐会话拆分、子代理启动／等待和跨请求流的前驱关系，生成供 TokenSim 回放与 router 使用的内部请求图。
@@ -867,8 +867,10 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 
 目标：DP 同步语义和会话 → rank 的分配与参考一致。
 
-- [ ] **GPU 同步与请求路由任务 1** DP lockstep：8 个 rank 每步同步，步长取各 rank 的最大值；空闲 rank 跑 dummy batch（对照 `core.py:2225-2240`）。
-- [ ] **GPU 同步与请求路由任务 2** 全局 step_counter：所有 rank 相同，wave 结束时重置，供 请求调度 的 interval 使用。
+本次已移植 router 0.1.14 的 FurcHash/MurmurHash64A、160 虚拟节点与 DP URL 环，79,367 条历史日志映射零差异；接入全局最大步长、空闲 rank dummy 和 step1/16 的完成共识。355 项测试通过，两个 SKU 的完整一小时 HBM 管线收尾均无残留引用。测量时间守恒且会话稳定；同步等待占总 GPU 步时 53.56%/65.27%，表明后续必须修正长 prefill 调度和原生成本。固定实测映射诊断、历史 rank3 归因未完成，吞吐精度尚未验收，详见路由／DP 报告。
+
+- [x] **GPU 同步与请求路由任务 1** DP lockstep：8 个 rank 每步同步，步长取各 rank 的最大值；空闲 rank 跑 dummy batch（对照 `core.py:2225-2240`）。
+- [x] **GPU 同步与请求路由任务 2** 全局 step_counter：所有 rank 相同，wave 结束时重置，供 请求调度 的 interval 使用；当前只读源码的完成状态检查间隔为 16，旧 32 步记录另列版本差异。
 - [ ] **GPU 同步与请求路由任务 3（已确认方向）** 在 TokenSim 增加独立的简单 router 模拟，放在请求回放与 worker 调度器之间。参考博客及每个实验点的策略，以会话／subagent 的独立 ID 作稳定路由；记录目标 worker、请求量、在途量与缓存命中，避免把一条回放通道上的所有会话永久绑到同一张 GPU。当前两个参考点使用 consistent_hash，其他曲线点需逐点核对，不擅自增加日志中不存在的动态迁移或 KV-aware 策略。
 - [ ] **GPU 同步与请求路由任务 4（诊断方案已确认）** 增加固定实测 worker 分配的可选模式，通过 router.log 与原始会话身份映射诊断路由误差。仅使用可以核对的映射，报告覆盖率与缺失项，不伪造未观测会话的实测归属。按需在两个主检查点运行完整一小时；正式参考曲线由 router 模拟分配。
 - [ ] **GPU 同步与请求路由任务 5** 诊断 B200 rank3（hit 0.322、KV 使用率 1.0）：是 hash 不均、会话过长，还是本来就在容量边缘。

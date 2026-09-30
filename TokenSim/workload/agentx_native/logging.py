@@ -54,6 +54,11 @@ class NativeReplayLogs:
             {
                 "simulation_time": env.now,
                 "phase": replay.phase,
+                "dp_step": (
+                    self.engine.dp_coordinator.describe()
+                    if getattr(self.engine, "dp_coordinator", None)
+                    else None
+                ),
                 "phase_counts": {p: dict(c) for p, c in replay.phase_counts.items()},
                 "workers": workers,
             },

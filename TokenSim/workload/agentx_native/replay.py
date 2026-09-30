@@ -457,6 +457,8 @@ class NativeAgentXReplay:
             "inner_index": req.agentx_source_inner_idx,
             "turn_index": req.turn,
             "lane": play.lane,
+            "dp_rank": getattr(req, "dp_rank", None),
+            "worker_id": getattr(req, "routing_worker_id", None),
             "pass_index": play.pass_index,
             "cancellation_acknowledged": (
                 req.cancelled_at is not None if req.cancel_requested else None

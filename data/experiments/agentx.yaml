@@ -11,6 +11,9 @@ defaults:
   grace_period_s: 30
   cancellation_timeout_s: 10
   router: consistent_hash
+  router_backend_url: http://localhost:8889
+  dp_lockstep: true
+  dp_sync_interval: 16
   cache_backend: simple_cpu
   parallelism: {tp: 1, dp: 8, ep: 8, pp: 1}
   num_gpus: 8
