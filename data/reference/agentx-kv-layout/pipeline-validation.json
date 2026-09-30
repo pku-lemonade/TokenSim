@@ -1,0 +1,344 @@
+{
+  "schema_version": 1,
+  "scope": "HBM-only complete-hour pipeline baseline; native costs, MTP progression, router, DP synchronization, CPU offload and final accuracy validation remain pending",
+  "trace_pool_count": 393,
+  "dataset_request_count": 98827,
+  "dataset_sha256": "29b6a19e751ff5230771519aab755f80a0f43a4ba9cf96b72d3a6a437ec99276",
+  "workload_seed": 42,
+  "simulation_seed": 0,
+  "operator_counter_scope": "warmup plus profiling; not reset at handoff",
+  "checkpoints": {
+    "b200": {
+      "before": {
+        "result_path": "results/agentx-dsv4-full/hybrid-cache/20260930-validated-pool/b200/agentx_c196.json",
+        "result_sha256": "d280731bd8b2f8fcbf5dea46c58b4e764b5c565f7461a7fd2080a2c2ce75a639",
+        "phase_counts": {
+          "warmup": {
+            "sent": 2171,
+            "successful": 2171
+          },
+          "profiling": {
+            "sent": 1717,
+            "successful": 1409,
+            "cancelled": 308
+          }
+        },
+        "phase_trace_counts": {
+          "warmup": 238,
+          "profiling": 213
+        },
+        "phase_unique_original_requests": {
+          "warmup": 2171,
+          "profiling": 1717
+        },
+        "play_count": 263,
+        "warmup_seconds": 11668.737087350404,
+        "phase_elapsed_seconds": 3630.8575423128805,
+        "successful_observation_seconds": 3629.6408444708886,
+        "gpu_hit_percent_successful_input_denominator": 0.43447596860036164,
+        "cpu_hit_percent": 0,
+        "cpu_backend": "disabled",
+        "output_tokens_per_second": 251.95192559976567,
+        "ttft_p90_seconds": 450.2278409903029,
+        "tpot_p90_seconds": 0.907262336341663,
+        "e2e_mean_seconds": 537.9860551972664,
+        "e2e_p90_seconds": 1013.5654610835096,
+        "cancel_unreturned": 0,
+        "preemptions": 0,
+        "pool_slots": [
+          21021,
+          21021,
+          21021,
+          21021,
+          21021,
+          21021,
+          21021,
+          21021
+        ],
+        "peak_used_slots": [
+          17687,
+          17705,
+          17665,
+          17687,
+          17696,
+          17686,
+          17691,
+          17689
+        ],
+        "final_used_slots": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "wall_seconds": 1195.2293125437573,
+        "operator_match_percent": {
+          "analytical": 75.29959836033612,
+          "extrapolated": 12.35437876363104,
+          "exact": 4.241687284487733,
+          "interpolated": 8.104335591545116
+        },
+        "audits": {
+          "terminal_counts_match": true,
+          "successful_output_equals_requested": true,
+          "all_cancellations_acknowledged": true,
+          "no_residual_request_slots": true,
+          "complete_trace_pool_and_issue_window": true,
+          "pool_conservation_checked_by_engine": true
+        }
+      },
+      "after": {
+        "result_path": "results/agentx-dsv4-full/hybrid-cache/20260930-free-queue/b200/agentx_c196.json",
+        "result_sha256": "a448cf7dceda4dab2c6d4a48939f86190819dbc5be5f3a335b322a483591ddf3",
+        "phase_counts": {
+          "warmup": {
+            "sent": 2171,
+            "successful": 2171
+          },
+          "profiling": {
+            "sent": 2094,
+            "successful": 1773,
+            "cancelled": 321
+          }
+        },
+        "phase_trace_counts": {
+          "warmup": 238,
+          "profiling": 217
+        },
+        "phase_unique_original_requests": {
+          "warmup": 2171,
+          "profiling": 2094
+        },
+        "play_count": 267,
+        "warmup_seconds": 11491.741675402736,
+        "phase_elapsed_seconds": 3630.9448852661917,
+        "successful_observation_seconds": 3629.1925741331197,
+        "gpu_hit_percent_successful_input_denominator": 28.821967498293052,
+        "cpu_hit_percent": 0,
+        "cpu_backend": "disabled",
+        "output_tokens_per_second": 347.7613750770631,
+        "ttft_p90_seconds": 424.4531859059727,
+        "tpot_p90_seconds": 0.664085841831727,
+        "e2e_mean_seconds": 446.6502237189493,
+        "e2e_p90_seconds": 931.2351153122312,
+        "cancel_unreturned": 0,
+        "preemptions": 0,
+        "pool_slots": [
+          21021,
+          21021,
+          21021,
+          21021,
+          21021,
+          21021,
+          21021,
+          21021
+        ],
+        "peak_used_slots": [
+          18495,
+          17649,
+          17756,
+          17703,
+          17710,
+          17765,
+          17662,
+          17445
+        ],
+        "final_used_slots": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "wall_seconds": 1148.942654096987,
+        "operator_match_percent": {
+          "analytical": 76.10944882716066,
+          "extrapolated": 10.783307404327214,
+          "exact": 4.390309810084241,
+          "interpolated": 8.716933958427889
+        },
+        "audits": {
+          "terminal_counts_match": true,
+          "successful_output_equals_requested": true,
+          "all_cancellations_acknowledged": true,
+          "no_residual_request_slots": true,
+          "complete_trace_pool_and_issue_window": true,
+          "pool_conservation_checked_by_engine": true
+        }
+      }
+    },
+    "b300": {
+      "before": {
+        "result_path": "results/agentx-dsv4-full/hybrid-cache/20260930-validated-pool/b300/agentx_c384.json",
+        "result_sha256": "2d3e1ca9992a9ee5bedcbf5fb199ff032ff6a2f2a2bb44d839be85add48e878c",
+        "phase_counts": {
+          "warmup": {
+            "sent": 4249,
+            "successful": 4249
+          },
+          "profiling": {
+            "sent": 2026,
+            "successful": 1550,
+            "cancelled": 476
+          }
+        },
+        "phase_trace_counts": {
+          "warmup": 393,
+          "profiling": 317
+        },
+        "phase_unique_original_requests": {
+          "warmup": 4238,
+          "profiling": 2016
+        },
+        "play_count": 512,
+        "warmup_seconds": 16512.624376518834,
+        "phase_elapsed_seconds": 3631.835730175946,
+        "successful_observation_seconds": 3629.326877197622,
+        "gpu_hit_percent_successful_input_denominator": 0.19833090452371263,
+        "cpu_hit_percent": 0,
+        "cpu_backend": "disabled",
+        "output_tokens_per_second": 160.55814747938732,
+        "ttft_p90_seconds": 707.2897370584648,
+        "tpot_p90_seconds": 2.1712347481192267,
+        "e2e_mean_seconds": 753.3016577171056,
+        "e2e_p90_seconds": 1693.8500618242035,
+        "cancel_unreturned": 0,
+        "preemptions": 0,
+        "pool_slots": [
+          87073,
+          87073,
+          87073,
+          87073,
+          87073,
+          87073,
+          87073,
+          87073
+        ],
+        "peak_used_slots": [
+          48531,
+          41958,
+          54603,
+          49093,
+          44529,
+          40535,
+          48660,
+          41330
+        ],
+        "final_used_slots": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "wall_seconds": 1849.5483852489851,
+        "operator_match_percent": {
+          "analytical": 80.08350122441976,
+          "extrapolated": 11.695986908813692,
+          "exact": 3.5366240562064233,
+          "interpolated": 4.683887810560123
+        },
+        "audits": {
+          "terminal_counts_match": true,
+          "successful_output_equals_requested": true,
+          "all_cancellations_acknowledged": true,
+          "no_residual_request_slots": true,
+          "complete_trace_pool_and_issue_window": true,
+          "pool_conservation_checked_by_engine": true
+        }
+      },
+      "after": {
+        "result_path": "results/agentx-dsv4-full/hybrid-cache/20260930-free-queue/b300/agentx_c384.json",
+        "result_sha256": "15f5d1142b3638b3df91247acef78d271c8560a7279712d29b12df0519b016f7",
+        "phase_counts": {
+          "warmup": {
+            "sent": 4249,
+            "successful": 4249
+          },
+          "profiling": {
+            "sent": 11801,
+            "successful": 11458,
+            "cancelled": 343
+          }
+        },
+        "phase_trace_counts": {
+          "warmup": 393,
+          "profiling": 339
+        },
+        "phase_unique_original_requests": {
+          "warmup": 4237,
+          "profiling": 11517
+        },
+        "play_count": 605,
+        "warmup_seconds": 2274.1341605005186,
+        "phase_elapsed_seconds": 3630.0810117647366,
+        "successful_observation_seconds": 3628.9642705588362,
+        "gpu_hit_percent_successful_input_denominator": 94.24240913223252,
+        "cpu_hit_percent": 0,
+        "cpu_backend": "disabled",
+        "output_tokens_per_second": 2413.811585599071,
+        "ttft_p90_seconds": 6.095242329021043,
+        "tpot_p90_seconds": 0.21253998793153409,
+        "e2e_mean_seconds": 124.43621239618963,
+        "e2e_p90_seconds": 285.76010133169734,
+        "cancel_unreturned": 0,
+        "preemptions": 0,
+        "pool_slots": [
+          87073,
+          87073,
+          87073,
+          87073,
+          87073,
+          87073,
+          87073,
+          87073
+        ],
+        "peak_used_slots": [
+          47760,
+          47386,
+          50690,
+          48666,
+          61876,
+          46715,
+          46845,
+          42983
+        ],
+        "final_used_slots": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "wall_seconds": 3303.012575805653,
+        "operator_match_percent": {
+          "analytical": 90.29159789598758,
+          "extrapolated": 3.4587628786984834,
+          "exact": 0.46976908206489637,
+          "interpolated": 5.779870143249048
+        },
+        "audits": {
+          "terminal_counts_match": true,
+          "successful_output_equals_requested": true,
+          "all_cancellations_acknowledged": true,
+          "no_residual_request_slots": true,
+          "complete_trace_pool_and_issue_window": true,
+          "pool_conservation_checked_by_engine": true
+        }
+      }
+    }
+  }
+}

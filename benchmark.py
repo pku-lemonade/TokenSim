@@ -143,6 +143,12 @@ def main(
                 "--dataset_path is required for agentx_weka workloads"
             )
         if native_agentx:
+            if args.batching != "paged-attn" or not getattr(
+                args, "chunked_prefill", True
+            ):
+                raise ConfigurationError(
+                    "full-model AgentX requires paged-attn and chunked prefill for physical hybrid cache allocation"
+                )
             if (
                 args.agentx_trace_count != 393
                 or args.dataset_skip_count
@@ -208,6 +214,7 @@ def main(
         decode_worker_pool_type=args.decode_worker_pool_type,
         max_parallem_sum=args.max_parallem_sum,
         max_occupy_ratio=args.max_occupy_ratio,
+        gpu_memory_utilization=getattr(args, "gpu_memory_utilization", 1.0),
         latency_backend_type=latency_backend_type,
         latency_fallback=args.latency_fallback,
         operator_backend=args.operator_backend,
@@ -217,8 +224,14 @@ def main(
         max_num_batched_tokens=max_num_batched_tokens(args),
     )
     replay = None
+    replay_logs = None
     if is_agentx:
         if native_agentx:
+            from TokenSim.workload.agentx_native.logging import NativeReplayLogs
+
+            replay_logs = NativeReplayLogs(
+                Path(args.results_path or "results") / "native_replay", engine
+            )
             replay = NativeAgentXReplay(
                 env,
                 engine,
@@ -228,7 +241,10 @@ def main(
                 profile_duration=args.agentx_profile_duration,
                 workload_seed=42,
                 warmup=True,
+                event_sink=lambda record: replay_logs.write("events", record),
+                request_sink=lambda record: replay_logs.write("requests", record),
             )
+            env.process(replay_logs.monitor(env, replay))
         else:
             replay = AgentXReplay(
                 env,
@@ -265,13 +281,21 @@ def main(
 
     wall_start = time.perf_counter()
     engine.start_debug_clock(wall_start)
-    if args.sim_time is not None:
-        env.run(args.sim_time)
-    elif replay is not None and replay.profile_duration is not None:
-        env.run(until=source_process)
-    else:
-        env.run()
-    engine.raise_if_failed()
+    try:
+        if args.sim_time is not None:
+            env.run(args.sim_time)
+        elif replay is not None and replay.profile_duration is not None:
+            env.run(until=source_process)
+        else:
+            env.run()
+        engine.raise_if_failed()
+        if native_agentx:
+            for worker in engine.workers:
+                worker.scheduler.block_manager.validate_conservation()
+    finally:
+        if replay_logs is not None:
+            replay_logs.snapshot(env, replay)
+            replay_logs.close()
     simulator_wall_time = time.perf_counter() - wall_start
 
     if replay is not None:
@@ -411,6 +435,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--max_parallem_sum", type=int, default=99999)
     parser.add_argument("--max_occupy_ratio", type=float, default=1.0)
+    parser.add_argument("--gpu_memory_utilization", type=float, default=1.0)
     parser.add_argument(
         "--max_num_batched_tokens",
         type=int,

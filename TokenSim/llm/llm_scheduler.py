@@ -216,12 +216,21 @@ class LLMPagedAttnScheduler(LLMScheduler):
         # Requests admitted by the most recent schedule() call.
         self.last_admitted: list[Request] = []
 
-        self.block_manager: BlockManager = BlockManager(
-            block_size=self.cache_config.block_size,
-            num_gpu_blocks=self.cache_config.num_gpu_blocks,
-            num_cpu_blocks=self.cache_config.num_cpu_blocks,
-            model=self.cache_config.model,
-        )
+        if getattr(self.cache_config, "hybrid_layout", None) is not None:
+            from TokenSim.block.hybrid_manager import HybridKVBlockManager
+
+            self.block_manager = HybridKVBlockManager(
+                self.cache_config.hybrid_layout,
+                self.cache_config.num_gpu_blocks,
+                self.cache_config.model,
+            )
+        else:
+            self.block_manager = BlockManager(
+                block_size=self.cache_config.block_size,
+                num_gpu_blocks=self.cache_config.num_gpu_blocks,
+                num_cpu_blocks=self.cache_config.num_cpu_blocks,
+                model=self.cache_config.model,
+            )
 
         self.max_occupy_ratio = max_occupy_ratio
         set_releaser = getattr(self.connector, "set_block_releaser", None)
@@ -257,6 +266,14 @@ class LLMPagedAttnScheduler(LLMScheduler):
                 req, queue, preempted
             ):
                 continue
+            if req.is_context_build and getattr(
+                self.block_manager, "native_hybrid", False
+            ):
+                if not self.block_manager.can_ensure_slots(req, tokens):
+                    self._preempt(req)
+                    preempted.append(req)
+                    continue
+                self.block_manager.ensure_slots(req, tokens)
             req.scheduled_tokens = tokens
             budget = None if budget is None else budget - tokens
             scheduled.append(req)
@@ -276,12 +293,25 @@ class LLMPagedAttnScheduler(LLMScheduler):
                 ):
                     break
                 req = self.waiting[0]
-                if not self.block_manager.can_allocate(req):
+                can_allocate = (
+                    self.block_manager.can_allocate(
+                        req, has_scheduled_requests=bool(self.running)
+                    )
+                    if getattr(self.block_manager, "native_hybrid", False)
+                    else self.block_manager.can_allocate(req)
+                )
+                if not can_allocate:
                     break
 
                 req = self.waiting.pop(0)
                 self._admit(req)
                 tokens = self._step_tokens(req, budget)
+                if getattr(self.block_manager, "native_hybrid", False):
+                    if not self.block_manager.can_ensure_slots(req, tokens):
+                        self._preempt(req)
+                        preempted.append(req)
+                        break
+                    self.block_manager.ensure_slots(req, tokens)
                 req.scheduled_tokens = tokens
                 budget = None if budget is None else budget - tokens
                 scheduled.append(req)
@@ -432,7 +462,7 @@ class LLMPagedAttnScheduler(LLMScheduler):
         if not delayed:
             # Cancellation must not publish uncomputed prompt/output cache
             # keys. Previously committed complete blocks keep their metadata.
-            if blocks:
+            if blocks or getattr(self.block_manager, "native_hybrid", False):
                 self.block_manager.release_request_blocks(req)
             self.connector.on_request_released(req)
         return not self.block_manager.block_table.get_blocks(req.id)

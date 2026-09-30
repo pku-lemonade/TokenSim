@@ -355,6 +355,8 @@ class NativeAgentXReplay:
         req.agentx_source_outer_idx = turn.source.outer_index
         req.agentx_source_inner_idx = turn.source.inner_index
         req.agentx_recorded_model = turn.request.model
+        req.native_trace_hash_ids = turn.request.hash_ids
+        req.native_trace_block_size = play.graph.block_size
         return req
 
     def _submit(self, req, play, cid=None, *, primer=False):

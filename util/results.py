@@ -115,7 +115,7 @@ def get_parallel_stats(engine: LLMEngine) -> dict[str, Any]:
     }
 
 
-def get_cache_capacity_stats(engine: LLMEngine) -> dict[str, int | float]:
+def get_cache_capacity_stats(engine: LLMEngine) -> dict[str, Any]:
     """Report KV capacity once per data-parallel replica."""
     replica_workers: dict[int, Any] = {}
     for worker in getattr(engine, "workers", []):
@@ -135,12 +135,15 @@ def get_cache_capacity_stats(engine: LLMEngine) -> dict[str, int | float]:
         if cache is None or block_manager is None:
             continue
         first_cache = first_cache or cache
+        layout = getattr(cache, "hybrid_layout", None)
         capacities.append(
-            int(block_manager.num_total_gpu_blocks) * int(cache.block_size)
+            layout.equivalent_tokens(block_manager.num_total_gpu_blocks)
+            if layout is not None
+            else int(block_manager.num_total_gpu_blocks) * int(cache.block_size)
         )
     if not capacities or first_cache is None:
         return {}
-    return {
+    result = {
         "kv_cache_block_size": int(first_cache.block_size),
         "kv_cache_bytes_per_token_per_rank": int(first_cache.size_per_token),
         "kv_cache_capacity_tokens_per_dp_rank": min(capacities),
@@ -149,6 +152,26 @@ def get_cache_capacity_stats(engine: LLMEngine) -> dict[str, int | float]:
             getattr(first_cache, "model_param_size", 0)
         ),
     }
+    if getattr(first_cache, "hybrid_layout", None) is not None:
+        result["kv_cache_capacity_token_kind"] = (
+            "group-aware-log-equivalent; allocation uses physical slots"
+        )
+        result["kv_cache_bytes_per_token_kind"] = (
+            "physical stride / logical block; not uniform token storage"
+        )
+        result["worker_cache_budgets"] = [
+            {
+                "worker_id": worker.id,
+                "dp_rank": worker.dp_rank,
+                "cache": worker.cache_config.to_dict(),
+                "pool_slots": worker.scheduler.block_manager.num_total_gpu_blocks,
+                "peak_used_slots": worker.scheduler.block_manager.peak_used_slots,
+                "final_used_slots": worker.scheduler.block_manager.get_num_allocated_blocks(),
+                "evictions": worker.scheduler.block_manager.eviction_count,
+            }
+            for worker in replica_workers.values()
+        ]
+    return result
 
 
 def get_latency_stats(engine: LLMEngine) -> dict[str, Any]:

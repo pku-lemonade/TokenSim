@@ -183,6 +183,7 @@ class LLMWorker(Worker):
         random_seed: int = 0,
         kv_cache_capacity_tokens_per_dp_rank: int | None = None,
         max_num_batched_tokens: int | None = DEFAULT_MAX_NUM_BATCHED_TOKENS,
+        gpu_memory_utilization: float = 1.0,
     ):
         super().__init__(env, id)
         self.hardware_context = hardware
@@ -216,6 +217,10 @@ class LLMWorker(Worker):
             parallel_config=self.parallel_config,
             rank_info=self.rank_info,
             expert_placement=self.expert_placement,
+            usable_memory_fraction=gpu_memory_utilization,
+            max_num_batched_tokens=max_num_batched_tokens
+            or DEFAULT_MAX_NUM_BATCHED_TOKENS,
+            max_num_seqs=max_parallem_sum or 49,
             kv_cache_capacity_tokens_per_dp_rank=kv_cache_capacity_tokens_per_dp_rank,
         )
         self.preempted_cnt = 0
@@ -274,6 +279,15 @@ class LLMWorker(Worker):
             worker_config.role,
             kv_rank=id,
         )
+        if self.cache_config.hybrid_layout is not None:
+            if batching != "paged-attn":
+                raise ConfigurationError(
+                    "native DSV4 hybrid cache requires paged-attn scheduling"
+                )
+            if self.kv_transfer_config.kv_connector != "NoopConnector":
+                raise ConfigurationError(
+                    "native hybrid cache offload integration is not yet implemented for this connector"
+                )
         self.connector = KVConnectorFactory.create_connector(
             self.kv_transfer_config,
             self.cache_config,
@@ -314,6 +328,9 @@ class LLMWorker(Worker):
                 continue
             was_prefill = request.is_prefill
             request.advance(self.env, latency, len(requests))
+            manager = getattr(getattr(self, "scheduler", None), "block_manager", None)
+            if getattr(manager, "native_hybrid", False):
+                manager.cache_computed(request)
             if was_prefill and not request.is_prefill:
                 self.engine.record_request_completion("prefill", request)
             if request.is_done:
@@ -466,6 +483,7 @@ class LLMEngine(Worker):
         random_seed: int = 0,
         debug_print: bool = False,
         max_num_batched_tokens: int | None = DEFAULT_MAX_NUM_BATCHED_TOKENS,
+        gpu_memory_utilization: float = 1.0,
     ):
         super().__init__(env, -1)
 
@@ -513,6 +531,7 @@ class LLMEngine(Worker):
                 placement=self.placement,
                 max_parallem_sum=max_parallem_sum,
                 max_occupy_ratio=max_occupy_ratio,
+                gpu_memory_utilization=gpu_memory_utilization,
                 parallel_config=self.parallel_config,
                 moe_config=self.moe_config,
                 expert_placement=self.expert_placement,
@@ -651,7 +670,21 @@ class LLMEngine(Worker):
                 continue
             available_blocks = min(capacities)
             for req in requests:
-                needed = required_blocks(req)
+                layouts = [
+                    getattr(
+                        getattr(worker, "cache_config", None), "hybrid_layout", None
+                    )
+                    for worker in workers
+                ]
+                needed = max(
+                    (
+                        layout.max_request_slots(req.prefill_len + req.decode_len)
+                        if layout is not None
+                        else required_blocks(req)
+                    )
+                    for layout in layouts
+                )
+
                 if needed > available_blocks:
                     raise ConfigurationError(
                         f"request {req.id} cannot fit on every eligible {role} worker: "

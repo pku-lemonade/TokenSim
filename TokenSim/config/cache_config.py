@@ -26,6 +26,10 @@ class CacheConfig:
         expert_placement: ExpertPlacement | None = None,
         usable_memory_fraction: float = 1.0,
         kv_cache_capacity_tokens_per_dp_rank: int | None = None,
+        max_num_batched_tokens: int = 8192,
+        max_num_seqs: int = 49,
+        speculative_tokens: int = 3,
+        max_concurrent_batches: int = 2,
     ):
         self.block_size: int = block_size
         self.device = device
@@ -79,6 +83,8 @@ class CacheConfig:
             )
 
         self.weight_memory_report = None
+        self.hybrid_layout = None
+        self.memory_budget = None
         if model.deepseek_v4 is not None:
             from TokenSim.config.weight_memory import deepseek_v4_weight_memory
 
@@ -89,33 +95,66 @@ class CacheConfig:
                 "total_bytes"
             ]
             self.model_param_size = self.weight_memory_report["total_bytes"]
+            from TokenSim.config.kv_layout import deepseek_v4_kv_layout
+            from TokenSim.config.memory_budget import deepseek_v4_memory_budget
+
+            self.hybrid_layout = deepseek_v4_kv_layout(
+                model,
+                block_size=block_size,
+                max_num_batched_tokens=max_num_batched_tokens,
+                max_concurrent_batches=max_concurrent_batches,
+                speculative_tokens=speculative_tokens,
+            )
+            self.memory_budget = deepseek_v4_memory_budget(
+                model,
+                device,
+                self.model_param_size,
+                self.parallel_config,
+                utilization=usable_memory_fraction,
+                max_num_batched_tokens=max_num_batched_tokens,
+                max_num_seqs=max_num_seqs,
+                speculative_tokens=speculative_tokens,
+            )
         else:
             weight_bytes = dtype_bytes(model.dtype)
             self.model_param_size_unsharded = model.total_params() * weight_bytes
             self.model_param_size = self._rank_params() * weight_bytes
 
-        # Runtime reserves (NCCL buffers, CUDA context, framework workspace)
-        # come off the top before the optional usable fraction is applied.
         self.reserved_bytes = device.memory_reserved_bytes.value
-        capacity = (
-            max(0.0, device.memory_capacity_bytes.value - self.reserved_bytes)
-            * usable_memory_fraction
-        )
-        self.usable_memory_bytes = capacity
-        if capacity <= self.model_param_size:
-            raise ConfigurationError(
-                f"model {model.model_id!r} does not fit on device {device.device_id!r}: "
-                + f"model_param_size={self.model_param_size:.3e}, usable_memory={capacity:.3e} "
-                + f"(capacity={device.memory_capacity_bytes.value:.3e}, reserved={self.reserved_bytes:.3e})"
+        if self.hybrid_layout is not None:
+            self.physical_slot_bytes = self.hybrid_layout.physical_slot_bytes
+            self.num_gpu_blocks = (
+                self.memory_budget["available_kv_bytes"] // self.physical_slot_bytes
             )
-        # FIXME: actual host memory can reach terabytes; it only serves as swap
-        # space here, and a huge swap hides preemption effects, so it is bounded.
-        self.num_cpu_blocks: int = int(
-            min(32768, _HOST_SWAP_BYTES / self.size_per_token // self.block_size)
-        )
-        self.num_gpu_blocks: int = int(
-            (capacity - self.model_param_size) / self.size_per_token // self.block_size
-        )
+            # This storage-equivalent value only supports legacy byte-reporting
+            # interfaces. Allocation uses group slots and physical_slot_bytes.
+            self.size_per_token = self.physical_slot_bytes // self.block_size
+            self.size_per_token_unsharded = self.size_per_token
+            self.num_cpu_blocks = 0
+            self.usable_memory_bytes = self.memory_budget["hardware_budget_bytes"]
+        else:
+            # Preserve the generic model's existing runtime-reserve convention.
+            capacity = (
+                max(0.0, device.memory_capacity_bytes.value - self.reserved_bytes)
+                * usable_memory_fraction
+            )
+            self.usable_memory_bytes = capacity
+            if capacity <= self.model_param_size:
+                raise ConfigurationError(
+                    f"model {model.model_id!r} does not fit on device {device.device_id!r}: "
+                    + f"model_param_size={self.model_param_size:.3e}, usable_memory={capacity:.3e} "
+                    + f"(capacity={device.memory_capacity_bytes.value:.3e}, reserved={self.reserved_bytes:.3e})"
+                )
+            # Host swap remains bounded; native offload has a separate budget.
+            self.num_cpu_blocks = int(
+                min(32768, _HOST_SWAP_BYTES / self.size_per_token // self.block_size)
+            )
+            self.num_gpu_blocks = int(
+                (capacity - self.model_param_size)
+                / self.size_per_token
+                // self.block_size
+            )
+            self.physical_slot_bytes = int(self.size_per_token * self.block_size)
         if kv_cache_capacity_tokens_per_dp_rank is not None:
             if kv_cache_capacity_tokens_per_dp_rank <= 0:
                 raise ConfigurationError("KV cache capacity override must be positive")
@@ -159,9 +198,16 @@ class CacheConfig:
             "num_layers_per_rank": self.num_layers_per_rank,
             "weight_memory": self.weight_memory_report,
             "kv_layout": (
-                "legacy_uniform; native DeepSeek V4 hybrid cache integration pending"
+                self.hybrid_layout.to_dict()
                 if self.model_spec.deepseek_v4
                 else "uniform"
+            ),
+            "physical_slot_bytes": self.physical_slot_bytes,
+            "memory_budget": self.memory_budget,
+            "logged_equivalent_tokens_computed": (
+                self.hybrid_layout.equivalent_tokens(self.num_gpu_blocks)
+                if self.hybrid_layout
+                else None
             ),
         }
 
