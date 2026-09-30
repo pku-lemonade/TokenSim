@@ -16,6 +16,11 @@ sys.path.insert(0, str(ROOT))
 from TokenSim.config.cache_config import CacheConfig
 from TokenSim.config.cluster_config import ClusterConfig
 from TokenSim.hardware.context import HardwareContext
+from util.agentx_accuracy import (
+    error_assessment,
+    ACCEPTABLE_ERROR_PERCENT,
+    PREFERRED_ERROR_PERCENT,
+)
 
 
 def audit(reference_root, source_root):
@@ -75,9 +80,13 @@ def audit(reference_root, source_root):
             "equivalent_token_error_percent": [
                 (equivalent / value - 1) * 100 for value in equivalents
             ],
-            "capacity_goal_met": all(
-                abs(current / value - 1) <= 0.01 for value in available
-            ),
+            "capacity_assessments": [
+                error_assessment(current, value) for value in available
+            ],
+            "capacity_acceptable": bool(available)
+            and all(error_assessment(current, v)["acceptable"] for v in available),
+            "capacity_goal_met": bool(available)
+            and all(error_assessment(current, v)["preferred"] for v in available),
         }
     paths = [
         "vllm/models/deepseek_v4/attention.py",
@@ -95,6 +104,10 @@ def audit(reference_root, source_root):
     return {
         "scope": "physical HBM layout and allocation; CPU offload and native operator costs pending",
         "capacity_policy": "computed before logs; no historical capacity overrides",
+        "error_policy": {
+            "acceptable_relative_error_percent": ACCEPTABLE_ERROR_PERCENT,
+            "preferred_relative_error_percent": PREFERRED_ERROR_PERCENT,
+        },
         "source": {
             "repository": "https://github.com/vllm-project/vllm",
             "revision": revision,

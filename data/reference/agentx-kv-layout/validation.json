@@ -1,6 +1,10 @@
 {
   "scope": "physical HBM layout and allocation; CPU offload and native operator costs pending",
   "capacity_policy": "computed before logs; no historical capacity overrides",
+  "error_policy": {
+    "acceptable_relative_error_percent": 25.0,
+    "preferred_relative_error_percent": 10.0
+  },
   "source": {
     "repository": "https://github.com/vllm-project/vllm",
     "revision": "30f5c01d4ebb5c493ed86195db24d0ec5b3ce3d7",
@@ -3183,6 +3187,15 @@
       "equivalent_token_error_percent": [
         -25.441595244249537
       ],
+      "capacity_assessments": [
+        {
+          "delta_percent": -25.449071426047322,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        }
+      ],
+      "capacity_acceptable": false,
       "capacity_goal_met": false
     },
     "b300": {
@@ -6354,7 +6367,16 @@
         -3.318829128529288,
         -3.3209708802386606
       ],
-      "capacity_goal_met": false
+      "capacity_assessments": [
+        {
+          "delta_percent": -3.3205513284441546,
+          "acceptable": true,
+          "preferred": true,
+          "status": "preferred"
+        }
+      ],
+      "capacity_acceptable": true,
+      "capacity_goal_met": true
     }
   }
 }

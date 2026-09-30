@@ -3,6 +3,7 @@ schema_version: 1
 # replay/cache/runtime stages must be completed before formal simulation.
 defaults:
   model: DeepSeek-V4-Pro
+  accuracy_policy: {acceptable_relative_error_percent: 25, preferred_relative_error_percent: 10}
   model_config_path: data/psla/deepseek-v4-pro.json
   workload_seed: 42
   trace_count: 393

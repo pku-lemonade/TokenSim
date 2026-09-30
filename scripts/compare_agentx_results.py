@@ -11,6 +11,11 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from util.agentx_reference import load_experiments
+from util.agentx_accuracy import (
+    error_assessment,
+    ACCEPTABLE_ERROR_PERCENT,
+    PREFERRED_ERROR_PERCENT,
+)
 
 
 def percent_delta(actual: float | None, reference: float | None) -> float | None:
@@ -121,6 +126,9 @@ def comparison_row(
         row[f"{name}_delta_pct"] = (
             percent_delta(value, ref.get(name)) if comparable else None
         )
+        assessment = error_assessment(value, ref.get(name), comparable=comparable)
+        for key in ("acceptable", "preferred", "status"):
+            row[f"{name}_{key}"] = assessment[key]
     same_denominator = metadata.get("cache_rate_denominator") == "all_prompt_tokens"
     for name, value, reference_value in (
         ("gpu", gpu, ref.get("gpu_cache_hit_rate")),
@@ -134,6 +142,12 @@ def comparison_row(
             and reference_value is not None
             else None
         )
+        assessment = error_assessment(
+            value, reference_value, comparable=comparable and same_denominator
+        )
+        row[f"{name}_hit_delta_pct"] = assessment["delta_percent"]
+        for key in ("acceptable", "preferred", "status"):
+            row[f"{name}_hit_{key}"] = assessment[key]
     return row
 
 
@@ -168,6 +182,10 @@ def compare(
             "normalization": "actual simulated GPU count from experiment metadata",
             "missing_values": "null, never a fabricated zero",
             "capacity": "logged equivalent reference tokens are not usable capacity",
+            "accuracy_policy": {
+                "acceptable_relative_error_percent": ACCEPTABLE_ERROR_PERCENT,
+                "preferred_relative_error_percent": PREFERRED_ERROR_PERCENT,
+            },
         },
         "rows": rows,
     }
