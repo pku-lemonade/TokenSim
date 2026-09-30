@@ -204,6 +204,8 @@ class LLMPagedAttnScheduler(LLMScheduler):
         max_occupy_ratio: float = 1,
         connector=None,
         max_num_batched_tokens: int | None = DEFAULT_MAX_NUM_BATCHED_TOKENS,
+        long_prefill_token_threshold: int = 0,
+        adaptive_long_prefill_threshold: bool = False,
     ):
         super().__init__(connector=connector)
 
@@ -213,6 +215,23 @@ class LLMPagedAttnScheduler(LLMScheduler):
         if max_num_batched_tokens is not None and max_num_batched_tokens < 1:
             raise ConfigurationError("max_num_batched_tokens must be at least 1")
         self.max_num_batched_tokens = max_num_batched_tokens
+        if long_prefill_token_threshold < 0:
+            raise ConfigurationError("long_prefill_token_threshold must be nonnegative")
+        self.long_prefill_token_threshold = long_prefill_token_threshold
+        self.adaptive_long_prefill_threshold = adaptive_long_prefill_threshold
+        self.prefill_capacity_bound = False
+        self.defer_prefills = False
+        self.effective_long_prefill_threshold = 0
+        self.stats = {
+            "steps": 0,
+            "deferred_running_prefills": 0,
+            "deferred_waiting_prefills": 0,
+            "capacity_bound_steps": 0,
+            "scheduled_context_tokens": 0,
+            "scheduled_decode_tokens": 0,
+            "max_num_seqs_gate": 0,
+            "full_input_gate": 0,
+        }
         # Requests admitted by the most recent schedule() call.
         self.last_admitted: list[Request] = []
 
@@ -237,7 +256,7 @@ class LLMPagedAttnScheduler(LLMScheduler):
         if set_releaser is not None:
             set_releaser(self._release_delayed_blocks)
 
-    def schedule(self) -> tuple[list[Request], list[Request]]:
+    def schedule(self, throttle_prefills=False) -> tuple[list[Request], list[Request]]:
         """Build one step.
 
         Returns the requests computing tokens in this step (each with
@@ -250,13 +269,37 @@ class LLMPagedAttnScheduler(LLMScheduler):
         scheduled: list[Request] = []
         preempted: list[Request] = []
         self.last_admitted = []
+        self.stats["steps"] += 1
+        self.defer_prefills = bool(
+            throttle_prefills
+            and not self.prefill_capacity_bound
+            and any(not r.is_context_build for r in self.running)
+        )
+        eligible = len(self.running) + len(self.waiting)
+        self.effective_long_prefill_threshold = (
+            self.long_prefill_token_threshold if eligible > 1 else 0
+        )
+        if (
+            self.effective_long_prefill_threshold
+            and self.adaptive_long_prefill_threshold
+            and budget
+        ):
+            self.effective_long_prefill_threshold = max(
+                self.effective_long_prefill_threshold, budget // eligible
+            )
 
         # 1. Running requests, oldest first: decode tokens and context chunks.
         # [TODO: xuechao] sort self.running according to some priority policy.
-        queue = sorted(self.running, key=lambda req: req.arrival_time or 0.0)
+        # vLLM FCFS preserves running insertion order, including resumed
+        # requests appended after existing running requests.
+        queue = list(self.running)
         self.running = []
         while queue:
             req = queue.pop(0)
+            if self.defer_prefills and req.is_context_build:
+                self.stats["deferred_running_prefills"] += 1
+                self.running.append(req)
+                continue
             tokens = self._step_tokens(req, budget)
             if tokens == 0:
                 # Out of budget: the request keeps its place for the next step.
@@ -269,11 +312,8 @@ class LLMPagedAttnScheduler(LLMScheduler):
             if req.is_context_build and getattr(
                 self.block_manager, "native_hybrid", False
             ):
-                if not self.block_manager.can_ensure_slots(req, tokens):
-                    self._preempt(req)
-                    preempted.append(req)
+                if not self._reserve_context_slots(req, tokens, queue, preempted):
                     continue
-                self.block_manager.ensure_slots(req, tokens)
             req.scheduled_tokens = tokens
             budget = None if budget is None else budget - tokens
             scheduled.append(req)
@@ -291,8 +331,16 @@ class LLMPagedAttnScheduler(LLMScheduler):
                     self.max_parallem_sum is not None
                     and len(self.running) >= self.max_parallem_sum
                 ):
+                    self.stats["max_num_seqs_gate"] += 1
                     break
                 req = self.waiting[0]
+                if self.defer_prefills:
+                    plan = self.block_manager.kv_cache_manager.plan_reuse(req)
+                    # A full hit that needs only its last token may still run
+                    # on a deferred step (scheduler.py waiting gate).
+                    if req.context_len - plan.hit_tokens > 1:
+                        self.stats["deferred_waiting_prefills"] += 1
+                        break
                 can_allocate = (
                     self.block_manager.can_allocate(
                         req, has_scheduled_requests=bool(self.running)
@@ -301,6 +349,7 @@ class LLMPagedAttnScheduler(LLMScheduler):
                     else self.block_manager.can_allocate(req)
                 )
                 if not can_allocate:
+                    self.stats["full_input_gate"] += 1
                     break
 
                 req = self.waiting.pop(0)
@@ -318,6 +367,17 @@ class LLMPagedAttnScheduler(LLMScheduler):
                 self.running.append(req)
                 self.last_admitted.append(req)
 
+        if not preempted and not self.defer_prefills:
+            self.prefill_capacity_bound = bool(self.waiting)
+        if self.prefill_capacity_bound:
+            self.stats["capacity_bound_steps"] += 1
+        for req in scheduled:
+            key = (
+                "scheduled_context_tokens"
+                if req.is_context_build
+                else "scheduled_decode_tokens"
+            )
+            self.stats[key] += req.scheduled_tokens
         return scheduled, preempted
 
     def _admit(self, req: Request) -> None:
@@ -354,7 +414,22 @@ class LLMPagedAttnScheduler(LLMScheduler):
     def _step_tokens(self, req: Request, budget: int | None) -> int:
         """Tokens ``req`` computes this step: its remaining context, capped by the budget."""
         remaining = max(1, req.remaining_context_tokens)
+        if self.effective_long_prefill_threshold:
+            remaining = min(remaining, self.effective_long_prefill_threshold)
         return remaining if budget is None else min(remaining, budget)
+
+    def _reserve_context_slots(self, req, tokens, queue, preempted):
+        # The same FCFS youngest-victim rule applies to prefill/recompute
+        # allocation, not only decode growth. Never publish canceled or
+        # uncomputed blocks while releasing a victim.
+        while not self.block_manager.can_ensure_slots(req, tokens):
+            victim = queue.pop() if queue else req
+            self._preempt(victim)
+            preempted.append(victim)
+            if victim is req:
+                return False
+        self.block_manager.ensure_slots(req, tokens)
+        return True
 
     def _reserve_decode_slot(
         self,
@@ -381,8 +456,8 @@ class LLMPagedAttnScheduler(LLMScheduler):
                 preempted.append(req)
                 return False
 
-    def schedule_output(self) -> ScheduleOutput:
-        scheduled, preempted = self.schedule()
+    def schedule_output(self, throttle_prefills=False) -> ScheduleOutput:
+        scheduled, preempted = self.schedule(throttle_prefills)
         output = ScheduleOutput(
             running=scheduled,
             preempted=preempted,

@@ -4,7 +4,7 @@
 > 执行顺序：参考数据与完整模型准备 → 请求回放 → GPU 分配与缓存复用 → 调度行为 → 算子耗时校准 → 完整曲线验证。
 > 源码基准：只读参考 `/home/zhuohang/Serving/vllm-note`，本轮记录 HEAD `30f5c01d4ebb`；不下载历史镜像、不修改或切换此目录。本文旧行号和旧 HEAD 下的源码结论需按此版本重新定位；历史运行日志仍作为实验事实保留。
 > 分支：`agentx-support`（基于 `b2b685a`）
-> 状态：**2026-09-30 已完成原始请求图、Native 回放／取消、GPU 混合缓存、consistent-hash 路由及 DP 同步，B200/B300 均完成完整 HBM 一小时管线基线；355 项测试通过。CPU 后端、调度、原生算子与 MTP 成本、完整曲线及精度验收继续实施。报告见 [基准与口径](agentx-reference-report.md)、[完整模型准备](agentx-full-model-report.md)、[请求图与初始抽样](agentx-request-graph-report.md)、[执行回放](agentx-native-replay-report.md)、[混合 HBM 缓存](agentx-hybrid-cache-report.md)、[会话路由与 DP 同步](agentx-routing-dp-report.md)。复选框表示对应子任务实现进度。**
+> 状态：**2026-09-30 已完成原始请求图、Native 回放／取消、GPU 混合缓存、consistent-hash 路由及 DP 同步，B200/B300 均完成完整 HBM 一小时管线基线；364 项测试通过。长 prefill 调度已接入，CPU 后端、MTP query 预算、原生算子与 MTP 成本、完整曲线及精度验收继续实施。报告见 [基准与口径](agentx-reference-report.md)、[完整模型准备](agentx-full-model-report.md)、[请求图与初始抽样](agentx-request-graph-report.md)、[执行回放](agentx-native-replay-report.md)、[混合 HBM 缓存](agentx-hybrid-cache-report.md)、[会话路由与 DP 同步](agentx-routing-dp-report.md)、[长 prefill 调度](agentx-prefill-scheduling-report.md)。复选框表示对应子任务实现进度。**
 > 对照对象：InferenceX AgentX，完整 DeepSeek-V4-Pro（FP8 + MXFP4），vLLM + MTP；覆盖 B200/B300 多并发曲线及其 TP8、TP4、DEP8 等配置变化。主检查点为单节点 8 GPU DEP8：B200 并发 196、B300 并发 384。
 > 证据分层：历史配置和日志描述参考运行；本地源码决定本轮实现；二者存在版本差异时单列记录。【待核实／待验证】是实现中的技术检查，不是待用户批准；【估算】不是实测；【推断】须保留依据与适用范围。历史研究中的源码行号仅作定位线索，以函数和本轮版本为准。
 
@@ -895,14 +895,16 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 
 目标：按只读的本地 vLLM 源码对齐调度行为；历史参考镜像与本地版本的已知差异单独记录。
 
-- [ ] **请求调度任务 1** 只读核对 `/home/zhuohang/Serving/vllm-note` 的 scheduler、engine core 和 KV manager，本轮基准为 `30f5c01d4ebb`。不下载参考镜像，不修改、切换或更新此源码目录；旧草稿的行号须重新定位。
-- [ ] **请求调度任务 2** 实现：
+已实现多请求 threshold 512（单请求放开）、显式 adaptive（默认 False）、DP-only interval 8、decode 存在时的 defer、capacity-bound 例外，以及 FCFS running 插入顺序和 context 分配尾部抢占。364 项测试通过，两个 SKU 完整一小时 HBM 基线结束，计数／取消／物理引用和 DP 时间守恒核对通过。B200/B300 输出吞吐为 187.28/1941.08 token/s；B300 同步等待占比从 65.27% 降至 19.01%，p90 TTFT 升高到 28.75 秒。MTP query 预算需与随机进度和成本一并接入；CPU 异步加载预留也未完成，任务 3、4.1、5 继续保持未完成。详见长 prefill 报告。
+
+- [x] **请求调度任务 1** 只读核对 `/home/zhuohang/Serving/vllm-note` 的 scheduler、engine core 和 KV manager，本轮基准为 `30f5c01d4ebb`。不下载参考镜像，不修改、切换或更新此源码目录；旧草稿的行号须重新定位。
+- [x] **请求调度任务 2** 实现：
   - prefill_schedule_interval（仅 DP 下节流，共享 step_counter）；
   - long_prefill_token_threshold；
   - defer（有 decode 时才推迟）；
   - capacity_bound（放行步结束时仍有 waiting，则下一轮不节流）。
 - [ ] **请求调度任务 3** max_num_seqs（49 / 96）、token 预算（8192 / 16384）、MTP 下 decode 请求的 token 预算。
-- [ ] **请求调度任务 4** 抢占策略对齐 vLLM：当前 `_reserve_decode_slot` 用 `queue.pop(-1)`，需要对照 vLLM 的抢占顺序。
+- [x] **请求调度任务 4** 抢占策略对齐 vLLM：当前 `_reserve_decode_slot` 用 `queue.pop(-1)`，需要对照 vLLM 的抢占顺序。
 - [ ] **请求调度任务 4.1** 对齐 `scheduler_reserve_full_isl`、`full_sequence_must_fit` 与 `_inflight_prefill_reserved_blocks`：接纳前检查完整输入承诺，实际按 chunk 分配，并计入已在途 prefill。不能仅检查本步 512 token，也不能把最大输入一次性全部物理分配。与缓存及异步加载共享一致的容量状态。
 - [ ] **请求调度任务 5** 差分测试（决策 29）：沿用现有 `tests/test_chunked_prefill.py` 的写法，直接驱动 TokenSim 自己的 `LLMPagedAttnScheduler`，不运行真实的 vLLM scheduler。
   - 手工构造请求序列，逐步断言调度结果：本步放行哪些请求、每个请求调度多少 token、prefill 是否被推迟、是否抢占、抢占了谁。

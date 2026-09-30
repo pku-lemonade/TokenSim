@@ -184,10 +184,16 @@ class LLMWorker(Worker):
         kv_cache_capacity_tokens_per_dp_rank: int | None = None,
         max_num_batched_tokens: int | None = DEFAULT_MAX_NUM_BATCHED_TOKENS,
         gpu_memory_utilization: float = 1.0,
+        long_prefill_token_threshold: int = 0,
+        prefill_schedule_interval: int = 1,
+        adaptive_long_prefill_threshold: bool = False,
     ):
         super().__init__(env, id)
         self.hardware_context = hardware
         self.engine = engine
+        if prefill_schedule_interval < 1:
+            raise ConfigurationError("prefill_schedule_interval must be positive")
+        self.prefill_schedule_interval = prefill_schedule_interval
 
         self.role = worker_config.role
         self.hardware = worker_config.hardware
@@ -301,6 +307,8 @@ class LLMWorker(Worker):
                 max_occupy_ratio=max_occupy_ratio if self.role != "prefill" else 1,
                 connector=self.connector,
                 max_num_batched_tokens=max_num_batched_tokens,
+                long_prefill_token_threshold=long_prefill_token_threshold,
+                adaptive_long_prefill_threshold=adaptive_long_prefill_threshold,
             )
         elif batching == "static":
             self.scheduler = LLMStaticScheduler(
@@ -437,7 +445,16 @@ class LLMWorker(Worker):
 
     def prepare_step(self):
         self.connector.set_simulation_time(self.env.now)
-        output = self.scheduler.schedule_output()
+        if isinstance(self.scheduler, LLMPagedAttnScheduler):
+            throttle = (
+                self.parallel_config.data_parallel_size > 1
+                and self.prefill_schedule_interval > 1
+                and getattr(self, "dp_step_counter", 0) % self.prefill_schedule_interval
+                != 0
+            )
+            output = self.scheduler.schedule_output(throttle_prefills=throttle)
+        else:
+            output = self.scheduler.schedule_output()
         metadata = _merge_connector_metadata(
             output.connector_metadata, self.pending_connector_metadata
         )
@@ -498,6 +515,9 @@ class LLMEngine(Worker):
         router_backend_url: str = "http://localhost:8889",
         dp_lockstep: bool = False,
         dp_sync_interval: int = 16,
+        long_prefill_token_threshold: int = 0,
+        prefill_schedule_interval: int = 1,
+        adaptive_long_prefill_threshold: bool = False,
     ):
         super().__init__(env, -1)
 
@@ -546,6 +566,9 @@ class LLMEngine(Worker):
                 max_parallem_sum=max_parallem_sum,
                 max_occupy_ratio=max_occupy_ratio,
                 gpu_memory_utilization=gpu_memory_utilization,
+                long_prefill_token_threshold=long_prefill_token_threshold,
+                prefill_schedule_interval=prefill_schedule_interval,
+                adaptive_long_prefill_threshold=adaptive_long_prefill_threshold,
                 parallel_config=self.parallel_config,
                 moe_config=self.moe_config,
                 expert_placement=self.expert_placement,
@@ -645,6 +668,10 @@ class LLMEngine(Worker):
         seen_mooncake_stats: set[int] = set()
         for worker in self.workers:
             worker.preempted_cnt = 0
+            stats = getattr(worker.scheduler, "stats", None)
+            if stats is not None:
+                for key in stats:
+                    stats[key] = 0
             worker.parallel_communicator.stats = ParallelStats()
             latency_backend = getattr(worker, "latency_backend", None)
             if hasattr(latency_backend, "moe_stats"):

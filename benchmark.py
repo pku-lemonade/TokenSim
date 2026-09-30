@@ -227,6 +227,19 @@ def main(
             else args.dp_lockstep
         ),
         dp_sync_interval=getattr(args, "dp_sync_interval", 16),
+        long_prefill_token_threshold=(
+            (512 if native_agentx else 0)
+            if getattr(args, "long_prefill_token_threshold", None) is None
+            else args.long_prefill_token_threshold
+        ),
+        prefill_schedule_interval=(
+            (8 if native_agentx else 1)
+            if getattr(args, "prefill_schedule_interval", None) is None
+            else args.prefill_schedule_interval
+        ),
+        adaptive_long_prefill_threshold=getattr(
+            args, "adaptive_long_prefill_threshold", False
+        ),
         latency_backend_type=latency_backend_type,
         latency_fallback=args.latency_fallback,
         operator_backend=args.operator_backend,
@@ -456,6 +469,13 @@ if __name__ == "__main__":
         "--dp_lockstep", action=argparse.BooleanOptionalAction, default=None
     )
     parser.add_argument("--dp_sync_interval", type=int, default=16)
+    parser.add_argument("--long_prefill_token_threshold", type=int, default=None)
+    parser.add_argument("--prefill_schedule_interval", type=int, default=None)
+    parser.add_argument(
+        "--adaptive_long_prefill_threshold",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+    )
     parser.add_argument(
         "--max_num_batched_tokens",
         type=int,

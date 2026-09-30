@@ -748,6 +748,19 @@ def export_result(
             if getattr(engine, "dp_coordinator", None)
             else None
         ),
+        scheduler_stats=[
+            {
+                "worker_id": w.id,
+                "long_prefill_token_threshold": getattr(
+                    w.scheduler, "long_prefill_token_threshold", None
+                ),
+                "prefill_schedule_interval": getattr(
+                    w, "prefill_schedule_interval", None
+                ),
+                "counts": dict(getattr(w.scheduler, "stats", {})),
+            }
+            for w in engine.workers
+        ],
         **prefix_reuse_stats,
         **connector_stats,
         **parallel_stats,
