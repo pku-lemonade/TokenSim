@@ -64,6 +64,7 @@ def _flatten_connectors(connector: Any) -> list[Any]:
 
 
 class Task(Enum):
+    CANCEL = 0
     ADD = auto()
     STEP = auto()
     STOP = auto()
@@ -119,6 +120,9 @@ class Worker:
         requests: Optional[list[Request]] = None,
         metadata=None,
     ):
+        if task == Task.ADD and worker.id >= 0:
+            for request in requests or []:
+                request.owner_worker_ids.add(worker.id)
         worker.msg_queue.put(Message(task, self.id, requests, metadata))
 
     def check(self, requests: list[Request]):
@@ -306,6 +310,8 @@ class LLMWorker(Worker):
 
     def step(self, requests: list[Request], latency: float):
         for request in requests:
+            if request.cancel_requested:
+                continue
             was_prefill = request.is_prefill
             request.advance(self.env, latency, len(requests))
             if was_prefill and not request.is_prefill:
@@ -317,7 +323,9 @@ class LLMWorker(Worker):
         """Seconds to move ``num_blocks`` KV blocks to another worker."""
         if num_blocks == 0 or self.id == remote_id:
             return 0.0
-        bytes_ = int(num_blocks * self.cache_config.block_size * self.cache_config.size_per_token)
+        bytes_ = int(
+            num_blocks * self.cache_config.block_size * self.cache_config.size_per_token
+        )
         return self.parallel_communicator.estimate_point_to_point(bytes_, remote_id)
 
     def run(self):
@@ -336,6 +344,14 @@ class LLMWorker(Worker):
 
                     case Task.STEP:
                         if self.status != WorkerStatus.RUNNING:
+                            if (
+                                self.status == WorkerStatus.WAITING
+                                and not self.scheduler.running
+                                and not self.scheduler.waiting
+                            ):
+                                # A cancelled request may leave a previously
+                                # queued STEP behind; it cannot restart work.
+                                continue
                             raise SimulationStateError(
                                 f"worker {self.id} received STEP while {self.status}"
                             )
@@ -357,6 +373,7 @@ class LLMWorker(Worker):
                             self.preempted_cnt += len(schedule_output.preempted)
 
                         running = schedule_output.running
+                        running = [req for req in running if not req.cancel_requested]
                         if running:
                             latency = self.dynamic_batch(running)
                             if latency:
@@ -377,9 +394,13 @@ class LLMWorker(Worker):
                                     req for req in running if not req.is_context_build
                                 ]
                                 if completed:
-                                    self.engine.dispatch_prefill_to_decode(self, completed)
+                                    self.engine.dispatch_prefill_to_decode(
+                                        self, completed
+                                    )
                                     self.scheduler.running = [
-                                        req for req in self.scheduler.running if req.is_context_build
+                                        req
+                                        for req in self.scheduler.running
+                                        if req.is_context_build
                                     ]
                                     running = self.scheduler.running
 
@@ -389,6 +410,14 @@ class LLMWorker(Worker):
                     case Task.STOP:
                         self.status = WorkerStatus.STOPPED
                         break
+                    case Task.CANCEL:
+                        for req in msg.requests or []:
+                            if self.scheduler.cancel_request(req):
+                                req.acknowledge_cancel(self.env, self.id)
+                            else:
+                                self.env.process(self._wait_for_cancel_release(req))
+                        if not self.scheduler.running and not self.scheduler.waiting:
+                            self.status = WorkerStatus.WAITING
             except Exception as exc:
                 logger.exception(
                     "worker %s failed while handling %s for requests=%s metadata=%s",
@@ -402,6 +431,17 @@ class LLMWorker(Worker):
 
     def dynamic_batch(self, requests: list[Request]) -> float:
         return self.latency_backend.estimate_step_latency(requests)
+
+    def _wait_for_cancel_release(self, req: Request):
+        manager = getattr(self.scheduler, "block_manager", None)
+        while manager is not None and manager.block_table.get_blocks(req.id):
+            self.connector.set_simulation_time(self.env.now)
+            self.scheduler.update_connector_output(
+                self.connector.build_connector_worker_meta()
+            )
+            if manager.block_table.get_blocks(req.id):
+                yield self.env.timeout(0.001)
+        req.acknowledge_cancel(self.env, self.id)
 
 
 class LLMEngine(Worker):
@@ -454,7 +494,9 @@ class LLMEngine(Worker):
         self.max_num_batched_tokens = max_num_batched_tokens
 
         worker_configs = cluster_config.workers(self.parallel_config)
-        self.placement = build_topology_placement(cluster_config, worker_configs, hardware)
+        self.placement = build_topology_placement(
+            cluster_config, worker_configs, hardware
+        )
         self.workers: list[LLMWorker] = []
         self.workers = [
             LLMWorker(
@@ -514,11 +556,14 @@ class LLMEngine(Worker):
         # First exception raised by a worker step (e.g. MissingOperatorDataError
         # under table_only); the simulation stops and the caller re-raises it.
         self.failure: tuple[int, Exception] | None = None
+        self.failure_event = self.env.event()
         self.action = self.env.process(self.run())
 
     def record_worker_failure(self, worker_id: int, error: Exception) -> None:
         if self.failure is None:
             self.failure = (worker_id, error)
+            if not self.failure_event.triggered:
+                self.failure_event.succeed(self.failure)
 
     def raise_if_failed(self) -> None:
         """Re-raise the worker exception that stopped the simulation, if any."""
@@ -642,10 +687,27 @@ class LLMEngine(Worker):
         self._send_to_prefill_worker(requests)
 
     def _send_to_prefill_worker(self, requests: list[Request] | None) -> None:
+        requests = [req for req in requests or [] if not req.cancel_requested]
+        if not requests:
+            return
         worker = self.prefill_workers.select_prefill_worker(
             requests[0] if requests else None
         )
         self.send_task(worker, Task.ADD, requests)
+
+    def cancel_requests(self, requests: list[Request]) -> list[simpy.Event]:
+        events = []
+        for req in requests:
+            already_requested = req.cancel_requested
+            event = req.request_cancel(self.env)
+            events.append(event)
+            if req.is_done or already_requested:
+                continue
+            if not req.cancel_pending_worker_ids:
+                req.acknowledge_cancel(self.env)
+            for worker_id in sorted(req.cancel_pending_worker_ids):
+                self.send_task(self.workers[worker_id], Task.CANCEL, [req])
+        return events
 
     def _broadcast_stop(self) -> None:
         for worker in self.workers:

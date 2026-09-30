@@ -62,6 +62,9 @@ class LLMScheduler(ABC):
         self.connector = connector or NoopConnector(KVTransferConfig.default())
 
     def add_requests(self, requests: list[Request]):
+        requests = [
+            req for req in requests if not getattr(req, "cancel_requested", False)
+        ]
         for req in requests:
             self.connector.on_new_request(req)
         self.waiting.extend(requests)
@@ -96,6 +99,14 @@ class LLMScheduler(ABC):
 
     def free(self, req: Request):
         req.status = RequestStatus.FINISHED_STOPPED
+
+    def cancel_request(self, req: Request) -> bool:
+        """Release at a worker boundary, after its current kernel/load finishes."""
+        self.running = [r for r in self.running if r.id != req.id]
+        self.waiting = [r for r in self.waiting if r.id != req.id]
+        delayed, _ = self.connector.request_finished(req, [])
+        self.connector.on_request_released(req)
+        return not delayed
 
     def workload(self):
         return 0
@@ -242,7 +253,9 @@ class LLMPagedAttnScheduler(LLMScheduler):
                 # Out of budget: the request keeps its place for the next step.
                 self.running.append(req)
                 continue
-            if not req.is_context_build and not self._reserve_decode_slot(req, queue, preempted):
+            if not req.is_context_build and not self._reserve_decode_slot(
+                req, queue, preempted
+            ):
                 continue
             req.scheduled_tokens = tokens
             budget = None if budget is None else budget - tokens
@@ -408,6 +421,21 @@ class LLMPagedAttnScheduler(LLMScheduler):
             return
         self.block_manager.free(req)
         req.status = RequestStatus.FINISHED_STOPPED
+
+    def cancel_request(self, req: Request) -> bool:
+        self.running = [r for r in self.running if r.id != req.id]
+        self.waiting = [r for r in self.waiting if r.id != req.id]
+        blocks = self.block_manager.block_table.get_blocks(req.id)
+        delayed, _ = self.connector.request_finished(
+            req, [b.block_number for b in blocks]
+        )
+        if not delayed:
+            # Cancellation must not publish uncomputed prompt/output cache
+            # keys. Previously committed complete blocks keep their metadata.
+            if blocks:
+                self.block_manager.release_request_blocks(req)
+            self.connector.on_request_released(req)
+        return not self.block_manager.block_table.get_blocks(req.id)
 
     def workload(self):
         """Return GPU KV-cache utilization as a percentage."""

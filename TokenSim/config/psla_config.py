@@ -10,12 +10,14 @@ from TokenSim.moe.config import MoEModelConfig, RoutingConfig
 
 @dataclass
 class MetricData:
-    p50: float
-    p99: float
-    max: float
+    p50: float | None
+    p99: float | None
+    max: float | None
 
     @classmethod
     def from_list(cls, latencies):
+        if not len(latencies):
+            return cls(None, None, None)
         return cls(np.median(latencies), np.percentile(latencies, 99), max(latencies))
 
     @classmethod

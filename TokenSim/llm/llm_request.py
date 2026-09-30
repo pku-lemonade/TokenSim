@@ -14,6 +14,8 @@ class RequestStatus(Enum):
     WAITING_FOR_KV = auto()
     WAITING_FOR_CONNECTOR_FREE = auto()
     FINISHED_STOPPED = auto()
+    CANCEL_PENDING = auto()
+    FINISHED_CANCELLED = auto()
 
 
 class RequestTime(BaseModel):
@@ -244,6 +246,11 @@ class Request:
     # remaining context for a (chunked) prefill or recompute step.
     num_computed_tokens: int = field(default=0, repr=False)
     scheduled_tokens: int = field(default=0, repr=False)
+    cancel_requested: bool = field(default=False, repr=False)
+    cancel_requested_at: float | None = field(default=None, repr=False)
+    cancelled_at: float | None = field(default=None, repr=False)
+    owner_worker_ids: set[int] = field(default_factory=set, repr=False)
+    cancel_pending_worker_ids: set[int] = field(default_factory=set, repr=False)
     # Context-building steps this request's prompt took (1 without chunking).
     prefill_chunks: int = 0
     tqdm_submit_func = None
@@ -254,6 +261,7 @@ class Request:
         self._append_tokens(self.prefill_len)
         self._last_event_at: float = 0.0
         self.completion_event: simpy.Event | None = None
+        self.cancellation_event: simpy.Event | None = None
         if self.effective_prefill_tokens is None:
             self.effective_prefill_tokens = self.prefill_len
 
@@ -289,7 +297,40 @@ class Request:
 
     @property
     def is_done(self) -> bool:
-        return self.generation_idx == self.decode_len
+        return not self.cancel_requested and self.generation_idx == self.decode_len
+
+    def request_cancel(self, env: simpy.Environment) -> simpy.Event:
+        if self.cancellation_event is None:
+            self.cancellation_event = env.event()
+        if self.is_done:
+            if not self.cancellation_event.triggered:
+                self.cancellation_event.succeed(self)
+            return self.cancellation_event
+        if not self.cancel_requested:
+            self.cancel_requested = True
+            self.cancel_requested_at = env.now
+            self.status = RequestStatus.CANCEL_PENDING
+            self.cancel_pending_worker_ids = set(self.owner_worker_ids)
+        return self.cancellation_event
+
+    def acknowledge_cancel(
+        self, env: simpy.Environment, worker_id: int | None = None
+    ) -> None:
+        if not self.cancel_requested:
+            return
+        if worker_id is not None:
+            self.cancel_pending_worker_ids.discard(worker_id)
+        if self.cancel_pending_worker_ids or self.cancelled_at is not None:
+            return
+        self.cancelled_at = env.now
+        self.status = RequestStatus.FINISHED_CANCELLED
+        if self.completion_event is not None and not self.completion_event.triggered:
+            self.completion_event.succeed(None)
+        if (
+            self.cancellation_event is not None
+            and not self.cancellation_event.triggered
+        ):
+            self.cancellation_event.succeed(self)
 
     @property
     def remaining_context_tokens(self) -> int:
@@ -317,7 +358,9 @@ class Request:
         At least one token is always computed (the last position's logits are
         needed), which is vLLM's cap on full-prompt prefix hits.
         """
-        self.num_computed_tokens = min(max(0, cached_tokens), max(0, self.context_len - 1))
+        self.num_computed_tokens = min(
+            max(0, cached_tokens), max(0, self.context_len - 1)
+        )
         self.scheduled_tokens = 0
 
     @property
@@ -359,6 +402,8 @@ class Request:
         return self.arrival_at
 
     def arrive(self, env: simpy.Environment):
+        if self.cancel_requested:
+            return
         self.arrival_at = env.now
         self._last_event_at = env.now
         event_factory = getattr(env, "event", None)
@@ -375,6 +420,8 @@ class Request:
         service time, so TTFT spans every chunk plus the waits between them.
         Returns the completed :class:`RequestTime` when the request finishes.
         """
+        if self.cancel_requested:
+            return None
         tokens = self.step_tokens
         self.scheduled_tokens = 0
         self.num_computed_tokens += tokens
@@ -397,6 +444,8 @@ class Request:
         self, env: simpy.Environment, latency: float, batch: int, timing_recorder=None
     ):
         """Sample one token: bookkeeping for wall time, service time and batch size."""
+        if self.cancel_requested:
+            return None
         self.generation_idx += 1
         self._append_tokens(1)
         step_time = env.now - self._last_event_at

@@ -129,11 +129,15 @@ def get_cache_capacity_stats(engine: LLMEngine) -> dict[str, int | float]:
     first_cache = None
     for worker in replica_workers.values():
         cache = getattr(worker, "cache_config", None)
-        block_manager = getattr(getattr(worker, "scheduler", None), "block_manager", None)
+        block_manager = getattr(
+            getattr(worker, "scheduler", None), "block_manager", None
+        )
         if cache is None or block_manager is None:
             continue
         first_cache = first_cache or cache
-        capacities.append(int(block_manager.num_total_gpu_blocks) * int(cache.block_size))
+        capacities.append(
+            int(block_manager.num_total_gpu_blocks) * int(cache.block_size)
+        )
     if not capacities or first_cache is None:
         return {}
     return {
@@ -141,7 +145,9 @@ def get_cache_capacity_stats(engine: LLMEngine) -> dict[str, int | float]:
         "kv_cache_bytes_per_token_per_rank": int(first_cache.size_per_token),
         "kv_cache_capacity_tokens_per_dp_rank": min(capacities),
         "kv_cache_capacity_tokens_total": sum(capacities),
-        "model_param_size_bytes_per_rank": float(getattr(first_cache, "model_param_size", 0)),
+        "model_param_size_bytes_per_rank": float(
+            getattr(first_cache, "model_param_size", 0)
+        ),
     }
 
 
@@ -167,7 +173,11 @@ def get_latency_stats(engine: LLMEngine) -> dict[str, Any]:
             description = backend.describe()
         except Exception:  # pragma: no cover - defensive
             description = {"backend": type(backend).__name__}
-        device_id = getattr(getattr(worker, "device", None), "device_id", getattr(worker, "hardware", "?"))
+        device_id = getattr(
+            getattr(worker, "device", None),
+            "device_id",
+            getattr(worker, "hardware", "?"),
+        )
         descriptions.setdefault(str(device_id), description)
     return {
         "latency_backends": descriptions,
@@ -181,7 +191,9 @@ def get_latency_stats(engine: LLMEngine) -> dict[str, Any]:
 def analytical_share_by_table(latency_stats: dict[str, Any]) -> dict[str, float]:
     """Fraction of each table's queries that fell back to the analytical model."""
     shares: dict[str, float] = {}
-    for table, counts in (latency_stats.get("operator_table_match_counts") or {}).items():
+    for table, counts in (
+        latency_stats.get("operator_table_match_counts") or {}
+    ).items():
         total = sum(counts.values())
         if total:
             shares[table] = counts.get("analytical", 0) / total
@@ -252,12 +264,10 @@ def get_agentx_metrics(
         return None
 
     root_requests = [
-        r for r in requests
-        if _is_root_stream(getattr(r, "agentx_stream_id", None))
+        r for r in requests if _is_root_stream(getattr(r, "agentx_stream_id", None))
     ]
     subagent_requests = [
-        r for r in requests
-        if not _is_root_stream(getattr(r, "agentx_stream_id", None))
+        r for r in requests if not _is_root_stream(getattr(r, "agentx_stream_id", None))
     ]
 
     ttft = [request.prefill_latency for request in requests]
@@ -284,6 +294,14 @@ def get_agentx_metrics(
     )
     metadata = dict(getattr(args, "agentx_runtime_metadata", {}) or {})
 
+    def summary(values):
+        if not values and metadata.get("replay_protocol"):
+            return {
+                key: 0 if key == "count" else None
+                for key in ("count", "mean", "p50", "p90", "p95", "p99", "max")
+            }
+        return _percentile_summary(values)
+
     # In-flight request count at profile end (set by benchmark if available).
     in_flight_at_cutoff = metadata.get("in_flight_at_cutoff", 0)
 
@@ -297,8 +315,34 @@ def get_agentx_metrics(
         "warmup_duration_s": metadata.get("warmup_duration_s", 0.0),
         "random_seed": metadata.get("random_seed"),
         "initial_trace_ids": metadata.get("initial_trace_ids", []),
-        "trace_sampling_strategy": "seed-shuffled-pool",
+        "trace_sampling_strategy": (
+            "shared-sequential-pool"
+            if metadata.get("replay_protocol")
+            else "seed-shuffled-pool"
+        ),
         "profile_duration_s": duration,
+        "metric_observation_defined": bool(requests),
+        "throughput_denominator_kind": (
+            "successful-request-boundaries"
+            if metadata.get("replay_protocol") and requests
+            else (
+                "phase-elapsed-no-success"
+                if metadata.get("replay_protocol")
+                else "legacy-profile-window"
+            )
+        ),
+        "replay_protocol": metadata.get("replay_protocol"),
+        "phase_request_counts": metadata.get("phase_request_counts"),
+        "phase_trace_counts": metadata.get("phase_trace_counts"),
+        "phase_unique_original_requests": metadata.get(
+            "phase_unique_original_requests"
+        ),
+        "issue_window_s": metadata.get("issue_window_s"),
+        "grace_period_s": metadata.get("grace_period_s"),
+        "cancellation_timeout_s": metadata.get("cancellation_timeout_s"),
+        "cancel_unreturned": metadata.get("cancel_unreturned"),
+        "tree_idle_jumps": metadata.get("tree_idle_jumps"),
+        "system_idle_jumps": metadata.get("system_idle_jumps"),
         "in_flight_at_cutoff": in_flight_at_cutoff,
         # --- Raw counts (always present for reconciliation) ---
         "request_count": len(requests),
@@ -319,13 +363,11 @@ def get_agentx_metrics(
             output_tokens / duration / max(1, num_gpus) if duration else 0.0
         ),
         # --- Latency distributions (all requests) ---
-        "ttft_s": _percentile_summary(ttft),
-        "tpot_s": _percentile_summary(tpot),
-        "e2e_s": _percentile_summary(e2e),
-        "interactivity_tps": _percentile_summary(interactivity),
-        "e2e_normalized_interactivity_tps": _percentile_summary(
-            normalized_interactivity
-        ),
+        "ttft_s": summary(ttft),
+        "tpot_s": summary(tpot),
+        "e2e_s": summary(e2e),
+        "interactivity_tps": summary(interactivity),
+        "e2e_normalized_interactivity_tps": summary(normalized_interactivity),
     }
 
     # --- Breakdown by root / subagent ---
@@ -333,8 +375,7 @@ def get_agentx_metrics(
         sub_ttft = [r.prefill_latency for r in subset]
         sub_e2e = [r.total_time for r in subset]
         sub_tpot = [
-            r.decode_time_sum / (r.decode_len - 1)
-            for r in subset if r.decode_len > 1
+            r.decode_time_sum / (r.decode_len - 1) for r in subset if r.decode_len > 1
         ]
         result[f"{label}_ttft_s"] = _percentile_summary(sub_ttft)
         result[f"{label}_tpot_s"] = _percentile_summary(sub_tpot)
@@ -557,7 +598,9 @@ def print_operator_latency_stats(engine: LLMEngine):
         + f"in {stats.get('operator_missing_shape_groups', 0)} groups"
     )
     formula_share = {
-        table: f"{share:.0%}" for table, share in analytical_share_by_table(stats).items() if share > 0
+        table: f"{share:.0%}"
+        for table, share in analytical_share_by_table(stats).items()
+        if share > 0
     }
     if formula_share:
         # Loud on purpose: any share here is simulated time resting on formulas
@@ -638,10 +681,7 @@ def export_result(
         request_time = MetricData.from_list([req.total_time for req in requests])
         prefill_time = MetricData.from_list([req.prefill_latency for req in requests])
         decode_time = MetricData.from_list(
-            [
-                req.decode_time_sum / max(1, req.generation_idx - 1)
-                for req in requests
-            ]
+            [req.decode_time_sum / max(1, req.generation_idx - 1) for req in requests]
         )
     else:
         request_time = MetricData.from_list(g_time.request_time)

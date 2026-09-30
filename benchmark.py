@@ -20,6 +20,8 @@ from TokenSim.errors import ConfigurationError, SimulationStateError
 from TokenSim.hardware import HardwareContext
 from TokenSim.latency import FALLBACK_POLICIES
 from TokenSim.workload.agentx import AgentXReplay, load_agentx_traces
+from TokenSim.workload.agentx_native.parser import iter_trace_graphs
+from TokenSim.workload.agentx_native.replay import NativeAgentXReplay
 
 
 def check_results(
@@ -91,7 +93,8 @@ def check_results(
             f"diagnostics written to {failure_file}"
         )
 
-    print_all_stats(g_time, requests, engine, duration, request_count, prefill_lens)
+    if requests:
+        print_all_stats(g_time, requests, engine, duration, request_count, prefill_lens)
     export_result(
         args=args,
         g_time=g_time,
@@ -130,18 +133,49 @@ def main(
     tqdm_manager = TqdmManager(verbose=args.verbose, program_id=args.program_id)
     env = simpy.Environment()
     is_agentx = args.workload_type == "agentx_weka"
+    native_agentx = (
+        is_agentx and hardware.model(model_config.model).deepseek_v4 is not None
+    )
     agentx_traces = None
     if is_agentx:
         if not args.dataset_path:
             raise ConfigurationError(
                 "--dataset_path is required for agentx_weka workloads"
             )
+        if native_agentx:
+            if (
+                args.agentx_trace_count != 393
+                or args.dataset_skip_count
+                or args.block_size != 256
+            ):
+                raise ConfigurationError(
+                    "full-model AgentX requires all 393 traces, no skip, and engine block size 256"
+                )
+            if (
+                args.agentx_profile_duration != 3600
+                or not args.agentx_warmup
+                or args.agentx_max_requests is not None
+            ):
+                raise ConfigurationError(
+                    "full-model AgentX requires warmup and the complete 3600-second issue window"
+                )
         agentx_traces = preloaded_agentx_traces
         if agentx_traces is None:
-            agentx_traces = load_agentx_traces(
-                args.dataset_path,
-                trace_count=args.agentx_trace_count,
-                trace_skip_count=args.dataset_skip_count,
+            agentx_traces = (
+                list(iter_trace_graphs(args.dataset_path))
+                if native_agentx
+                else load_agentx_traces(
+                    args.dataset_path,
+                    trace_count=args.agentx_trace_count,
+                    trace_skip_count=args.dataset_skip_count,
+                )
+            )
+        if native_agentx and (
+            len(agentx_traces) != 393
+            or any(not hasattr(g, "all_turns") for g in agentx_traces)
+        ):
+            raise ConfigurationError(
+                "full-model AgentX needs all 393 native trace graphs"
             )
         requests: list[Request] = []
         prefill_lens: list[int] = []
@@ -184,23 +218,35 @@ def main(
     )
     replay = None
     if is_agentx:
-        replay = AgentXReplay(
-            env,
-            engine,
-            agentx_traces,
-            block_size=args.block_size,
-            concurrency=args.agentx_concurrency,
-            profile_duration=args.agentx_profile_duration,
-            max_requests=args.agentx_max_requests,
-            system_idle_gap_cap=(
-                args.agentx_idle_gap_cap if args.agentx_idle_gap_cap > 0 else None
-            ),
-            warmup=args.agentx_warmup,
-            warmup_min_ratio=args.agentx_warmup_min_ratio,
-            warmup_max_ratio=args.agentx_warmup_max_ratio,
-            random_seed=args.random_seed,
-            tqdm_submit_func=lambda req_num: tqdm_manager.update(req_num),
-        )
+        if native_agentx:
+            replay = NativeAgentXReplay(
+                env,
+                engine,
+                agentx_traces,
+                block_size=args.block_size,
+                concurrency=args.agentx_concurrency,
+                profile_duration=args.agentx_profile_duration,
+                workload_seed=42,
+                warmup=True,
+            )
+        else:
+            replay = AgentXReplay(
+                env,
+                engine,
+                agentx_traces,
+                block_size=args.block_size,
+                concurrency=args.agentx_concurrency,
+                profile_duration=args.agentx_profile_duration,
+                max_requests=args.agentx_max_requests,
+                system_idle_gap_cap=(
+                    args.agentx_idle_gap_cap if args.agentx_idle_gap_cap > 0 else None
+                ),
+                warmup=args.agentx_warmup,
+                warmup_min_ratio=args.agentx_warmup_min_ratio,
+                warmup_max_ratio=args.agentx_warmup_max_ratio,
+                random_seed=args.random_seed,
+                tqdm_submit_func=lambda req_num: tqdm_manager.update(req_num),
+            )
         capacity_request = replay.capacity_request()
         engine.validate_request_capacity([capacity_request])
         capacity_request.release_logical_blocks()
@@ -232,8 +278,12 @@ def main(
         requests = replay.requests
         prefill_lens = [request.prefill_len for request in requests]
         decode_lens = [request.decode_len for request in requests]
-        duration = replay.profile_elapsed
-        if not requests or duration <= 0:
+        duration = (
+            replay.metric_observation_duration or replay.profile_elapsed
+            if native_agentx
+            else replay.profile_elapsed
+        )
+        if (not requests and not native_agentx) or duration <= 0:
             raise SimulationStateError(
                 "AgentX replay completed without profile requests; increase "
                 "--agentx_profile_duration or use --no-agentx_warmup for a short smoke run"
@@ -247,6 +297,8 @@ def main(
             "initial_trace_ids": replay.initial_trace_ids,
             "recycle_trace_ids": replay.recycle_trace_ids,
         }
+        if native_agentx:
+            args.agentx_runtime_metadata.update(replay.runtime_metadata())
     else:
         duration = env.now
     request_count = len(requests)

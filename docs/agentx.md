@@ -5,6 +5,7 @@ reference audit and matrix-driven comparison tools are available; see
 [the reference report](agentx-reference-report.md) and
 [the complete model preparation report](agentx-full-model-report.md), with
 [the native request-graph report](agentx-request-graph-report.md) and
+[the native replay lifecycle report](agentx-native-replay-report.md), alongside
 [the implementation plan](agentx-research-plan.md). The simulation commands
 below describe the earlier proxy workflow and do not satisfy the planned
 full-model, one-hour validation. The comparison script now requires identified
