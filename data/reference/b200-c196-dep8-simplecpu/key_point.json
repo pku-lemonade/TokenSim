@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "experiment_id": "b200-c196-dep8-simplecpu",
+  "reference_id": 440239,
+  "hardware": "b200",
+  "concurrency": 196,
+  "num_gpus": 8,
+  "parallelism": {
+    "tp": 1,
+    "dp": 8,
+    "ep": 8,
+    "pp": 1
+  },
+  "cache_backend": "simple_cpu",
+  "model": "DeepSeek-V4-Pro",
+  "metrics": {
+    "request_count": 13991,
+    "start_ns": 1787355477258312340,
+    "end_ns": 1787359107064242418,
+    "profile_duration_s": 3629.805930078,
+    "input_tokens": 1708552842,
+    "output_tokens": 13064625,
+    "input_tput_per_gpu": 58837.609878887015,
+    "output_tput_per_gpu": 449.9078343190946,
+    "input_tput_tps": 470700.8790310961,
+    "output_tput_tps": 3599.262674552757,
+    "itl_export_max_abs_error_s": 7.403799795469013e-15,
+    "isl": {
+      "count": 13991,
+      "mean": 122117.99313844614,
+      "p50": 86547.0,
+      "p75": 146667.0,
+      "p90": 255975.0,
+      "p95": 396258.0,
+      "p99": 619832.2000000001,
+      "std": 124776.2473887997
+    },
+    "osl": {
+      "count": 13991,
+      "mean": 933.7877921520977,
+      "p50": 404.0,
+      "p75": 918.0,
+      "p90": 2094.0,
+      "p95": 3563.0,
+      "p99": 8420.300000000016,
+      "std": 1877.0232426682671
+    },
+    "ttft_s": {
+      "count": 13991,
+      "mean": 8.789859045519476,
+      "p50": 3.363031827,
+      "p75": 6.6671546845,
+      "p90": 16.206517135000002,
+      "p95": 33.368831516,
+      "p99": 99.87346680820052,
+      "std": 25.711996844343595
+    },
+    "e2e_s": {
+      "count": 13991,
+      "mean": 43.36484218156744,
+      "p50": 21.437010953999998,
+      "p75": 46.59465169949999,
+      "p90": 95.380759081,
+      "p95": 152.81523067799998,
+      "p99": 342.41260239830103,
+      "std": 75.70595940157874
+    },
+    "itl_s": {
+      "count": 13985,
+      "mean": 0.036946574345989906,
+      "p50": 0.034247810634989204,
+      "p75": 0.04050747422220839,
+      "p90": 0.05024579619035286,
+      "p95": 0.05996976538311128,
+      "p99": 0.07162125398951259,
+      "std": 0.011245060130009227
+    },
+    "p90_ttft": 16.206517135000002,
+    "p90_itl": 0.05024579619035286,
+    "mean_e2e": 43.36484218156744,
+    "gpu_cache_hit_rate": 0.68223,
+    "cpu_cache_hit_rate": 0.23726,
+    "kv_cache_pool_tokens": 21943624
+  },
+  "kv_cache_pool_tokens_semantics": "logged equivalent tokens; not usable capacity or simulator input",
+  "cache_rate_source": "bmk prompt_tokens_by_source; denominator is all prompt tokens in that export",
+  "window": {
+    "issue_s": 3600.0,
+    "grace_s": 30.0,
+    "metric_observation_s": 3629.805930078
+  },
+  "reference_runtime_options": {
+    "tp": 1,
+    "dp": 8,
+    "block_size": 256,
+    "max_num_seqs": 49,
+    "max_num_batched_tokens": 8192,
+    "prefill_schedule_interval": 8,
+    "long_prefill_token_threshold": 512
+  }
+}

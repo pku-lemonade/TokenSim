@@ -1,0 +1,49 @@
+schema_version: 1
+# Reference extraction/comparison inputs. Simulation configuration will be added
+# with the complete model and replay stages; these entries are not runnable yet.
+defaults:
+  model: DeepSeek-V4-Pro
+  workload_seed: 42
+  trace_count: 393
+  profiling_window_s: 3600
+  grace_period_s: 30
+  cancellation_timeout_s: 10
+  router: consistent_hash
+  cache_backend: simple_cpu
+  parallelism: {tp: 1, dp: 8, ep: 8, pp: 1}
+  num_gpus: 8
+  block_size: 256
+  prefill_schedule_interval: 8
+  long_prefill_token_threshold: 512
+  speculative: {method: mtp, num_speculative_tokens: 3, acceptance_length: 2.49}
+  metrics_endpoint_groups:
+    http://localhost:8888/metrics: node0
+    http://localhost:8889/metrics: node0
+  preferred_metrics_endpoint: http://localhost:8889/metrics
+experiments:
+  - id: b200-c196-dep8-simplecpu
+    groups: [checkpoints]
+    hardware: b200
+    concurrency: 196
+    max_num_seqs: 49
+    max_num_batched_tokens: 8192
+    gpu_memory_utilization: 0.90
+    reference:
+      id: 440239
+      artifact_subdir: b200
+      config_commit: 843c6254ff69b567f772f6a5fd97675af3d04431
+      config_source: benchmarks/single_node/agentic/dsv4_fp4_b200_vllm_mtp.sh
+      metrics_file: reference/b200-c196-dep8-simplecpu/key_point.json
+  - id: b300-c384-dep8-simplecpu
+    groups: [checkpoints]
+    hardware: b300
+    concurrency: 384
+    max_num_seqs: 96
+    max_num_batched_tokens: 16384
+    gpu_memory_utilization: 0.92
+    reference:
+      id: 439522
+      artifact_subdir: b300
+      config_commit: c62f6e335bbe041a862670ff1d1fa747cdcecab9
+      config_source: benchmarks/single_node/agentic/dsv4_fp4_b300_vllm_mtp.sh
+      metrics_file: reference/b300-c384-dep8-simplecpu/key_point.json

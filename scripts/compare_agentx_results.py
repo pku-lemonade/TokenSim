@@ -1,227 +1,207 @@
 #!/usr/bin/env python3
+"""Compare identified experiment results against matching reference points."""
 from __future__ import annotations
 
 import argparse
 import csv
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
-
-BLOG_CACHE_RATES = {
-    "b200": {"hbm": 0.73, "dram": 0.20},
-    "b300": {"hbm": 0.91, "dram": 0.0136},
-}
-BLOG_OFFLOAD_IMPROVEMENT = {
-    "output_throughput_pct": 81.7,
-    "mean_e2e_reduction_pct": 46.6,
-}
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from util.agentx_reference import load_experiments
 
 
-def percent_delta(actual: float, reference: float) -> float:
-    return (actual / reference - 1.0) * 100.0 if reference else 0.0
+def percent_delta(actual: float | None, reference: float | None) -> float | None:
+    if actual is None or reference in (None, 0):
+        return None
+    return (actual / reference - 1) * 100
 
 
-def cache_rates(result: dict[str, Any], mode: str) -> tuple[float, float]:
-    if mode == "dram":
-        denominator = result.get("mooncake_cache_query_tokens", 0)
-    else:
-        denominator = (
-            result.get("reuse_hit_blocks", 0) + result.get("reuse_miss_blocks", 0)
-        ) * result.get("kv_cache_block_size", 64)
-    if not denominator:
-        return 0.0, 0.0
-    if mode == "dram":
-        hbm_tokens = result.get("mooncake_local_gpu_hit_tokens", 0)
-        dram_tokens = result.get("mooncake_memory_hit_tokens", 0)
-    else:
-        hbm_tokens = result.get("reuse_hit_blocks", 0) * result.get(
-            "kv_cache_block_size", 64
+def cache_rates(
+    result: dict[str, Any], backend: str
+) -> tuple[float | None, float | None]:
+    metrics = result.get("agentx_metrics", {})
+    if "gpu_cache_hit_rate" in metrics:
+        return metrics["gpu_cache_hit_rate"], metrics.get(
+            "cpu_cache_hit_rate", 0 if backend == "none" else None
         )
-        dram_tokens = 0
-    return hbm_tokens / denominator, dram_tokens / denominator
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("result_root")
-    args = parser.parse_args()
-    root = Path(args.result_root)
-    references = {
-        row["hardware"]: row
-        for row in json.loads(
-            (root / "reference" / "inferencex_key_points.json").read_text()
+    denominator = result.get("mooncake_cache_query_tokens")
+    if backend == "mooncake" and denominator:
+        gpu, cpu = result.get("mooncake_local_gpu_hit_tokens"), result.get(
+            "mooncake_memory_hit_tokens"
         )
+        return (
+            gpu / denominator if gpu is not None else None,
+            cpu / denominator if cpu is not None else None,
+        )
+    return result.get("prefix_cache_hit_rate"), 0.0 if backend == "none" else None
+
+
+def comparison_row(
+    exp: dict[str, Any],
+    result: dict[str, Any],
+    reference: dict[str, Any],
+    metadata: dict[str, Any],
+) -> dict[str, Any]:
+    metrics = result["agentx_metrics"]
+    if (
+        metadata["id"] != exp["id"]
+        or reference["reference_id"] != exp["reference"]["id"]
+    ):
+        raise ValueError("experiment or reference identity mismatch")
+    # Normalize by the actual simulated hardware, never by reference.num_gpus
+    # or the old output_token_throughput_per_gpu_tps (which counted workers).
+    actual_gpus = metadata["num_gpus"]
+    if not isinstance(actual_gpus, int) or actual_gpus <= 0:
+        raise ValueError("actual result num_gpus must be a positive integer")
+    duration = metrics["profile_duration_s"]
+    if duration <= 0:
+        raise ValueError("positive result observation duration required")
+    differences = []
+    for key in (
+        "num_gpus",
+        "hardware",
+        "concurrency",
+        "parallelism",
+        "cache_backend",
+        "model",
+    ):
+        if metadata.get(key) != reference.get(key):
+            differences.append(key)
+    if metrics.get("concurrency") != metadata.get("concurrency"):
+        raise ValueError("result concurrency disagrees with its manifest")
+    if metadata.get("reference_id") != reference["reference_id"]:
+        differences.append("reference_id")
+    if metadata.get("profiling_window_s") != exp["profiling_window_s"]:
+        differences.append("profiling_window_s")
+    if metadata.get("trace_count") != exp["trace_count"]:
+        differences.append("trace_count")
+    comparable = not differences
+    gpu, cpu = cache_rates(result, metadata["cache_backend"])
+    ref = reference["metrics"]
+    itl = metrics.get("itl_s", metrics.get("tpot_s", {}))
+    actual = {
+        "output_tput_per_gpu": metrics["output_tokens"] / duration / actual_gpus,
+        "input_tput_per_gpu": metrics["input_tokens"] / duration / actual_gpus,
+        "p90_ttft": metrics.get("ttft_s", {}).get("p90"),
+        "p90_itl": itl.get("p90"),
+        "mean_e2e": metrics.get("e2e_s", {}).get("mean"),
     }
-
-    rows = []
-    raw_results: dict[tuple[str, str], dict[str, Any]] = {}
-    for hardware, concurrency in (("b200", 196), ("b300", 384)):
-        reference = references[hardware]
-        reference_metrics = reference["metrics"]
-        for mode in ("hbm", "dram"):
-            result_path = root / hardware / mode / f"agentx_c{concurrency}.json"
-            result = json.loads(result_path.read_text())
-            raw_results[(hardware, mode)] = result
-            metrics = result["agentx_metrics"]
-            hbm_rate, dram_rate = cache_rates(result, mode)
-            output_per_gpu = metrics["output_token_throughput_per_gpu_tps"]
-            input_per_gpu = (
-                metrics["input_tokens"]
-                / metrics["profile_duration_s"]
-                / reference["num_gpus"]
-            )
-            ttft_p90 = metrics["ttft_s"]["p90"]
-            tpot_p90 = metrics["tpot_s"]["p90"]
-            mean_e2e = metrics["e2e_s"]["mean"]
-            rows.append(
-                {
-                    "hardware": hardware,
-                    "concurrency": concurrency,
-                    "cache_mode": mode,
-                    "request_count": metrics["request_count"],
-                    "profile_duration_s": metrics["profile_duration_s"],
-                    "output_tput_per_gpu": output_per_gpu,
-                    "reference_output_tput_per_gpu": (
-                        reference_metrics["output_tput_per_gpu"]
-                        if mode == "dram"
-                        else ""
-                    ),
-                    "output_tput_delta_pct": (
-                        percent_delta(
-                            output_per_gpu,
-                            reference_metrics["output_tput_per_gpu"],
-                        )
-                        if mode == "dram"
-                        else ""
-                    ),
-                    "input_tput_per_gpu": input_per_gpu,
-                    "reference_input_tput_per_gpu": (
-                        reference_metrics["input_tput_per_gpu"]
-                        if mode == "dram"
-                        else ""
-                    ),
-                    "input_tput_delta_pct": (
-                        percent_delta(
-                            input_per_gpu,
-                            reference_metrics["input_tput_per_gpu"],
-                        )
-                        if mode == "dram"
-                        else ""
-                    ),
-                    "p90_ttft_s": ttft_p90,
-                    "reference_p90_ttft_s": (
-                        reference_metrics["p90_ttft"] if mode == "dram" else ""
-                    ),
-                    "p90_ttft_delta_pct": (
-                        percent_delta(ttft_p90, reference_metrics["p90_ttft"])
-                        if mode == "dram"
-                        else ""
-                    ),
-                    "p90_tpot_s": tpot_p90,
-                    "reference_p90_itl_s": (
-                        reference_metrics["p90_itl"] if mode == "dram" else ""
-                    ),
-                    "p90_tpot_vs_itl_delta_pct": (
-                        percent_delta(tpot_p90, reference_metrics["p90_itl"])
-                        if mode == "dram"
-                        else ""
-                    ),
-                    "mean_e2e_s": mean_e2e,
-                    "reference_mean_e2e_s": (
-                        reference_metrics["mean_e2e"] if mode == "dram" else ""
-                    ),
-                    "mean_e2e_delta_pct": (
-                        percent_delta(mean_e2e, reference_metrics["mean_e2e"])
-                        if mode == "dram"
-                        else ""
-                    ),
-                    "hbm_hit_rate": hbm_rate,
-                    "blog_hbm_hit_rate": (
-                        BLOG_CACHE_RATES[hardware]["hbm"] if mode == "dram" else ""
-                    ),
-                    "hbm_hit_rate_delta_pp": (
-                        (hbm_rate - BLOG_CACHE_RATES[hardware]["hbm"]) * 100
-                        if mode == "dram"
-                        else ""
-                    ),
-                    "dram_hit_rate": dram_rate,
-                    "blog_dram_hit_rate": (
-                        BLOG_CACHE_RATES[hardware]["dram"] if mode == "dram" else ""
-                    ),
-                    "dram_hit_rate_delta_pp": (
-                        (dram_rate - BLOG_CACHE_RATES[hardware]["dram"]) * 100
-                        if mode == "dram"
-                        else ""
-                    ),
-                    "kv_cache_capacity_tokens": result.get(
-                        "cluster", {}
-                    ).get(
-                        "kv_cache_capacity_tokens_total",
-                        result.get("kv_cache_capacity_tokens_total", 0),
-                    ),
-                    "reference_kv_cache_capacity_tokens": reference_metrics[
-                        "kv_cache_pool_tokens"
-                    ],
-                }
-            )
-
-    improvements = []
-    for hardware in ("b200", "b300"):
-        hbm_metrics = raw_results[(hardware, "hbm")]["agentx_metrics"]
-        dram_metrics = raw_results[(hardware, "dram")]["agentx_metrics"]
-        throughput_gain = percent_delta(
-            dram_metrics["output_token_throughput_tps"],
-            hbm_metrics["output_token_throughput_tps"],
+    row = {
+        "experiment_id": exp["id"],
+        "reference_id": reference["reference_id"],
+        "seed": metadata.get("seed"),
+        "hardware": metadata["hardware"],
+        "concurrency": metadata["concurrency"],
+        "num_gpus": actual_gpus,
+        "reference_num_gpus": reference["num_gpus"],
+        "parallelism": json.dumps(metadata["parallelism"], sort_keys=True),
+        "cache_backend": metadata["cache_backend"],
+        "comparable": comparable,
+        "incompatible_fields": ",".join(differences),
+        "profile_duration_s": duration,
+        "request_count": metrics["request_count"],
+        "gpu_hit_rate": gpu,
+        "cpu_hit_rate": cpu,
+        "missing_cache_metrics": ",".join(
+            k for k, v in (("gpu", gpu), ("cpu", cpu)) if v is None
+        ),
+        "cache_rate_denominator": metadata.get("cache_rate_denominator"),
+        "reference_gpu_hit_rate": ref.get("gpu_cache_hit_rate"),
+        "reference_cpu_hit_rate": ref.get("cpu_cache_hit_rate"),
+        "simulated_kv_capacity_tokens": result.get("kv_cache_capacity_tokens_total"),
+        "reference_logged_equivalent_kv_tokens": ref.get("kv_cache_pool_tokens"),
+        "reference_kv_semantics": reference["kv_cache_pool_tokens_semantics"],
+    }
+    for name, value in actual.items():
+        row[name] = value
+        row[f"reference_{name}"] = ref.get(name)
+        row[f"{name}_delta_pct"] = (
+            percent_delta(value, ref.get(name)) if comparable else None
         )
-        e2e_reduction = (
-            1.0
-            - dram_metrics["e2e_s"]["mean"] / hbm_metrics["e2e_s"]["mean"]
-        ) * 100.0
-        improvements.append(
-            {
-                "hardware": hardware,
-                "output_throughput_gain_pct": throughput_gain,
-                "blog_output_throughput_gain_pct": BLOG_OFFLOAD_IMPROVEMENT[
-                    "output_throughput_pct"
-                ],
-                "throughput_gain_gap_pp": throughput_gain
-                - BLOG_OFFLOAD_IMPROVEMENT["output_throughput_pct"],
-                "mean_e2e_reduction_pct": e2e_reduction,
-                "blog_mean_e2e_reduction_pct": BLOG_OFFLOAD_IMPROVEMENT[
-                    "mean_e2e_reduction_pct"
-                ],
-                "mean_e2e_reduction_gap_pp": e2e_reduction
-                - BLOG_OFFLOAD_IMPROVEMENT["mean_e2e_reduction_pct"],
-            }
+    same_denominator = metadata.get("cache_rate_denominator") == "all_prompt_tokens"
+    for name, value, reference_value in (
+        ("gpu", gpu, ref.get("gpu_cache_hit_rate")),
+        ("cpu", cpu, ref.get("cpu_cache_hit_rate")),
+    ):
+        row[f"{name}_hit_delta_pp"] = (
+            (value - reference_value) * 100
+            if comparable
+            and same_denominator
+            and value is not None
+            and reference_value is not None
+            else None
         )
+    return row
 
-    comparison = {
+
+def compare(
+    root: Path, matrix: Path, manifest_path: Path, reference_root: Path | None = None
+) -> dict[str, Any]:
+    experiments = {e["id"]: e for e in load_experiments(matrix)}
+    manifest = json.loads(manifest_path.read_text())
+    entries = manifest.get("experiments")
+    if not isinstance(entries, list) or not entries:
+        raise ValueError(
+            "result manifest must contain identified experiments with result_file and actual num_gpus"
+        )
+    rows, seen = [], set()
+    for metadata in entries:
+        identity = (metadata["id"], metadata.get("seed"))
+        if identity in seen:
+            raise ValueError(f"duplicate experiment/seed: {identity}")
+        seen.add(identity)
+        exp = experiments[metadata["id"]]
+        result_path = root / metadata["result_file"]
+        result = json.loads(result_path.read_text())
+        reference_path = (reference_root or root) / exp["reference"]["metrics_file"]
+        reference = json.loads(reference_path.read_text())
+        row = comparison_row(exp, result, reference, metadata)
+        row["result_file"] = str(result_path)
+        rows.append(row)
+    report = {
         "methodology": {
-            "dataset_trace_count": 393,
-            "profile_duration_s": 1800,
-            "system_idle_gap_cap_s": 10,
-            "simulator_model": "DeepSeek-V4-Proxy",
-            "official_submission_compatible": False,
-            "cache_rate_denominator": (
-                "Mooncake connector prompt-query tokens for DRAM cases; "
-                "completed-request prefix blocks for HBM-only cases"
-            ),
-            "note": (
-                "Simulation follows the current public AIPerf MVP timing defaults; "
-                "the article describes an earlier one-hour/per-stream-five-minute-cap run."
-            ),
+            "matrix": str(matrix.resolve()),
+            "manifest": str(manifest_path.resolve()),
+            "normalization": "actual simulated GPU count from experiment metadata",
+            "missing_values": "null, never a fabricated zero",
+            "capacity": "logged equivalent reference tokens are not usable capacity",
         },
         "rows": rows,
-        "offload_improvements": improvements,
     }
-    (root / "comparison.json").write_text(json.dumps(comparison, indent=2) + "\n")
+    (root / "comparison.json").write_text(
+        json.dumps(report, indent=2, allow_nan=False) + "\n"
+    )
     with (root / "comparison.csv").open("w", newline="") as output:
         writer = csv.DictWriter(output, fieldnames=list(rows[0]))
         writer.writeheader()
         writer.writerows(rows)
-    print(root / "comparison.json")
-    print(root / "comparison.csv")
+    return report
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("result_root", type=Path)
+    parser.add_argument(
+        "--matrix", type=Path, default=Path("data/experiments/agentx.yaml")
+    )
+    parser.add_argument("--result-manifest", type=Path)
+    parser.add_argument(
+        "--reference-root",
+        type=Path,
+        help="base directory containing the matrix's reference/ paths",
+    )
+    args = parser.parse_args()
+    compare(
+        args.result_root,
+        args.matrix,
+        args.result_manifest or args.result_root / "run_manifest.json",
+        args.reference_root,
+    )
+    print(args.result_root / "comparison.json")
+    print(args.result_root / "comparison.csv")
 
 
 if __name__ == "__main__":

@@ -1,5 +1,14 @@
 # AgentX / InferenceX Simulation
 
+The full DeepSeek-V4-Pro reproduction is being implemented in stages. The
+reference audit and matrix-driven comparison tools are available; see
+[the reference report](agentx-reference-report.md) and
+[the implementation plan](agentx-research-plan.md). The simulation commands
+below describe the earlier proxy workflow and do not satisfy the planned
+full-model, one-hour validation. The comparison script now requires identified
+experiment metadata with the actual GPU count; the earlier `cases` manifest
+cannot be used as a matching full-model result.
+
 TokenSim can replay the SemiAnalysis AgentX coding traces as closed-loop request
 trees. The LLM calls are simulated by TokenSim; no model server or generated
 text is required.
