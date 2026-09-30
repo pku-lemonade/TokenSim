@@ -214,6 +214,86 @@ class HybridKVBlockManager:
             self.eviction_count += 1
         block.clear_cache_metadata()
 
+    def plan_external_reuse(self, req, store, *, local_tokens=0):
+        """Atomic all-group CPU suffix lookup after the local GPU prefix.
+
+        Window pages use their absolute prefix identity. Full pages before
+        local_tokens need not exist in external storage. Stored writes are
+        invisible until ready; the connector must pin this plan before import.
+        """
+        keys = self._input_keys(req)
+        start = local_tokens // self.block_size
+        maximum = min(len(keys), max(0, (req.prefill_len - 1) // self.block_size))
+        full = self.layout.full_group
+        contiguous = start
+        while (
+            contiguous < maximum
+            and store.lookup((full.group_id, keys[contiguous], 0)) is not None
+        ):
+            contiguous += 1
+        for blocks in range(contiguous, start, -1):
+            boundary = blocks * self.block_size
+            group_hits = []
+            for group in self.layout.groups:
+                indices = (
+                    range(start, blocks)
+                    if not group.window_tokens
+                    else self._tail_indices(group, boundary)
+                )
+                pairs = [
+                    (index, store.lookup(self._slot_key(group, index, keys, req)))
+                    for index in indices
+                ]
+                if any(page is None for _, page in pairs):
+                    break
+                group_hits.append(
+                    (group.group_id, tuple(pairs[:-1] if group.eagle else pairs))
+                )
+            else:
+                return boundary, tuple(group_hits)
+        return local_tokens, ()
+
+    def external_import_slots(self, req, external_hits):
+        # Existing imported-window positions are replaced with private pages;
+        # only sole-owner old pages can supply immediate reclaimable slots.
+        return sum(len(pairs) for _, pairs in external_hits) - sum(
+            self.tables[req.id][gid][index].ref_count == 1
+            for gid, pairs in external_hits
+            for index, _ in pairs
+            if index in self.tables[req.id][gid]
+        )
+
+    def allocate_external_destinations(self, req, external_hits):
+        """Reserve private writable GPU targets before asynchronous DMA."""
+        needed = self.external_import_slots(req, external_hits)
+        if needed > len(self.free_slots):
+            raise OutOfBlocksError("external hybrid import needs more free GPU slots")
+        destinations = []
+        for gid, pairs in external_hits:
+            table = self.tables[req.id][gid]
+            for index, _ in pairs:
+                if index in table:
+                    self._release(table.pop(index))
+        for gid, pairs in external_hits:
+            table = self.tables[req.id][gid]
+            for index, page in pairs:
+                block = self._allocate()
+                table[index] = block
+                destinations.append((gid, index, page, block))
+        self._sync(req)
+        return destinations
+
+    def finish_external_import(self, req, destinations, hit_tokens):
+        for gid, index, page, block in destinations:
+            key = page.key
+            existing = self.cache.get(key)
+            block.block_hash, block.cached, block.is_full = key, True, True
+            if existing is None:
+                self.cache[key] = block
+            elif existing is not block:
+                self.duplicates.setdefault(key, {})[block.block_number] = block
+        self.cached_progress[req.id] = hit_tokens // self.block_size
+
     def _acquire(self, block):
         if block.ref_count == 0:
             self.free_slots.pop(block.block_number, None)

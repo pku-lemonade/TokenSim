@@ -11,3 +11,5 @@
 5 个基础用例覆盖写入可见性、读 pin 与驱逐、packed stride/对象字节差异、全池 pin 后拒绝超额写入、共享队列竞争及带宽三档。全仓 369 项测试通过，78.949 秒；现有 Mooncake 兼容检查也通过。这些逻辑结果不代替 CPU 模拟。
 
 下一步接入原生混合组 lookup/import、加载中的请求状态、DP 下异步完成、取消和 eager 写回，再按完整 393-trace 池及一小时窗口验证两种后端。CPU DRAM 硬件与运行预算将分别记录；从历史 `runners.yaml` 已读取 available-cpu-dram-mib，用于后续预算核对，不从 CPU block 数反推容量。
+
+后续已增加 GPU 管理器的 external suffix lookup/import API：允许早期 full pages 只存在于 GPU，CPU 提供后缀及完整窗口状态；导入先预留私有目标，复制完成后才注册 prefix 元数据。三个逻辑用例及全仓 372 项测试通过（77.801 秒）。该 API 尚未被 connector 调用，CPU 引擎与一小时验收继续待实现。
