@@ -66,12 +66,12 @@ class LookupPolicy:
     ``extrapolate``: what to do when a query lies outside the measured range on
     an axis (the boundary row is always the starting point):
 
-    * ``analytical`` (default): keep the boundary row's measured efficiency and
+    * ``analytical``: keep the boundary row's measured efficiency and
       let the analytical model carry the growth, i.e.
       ``latency = measured(boundary) * analytical(target) / analytical(boundary)``.
       This is the strategy AIConfigurator uses past its collected range. It
       needs an :data:`AnalyticalScaler`; without one it behaves like ``scale``.
-    * ``empirical``: fit a power-law exponent from the measured data along
+    * ``empirical`` (default): fit a power-law exponent from the measured data along
       the extrapolated axis, then scale as ``(target / boundary) ** alpha``.
       Captures sub-linear kernel scaling (e.g. FlashAttention) that the
       roofline model overestimates. Falls back to ``analytical`` when fewer

@@ -224,7 +224,7 @@ class CollectiveModelTest(unittest.TestCase):
         self.assertLess(estimate.latency_us, ideal_us * 1.2)
 
     def test_measured_curve_extrapolates_with_model_growth(self):
-        from TokenSim.operator_data.lookup import OperatorLookup
+        from TokenSim.operator_data.lookup import LookupPolicy, OperatorLookup
         from TokenSim.operator_data.package import OperatorDataPackage, PackageMeta, SourceRecord
 
         source = SourceRecord("nccl:test", "A", "measured")
@@ -236,7 +236,9 @@ class CollectiveModelTest(unittest.TestCase):
             analytical = self.model.estimate(CollectiveQuery("all_reduce", size, layout)).latency_us
             rows.append({"dtype": "fp16", "operation": "all_reduce", "group_size": 4, "nodes": 1, "message_bytes": size, "latency_us": 2.0 * analytical, "source_id": "nccl:test"})
         package = OperatorDataPackage.from_rows(meta, {"collective": rows})
-        model = CollectiveModel(self.topology, self.links, family="nvidia_gpu", measured_lookup=OperatorLookup(package))
+        # This test verifies analytical growth with a fixed measured efficiency.
+        # Select that policy explicitly; the default now fits empirical growth.
+        model = CollectiveModel(self.topology, self.links, family="nvidia_gpu", measured_lookup=OperatorLookup(package, policy=LookupPolicy(extrapolate="analytical")))
         beyond = model.estimate(CollectiveQuery("all_reduce", 1 << 23, layout, dtype="fp16"))
         analytical_beyond = self.model.estimate(CollectiveQuery("all_reduce", 1 << 23, layout)).latency_us
         self.assertEqual(beyond.match_type, "extrapolated")
