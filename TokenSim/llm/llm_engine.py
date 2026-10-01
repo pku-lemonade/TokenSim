@@ -425,7 +425,11 @@ class LLMWorker(Worker):
                                     ]
                                     running = self.scheduler.running
 
-                        if not running and not self.scheduler.waiting:
+                        if (
+                            not running
+                            and not self.scheduler.waiting
+                            and not getattr(self.scheduler, "loaded_waiting", [])
+                        ):
                             self.status = WorkerStatus.WAITING
 
                     case Task.STOP:
@@ -437,7 +441,11 @@ class LLMWorker(Worker):
                                 req.acknowledge_cancel(self.env, self.id)
                             else:
                                 self.env.process(self._wait_for_cancel_release(req))
-                        if not self.scheduler.running and not self.scheduler.waiting:
+                        if (
+                            not self.scheduler.running
+                            and not self.scheduler.waiting
+                            and not getattr(self.scheduler, "loaded_waiting", [])
+                        ):
                             self.status = WorkerStatus.WAITING
             except Exception as exc:
                 logger.exception(

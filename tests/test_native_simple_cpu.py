@@ -190,6 +190,10 @@ class NativeSimpleCPUTest(unittest.TestCase):
         env.run(until=env.now + 0.0005)
         self.assertEqual(w.connector.read_link.jobs, 2)
         self.assertFalse(w.connector.loads)
+        self.assertFalse(w.scheduler.running)
+        self.assertEqual(w.scheduler.loaded_waiting, [a, b])
+        # Completed copies are admitted only after the current GPU pass ends.
+        env.run(until=env.now + 0.0006)
         self.assertEqual(w.scheduler.running, [a])
         self.assertEqual(w.scheduler.loaded_waiting, [b])
         self.assertEqual(b.generation_idx, 0)
@@ -226,7 +230,7 @@ class NativeSimpleCPUTest(unittest.TestCase):
             r.dp_rank = 0
             r.arrive(env)
         e.add_requests_burst([a, b])
-        env.run(until=env.now + 0.0005)
+        env.run(until=env.now + 0.0011)
         self.assertEqual(w.scheduler.loaded_waiting, [b])
         ack = e.cancel_requests([b])[0]
         env.run(until=ack)

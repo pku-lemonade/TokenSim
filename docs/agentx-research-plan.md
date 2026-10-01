@@ -4,7 +4,7 @@
 > 执行顺序：参考数据与完整模型准备 → 请求回放 → GPU 分配与缓存复用 → 调度行为 → 算子耗时校准 → 完整曲线验证。
 > 源码基准：只读参考 `/home/zhuohang/Serving/vllm-note`，本轮记录 HEAD `30f5c01d4ebb`；不下载历史镜像、不修改或切换此目录。本文旧行号和旧 HEAD 下的源码结论需按此版本重新定位；历史运行日志仍作为实验事实保留。
 > 分支：`agentx-support`（基于 `b2b685a`）
-> 状态：**2026-10-01 已完成请求图、Native 回放／取消、GPU 混合缓存、consistent-hash 路由、DP 同步、长 prefill 调度、SimpleCPU 生命周期、在途预留及首次准入来源统计；396 项测试通过，两个完整主点共 21,395 条终态记录证明统计修正不改变执行。B200 首次 GPU/CPU 命中为 23.727%/70.662%，仅修正约 0.2 个百分点，不能解释大误差；仍有 2,131 次抢占。下一部分优先对齐已加载请求的 waiting 恢复及计算块准入。Mooncake、MTP、原生算子、完整曲线与精度验收继续实施。报告见 [基准与口径](agentx-reference-report.md)、[完整模型](agentx-full-model-report.md)、[请求图](agentx-request-graph-report.md)、[回放](agentx-native-replay-report.md)、[HBM 缓存](agentx-hybrid-cache-report.md)、[路由与 DP](agentx-routing-dp-report.md)、[prefill 调度](agentx-prefill-scheduling-report.md)、[SimpleCPU](agentx-simple-cpu-report.md)、[在途预留](agentx-prefill-reservation-report.md)、[首次来源](agentx-first-prefill-source-report.md)。复选框表示对应子任务实现进度。**
+> 状态：**2026-10-01 已完成请求图、Native 回放／取消、GPU 混合缓存、路由与 DP、长 prefill、SimpleCPU 生命周期、在途预留、首次来源及已加载 KV 的 waiting 恢复；400 项测试通过，两组完整主点验证。恢复准入修复将 B200 抢占从 2,131 降至 86，重复 CPU 加载降低约 96%，但吞吐仍约 870 token/s；B300 主要值不变。下一阶段推进原生 GEMM/MoE 与 MTP 成本和进度，同时继续完成 Mooncake、剩余缓存行为、完整曲线及精度验收。报告见 [基准](agentx-reference-report.md)、[模型](agentx-full-model-report.md)、[请求图](agentx-request-graph-report.md)、[回放](agentx-native-replay-report.md)、[HBM](agentx-hybrid-cache-report.md)、[路由与 DP](agentx-routing-dp-report.md)、[调度](agentx-prefill-scheduling-report.md)、[SimpleCPU](agentx-simple-cpu-report.md)、[预留](agentx-prefill-reservation-report.md)、[首次来源](agentx-first-prefill-source-report.md)、[loaded KV 恢复](agentx-loaded-kv-admission-report.md)。复选框表示对应子任务实现进度。**
 > 对照对象：InferenceX AgentX，完整 DeepSeek-V4-Pro（FP8 + MXFP4），vLLM + MTP；覆盖 B200/B300 多并发曲线及其 TP8、TP4、DEP8 等配置变化。主检查点为单节点 8 GPU DEP8：B200 并发 196、B300 并发 384。
 > 证据分层：历史配置和日志描述参考运行；本地源码决定本轮实现；二者存在版本差异时单列记录。【待核实／待验证】是实现中的技术检查，不是待用户批准；【估算】不是实测；【推断】须保留依据与适用范围。历史研究中的源码行号仅作定位线索，以函数和本轮版本为准。
 
@@ -886,6 +886,7 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 - [x] **CPU 缓存卸载任务 1.1：SimpleCPU 复制生命周期** 接入本地按字节限容的 CPU 池、原生混合组 suffix lookup/import、确认计算后的 eager 写回、按方向竞争的异步复制和取消释放。加载中的请求不占 RUNNING 配额，复制完成后受 max_num_seqs 限制；GPU/CPU 命中分别记录。384 项测试通过，两个主点按完整一小时流程验证；完整 CPU 调度及最终精度仍未验收，见 SimpleCPU 报告。
 - [ ] **CPU 缓存卸载任务 1** 同时实现 SimpleCPU 与 Mooncake 的配置入口和 DRAM 池行为，容量和块数由模拟器计算。SimpleCPU 的本地容量与 Mooncake 的共享外部存储分别记录；日志中的 289,815 blocks 只用于核对，不能写成固定容量。
 - [ ] **CPU 缓存卸载任务 2** 按两种后端的源码分别对齐写回、命中加载、请求等待及异步重叠。传输带宽优先使用匹配实测；没有可信实测的链路采用已确认的 75% 理论带宽基线，并配置 50%/75%/100% 三档敏感性实验。保留带宽上限、效率假设、传输量、排队与竞争统计，不能将 75% 当作实测值。
+- [x] **CPU 缓存卸载任务 2.1：SimpleCPU 加载后的恢复准入** 复制完成回到 KV-holding waiting；已有 running 先执行，token/cadence/名额/完整输入和本步 query/lookahead 分配均通过后才 RUNNING，失败时保留已加载页等待而非抢占重载。400 项测试及两组完整主点验证，B200 抢占减少约 96%，但最终性能仍未验收。
 - [ ] **CPU 缓存卸载任务 3** 对比 external hit 趋势（B200 74.4%、B300 17.8%）。
 - [ ] **CPU 缓存卸载任务 4** 分别核对 SimpleCPU 本地寻址与 Mooncake 共享对象身份、存储节点预算、淘汰和跨 worker 可见性。CPU 命中后先异步传输，目标请求等待可用，其他请求可继续调度；写回、读取、取消与块释放按后端语义处理。链路按 PCIe／网络等实际路径排队与竞争，不能把共享存储当作各 worker 都拥有整份独占带宽。
 

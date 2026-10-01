@@ -118,16 +118,11 @@ class SimpleCPUOffloadConnector(BaseKVConnector):
             if req.needs_recompute:
                 req.recompute_tokens = max(0, req.context_len - boundary)
             req.start_context_build(boundary)
-            limit = self.scheduler.max_parallem_sum
-            if limit is None or len(self.scheduler.running) < limit:
-                req.status = RequestStatus.RUNNING
-                self.scheduler.running.append(req)
-                self.scheduler.loading.pop(req.id, None)
-            else:
-                # max_num_seqs limits RUNNING, not requests awaiting a copy.
-                # Loaded KV remains pinned by request ownership until a slot
-                # opens; source scheduler drains KV-holding waiting first.
-                self.scheduler.loaded_waiting.append(req)
+            # Copy completion makes the KV usable, not the request runnable.
+            # scheduler._handle_blocked_waiting_request returns to WAITING;
+            # the next waiting admission must allocate its actual query slots.
+            req.status = RequestStatus.WAITING
+            self.scheduler.loaded_waiting.append(req)
         for _, _, page, block in targets:
             self.store.release(page)
             self.manager.unpin_transfer(block)

@@ -233,6 +233,8 @@ class LLMPagedAttnScheduler(LLMScheduler):
             "full_input_gate": 0,
             "async_load_reservation_gate": 0,
             "max_inflight_prefill_reserved_slots": 0,
+            "loaded_kv_capacity_gate": 0,
+            "loaded_kv_resumptions": 0,
         }
         # Requests admitted by the most recent schedule() call.
         self.last_admitted: list[Request] = []
@@ -275,23 +277,12 @@ class LLMPagedAttnScheduler(LLMScheduler):
         preempted: list[Request] = []
         self.last_admitted = []
         self.stats["steps"] += 1
-        while self.loaded_waiting:
-            if (
-                self.max_parallem_sum is not None
-                and len(self.running) >= self.max_parallem_sum
-            ):
-                self.stats["max_num_seqs_gate"] += 1
-                break
-            req = self.loaded_waiting.pop(0)
-            self.loading.pop(req.id, None)
-            req.status = RequestStatus.RUNNING
-            self.running.append(req)
         self.defer_prefills = bool(
             throttle_prefills
             and not self.prefill_capacity_bound
             and any(not r.is_context_build for r in self.running)
         )
-        eligible = len(self.running) + len(self.waiting)
+        eligible = len(self.running) + len(self.waiting) + len(self.loading)
         self.effective_long_prefill_threshold = (
             self.long_prefill_token_threshold if eligible > 1 else 0
         )
@@ -340,8 +331,11 @@ class LLMPagedAttnScheduler(LLMScheduler):
         # admitting new work right after evicting running requests would
         # thrash the KV cache.
         if not preempted:
-            while self.waiting and (budget is None or budget > 0):
-                if not self._is_occupy_below_usage():
+            while (self.loaded_waiting or self.waiting) and (
+                budget is None or budget > 0
+            ):
+                resuming_loaded = bool(self.loaded_waiting)
+                if not resuming_loaded and not self._is_occupy_below_usage():
                     break
                 if (
                     self.max_parallem_sum is not None
@@ -349,7 +343,36 @@ class LLMPagedAttnScheduler(LLMScheduler):
                 ):
                     self.stats["max_num_seqs_gate"] += 1
                     break
-                req = self.waiting[0]
+                request_queue = self.loaded_waiting if resuming_loaded else self.waiting
+                req = request_queue[0]
+                if resuming_loaded:
+                    # A KV-holding waiting request retains its imported pages
+                    # when query allocation cannot fit. Never free/reload that
+                    # prefix via the running-victim path merely to admit it.
+                    if self.defer_prefills and req.remaining_context_tokens > 1:
+                        self.stats["deferred_waiting_prefills"] += 1
+                        break
+                    tokens = self._step_tokens(req, budget)
+                    manager = self.block_manager
+                    lookahead = manager.layout.speculative_tokens
+                    watermark = manager.watermark_blocks if self.running else 0
+                    if manager.remaining_admission_slots(
+                        req
+                    ) + watermark > manager.get_num_free_blocks() or not manager.can_ensure_slots(
+                        req, tokens, lookahead=lookahead
+                    ):
+                        self.stats["loaded_kv_capacity_gate"] += 1
+                        break
+                    manager.ensure_slots(req, tokens, lookahead=lookahead)
+                    request_queue.pop(0)
+                    self.loading.pop(req.id, None)
+                    req.status = RequestStatus.RUNNING
+                    req.scheduled_tokens = tokens
+                    budget = None if budget is None else budget - tokens
+                    self.running.append(req)
+                    scheduled.append(req)
+                    self.stats["loaded_kv_resumptions"] += 1
+                    continue
                 native_async = getattr(self.connector, "native_async", False)
                 external = None
                 if native_async:
@@ -403,7 +426,7 @@ class LLMPagedAttnScheduler(LLMScheduler):
                 self.last_admitted.append(req)
 
         if not preempted and not self.defer_prefills:
-            self.prefill_capacity_bound = bool(self.waiting)
+            self.prefill_capacity_bound = bool(self.waiting or self.loaded_waiting)
         if self.prefill_capacity_bound:
             self.stats["capacity_bound_steps"] += 1
         for req in scheduled:
