@@ -4,7 +4,7 @@
 > 执行顺序：参考数据与完整模型准备 → 请求回放 → GPU 分配与缓存复用 → 调度行为 → 算子耗时校准 → 完整曲线验证。
 > 源码基准：只读参考 `/home/zhuohang/Serving/vllm-note`，本轮记录 HEAD `30f5c01d4ebb`；不下载历史镜像、不修改或切换此目录。本文旧行号和旧 HEAD 下的源码结论需按此版本重新定位；历史运行日志仍作为实验事实保留。
 > 分支：`agentx-support`（基于 `b2b685a`）
-> 状态：**2026-10-01 已完成请求图、Native 回放／取消、GPU 混合缓存、路由与 DP、长 prefill、SimpleCPU 生命周期、在途预留、首次来源及已加载 KV 的 waiting 恢复；400 项测试通过，两组完整主点验证。恢复准入修复将 B200 抢占从 2,131 降至 86，重复 CPU 加载降低约 96%，但吞吐仍约 870 token/s；B300 主要值不变。下一阶段推进原生 GEMM/MoE 与 MTP 成本和进度，同时继续完成 Mooncake、剩余缓存行为、完整曲线及精度验收。报告见 [基准](agentx-reference-report.md)、[模型](agentx-full-model-report.md)、[请求图](agentx-request-graph-report.md)、[回放](agentx-native-replay-report.md)、[HBM](agentx-hybrid-cache-report.md)、[路由与 DP](agentx-routing-dp-report.md)、[调度](agentx-prefill-scheduling-report.md)、[SimpleCPU](agentx-simple-cpu-report.md)、[预留](agentx-prefill-reservation-report.md)、[首次来源](agentx-first-prefill-source-report.md)、[loaded KV 恢复](agentx-loaded-kv-admission-report.md)。复选框表示对应子任务实现进度。**
+> 状态：**2026-10-01 已完成基准、完整模型与权重、请求图、Native 回放／取消、GPU 混合缓存、路由与 DP、长 prefill、SimpleCPU 生命周期及准入修复；本阶段进一步完成原生低秩 GEMM 和 router/lm_head dtype。405 项全仓测试及两个完整一小时主点验收通过，输出吞吐为 B200 986.135、B300 2,218.252 token/s，相对参考仍低 72.602%/65.123%。B200 抢占从基线 86 增至 214；静态容量与调度代码未变，同一回放实例的路由无漂移，容量紧张 rank 的重复准入仍须继续核查。下一部分优先 MoE 路由统计与 MegaMoE 计时范围，再分阶段接入原生 attention、mHC、MTP；Mooncake、剩余缓存行为、完整曲线及精度验收继续未完成。报告见 [基准](agentx-reference-report.md)、[模型](agentx-full-model-report.md)、[请求图](agentx-request-graph-report.md)、[回放](agentx-native-replay-report.md)、[HBM](agentx-hybrid-cache-report.md)、[路由与 DP](agentx-routing-dp-report.md)、[调度](agentx-prefill-scheduling-report.md)、[SimpleCPU](agentx-simple-cpu-report.md)、[预留](agentx-prefill-reservation-report.md)、[首次来源](agentx-first-prefill-source-report.md)、[loaded KV 恢复](agentx-loaded-kv-admission-report.md)、[原生 GEMM](agentx-native-gemm-report.md)。复选框表示对应子任务实现进度。**
 > 对照对象：InferenceX AgentX，完整 DeepSeek-V4-Pro（FP8 + MXFP4），vLLM + MTP；覆盖 B200/B300 多并发曲线及其 TP8、TP4、DEP8 等配置变化。主检查点为单节点 8 GPU DEP8：B200 并发 196、B300 并发 384。
 > 证据分层：历史配置和日志描述参考运行；本地源码决定本轮实现；二者存在版本差异时单列记录。【待核实／待验证】是实现中的技术检查，不是待用户批准；【估算】不是实测；【推断】须保留依据与适用范围。历史研究中的源码行号仅作定位线索，以函数和本轮版本为准。
 
@@ -952,8 +952,10 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 - [ ] **算子耗时任务 9（负载近似已确认）** 修复逐请求从零开始轮转导致负载集中到同一专家的 bug，统计先汇总整步 route 并合理分配余数。耗时查询使用 `power_law_1.01` 实测分布，不再叠加同源 straggler 惩罚；统计用直方图不得暗中改变这一成本假设。hash 路由层保留结构与路由差异，无法还原逐 token 路由时也明确记录统计近似。
 - [ ] **算子耗时任务 10（借表方案已确认）** 对实际采用匹配融合 kernel 的配置，分别借用 GB200/GB300 的 DSV4 mega-MoE 表估算 B200/B300，初始换算系数为 1.0；记录硬件、框架、通信与 shared expert 的计时范围差异，并评估借表敏感性。按 rank 本地 token 数查询；不均匀 rank 的组合方式按源码核对。表中已含 dispatch/combine 时不再另加该部分 all-to-all；其他 kernel 的配置按各自数据与通信路径估算。
 - [ ] **算子耗时任务 11** 导入匹配的 mHC 实测表，核对 FP32 参数、BF16 激活、num_sites 及 pre/post 计时范围，标注与 serving 融合路径的差异（P10、决策 27）。
+- [x] **算子耗时任务 12.1：原生低秩投影与 GEMM dtype** 按 DSV4 实际 replicated/column/grouped/row-parallel 几何替代稠密 QKV/O；router 与 lm_head 使用 BF16，grouped FP8 einsum 输出 BF16，缺失匹配实测时标为单 launch 解析估算。采集 manifest 与运行时形状一致；405 项全仓测试及两个完整一小时主点的请求、缓存、取消、DP 时间、源码和配置身份核对通过。shared expert、gate 融合附加工作及 MTP query 计时范围随后单独完成，任务 12 整体保持未勾选。
 - [ ] **算子耗时任务 12** 逐项核对 router、lm_head、shared expert 的 dtype、调用次数和 query 形状；shared expert 按实际路径融合或独立计时，不预设其与 routed MoE 完全重叠，也不重复计算已计入融合表的部分。
 - [ ] **算子耗时任务 13（校准范围已确认）** 用少量参数描述 step overhead，拟区分 CUDA graph 与 eager 执行；分类按实际配置和执行路径判断。只用 B200 校准，记录用于拟合的实验点、目标和参数，冻结参数后验证 B300；B300 的硬件规格和实际运行配置仍按该 SKU 输入。不得按 B300 误差追加专用修正，也不得用 overhead 掩盖已知的算子或通信重复计费。
+- [x] **算子耗时任务 14.1：测量阶段分项守恒** 预热结束后重置 operator 查询、step 与 component 计数，保留查表缓存和全程 missing-shape 清单；两个完整主点的 profiling 分项和均与 DP local compute seconds（含 dummy）一致。旧结果含预热的分项不作直接百分比对照，完整模块分解和最终比较继续由任务 14 完成。
 - [ ] **算子耗时任务 14** 输出时间分解（attention / MoE / GEMM / comm / overhead / 其他），与旧结果对比。
 - [ ] **算子耗时任务 15（已确认）** 增加独立诊断入口，在隔离环境离线调用 AIC；对同一模型、形状、batch、长度和并行配置比较一次前向估算及算子分项。固定并记录 AIC 版本与数据来源，区分导入／组合错误和已知不同假设。正式 TokenSim 模拟不依赖 AIC 运行环境；此诊断不替代完整的一小时模拟。
 

@@ -23,7 +23,12 @@ from TokenSim.config.model_config import ModelSpec
 from TokenSim.config.parallel_config import ParallelConfig, ParallelRankInfo
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.device import DeviceSpec, dtype_bytes
-from TokenSim.latency.base import LatencyBackend, is_decode_step, step_kv_len, step_tokens
+from TokenSim.latency.base import (
+    LatencyBackend,
+    is_decode_step,
+    step_kv_len,
+    step_tokens,
+)
 from TokenSim.llm.llm_request import Request
 from TokenSim.moe.placement import ExpertPlacement
 from TokenSim.moe.routing import ExpertRouting
@@ -81,8 +86,12 @@ class OperatorStats:
     def aggregate(self, other: "OperatorStats") -> "OperatorStats":
         result = OperatorStats(missing=self.missing.merge(other.missing))
         result.match_type_counts = self.match_type_counts + other.match_type_counts
-        for table, counter in list(self.table_match_counts.items()) + list(other.table_match_counts.items()):
-            result.table_match_counts[table] = result.table_match_counts.get(table, Counter()) + counter
+        for table, counter in list(self.table_match_counts.items()) + list(
+            other.table_match_counts.items()
+        ):
+            result.table_match_counts[table] = (
+                result.table_match_counts.get(table, Counter()) + counter
+            )
         result.component_seconds = self.component_seconds + other.component_seconds
         result.step_count = self.step_count + other.step_count
         return result
@@ -93,9 +102,12 @@ class OperatorStats:
             "operator_query_count": total,
             "operator_match_type_counts": dict(self.match_type_counts),
             "operator_table_match_counts": {
-                table: dict(counter) for table, counter in sorted(self.table_match_counts.items())
+                table: dict(counter)
+                for table, counter in sorted(self.table_match_counts.items())
             },
-            "operator_component_seconds": {k: self.component_seconds.get(k, 0.0) for k in COMPONENTS},
+            "operator_component_seconds": {
+                k: self.component_seconds.get(k, 0.0) for k in COMPONENTS
+            },
             "operator_missing_shape_count": self.missing.shape_count,
             "operator_missing_shape_groups": self.missing.group_count,
             "operator_missing_per_table": self.missing.per_table(),
@@ -134,8 +146,14 @@ class OperatorTableLatencyBackend(LatencyBackend):
         missing_report: MissingShapeReport | None = None,
     ) -> None:
         if fallback not in FALLBACK_POLICIES:
-            raise ConfigurationError(f"fallback must be one of {FALLBACK_POLICIES}, got {fallback!r}")
-        if fallback != "analytical_only" and package is None and fallback == "table_only":
+            raise ConfigurationError(
+                f"fallback must be one of {FALLBACK_POLICIES}, got {fallback!r}"
+            )
+        if (
+            fallback != "analytical_only"
+            and package is None
+            and fallback == "table_only"
+        ):
             raise ConfigurationError(
                 f"latency backend 'table_only' requires operator data for device {device.device_id!r}"
             )
@@ -157,7 +175,11 @@ class OperatorTableLatencyBackend(LatencyBackend):
         # Out-of-range table queries keep the boundary row's measured efficiency
         # and follow the analytical model's growth (see LookupPolicy).
         self.lookup = (
-            OperatorLookup(self.package, lookup_policy, analytical_scaler=self._analytical_reference_us)
+            OperatorLookup(
+                self.package,
+                lookup_policy,
+                analytical_scaler=self._analytical_reference_us,
+            )
             if self.package is not None
             else None
         )
@@ -172,7 +194,9 @@ class OperatorTableLatencyBackend(LatencyBackend):
         self._cache: dict[tuple, OperatorEstimate] = {}
         self._calibrations = {
             table: Calibration.from_mapping(values)
-            for table, values in (self.package.meta.calibration.items() if self.package else [])
+            for table, values in (
+                self.package.meta.calibration.items() if self.package else []
+            )
         }
         self._init_dimensions()
 
@@ -193,7 +217,9 @@ class OperatorTableLatencyBackend(LatencyBackend):
         )
         self.inter_local = math.ceil(model.intermediate_size / tp)
         self.vocab_local = math.ceil(model.vocab_size / tp)
-        self.layers_local = stage_layer_count(model.num_layers, pp, self.rank_info.pp_rank)
+        self.layers_local = stage_layer_count(
+            model.num_layers, pp, self.rank_info.pp_rank
+        )
         self.is_last_stage = self.rank_info.pp_rank == pp - 1
         self.moe_layers_local = (
             len(self.expert_placement.moe_layers_for_pp_rank(self.rank_info.pp_rank))
@@ -201,6 +227,11 @@ class OperatorTableLatencyBackend(LatencyBackend):
             else 0
         )
         self.dense_layers_local = max(0, self.layers_local - self.moe_layers_local)
+        self.native_attention_projections = ()
+        if model.deepseek_v4 is not None:
+            from TokenSim.latency.deepseek_v4_gemm import attention_projections
+
+            self.native_attention_projections = attention_projections(model, tp)
         self.activation_bytes = activation_bytes_for(model.activation_dtype)
         ep_enabled = (
             self.parallel_config.enable_expert_parallel
@@ -217,7 +248,9 @@ class OperatorTableLatencyBackend(LatencyBackend):
             self.parallel_config.expert_parallel_replicas_per_group if ep_enabled else 1
         )
         routing = model.moe.routing.distribution if model.moe.routing else "uniform"
-        self.moe_distributions = _MOE_DISTRIBUTION_CANDIDATES.get(routing, ("uniform", "balanced"))
+        self.moe_distributions = _MOE_DISTRIBUTION_CANDIDATES.get(
+            routing, ("uniform", "balanced")
+        )
 
     # -- public API -------------------------------------------------------------
 
@@ -245,10 +278,19 @@ class OperatorTableLatencyBackend(LatencyBackend):
                 if kv_len >= req.context_len:
                     sampling += 1  # last chunk: logits for the next token
         attention_us = sum(
-            self._attention_prefill(count, q_len, kv_len) for (q_len, kv_len), count in context_groups.items()
+            self._attention_prefill(count, q_len, kv_len)
+            for (q_len, kv_len), count in context_groups.items()
         )
-        attention_us += sum(self._attention_decode(count, context) for context, count in decode_buckets.items())
-        return self._compose(tokens=tokens, requests=max(1, sampling), attention_us=attention_us, requests_list=requests)
+        attention_us += sum(
+            self._attention_decode(count, context)
+            for context, count in decode_buckets.items()
+        )
+        return self._compose(
+            tokens=tokens,
+            requests=max(1, sampling),
+            attention_us=attention_us,
+            requests_list=requests,
+        )
 
     def describe(self) -> dict[str, Any]:
         return {
@@ -259,13 +301,39 @@ class OperatorTableLatencyBackend(LatencyBackend):
             "model_id": self.model.model_id,
             "dataset_version": self.package.dataset_version if self.package else None,
             "operator_backend": self.package.backend if self.package else "analytical",
-            "tables": {name: len(rows) for name, rows in self.package.tables.items()} if self.package else {},
+            "tables": (
+                {name: len(rows) for name, rows in self.package.tables.items()}
+                if self.package
+                else {}
+            ),
             "analytical_model": type(self.analytical).__name__,
             "decode_context_bucket": self.decode_context_bucket,
+            "native_attention_projections": [
+                {
+                    "name": p.name,
+                    "table": p.table,
+                    "dtype": p.dtype,
+                    "n": p.n,
+                    "k": p.k,
+                    "groups": p.groups,
+                }
+                for p in self.native_attention_projections
+            ],
+            "native_cost_scope": (
+                "DSV4 low-rank projections; attention/indexer/compressor/mHC/MegaMoE/MTP pending"
+                if self.native_attention_projections
+                else None
+            ),
+            "missing_shape_scope": "cumulative collection checklist; estimate counters reset after warmup",
         }
 
     def stats_dict(self) -> dict[str, Any]:
         return self.stats.as_dict()
+
+    def reset_profile_stats(self):
+        # Retain lookup caches and the shared compute/communication collection
+        # checklist, but remove warmup estimates from measured time breakdown.
+        self.stats = OperatorStats(missing=self.stats.missing)
 
     # -- step composition -------------------------------------------------------
 
@@ -273,7 +341,14 @@ class OperatorTableLatencyBackend(LatencyBackend):
         step = self.decode_context_bucket
         return int(math.ceil(context_len / step) * step)
 
-    def _compose(self, *, tokens: int, requests: int, attention_us: float, requests_list: list[Request]) -> float:
+    def _compose(
+        self,
+        *,
+        tokens: int,
+        requests: int,
+        attention_us: float,
+        requests_list: list[Request],
+    ) -> float:
         """Sum every operator of the layers on this rank for a step of ``tokens`` tokens.
 
         ``requests`` is the number of sequences sampling a token this step (LM
@@ -286,7 +361,15 @@ class OperatorTableLatencyBackend(LatencyBackend):
         stats = self.stats
 
         # Attention block shared by dense and MoE layers.
-        attn_gemm_us = self._gemm(T, self.q_dim_local + 2 * self.kv_dim_local, h) + self._gemm(T, h, self.q_dim_local)
+        if self.native_attention_projections:
+            attn_gemm_us = sum(
+                self._query(p.table, p.key(T)).latency_us
+                for p in self.native_attention_projections
+            )
+        else:
+            attn_gemm_us = self._gemm(
+                T, self.q_dim_local + 2 * self.kv_dim_local, h
+            ) + self._gemm(T, h, self.q_dim_local)
         attn_elem_us = (
             self._elementwise("rmsnorm", T, h)
             + self._elementwise("rope", T, self.q_dim_local + self.kv_dim_local)
@@ -295,8 +378,12 @@ class OperatorTableLatencyBackend(LatencyBackend):
         dense_ffn_gemm_us = 0.0
         dense_ffn_elem_us = 0.0
         if self.dense_layers_local:
-            dense_ffn_gemm_us = self._gemm(T, model.ffn_projection_count * self.inter_local, h) + self._gemm(T, h, self.inter_local)
-            dense_ffn_elem_us = self._elementwise("rmsnorm", T, h) + self._elementwise("residual_add", T, h)
+            dense_ffn_gemm_us = self._gemm(
+                T, model.ffn_projection_count * self.inter_local, h
+            ) + self._gemm(T, h, self.inter_local)
+            dense_ffn_elem_us = self._elementwise("rmsnorm", T, h) + self._elementwise(
+                "residual_add", T, h
+            )
             if model.gated:
                 dense_ffn_elem_us += self._elementwise("swiglu", T, self.inter_local)
 
@@ -305,19 +392,41 @@ class OperatorTableLatencyBackend(LatencyBackend):
         moe_elem_us = 0.0
         moe_comm_bytes = 0
         if self.moe_layers_local:
-            router_us = self._gemm(T, model.moe.num_experts, h)
-            moe_elem_us = self._elementwise("rmsnorm", T, h) + self._elementwise("residual_add", T, h)
+            router_us = self._gemm(
+                T,
+                model.moe.num_experts,
+                h,
+                dtype=model.operator_dtype("router") if model.deepseek_v4 else None,
+            )
+            moe_elem_us = self._elementwise("rmsnorm", T, h) + self._elementwise(
+                "residual_add", T, h
+            )
             moe_us = self._moe_layers(T, requests_list)
             if self.ep_enabled:
-                moe_comm_bytes = int(T * model.moe.num_experts_per_tok * h * self.activation_bytes)
+                moe_comm_bytes = int(
+                    T * model.moe.num_experts_per_tok * h * self.activation_bytes
+                )
 
-        layer_gemm_us = self.layers_local * attn_gemm_us + self.dense_layers_local * dense_ffn_gemm_us + self.moe_layers_local * router_us
-        layer_elem_us = self.layers_local * attn_elem_us + self.dense_layers_local * dense_ffn_elem_us + self.moe_layers_local * moe_elem_us
+        layer_gemm_us = (
+            self.layers_local * attn_gemm_us
+            + self.dense_layers_local * dense_ffn_gemm_us
+            + self.moe_layers_local * router_us
+        )
+        layer_elem_us = (
+            self.layers_local * attn_elem_us
+            + self.dense_layers_local * dense_ffn_elem_us
+            + self.moe_layers_local * moe_elem_us
+        )
         layer_attention_us = self.layers_local * attention_us
 
         lm_head_us = 0.0
         if self.is_last_stage:
-            lm_head_us = self._gemm(max(1, requests), self.vocab_local, h) + self._elementwise("rmsnorm", max(1, requests), h)
+            lm_head_us = self._gemm(
+                max(1, requests),
+                self.vocab_local,
+                h,
+                dtype=model.operator_dtype("lm_head") if model.deepseek_v4 else None,
+            ) + self._elementwise("rmsnorm", max(1, requests), h)
 
         overhead_us = self.device.step_overhead_us.value
 
@@ -328,7 +437,14 @@ class OperatorTableLatencyBackend(LatencyBackend):
         stats.record_component("lm_head", lm_head_us * 1e-6)
         stats.record_component("overhead", overhead_us * 1e-6)
 
-        compute_s = (layer_gemm_us + layer_attention_us + layer_elem_us + moe_us + lm_head_us + overhead_us) * 1e-6
+        compute_s = (
+            layer_gemm_us
+            + layer_attention_us
+            + layer_elem_us
+            + moe_us
+            + lm_head_us
+            + overhead_us
+        ) * 1e-6
         comm_s = self._communication(T, moe_comm_bytes)
         stats.record_component("comm", comm_s)
         return compute_s + comm_s
@@ -348,7 +464,9 @@ class OperatorTableLatencyBackend(LatencyBackend):
             allreduce_count = self.layers_local + self.dense_layers_local
             if not self.ep_enabled:
                 allreduce_count += self.moe_layers_local
-            latency += self.communicator.estimate_tp_collective(hidden_bytes, count=allreduce_count)
+            latency += self.communicator.estimate_tp_collective(
+                hidden_bytes, count=allreduce_count
+            )
         if self.ep_enabled and moe_comm_bytes > 0 and self.moe_layers_local:
             # One dispatch + one combine per MoE layer; measured DeepEP rows are
             # keyed by this rank's token count and the expert configuration.
@@ -367,17 +485,25 @@ class OperatorTableLatencyBackend(LatencyBackend):
 
     # -- operator queries -------------------------------------------------------
 
-    def _gemm(self, m: int, n: int, k: int) -> float:
+    def _gemm(self, m: int, n: int, k: int, *, dtype: str | None = None) -> float:
         if m <= 0 or n <= 0 or k <= 0:
             return 0.0
-        return self._query("gemm", {"dtype": self.model.dtype, "m": int(m), "n": int(n), "k": int(k)}).latency_us
+        return self._query(
+            "gemm",
+            {"dtype": dtype or self.model.dtype, "m": int(m), "n": int(n), "k": int(k)},
+        ).latency_us
 
     def _elementwise(self, op_name: str, tokens: int, hidden: int) -> float:
         if tokens <= 0 or hidden <= 0:
             return 0.0
         return self._query(
             "elementwise",
-            {"op_name": op_name, "dtype": self.model.activation_dtype, "num_tokens": int(tokens), "hidden_size": int(hidden)},
+            {
+                "op_name": op_name,
+                "dtype": self.model.activation_dtype,
+                "num_tokens": int(tokens),
+                "hidden_size": int(hidden),
+            },
         ).latency_us
 
     def _attention_prefill(self, batch: int, q_len: int, kv_len: int) -> float:
@@ -396,12 +522,31 @@ class OperatorTableLatencyBackend(LatencyBackend):
         if kv_len > q_len:
             # Prefix-cache hit: queries attend to cached keys as well. Scale by
             # the analytical work ratio because tables assume kv_len == q_len.
-            base = context_attention_work(batch, q_len, self.heads_local, self.kv_heads_local, model.head_dim, model.activation_dtype, model.kv_cache_dtype, model.sliding_window)
-            full_keys = float(min(kv_len, model.sliding_window) if model.sliding_window else kv_len)
+            base = context_attention_work(
+                batch,
+                q_len,
+                self.heads_local,
+                self.kv_heads_local,
+                model.head_dim,
+                model.activation_dtype,
+                model.kv_cache_dtype,
+                model.sliding_window,
+            )
+            full_keys = float(
+                min(kv_len, model.sliding_window) if model.sliding_window else kv_len
+            )
             # queries q_len each attend to (kv_len - q_len) cached keys + causal part of their own block
-            full_flops = 4.0 * batch * q_len * ((kv_len - q_len) + 0.5 * q_len) * self.q_dim_local
+            full_flops = (
+                4.0
+                * batch
+                * q_len
+                * ((kv_len - q_len) + 0.5 * q_len)
+                * self.q_dim_local
+            )
             if model.sliding_window:
-                full_flops = min(full_flops, 4.0 * batch * q_len * full_keys * self.q_dim_local)
+                full_flops = min(
+                    full_flops, 4.0 * batch * q_len * full_keys * self.q_dim_local
+                )
             if base.flops > 0:
                 latency *= max(1.0, full_flops / base.flops)
         return latency
@@ -429,7 +574,9 @@ class OperatorTableLatencyBackend(LatencyBackend):
         per_rank_load = self._per_rank_load(histogram)
         imbalance = 1.0
         if per_rank_load:
-            mean_load = sum(per_rank_load.values()) / max(1, self.expert_placement.ep_rank_count)
+            mean_load = sum(per_rank_load.values()) / max(
+                1, self.expert_placement.ep_rank_count
+            )
             max_load = max(per_rank_load.values())
             if mean_load > 0 and max_load > mean_load:
                 imbalance = max_load / mean_load
@@ -443,15 +590,23 @@ class OperatorTableLatencyBackend(LatencyBackend):
             "tp_size": self.moe_tp,
             "ep_size": self.moe_ep,
         }
-        balanced = self._query_moe({**base_key, "num_tokens": max(1, int(round(group_tokens)))})
+        balanced = self._query_moe(
+            {**base_key, "num_tokens": max(1, int(round(group_tokens)))}
+        )
         compute_s = balanced.latency_us * self.moe_layers_local * 1e-6
         straggler_s = 0.0
         if imbalance > 1.0:
             # The step waits for the busiest expert rank. Its load equals a
             # balanced layer fed with ``imbalance`` times as many tokens, which
             # keeps memory-bound small batches from being over-scaled.
-            busiest = self._query_moe({**base_key, "num_tokens": max(1, int(round(group_tokens * imbalance)))})
-            straggler_s = max(0.0, busiest.latency_us - balanced.latency_us) * self.moe_layers_local * 1e-6
+            busiest = self._query_moe(
+                {**base_key, "num_tokens": max(1, int(round(group_tokens * imbalance)))}
+            )
+            straggler_s = (
+                max(0.0, busiest.latency_us - balanced.latency_us)
+                * self.moe_layers_local
+                * 1e-6
+            )
         all2all_s = 0.0  # recorded by the communicator separately
         self.moe_stats.record_step(
             histogram=histogram,
@@ -477,13 +632,17 @@ class OperatorTableLatencyBackend(LatencyBackend):
                 except MissingOperatorDataError as exc:
                     last_error = exc
                     continue
-                estimate = OperatorEstimate(result.latency_us, result.match_type, result.source_id)
+                estimate = OperatorEstimate(
+                    result.latency_us, result.match_type, result.source_id
+                )
                 self._remember(("moe", tuple(sorted(key.items()))), estimate)
                 self.stats.record("moe", estimate.match_type)
                 return estimate
         key = {**base_key, "distribution": self.moe_distributions[0]}
         if last_error is None:
-            last_error = MissingOperatorDataError("moe", key, "no moe table", kind="table_absent")
+            last_error = MissingOperatorDataError(
+                "moe", key, "no moe table", kind="table_absent"
+            )
         if self.fallback == "table_only":
             raise last_error
         self.stats.record_missing(last_error)
@@ -499,7 +658,9 @@ class OperatorTableLatencyBackend(LatencyBackend):
         if self.lookup is not None and self.fallback != "analytical_only":
             try:
                 result = self.lookup.lookup(table, key)
-                estimate = OperatorEstimate(result.latency_us, result.match_type, result.source_id)
+                estimate = OperatorEstimate(
+                    result.latency_us, result.match_type, result.source_id
+                )
             except MissingOperatorDataError as exc:
                 if self.fallback == "table_only":
                     raise
@@ -510,15 +671,23 @@ class OperatorTableLatencyBackend(LatencyBackend):
         self.stats.record(table, estimate.match_type)
         return estimate
 
-    def _analytical(self, table: str, key: Mapping[str, Any], **context: Any) -> OperatorEstimate:
+    def _analytical(
+        self, table: str, key: Mapping[str, Any], **context: Any
+    ) -> OperatorEstimate:
         calibration = self._calibrations.get(table) or self._calibrations.get("default")
-        result = self.analytical.estimate(table, key, self.device, calibration, **context)
+        result = self.analytical.estimate(
+            table, key, self.device, calibration, **context
+        )
         return OperatorEstimate(result.latency_us, "analytical", result.source_id)
 
-    def _analytical_reference_us(self, table: str, key: Mapping[str, Any]) -> float | None:
+    def _analytical_reference_us(
+        self, table: str, key: Mapping[str, Any]
+    ) -> float | None:
         """Uncalibrated analytical latency used as the growth reference for extrapolation."""
         try:
-            return self.analytical.estimate(table, key, self.device, Calibration(), gated=self.model.gated).latency_us
+            return self.analytical.estimate(
+                table, key, self.device, Calibration(), gated=self.model.gated
+            ).latency_us
         except Exception:
             return None
 
@@ -560,7 +729,9 @@ def collective_model_for(
     and checklist, so communication misses are reported (or rejected under
     ``table_only``) exactly like compute misses.
     """
-    has_comm_tables = package is not None and bool({"collective", "ep_all2all"} & set(package.tables))
+    has_comm_tables = package is not None and bool(
+        {"collective", "ep_all2all"} & set(package.tables)
+    )
     measured = OperatorLookup(package) if has_comm_tables else None
     launch_us = device.analytical.get("collective_launch_us")
     return CollectiveModel(

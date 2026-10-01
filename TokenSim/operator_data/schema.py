@@ -7,7 +7,13 @@ SCHEMA_VERSION = 1
 LATENCY_UNIT = "us"
 VALUE_FIELDS = ("latency_us", "source_id")
 
-COLLECTIVE_OPERATIONS = ("all_reduce", "all_gather", "reduce_scatter", "all_to_all", "send_recv")
+COLLECTIVE_OPERATIONS = (
+    "all_reduce",
+    "all_gather",
+    "reduce_scatter",
+    "all_to_all",
+    "send_recv",
+)
 EP_ALL2ALL_PHASES = ("dispatch", "combine")
 # Names of the expert-parallel all-to-all implementations. The first two map to
 # ParallelConfig.all2all_backend; the ``deepep_v2_*`` names are vLLM's split
@@ -50,8 +56,13 @@ class AxisSpec:
     def __post_init__(self) -> None:
         if self.scale not in {"log", "linear"}:
             raise ValueError(f"axis {self.name!r}: scale must be log or linear")
-        if self.max_extrapolation_ratio is not None and self.max_extrapolation_ratio < 1.0:
-            raise ValueError(f"axis {self.name!r}: max_extrapolation_ratio must be >= 1")
+        if (
+            self.max_extrapolation_ratio is not None
+            and self.max_extrapolation_ratio < 1.0
+        ):
+            raise ValueError(
+                f"axis {self.name!r}: max_extrapolation_ratio must be >= 1"
+            )
 
 
 @dataclass(frozen=True)
@@ -92,6 +103,13 @@ TABLE_SPECS: Mapping[str, TableSpec] = {
         dtype_fields=("dtype",),
         description="C[m,n] = A[m,k] x B[k,n]; dtype is the weight/storage dtype (e.g. fp16, fp8, int8_wo).",
     ),
+    "grouped_gemm": TableSpec(
+        name="grouped_gemm",
+        key_fields=("dtype", "out_dtype", "batch_size", "m", "n", "k"),
+        axes=(AxisSpec("batch_size"), AxisSpec("k"), AxisSpec("n"), AxisSpec("m")),
+        dtype_fields=("dtype", "out_dtype"),
+        description="One grouped/batched matrix kernel, independent weights per group; C[g,m,n] = A[g,m,k] B[g,k,n].",
+    ),
     # Attention sequence axes may be extrapolated 64x past the measured range
     # (AIConfigurator's own tables stop at 16k prefill / 128k decode tokens
     # while agentic traces run to ~1M). Past the boundary the lookup keeps the
@@ -114,7 +132,10 @@ TABLE_SPECS: Mapping[str, TableSpec] = {
         axes=(
             AxisSpec("num_heads", "linear"),
             AxisSpec("batch_size"),
-            AxisSpec("input_seq_len", max_extrapolation_ratio=ATTENTION_SEQ_EXTRAPOLATION_RATIO),
+            AxisSpec(
+                "input_seq_len",
+                max_extrapolation_ratio=ATTENTION_SEQ_EXTRAPOLATION_RATIO,
+            ),
         ),
         dtype_fields=("attn_dtype", "kv_cache_dtype"),
         description="Prefill attention core (QK^T, softmax, PV) for batch_size sequences padded to input_seq_len.",
@@ -135,7 +156,9 @@ TABLE_SPECS: Mapping[str, TableSpec] = {
         axes=(
             AxisSpec("num_heads", "linear"),
             AxisSpec("batch_size"),
-            AxisSpec("context_len", max_extrapolation_ratio=ATTENTION_SEQ_EXTRAPOLATION_RATIO),
+            AxisSpec(
+                "context_len", max_extrapolation_ratio=ATTENTION_SEQ_EXTRAPOLATION_RATIO
+            ),
         ),
         dtype_fields=("attn_dtype", "kv_cache_dtype"),
         description="Decode attention core for batch_size single-token queries against context_len cached tokens each.",
@@ -248,4 +271,6 @@ def table_spec(name: str) -> TableSpec:
     try:
         return TABLE_SPECS[name]
     except KeyError as exc:
-        raise KeyError(f"unknown operator table {name!r}; known: {sorted(TABLE_SPECS)}") from exc
+        raise KeyError(
+            f"unknown operator table {name!r}; known: {sorted(TABLE_SPECS)}"
+        ) from exc

@@ -108,7 +108,7 @@ def main():
         "defaults": config["defaults"],
         "backend": args.backend,
         "transfer_utilization_assumption": args.transfer_utilization,
-        "operator_scope": "generic costs and one-token decode; native operators/MTP pending",
+        "operator_scope": "native low-rank GEMMs; generic attention/MoE and one-token decode; remaining native modules/MTP pending",
         "dataset_sha256": hashlib.sha256(
             (ROOT / "dataset/agentx/traces.jsonl").read_bytes()
         ).hexdigest(),

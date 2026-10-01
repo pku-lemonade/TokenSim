@@ -692,6 +692,8 @@ class LLMEngine(Worker):
                     stats[key] = 0
             worker.parallel_communicator.stats = ParallelStats()
             latency_backend = getattr(worker, "latency_backend", None)
+            if hasattr(latency_backend, "reset_profile_stats"):
+                latency_backend.reset_profile_stats()
             if hasattr(latency_backend, "moe_stats"):
                 latency_backend.moe_stats = MoEStats()
             for connector in _flatten_connectors(worker.connector):
