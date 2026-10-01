@@ -7,7 +7,7 @@ from scripts.run_agentx_experiments import check, load_matrix, run_point, select
 
 
 def test_matrix_loads_and_resolves_checkpoint_defaults():
-    _, points = load_matrix(Path("data/experiments/agentx.yaml"))
+    document, points = load_matrix(Path("data/experiments/agentx.yaml"))
     assert {point["id"] for point in points} == {
         "b200-c196-dep8-simplecpu",
         "b300-c384-dep8-simplecpu",
@@ -15,6 +15,8 @@ def test_matrix_loads_and_resolves_checkpoint_defaults():
     assert all(point["trace_count"] == 393 for point in points)
     assert all(point["profiling_window_s"] == 3600 for point in points)
     assert check(points)["valid"]
+    assert document["reference_curve"]["status"] == "reference-index-only"
+    assert len(document["reference_curve"]["points"]) == 21
 
 
 def test_matrix_selection_and_summary(tmp_path):

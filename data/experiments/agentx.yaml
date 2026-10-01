@@ -69,3 +69,33 @@ experiments:
       config_commit: c62f6e335bbe041a862670ff1d1fa747cdcecab9
       config_source: benchmarks/single_node/agentic/dsv4_fp4_b300_vllm_mtp.sh
       metrics_file: reference/b300-c384-dep8-simplecpu/key_point.json
+
+# Reference curve index from the research plan. These entries intentionally
+# remain metadata-only until each point's exact cluster, GPU count, offload
+# settings and key-point artifact are independently verified; they must not
+# be passed to the full-run command as guessed configurations.
+reference_curve:
+  status: reference-index-only
+  source: docs/agentx-research-plan.md §1.10
+  points:
+    - {hardware: b200, concurrency: 1, topology: tp8, reference_id: 440244}
+    - {hardware: b200, concurrency: 4, topology: tp8, reference_id: 440242}
+    - {hardware: b200, concurrency: 8, topology: tp8, reference_id: 440241}
+    - {hardware: b200, concurrency: 14, topology: tp8, reference_id: 440240}
+    - {hardware: b200, concurrency: 32, topology: dep8, reference_id: 440249}
+    - {hardware: b200, concurrency: 64, topology: dep8, reference_id: 440246}
+    - {hardware: b200, concurrency: 96, topology: dep8, reference_id: 440252}
+    - {hardware: b200, concurrency: 128, topology: dep8, reference_id: 440247}
+    - {hardware: b200, concurrency: 160, topology: dep8, reference_id: 440243}
+    - {hardware: b200, concurrency: 196, topology: dep8, reference_id: 440239}
+    - {hardware: b300, concurrency: 1, topology: tp8, reference_id: 439521}
+    - {hardware: b300, concurrency: 4, topology: tp8, reference_id: 439523}
+    - {hardware: b300, concurrency: 8, topology: tp4, reference_id: 439524}
+    - {hardware: b300, concurrency: 16, topology: tp4_offload, reference_id: 439520}
+    - {hardware: b300, concurrency: 48, topology: tp4_ep4_attention_dp, reference_id: 439517}
+    - {hardware: b300, concurrency: 64, topology: tp4_ep4_attention_dp, reference_id: 439525}
+    - {hardware: b300, concurrency: 128, topology: dep8, reference_id: 439518}
+    - {hardware: b300, concurrency: 256, topology: dep8, reference_id: 439516}
+    - {hardware: b300, concurrency: 384, topology: dep8, reference_id: 439522}
+    - {hardware: b300, concurrency: 512, topology: dep8, reference_id: 439526}
+    - {hardware: b300, concurrency: 576, topology: dep8, reference_id: 439519}
