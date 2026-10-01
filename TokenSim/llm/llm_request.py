@@ -266,6 +266,10 @@ class Request:
     # remaining context for a (chunked) prefill or recompute step.
     num_computed_tokens: int = field(default=0, repr=False)
     scheduled_tokens: int = field(default=0, repr=False)
+    # MTP advances by the accepted 2/3 tokens while the target forward
+    # verifies 1+K query positions.  Ordinary requests keep this equal to
+    # scheduled_tokens.
+    scheduled_query_tokens: int = field(default=0, repr=False)
     cancel_requested: bool = field(default=False, repr=False)
     cancel_requested_at: float | None = field(default=None, repr=False)
     cancelled_at: float | None = field(default=None, repr=False)
@@ -372,6 +376,11 @@ class Request:
         """
         return self.scheduled_tokens or max(1, self.remaining_context_tokens)
 
+    @property
+    def query_tokens(self) -> int:
+        """Target-model query width for the current scheduler step."""
+        return self.scheduled_query_tokens or self.step_tokens
+
     def start_context_build(self, cached_tokens: int) -> None:
         """Record the context already present in KV when the request is admitted.
 
@@ -382,6 +391,7 @@ class Request:
             max(0, cached_tokens), max(0, self.context_len - 1)
         )
         self.scheduled_tokens = 0
+        self.scheduled_query_tokens = 0
 
     def record_prefill_admission(self, gpu_tokens, cpu_tokens):
         if (
@@ -457,8 +467,10 @@ class Request:
         """
         if self.cancel_requested:
             return None
+        context_build = self.is_prefill or self.needs_recompute
         tokens = self.step_tokens
         self.scheduled_tokens = 0
+        self.scheduled_query_tokens = 0
         self.num_computed_tokens += tokens
         if self.is_prefill:
             self.prefill_chunks += 1
@@ -473,16 +485,29 @@ class Request:
             # its service time is booked as recompute, not decode.
             self.finish_recompute(latency)
             latency = 0.0
-        return self.step(env, latency, batch, timing_recorder)
+        return self.step(
+            env,
+            latency,
+            batch,
+            timing_recorder,
+            output_tokens=(1 if context_build else tokens),
+        )
 
     def step(
-        self, env: simpy.Environment, latency: float, batch: int, timing_recorder=None
+        self,
+        env: simpy.Environment,
+        latency: float,
+        batch: int,
+        timing_recorder=None,
+        *,
+        output_tokens: int = 1,
     ):
         """Sample one token: bookkeeping for wall time, service time and batch size."""
         if self.cancel_requested:
             return None
-        self.generation_idx += 1
-        self._append_tokens(1)
+        output_tokens = max(1, min(output_tokens, self.decode_len - self.generation_idx))
+        self.generation_idx += output_tokens
+        self._append_tokens(output_tokens)
         step_time = env.now - self._last_event_at
         self._last_event_at = env.now
         self.total_time += step_time
@@ -526,6 +551,7 @@ class Request:
         self.recompute_tokens = self.context_len
         self.num_computed_tokens = 0
         self.scheduled_tokens = 0
+        self.scheduled_query_tokens = 0
 
     def finish_recompute(self, latency: float) -> None:
         self.needs_recompute = False

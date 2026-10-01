@@ -55,6 +55,26 @@ def command(point, defaults, result, connector):
         "0",
         "--operator_backend",
         "vllm",
+        "--moe_backend",
+        point.get("moe_backend", defaults.get("moe_backend", "generic")),
+        "--moe_latency_scale",
+        str(point.get("moe_latency_scale", defaults.get("moe_latency_scale", 1.0))),
+        "--attention_backend",
+        point.get("attention_backend", defaults.get("attention_backend", "generic")),
+        "--mhc_backend",
+        point.get("mhc_backend", defaults.get("mhc_backend", "generic")),
+        "--mtp_acceptance_length",
+        str(
+            point.get(
+                "mtp_acceptance_length",
+                (defaults.get("speculative") or {}).get("acceptance_length", 1.0),
+            )
+        ),
+        *(
+            []
+            if point.get("moe_shared_fusion", defaults.get("moe_shared_fusion", True))
+            else ["--disable_moe_shared_fusion"]
+        ),
         "--latency_backend",
         "operator_table",
         "--latency_fallback",
@@ -108,7 +128,7 @@ def main():
         "defaults": config["defaults"],
         "backend": args.backend,
         "transfer_utilization_assumption": args.transfer_utilization,
-        "operator_scope": "native low-rank GEMMs; fixed power_law_1.01 MXFP4 routed compute with independent route stats; generic attention and one-token decode; native MegaMoE/shared expert/remaining modules/MTP pending",
+        "operator_scope": "native low-rank GEMMs, borrowed MegaMoE incl fused dispatch/combine and explicit shared FP8 cost, measured DSV4 CSA/HCA attention modules, MTP q=4 verify with 2/3 accepted-token progress; mHC selectable",
         "dataset_sha256": hashlib.sha256(
             (ROOT / "dataset/agentx/traces.jsonl").read_bytes()
         ).hexdigest(),

@@ -243,6 +243,17 @@ def main(
         latency_backend_type=latency_backend_type,
         latency_fallback=args.latency_fallback,
         operator_backend=args.operator_backend,
+        moe_execution={
+            "backend": getattr(args, "moe_backend", "generic"),
+            "shared_expert_fusion": not getattr(
+                args, "disable_moe_shared_fusion", False
+            ),
+            "latency_scale": getattr(args, "moe_latency_scale", 1.0),
+        },
+        attention_backend=getattr(args, "attention_backend", "generic"),
+        mhc_backend=getattr(args, "mhc_backend", "generic"),
+        mtp_acceptance_length=getattr(args, "mtp_acceptance_length", 1.0),
+        mtp_seed=getattr(args, "random_seed", 0),
         decode_context_bucket=args.decode_context_bucket,
         random_seed=args.random_seed,
         debug_print=getattr(args, "debug_print", False),
@@ -628,6 +639,31 @@ if __name__ == "__main__":
         type=str,
         default=None,
         help="Operator-data backend to load for every worker (e.g. trtllm, vllm, analytical).",
+    )
+    parser.add_argument(
+        "--moe_backend",
+        choices=("generic", "deep_gemm_amxf4_mega_moe"),
+        default="generic",
+    )
+    parser.add_argument("--disable_moe_shared_fusion", action="store_true")
+    parser.add_argument("--moe_latency_scale", type=float, default=1.0)
+    parser.add_argument(
+        "--attention_backend",
+        choices=("generic", "native_dsv4"),
+        default="generic",
+        help="DSV4 attention cost source; native_dsv4 uses complete CSA/HCA module tables.",
+    )
+    parser.add_argument(
+        "--mtp_acceptance_length",
+        type=float,
+        default=1.0,
+        help="Synthetic MTP average accepted output tokens (2.49 for the AgentX reference).",
+    )
+    parser.add_argument(
+        "--mhc_backend",
+        choices=("generic", "native_dsv4"),
+        default="generic",
+        help="DSV4 mHC cost source.",
     )
     parser.add_argument(
         "--decode_context_bucket",

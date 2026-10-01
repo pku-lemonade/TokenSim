@@ -72,6 +72,7 @@ class TableSpec:
     axes: tuple[AxisSpec, ...]
     dtype_fields: tuple[str, ...]
     description: str
+    metadata_fields: tuple[str, ...] = ()
 
     @property
     def axis_names(self) -> tuple[str, ...]:
@@ -95,6 +96,89 @@ class TableSpec:
 
 
 TABLE_SPECS: Mapping[str, TableSpec] = {
+    "mhc": TableSpec(
+        name="mhc",
+        key_fields=(
+            "op_name",
+            "architecture",
+            "kernel_source",
+            "hidden_size",
+            "hc_mult",
+            "num_sites",
+            "sinkhorn_iters",
+            "num_tokens",
+        ),
+        axes=(AxisSpec("num_tokens"),),
+        dtype_fields=(),
+        description="Measured DSV4 mHC pre/post TileLang module; residual BF16 with FP32 parameters.",
+        metadata_fields=("source_hardware", "source_version", "source_framework"),
+    ),
+    "dsv4_attention": TableSpec(
+        name="dsv4_attention",
+        key_fields=(
+            "layer_kind",
+            "phase",
+            "mla_dtype",
+            "kv_cache_dtype",
+            "kernel_source",
+            "kernel_dtype",
+            "model",
+            "architecture",
+            "num_heads",
+            "tp_size",
+            "batch_size",
+            "input_seq_len",
+            "context_len",
+            "compress_ratio",
+        ),
+        axes=(
+            AxisSpec("batch_size"),
+            AxisSpec("input_seq_len", "linear", ATTENTION_SEQ_EXTRAPOLATION_RATIO),
+            AxisSpec("context_len", "linear", ATTENTION_SEQ_EXTRAPOLATION_RATIO),
+        ),
+        dtype_fields=("mla_dtype", "kv_cache_dtype", "kernel_dtype"),
+        description=(
+            "Complete DSV4 CSA/HCA attention module including input projections, "
+            "compressor/indexer, sparse attention and output projection."
+        ),
+        metadata_fields=("source_hardware", "source_version", "source_model"),
+    ),
+    "dsv4_megamoe": TableSpec(
+        name="dsv4_megamoe",
+        key_fields=(
+            "dtype",
+            "phase",
+            "kernel_source",
+            "kernel_dtype",
+            "distribution",
+            "pre_dispatch",
+            "source_policy",
+            "num_tokens",
+            "hidden_size",
+            "inter_size",
+            "top_k",
+            "num_experts",
+            "num_fused_shared_experts",
+            "tp_size",
+            "ep_size",
+        ),
+        axes=(AxisSpec("num_tokens", "linear"),),
+        dtype_fields=("dtype",),
+        description="DSV4 routed MegaMoE incl pre-dispatch/dispatch/combine; rank-local tokens, gate/top-k and shared MLP excluded.",
+        metadata_fields=(
+            "num_max_tokens_per_rank",
+            "effective_num_max_tokens_per_rank",
+            "global_num_tokens",
+            "routed_scaling_factor",
+            "includes_gate_topk",
+            "includes_buffer_init",
+            "includes_routed_scale",
+            "used_cuda_graph",
+            "recorded_framework_version",
+            "collection_version",
+            "source_hardware",
+        ),
+    ),
     "gemm": TableSpec(
         name="gemm",
         key_fields=("dtype", "m", "n", "k"),
@@ -253,6 +337,11 @@ INTEGER_FIELDS = frozenset(
         "num_experts",
         "tp_size",
         "ep_size",
+        "num_fused_shared_experts",
+        "compress_ratio",
+        "hc_mult",
+        "num_sites",
+        "sinkhorn_iters",
         "group_size",
         "nodes",
         "message_bytes",

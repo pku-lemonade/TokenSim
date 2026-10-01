@@ -180,10 +180,40 @@ def get_latency_stats(engine: LLMEngine) -> dict[str, Any]:
 
     aggregate = OperatorStats()
     descriptions: dict[str, dict[str, Any]] = {}
+    native_totals = {
+        "native_megamoe_routed_seconds": 0.0,
+        "native_megamoe_shared_seconds": 0.0,
+        "native_megamoe_max_rank_rows": 0,
+    }
+    native_counts = {}
+    native_attention_total = 0.0
+    native_attention_counts = {}
     for worker in getattr(engine, "workers", []):
         backend = getattr(worker, "latency_backend", None)
         if backend is None:
             continue
+        native = getattr(backend, "native_moe", None)
+        if native is not None:
+            extra = native.stats_dict()
+            for key in (
+                "native_megamoe_routed_seconds",
+                "native_megamoe_shared_seconds",
+            ):
+                native_totals[key] += extra[key]
+            native_totals["native_megamoe_max_rank_rows"] = max(
+                native_totals["native_megamoe_max_rank_rows"],
+                extra["native_megamoe_max_rank_rows"],
+            )
+            for key, count in extra["native_megamoe_counts"].items():
+                native_counts[key] = native_counts.get(key, 0) + count
+        native_attention = getattr(backend, "native_attention", None)
+        if native_attention is not None:
+            extra = native_attention.stats_dict()
+            native_attention_total += extra["native_dsv4_attention_seconds"]
+            for key, count in extra["native_dsv4_attention_counts"].items():
+                native_attention_counts[key] = (
+                    native_attention_counts.get(key, 0) + count
+                )
         stats = getattr(backend, "stats", None)
         if isinstance(stats, OperatorStats):
             aggregate = aggregate.aggregate(stats)
@@ -205,6 +235,19 @@ def get_latency_stats(engine: LLMEngine) -> dict[str, Any]:
     return {
         "latency_backends": descriptions,
         **aggregate.as_dict(),
+        **(
+            {**native_totals, "native_megamoe_counts": native_counts}
+            if native_counts
+            else {}
+        ),
+        **(
+            {
+                "native_dsv4_attention_seconds": native_attention_total,
+                "native_dsv4_attention_counts": native_attention_counts,
+            }
+            if native_attention_counts
+            else {}
+        ),
         # Grouped by table and discrete key with the requested axis ranges;
         # the full report goes to missing_shapes_<qps>.json.
         "operator_missing_shapes": aggregate.missing_shape_records()[:200],

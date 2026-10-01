@@ -4,7 +4,7 @@
 > 执行顺序：参考数据与完整模型准备 → 请求回放 → GPU 分配与缓存复用 → 调度行为 → 算子耗时校准 → 完整曲线验证。
 > 源码基准：只读参考 `/home/zhuohang/Serving/vllm-note`，本轮记录 HEAD `30f5c01d4ebb`；不下载历史镜像、不修改或切换此目录。本文旧行号和旧 HEAD 下的源码结论需按此版本重新定位；历史运行日志仍作为实验事实保留。
 > 分支：`agentx-support`（基于 `b2b685a`）
-> 状态：**2026-10-01 已完成基准、完整模型与权重、请求图、Native 回放／取消、GPU 混合缓存、路由与 DP、长 prefill、SimpleCPU 生命周期与准入修复、原生低秩 GEMM，并完成整步专家路由统计和固定 MXFP4/power-law 计时。413 项全仓测试及两个完整一小时主点验收通过，输出吞吐 B200 1,445.321、B300 3,097.304 token/s，较 GEMM 基线提高 46.564%/39.628%，参考误差仍为 −59.844%/−51.302%。合成专家统计的最大/平均负载接近 1，统计不改变固定负载成本，显式 straggler 为零；这不代表观测到的真实专家分布均匀。B200 抢占为 260，B300 为零；剩余性能与缓存问题继续保留。下一部分接入 MegaMoE/shared expert，然后分阶段完成原生 attention、mHC、MTP；Mooncake、剩余缓存行为、完整曲线及精度验收未完成。报告见 [基准](agentx-reference-report.md)、[模型](agentx-full-model-report.md)、[请求图](agentx-request-graph-report.md)、[回放](agentx-native-replay-report.md)、[HBM](agentx-hybrid-cache-report.md)、[路由与 DP](agentx-routing-dp-report.md)、[调度](agentx-prefill-scheduling-report.md)、[SimpleCPU](agentx-simple-cpu-report.md)、[预留](agentx-prefill-reservation-report.md)、[首次来源](agentx-first-prefill-source-report.md)、[loaded KV 恢复](agentx-loaded-kv-admission-report.md)、[原生 GEMM](agentx-native-gemm-report.md)、[MoE 统计与负载](agentx-moe-distribution-report.md)。复选框表示对应子任务实现进度。**
+> 状态：**2026-10-02 已完成 MegaMoE/shared expert、native CSA/HCA attention、MTP 2/3 推进与 q=4 target verify、以及 native mHC 的代码和两组完整一小时主点验收。完整阶段吞吐依次为：MegaMoE B200/B300 1,733.192／3,440.686，native attention+MTP 592.617／1,140.733，native mHC+attention+MTP 567.198／1,114.907 token/s。463 项全仓测试通过。CSA/HCA 表为 FlashMLA 借用数据，参考使用 FlashInfer；mHC 与 shared fusion 含 B 级/D 级近似，最终整体精度仍未通过，完整曲线、Mooncake、剩余缓存行为和后端敏感性仍待完成。报告见 [原生 MegaMoE](agentx-native-megamoe-report.md)、[原生 attention](agentx-native-attention-report.md)、[原生 mHC](agentx-native-mhc-report.md)。**
 > 对照对象：InferenceX AgentX，完整 DeepSeek-V4-Pro（FP8 + MXFP4），vLLM + MTP；覆盖 B200/B300 多并发曲线及其 TP8、TP4、DEP8 等配置变化。主检查点为单节点 8 GPU DEP8：B200 并发 196、B300 并发 384。
 > 证据分层：历史配置和日志描述参考运行；本地源码决定本轮实现；二者存在版本差异时单列记录。【待核实／待验证】是实现中的技术检查，不是待用户批准；【估算】不是实测；【推断】须保留依据与适用范围。历史研究中的源码行号仅作定位线索，以函数和本轮版本为准。
 
@@ -929,10 +929,10 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 
 目标：用 AL 参数推进，并计入 verify 和 draft 的成本。
 
-- [ ] **投机解码任务 1（方案已确认）** 每个请求的 decode step 以 51% / 49% 概率推进 2 / 3 个 token。随机状态与 trace 抽样分离；记录模拟种子，保证相同配置和种子可复现。请求结束时限制为剩余输出长度，分别记录抽样推进量和实际产出，避免把末步截断误判为接受长度偏差。
-- [ ] **投机解码任务 2（方案已确认）** 在平均接受长度推进的同时，按本地 vLLM 的实际 MTP 调用分别估算草稿模块与输出投影的成本；内部采用查表／理论模型，不生成真实 token 或执行真实张量。分别列出校验与草稿的形状、调用次数、耗时和来源，避免漏计输出投影或重复计费。多 query 校验按已确认的计算与读取分项方案处理（决策 30.1、30.4）。
-- [ ] **投机解码任务 3** KV lookahead K（与 缓存容量与前缀命中任务 5 一致）。
-- [ ] **投机解码任务 4** ITL 按 aiperf 口径统计。
+- [x] **投机解码任务 1（方案已确认）** 每个请求的 decode step 以 51% / 49% 概率推进 2 / 3 个 token。随机状态与 trace 抽样分离；记录模拟种子，保证相同配置和种子可复现。请求结束时限制为剩余输出长度，分别记录抽样推进量和实际产出，避免把末步截断误判为接受长度偏差。
+- [x] **投机解码任务 2（方案已确认）** 在平均接受长度推进的同时，按本地 vLLM 的实际 MTP 调用分别估算草稿模块与输出投影的成本；内部采用查表／理论模型，不生成真实 token 或执行真实张量。分别列出校验与草稿的形状、调用次数、耗时和来源，避免漏计输出投影或重复计费。多 query 校验按已确认的计算与读取分项方案处理（决策 30.1、30.4）。
+- [x] **投机解码任务 3** KV lookahead K（与 缓存容量与前缀命中任务 5 一致）。
+- [x] **投机解码任务 4** ITL 按 aiperf 口径统计。
 
 完成标准：未截断的推进量抽样符合 51% / 49% 分布，期望为 2.49；固定种子可复现，末步不超出请求输出长度。报告抽样数及实测均值，完整运行中受末步截断、取消影响的实际平均产出单独统计；成本分解和针对边界的单元测试通过。
 推进方式、草稿成本粒度和多 query 近似均已确认；实现时核对实际调用路径、计时范围和可复用数据量。
@@ -941,20 +941,22 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 
 目标：每个算子的形状、dtype 和数据来源都正确，表外有可信的外推。
 
-- [ ] **算子耗时任务 1（实测优先已确认）** 导入经模型、硬件、dtype、TP/EP、后端与计时范围检查的 AIC 数据：dsv4_csa / dsv4_hca 的 context 和 generation 表，分项表（`dsv4_hca_attn`、`dsv4_paged_mqa_logits`），`mhc_module_perf`，匹配的 MoE 数据。`dsv4_csa_topk_calib_perf` 等其他框架数据只有确认目标执行路径需要时才使用。GB200 / GB300 的 DSV4 mega-MoE 借表仍按决策 26 处理。记录仓库版本、原始文件、计时单位和近似来源；保留源数据附带的许可证与归属说明。
-- [ ] **算子耗时任务 2** 逐层组合：每层按 ratio 选 CSA / HCA / SWA 表，沿用现有混合批次的正常处理流程。接入 DSV4 模块表时先建立计时范围清单，模块已包含的投影、压缩、indexer 不再重复计费；MoE 等模块外的共用工作按该步总 token 数估算一次。输入处理与输出生成按各自实际形状查询，记录无法由现有模块表反映的融合或重叠误差。
-- [ ] **算子耗时任务 3（缺失形状可估算已确认）** 先尝试同配置精确匹配和范围内插值，表外使用以实测为基准的 AIC 式理论成本比例外推。移植 `dsv4_attention_sol_ms` 前核对各组成项，缓存字节按已核实配置参数化。用留出的实测点验证（例如用 ≤32K 数据预测 64K），用分项长上下文数据检查趋势，分别报告插值、外推与跨配置近似的覆盖比例。没有可匹配的基础数据时明确记录缺口，不静默套用其他模型。
+- [x] **算子耗时任务 1（实测优先已确认）** 导入经模型、硬件、dtype、TP/EP、后端与计时范围检查的 AIC 数据：dsv4_csa / dsv4_hca 的 context 和 generation 表，分项表（`dsv4_hca_attn`、`dsv4_paged_mqa_logits`），`mhc_module_perf`，匹配的 MoE 数据。`dsv4_csa_topk_calib_perf` 等其他框架数据只有确认目标执行路径需要时才使用。GB200 / GB300 的 DSV4 mega-MoE 借表仍按决策 26 处理。记录仓库版本、原始文件、计时单位和近似来源；保留源数据附带的许可证与归属说明。
+- [x] **算子耗时任务 2** 逐层组合：每层按 ratio 选 CSA / HCA / SWA 表，沿用现有混合批次的正常处理流程。接入 DSV4 模块表时先建立计时范围清单，模块已包含的投影、压缩、indexer 不再重复计费；MoE 等模块外的共用工作按该步总 token 数估算一次。输入处理与输出生成按各自实际形状查询，记录无法由现有模块表反映的融合或重叠误差。
+- [x] **算子耗时任务 3（缺失形状可估算已确认）** 先尝试同配置精确匹配和范围内插值，表外使用以实测为基准的 AIC 式理论成本比例外推。移植 `dsv4_attention_sol_ms` 前核对各组成项，缓存字节按已核实配置参数化。用留出的实测点验证（例如用 ≤32K 数据预测 64K），用分项长上下文数据检查趋势，分别报告插值、外推与跨配置近似的覆盖比例。没有可匹配的基础数据时明确记录缺口，不静默套用其他模型。
 - [ ] **算子耗时任务 4（清洗策略已确认）** 保留原始表，记录损坏数据和疑似异常数据清单；只从有效查询集中排除可以确认损坏或无效的记录，耗时非单调或偏大不能单独作为删除理由。原因不明的点保留并标记，必要时比较保留与排除后的敏感性（决策 18）。
-- [ ] **算子耗时任务 5** 处理 B300 CSA generation 缺 bs<64 数据的问题（决策 19）。
-- [ ] **算子耗时任务 6** MTP 层按 SWA-only 处理（决策 20）。
-- [ ] **算子耗时任务 7（具体近似已确认）** 区分请求数与每请求 query 数，估算 verify q=4 的 attention 成本。以 Pro 实测为基准，分别估算新增 query 的计算和按实际实现可复用 KV 的读取量；分项 q=1/q=4 数据只在计时语义可对应时辅助校验，不把整个模块盲目乘四或乘一个跨模型比值。记录读写量、计算量和缩放依据（决策 30.4）。
+- [x] **算子耗时任务 5** 处理 B300 CSA generation 缺 bs<64 数据的问题（决策 19）。
+- [x] **算子耗时任务 6** MTP 层按 SWA-only 处理（决策 20）。
+- [x] **算子耗时任务 7（具体近似已确认）** 区分请求数与每请求 query 数，估算 verify q=4 的 attention 成本。以 Pro 实测为基准，分别估算新增 query 的计算和按实际实现可复用 KV 的读取量；分项 q=1/q=4 数据只在计时语义可对应时辅助校验，不把整个模块盲目乘四或乘一个跨模型比值。记录读写量、计算量和缩放依据（决策 30.4）。
 - [ ] **算子耗时任务 8** FlashInfer 与 FlashMLA 的差异（决策 23）：先核对 AIC 表元数据、collector 与采集版本记录，再对照只读本地 vLLM，核实两端的主 KV 布局和 indexer dtype。采集版本无法确认的部分保留推断标记；不修改本地源码或下载已拒绝的历史镜像，再按决策 23.2 估算字节差异。
 - [x] **算子耗时任务 9（负载近似已确认）** 修复逐请求从零开始轮转导致负载集中到同一专家的 bug，统计先汇总整步 route 并合理分配余数。耗时查询使用 `power_law_1.01` 实测分布，不再叠加同源 straggler 惩罚；统计用直方图不得暗中改变这一成本假设。hash 路由层保留结构与路由差异，无法还原逐 token 路由时也明确记录统计近似。
   - 2026-10-01 已完成：整步合成 route、EP 交错余数和跨 step 轮转保留显式直方图，阶段缓存与零负载分母已修复。DSV4 查询改为 MXFP4/`power_law_1.01`，取消同源 straggler；413 项全仓测试及两个完整一小时主点的版本/配置、输入/输出、取消/引用、route/EP 负载和时间守恒验收通过。当前 routed kernel 仍为显式标注的临时对照，完整 MegaMoE/shared expert 成本由任务 10 和 12 继续实现。详见 [本部分报告](agentx-moe-distribution-report.md)。
-- [ ] **算子耗时任务 10（借表方案已确认）** 对实际采用匹配融合 kernel 的配置，分别借用 GB200/GB300 的 DSV4 mega-MoE 表估算 B200/B300，初始换算系数为 1.0；记录硬件、框架、通信与 shared expert 的计时范围差异，并评估借表敏感性。按 rank 本地 token 数查询；不均匀 rank 的组合方式按源码核对。表中已含 dispatch/combine 时不再另加该部分 all-to-all；其他 kernel 的配置按各自数据与通信路径估算。
-- [ ] **算子耗时任务 11** 导入匹配的 mHC 实测表，核对 FP32 参数、BF16 激活、num_sites 及 pre/post 计时范围，标注与 serving 融合路径的差异（P10、决策 27）。
+- [x] **算子耗时任务 10（借表方案已确认）** 对实际采用匹配融合 kernel 的配置，分别借用 GB200/GB300 的 DSV4 mega-MoE 表估算 B200/B300，初始换算系数为 1.0；记录硬件、框架、通信与 shared expert 的计时范围差异，并评估借表敏感性。按 rank 本地 token 数查询；不均匀 rank 的组合方式按源码核对。表中已含 dispatch/combine 时不再另加该部分 all-to-all；其他 kernel 的配置按各自数据与通信路径估算。
+  - 2026-10-02 已完成：导入 GB200/GB300 Pro EP4/8 MegaMoE，native estimator 使用 DP lockstep rank-local 形状、图/eager 分支、TP/SP 分片和共同最大 rank 计时；dispatch/combine 不再另计 EP all-to-all，shared FP8 fused 增量显式标注 D 级。B200/B300 完整主点吞吐为 1,733.192／3,440.686 token/s，证据见 [原生 MegaMoE 报告](agentx-native-megamoe-report.md)。
+- [x] **算子耗时任务 11** 导入匹配的 mHC 实测表，核对 FP32 参数、BF16 激活、num_sites 及 pre/post 计时范围，标注与 serving 融合路径的差异（P10、决策 27）。
+  - 2026-10-02 已完成数据导入与 native mHC estimator 接线；完整 mHC 独立窗口待当前 attention 阶段之后验收。
 - [x] **算子耗时任务 12.1：原生低秩投影与 GEMM dtype** 按 DSV4 实际 replicated/column/grouped/row-parallel 几何替代稠密 QKV/O；router 与 lm_head 使用 BF16，grouped FP8 einsum 输出 BF16，缺失匹配实测时标为单 launch 解析估算。采集 manifest 与运行时形状一致；405 项全仓测试及两个完整一小时主点的请求、缓存、取消、DP 时间、源码和配置身份核对通过。shared expert、gate 融合附加工作及 MTP query 计时范围随后单独完成，任务 12 整体保持未勾选。
-- [ ] **算子耗时任务 12** 逐项核对 router、lm_head、shared expert 的 dtype、调用次数和 query 形状；shared expert 按实际路径融合或独立计时，不预设其与 routed MoE 完全重叠，也不重复计算已计入融合表的部分。
+- [x] **算子耗时任务 12** 逐项核对 router、lm_head、shared expert 的 dtype、调用次数和 query 形状；shared expert 按实际路径融合或独立计时，不预设其与 routed MoE 完全重叠，也不重复计算已计入融合表的部分。
 - [ ] **算子耗时任务 13（校准范围已确认）** 用少量参数描述 step overhead，拟区分 CUDA graph 与 eager 执行；分类按实际配置和执行路径判断。只用 B200 校准，记录用于拟合的实验点、目标和参数，冻结参数后验证 B300；B300 的硬件规格和实际运行配置仍按该 SKU 输入。不得按 B300 误差追加专用修正，也不得用 overhead 掩盖已知的算子或通信重复计费。
 - [x] **算子耗时任务 14.1：测量阶段分项守恒** 预热结束后重置 operator 查询、step 与 component 计数，保留查表缓存和全程 missing-shape 清单；两个完整主点的 profiling 分项和均与 DP local compute seconds（含 dummy）一致。旧结果含预热的分项不作直接百分比对照，完整模块分解和最终比较继续由任务 14 完成。
 - [ ] **算子耗时任务 14** 输出时间分解（attention / MoE / GEMM / comm / overhead / 其他），与旧结果对比。

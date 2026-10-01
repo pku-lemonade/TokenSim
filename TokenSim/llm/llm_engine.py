@@ -187,6 +187,11 @@ class LLMWorker(Worker):
         long_prefill_token_threshold: int = 0,
         prefill_schedule_interval: int = 1,
         adaptive_long_prefill_threshold: bool = False,
+        moe_execution=None,
+        attention_backend: str = "generic",
+        mhc_backend: str = "generic",
+        mtp_acceptance_length: float = 1.0,
+        mtp_seed: int = 0,
     ):
         super().__init__(env, id)
         self.hardware_context = hardware
@@ -274,6 +279,16 @@ class LLMWorker(Worker):
             decode_context_bucket=decode_context_bucket,
             random_seed=random_seed + id,
             missing_report=self.missing_report,
+            moe_execution=moe_execution,
+            attention_backend=attention_backend,
+            mhc_backend=mhc_backend,
+            expected_decode_query_len=1
+            + (
+                self.cache_config.hybrid_layout.speculative_tokens
+                if self.cache_config.hybrid_layout
+                else 0
+            ),
+            max_num_seqs=max_parallem_sum or 64,
         )
         self.owned_expert_ids = (
             self.expert_placement.experts_for_rank(self.rank_info)
@@ -310,6 +325,8 @@ class LLMWorker(Worker):
                 max_num_batched_tokens=max_num_batched_tokens,
                 long_prefill_token_threshold=long_prefill_token_threshold,
                 adaptive_long_prefill_threshold=adaptive_long_prefill_threshold,
+                mtp_acceptance_length=mtp_acceptance_length,
+                mtp_seed=mtp_seed + id,
             )
         elif batching == "static":
             self.scheduler = LLMStaticScheduler(
@@ -533,6 +550,11 @@ class LLMEngine(Worker):
         router_backend_url: str = "http://localhost:8889",
         dp_lockstep: bool = False,
         dp_sync_interval: int = 16,
+        moe_execution=None,
+        attention_backend: str = "generic",
+        mhc_backend: str = "generic",
+        mtp_acceptance_length: float = 1.0,
+        mtp_seed: int = 0,
         long_prefill_token_threshold: int = 0,
         prefill_schedule_interval: int = 1,
         adaptive_long_prefill_threshold: bool = False,
@@ -596,6 +618,11 @@ class LLMEngine(Worker):
                     )
                 ),
                 latency_backend_type=latency_backend_type,
+                moe_execution=moe_execution,
+                attention_backend=attention_backend,
+                mhc_backend=mhc_backend,
+                mtp_acceptance_length=mtp_acceptance_length,
+                mtp_seed=mtp_seed,
                 latency_fallback=latency_fallback,
                 operator_backend=operator_backend,
                 decode_context_bucket=decode_context_bucket,

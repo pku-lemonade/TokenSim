@@ -1,0 +1,70 @@
+{
+  "upstream_commit": "f254959eb89e2f206b8f9a77051644d7c1cbdb89",
+  "source_scope": "DeepSeek-V4-Pro CSA/HCA complete attention modules, vLLM 0.24.0",
+  "imports": {
+    "b200_sxm": {
+      "source_hardware": "b200_sxm",
+      "source_version": "0.24.0",
+      "tables": {
+        "dsv4_csa_context_module_perf.parquet": {
+          "raw_rows": 5840,
+          "selected_pro_rows": 2920,
+          "sha256": "ee0d568c5ae1beeb81d6b683666ab83499c9f699147fe565ef59ffb0de283556"
+        },
+        "dsv4_csa_generation_module_perf.parquet": {
+          "raw_rows": 1544,
+          "selected_pro_rows": 772,
+          "sha256": "71beb61fd5bedd6e4004a1a5742e4739ab57c5da455aa8ff4b9f078b0e37d998"
+        },
+        "dsv4_hca_context_module_perf.parquet": {
+          "raw_rows": 5840,
+          "selected_pro_rows": 2920,
+          "sha256": "00729a65eb22e99520fbeeb3766e148f30fd7c6631b7c0b869f64b9e61085fe7"
+        },
+        "dsv4_hca_generation_module_perf.parquet": {
+          "raw_rows": 1544,
+          "selected_pro_rows": 772,
+          "sha256": "b805341629f8e8df1c486167c27ad9a3046f5f7a3f90a9f89fb6c158be6d6560"
+        }
+      },
+      "selected_rows": 7384,
+      "raw_rows": 14768,
+      "data_scope_grade": "B",
+      "kernel_source": "FLASHMLA_SPARSE_DSV4",
+      "reference_backend": "FLASHINFER_MLA_SPARSE_DSV4",
+      "normalized_rows": 7384
+    },
+    "b300_sxm": {
+      "source_hardware": "b300_sxm",
+      "source_version": "0.24.0",
+      "tables": {
+        "dsv4_csa_context_module_perf.parquet": {
+          "raw_rows": 5704,
+          "selected_pro_rows": 2784,
+          "sha256": "4f50ab746db099665ab76f8d2b03362629b6d63d9c7f2a007585839b2d7d378b"
+        },
+        "dsv4_csa_generation_module_perf.parquet": {
+          "raw_rows": 1048,
+          "selected_pro_rows": 276,
+          "sha256": "190b3fb079b416d7324baa4d10a44e35acbed068e46a290277f14b6aa4660cb3"
+        },
+        "dsv4_hca_context_module_perf.parquet": {
+          "raw_rows": 5840,
+          "selected_pro_rows": 2920,
+          "sha256": "6f1c7486ed2165855ee62f0392239da9533865344e589d38242b80a660eaaa6e"
+        },
+        "dsv4_hca_generation_module_perf.parquet": {
+          "raw_rows": 1544,
+          "selected_pro_rows": 772,
+          "sha256": "aa2da57a11159029f76e6b4aebc4bd41e68a0f53e5dc34c8a38ac3560e2d12e8"
+        }
+      },
+      "selected_rows": 6752,
+      "raw_rows": 14136,
+      "data_scope_grade": "B",
+      "kernel_source": "FLASHMLA_SPARSE_DSV4",
+      "reference_backend": "FLASHINFER_MLA_SPARSE_DSV4",
+      "normalized_rows": 6752
+    }
+  }
+}

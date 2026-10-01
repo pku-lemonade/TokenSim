@@ -5,6 +5,11 @@ defaults:
   model: DeepSeek-V4-Pro
   accuracy_policy: {acceptable_relative_error_percent: 25, preferred_relative_error_percent: 10}
   model_config_path: data/psla/deepseek-v4-pro.json
+  moe_backend: deep_gemm_amxf4_mega_moe
+  moe_shared_fusion: true
+  moe_latency_scale: 1.0
+  attention_backend: native_dsv4
+  mhc_backend: native_dsv4
   workload_seed: 42
   trace_count: 393
   profiling_window_s: 3600

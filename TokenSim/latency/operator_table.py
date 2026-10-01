@@ -20,6 +20,7 @@ from typing import Any, Iterable, Mapping
 from TokenSim.comm.collectives import CollectiveModel
 from TokenSim.config.cache_config import local_kv_heads, stage_layer_count
 from TokenSim.config.model_config import ModelSpec
+from TokenSim.config.moe_execution import MoEExecutionConfig
 from TokenSim.config.parallel_config import ParallelConfig, ParallelRankInfo
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.device import DeviceSpec, dtype_bytes
@@ -28,6 +29,7 @@ from TokenSim.latency.base import (
     is_decode_step,
     step_kv_len,
     step_tokens,
+    query_tokens,
 )
 from TokenSim.llm.llm_request import Request
 from TokenSim.moe.placement import ExpertPlacement
@@ -145,6 +147,11 @@ class OperatorTableLatencyBackend(LatencyBackend):
         decode_context_bucket: int = 128,
         random_seed: int = 0,
         missing_report: MissingShapeReport | None = None,
+        moe_execution=None,
+        attention_backend: str = "generic",
+        mhc_backend: str = "generic",
+        expected_decode_query_len: int = 1,
+        max_num_seqs: int = 64,
     ) -> None:
         if fallback not in FALLBACK_POLICIES:
             raise ConfigurationError(
@@ -206,6 +213,38 @@ class OperatorTableLatencyBackend(LatencyBackend):
             )
         }
         self._init_dimensions()
+        if attention_backend not in ("generic", "native_dsv4"):
+            raise ConfigurationError(
+                f"unsupported DSV4 attention backend: {attention_backend}"
+            )
+        self.attention_backend = attention_backend
+        self.mtp_query_width = max(1, int(expected_decode_query_len))
+        self.native_attention = None
+        if attention_backend == "native_dsv4":
+            from TokenSim.latency.deepseek_v4_attention import (
+                DeepSeekV4AttentionEstimator,
+            )
+
+            self.native_attention = DeepSeekV4AttentionEstimator(self)
+        if mhc_backend not in ("generic", "native_dsv4"):
+            raise ConfigurationError(f"unsupported DSV4 mHC backend: {mhc_backend}")
+        self.mhc_backend = mhc_backend
+        self.native_mhc = None
+        if mhc_backend == "native_dsv4":
+            from TokenSim.latency.deepseek_v4_mhc import DeepSeekV4MHC
+
+            self.native_mhc = DeepSeekV4MHC(self)
+        self.moe_execution = MoEExecutionConfig.from_value(moe_execution)
+        self.native_moe = None
+        if self.moe_execution.native:
+            from TokenSim.latency.deepseek_v4_moe import MegaMoEEstimator
+
+            self.native_moe = MegaMoEEstimator(
+                self,
+                self.moe_execution,
+                expected_query_width=expected_decode_query_len,
+                max_num_seqs=max_num_seqs,
+            )
 
     # -- dimensions -------------------------------------------------------------
 
@@ -276,11 +315,11 @@ class OperatorTableLatencyBackend(LatencyBackend):
         context_groups: Counter = Counter()
         decode_buckets: Counter = Counter()
         for req in requests:
-            q_len = step_tokens(req)
+            q_len = query_tokens(req)
             kv_len = step_kv_len(req)
             tokens += q_len
             if is_decode_step(req):
-                decode_buckets[self._bucket(kv_len)] += 1
+                decode_buckets[(self._bucket(kv_len), q_len)] += 1
                 sampling += 1
             else:
                 # Chunk of a context build: q_len new tokens attending to the
@@ -294,8 +333,8 @@ class OperatorTableLatencyBackend(LatencyBackend):
             for (q_len, kv_len), count in context_groups.items()
         )
         attention_us += sum(
-            self._attention_decode(count, context)
-            for context, count in decode_buckets.items()
+            self._attention_decode(count, context, query_width)
+            for (context, query_width), count in decode_buckets.items()
         )
         return self._compose(
             tokens=tokens,
@@ -332,29 +371,57 @@ class OperatorTableLatencyBackend(LatencyBackend):
                 for p in self.native_attention_projections
             ],
             "native_cost_scope": (
-                "DSV4 low-rank projections; attention/indexer/compressor/mHC/MegaMoE/MTP pending"
-                if self.native_attention_projections
-                else None
+                "DSV4 attention module table includes projections, compressor/indexer, sparse attention and output projection"
+                if self.native_attention
+                else (
+                    "DSV4 low-rank projections; attention/indexer/compressor/mHC/MegaMoE/MTP pending"
+                    if self.native_attention_projections
+                    else None
+                )
             ),
+            "native_dsv4_attention": (
+                self.native_attention.describe() if self.native_attention else None
+            ),
+            "native_mhc": self.native_mhc.describe() if self.native_mhc else None,
             "missing_shape_scope": "cumulative collection checklist; estimate counters reset after warmup",
             "moe_cost_dtype": self.moe_dtype,
             "moe_cost_distribution_candidates": list(self.moe_distributions),
             "moe_route_statistics": "whole-step synthetic routes; EP-interleaved rotating remainder; explicit histograms retained",
             "moe_histogram_changes_latency": self.model.deepseek_v4 is None,
             "moe_kernel_scope": (
-                "generic routed compute table with separate EP communication; native MegaMoE/shared expert pending"
-                if self.model.deepseek_v4
-                else "generic routed compute and explicit EP communication"
+                "native borrowed MegaMoE incl dispatch/combine + separately estimated shared FP8; gate/top-k outside"
+                if self.native_moe
+                else (
+                    "generic routed compute table with separate EP communication; native MegaMoE/shared expert pending"
+                    if self.model.deepseek_v4
+                    else "generic routed compute and explicit EP communication"
+                )
             ),
+            "native_megamoe": self.native_moe.describe() if self.native_moe else None,
         }
 
     def stats_dict(self) -> dict[str, Any]:
-        return self.stats.as_dict()
+        return {
+            **self.stats.as_dict(),
+            **(self.native_attention.stats_dict() if self.native_attention else {}),
+            **(self.native_mhc.stats_dict() if self.native_mhc else {}),
+            **(self.native_moe.stats_dict() if self.native_moe else {}),
+        }
+
+    def set_moe_step(self, step):
+        if self.native_moe:
+            self.native_moe.set_step(step)
 
     def reset_profile_stats(self):
         # Retain lookup caches and the shared compute/communication collection
         # checklist, but remove warmup estimates from measured time breakdown.
         self.stats = OperatorStats(missing=self.stats.missing)
+        if self.native_moe:
+            self.native_moe.reset_stats()
+        if self.native_attention:
+            self.native_attention.reset_stats()
+        if self.native_mhc:
+            self.native_mhc.reset_stats()
 
     # -- step composition -------------------------------------------------------
 
@@ -382,7 +449,11 @@ class OperatorTableLatencyBackend(LatencyBackend):
         stats = self.stats
 
         # Attention block shared by dense and MoE layers.
-        if self.native_attention_projections:
+        if self.native_attention:
+            # The complete DSV4 attention module table already contains all
+            # four projections, compressor/indexer and output projection.
+            attn_gemm_us = 0.0
+        elif self.native_attention_projections:
             attn_gemm_us = sum(
                 self._query(p.table, p.key(T)).latency_us
                 for p in self.native_attention_projections
@@ -391,11 +462,14 @@ class OperatorTableLatencyBackend(LatencyBackend):
             attn_gemm_us = self._gemm(
                 T, self.q_dim_local + 2 * self.kv_dim_local, h
             ) + self._gemm(T, h, self.q_dim_local)
-        attn_elem_us = (
-            self._elementwise("rmsnorm", T, h)
-            + self._elementwise("rope", T, self.q_dim_local + self.kv_dim_local)
-            + self._elementwise("residual_add", T, h)
+        attn_elem_us = self._elementwise("rmsnorm", T, h) + self._elementwise(
+            "residual_add", T, h
         )
+        mhc_us = self.native_mhc.estimate(T) if self.native_mhc else 0.0
+        if not self.native_attention:
+            attn_elem_us += self._elementwise(
+                "rope", T, self.q_dim_local + self.kv_dim_local
+            )
         dense_ffn_gemm_us = 0.0
         dense_ffn_elem_us = 0.0
         if self.dense_layers_local:
@@ -423,7 +497,7 @@ class OperatorTableLatencyBackend(LatencyBackend):
                 "residual_add", T, h
             )
             moe_us = self._moe_layers(T, requests_list)
-            if self.ep_enabled:
+            if self.ep_enabled and not self.native_moe:
                 moe_comm_bytes = int(
                     T * model.moe.num_experts_per_tok * h * self.activation_bytes
                 )
@@ -437,8 +511,11 @@ class OperatorTableLatencyBackend(LatencyBackend):
             self.layers_local * attn_elem_us
             + self.dense_layers_local * dense_ffn_elem_us
             + self.moe_layers_local * moe_elem_us
+            + self.layers_local * mhc_us
         )
-        layer_attention_us = self.layers_local * attention_us
+        layer_attention_us = (
+            attention_us if self.native_attention else self.layers_local * attention_us
+        )
 
         lm_head_us = 0.0
         if self.is_last_stage:
@@ -448,6 +525,32 @@ class OperatorTableLatencyBackend(LatencyBackend):
                 h,
                 dtype=model.operator_dtype("lm_head") if model.deepseek_v4 else None,
             ) + self._elementwise("rmsnorm", max(1, requests), h)
+
+        # MTP draft passes use the dedicated module's two hidden projections
+        # and shared target head.  Verify q=1+K is already represented by the
+        # target query width; only the extra draft rows are added here.
+        draft_rows = 0
+        if self.mtp_query_width > 1:
+            draft_rows = sum(
+                max(0, int(getattr(req, "query_tokens", 1)) - 1)
+                for req in requests_list
+                if not req.is_context_build
+            )
+        if draft_rows:
+            layer_gemm_us += 2 * self._gemm(
+                draft_rows,
+                h,
+                h,
+                dtype=model.operator_dtype("attention_gemm")
+                if model.deepseek_v4
+                else None,
+            )
+            lm_head_us += self._gemm(
+                draft_rows,
+                self.vocab_local,
+                h,
+                dtype=model.operator_dtype("lm_head") if model.deepseek_v4 else None,
+            ) + self._elementwise("rmsnorm", draft_rows, h)
 
         overhead_us = self.device.step_overhead_us.value
 
@@ -529,6 +632,10 @@ class OperatorTableLatencyBackend(LatencyBackend):
 
     def _attention_prefill(self, batch: int, q_len: int, kv_len: int) -> float:
         model = self.model
+        if self.native_attention:
+            return self.native_attention.estimate_prefill(
+                batch, q_len, max(0, kv_len - q_len)
+            )
         key = {
             "attn_dtype": model.activation_dtype,
             "kv_cache_dtype": model.kv_cache_dtype,
@@ -572,8 +679,14 @@ class OperatorTableLatencyBackend(LatencyBackend):
                 latency *= max(1.0, full_flops / base.flops)
         return latency
 
-    def _attention_decode(self, batch: int, context_len: int) -> float:
+    def _attention_decode(
+        self, batch: int, context_len: int, query_width: int = 1
+    ) -> float:
         model = self.model
+        if self.native_attention:
+            return self.native_attention.estimate_decode(
+                batch * max(1, int(query_width)), context_len
+            )
         key = {
             "attn_dtype": model.activation_dtype,
             "kv_cache_dtype": model.kv_cache_dtype,
@@ -593,6 +706,17 @@ class OperatorTableLatencyBackend(LatencyBackend):
             return 0.0
         histogram = self.expert_routing.histogram_for_step(requests)
         per_rank_load = self._per_rank_load(histogram)
+        if self.native_moe:
+            total_us, routed_us, shared_us = self.native_moe.estimate(tokens)
+            self.moe_stats.record_step(
+                histogram=histogram,
+                per_rank_load=per_rank_load,
+                compute_latency=total_us * 1e-6,
+                all2all_latency=0,
+                straggler_latency=0,
+                all2all_event_count=1,
+            )
+            return total_us
         imbalance = 1.0
         if per_rank_load:
             mean_load = sum(per_rank_load.values()) / max(

@@ -38,9 +38,14 @@ def step_tokens(req: Request) -> int:
     return int(req.step_tokens)
 
 
+def query_tokens(req: Request) -> int:
+    """Target forward query width (MTP verify may exceed accepted output)."""
+    return int(getattr(req, "query_tokens", req.step_tokens))
+
+
 def step_kv_len(req: Request) -> int:
     """KV length the step's queries attend against: cached context plus this step's tokens."""
-    return int(getattr(req, "num_computed_tokens", 0)) + step_tokens(req)
+    return int(getattr(req, "num_computed_tokens", 0)) + query_tokens(req)
 
 
 def is_decode_step(req: Request) -> bool:
@@ -49,6 +54,6 @@ def is_decode_step(req: Request) -> bool:
     Prefill chunks and recompute chunks are context builds and use the
     context-attention shape even when the chunk is one token long.
     """
-    return step_tokens(req) == 1 and int(getattr(req, "generation_idx", 0)) > 0 and not bool(
+    return int(getattr(req, "generation_idx", 0)) > 0 and not bool(
         getattr(req, "needs_recompute", False)
     )

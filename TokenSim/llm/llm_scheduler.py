@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum, auto
 import logging
+import math
 
 
 from TokenSim.llm.llm_comm import KVConnectorMetadata, KVConnectorWorkerMetadata
@@ -206,6 +207,8 @@ class LLMPagedAttnScheduler(LLMScheduler):
         max_num_batched_tokens: int | None = DEFAULT_MAX_NUM_BATCHED_TOKENS,
         long_prefill_token_threshold: int = 0,
         adaptive_long_prefill_threshold: bool = False,
+        mtp_acceptance_length: float = 1.0,
+        mtp_seed: int = 0,
     ):
         super().__init__(connector=connector)
 
@@ -219,6 +222,14 @@ class LLMPagedAttnScheduler(LLMScheduler):
             raise ConfigurationError("long_prefill_token_threshold must be nonnegative")
         self.long_prefill_token_threshold = long_prefill_token_threshold
         self.adaptive_long_prefill_threshold = adaptive_long_prefill_threshold
+        if not math.isfinite(mtp_acceptance_length) or mtp_acceptance_length < 1:
+            raise ConfigurationError("mtp_acceptance_length must be finite and >= 1")
+        self.mtp_acceptance_length = float(mtp_acceptance_length)
+        self.mtp_seed = int(mtp_seed)
+        self.mtp_enabled = bool(
+            getattr(getattr(self.cache_config, "hybrid_layout", None), "speculative_tokens", 0)
+            and self.mtp_acceptance_length > 1
+        )
         self.prefill_capacity_bound = False
         self.defer_prefills = False
         self.effective_long_prefill_threshold = 0
@@ -229,6 +240,7 @@ class LLMPagedAttnScheduler(LLMScheduler):
             "capacity_bound_steps": 0,
             "scheduled_context_tokens": 0,
             "scheduled_decode_tokens": 0,
+            "scheduled_decode_query_tokens": 0,
             "max_num_seqs_gate": 0,
             "full_input_gate": 0,
             "async_load_reservation_gate": 0,
@@ -312,8 +324,9 @@ class LLMPagedAttnScheduler(LLMScheduler):
                 # Out of budget: the request keeps its place for the next step.
                 self.running.append(req)
                 continue
+            query_tokens = self._query_tokens(req, tokens)
             if not req.is_context_build and not self._reserve_decode_slot(
-                req, queue, preempted
+                req, queue, preempted, tokens, query_tokens
             ):
                 continue
             if req.is_context_build and getattr(
@@ -322,7 +335,8 @@ class LLMPagedAttnScheduler(LLMScheduler):
                 if not self._reserve_context_slots(req, tokens, queue, preempted):
                     continue
             req.scheduled_tokens = tokens
-            budget = None if budget is None else budget - tokens
+            req.scheduled_query_tokens = query_tokens
+            budget = None if budget is None else budget - self._budget_cost(req, tokens)
             scheduled.append(req)
             self.running.append(req)
 
@@ -354,7 +368,8 @@ class LLMPagedAttnScheduler(LLMScheduler):
                         break
                     tokens = self._step_tokens(req, budget)
                     manager = self.block_manager
-                    lookahead = manager.layout.speculative_tokens
+                    query_tokens = self._query_tokens(req, tokens)
+                    lookahead = self._decode_lookahead(req)
                     watermark = manager.watermark_blocks if self.running else 0
                     if manager.remaining_admission_slots(
                         req
@@ -368,7 +383,8 @@ class LLMPagedAttnScheduler(LLMScheduler):
                     self.loading.pop(req.id, None)
                     req.status = RequestStatus.RUNNING
                     req.scheduled_tokens = tokens
-                    budget = None if budget is None else budget - tokens
+                    req.scheduled_query_tokens = query_tokens
+                    budget = None if budget is None else budget - self._budget_cost(req, tokens)
                     self.running.append(req)
                     scheduled.append(req)
                     self.stats["loaded_kv_resumptions"] += 1
@@ -408,19 +424,25 @@ class LLMPagedAttnScheduler(LLMScheduler):
                     self.stats["async_load_admissions"] += 1
                     continue
                 tokens = self._step_tokens(req, budget)
+                query_tokens = self._query_tokens(req, tokens)
                 if getattr(self.block_manager, "native_hybrid", False):
-                    if not self.block_manager.can_ensure_slots(req, tokens):
+                    if not self.block_manager.can_ensure_slots(
+                        req, tokens, lookahead=self._decode_lookahead(req)
+                    ):
                         self._preempt(req)
                         preempted.append(req)
                         break
-                    self.block_manager.ensure_slots(req, tokens)
+                    self.block_manager.ensure_slots(
+                        req, tokens, lookahead=self._decode_lookahead(req)
+                    )
                 if (
                     getattr(self.block_manager, "native_hybrid", False)
                     and req.num_computed_tokens + tokens < req.context_len
                 ):
                     self.inflight_prefills[req.id] = req
                 req.scheduled_tokens = tokens
-                budget = None if budget is None else budget - tokens
+                req.scheduled_query_tokens = query_tokens
+                budget = None if budget is None else budget - self._budget_cost(req, tokens)
                 scheduled.append(req)
                 self.running.append(req)
                 self.last_admitted.append(req)
@@ -436,6 +458,8 @@ class LLMPagedAttnScheduler(LLMScheduler):
                 else "scheduled_decode_tokens"
             )
             self.stats[key] += req.scheduled_tokens
+            if not req.is_context_build:
+                self.stats["scheduled_decode_query_tokens"] += req.query_tokens
         return scheduled, preempted
 
     def _admit(self, req: Request, *, external=None) -> None:
@@ -526,9 +550,50 @@ class LLMPagedAttnScheduler(LLMScheduler):
     def _step_tokens(self, req: Request, budget: int | None) -> int:
         """Tokens ``req`` computes this step: its remaining context, capped by the budget."""
         remaining = max(1, req.remaining_context_tokens)
+        if not req.is_context_build:
+            # ``scheduled_tokens`` is accepted output progress.  The target
+            # forward may verify up to 1+K positions, accounted separately in
+            # the token budget and latency query width.
+            remaining = max(1, req.decode_len - req.generation_idx)
+            accepted = self._decode_output_tokens(req, remaining)
+            cost = self._query_tokens(req, accepted)
+            return accepted if budget is None or budget >= cost else 0
         if self.effective_long_prefill_threshold:
             remaining = min(remaining, self.effective_long_prefill_threshold)
         return remaining if budget is None else min(remaining, budget)
+
+    def _decode_output_tokens(self, req: Request, remaining: int) -> int:
+        if not self.mtp_enabled:
+            return min(1, remaining)
+        low = max(1, int(math.floor(self.mtp_acceptance_length)))
+        high = max(low, int(math.ceil(self.mtp_acceptance_length)))
+        high = min(high, 1 + self.cache_config.hybrid_layout.speculative_tokens)
+        if high == low:
+            return min(low, remaining)
+        state = (
+            (int(req.id) * 1103515245)
+            + (int(req.generation_idx) * 12345)
+            + self.mtp_seed
+        ) & 0xFFFFFFFF
+        fraction = state / 4294967296.0
+        accepted = high if fraction < self.mtp_acceptance_length - low else low
+        return min(accepted, remaining)
+
+    def _query_tokens(self, req: Request, accepted: int) -> int:
+        if req.is_context_build or not self.mtp_enabled:
+            return accepted
+        remaining = max(1, req.decode_len - req.generation_idx)
+        return min(1 + self.cache_config.hybrid_layout.speculative_tokens, remaining)
+
+    def _budget_cost(self, req: Request, accepted: int) -> int:
+        return self._query_tokens(req, accepted) if not req.is_context_build else accepted
+
+    def _decode_lookahead(self, req: Request) -> int:
+        if not self.mtp_enabled or req.is_context_build:
+            return 0
+        return int(
+            getattr(getattr(self.cache_config, "hybrid_layout", None), "speculative_tokens", 0)
+        )
 
     def _reserve_context_slots(self, req, tokens, queue, preempted):
         # The same FCFS youngest-victim rule applies to prefill/recompute
@@ -548,6 +613,8 @@ class LLMPagedAttnScheduler(LLMScheduler):
         req: Request,
         queue: list[Request],
         preempted: list[Request],
+        accepted_tokens: int,
+        query_tokens: int,
     ) -> bool:
         """Find a KV slot for the token ``req`` computes this step.
 
@@ -555,6 +622,23 @@ class LLMPagedAttnScheduler(LLMScheduler):
         is free; preempts ``req`` itself when nobody else is left. Returns
         whether ``req`` may run.
         """
+        if getattr(self.block_manager, "native_hybrid", False):
+            lookahead = self._decode_lookahead(req)
+            while not self.block_manager.can_ensure_slots(
+                req, accepted_tokens, lookahead=lookahead
+            ):
+                if queue:
+                    victim = queue.pop(-1)
+                    self._preempt(victim)
+                    preempted.append(victim)
+                else:
+                    self._preempt(req)
+                    preempted.append(req)
+                    return False
+            self.block_manager.ensure_slots(
+                req, accepted_tokens, lookahead=lookahead
+            )
+            return True
         while True:
             if self.block_manager.can_append_slot(req):
                 self.block_manager.append_slot(req)

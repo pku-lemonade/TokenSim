@@ -32,6 +32,11 @@ def build_latency_backend(
     decode_context_bucket: int = 128,
     random_seed: int = 0,
     missing_report: MissingShapeReport | None = None,
+    moe_execution=None,
+    attention_backend: str = "generic",
+    mhc_backend: str = "generic",
+    expected_decode_query_len: int = 1,
+    max_num_seqs: int = 64,
 ) -> LatencyBackend:
     """Create the latency backend for one worker.
 
@@ -48,7 +53,9 @@ def build_latency_backend(
             f"unsupported latency backend {backend_type!r}; expected one of {BACKEND_TYPES}"
         )
     if fallback not in FALLBACK_POLICIES:
-        raise ConfigurationError(f"unsupported fallback policy {fallback!r}; expected one of {FALLBACK_POLICIES}")
+        raise ConfigurationError(
+            f"unsupported fallback policy {fallback!r}; expected one of {FALLBACK_POLICIES}"
+        )
     return OperatorTableLatencyBackend(
         device=device,
         model=model,
@@ -61,6 +68,11 @@ def build_latency_backend(
         decode_context_bucket=decode_context_bucket,
         random_seed=random_seed,
         missing_report=missing_report,
+        moe_execution=moe_execution,
+        attention_backend=attention_backend,
+        mhc_backend=mhc_backend,
+        expected_decode_query_len=expected_decode_query_len,
+        max_num_seqs=max_num_seqs,
     )
 
 

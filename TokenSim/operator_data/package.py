@@ -49,13 +49,23 @@ class SourceRecord:
     def from_mapping(cls, raw: Mapping[str, Any], context: str) -> "SourceRecord":
         for required in ("source_id", "grade", "method"):
             if required not in raw:
-                raise OperatorDataValidationError(f"{context}: source is missing {required!r}")
+                raise OperatorDataValidationError(
+                    f"{context}: source is missing {required!r}"
+                )
         grade = str(raw["grade"]).upper()
         if grade not in {"A", "B", "C", "D"}:
             raise OperatorDataValidationError(f"{context}: grade must be A/B/C/D")
         method = str(raw["method"])
-        if method not in {"measured", "imported", "public_benchmark", "analytical", "assumption"}:
-            raise OperatorDataValidationError(f"{context}: unsupported method {method!r}")
+        if method not in {
+            "measured",
+            "imported",
+            "public_benchmark",
+            "analytical",
+            "assumption",
+        }:
+            raise OperatorDataValidationError(
+                f"{context}: unsupported method {method!r}"
+            )
         return cls(
             source_id=str(raw["source_id"]),
             grade=grade,
@@ -103,7 +113,9 @@ class PackageMeta:
                 f"{path}: unsupported schema_version={raw.get('schema_version')!r}; expected {SCHEMA_VERSION}"
             )
         if raw.get("latency_unit", LATENCY_UNIT) != LATENCY_UNIT:
-            raise OperatorDataValidationError(f"{path}: latency_unit must be {LATENCY_UNIT!r}")
+            raise OperatorDataValidationError(
+                f"{path}: latency_unit must be {LATENCY_UNIT!r}"
+            )
         for required in ("dataset_version", "device_id", "backend"):
             if not raw.get(required):
                 raise OperatorDataValidationError(f"{path}: {required} is required")
@@ -114,7 +126,9 @@ class PackageMeta:
         for item in sources_raw:
             record = SourceRecord.from_mapping(item, str(path))
             if record.source_id in sources:
-                raise OperatorDataValidationError(f"{path}: duplicate source_id {record.source_id!r}")
+                raise OperatorDataValidationError(
+                    f"{path}: duplicate source_id {record.source_id!r}"
+                )
             sources[record.source_id] = record
         tables = raw.get("tables") or {}
         return cls(
@@ -123,7 +137,9 @@ class PackageMeta:
             backend=str(raw["backend"]),
             framework_version=str(raw.get("framework_version", "")),
             sources=sources,
-            calibration={str(k): dict(v) for k, v in (raw.get("calibration") or {}).items()},
+            calibration={
+                str(k): dict(v) for k, v in (raw.get("calibration") or {}).items()
+            },
             table_rows={str(k): int(v.get("rows", 0)) for k, v in tables.items()},
             notes=str(raw.get("notes", "")),
             extra={
@@ -190,7 +206,10 @@ class OperatorDataPackage:
         creates two lookups per worker, so the index must not be rebuilt per
         consumer. The package is immutable, so sharing is safe.
         """
-        return {name: TableIndex.build(TABLE_SPECS[name], rows) for name, rows in self.tables.items()}
+        return {
+            name: TableIndex.build(TABLE_SPECS[name], rows)
+            for name, rows in self.tables.items()
+        }
 
     @property
     def dataset_version(self) -> str:
@@ -207,10 +226,14 @@ class OperatorDataPackage:
     # -- loading -----------------------------------------------------------
 
     @classmethod
-    def load(cls, root: str | Path, *, strict_sources: bool = True) -> "OperatorDataPackage":
+    def load(
+        cls, root: str | Path, *, strict_sources: bool = True
+    ) -> "OperatorDataPackage":
         root_path = Path(root)
         if not root_path.is_dir():
-            raise OperatorDataValidationError(f"operator-data package directory not found: {root_path}")
+            raise OperatorDataValidationError(
+                f"operator-data package directory not found: {root_path}"
+            )
         meta_path = root_path / META_FILENAME
         if not meta_path.is_file():
             raise OperatorDataValidationError(f"missing {META_FILENAME} in {root_path}")
@@ -221,13 +244,21 @@ class OperatorDataPackage:
             rows = _read_table(root_path, spec.perf_filename)
             if rows is None:
                 continue
-            checked = validate_rows(table_name, rows, meta, strict_sources=strict_sources, path=root_path / spec.perf_filename)
+            checked = validate_rows(
+                table_name,
+                rows,
+                meta,
+                strict_sources=strict_sources,
+                path=root_path / spec.perf_filename,
+            )
             tables[table_name] = tuple(checked)
             analysis_rows = _read_table(root_path, spec.analysis_filename)
             if analysis_rows is not None:
                 analysis[table_name] = tuple(analysis_rows)
         if not tables:
-            raise OperatorDataValidationError(f"{root_path}: package has no *_perf tables")
+            raise OperatorDataValidationError(
+                f"{root_path}: package has no *_perf tables"
+            )
         return cls(root=root_path, meta=meta, tables=tables, analysis=analysis)
 
     @classmethod
@@ -240,7 +271,9 @@ class OperatorDataPackage:
         strict_sources: bool = True,
     ) -> "OperatorDataPackage":
         checked = {
-            name: tuple(validate_rows(name, list(rows), meta, strict_sources=strict_sources))
+            name: tuple(
+                validate_rows(name, list(rows), meta, strict_sources=strict_sources)
+            )
             for name, rows in tables.items()
         }
         return cls(
@@ -268,9 +301,12 @@ class OperatorDataPackage:
         try:
             import yaml
         except ImportError as exc:  # pragma: no cover
-            raise OperatorDataValidationError("writing packages requires PyYAML") from exc
+            raise OperatorDataValidationError(
+                "writing packages requires PyYAML"
+            ) from exc
         (root_path / META_FILENAME).write_text(
-            yaml.safe_dump(meta_dict, sort_keys=False, allow_unicode=True), encoding="utf-8"
+            yaml.safe_dump(meta_dict, sort_keys=False, allow_unicode=True),
+            encoding="utf-8",
         )
         return root_path
 
@@ -302,7 +338,9 @@ def validate_rows(
     for index, row in enumerate(rows):
         missing = [f for f in spec.required_fields if f not in row]
         if missing:
-            raise OperatorDataValidationError(f"{where}: row {index} is missing fields {missing}")
+            raise OperatorDataValidationError(
+                f"{where}: row {index} is missing fields {missing}"
+            )
         clean: dict[str, Any] = {}
         for f in spec.key_fields:
             value = row[f]
@@ -310,9 +348,13 @@ def validate_rows(
                 try:
                     number = int(value)
                 except (TypeError, ValueError) as exc:
-                    raise OperatorDataValidationError(f"{where}: row {index} field {f} must be an integer") from exc
+                    raise OperatorDataValidationError(
+                        f"{where}: row {index} field {f} must be an integer"
+                    ) from exc
                 if number < 0:
-                    raise OperatorDataValidationError(f"{where}: row {index} field {f} must be non-negative")
+                    raise OperatorDataValidationError(
+                        f"{where}: row {index} field {f} must be non-negative"
+                    )
                 clean[f] = number
             elif f in spec.dtype_fields:
                 clean[f] = normalize_dtype(str(value))
@@ -321,9 +363,13 @@ def validate_rows(
         try:
             latency = float(row["latency_us"])
         except (TypeError, ValueError) as exc:
-            raise OperatorDataValidationError(f"{where}: row {index} latency_us must be numeric") from exc
+            raise OperatorDataValidationError(
+                f"{where}: row {index} latency_us must be numeric"
+            ) from exc
         if not math.isfinite(latency) or latency < 0:
-            raise OperatorDataValidationError(f"{where}: row {index} latency_us must be finite and non-negative")
+            raise OperatorDataValidationError(
+                f"{where}: row {index} latency_us must be finite and non-negative"
+            )
         clean["latency_us"] = latency
         source_id = str(row["source_id"])
         if strict_sources and meta.sources and source_id not in meta.sources:
@@ -334,6 +380,9 @@ def validate_rows(
         for extra_field in ("kernel", "grade"):
             if extra_field in row and row[extra_field] is not None:
                 clean[extra_field] = row[extra_field]
+        for metadata_field in spec.metadata_fields:
+            if metadata_field in row:
+                clean[metadata_field] = row[metadata_field]
         key = tuple(clean[f] for f in spec.key_fields)
         if key in seen:
             raise OperatorDataValidationError(
@@ -360,7 +409,9 @@ def _read_table(root: Path, filename: str) -> list[dict[str, Any]] | None:
         try:
             return pq.read_table(parquet_path).to_pylist()
         except Exception as exc:
-            raise OperatorDataValidationError(f"failed to read {parquet_path}: {exc}") from exc
+            raise OperatorDataValidationError(
+                f"failed to read {parquet_path}: {exc}"
+            ) from exc
     if csv_path.is_file():
         import csv
 
@@ -369,7 +420,9 @@ def _read_table(root: Path, filename: str) -> list[dict[str, Any]] | None:
     return None
 
 
-def _write_table(path: Path, rows: Iterable[Mapping[str, Any]], columns: tuple[str, ...] | None) -> None:
+def _write_table(
+    path: Path, rows: Iterable[Mapping[str, Any]], columns: tuple[str, ...] | None
+) -> None:
     rows = [dict(row) for row in rows]
     if not rows:
         return

@@ -13,6 +13,7 @@ import simpy
 
 from TokenSim.errors import ConfigurationError, SimulationStateError
 from TokenSim.llm.llm_request import Request
+from TokenSim.latency.deepseek_v4_moe import MoEPass, RankShape
 
 
 class StepBoundary(simpy.Event):
@@ -68,6 +69,7 @@ class DPStepCoordinator:
                 if worker.cache_config.hybrid_layout
                 else 0
             )
+            dummy.scheduled_query_tokens = dummy.scheduled_tokens
             self.dummies[worker.id] = dummy
 
     def notify(self):
@@ -152,11 +154,33 @@ class DPStepCoordinator:
                 # Kept visible for native MegaMoE estimators added later:
                 # every rank's routes belong to this same global iteration.
                 token_counts = {
-                    w.dp_rank: sum(r.step_tokens for r in batches[w.id])
+                    w.dp_rank: sum(r.query_tokens for r in batches[w.id])
                     for w in self.workers
                 }
+                shapes = {}
+                for worker in self.workers:
+                    batch = batches[worker.id]
+                    widths = {r.query_tokens for r in batch}
+                    context = any(r.is_context_build for r in batch)
+                    dummy_width = self.dummies[worker.id].query_tokens
+                    shapes[worker.dp_rank] = RankShape(
+                        token_counts[worker.dp_rank] if batch else dummy_width,
+                        (
+                            (
+                                next(iter(widths))
+                                if len(widths) == 1 and not context
+                                else None
+                            )
+                            if batch
+                            else dummy_width
+                        ),
+                        context,
+                    )
+                moe_step = MoEPass(shapes)
                 for worker in self.workers:
                     worker.dp_step_token_counts = token_counts
+                    if hasattr(worker.latency_backend, "set_moe_step"):
+                        worker.latency_backend.set_moe_step(moe_step)
                     batch = batches[worker.id]
                     estimates[worker.id] = worker.dynamic_batch(
                         batch or [self.dummies[worker.id]]

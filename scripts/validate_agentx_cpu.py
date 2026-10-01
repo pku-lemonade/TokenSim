@@ -12,7 +12,13 @@ sys.path.insert(0, str(ROOT))
 from util.agentx_accuracy import error_assessment
 
 
-def validate(directory, *, hardware=("b200", "b300"), verify_reservations=False):
+def validate(
+    directory,
+    *,
+    hardware=("b200", "b300"),
+    verify_reservations=False,
+    verify_sources=True,
+):
     points = {}
     for sku, concurrency in (("b200", 196), ("b300", 384)):
         if sku not in hardware:
@@ -20,10 +26,11 @@ def validate(directory, *, hardware=("b200", "b300"), verify_reservations=False)
         point = directory / sku
         assert json.loads((point / "run_status.json").read_text())["exit_code"] == 0
         manifest = json.loads((point / "run_manifest.json").read_text())
-        for name, expected in manifest["source_sha256"].items():
-            assert (
-                hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
-            ), name
+        if verify_sources:
+            for name, expected in manifest["source_sha256"].items():
+                assert (
+                    hashlib.sha256((ROOT / name).read_bytes()).hexdigest() == expected
+                ), name
         assert (
             manifest["dataset_sha256"]
             == hashlib.sha256(
