@@ -194,6 +194,34 @@ class MooncakeStore:
         self.stats.put_count += 1
         timing = StoreWriteTiming()
         blocks = blocks if blocks is not None else len(keys)
+        # AgentX prompts can contain thousands of aligned pages.  With the
+        # in-memory DRAM tier (the native comparison configuration disables
+        # SSD offload), install a batch of new objects in one pass instead of
+        # repeatedly traversing the admission/eviction path for every page.
+        if (
+            not self.config.enable_offload
+            and blocks > 64
+            and self.eviction_policy_allows_batch(blocks)
+        ):
+            selected = keys[:blocks]
+            fresh = [
+                key.to_string()
+                for key in selected
+                if key.to_string() not in self.objects
+            ]
+            if self.memory_used_bytes + len(fresh) * self.block_bytes <= self.memory_capacity_bytes:
+                for key_string in fresh:
+                    self.objects[key_string] = StoreObject(
+                        key=key_string,
+                        blocks=1,
+                        bytes=self.block_bytes,
+                        replicas=self.config.replica_num,
+                        segment=self.config.preferred_segment or "global",
+                    )
+                self.memory_used_bytes += len(fresh) * self.block_bytes
+                self.memory_lru.update({key: None for key in fresh})
+                self.stats.admission_count += len(fresh)
+                return timing
         for key in keys[:blocks]:
             key_timing = self._put_one(
                 key,
@@ -202,6 +230,10 @@ class MooncakeStore:
             )
             timing += key_timing
         return timing
+
+    def eviction_policy_allows_batch(self, blocks: int) -> bool:
+        """Whether a bulk write can preserve the configured LRU semantics."""
+        return self.config.eviction_policy == "lru" and blocks * self.block_bytes <= self.memory_capacity_bytes
 
     def _put_one(
         self,

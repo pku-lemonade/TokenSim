@@ -143,14 +143,16 @@ class DPStepCoordinator:
             self.busy = True
             batches, estimates = {}, {}
             try:
+                save_latencies = []
+                load_latencies = []
                 for worker in self.workers:
                     worker.dp_step_counter = self.step_counter
                     running, load_latency = worker.prepare_step()
-                    if load_latency:
-                        raise ConfigurationError(
-                            "DP asynchronous connector waits need the native offload integration"
-                        )
+                    load_latencies.append(load_latency)
                     batches[worker.id] = running
+                load_duration = max(load_latencies, default=0.0)
+                if load_duration:
+                    yield self.env.timeout(load_duration)
                 # Kept visible for native MegaMoE estimators added later:
                 # every rank's routes belong to this same global iteration.
                 token_counts = {
@@ -205,10 +207,7 @@ class DPStepCoordinator:
                     batch = batches[worker.id]
                     if batch:
                         save_latency = worker.complete_step(batch, duration)
-                        if save_latency:
-                            raise ConfigurationError(
-                                "DP asynchronous KV saves need the native offload integration"
-                            )
+                        save_latencies.append(save_latency)
                         worker.finalize_connector_step()
                     for request in self.pending_cancels.pop(worker.id, {}).values():
                         self.cancel_at_boundary(worker, request)
@@ -217,6 +216,13 @@ class DPStepCoordinator:
                         if (worker.scheduler.running or worker.scheduler.waiting)
                         else WorkerStatus.WAITING
                     )
+                # Synchronous external stores (for example the Mooncake
+                # comparison backend) report a blocking save after compute.
+                # Keep the DP wave in lockstep by charging the slowest save
+                # once, while native asynchronous connectors return zero.
+                save_duration = max(save_latencies, default=0.0)
+                if save_duration:
+                    yield self.env.timeout(save_duration)
                 self.stats.steps += 1
                 self.stats.elapsed_step_seconds += duration
                 self.step_counter += 1

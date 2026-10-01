@@ -136,6 +136,11 @@ def main():
         extra = mooncake.setdefault("kv_connector_extra_config", {})
         extra["load_async"] = False
         extra["transfer_overlap"] = False
+        # A full native shared-store admission path is not yet available in
+        # the hybrid block manager.  The matrix runner uses an explicit
+        # no-admission Mooncake control so backend timing and lifecycle can be
+        # compared without silently treating a stalled async save as success.
+        extra["admission_policy"] = "never"
         connector.write_text(json.dumps(mooncake, indent=2) + "\n")
     argv = command(point, config["defaults"], result, connector)
     manifest = {
