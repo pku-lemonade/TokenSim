@@ -125,7 +125,18 @@ def main():
             + "\n"
         )
     elif args.backend == "mooncake":
-        connector = ROOT / "data/kv_transfer/mooncake_store_dram_agentx.json"
+        connector = result / "kv_transfer_config.json"
+        mooncake = json.loads(
+            (ROOT / "data/kv_transfer/mooncake_store_dram_agentx.json").read_text()
+        )
+        # The current hybrid manager has synchronous external-page semantics;
+        # keep the Mooncake service/DRAM identity and bandwidth model while
+        # making completion explicit until the async shared-page adapter is
+        # implemented.
+        extra = mooncake.setdefault("kv_connector_extra_config", {})
+        extra["load_async"] = False
+        extra["transfer_overlap"] = False
+        connector.write_text(json.dumps(mooncake, indent=2) + "\n")
     argv = command(point, config["defaults"], result, connector)
     manifest = {
         "point": point,

@@ -17,10 +17,6 @@ from .metadata import (
 
 class MooncakeStoreConnector(BaseKVConnector):
     name = "MooncakeStoreConnector"
-    # Hybrid DSV4 scheduling uses the same asynchronous load/save lifecycle
-    # as the SimpleCPU connector; Mooncake's service models overlap and
-    # completion through ``get_finished``/worker metadata.
-    native_async = True
 
     def __init__(
         self,
