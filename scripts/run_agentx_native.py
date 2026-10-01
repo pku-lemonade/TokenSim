@@ -129,18 +129,10 @@ def main():
         mooncake = json.loads(
             (ROOT / "data/kv_transfer/mooncake_store_dram_agentx.json").read_text()
         )
-        # The current hybrid manager has synchronous external-page semantics;
-        # keep the Mooncake service/DRAM identity and bandwidth model while
-        # making completion explicit until the async shared-page adapter is
-        # implemented.
+        # Use the shared DRAM service and the native asynchronous page adapter.
         extra = mooncake.setdefault("kv_connector_extra_config", {})
-        extra["load_async"] = False
-        extra["transfer_overlap"] = False
-        # A full native shared-store admission path is not yet available in
-        # the hybrid block manager.  The matrix runner uses an explicit
-        # no-admission Mooncake control so backend timing and lifecycle can be
-        # compared without silently treating a stalled async save as success.
-        extra["admission_policy"] = "never"
+        extra["load_async"] = True
+        extra["transfer_overlap"] = True
         connector.write_text(json.dumps(mooncake, indent=2) + "\n")
     argv = command(point, config["defaults"], result, connector)
     manifest = {
