@@ -113,13 +113,35 @@ def summarize(result_root, output):
         point_dir = result.parent.parent
         data = json.loads(result.read_text())
         metrics = data["agentx_metrics"]
+        manifest_path = result.parent / "run_manifest.json"
+        point_id = point_dir.name
+        if manifest_path.is_file():
+            try:
+                point_id = json.loads(manifest_path.read_text()).get("point", {}).get(
+                    "id", point_id
+                )
+            except (OSError, ValueError):
+                pass
+        reference_path = ROOT / "data/reference" / point_id / "key_point.json"
+        reference_metrics = {}
+        if reference_path.is_file():
+            reference_metrics = json.loads(reference_path.read_text()).get("metrics", {})
+        reference_output = reference_metrics.get("output_tput_tps")
+        output_tps = metrics["output_token_throughput_tps"]
         rows.append(
             {
                 "run": point_dir.name,
                 "hardware": result.parent.name,
-                "output_token_throughput_tps": metrics["output_token_throughput_tps"],
+                "output_token_throughput_tps": output_tps,
+                "reference_output_tps": reference_output,
+                "output_tps_error_percent": (
+                    100 * (output_tps / reference_output - 1)
+                    if reference_output
+                    else None
+                ),
                 "input_token_throughput_tps": metrics["input_token_throughput_tps"],
                 "p90_ttft_s": metrics["ttft_s"]["p90"],
+                "reference_p90_ttft_s": reference_metrics.get("p90_ttft"),
                 "p90_itl_s": metrics["tpot_s"]["p90"],
                 "gpu_cache_hit_rate": metrics["gpu_cache_hit_rate"],
                 "cpu_cache_hit_rate": metrics["cpu_cache_hit_rate"],
