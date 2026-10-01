@@ -53,6 +53,10 @@ class MooncakeConfig:
     group_id: int = 0
     pcp_rank: int = 0
     dcp_rank: int = 0
+    # Native hybrid stores use these byte/efficiency budgets rather than a
+    # logged number of blocks. Legacy configurations can omit them.
+    host_available_bytes: int | None = None
+    transfer_utilization: float = 0.75
     protocol_bandwidth_gbps: dict[str, float] = field(default_factory=dict)
     protocol_latency_us: dict[str, float] = field(default_factory=dict)
 
@@ -122,6 +126,10 @@ class MooncakeConfig:
             raise ConfigurationError("memory_capacity_blocks must be non-negative")
         if self.ssd_capacity_blocks is not None and self.ssd_capacity_blocks < 0:
             raise ConfigurationError("ssd_capacity_blocks must be non-negative")
+        if self.host_available_bytes is not None and self.host_available_bytes <= 0:
+            raise ConfigurationError("host_available_bytes must be positive")
+        if not 0 < self.transfer_utilization <= 1:
+            raise ConfigurationError("transfer_utilization must be in (0, 1]")
 
 
 def parse_mooncake_config(value: dict[str, Any] | None = None) -> MooncakeConfig:

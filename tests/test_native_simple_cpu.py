@@ -15,14 +15,14 @@ from TokenSim.llm.llm_request import RequestStatus
 from tests.test_hybrid_kv_cache import request
 
 
-def engine(env, *, lockstep=True, extra=None):
+def engine(env, *, lockstep=True, extra=None, connector_name="SimpleCPUOffloadConnector"):
     cluster = ClusterConfig.from_file("data/clusters/8_b200/dep8.json")
     e = LLMEngine(
         env=env,
         block_size=256,
         batching="paged-attn",
         kv_transfer_config=KVTransferConfig(
-            kv_connector="SimpleCPUOffloadConnector",
+            kv_connector=connector_name,
             kv_connector_extra_config=extra or {"cpu_bytes_to_use_per_rank": 200000000},
         ),
         psla_config=PSLAConfig.from_file("data/psla/deepseek-v4-pro.json"),

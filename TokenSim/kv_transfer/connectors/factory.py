@@ -36,6 +36,10 @@ class KVConnectorFactory:
         cache_config: CacheConfig | None = None,
     ) -> BaseKVConnector:
         connector_cls = cls.get_connector_class(config.kv_connector or "NoopConnector")
+        if config.kv_connector == "MooncakeStoreConnector" and getattr(cache_config, "hybrid_layout", None) is not None:
+            from .native_mooncake import NativeMooncakeStoreConnector
+
+            return NativeMooncakeStoreConnector(config, cache_config)
         if connector_cls is MultiConnector:
             children = []
             for child_config in config.kv_connector_extra_config.get("connectors", []):

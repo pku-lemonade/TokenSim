@@ -82,6 +82,7 @@ class DPStepCoordinator:
             w.scheduler.running
             or w.scheduler.waiting
             or getattr(w.scheduler, "loading", {})
+            or getattr(w.scheduler, "loaded_waiting", [])
             for w in self.workers
         )
 
