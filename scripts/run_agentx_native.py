@@ -92,7 +92,9 @@ def main():
     parser.add_argument("--case", required=True)
     parser.add_argument("--result-root", required=True, type=Path)
     parser.add_argument(
-        "--backend", choices=("simple_cpu", "hbm"), default="simple_cpu"
+        "--backend",
+        choices=("simple_cpu", "mooncake", "hbm"),
+        default="simple_cpu",
     )
     parser.add_argument(
         "--transfer-utilization", type=float, choices=(0.5, 0.75, 1.0), default=0.75
@@ -122,6 +124,8 @@ def main():
             )
             + "\n"
         )
+    elif args.backend == "mooncake":
+        connector = ROOT / "data/kv_transfer/mooncake_store_dram_agentx.json"
     argv = command(point, config["defaults"], result, connector)
     manifest = {
         "point": point,
