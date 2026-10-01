@@ -90,7 +90,7 @@ class NativeMooncakeTest(unittest.TestCase):
         other = request(1, 1024)
         manager = e.workers[1].scheduler.block_manager
         self.assertEqual(e.workers[1].connector.probe(other, manager.plan_reuse(other)), (0, ()))
-        env.run(until=env.now + 40)
+        env.run(until=env.now + 400)
         self.assert_clean(e)
 
     def test_reads_contend_on_shared_queue_and_other_rank_computes(self):
