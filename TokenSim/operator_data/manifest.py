@@ -318,8 +318,14 @@ def _add_model_shapes(
                 manifest.add(
                     "moe",
                     {
-                        "dtype": dtype,
-                        "distribution": "uniform",
+                        "dtype": (
+                            model.operator_dtype("routed_expert")
+                            if model.deepseek_v4
+                            else dtype
+                        ),
+                        "distribution": (
+                            "power_law_1.01" if model.deepseek_v4 else "uniform"
+                        ),
                         "num_tokens": tokens,
                         "hidden_size": h,
                         "inter_size": model.moe_intermediate_size,

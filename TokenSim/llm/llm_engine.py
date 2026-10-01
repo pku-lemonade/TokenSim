@@ -695,7 +695,11 @@ class LLMEngine(Worker):
             if hasattr(latency_backend, "reset_profile_stats"):
                 latency_backend.reset_profile_stats()
             if hasattr(latency_backend, "moe_stats"):
-                latency_backend.moe_stats = MoEStats()
+                previous = latency_backend.moe_stats
+                latency_backend.moe_stats = MoEStats(
+                    expert_placement=previous.expert_placement,
+                    effective_moe_config=previous.effective_moe_config,
+                )
             for connector in _flatten_connectors(worker.connector):
                 old_stats = getattr(connector, "stats", None)
                 if old_stats is not None:

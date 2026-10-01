@@ -108,7 +108,7 @@ def main():
         "defaults": config["defaults"],
         "backend": args.backend,
         "transfer_utilization_assumption": args.transfer_utilization,
-        "operator_scope": "native low-rank GEMMs; generic attention/MoE and one-token decode; remaining native modules/MTP pending",
+        "operator_scope": "native low-rank GEMMs; fixed power_law_1.01 MXFP4 routed compute with independent route stats; generic attention and one-token decode; native MegaMoE/shared expert/remaining modules/MTP pending",
         "dataset_sha256": hashlib.sha256(
             (ROOT / "dataset/agentx/traces.jsonl").read_bytes()
         ).hexdigest(),

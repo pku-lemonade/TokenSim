@@ -124,6 +124,7 @@ class OperatorEstimate:
     latency_us: float
     match_type: str
     source_id: str
+    workload_distribution: str | None = None
 
 
 class OperatorTableLatencyBackend(LatencyBackend):
@@ -189,7 +190,13 @@ class OperatorTableLatencyBackend(LatencyBackend):
             effective_moe_config=model.moe.to_dict(),
             expert_placement=expert_placement.to_dict() if expert_placement else None,
         )
-        self.expert_routing = ExpertRouting(model.moe, seed=random_seed)
+        self.expert_routing = ExpertRouting(
+            model.moe,
+            seed=random_seed,
+            rank_to_experts=(
+                expert_placement.rank_to_experts if expert_placement else None
+            ),
+        )
         self._expert_to_rank: dict[int, int] | None = None
         self._cache: dict[tuple, OperatorEstimate] = {}
         self._calibrations = {
@@ -248,8 +255,13 @@ class OperatorTableLatencyBackend(LatencyBackend):
             self.parallel_config.expert_parallel_replicas_per_group if ep_enabled else 1
         )
         routing = model.moe.routing.distribution if model.moe.routing else "uniform"
-        self.moe_distributions = _MOE_DISTRIBUTION_CANDIDATES.get(
-            routing, ("uniform", "balanced")
+        self.moe_distributions = (
+            ("power_law_1.01",)
+            if model.deepseek_v4
+            else _MOE_DISTRIBUTION_CANDIDATES.get(routing, ("uniform", "balanced"))
+        )
+        self.moe_dtype = (
+            model.operator_dtype("routed_expert") if model.deepseek_v4 else model.dtype
         )
 
     # -- public API -------------------------------------------------------------
@@ -325,6 +337,15 @@ class OperatorTableLatencyBackend(LatencyBackend):
                 else None
             ),
             "missing_shape_scope": "cumulative collection checklist; estimate counters reset after warmup",
+            "moe_cost_dtype": self.moe_dtype,
+            "moe_cost_distribution_candidates": list(self.moe_distributions),
+            "moe_route_statistics": "whole-step synthetic routes; EP-interleaved rotating remainder; explicit histograms retained",
+            "moe_histogram_changes_latency": self.model.deepseek_v4 is None,
+            "moe_kernel_scope": (
+                "generic routed compute table with separate EP communication; native MegaMoE/shared expert pending"
+                if self.model.deepseek_v4
+                else "generic routed compute and explicit EP communication"
+            ),
         }
 
     def stats_dict(self) -> dict[str, Any]:
@@ -582,7 +603,7 @@ class OperatorTableLatencyBackend(LatencyBackend):
                 imbalance = max_load / mean_load
         group_tokens = tokens * self.moe_token_multiplier
         base_key = {
-            "dtype": model.dtype,
+            "dtype": self.moe_dtype,
             "hidden_size": model.hidden_size,
             "inter_size": model.moe_intermediate_size,
             "top_k": model.moe.num_experts_per_tok,
@@ -595,7 +616,14 @@ class OperatorTableLatencyBackend(LatencyBackend):
         )
         compute_s = balanced.latency_us * self.moe_layers_local * 1e-6
         straggler_s = 0.0
-        if imbalance > 1.0:
+        # A power-law measurement already includes its distribution's slow
+        # ranks. DSV4 deliberately uses a fixed power_law_1.01 cost assumption;
+        # its synthetic/trace histograms must never silently change that cost.
+        measured_skew = bool(
+            balanced.workload_distribution
+            and balanced.workload_distribution.startswith("power_law")
+        )
+        if imbalance > 1.0 and not model.deepseek_v4 and not measured_skew:
             # The step waits for the busiest expert rank. Its load equals a
             # balanced layer fed with ``imbalance`` times as many tokens, which
             # keeps memory-bound small batches from being over-scaled.
@@ -633,7 +661,10 @@ class OperatorTableLatencyBackend(LatencyBackend):
                     last_error = exc
                     continue
                 estimate = OperatorEstimate(
-                    result.latency_us, result.match_type, result.source_id
+                    result.latency_us,
+                    result.match_type,
+                    result.source_id,
+                    workload_distribution=distribution,
                 )
                 self._remember(("moe", tuple(sorted(key.items()))), estimate)
                 self.stats.record("moe", estimate.match_type)

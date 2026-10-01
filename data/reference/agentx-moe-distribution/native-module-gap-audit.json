@@ -1,0 +1,1321 @@
+{
+  "scope": "read-only source/data gap audit for subsequent native module implementation; not consumed by current runtime",
+  "aic_commit": "f254959eb89e2f206b8f9a77051644d7c1cbdb89",
+  "vllm_commit": "30f5c01d4ebb5c493ed86195db24d0ec5b3ce3d7",
+  "megamoe_tables": {
+    "gb200": {
+      "original_path": "aic-core/src/aiconfigurator_core/systems/data/gb200/moe/sglang/0.5.10/dsv4_megamoe_module_perf.parquet",
+      "sha256": "18f0eceba35e72549b86f3330fff06bbc684b0fe42cd37ec83db5845e2e1cc9e",
+      "total_rows": 256,
+      "ep8_pro_power_law_rows": 16,
+      "recorded_framework_versions": [
+        "unknown"
+      ],
+      "folder_runtime_metadata": "# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.\n# SPDX-License-Identifier: Apache-2.0\n\nschema_version: 1\nprovenance: legacy\nruntime:\n  framework: sglang\n  version: 0.5.10\ntables:\n  dsv4_megamoe_module_perf:\n    status: complete\n  wideep_context_moe_perf:\n    status: complete\n  wideep_generation_moe_perf:\n    status: complete\n",
+      "scope_fields": {
+        "kernel_source": [
+          "deepgemm_megamoe"
+        ],
+        "kernel_dtype": [
+          "fp8_fp4"
+        ],
+        "moe_dtype": [
+          "w4a8_mxfp4_mxfp8"
+        ],
+        "num_fused_shared_experts": [
+          0
+        ],
+        "pre_dispatch": [
+          "sglang_jit"
+        ],
+        "source_policy": [
+          "random"
+        ],
+        "includes_gate_topk": [
+          false
+        ],
+        "includes_buffer_init": [
+          false
+        ],
+        "used_cuda_graph": [
+          true
+        ],
+        "includes_routed_scale": [
+          true
+        ]
+      },
+      "selected_measurements": [
+        {
+          "phase": "context",
+          "num_tokens": 1024,
+          "global_num_tokens": 8192,
+          "num_max_tokens_per_rank": 32768,
+          "effective_num_max_tokens_per_rank": 32832,
+          "latency": 0.779082
+        },
+        {
+          "phase": "context",
+          "num_tokens": 2048,
+          "global_num_tokens": 16384,
+          "num_max_tokens_per_rank": 32768,
+          "effective_num_max_tokens_per_rank": 32832,
+          "latency": 1.393694
+        },
+        {
+          "phase": "context",
+          "num_tokens": 4096,
+          "global_num_tokens": 32768,
+          "num_max_tokens_per_rank": 32768,
+          "effective_num_max_tokens_per_rank": 32832,
+          "latency": 2.63865
+        },
+        {
+          "phase": "context",
+          "num_tokens": 8192,
+          "global_num_tokens": 65536,
+          "num_max_tokens_per_rank": 32768,
+          "effective_num_max_tokens_per_rank": 32832,
+          "latency": 5.335403
+        },
+        {
+          "phase": "context",
+          "num_tokens": 16384,
+          "global_num_tokens": 131072,
+          "num_max_tokens_per_rank": 32768,
+          "effective_num_max_tokens_per_rank": 32832,
+          "latency": 10.852618
+        },
+        {
+          "phase": "context",
+          "num_tokens": 32768,
+          "global_num_tokens": 262144,
+          "num_max_tokens_per_rank": 32768,
+          "effective_num_max_tokens_per_rank": 32832,
+          "latency": 21.994995
+        },
+        {
+          "phase": "generation",
+          "num_tokens": 1,
+          "global_num_tokens": 8,
+          "num_max_tokens_per_rank": 512,
+          "effective_num_max_tokens_per_rank": 576,
+          "latency": 0.112771
+        },
+        {
+          "phase": "generation",
+          "num_tokens": 2,
+          "global_num_tokens": 16,
+          "num_max_tokens_per_rank": 512,
+          "effective_num_max_tokens_per_rank": 576,
+          "latency": 0.175584
+        },
+        {
+          "phase": "generation",
+          "num_tokens": 4,
+          "global_num_tokens": 32,
+          "num_max_tokens_per_rank": 512,
+          "effective_num_max_tokens_per_rank": 576,
+          "latency": 0.227296
+        },
+        {
+          "phase": "generation",
+          "num_tokens": 8,
+          "global_num_tokens": 64,
+          "num_max_tokens_per_rank": 512,
+          "effective_num_max_tokens_per_rank": 576,
+          "latency": 0.25337
+        },
+        {
+          "phase": "generation",
+          "num_tokens": 16,
+          "global_num_tokens": 128,
+          "num_max_tokens_per_rank": 512,
+          "effective_num_max_tokens_per_rank": 576,
+          "latency": 0.27812
+        },
+        {
+          "phase": "generation",
+          "num_tokens": 32,
+          "global_num_tokens": 256,
+          "num_max_tokens_per_rank": 512,
+          "effective_num_max_tokens_per_rank": 576,
+          "latency": 0.293738
+        },
+        {
+          "phase": "generation",
+          "num_tokens": 64,
+          "global_num_tokens": 512,
+          "num_max_tokens_per_rank": 512,
+          "effective_num_max_tokens_per_rank": 576,
+          "latency": 0.312203
+        },
+        {
+          "phase": "generation",
+          "num_tokens": 128,
+          "global_num_tokens": 1024,
+          "num_max_tokens_per_rank": 512,
+          "effective_num_max_tokens_per_rank": 576,
+          "latency": 0.329541
+        },
+        {
+          "phase": "generation",
+          "num_tokens": 256,
+          "global_num_tokens": 2048,
+          "num_max_tokens_per_rank": 512,
+          "effective_num_max_tokens_per_rank": 576,
+          "latency": 0.365486
+        },
+        {
+          "phase": "generation",
+          "num_tokens": 512,
+          "global_num_tokens": 4096,
+          "num_max_tokens_per_rank": 512,
+          "effective_num_max_tokens_per_rank": 576,
+          "latency": 0.512429
+        }
+      ]
+    },
+    "gb300": {
+      "original_path": "aic-core/src/aiconfigurator_core/systems/data/gb300/moe/sglang/0.5.10/dsv4_megamoe_module_perf.parquet",
+      "sha256": "e7975d61f194ef2c054cd2d990047eccf0cacd8f643b5f1b03f9f5083c1f8ed9",
+      "total_rows": 456,
+      "ep8_pro_power_law_rows": 19,
+      "recorded_framework_versions": [
+        "0.5.11"
+      ],
+      "folder_runtime_metadata": "# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.\n# SPDX-License-Identifier: Apache-2.0\n\nschema_version: 1\nprovenance: legacy\nruntime:\n  framework: sglang\n  version: 0.5.10\ntables:\n  dsv4_megamoe_module_perf:\n    status: complete\n  moe_perf:\n    status: complete\n  wideep_context_moe_perf:\n    status: complete\n  wideep_generation_moe_perf:\n    status: complete\n",
+      "scope_fields": {
+        "kernel_source": [
+          "deepgemm_megamoe"
+        ],
+        "kernel_dtype": [
+          "fp8_fp4"
+        ],
+        "moe_dtype": [
+          "w4a8_mxfp4_mxfp8"
+        ],
+        "num_fused_shared_experts": [
+          0
+        ],
+        "pre_dispatch": [
+          "sglang_jit"
+        ],
+        "source_policy": [
+          "random"
+        ],
+        "includes_gate_topk": [
+          false
+        ],
+        "includes_buffer_init": [
+          false
+        ],
+        "used_cuda_graph": [
+          true
+        ],
+        "includes_routed_scale": [
+          true
+        ]
+      },
+      "selected_measurements": [
+        {
+          "phase": "generation",
+          "num_tokens": 1,
+          "global_num_tokens": 8,
+          "num_max_tokens_per_rank": 1,
+          "effective_num_max_tokens_per_rank": 192,
+          "latency": 0.110006
+        },
+        {
+          "phase": "generation",
+          "num_tokens": 2,
+          "global_num_tokens": 16,
+          "num_max_tokens_per_rank": 2,
+          "effective_num_max_tokens_per_rank": 192,
+          "latency": 0.171614
+        },
+        {
+          "phase": "generation",
+          "num_tokens": 4,
+          "global_num_tokens": 32,
+          "num_max_tokens_per_rank": 4,
+          "effective_num_max_tokens_per_rank": 192,
+          "latency": 0.222762
+        },
+        {
+          "phase": "generation",
+          "num_tokens": 8,
+          "global_num_tokens": 64,
+          "num_max_tokens_per_rank": 8,
+          "effective_num_max_tokens_per_rank": 192,
+          "latency": 0.247227
+        },
+        {
+          "phase": "generation",
+          "num_tokens": 16,
+          "global_num_tokens": 128,
+          "num_max_tokens_per_rank": 16,
+          "effective_num_max_tokens_per_rank": 192,
+          "latency": 0.273176
+        },
+        {
+          "phase": "generation",
+          "num_tokens": 32,
+          "global_num_tokens": 256,
+          "num_max_tokens_per_rank": 32,
+          "effective_num_max_tokens_per_rank": 192,
+          "latency": 0.288358
+        },
+        {
+          "phase": "generation",
+          "num_tokens": 64,
+          "global_num_tokens": 512,
+          "num_max_tokens_per_rank": 64,
+          "effective_num_max_tokens_per_rank": 192,
+          "latency": 0.308262
+        },
+        {
+          "phase": "generation",
+          "num_tokens": 128,
+          "global_num_tokens": 1024,
+          "num_max_tokens_per_rank": 128,
+          "effective_num_max_tokens_per_rank": 192,
+          "latency": 0.320152
+        },
+        {
+          "phase": "generation",
+          "num_tokens": 256,
+          "global_num_tokens": 2048,
+          "num_max_tokens_per_rank": 256,
+          "effective_num_max_tokens_per_rank": 384,
+          "latency": 0.342514
+        },
+        {
+          "phase": "generation",
+          "num_tokens": 512,
+          "global_num_tokens": 4096,
+          "num_max_tokens_per_rank": 512,
+          "effective_num_max_tokens_per_rank": 576,
+          "latency": 0.463002
+        },
+        {
+          "phase": "generation",
+          "num_tokens": 1024,
+          "global_num_tokens": 8192,
+          "num_max_tokens_per_rank": 1024,
+          "effective_num_max_tokens_per_rank": 1152,
+          "latency": 0.708757
+        },
+        {
+          "phase": "generation",
+          "num_tokens": 1536,
+          "global_num_tokens": 12288,
+          "num_max_tokens_per_rank": 1536,
+          "effective_num_max_tokens_per_rank": 1536,
+          "latency": 0.9932
+        },
+        {
+          "phase": "generation",
+          "num_tokens": 2048,
+          "global_num_tokens": 16384,
+          "num_max_tokens_per_rank": 2048,
+          "effective_num_max_tokens_per_rank": 2112,
+          "latency": 1.270211
+        },
+        {
+          "phase": "context",
+          "num_tokens": 1024,
+          "global_num_tokens": 8192,
+          "num_max_tokens_per_rank": 1024,
+          "effective_num_max_tokens_per_rank": 1152,
+          "latency": 0.708032
+        },
+        {
+          "phase": "context",
+          "num_tokens": 2048,
+          "global_num_tokens": 16384,
+          "num_max_tokens_per_rank": 2048,
+          "effective_num_max_tokens_per_rank": 2112,
+          "latency": 1.271798
+        },
+        {
+          "phase": "context",
+          "num_tokens": 4096,
+          "global_num_tokens": 32768,
+          "num_max_tokens_per_rank": 4096,
+          "effective_num_max_tokens_per_rank": 4224,
+          "latency": 2.355296
+        },
+        {
+          "phase": "context",
+          "num_tokens": 8192,
+          "global_num_tokens": 65536,
+          "num_max_tokens_per_rank": 8192,
+          "effective_num_max_tokens_per_rank": 8256,
+          "latency": 4.742571
+        },
+        {
+          "phase": "context",
+          "num_tokens": 16384,
+          "global_num_tokens": 131072,
+          "num_max_tokens_per_rank": 16384,
+          "effective_num_max_tokens_per_rank": 16512,
+          "latency": 9.599051
+        },
+        {
+          "phase": "context",
+          "num_tokens": 32768,
+          "global_num_tokens": 262144,
+          "num_max_tokens_per_rank": 32768,
+          "effective_num_max_tokens_per_rank": 32832,
+          "latency": 19.215041
+        }
+      ]
+    }
+  },
+  "attention_tables": {
+    "b200_sxm": {
+      "dsv4_csa_context_module_perf.parquet": {
+        "original_path": "aic-core/src/aiconfigurator_core/systems/data/b200_sxm/sparse_attention/vllm/0.24.0/dsv4_csa_context_module_perf.parquet",
+        "sha256": "ee0d568c5ae1beeb81d6b683666ab83499c9f699147fe565ef59ffb0de283556",
+        "total_rows": 5840,
+        "model_geometry_groups": [
+          {
+            "model": "deepseek-ai/DeepSeek-V4-Pro",
+            "num_heads": 16,
+            "tp_size": 8,
+            "rows": 730,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 65536,
+            "prefix_step_min": 0,
+            "prefix_step_max": 65535
+          },
+          {
+            "model": "deepseek-ai/DeepSeek-V4-Pro",
+            "num_heads": 32,
+            "tp_size": 4,
+            "rows": 730,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 65536,
+            "prefix_step_min": 0,
+            "prefix_step_max": 65535
+          },
+          {
+            "model": "deepseek-ai/DeepSeek-V4-Pro",
+            "num_heads": 64,
+            "tp_size": 2,
+            "rows": 730,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 65536,
+            "prefix_step_min": 0,
+            "prefix_step_max": 65535
+          },
+          {
+            "model": "deepseek-ai/DeepSeek-V4-Pro",
+            "num_heads": 128,
+            "tp_size": 1,
+            "rows": 730,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 65536,
+            "prefix_step_min": 0,
+            "prefix_step_max": 65535
+          },
+          {
+            "model": "sgl-project/DeepSeek-V4-Flash-FP8",
+            "num_heads": 8,
+            "tp_size": 8,
+            "rows": 730,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 65536,
+            "prefix_step_min": 0,
+            "prefix_step_max": 65535
+          },
+          {
+            "model": "sgl-project/DeepSeek-V4-Flash-FP8",
+            "num_heads": 16,
+            "tp_size": 4,
+            "rows": 730,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 65536,
+            "prefix_step_min": 0,
+            "prefix_step_max": 65535
+          },
+          {
+            "model": "sgl-project/DeepSeek-V4-Flash-FP8",
+            "num_heads": 32,
+            "tp_size": 2,
+            "rows": 730,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 65536,
+            "prefix_step_min": 0,
+            "prefix_step_max": 65535
+          },
+          {
+            "model": "sgl-project/DeepSeek-V4-Flash-FP8",
+            "num_heads": 64,
+            "tp_size": 1,
+            "rows": 730,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 65536,
+            "prefix_step_min": 0,
+            "prefix_step_max": 65535
+          }
+        ],
+        "kernel_sources": [
+          "FLASHMLA_SPARSE_DSV4"
+        ],
+        "mla_dtypes": [
+          "bfloat16"
+        ],
+        "kv_dtypes": [
+          "fp8"
+        ],
+        "gemm_types": [
+          "fp8_block"
+        ]
+      },
+      "dsv4_csa_generation_module_perf.parquet": {
+        "original_path": "aic-core/src/aiconfigurator_core/systems/data/b200_sxm/sparse_attention/vllm/0.24.0/dsv4_csa_generation_module_perf.parquet",
+        "sha256": "71beb61fd5bedd6e4004a1a5742e4739ab57c5da455aa8ff4b9f078b0e37d998",
+        "total_rows": 1544,
+        "model_geometry_groups": [
+          {
+            "model": "deepseek-ai/DeepSeek-V4-Pro",
+            "num_heads": 16,
+            "tp_size": 8,
+            "rows": 193,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 1,
+            "prefix_step_min": 1,
+            "prefix_step_max": 65536
+          },
+          {
+            "model": "deepseek-ai/DeepSeek-V4-Pro",
+            "num_heads": 32,
+            "tp_size": 4,
+            "rows": 193,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 1,
+            "prefix_step_min": 1,
+            "prefix_step_max": 65536
+          },
+          {
+            "model": "deepseek-ai/DeepSeek-V4-Pro",
+            "num_heads": 64,
+            "tp_size": 2,
+            "rows": 193,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 1,
+            "prefix_step_min": 1,
+            "prefix_step_max": 65536
+          },
+          {
+            "model": "deepseek-ai/DeepSeek-V4-Pro",
+            "num_heads": 128,
+            "tp_size": 1,
+            "rows": 193,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 1,
+            "prefix_step_min": 1,
+            "prefix_step_max": 65536
+          },
+          {
+            "model": "sgl-project/DeepSeek-V4-Flash-FP8",
+            "num_heads": 8,
+            "tp_size": 8,
+            "rows": 193,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 1,
+            "prefix_step_min": 1,
+            "prefix_step_max": 65536
+          },
+          {
+            "model": "sgl-project/DeepSeek-V4-Flash-FP8",
+            "num_heads": 16,
+            "tp_size": 4,
+            "rows": 193,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 1,
+            "prefix_step_min": 1,
+            "prefix_step_max": 65536
+          },
+          {
+            "model": "sgl-project/DeepSeek-V4-Flash-FP8",
+            "num_heads": 32,
+            "tp_size": 2,
+            "rows": 193,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 1,
+            "prefix_step_min": 1,
+            "prefix_step_max": 65536
+          },
+          {
+            "model": "sgl-project/DeepSeek-V4-Flash-FP8",
+            "num_heads": 64,
+            "tp_size": 1,
+            "rows": 193,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 1,
+            "prefix_step_min": 1,
+            "prefix_step_max": 65536
+          }
+        ],
+        "kernel_sources": [
+          "FLASHMLA_SPARSE_DSV4"
+        ],
+        "mla_dtypes": [
+          "bfloat16"
+        ],
+        "kv_dtypes": [
+          "fp8"
+        ],
+        "gemm_types": [
+          "fp8_block"
+        ]
+      },
+      "dsv4_hca_context_module_perf.parquet": {
+        "original_path": "aic-core/src/aiconfigurator_core/systems/data/b200_sxm/sparse_attention/vllm/0.24.0/dsv4_hca_context_module_perf.parquet",
+        "sha256": "00729a65eb22e99520fbeeb3766e148f30fd7c6631b7c0b869f64b9e61085fe7",
+        "total_rows": 5840,
+        "model_geometry_groups": [
+          {
+            "model": "deepseek-ai/DeepSeek-V4-Pro",
+            "num_heads": 16,
+            "tp_size": 8,
+            "rows": 730,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 65536,
+            "prefix_step_min": 0,
+            "prefix_step_max": 65535
+          },
+          {
+            "model": "deepseek-ai/DeepSeek-V4-Pro",
+            "num_heads": 32,
+            "tp_size": 4,
+            "rows": 730,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 65536,
+            "prefix_step_min": 0,
+            "prefix_step_max": 65535
+          },
+          {
+            "model": "deepseek-ai/DeepSeek-V4-Pro",
+            "num_heads": 64,
+            "tp_size": 2,
+            "rows": 730,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 65536,
+            "prefix_step_min": 0,
+            "prefix_step_max": 65535
+          },
+          {
+            "model": "deepseek-ai/DeepSeek-V4-Pro",
+            "num_heads": 128,
+            "tp_size": 1,
+            "rows": 730,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 65536,
+            "prefix_step_min": 0,
+            "prefix_step_max": 65535
+          },
+          {
+            "model": "sgl-project/DeepSeek-V4-Flash-FP8",
+            "num_heads": 8,
+            "tp_size": 8,
+            "rows": 730,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 65536,
+            "prefix_step_min": 0,
+            "prefix_step_max": 65535
+          },
+          {
+            "model": "sgl-project/DeepSeek-V4-Flash-FP8",
+            "num_heads": 16,
+            "tp_size": 4,
+            "rows": 730,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 65536,
+            "prefix_step_min": 0,
+            "prefix_step_max": 65535
+          },
+          {
+            "model": "sgl-project/DeepSeek-V4-Flash-FP8",
+            "num_heads": 32,
+            "tp_size": 2,
+            "rows": 730,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 65536,
+            "prefix_step_min": 0,
+            "prefix_step_max": 65535
+          },
+          {
+            "model": "sgl-project/DeepSeek-V4-Flash-FP8",
+            "num_heads": 64,
+            "tp_size": 1,
+            "rows": 730,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 65536,
+            "prefix_step_min": 0,
+            "prefix_step_max": 65535
+          }
+        ],
+        "kernel_sources": [
+          "FLASHMLA_SPARSE_DSV4"
+        ],
+        "mla_dtypes": [
+          "bfloat16"
+        ],
+        "kv_dtypes": [
+          "fp8"
+        ],
+        "gemm_types": [
+          "fp8_block"
+        ]
+      },
+      "dsv4_hca_generation_module_perf.parquet": {
+        "original_path": "aic-core/src/aiconfigurator_core/systems/data/b200_sxm/sparse_attention/vllm/0.24.0/dsv4_hca_generation_module_perf.parquet",
+        "sha256": "b805341629f8e8df1c486167c27ad9a3046f5f7a3f90a9f89fb6c158be6d6560",
+        "total_rows": 1544,
+        "model_geometry_groups": [
+          {
+            "model": "deepseek-ai/DeepSeek-V4-Pro",
+            "num_heads": 16,
+            "tp_size": 8,
+            "rows": 193,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 1,
+            "prefix_step_min": 1,
+            "prefix_step_max": 65536
+          },
+          {
+            "model": "deepseek-ai/DeepSeek-V4-Pro",
+            "num_heads": 32,
+            "tp_size": 4,
+            "rows": 193,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 1,
+            "prefix_step_min": 1,
+            "prefix_step_max": 65536
+          },
+          {
+            "model": "deepseek-ai/DeepSeek-V4-Pro",
+            "num_heads": 64,
+            "tp_size": 2,
+            "rows": 193,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 1,
+            "prefix_step_min": 1,
+            "prefix_step_max": 65536
+          },
+          {
+            "model": "deepseek-ai/DeepSeek-V4-Pro",
+            "num_heads": 128,
+            "tp_size": 1,
+            "rows": 193,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 1,
+            "prefix_step_min": 1,
+            "prefix_step_max": 65536
+          },
+          {
+            "model": "sgl-project/DeepSeek-V4-Flash-FP8",
+            "num_heads": 8,
+            "tp_size": 8,
+            "rows": 193,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 1,
+            "prefix_step_min": 1,
+            "prefix_step_max": 65536
+          },
+          {
+            "model": "sgl-project/DeepSeek-V4-Flash-FP8",
+            "num_heads": 16,
+            "tp_size": 4,
+            "rows": 193,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 1,
+            "prefix_step_min": 1,
+            "prefix_step_max": 65536
+          },
+          {
+            "model": "sgl-project/DeepSeek-V4-Flash-FP8",
+            "num_heads": 32,
+            "tp_size": 2,
+            "rows": 193,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 1,
+            "prefix_step_min": 1,
+            "prefix_step_max": 65536
+          },
+          {
+            "model": "sgl-project/DeepSeek-V4-Flash-FP8",
+            "num_heads": 64,
+            "tp_size": 1,
+            "rows": 193,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 1,
+            "prefix_step_min": 1,
+            "prefix_step_max": 65536
+          }
+        ],
+        "kernel_sources": [
+          "FLASHMLA_SPARSE_DSV4"
+        ],
+        "mla_dtypes": [
+          "bfloat16"
+        ],
+        "kv_dtypes": [
+          "fp8"
+        ],
+        "gemm_types": [
+          "fp8_block"
+        ]
+      }
+    },
+    "b300_sxm": {
+      "dsv4_csa_context_module_perf.parquet": {
+        "original_path": "aic-core/src/aiconfigurator_core/systems/data/b300_sxm/sparse_attention/vllm/0.24.0/dsv4_csa_context_module_perf.parquet",
+        "sha256": "4f50ab746db099665ab76f8d2b03362629b6d63d9c7f2a007585839b2d7d378b",
+        "total_rows": 5704,
+        "model_geometry_groups": [
+          {
+            "model": "deepseek-ai/DeepSeek-V4-Pro",
+            "num_heads": 16,
+            "tp_size": 8,
+            "rows": 696,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 65536,
+            "prefix_step_min": 0,
+            "prefix_step_max": 65532
+          },
+          {
+            "model": "deepseek-ai/DeepSeek-V4-Pro",
+            "num_heads": 32,
+            "tp_size": 4,
+            "rows": 696,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 65536,
+            "prefix_step_min": 0,
+            "prefix_step_max": 65532
+          },
+          {
+            "model": "deepseek-ai/DeepSeek-V4-Pro",
+            "num_heads": 64,
+            "tp_size": 2,
+            "rows": 696,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 65536,
+            "prefix_step_min": 0,
+            "prefix_step_max": 65532
+          },
+          {
+            "model": "deepseek-ai/DeepSeek-V4-Pro",
+            "num_heads": 128,
+            "tp_size": 1,
+            "rows": 696,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 65536,
+            "prefix_step_min": 0,
+            "prefix_step_max": 65532
+          },
+          {
+            "model": "sgl-project/DeepSeek-V4-Flash-FP8",
+            "num_heads": 8,
+            "tp_size": 8,
+            "rows": 730,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 65536,
+            "prefix_step_min": 0,
+            "prefix_step_max": 65535
+          },
+          {
+            "model": "sgl-project/DeepSeek-V4-Flash-FP8",
+            "num_heads": 16,
+            "tp_size": 4,
+            "rows": 730,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 65536,
+            "prefix_step_min": 0,
+            "prefix_step_max": 65535
+          },
+          {
+            "model": "sgl-project/DeepSeek-V4-Flash-FP8",
+            "num_heads": 32,
+            "tp_size": 2,
+            "rows": 730,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 65536,
+            "prefix_step_min": 0,
+            "prefix_step_max": 65535
+          },
+          {
+            "model": "sgl-project/DeepSeek-V4-Flash-FP8",
+            "num_heads": 64,
+            "tp_size": 1,
+            "rows": 730,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 65536,
+            "prefix_step_min": 0,
+            "prefix_step_max": 65535
+          }
+        ],
+        "kernel_sources": [
+          "FLASHMLA_SPARSE_DSV4"
+        ],
+        "mla_dtypes": [
+          "bfloat16"
+        ],
+        "kv_dtypes": [
+          "fp8"
+        ],
+        "gemm_types": [
+          "fp8_block"
+        ]
+      },
+      "dsv4_csa_generation_module_perf.parquet": {
+        "original_path": "aic-core/src/aiconfigurator_core/systems/data/b300_sxm/sparse_attention/vllm/0.24.0/dsv4_csa_generation_module_perf.parquet",
+        "sha256": "190b3fb079b416d7324baa4d10a44e35acbed068e46a290277f14b6aa4660cb3",
+        "total_rows": 1048,
+        "model_geometry_groups": [
+          {
+            "model": "deepseek-ai/DeepSeek-V4-Pro",
+            "num_heads": 16,
+            "tp_size": 8,
+            "rows": 69,
+            "batch_min": 64,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 1,
+            "prefix_step_min": 1,
+            "prefix_step_max": 16384
+          },
+          {
+            "model": "deepseek-ai/DeepSeek-V4-Pro",
+            "num_heads": 32,
+            "tp_size": 4,
+            "rows": 69,
+            "batch_min": 64,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 1,
+            "prefix_step_min": 1,
+            "prefix_step_max": 16384
+          },
+          {
+            "model": "deepseek-ai/DeepSeek-V4-Pro",
+            "num_heads": 64,
+            "tp_size": 2,
+            "rows": 69,
+            "batch_min": 64,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 1,
+            "prefix_step_min": 1,
+            "prefix_step_max": 16384
+          },
+          {
+            "model": "deepseek-ai/DeepSeek-V4-Pro",
+            "num_heads": 128,
+            "tp_size": 1,
+            "rows": 69,
+            "batch_min": 64,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 1,
+            "prefix_step_min": 1,
+            "prefix_step_max": 16384
+          },
+          {
+            "model": "sgl-project/DeepSeek-V4-Flash-FP8",
+            "num_heads": 8,
+            "tp_size": 8,
+            "rows": 193,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 1,
+            "prefix_step_min": 1,
+            "prefix_step_max": 65536
+          },
+          {
+            "model": "sgl-project/DeepSeek-V4-Flash-FP8",
+            "num_heads": 16,
+            "tp_size": 4,
+            "rows": 193,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 1,
+            "prefix_step_min": 1,
+            "prefix_step_max": 65536
+          },
+          {
+            "model": "sgl-project/DeepSeek-V4-Flash-FP8",
+            "num_heads": 32,
+            "tp_size": 2,
+            "rows": 193,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 1,
+            "prefix_step_min": 1,
+            "prefix_step_max": 65536
+          },
+          {
+            "model": "sgl-project/DeepSeek-V4-Flash-FP8",
+            "num_heads": 64,
+            "tp_size": 1,
+            "rows": 193,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 1,
+            "prefix_step_min": 1,
+            "prefix_step_max": 65536
+          }
+        ],
+        "kernel_sources": [
+          "FLASHMLA_SPARSE_DSV4"
+        ],
+        "mla_dtypes": [
+          "bfloat16"
+        ],
+        "kv_dtypes": [
+          "fp8"
+        ],
+        "gemm_types": [
+          "fp8_block"
+        ]
+      },
+      "dsv4_hca_context_module_perf.parquet": {
+        "original_path": "aic-core/src/aiconfigurator_core/systems/data/b300_sxm/sparse_attention/vllm/0.24.0/dsv4_hca_context_module_perf.parquet",
+        "sha256": "6f1c7486ed2165855ee62f0392239da9533865344e589d38242b80a660eaaa6e",
+        "total_rows": 5840,
+        "model_geometry_groups": [
+          {
+            "model": "deepseek-ai/DeepSeek-V4-Pro",
+            "num_heads": 16,
+            "tp_size": 8,
+            "rows": 730,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 65536,
+            "prefix_step_min": 0,
+            "prefix_step_max": 65535
+          },
+          {
+            "model": "deepseek-ai/DeepSeek-V4-Pro",
+            "num_heads": 32,
+            "tp_size": 4,
+            "rows": 730,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 65536,
+            "prefix_step_min": 0,
+            "prefix_step_max": 65535
+          },
+          {
+            "model": "deepseek-ai/DeepSeek-V4-Pro",
+            "num_heads": 64,
+            "tp_size": 2,
+            "rows": 730,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 65536,
+            "prefix_step_min": 0,
+            "prefix_step_max": 65535
+          },
+          {
+            "model": "deepseek-ai/DeepSeek-V4-Pro",
+            "num_heads": 128,
+            "tp_size": 1,
+            "rows": 730,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 65536,
+            "prefix_step_min": 0,
+            "prefix_step_max": 65535
+          },
+          {
+            "model": "sgl-project/DeepSeek-V4-Flash-FP8",
+            "num_heads": 8,
+            "tp_size": 8,
+            "rows": 730,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 65536,
+            "prefix_step_min": 0,
+            "prefix_step_max": 65535
+          },
+          {
+            "model": "sgl-project/DeepSeek-V4-Flash-FP8",
+            "num_heads": 16,
+            "tp_size": 4,
+            "rows": 730,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 65536,
+            "prefix_step_min": 0,
+            "prefix_step_max": 65535
+          },
+          {
+            "model": "sgl-project/DeepSeek-V4-Flash-FP8",
+            "num_heads": 32,
+            "tp_size": 2,
+            "rows": 730,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 65536,
+            "prefix_step_min": 0,
+            "prefix_step_max": 65535
+          },
+          {
+            "model": "sgl-project/DeepSeek-V4-Flash-FP8",
+            "num_heads": 64,
+            "tp_size": 1,
+            "rows": 730,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 65536,
+            "prefix_step_min": 0,
+            "prefix_step_max": 65535
+          }
+        ],
+        "kernel_sources": [
+          "FLASHMLA_SPARSE_DSV4"
+        ],
+        "mla_dtypes": [
+          "bfloat16"
+        ],
+        "kv_dtypes": [
+          "fp8"
+        ],
+        "gemm_types": [
+          "fp8_block"
+        ]
+      },
+      "dsv4_hca_generation_module_perf.parquet": {
+        "original_path": "aic-core/src/aiconfigurator_core/systems/data/b300_sxm/sparse_attention/vllm/0.24.0/dsv4_hca_generation_module_perf.parquet",
+        "sha256": "aa2da57a11159029f76e6b4aebc4bd41e68a0f53e5dc34c8a38ac3560e2d12e8",
+        "total_rows": 1544,
+        "model_geometry_groups": [
+          {
+            "model": "deepseek-ai/DeepSeek-V4-Pro",
+            "num_heads": 16,
+            "tp_size": 8,
+            "rows": 193,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 1,
+            "prefix_step_min": 1,
+            "prefix_step_max": 65536
+          },
+          {
+            "model": "deepseek-ai/DeepSeek-V4-Pro",
+            "num_heads": 32,
+            "tp_size": 4,
+            "rows": 193,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 1,
+            "prefix_step_min": 1,
+            "prefix_step_max": 65536
+          },
+          {
+            "model": "deepseek-ai/DeepSeek-V4-Pro",
+            "num_heads": 64,
+            "tp_size": 2,
+            "rows": 193,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 1,
+            "prefix_step_min": 1,
+            "prefix_step_max": 65536
+          },
+          {
+            "model": "deepseek-ai/DeepSeek-V4-Pro",
+            "num_heads": 128,
+            "tp_size": 1,
+            "rows": 193,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 1,
+            "prefix_step_min": 1,
+            "prefix_step_max": 65536
+          },
+          {
+            "model": "sgl-project/DeepSeek-V4-Flash-FP8",
+            "num_heads": 8,
+            "tp_size": 8,
+            "rows": 193,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 1,
+            "prefix_step_min": 1,
+            "prefix_step_max": 65536
+          },
+          {
+            "model": "sgl-project/DeepSeek-V4-Flash-FP8",
+            "num_heads": 16,
+            "tp_size": 4,
+            "rows": 193,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 1,
+            "prefix_step_min": 1,
+            "prefix_step_max": 65536
+          },
+          {
+            "model": "sgl-project/DeepSeek-V4-Flash-FP8",
+            "num_heads": 32,
+            "tp_size": 2,
+            "rows": 193,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 1,
+            "prefix_step_min": 1,
+            "prefix_step_max": 65536
+          },
+          {
+            "model": "sgl-project/DeepSeek-V4-Flash-FP8",
+            "num_heads": 64,
+            "tp_size": 1,
+            "rows": 193,
+            "batch_min": 1,
+            "batch_max": 1024,
+            "isl_min": 1,
+            "isl_max": 1,
+            "prefix_step_min": 1,
+            "prefix_step_max": 65536
+          }
+        ],
+        "kernel_sources": [
+          "FLASHMLA_SPARSE_DSV4"
+        ],
+        "mla_dtypes": [
+          "bfloat16"
+        ],
+        "kv_dtypes": [
+          "fp8"
+        ],
+        "gemm_types": [
+          "fp8_block"
+        ]
+      }
+    }
+  },
+  "readonly_source_sha256": {
+    "vllm/models/deepseek_v4/nvidia/model.py": "5d5a74e339cd110def9b5e37a56fa602a42cdece98811013fb69700a0274a224",
+    "vllm/v1/worker/gpu/dp_utils.py": "b81a663c7e736f93c7be6ff7b6facebeb93ee4a52c280163b2ba9146fe33c341",
+    "vllm/v1/worker/gpu/model_runner.py": "217e4b87c0bd22c4e98640775d7b4e3349000f79d37f9f7d3e569768786c3a7f",
+    "cmake/external_projects/deepgemm.cmake": "8be03ed1ee872f9cf1b356d16f8d66786c96a6bd5c2fac0a0477faab048c3da8",
+    "collector/sglang/collect_dsv4_megamoe.py": "77fee6d6cd872d46db54179655f3f2559c55cc04b2fb56b715e44e70aa77cfa9",
+    "collector/vllm/collect_dsv4_attn.py": "71bbe651172bf955d5cc1ba2338ac22b0b7b4940c44f35274c5095cf7edfc334"
+  },
+  "next_implementation_constraints": {
+    "deepgemm_default_build_pin": "e1f418c2a4f20818221f6b0e578b4c2f634d4c3f",
+    "installed_deepgemm_api_verified": false,
+    "shared_fusion": "source-eligible for TP1 or sequence parallel, but gated by dependency API; selected routed tables contain zero shared experts",
+    "dp_cuda_graph": "all ranks use synchronized padded descriptor; eager preserves unequal local token counts",
+    "sequence_parallel": "enabled with PP1 + EP + TP>1 and (MegaMoE or DP>1); do not treat TP-leader tokens as every EP rank local tokens",
+    "buffer_capacity": "vLLM sizes symmetric buffer from max_num_batched_tokens; retain differing collector capacities instead of merging phase rows",
+    "attention_scope": "full DeepseekV4Attention forward includes low-rank projections, compressor/indexer and attention; avoid re-adding these GEMMs",
+    "attention_tp_scope": "collector mocks TP collectives as identity; modeled TP communication remains outside measured module",
+    "query_width": "request count differs from verify query count; q=4 needs compute/KV reuse estimates rather than multiplying module by four",
+    "historical_api_state": "reference nightly build dependency API remains unverified; local source defines this implementation, historical differences remain explicit"
+  }
+}
