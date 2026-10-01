@@ -442,6 +442,7 @@ class NativeAgentXReplay:
 
     def _record_terminal(self, req, play, outcome):
         phase = "warmup" if req.measurement_phase == "warmup" else "profiling"
+        source = req.first_prefill_source
         record = {
             "request_id": req.id,
             "phase": phase,
@@ -449,9 +450,19 @@ class NativeAgentXReplay:
             "start_s": req.arrival_at,
             "end_s": self.env.now,
             "input_tokens": req.prefill_len,
-            "gpu_hit_tokens": req.cached_prefill_tokens - req.external_cached_prefill_tokens,
-            "cpu_hit_tokens": req.external_cached_prefill_tokens,
-            "computed_input_tokens": req.effective_prefill_tokens,
+            "gpu_hit_tokens": source.gpu_hit_tokens if source else None,
+            "cpu_hit_tokens": source.cpu_hit_tokens if source else None,
+            "computed_input_tokens": source.computed_tokens if source else None,
+            "prefill_source_observed": source is not None,
+            "prefill_admission_count": req.prefill_admission_count,
+            "reloaded_gpu_tokens": req.reloaded_gpu_tokens,
+            "reloaded_cpu_tokens": req.reloaded_cpu_tokens,
+            "recomputation_count": req.recomputation_count,
+            "recomputed_tokens": req.recomputed_tokens_total,
+            "latest_gpu_hit_tokens": req.cached_prefill_tokens
+            - req.external_cached_prefill_tokens,
+            "latest_cpu_hit_tokens": req.external_cached_prefill_tokens,
+            "latest_computed_input_tokens": req.effective_prefill_tokens,
             "requested_output_tokens": req.decode_len,
             "output_tokens": req.generation_idx,
             "trace_id": req.agentx_trace_id,

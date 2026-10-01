@@ -45,6 +45,24 @@ def validate(directory, *, hardware=("b200", "b300"), verify_reservations=False)
             if r["phase"] == "profiling" and r["outcome"] == "successful"
         ]
         assert len(successful) == metrics["request_count"]
+        if metrics.get("cache_source_observation") == "first-admission":
+            assert all(
+                r["prefill_source_observed"] and r["prefill_admission_count"] >= 1
+                for r in successful
+            )
+            for field, record_field in (
+                ("readmission_count", "prefill_admission_count"),
+                ("reloaded_gpu_tokens", "reloaded_gpu_tokens"),
+                ("reloaded_cpu_tokens", "reloaded_cpu_tokens"),
+                ("recomputed_tokens", "recomputed_tokens"),
+                ("latest_gpu_hit_tokens", "latest_gpu_hit_tokens"),
+                ("latest_cpu_hit_tokens", "latest_cpu_hit_tokens"),
+            ):
+                total = sum(
+                    r[record_field] - int(field == "readmission_count")
+                    for r in successful
+                )
+                assert metrics[field] == total, field
         assert all(
             r["output_tokens"] == r["requested_output_tokens"] for r in successful
         )
@@ -118,6 +136,9 @@ def validate(directory, *, hardware=("b200", "b300"), verify_reservations=False)
             "output_tps": metrics["output_token_throughput_tps"],
             "gpu_hit_percent": metrics["gpu_cache_hit_rate"] * 100,
             "cpu_hit_percent": metrics["cpu_cache_hit_rate"] * 100,
+            "cache_source_observation": metrics.get(
+                "cache_source_observation", "latest-admission"
+            ),
             "ttft_p90": metrics["ttft_s"]["p90"],
             "tpot_p90": metrics["tpot_s"]["p90"],
             "e2e_mean": metrics["e2e_s"]["mean"],

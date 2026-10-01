@@ -55,6 +55,7 @@ class NativeSimpleCPUTest(unittest.TestCase):
         args = SimpleNamespace(workload_type="agentx_weka", agentx_runtime_metadata={})
         self.assertNotIn("cpu_cache_hit_rate", get_agentx_metrics(args, [r], 1, 8))
         args.agentx_runtime_metadata = {"replay_protocol": "native"}
+        r.record_prefill_admission(256, 512)
         metrics = get_agentx_metrics(args, [r], 1, 8)
         self.assertEqual(metrics["gpu_cache_hit_rate"], 0.25)
         self.assertEqual(metrics["cpu_cache_hit_rate"], 0.5)

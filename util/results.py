@@ -319,6 +319,16 @@ def get_agentx_metrics(
         for request in requests
     )
     metadata = dict(getattr(args, "agentx_runtime_metadata", {}) or {})
+    if metadata.get("replay_protocol"):
+        sources = [r.first_prefill_source for r in requests]
+        if any(source is None for source in sources):
+            raise ValueError(
+                "successful native requests need first-admission source observations"
+            )
+        gpu_input_tokens = sum(s.gpu_hit_tokens for s in sources)
+        external_input_tokens = sum(s.cpu_hit_tokens for s in sources)
+        cached_input_tokens = gpu_input_tokens + external_input_tokens
+        computed_input_tokens = sum(s.computed_tokens for s in sources)
 
     def summary(values):
         if not values and metadata.get("replay_protocol"):
@@ -400,6 +410,7 @@ def get_agentx_metrics(
     # must not silently become a zero CPU hit rate.
     if metadata.get("replay_protocol"):
         result.update(
+            cache_source_observation="first-admission",
             gpu_cached_input_tokens=cached_input_tokens - external_input_tokens,
             cpu_cached_input_tokens=external_input_tokens,
             gpu_cache_hit_rate=(
@@ -409,6 +420,19 @@ def get_agentx_metrics(
             ),
             cpu_cache_hit_rate=(
                 external_input_tokens / input_tokens if input_tokens else None
+            ),
+            readmission_count=sum(
+                max(0, r.prefill_admission_count - 1) for r in requests
+            ),
+            reloaded_gpu_tokens=sum(r.reloaded_gpu_tokens for r in requests),
+            reloaded_cpu_tokens=sum(r.reloaded_cpu_tokens for r in requests),
+            recomputed_tokens=sum(r.recomputed_tokens_total for r in requests),
+            latest_gpu_hit_tokens=sum(
+                r.cached_prefill_tokens - r.external_cached_prefill_tokens
+                for r in requests
+            ),
+            latest_cpu_hit_tokens=sum(
+                r.external_cached_prefill_tokens for r in requests
             ),
         )
 

@@ -4,7 +4,7 @@
 > 执行顺序：参考数据与完整模型准备 → 请求回放 → GPU 分配与缓存复用 → 调度行为 → 算子耗时校准 → 完整曲线验证。
 > 源码基准：只读参考 `/home/zhuohang/Serving/vllm-note`，本轮记录 HEAD `30f5c01d4ebb`；不下载历史镜像、不修改或切换此目录。本文旧行号和旧 HEAD 下的源码结论需按此版本重新定位；历史运行日志仍作为实验事实保留。
 > 分支：`agentx-support`（基于 `b2b685a`）
-> 状态：**2026-10-01 已完成请求图、Native 回放／取消、GPU 混合缓存、consistent-hash 路由、DP 同步、长 prefill 调度、SimpleCPU 复制生命周期及原生异步加载的在途预留；391 项测试通过，两个完整主点验证。预留修复使 B200 重算下降 16.9%，但抢占仍为 2,131 次；下一部分修正首次准入命中统计并继续排查分配行为。Mooncake、MTP、原生算子、完整曲线与精度验收继续实施，未将模型误差判为通过。报告见 [基准与口径](agentx-reference-report.md)、[完整模型准备](agentx-full-model-report.md)、[请求图](agentx-request-graph-report.md)、[执行回放](agentx-native-replay-report.md)、[混合 HBM 缓存](agentx-hybrid-cache-report.md)、[路由与 DP 同步](agentx-routing-dp-report.md)、[长 prefill 调度](agentx-prefill-scheduling-report.md)、[SimpleCPU 生命周期](agentx-simple-cpu-report.md)、[在途预留](agentx-prefill-reservation-report.md)。复选框表示对应子任务实现进度。**
+> 状态：**2026-10-01 已完成请求图、Native 回放／取消、GPU 混合缓存、consistent-hash 路由、DP 同步、长 prefill 调度、SimpleCPU 生命周期、在途预留及首次准入来源统计；396 项测试通过，两个完整主点共 21,395 条终态记录证明统计修正不改变执行。B200 首次 GPU/CPU 命中为 23.727%/70.662%，仅修正约 0.2 个百分点，不能解释大误差；仍有 2,131 次抢占。下一部分优先对齐已加载请求的 waiting 恢复及计算块准入。Mooncake、MTP、原生算子、完整曲线与精度验收继续实施。报告见 [基准与口径](agentx-reference-report.md)、[完整模型](agentx-full-model-report.md)、[请求图](agentx-request-graph-report.md)、[回放](agentx-native-replay-report.md)、[HBM 缓存](agentx-hybrid-cache-report.md)、[路由与 DP](agentx-routing-dp-report.md)、[prefill 调度](agentx-prefill-scheduling-report.md)、[SimpleCPU](agentx-simple-cpu-report.md)、[在途预留](agentx-prefill-reservation-report.md)、[首次来源](agentx-first-prefill-source-report.md)。复选框表示对应子任务实现进度。**
 > 对照对象：InferenceX AgentX，完整 DeepSeek-V4-Pro（FP8 + MXFP4），vLLM + MTP；覆盖 B200/B300 多并发曲线及其 TP8、TP4、DEP8 等配置变化。主检查点为单节点 8 GPU DEP8：B200 并发 196、B300 并发 384。
 > 证据分层：历史配置和日志描述参考运行；本地源码决定本轮实现；二者存在版本差异时单列记录。【待核实／待验证】是实现中的技术检查，不是待用户批准；【估算】不是实测；【推断】须保留依据与适用范围。历史研究中的源码行号仅作定位线索，以函数和本轮版本为准。
 
@@ -981,6 +981,7 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 - [ ] **实验脚本任务 4** 将失败、正常完成与到期取消明确区分；失败任务记录错误和已用时间，批次结束汇总未完成点并返回失败状态。断点续跑只复用配置、数据、代码与算子包身份一致且完整成功的结果，部分输出不能算成功。
 - [ ] **实验脚本任务 5** 每次运行保存实际配置、执行参数、代码版本与本地修改标识、数据集校验值、算子包身份、参考运行 ID、开始结束状态及实际耗时。目录按批次／实验 ID／种子区分，避免不同并发、拓扑、后端或种子互相覆盖。
 - [ ] **实验脚本任务 6（日志粒度已确认）** 默认保存逐请求结果、按时间窗口的统计和异常现场；逐步调度／缓存事件通过显式配置开启，记录实际日志级别。流式写入详细日志，避免将整小时事件长期驻留内存；相同配置与种子切换日志级别时，模拟行为和结果必须一致。
+- [x] **结果汇总任务 1.1：原生首次准入来源** GPU/CPU/计算输入保留首次准入快照，重新加载、重算及最后一次命中独立记录；未观察字段不补零。396 项测试及 B200/B300 两个完整窗口验证，21,395 条终态记录的执行字段与基线完全相同；详见首次来源报告。
 - [ ] **结果汇总任务 1** 改造 `scripts/summarize_agentx.py` 与 `scripts/compare_agentx_results.py`，按实验 ID 读取元数据，统一统计 SimpleCPU/Mooncake 的 GPU 命中、CPU 命中和传输量。缺失字段标为缺失并解释，不能默认填 0；正常关闭 offload 的 CPU 命中可明确为 0。
 - [ ] **结果汇总任务 2** 输出 `summary.csv`、逐点参考比较和批次状态，至少包括输入／输出吞吐、每 GPU 吞吐、TTFT/ITL/E2E 分布、请求成功／错误／取消、GPU/CPU 命中、显存／DRAM 占用、传输字节与等待、算子匹配比例和时间分解。有随机因素时保留单次结果及三个种子的均值、范围或标准差。
 - [ ] **曲线任务 1** 绘制并发对吞吐、TTFT、ITL、E2E 和缓存命中率的曲线，以及吞吐与交互性、TTFT 的对比图；模拟与参考叠加，点位注明拓扑、GPU 数和缓存后端。区分「参考配置随并发变化的曲线」与「固定配置的并发扫描」，避免将配置切换的收益误解为并发本身的效果。

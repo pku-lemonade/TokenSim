@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from enum import Enum, auto
 
 from TokenSim.block.block import LogicalTokenBlock, PhysicalTokenBlock
+from TokenSim.errors import SimulationStateError
 
 
 class RequestStatus(Enum):
@@ -193,6 +194,19 @@ class LLMTime(BaseModel):
 g_time = LLMTime()
 
 
+@dataclass(frozen=True)
+class PrefillSourceStats:
+    """Original prompt sources, independent of post-preemption KV recovery."""
+
+    input_tokens: int
+    gpu_hit_tokens: int
+    cpu_hit_tokens: int
+
+    @property
+    def computed_tokens(self):
+        return self.input_tokens - self.gpu_hit_tokens - self.cpu_hit_tokens
+
+
 @dataclass
 class Request:
     id: int
@@ -217,6 +231,10 @@ class Request:
     cached_prefill_tokens: int = 0
     gpu_cached_prefill_tokens: int = 0
     external_cached_prefill_tokens: int = 0
+    first_prefill_source: PrefillSourceStats | None = field(default=None, repr=False)
+    prefill_admission_count: int = 0
+    reloaded_gpu_tokens: int = 0
+    reloaded_cpu_tokens: int = 0
     effective_prefill_tokens: int | None = None
     reuse_hit_blocks: int = 0
     reuse_miss_blocks: int = 0
@@ -364,6 +382,21 @@ class Request:
             max(0, cached_tokens), max(0, self.context_len - 1)
         )
         self.scheduled_tokens = 0
+
+    def record_prefill_admission(self, gpu_tokens, cpu_tokens):
+        if (
+            min(gpu_tokens, cpu_tokens) < 0
+            or gpu_tokens + cpu_tokens > self.prefill_len
+        ):
+            raise SimulationStateError("prompt-source tokens exceed the original input")
+        if self.first_prefill_source is None:
+            self.first_prefill_source = PrefillSourceStats(
+                self.prefill_len, gpu_tokens, cpu_tokens
+            )
+        else:
+            self.reloaded_gpu_tokens += gpu_tokens
+            self.reloaded_cpu_tokens += cpu_tokens
+        self.prefill_admission_count += 1
 
     @property
     def num_physical_token_blocks(self):
