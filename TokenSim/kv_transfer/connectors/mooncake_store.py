@@ -56,6 +56,8 @@ class MooncakeStoreConnector(BaseKVConnector):
         req: Request,
         num_computed_tokens: int,
     ) -> int:
+        if self.service.config.admission_policy == "never":
+            return 0
         keys = self._keys_for_request(req)
         self._request_keys[req.id] = keys
         if not keys:
@@ -144,6 +146,8 @@ class MooncakeStoreConnector(BaseKVConnector):
                 if load_plan.async_transfer:
                     self._pending_async_loads.update(load_plan.request_ids)
             if not can_save:
+                continue
+            if self.service.config.admission_policy == "never":
                 continue
             if self._aligned:
                 # Reference semantics: saves happen only within the prefill
