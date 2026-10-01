@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 
-from scripts.run_agentx_experiments import check, load_matrix, select, summarize
+from scripts.run_agentx_experiments import check, load_matrix, run_point, select, summarize
 
 
 def test_matrix_loads_and_resolves_checkpoint_defaults():
@@ -40,3 +40,12 @@ def test_matrix_selection_and_summary(tmp_path):
     output = tmp_path / "summary.csv"
     assert summarize(tmp_path, output)["rows"] == 1
     assert "output_token_throughput_tps" in output.read_text()
+
+
+def test_successful_point_is_skipped_for_resume(tmp_path):
+    target = tmp_path / "point" / "b200"
+    target.mkdir(parents=True)
+    (target / "run_status.json").write_text(json.dumps({"exit_code": 0}))
+    point = {"id": "point", "hardware": "b200"}
+    result = run_point(point, tmp_path, "simple_cpu")
+    assert result == {"id": "point", "exit_code": 0, "skipped": True}

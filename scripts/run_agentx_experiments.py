@@ -76,6 +76,14 @@ def check(points):
 
 def run_point(point, result_root, backend):
     target = Path(result_root) / point["id"]
+    existing = target / point["hardware"] / "run_status.json"
+    if existing.is_file():
+        try:
+            status = json.loads(existing.read_text())
+            if status.get("exit_code") == 0:
+                return {"id": point["id"], "exit_code": 0, "skipped": True}
+        except (OSError, ValueError):
+            pass
     target.mkdir(parents=True, exist_ok=True)
     command = [
         sys.executable,
@@ -136,7 +144,11 @@ def main(argv=None):
     parser.add_argument("--hardware")
     parser.add_argument("--output", type=Path)
     parser.add_argument("--result-root", type=Path, default=ROOT / "results/agentx-matrix")
-    parser.add_argument("--backend", choices=("simple_cpu", "hbm"), default="simple_cpu")
+    parser.add_argument(
+        "--backend",
+        choices=("simple_cpu", "mooncake", "hbm"),
+        default="simple_cpu",
+    )
     parser.add_argument("--max-parallel", type=int, default=1)
     args = parser.parse_args(argv)
     _, experiments = load_matrix(args.matrix)
