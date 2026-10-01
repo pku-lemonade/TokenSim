@@ -4,7 +4,7 @@
 > 执行顺序：参考数据与完整模型准备 → 请求回放 → GPU 分配与缓存复用 → 调度行为 → 算子耗时校准 → 完整曲线验证。
 > 源码基准：只读参考 `/home/zhuohang/Serving/vllm-note`，本轮记录 HEAD `30f5c01d4ebb`；不下载历史镜像、不修改或切换此目录。本文旧行号和旧 HEAD 下的源码结论需按此版本重新定位；历史运行日志仍作为实验事实保留。
 > 分支：`agentx-support`（基于 `b2b685a`）
-> 状态：**2026-10-02 已完成 MegaMoE/shared expert、native CSA/HCA attention、MTP 2/3 推进与 q=4 target verify、以及 native mHC 的代码和两组完整一小时主点验收。完整阶段吞吐依次为：MegaMoE B200/B300 1,733.192／3,440.686，native attention+MTP 592.617／1,140.733，native mHC+attention+MTP 567.198／1,114.907 token/s。465 项全仓测试通过。CSA/HCA 表为 FlashMLA 借用数据，参考使用 FlashInfer；mHC 与 shared fusion 含 B 级/D 级近似，最终整体精度仍未通过，完整曲线、Mooncake 异步共享页适配、剩余缓存行为和后端敏感性仍待完成。报告见 [原生 MegaMoE](agentx-native-megamoe-report.md)、[原生 attention](agentx-native-attention-report.md)、[原生 mHC](agentx-native-mhc-report.md)。**
+> 状态：**2026-10-02 已完成 MegaMoE/shared expert、native CSA/HCA attention、MTP 2/3 推进与 q=4 target verify、以及 native mHC 的代码和两组完整一小时主点验收。完整阶段吞吐依次为：MegaMoE B200/B300 1,733.192／3,440.686，native attention+MTP 592.617／1,140.733，native mHC+attention+MTP 567.198／1,114.907 token/s。466 项全仓测试通过。CSA/HCA 表为 FlashMLA 借用数据，参考使用 FlashInfer；mHC 与 shared fusion 含 B 级/D 级近似，最终整体精度仍未通过，完整曲线、Mooncake 异步共享页适配、剩余缓存行为和后端敏感性仍待完成。报告见 [原生 MegaMoE](agentx-native-megamoe-report.md)、[原生 attention](agentx-native-attention-report.md)、[原生 mHC](agentx-native-mhc-report.md)。**
 > 对照对象：InferenceX AgentX，完整 DeepSeek-V4-Pro（FP8 + MXFP4），vLLM + MTP；覆盖 B200/B300 多并发曲线及其 TP8、TP4、DEP8 等配置变化。主检查点为单节点 8 GPU DEP8：B200 并发 196、B300 并发 384。
 > 证据分层：历史配置和日志描述参考运行；本地源码决定本轮实现；二者存在版本差异时单列记录。【待核实／待验证】是实现中的技术检查，不是待用户批准；【估算】不是实测；【推断】须保留依据与适用范围。历史研究中的源码行号仅作定位线索，以函数和本轮版本为准。
 
