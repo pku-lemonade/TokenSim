@@ -308,6 +308,7 @@ class LLMWorker(Worker):
             if self.kv_transfer_config.kv_connector not in (
                 "NoopConnector",
                 "SimpleCPUOffloadConnector",
+                "MooncakeStoreConnector",
             ):
                 raise ConfigurationError("unsupported native hybrid cache connector")
         self.connector = KVConnectorFactory.create_connector(
