@@ -147,6 +147,11 @@ def main():
         "point": point,
         "defaults": config["defaults"],
         "backend": args.backend,
+        "backend_semantics": (
+            "mooncake_no_admission_control"
+            if args.backend == "mooncake"
+            else args.backend
+        ),
         "transfer_utilization_assumption": args.transfer_utilization,
         "operator_scope": "native low-rank GEMMs, borrowed MegaMoE incl fused dispatch/combine and explicit shared FP8 cost, measured DSV4 CSA/HCA attention modules, MTP q=4 verify with 2/3 accepted-token progress; mHC selectable",
         "dataset_sha256": hashlib.sha256(
