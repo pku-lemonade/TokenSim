@@ -6,11 +6,11 @@ reference audit and matrix-driven comparison tools are available; see
 [the complete model preparation report](agentx-full-model-report.md), with
 [the native request-graph report](agentx-request-graph-report.md) and
 [the native replay lifecycle report](agentx-native-replay-report.md), alongside
-[the implementation plan](agentx-research-plan.md). The simulation commands
-below describe the earlier proxy workflow and do not satisfy the planned
-full-model, one-hour validation. The comparison script now requires identified
-experiment metadata with the actual GPU count; the earlier `cases` manifest
-cannot be used as a matching full-model result.
+[the implementation plan](agentx-research-plan.md). The native full-model
+stages are reported in [the MegaMoE report](agentx-native-megamoe-report.md),
+[the attention/MTP report](agentx-native-attention-report.md), and [the mHC
+report](agentx-native-mhc-report.md). The older proxy commands below remain
+historical exploration examples and must not be used as final accuracy runs.
 
 TokenSim can replay the SemiAnalysis AgentX coding traces as closed-loop request
 trees. The LLM calls are simulated by TokenSim; no model server or generated
@@ -82,7 +82,31 @@ For an installation smoke test, use the small repository fixture:
   --results_path ./results/agentx-smoke
 ```
 
-## Reproduce The Article Points
+## Reproduce The Native Checkpoints
+
+The current checkpoint matrix validates B200 c196 and B300 c384 with the full
+393-trace pool, a warmup, and a 3,600-second measurement window:
+
+```bash
+python scripts/run_agentx_experiments.py --action check
+python scripts/run_agentx_experiments.py --action list
+python scripts/run_agentx_experiments.py \
+  --action run --group checkpoints \
+  --result-root results/agentx-matrix/native-checkpoints
+```
+
+The resolved configuration can be reviewed before launching a run:
+
+```bash
+python scripts/run_agentx_experiments.py \
+  --action expand --output /tmp/agentx-expanded.json
+```
+
+Use `scripts/run_agentx_native.py` directly when selecting the `simple_cpu`,
+`hbm`, or Mooncake control backend. Mooncake's asynchronous shared-page
+adapter is still incomplete; its no-admission control is diagnostic only.
+
+## Historical Proxy Exploration
 
 The direct comparison runner loads the 393 traces once, then forks four
 copy-on-write simulator processes for the article's B200 concurrency-196 and
