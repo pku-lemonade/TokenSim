@@ -45,7 +45,7 @@ def test_matrix_selection_and_summary(tmp_path):
 
 
 def test_successful_point_is_skipped_for_resume(tmp_path):
-    target = tmp_path / "point" / "b200"
+    target = tmp_path / "seed0" / "point" / "b200"
     target.mkdir(parents=True)
     (target / "run_status.json").write_text(json.dumps({"exit_code": 0}))
     point = {"id": "point", "hardware": "b200"}

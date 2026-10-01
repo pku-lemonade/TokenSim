@@ -74,8 +74,8 @@ def check(points):
     return {"points": len(points), "valid": True}
 
 
-def run_point(point, result_root, backend):
-    target = Path(result_root) / point["id"]
+def run_point(point, result_root, backend, seed=0):
+    target = Path(result_root) / f"seed{seed}" / point["id"]
     existing = target / point["hardware"] / "run_status.json"
     if existing.is_file():
         try:
@@ -94,6 +94,8 @@ def run_point(point, result_root, backend):
         str(target),
         "--backend",
         backend,
+        "--random-seed",
+        str(seed),
     ]
     # run_agentx_native appends the hardware subdirectory below result-root.
     process = subprocess.run(command, cwd=ROOT)
@@ -172,6 +174,11 @@ def main(argv=None):
         default="simple_cpu",
     )
     parser.add_argument("--max-parallel", type=int, default=1)
+    parser.add_argument(
+        "--seeds",
+        default="0",
+        help="Comma-separated simulation seeds; use 0,1,2 for the native random MTP matrix.",
+    )
     args = parser.parse_args(argv)
     _, experiments = load_matrix(args.matrix)
     points = select(experiments, ids=args.ids, group=args.group, hardware=args.hardware)
@@ -187,8 +194,13 @@ def main(argv=None):
         print(target)
     elif args.action == "run":
         check(points)
+        seeds = [int(value.strip()) for value in args.seeds.split(",") if value.strip()]
         with ThreadPoolExecutor(max_workers=max(1, args.max_parallel)) as pool:
-            futures = [pool.submit(run_point, p, args.result_root, args.backend) for p in points]
+            futures = [
+                pool.submit(run_point, p, args.result_root, args.backend, seed)
+                for p in points
+                for seed in seeds
+            ]
             results = [future.result() for future in as_completed(futures)]
         print(json.dumps(sorted(results, key=lambda item: item["id"]), indent=2))
     else:

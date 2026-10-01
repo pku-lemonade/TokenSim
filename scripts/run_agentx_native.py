@@ -14,7 +14,7 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def command(point, defaults, result, connector):
+def command(point, defaults, result, connector, *, random_seed=0):
     return [
         sys.executable,
         str(ROOT / "benchmark.py"),
@@ -52,7 +52,7 @@ def command(point, defaults, result, connector):
         "--prefill_schedule_interval",
         str(defaults["prefill_schedule_interval"]),
         "--random_seed",
-        "0",
+        str(random_seed),
         "--operator_backend",
         "vllm",
         "--moe_backend",
@@ -99,6 +99,7 @@ def main():
     parser.add_argument(
         "--transfer-utilization", type=float, choices=(0.5, 0.75, 1.0), default=0.75
     )
+    parser.add_argument("--random-seed", type=int, default=0)
     args = parser.parse_args()
     config = yaml.safe_load((ROOT / "data/experiments/agentx.yaml").read_text())
     point = next(p for p in config["experiments"] if p["id"] == args.case)
@@ -134,7 +135,9 @@ def main():
         extra["load_async"] = True
         extra["transfer_overlap"] = True
         connector.write_text(json.dumps(mooncake, indent=2) + "\n")
-    argv = command(point, config["defaults"], result, connector)
+    argv = command(
+        point, config["defaults"], result, connector, random_seed=args.random_seed
+    )
     manifest = {
         "point": point,
         "defaults": config["defaults"],
@@ -144,6 +147,7 @@ def main():
             if args.backend == "mooncake"
             else args.backend
         ),
+        "simulation_seed": args.random_seed,
         "transfer_utilization_assumption": args.transfer_utilization,
         "operator_scope": "native low-rank GEMMs, borrowed MegaMoE incl fused dispatch/combine and explicit shared FP8 cost, measured DSV4 CSA/HCA attention modules, MTP q=4 verify with 2/3 accepted-token progress; mHC selectable",
         "dataset_sha256": hashlib.sha256(
