@@ -145,6 +145,7 @@ def summarize(result_root, output, baseline_root=None):
             **{
                 "run": point_dir.name,
                 "hardware": result.parent.name,
+                "concurrency": metrics.get("concurrency"),
                 "output_token_throughput_tps": output_tps,
                 "reference_output_tps": reference_output,
                 "output_tps_error_percent": (
@@ -195,10 +196,51 @@ def summarize(result_root, output, baseline_root=None):
     return {"rows": len(rows), "output": str(output)}
 
 
+def plot_summary(csv_path, output):
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    rows = list(csv.DictReader(Path(csv_path).open()))
+    aggregate = [row for row in rows if row.get("row_type") == "aggregate"]
+    if not aggregate:
+        raise SystemExit("summary has no aggregate seed rows to plot")
+    figure, axes = plt.subplots(1, 2, figsize=(11, 4), constrained_layout=True)
+    for hardware in sorted({row["hardware"] for row in aggregate}):
+        values = sorted(
+            [row for row in aggregate if row["hardware"] == hardware],
+            key=lambda row: int(row["concurrency"] or 0),
+        )
+        x = [int(row["concurrency"]) for row in values]
+        axes[0].plot(
+            x,
+            [float(row["output_token_throughput_tps"]) for row in values],
+            marker="o",
+            label=hardware,
+        )
+        axes[1].plot(
+            x,
+            [float(row["p90_ttft_s"]) for row in values],
+            marker="o",
+            label=hardware,
+        )
+    axes[0].set(xlabel="concurrency", ylabel="output token/s", title="Native throughput")
+    axes[1].set(xlabel="concurrency", ylabel="p90 TTFT (s)", title="Native p90 TTFT")
+    for axis in axes:
+        axis.grid(alpha=0.25)
+        axis.legend()
+    output = Path(output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    figure.savefig(output, dpi=160)
+    plt.close(figure)
+    return {"output": str(output), "rows": len(aggregate)}
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--matrix", type=Path, default=ROOT / "data/experiments/agentx.yaml")
-    parser.add_argument("--action", choices=("list", "check", "expand", "run", "summary"), default="list")
+    parser.add_argument("--action", choices=("list", "check", "expand", "run", "summary", "plot"), default="list")
     parser.add_argument("--id", action="append", dest="ids")
     parser.add_argument("--group")
     parser.add_argument("--hardware")
@@ -244,7 +286,7 @@ def main(argv=None):
             ]
             results = [future.result() for future in as_completed(futures)]
         print(json.dumps(sorted(results, key=lambda item: item["id"]), indent=2))
-    else:
+    elif args.action == "summary":
         print(
             json.dumps(
                 summarize(
@@ -255,6 +297,10 @@ def main(argv=None):
                 indent=2,
             )
         )
+    else:
+        summary_path = args.result_root / "summary.csv"
+        summarize(args.result_root, summary_path, args.baseline_root)
+        print(json.dumps(plot_summary(summary_path, args.output or args.result_root / "summary.png"), indent=2))
 
 
 if __name__ == "__main__":
