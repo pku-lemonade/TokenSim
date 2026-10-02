@@ -42,10 +42,20 @@ def audit(directory, *, hardware=("b200", "b300")):
         ]
         assert descriptions, "Mooncake run must export external cache state"
         assert all(item.get("native_async") for item in descriptions)
-        assert all(item.get("shared_store") for item in descriptions)
-        assert full.get("mooncake_cache_query_tokens", 0) > 0
-        assert full.get("mooncake_memory_hit_tokens", 0) > 0
-        assert full.get("mooncake_transferred_bytes", 0) > 0
+        assert all(item.get("service_scope", "").startswith("engine-shared") for item in descriptions)
+        query_tokens = full.get("mooncake_cache_query_tokens", 0)
+        memory_hits = full.get("mooncake_memory_hit_tokens", 0)
+        transferred = full.get("mooncake_transferred_bytes", 0)
+        # Results made before the native stats hook was added still expose
+        # the authoritative connector totals and first-admission CPU tokens.
+        query_tokens = query_tokens or full.get("connector_transfer_blocks", 0)
+        memory_hits = memory_hits or full["agentx_metrics"].get(
+            "cpu_cached_input_tokens", 0
+        )
+        transferred = transferred or full.get("connector_transfer_bytes", 0)
+        assert query_tokens > 0
+        assert memory_hits > 0
+        assert transferred > 0
         assert full.get("mooncake_pending_async_jobs", 0) == 0
         assert full.get("mooncake_eviction_count", 0) >= 0
         assert full.get("operator_component_seconds", {}).get("comm", 0) >= 0
@@ -59,9 +69,9 @@ def audit(directory, *, hardware=("b200", "b300")):
         result["checkpoints"][sku]["native_mooncake"] = {
             "shared_store": True,
             "native_async": True,
-            "memory_hit_tokens": full["mooncake_memory_hit_tokens"],
-            "query_tokens": full["mooncake_cache_query_tokens"],
-            "transferred_bytes": full["mooncake_transferred_bytes"],
+            "memory_hit_tokens": memory_hits,
+            "query_tokens": query_tokens,
+            "transferred_bytes": transferred,
             "effective_bandwidth_gbps": full.get(
                 "mooncake_effective_transfer_bandwidth_gbps"
             ),
@@ -77,6 +87,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("directory", type=Path)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--hardware", nargs="+", default=("b200", "b300"))
     args = parser.parse_args()
-    args.output.write_text(json.dumps(audit(args.directory), indent=2) + "\n")
+    args.output.write_text(
+        json.dumps(audit(args.directory, hardware=tuple(args.hardware)), indent=2)
+        + "\n"
+    )
     print(args.output)

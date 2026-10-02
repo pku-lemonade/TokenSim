@@ -192,7 +192,21 @@ class NativeMooncakeStoreConnector(SimpleCPUOffloadConnector):
     def probe(self, req, local_plan):
         if self.store_config.admission_policy == "never":
             return local_plan.hit_tokens, ()
-        return super().probe(req, local_plan)
+        boundary, hits = super().probe(req, local_plan)
+        self.mooncake_stats.get_count += 1
+        self.mooncake_stats.cache_query_tokens += max(
+            0, req.prefill_len - local_plan.hit_tokens
+        )
+        self.mooncake_stats.local_gpu_hit_tokens += local_plan.hit_tokens
+        if hits:
+            self.mooncake_stats.store_hit_count += 1
+            self.mooncake_stats.memory_tier_hit_count += 1
+            self.mooncake_stats.mooncake_memory_hit_tokens += max(
+                0, boundary - local_plan.hit_tokens
+            )
+        else:
+            self.mooncake_stats.store_miss_count += 1
+        return boundary, hits
 
     def _queue_write(self, group, index, block, req):
         if self.store_config.admission_policy == "always":
@@ -200,10 +214,6 @@ class NativeMooncakeStoreConnector(SimpleCPUOffloadConnector):
 
     def begin_load(self, req, boundary, hits):
         super().begin_load(req, boundary, hits)
-        self.mooncake_stats.get_count += 1
-        self.mooncake_stats.store_hit_count += 1
-        self.mooncake_stats.memory_tier_hit_count += 1
-        self.mooncake_stats.mooncake_memory_hit_tokens += boundary - req.gpu_cached_prefill_tokens
 
     def _record_transfer(self, **values):
         super()._record_transfer(**values)
@@ -214,6 +224,9 @@ class NativeMooncakeStoreConnector(SimpleCPUOffloadConnector):
             bytes_=values["bytes_"], latency=values["latency"],
             kind=f"store_{kind}", blocking_latency=values.get("blocking_latency", 0.0),
         )
+
+    def _transfer_bytes(self, pages):
+        return sum(page.bytes for page in pages)
 
     def reset_cache(self):
         if any(c.loads or c.write_jobs or c.pending_writes for c in self.service.connectors):
