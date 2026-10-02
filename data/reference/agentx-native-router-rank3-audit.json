@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "scope": "native B200 c196 rank3 routing/capacity diagnostic",
+  "source": "results/agentx-dsv4-full/native-checkpoints-final/seed0/b200-c196-dep8-simplecpu/b200",
+  "router": {
+    "policy": "consistent_hash",
+    "reference_version": "0.1.14",
+    "hash": "FurcHash plus MurmurHash64A",
+    "virtual_nodes_per_worker": 160,
+    "backend_url": "http://localhost:8889",
+    "requests_per_rank": {
+      "6": 518,
+      "7": 365,
+      "0": 353,
+      "1": 407,
+      "5": 439,
+      "4": 219,
+      "3": 358,
+      "2": 382
+    },
+    "new_sessions_per_rank": {
+      "6": 80,
+      "7": 81,
+      "0": 61,
+      "1": 50,
+      "4": 56,
+      "2": 57,
+      "5": 67,
+      "3": 71
+    },
+    "affinity_sessions_retained": 1021
+  },
+  "request_count_min": 219,
+  "request_count_max": 518,
+  "request_count_mean": 380.125,
+  "rank3": {
+    "requests": 358,
+    "new_sessions": 71,
+    "scheduler_counts": {
+      "steps": 5913,
+      "deferred_running_prefills": 3035,
+      "deferred_waiting_prefills": 367,
+      "capacity_bound_steps": 4066,
+      "scheduled_context_tokens": 3383232,
+      "scheduled_decode_tokens": 269206,
+      "scheduled_decode_query_tokens": 450222,
+      "max_num_seqs_gate": 0,
+      "full_input_gate": 3958,
+      "async_load_reservation_gate": 621,
+      "max_inflight_prefill_reserved_slots": 17155,
+      "loaded_kv_capacity_gate": 108,
+      "loaded_kv_resumptions": 242,
+      "async_load_admissions": 242
+    },
+    "local_compute_seconds": 2793.9043322045663,
+    "synchronization_wait_seconds": 836.3266093099745,
+    "cpu_transfer_gb": 70.50933837890625
+  },
+  "max_request_rank": "6",
+  "max_wait_rank": "6",
+  "max_compute_rank": "0",
+  "conclusion": "Native final router does not reproduce the historical rank3 overload: rank3 is below the request and compute maxima; rank6 has the most requests and synchronization wait. The historical server-log rank3 observation is a different reference run and cannot be causally attributed to this native closed-loop sample."
+}
