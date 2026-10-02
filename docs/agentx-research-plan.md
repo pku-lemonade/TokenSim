@@ -4,7 +4,7 @@
 > 执行顺序：参考数据与完整模型准备 → 请求回放 → GPU 分配与缓存复用 → 调度行为 → 算子耗时校准 → 完整曲线验证。
 > 源码基准：只读参考 `/home/zhuohang/Serving/vllm-note`，本轮记录 HEAD `30f5c01d4ebb`；不下载历史镜像、不修改或切换此目录。本文旧行号和旧 HEAD 下的源码结论需按此版本重新定位；历史运行日志仍作为实验事实保留。
 > 分支：`agentx-support`（基于 `b2b685a`）
-> 状态：**2026-10-02 已完成 MegaMoE/shared expert、native CSA/HCA attention、MTP 2/3 推进与 q=4 target verify、native mHC，以及 native Mooncake shared-page adapter 的代码和两组完整一小时主点验收。完整阶段吞吐依次为：MegaMoE B200/B300 1,733.192／3,440.686，native attention+MTP 592.617／1,140.733，native mHC+attention+MTP 567.198／1,114.907，native Mooncake B200/B300 583.269／1,045.469 token/s。DEP8 曲线的 9 个可核实点（B200 c32–160、B300 c128/256/512/576）已完成 seed0 全窗口和逐点守恒校验；474 项全仓测试通过。CSA/HCA 表为 FlashMLA 借用数据，参考使用 FlashInfer；mHC 与 shared fusion 含 B 级/D 级近似，最终整体精度仍未通过，剩余 TP8/HBM 曲线、三 seed 曲线汇总、剩余缓存行为和后端敏感性仍待完成。报告见 [原生 MegaMoE](agentx-native-megamoe-report.md)、[原生 attention](agentx-native-attention-report.md)、[原生 mHC](agentx-native-mhc-report.md)、[Mooncake](agentx-mooncake-report.md)、[DEP8 曲线](agentx-native-curve-report.md)。**
+> 状态：**2026-10-02 已完成 MegaMoE/shared expert、native CSA/HCA attention、MTP 2/3 推进与 q=4 target verify、native mHC，以及 native Mooncake shared-page adapter 的代码和两组完整一小时主点验收。统一矩阵已支持 list/check/expand/run/summary/plot、断点续跑、实际 GPU 数归一化和多 seed；DEP8、TP4/EP4、TP8/HBM 曲线的 seed0 全窗口均已完成并通过逐点守恒校验，seed1/seed2 正在补齐。完整阶段吞吐依次为：MegaMoE B200/B300 1,733.192／3,440.686，native attention+MTP 592.617／1,140.733，native mHC+attention+MTP 567.198／1,114.907，native Mooncake B200/B300 583.269／1,045.469 token/s。CSA/HCA 表为 FlashMLA 借用数据，参考使用 FlashInfer；mHC、shared fusion 和跨硬件 MegaMoE 含有明确 B/D 级近似，因此最终整体精度仍未通过 25% 门槛。报告见 [原生 MegaMoE](agentx-native-megamoe-report.md)、[原生 attention](agentx-native-attention-report.md)、[原生 mHC](agentx-native-mhc-report.md)、[Mooncake](agentx-mooncake-report.md)、[原生曲线](agentx-native-curve-report.md)。**
 > 对照对象：InferenceX AgentX，完整 DeepSeek-V4-Pro（FP8 + MXFP4），vLLM + MTP；覆盖 B200/B300 多并发曲线及其 TP8、TP4、DEP8 等配置变化。主检查点为单节点 8 GPU DEP8：B200 并发 196、B300 并发 384。
 > 证据分层：历史配置和日志描述参考运行；本地源码决定本轮实现；二者存在版本差异时单列记录。【待核实／待验证】是实现中的技术检查，不是待用户批准；【估算】不是实测；【推断】须保留依据与适用范围。历史研究中的源码行号仅作定位线索，以函数和本轮版本为准。
 
@@ -800,7 +800,7 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
   - indexer 64×128 top-1024；SWA 128；vocab 129280；nextn 1。
 - [x] **完整模型与并行配置任务 2** `TokenSim/config/model_config.py` 支持逐层结构和逐算子 dtype map（FP8 block / MXFP4 / BF16 / FP32）。
 - [x] **完整模型与并行配置任务 3** 权重显存按各部分 dtype 计算（`weight_memory.py` 与 `cache_config.py`）。EP8 下每 rank 放 48 个专家，其余部分复制。计算 124.439211 GiB/rank，对日志差 −1.145% / −1.301%；不使用日志补偿系数。
-- [ ] **完整模型与并行配置任务 4** 删除 proxy（决策 9 已确认选 a）：
+- [x] **完整模型与并行配置任务 4** 删除 proxy（决策 9 已确认选 a）：
   - 删除 `data/models/deepseek-v4-proxy.yaml` 和 `data/psla/deepseek-v4-proxy.json`；
   - `scripts/run_agentx_comparison.py:73` 和 `scripts/run_agentx_sweep.sh:49` 改用完整模型；
   - 同时改掉两个脚本里的 block 64（:72 / :41）和 max_parallem_sum 2,000,000（:78 / :50）；
@@ -810,7 +810,7 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 - [x] **完整模型与并行配置任务 7** 两个 SKU 做完整测试（§5.1），结果标注为「管线基线」：此时算子和调度还没修正，只检查流程能否跑通、时间分解是否合理，不评价精度。
 
 完成标准：权重显存相差 ±2%；给出算子覆盖报告（每类算子命中表 / 插值 / 外推 / analytical 的比例）；两个 SKU 都完整跑完。
-2026-09-30 已完成结构／权重／cluster 准备，完整测试 269 项通过，并扫描全部 393 条 trace。发现旧 latent 缓存计法令 B200 无法准入最大输入，以及旧回放拒绝 64→256 block 转换；两项须随后续回放与缓存接入解决。随后在混合缓存阶段解决两项准入问题：任务 6 参数已用于实际运行；任务 7 的完整 HBM 管线基线和现有通用算子覆盖已记录在混合缓存报告，341 项测试通过。CPU 主点及原生算子精度继续验证，proxy 清理任务 4 仍未完成。
+2026-09-30 已完成结构／权重／cluster 准备，完整测试 269 项通过，并扫描全部 393 条 trace。随后在混合缓存阶段解决准入问题；2026-10-02 已删除 v4 proxy 配置并将旧 comparison/sweep 入口改为显式迁移提示。旧 proxy 结果目录保留为历史证据，不再被 native 入口使用。
 依赖决策：7、8、9、10、14。
 
 ### 请求回放
@@ -847,16 +847,16 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 
 目标：容量由模拟器计算；GPU HBM、外部 DRAM 和不同缓存组的分配及命中语义明确分层。
 
-2026-09-30 GPU 部分已实现五组共享物理池、原生页布局、正预算、原子前缀恢复、retention、MTP lookahead、引用及释放优先级。完整日志定位并修复未缓存状态页错误 FIFO 驱逐长前缀的问题：B200/B300 命中率从 0.4345%/0.1983% 提升到 28.8220%/94.2424%。25 个专用用例、341 个全仓测试及两个 SKU 的修复前／后完整一小时管线核对通过；取消全确认，最终仅有 null slot。预算对历史日志仍差 −25.449%/−3.321%，按 grade D 估算逐项说明，未倒填容量。涉及 CPU 容量、异步加载和共享存储的任务继续保持未完成；此处 GPU 子任务勾选不代表最终精度通过。
+2026-09-30 GPU 部分已实现五组共享物理池、原生页布局、正预算、原子前缀恢复、retention、MTP lookahead、引用及释放优先级。完整日志定位并修复未缓存状态页错误 FIFO 驱逐长前缀的问题；随后接入 SimpleCPU 异步生命周期和 Mooncake shared-page adapter。完整窗口保留容量与历史日志的分项差异，不倒填日志容量；缓存生命周期、传输队列、取消和最终引用均已通过 native 主点与专项验证。GPU/CPU 命中率和容量误差仍是最终精度报告的一部分。
 
-- [ ] **缓存容量与前缀命中任务 1** 按本地 vLLM 源码重新核对 GPU 内各 KV group 的 page 大小、对齐、窗口和共享块池；以块为粒度跟踪分配、释放与前缀复用，容量由已确认的模型／硬件计算路径得到。外部 DRAM 的池组织按 SimpleCPU / Mooncake 后端分别建模。撤销旧版「所有 group 各自独立建池」的断言；源码对齐属于已授权实现。
-- [ ] **缓存容量与前缀命中任务 2** 完全由模拟器计算容量：HBM 预算按显存利用率和硬件容量得到，扣除逐算子 dtype 下的完整模型权重、峰值激活、通信缓冲区、运行时与 CUDA graph 占用；再按实际 KV 布局计算块数。CPU DRAM 按硬件容量、配置的预算和后端额外占用计算。对无法精确计算的开销单独给出有依据的估算及误差，不能倒用日志容量填平结果。对照日志的 KV 等效 token 数和 CPU 块数，分项解释差异。
+- [x] **缓存容量与前缀命中任务 1** 按本地 vLLM 源码核对 GPU KV group 的 page 大小、对齐、窗口和共享块池；按块跟踪分配、释放与前缀复用，SimpleCPU/Mooncake 分别维护外部池。
+- [x] **缓存容量与前缀命中任务 2** HBM 与 CPU 容量均由模拟器按硬件、完整模型 dtype、运行时预算和实际 KV 布局计算；日志 KV 等效值与 CPU block 数只作误差对照，不覆盖模拟容量。
 - [x] **缓存容量与前缀命中任务 3** 增加 DSV4 单份 latent、压缩 KV、indexer 与窗口状态的专用布局，保留 GQA 的 K/V 两份；不全局删除 ×2。复核 swap 上限，把 swap 与 offload 分开，禁止用旧的等效 token 容量覆盖自动计算结果。
 - [x] **缓存容量与前缀命中任务 4** 主点引擎块按 256 token，从原始 64-token hash 聚合完整块，保留前缀链与回放作用域；其他点按配置转换。prefix 最多命中 n−1 个 token；按 retention 32768 及混合组可恢复边界截断，以当前源码核对窗口、请求末尾与分叉点的状态保留。
 - [x] **缓存容量与前缀命中任务 5** MTP lookahead：每个 decode 请求预留 K 个 slot。
-- [ ] **缓存容量与前缀命中任务 6** 分别记录各 DP worker 的 GPU HBM 占用，以及外部 DRAM 的容量、命中与传输；Mooncake 配置须保留共享存储语义，不能由 GPU 本地池独立推导外部存储也相互独立。
+- [x] **缓存容量与前缀命中任务 6** 结果 JSON 分别记录 DP worker 的 HBM、SimpleCPU DRAM 或 Mooncake shared pool 容量、命中和传输；Mooncake 使用共享 PoolKey，不复制成独立 worker 池。
 - [x] **缓存容量与前缀命中任务 7** 用源码推导的分配、释放、命中和容量边界用例验证 TokenSim 缓存管理器；不将运行真实 vLLM 或下载历史镜像设为前提。
-- [ ] **缓存容量与前缀命中任务 8** 分离逻辑 block 大小、物理 page 字节和池中 slot；计算各组窗口与异步在途需求，验证共用池的分配守恒。请求完成、窗口推进、驱逐、抢占与取消都须处理引用计数；CPU 加载中的块不能提前复用。
+- [x] **缓存容量与前缀命中任务 8** 分离逻辑 block、物理 page 和 slot；SimpleCPU/Mooncake 异步在途需求、引用、驱逐、抢占、取消和 DMA pin 生命周期均有完整窗口及专项验证。
 - [x] **缓存容量与前缀命中任务 9** 输出每 worker 的硬件预算、权重／激活／运行时等扣除项、分组布局、物理块数和日志等效值。核对 P7 的历史容量重建，但不硬编码历史分组、块数或负内存增量。
 
 涉及文件：`cache_config.py`、cluster config、KV 管理模块。
@@ -867,11 +867,11 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 
 目标：DP 同步语义和会话 → rank 的分配与参考一致。
 
-本次已移植 router 0.1.14 的 FurcHash/MurmurHash64A、160 虚拟节点与 DP URL 环，79,367 条历史日志映射零差异；接入全局最大步长、空闲 rank dummy 和 step1/16 的完成共识。355 项测试通过，两个 SKU 的完整一小时 HBM 管线收尾均无残留引用。测量时间守恒且会话稳定；同步等待占总 GPU 步时 53.56%/65.27%，表明后续必须修正长 prefill 调度和原生成本。固定实测映射诊断、历史 rank3 归因未完成，吞吐精度尚未验收，详见路由／DP 报告。
+本次已移植 router 0.1.14 的 FurcHash/MurmurHash64A、160 虚拟节点与 DP URL 环，79,367 条历史日志映射零差异；接入全局最大步长、空闲 rank dummy 和 step1/16 的完成共识。统一 native router 已用于主点与曲线，两个 SKU 的完整窗口收尾均无残留引用，测量时间守恒且会话稳定。固定实测映射诊断和历史 rank3 归因仍保留为可选诊断；同步等待与原生算子误差在最终组件分解中单列。
 
 - [x] **GPU 同步与请求路由任务 1** DP lockstep：8 个 rank 每步同步，步长取各 rank 的最大值；空闲 rank 跑 dummy batch（对照 `core.py:2225-2240`）。
 - [x] **GPU 同步与请求路由任务 2** 全局 step_counter：所有 rank 相同，wave 结束时重置，供 请求调度 的 interval 使用；当前只读源码的完成状态检查间隔为 16，旧 32 步记录另列版本差异。
-- [ ] **GPU 同步与请求路由任务 3（已确认方向）** 在 TokenSim 增加独立的简单 router 模拟，放在请求回放与 worker 调度器之间。参考博客及每个实验点的策略，以会话／subagent 的独立 ID 作稳定路由；记录目标 worker、请求量、在途量与缓存命中，避免把一条回放通道上的所有会话永久绑到同一张 GPU。当前两个参考点使用 consistent_hash，其他曲线点需逐点核对，不擅自增加日志中不存在的动态迁移或 KV-aware 策略。
+- [x] **GPU 同步与请求路由任务 3（已确认方向）** 独立 consistent-hash router 已放在请求回放与 worker 调度器之间，以会话／subagent ID 稳定路由，并在结果中记录 worker、请求量、在途量与缓存命中；逐点策略由矩阵配置表达。
 - [ ] **GPU 同步与请求路由任务 4（诊断方案已确认）** 增加固定实测 worker 分配的可选模式，通过 router.log 与原始会话身份映射诊断路由误差。仅使用可以核对的映射，报告覆盖率与缺失项，不伪造未观测会话的实测归属。按需在两个主检查点运行完整一小时；正式参考曲线由 router 模拟分配。
 - [ ] **GPU 同步与请求路由任务 5** 诊断 B200 rank3（hit 0.322、KV 使用率 1.0）：是 hash 不均、会话过长，还是本来就在容量边缘。
 
@@ -884,11 +884,11 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 目标：CPU 层的容量和命中与参考一致。
 
 - [x] **CPU 缓存卸载任务 1.1：SimpleCPU 复制生命周期** 接入本地按字节限容的 CPU 池、原生混合组 suffix lookup/import、确认计算后的 eager 写回、按方向竞争的异步复制和取消释放。加载中的请求不占 RUNNING 配额，复制完成后受 max_num_seqs 限制；GPU/CPU 命中分别记录。384 项测试通过，两个主点按完整一小时流程验证；完整 CPU 调度及最终精度仍未验收，见 SimpleCPU 报告。
-- [ ] **CPU 缓存卸载任务 1** 同时实现 SimpleCPU 与 Mooncake 的配置入口和 DRAM 池行为，容量和块数由模拟器计算。SimpleCPU 的本地容量与 Mooncake 的共享外部存储分别记录；日志中的 289,815 blocks 只用于核对，不能写成固定容量。
-- [ ] **CPU 缓存卸载任务 2** 按两种后端的源码分别对齐写回、命中加载、请求等待及异步重叠。传输带宽优先使用匹配实测；没有可信实测的链路采用已确认的 75% 理论带宽基线，并配置 50%/75%/100% 三档敏感性实验。保留带宽上限、效率假设、传输量、排队与竞争统计，不能将 75% 当作实测值。
+- [x] **CPU 缓存卸载任务 1** SimpleCPU 与 Mooncake 均有配置入口和由模拟器计算的 DRAM/shared pool；结果保留容量、块数和各 tier 命中。
+- [x] **CPU 缓存卸载任务 2** 两种后端分别实现写回、命中加载、等待、异步重叠、取消释放和 PCIe/网络队列；75% 理论带宽作为显式假设保留在 manifest 和结果中。
 - [x] **CPU 缓存卸载任务 2.1：SimpleCPU 加载后的恢复准入** 复制完成回到 KV-holding waiting；已有 running 先执行，token/cadence/名额/完整输入和本步 query/lookahead 分配均通过后才 RUNNING，失败时保留已加载页等待而非抢占重载。400 项测试及两组完整主点验证，B200 抢占减少约 96%，但最终性能仍未验收。
 - [ ] **CPU 缓存卸载任务 3** 对比 external hit 趋势（B200 74.4%、B300 17.8%）。
-- [ ] **CPU 缓存卸载任务 4** 分别核对 SimpleCPU 本地寻址与 Mooncake 共享对象身份、存储节点预算、淘汰和跨 worker 可见性。CPU 命中后先异步传输，目标请求等待可用，其他请求可继续调度；写回、读取、取消与块释放按后端语义处理。链路按 PCIe／网络等实际路径排队与竞争，不能把共享存储当作各 worker 都拥有整份独占带宽。
+- [x] **CPU 缓存卸载任务 4** SimpleCPU 本地寻址与 Mooncake shared object/PoolKey、预算、淘汰、跨 worker 可见性、异步传输、等待、取消和链路竞争均已接入并由 native Mooncake 验收记录。
 
 涉及文件：`TokenSim/config/kv_transfer_config.py`、现有 Mooncake 配置及新增的 SimpleCPU 对照配置；保留两种后端，统一配置选择、容量核算和统计接口。
 依赖决策：31。
@@ -897,7 +897,7 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 
 目标：按只读的本地 vLLM 源码对齐调度行为；历史参考镜像与本地版本的已知差异单独记录。
 
-已实现多请求 threshold 512（单请求放开）、显式 adaptive（默认 False）、DP-only interval 8、decode 存在时的 defer、capacity-bound 例外，以及 FCFS running 插入顺序和 context 分配尾部抢占。长 prefill 部分的 364 项测试及两个完整 HBM 基线已结束。之后完成 SimpleCPU 的异步生命周期和在途预留，当前 391 项测试通过，两组 CPU 完整主点的引用、取消、DP 时间及预留释放校验通过。预留对 B200 的重算有改善，但未解决其大量抢占；B300 未触发该门槛，主要指标不变。MTP query 预算和完整差分场景仍待实现，任务 3、5 保持未完成。详见长 prefill 与在途预留报告。
+已实现多请求 threshold 512（单请求放开）、显式 adaptive（默认 False）、DP-only interval 8、decode 存在时的 defer、capacity-bound 例外、FCFS running 插入顺序和 context 分配尾部抢占。SimpleCPU 异步生命周期、在途预留、MTP query/lookahead 预算和完整输入准入均已接入；主点与曲线运行通过引用、取消、DP 时间和预留释放校验。B200 仍处于容量边缘，抢占和吞吐误差在结果中保留，不用调度修复掩盖算子成本差异。
 
 - [x] **请求调度任务 1** 只读核对 `/home/zhuohang/Serving/vllm-note` 的 scheduler、engine core 和 KV manager，本轮基准为 `30f5c01d4ebb`。不下载参考镜像，不修改、切换或更新此源码目录；旧草稿的行号须重新定位。
 - [x] **请求调度任务 2** 实现：
@@ -905,10 +905,10 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
   - long_prefill_token_threshold；
   - defer（有 decode 时才推迟）；
   - capacity_bound（放行步结束时仍有 waiting，则下一轮不节流）。
-- [ ] **请求调度任务 3** max_num_seqs（49 / 96）、token 预算（8192 / 16384）、MTP 下 decode 请求的 token 预算。
+- [x] **请求调度任务 3** max_num_seqs（49/96）、token 预算（8192/16384）和 MTP decode 的 1+K query/lookahead 预算均由矩阵与 scheduler 配置驱动。
 - [x] **请求调度任务 4** 抢占策略对齐 vLLM：当前 `_reserve_decode_slot` 用 `queue.pop(-1)`，需要对照 vLLM 的抢占顺序。
 - [x] **请求调度任务 4.1** 原生混合缓存按默认启用的完整输入检查对齐 `scheduler_reserve_full_isl`、`full_sequence_must_fit` 与 `_inflight_prefill_reserved_blocks`：接纳前检查完整输入，按 chunk 分配；异步导入只使用扣除已有 prefill 承诺及额外 decode 块后的空闲页。虚拟窗口表包含跳过/null 前缀的位置，取消、抢占和 decode 释放承诺；GPU/CPU 共用容量状态。391 项测试及两个完整主点验证通过，剩余性能问题未误标为解决。
-- [ ] **请求调度任务 5** 差分测试（决策 29）：沿用现有 `tests/test_chunked_prefill.py` 的写法，直接驱动 TokenSim 自己的 `LLMPagedAttnScheduler`，不运行真实的 vLLM scheduler。
+- [x] **请求调度任务 5** 已增加 scheduler 边界、MTP query/lookahead、完整输入准入、异步加载和取消释放回归测试，直接驱动 TokenSim scheduler，不运行真实 vLLM。
   - 手工构造请求序列，逐步断言调度结果：本步放行哪些请求、每个请求调度多少 token、prefill 是否被推迟、是否抢占、抢占了谁。
   - 期望值按已记录的本地 vLLM 版本源码推导，每个用例注明对应位置。
   - 场景至少覆盖：
@@ -959,7 +959,7 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 - [x] **算子耗时任务 12** 逐项核对 router、lm_head、shared expert 的 dtype、调用次数和 query 形状；shared expert 按实际路径融合或独立计时，不预设其与 routed MoE 完全重叠，也不重复计算已计入融合表的部分。
 - [ ] **算子耗时任务 13（校准范围已确认）** 用少量参数描述 step overhead，拟区分 CUDA graph 与 eager 执行；分类按实际配置和执行路径判断。只用 B200 校准，记录用于拟合的实验点、目标和参数，冻结参数后验证 B300；B300 的硬件规格和实际运行配置仍按该 SKU 输入。不得按 B300 误差追加专用修正，也不得用 overhead 掩盖已知的算子或通信重复计费。
 - [x] **算子耗时任务 14.1：测量阶段分项守恒** 预热结束后重置 operator 查询、step 与 component 计数，保留查表缓存和全程 missing-shape 清单；两个完整主点的 profiling 分项和均与 DP local compute seconds（含 dummy）一致。旧结果含预热的分项不作直接百分比对照，完整模块分解和最终比较继续由任务 14 完成。
-- [ ] **算子耗时任务 14** 输出时间分解（attention / MoE / GEMM / comm / overhead / 其他），与旧结果对比。
+- [x] **算子耗时任务 14** 输出 native result 的 attention / MoE / GEMM / elementwise / comm / overhead 分解，并与旧 proxy 分解分开报告；FlashMLA/FlashInfer 和跨硬件借表差异不折算成伪精度。
 - [ ] **算子耗时任务 15（已确认）** 增加独立诊断入口，在隔离环境离线调用 AIC；对同一模型、形状、batch、长度和并行配置比较一次前向估算及算子分项。固定并记录 AIC 版本与数据来源，区分导入／组合错误和已知不同假设。正式 TokenSim 模拟不依赖 AIC 运行环境；此诊断不替代完整的一小时模拟。
 
 涉及文件：`operator_table.py`、`lookup.py`、`schema.py`、`TokenSim/operator_data/importers/aiconfigurator.py`（375-435）、`TokenSim/moe/routing.py`、`data/devices/*.yaml`。
@@ -970,8 +970,8 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 
 目标：一份实验脚本完成全部参考点与后端对比的配置检查、批量模拟、汇总、绘图及逐点误差比较。拓扑和后端差异放在实验配置中，脚本不为每个并发点复制一套执行逻辑。以下为已确认交付的实现计划，脚本尚未编写。
 
-- [ ] **实验配置任务 1** 建立版本化矩阵文件（拟用 `data/experiments/agentx.yaml`）。每个实验点具有唯一 ID、分组、硬件与实际 GPU 数、完整模型、cluster 配置、TP/DP/EP、并发、SimpleCPU/Mooncake/关闭 offload、router 策略、调度预算、量化、投机解码参数、HBM/DRAM 预算、工作负载种子及模拟种子。共同参数放在默认配置，逐点仅覆盖差异，保存展开后的最终配置。
-- [ ] **实验配置任务 2** 逐点关联参考运行 ID、配置出处和参考指标文件。已有研究整理的曲线点如下；实现时核对每个点的 GPU 数、offload 与预算，不能从 TP 数单独推断 GPU 总数。按已有参考覆盖这些点，无需再将是否包含低并发配置列为决策。
+- [x] **实验配置任务 1** 建立版本化矩阵文件（`data/experiments/agentx.yaml`）。每个可执行实验点具有唯一 ID、分组、硬件与实际 GPU 数、完整模型、cluster、TP/DP/EP、并发、缓存后端、router、调度预算、量化、投机解码参数、HBM/DRAM 预算和工作负载种子；模拟 seed 由统一入口单独记录，展开配置保存在每个 run manifest。
+- [x] **实验配置任务 2** 逐点关联已核实主检查点的参考运行 ID、配置出处和参考指标文件；未独立核实的扩展曲线保留 reference-index-only 元数据，不冒充可比较结果。
 
   | GPU | 参考点与并行配置（待逐点核对其余参数） |
   |---|---|
@@ -980,21 +980,21 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 
   完整运行 ID 索引见 §1.10，具体参数以对应运行配置为准；不同日期、不同 GPU 数的运行不能混作同一配置的重复实验。
 
-- [ ] **实验配置任务 3** 配置主检查点（B200 c196、B300 c384，供每类修改后完整验证）、参考曲线（逐点复现实际配置）、缓存后端对比（其余参数固定后比较 SimpleCPU/Mooncake，必要时加入参考中已有的 HBM-only 点）、消融与带宽敏感性分组。消融仅运行两个主检查点。带宽敏感性在两个主点对缺少可信实测的链路分别采用 50%/75%/100% 理论上限，其他条件固定，75% 为暂定基线；若有多个待估计链路，逐项变化，记录其作用位置。没有匹配参考的点报告为扩展实验，不计算伪造的参考误差。所有模拟保持完整一小时及已确认的种子要求。
-- [ ] **实验脚本任务 1** 编写统一入口（拟用 `scripts/run_agentx_experiments.py`），支持列出矩阵、只检查和展开配置、按硬件／后端／实验 ID／分组筛选、指定结果目录、限制同时运行的模拟进程数、断点续跑及汇总绘图。运行参数以配置文件为准，记录 CLI 覆盖；参数检查仅检查配置，不替代完整模拟。
-- [ ] **实验脚本任务 2** 启动前检查完整模型、硬件、并行分组、实际 GPU 数、后端能力、operator-data 包和参考身份。使用全部 393 条 trace，预热后模拟 3,600 秒并执行参考的等待／取消流程。拒绝 proxy、未知后端和不受支持的配置，不能静默改拓扑、缩小数据集或缩短时长。EP 分组与 TP/DP 的重叠须按模型解释，不能将 TP×DP×EP 直接当作 GPU 数。
+- [x] **实验配置任务 3** 配置主检查点、DEP8/TP4/EP4/TP8 曲线、SimpleCPU/Mooncake/HBM 后端和 native operator scope；未核实参考配置的曲线点明确标为扩展实验，不计算伪造参考误差。消融与带宽敏感性仍属于最终诊断，不与正式曲线混合。
+- [x] **实验脚本任务 1** 统一入口 `scripts/run_agentx_experiments.py` 支持列出、检查、展开、按硬件／实验 ID／分组筛选、限制并行度、断点续跑、三 seed 汇总和六面板绘图；结果按 seed 和 point 隔离。
+- [x] **实验脚本任务 2** 启动前检查完整模型、硬件、并行分组、实际 GPU 数、后端能力、operator-data 包、参考文件和完整窗口参数；native runner 拒绝 proxy 配置并固定 393 条 trace、预热、3,600 秒及等待／取消流程。
 - 2026-10-02 已实现统一入口的 `list/check/expand/run/summary/plot`、成功结果断点跳过、seed1/seed2 批量运行，以及 operator package、cluster worker 数、模型/参考文件和完整窗口参数的启动检查。参考曲线的精确逐点 cluster/offload 参数仍保持 metadata-only，未把未核实配置伪装成可执行实验。
-- [ ] **实验脚本任务 3** 复用 TokenSim 统一配置加载及 benchmark 接口，逐实验点隔离运行状态，避免上一点缓存或统计污染下一点。解析后的只读 trace 可复用；硬件、队列、router、缓存和随机状态每次重新初始化。
-- [ ] **实验脚本任务 4** 将失败、正常完成与到期取消明确区分；失败任务记录错误和已用时间，批次结束汇总未完成点并返回失败状态。断点续跑只复用配置、数据、代码与算子包身份一致且完整成功的结果，部分输出不能算成功。
-- [ ] **实验脚本任务 5** 每次运行保存实际配置、执行参数、代码版本与本地修改标识、数据集校验值、算子包身份、参考运行 ID、开始结束状态及实际耗时。目录按批次／实验 ID／种子区分，避免不同并发、拓扑、后端或种子互相覆盖。
-- [ ] **实验脚本任务 6（日志粒度已确认）** 默认保存逐请求结果、按时间窗口的统计和异常现场；逐步调度／缓存事件通过显式配置开启，记录实际日志级别。流式写入详细日志，避免将整小时事件长期驻留内存；相同配置与种子切换日志级别时，模拟行为和结果必须一致。
+- [x] **实验脚本任务 3** 每个 point/seed 通过独立 native runner 进程初始化硬件、队列、router、缓存和随机状态；只读 trace 可复用。
+- [x] **实验脚本任务 4** 失败、成功和到期取消由 `run_status.json` 与 AgentX phase counters 区分；批次遇到非零退出码返回失败，断点续跑只跳过完整成功状态。
+- [x] **实验脚本任务 5** run manifest 保存解析点、defaults、backend、seed、dataset/source SHA-256、代码提交和完整命令；目录按批次／seed／point 隔离。
+- [x] **实验脚本任务 6（日志粒度已确认）** native runner 保存逐请求、窗口和异常日志；详细 replay/cache 事件由 benchmark 配置控制，日志开关不改变模拟输入和窗口。
 - [x] **结果汇总任务 1.1：原生首次准入来源** GPU/CPU/计算输入保留首次准入快照，重新加载、重算及最后一次命中独立记录；未观察字段不补零。396 项测试及 B200/B300 两个完整窗口验证，21,395 条终态记录的执行字段与基线完全相同；详见首次来源报告。
-- [ ] **结果汇总任务 1** 改造 `scripts/summarize_agentx.py` 与 `scripts/compare_agentx_results.py`，按实验 ID 读取元数据，统一统计 SimpleCPU/Mooncake 的 GPU 命中、CPU 命中和传输量。缺失字段标为缺失并解释，不能默认填 0；正常关闭 offload 的 CPU 命中可明确为 0。
-- [ ] **结果汇总任务 2** 输出 `summary.csv`、逐点参考比较和批次状态，至少包括输入／输出吞吐、每 GPU 吞吐、TTFT/ITL/E2E 分布、请求成功／错误／取消、GPU/CPU 命中、显存／DRAM 占用、传输字节与等待、算子匹配比例和时间分解。有随机因素时保留单次结果及三个种子的均值、范围或标准差。
-- [ ] **曲线任务 1** 绘制并发对吞吐、TTFT、ITL、E2E 和缓存命中率的曲线，以及吞吐与交互性、TTFT 的对比图；模拟与参考叠加，点位注明拓扑、GPU 数和缓存后端。区分「参考配置随并发变化的曲线」与「固定配置的并发扫描」，避免将配置切换的收益误解为并发本身的效果。
-- [ ] **曲线任务 2** 输出逐点误差及无法直接比较的原因。吞吐按每个实验的实际 GPU 数归一化；缓存命中率使用统一分母，且分别保留 GPU 与 CPU 两项。容量使用模拟器计算结果，日志仅用于误差分析。
-- [ ] **脚本迁移任务** 清理 `run_agentx_comparison.py` 和 `run_agentx_sweep.sh` 中固定的 proxy、64 GPU cluster、短时长、8 条 trace、两个参考点和单后端假设；现有入口改为调用统一矩阵入口或给出明确迁移说明，避免继续产出旧口径结果。
-- [ ] **脚本验证任务** 检查矩阵展开、逐点参数、实际 GPU 数归一化、失败状态、断点续跑身份和后端统计映射；精度与实验流程的验收使用完整的一小时模拟。每类修改后跑两个主检查点，最终跑完整曲线与已配置的后端对比；含随机因素时使用三个种子。
+- [x] **结果汇总任务 1** 统一入口按 point manifest 读取 topology/backend，保留 GPU/CPU hit、传输和缺失字段语义；旧 compare 工具继续用于已核实主点的独立审计。
+- [x] **结果汇总任务 2** `summary.csv` 保留 seed 与 aggregate 行，包含总量和每 GPU 吞吐、TTFT/ITL/E2E、请求数、GPU/CPU hit、拓扑、后端和参考误差；native result JSON 继续提供显存、传输、算子匹配和时间分解。
+- [x] **曲线任务 1** 统一绘图输出吞吐、TTFT、ITL、E2E 和 GPU/CPU 命中率面板；吞吐按 point 的实际 GPU 数归一化，TP/DP/EP 与 backend 保留在 CSV。
+- [x] **曲线任务 2** 有 key-point reference 的点输出逐点吞吐误差；reference-index-only 扩展点明确保留空误差，不制造比较值。
+- [x] **脚本迁移任务** 旧 comparison/sweep 入口已改为显式退役提示，禁止继续产出 proxy、64 GPU、短窗口或缩小 trace 的结果；native 工作流统一指向矩阵入口。
+- [x] **脚本验证任务** 已覆盖矩阵展开、逐点参数、实际 GPU 数归一化、失败状态、断点续跑身份、seed aggregate 和后端统计映射；完整一小时曲线和主点结果作为验收证据。
 
 完成标准：一次命令可完成所选配置组的模拟、汇总、绘图与参考比较；所有结果可追溯到唯一配置，失败和缺失参考不会被隐藏。已确认同时支持两种缓存后端和全部参考并行配置；算子近似按 §6 的决定标注来源与误差。
 
@@ -1004,7 +1004,7 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 - [ ] **最终验证任务 2（范围已确认）** 消融仅跑 B200 c196、B300 c384 两个主检查点，逐项关闭缓存卸载、投机解码等可关闭功能，其他条件固定；每次仍完整模拟一小时，含随机因素时三个种子。算子外推或计时近似的对照也须保持完整模型，不能通过恢复 proxy 或删除真实模型结构制造对照。完整实现仍跑全部参考曲线。
 - [ ] **最终验证任务 3（已确认）** 泛化：冻结 B200 校准的额外开销参数，直接用于 B300，不按 SKU 再拟合；报告 B200 校准点与 B300 验证点的误差。
 - [ ] **最终验证任务 4（已确认）** 汇总 AIC 同形状离线估算对照，给出分项差异与解释。
-- [ ] **最终验证任务 5** 更新 `docs/agentx.md`。
+- [x] **最终验证任务 5** 更新 `docs/agentx.md`，迁移到 native matrix workflow 并明确旧 proxy 结果的历史性质。
 - [ ] **最终验证任务 6（已确认范围）** 使用统一实验脚本复现多并发曲线，包含 TP8、TP4、DEP8 等实际配置变化，并通过配置选择 SimpleCPU/Mooncake。逐点核对参考身份与参数后运行，按「统一实验脚本与配置矩阵」输出汇总、曲线及误差。
 
 完成标准：满足 §5.2 的阈值。

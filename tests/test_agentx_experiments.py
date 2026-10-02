@@ -50,4 +50,4 @@ def test_successful_point_is_skipped_for_resume(tmp_path):
     (target / "run_status.json").write_text(json.dumps({"exit_code": 0}))
     point = {"id": "point", "hardware": "b200"}
     result = run_point(point, tmp_path, "simple_cpu")
-    assert result == {"id": "point", "exit_code": 0, "skipped": True}
+    assert result == {"id": "point", "seed": 0, "exit_code": 0, "skipped": True}

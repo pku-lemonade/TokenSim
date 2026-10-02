@@ -14,7 +14,12 @@ from validate_agentx_cpu import validate
 def audit(root):
     root = Path(root)
     rows = []
-    for point_dir in sorted(root.glob("seed*/b*-c*")):
+    # Accept either a batch root (seed*/point) or a single seed root
+    # (point).  This keeps the validator useful for direct checkpoint audits.
+    point_dirs = list(root.glob("seed*/b*-c*"))
+    if not point_dirs:
+        point_dirs = list(root.glob("b*-c*"))
+    for point_dir in sorted(point_dirs):
         statuses = list(point_dir.glob("b*/run_status.json"))
         if len(statuses) != 1:
             rows.append({"run": str(point_dir), "status": "incomplete"})
@@ -24,7 +29,11 @@ def audit(root):
             rows.append({"run": str(point_dir), "status": "failed", "exit_code": status.get("exit_code")})
             continue
         hardware = statuses[0].parent.name
-        result_file = next(point_dir.glob(f"{hardware}/agentx_c*.json"))
+        result_files = list(point_dir.glob(f"{hardware}/agentx_c*.json"))
+        if len(result_files) != 1:
+            rows.append({"run": str(point_dir), "status": "missing_result"})
+            continue
+        result_file = result_files[0]
         result = json.loads(result_file.read_text())
         records = [json.loads(line) for line in (point_dir / hardware / "native_replay/requests.jsonl").read_text().splitlines()]
         windows = [json.loads(line) for line in (point_dir / hardware / "native_replay/cache_windows.jsonl").read_text().splitlines()]

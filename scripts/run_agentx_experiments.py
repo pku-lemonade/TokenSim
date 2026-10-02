@@ -116,7 +116,7 @@ def run_point(point, result_root, backend, seed=0):
         try:
             status = json.loads(existing.read_text())
             if status.get("exit_code") == 0:
-                return {"id": point["id"], "exit_code": 0, "skipped": True}
+                return {"id": point["id"], "seed": seed, "exit_code": 0, "skipped": True}
         except (OSError, ValueError):
             pass
     target.mkdir(parents=True, exist_ok=True)
@@ -134,14 +134,36 @@ def run_point(point, result_root, backend, seed=0):
     ]
     # run_agentx_native appends the hardware subdirectory below result-root.
     process = subprocess.run(command, cwd=ROOT)
-    return {"id": point["id"], "exit_code": process.returncode}
+    return {"id": point["id"], "seed": seed, "exit_code": process.returncode}
 
 
-def summarize(result_root, output, baseline_root=None):
+def _reference_metrics(point):
+    """Return the checked-in reference metrics for a matrix point, if any."""
+    reference = point.get("reference") or {}
+    metrics_file = reference.get("metrics_file")
+    if not metrics_file:
+        return {}
+    candidates = [ROOT / metrics_file, ROOT / "data" / metrics_file]
+    for candidate in candidates:
+        if candidate.is_file():
+            try:
+                return json.loads(candidate.read_text()).get("metrics", {})
+            except (OSError, ValueError):
+                return {}
+    return {}
+
+
+def summarize(result_root, output, baseline_root=None, *, matrix_path=None):
     rows = []
     roots = [Path(result_root)]
     if baseline_root:
-        roots.append(Path(baseline_root))
+        if isinstance(baseline_root, (str, Path)):
+            baseline_roots = [baseline_root]
+        else:
+            baseline_roots = baseline_root
+        roots.extend(Path(root) for root in baseline_roots)
+    _, matrix_points = load_matrix(matrix_path or ROOT / "data/experiments/agentx.yaml")
+    matrix_by_id = {point["id"]: point for point in matrix_points}
     candidates = sorted(
         result
         for root in roots
@@ -166,12 +188,20 @@ def summarize(result_root, output, baseline_root=None):
                 seed = str(manifest.get("simulation_seed", seed))
             except (OSError, ValueError):
                 pass
-        reference_path = ROOT / "data/reference" / point_id / "key_point.json"
-        reference_metrics = {}
-        if reference_path.is_file():
-            reference_metrics = json.loads(reference_path.read_text()).get("metrics", {})
+        point = matrix_by_id.get(point_id, {})
+        reference_metrics = _reference_metrics(point)
+        if not reference_metrics:
+            reference_path = ROOT / "data/reference" / point_id / "key_point.json"
+            if reference_path.is_file():
+                reference_metrics = json.loads(reference_path.read_text()).get("metrics", {})
         reference_output = reference_metrics.get("output_tput_tps")
         output_tps = metrics["output_token_throughput_tps"]
+        num_gpus = int(point.get("num_gpus") or metrics.get("parallel_actual_rank_count") or 1)
+        parallelism = point.get("parallelism") or metrics.get("parallel_config") or {}
+        output_per_gpu = output_tps / num_gpus
+        reference_per_gpu = reference_metrics.get("output_tput_per_gpu")
+        if reference_per_gpu is None and reference_output:
+            reference_per_gpu = reference_output / num_gpus
         row = {
             "row_type": "seed",
             "seed": seed,
@@ -180,17 +210,37 @@ def summarize(result_root, output, baseline_root=None):
                 "run": point_dir.name,
                 "hardware": result.parent.name,
                 "concurrency": metrics.get("concurrency"),
+                "num_gpus": num_gpus,
+                "cache_backend": point.get("cache_backend", "unknown"),
+                "topology": "tp{tp}-dp{dp}-ep{ep}".format(
+                    tp=parallelism.get("tp", "?"),
+                    dp=parallelism.get("dp", "?"),
+                    ep=parallelism.get("ep", "?"),
+                ),
                 "output_token_throughput_tps": output_tps,
+                "output_token_throughput_per_gpu_tps": output_per_gpu,
                 "reference_output_tps": reference_output,
                 "output_tps_error_percent": (
                     100 * (output_tps / reference_output - 1)
                     if reference_output
                     else None
                 ),
+                "reference_output_per_gpu_tps": reference_per_gpu,
+                "output_per_gpu_error_percent": (
+                    100 * (output_per_gpu / reference_per_gpu - 1)
+                    if reference_per_gpu
+                    else None
+                ),
                 "input_token_throughput_tps": metrics["input_token_throughput_tps"],
+                "input_token_throughput_per_gpu_tps": metrics.get(
+                    "input_token_throughput_per_gpu_tps"
+                ),
                 "p90_ttft_s": metrics["ttft_s"]["p90"],
                 "reference_p90_ttft_s": reference_metrics.get("p90_ttft"),
                 "p90_itl_s": metrics["tpot_s"]["p90"],
+                "reference_p90_itl_s": reference_metrics.get("p90_itl"),
+                "p90_e2e_s": metrics.get("e2e_s", {}).get("p90"),
+                "reference_p90_e2e_s": reference_metrics.get("e2e_s", {}).get("p90"),
                 "gpu_cache_hit_rate": metrics["gpu_cache_hit_rate"],
                 "cpu_cache_hit_rate": metrics["cpu_cache_hit_rate"],
                 "request_count": metrics["request_count"],
@@ -211,10 +261,37 @@ def summarize(result_root, output, baseline_root=None):
             row_type="aggregate",
             seed="mean",
             output_token_throughput_tps=statistics.mean(samples),
+            output_token_throughput_per_gpu_tps=statistics.mean(
+                float(v["output_token_throughput_per_gpu_tps"]) for v in values
+            ),
+            input_token_throughput_tps=statistics.mean(
+                float(v["input_token_throughput_tps"]) for v in values
+            ),
+            p90_ttft_s=statistics.mean(float(v["p90_ttft_s"]) for v in values),
+            p90_itl_s=statistics.mean(float(v["p90_itl_s"]) for v in values),
+            p90_e2e_s=statistics.mean(
+                float(v["p90_e2e_s"]) for v in values if v.get("p90_e2e_s") not in (None, "")
+            )
+            if any(v.get("p90_e2e_s") not in (None, "") for v in values)
+            else None,
+            gpu_cache_hit_rate=statistics.mean(float(v["gpu_cache_hit_rate"]) for v in values),
+            cpu_cache_hit_rate=statistics.mean(float(v["cpu_cache_hit_rate"]) for v in values),
             output_tps_min=min(samples),
             output_tps_max=max(samples),
             output_tps_stdev=statistics.pstdev(samples),
         )
+        if aggregate.get("reference_output_tps"):
+            aggregate["output_tps_error_percent"] = 100 * (
+                aggregate["output_token_throughput_tps"]
+                / float(aggregate["reference_output_tps"])
+                - 1
+            )
+        if aggregate.get("reference_output_per_gpu_tps"):
+            aggregate["output_per_gpu_error_percent"] = 100 * (
+                aggregate["output_token_throughput_per_gpu_tps"]
+                / float(aggregate["reference_output_per_gpu_tps"])
+                - 1
+            )
         rows.append(aggregate)
     output = Path(output)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -244,7 +321,8 @@ def plot_summary(csv_path, output):
         aggregate = [row for row in rows if row.get("row_type") == "seed"]
     if not aggregate:
         raise SystemExit("summary has no aggregate seed rows to plot")
-    figure, axes = plt.subplots(1, 2, figsize=(11, 4), constrained_layout=True)
+    figure, axes = plt.subplots(2, 3, figsize=(16, 8), constrained_layout=True)
+    axes = axes.ravel()
     for hardware in sorted({row["hardware"] for row in aggregate}):
         values = sorted(
             [row for row in aggregate if row["hardware"] == hardware],
@@ -253,7 +331,15 @@ def plot_summary(csv_path, output):
         x = [int(row["concurrency"]) for row in values]
         axes[0].plot(
             x,
-            [float(row["output_token_throughput_tps"]) for row in values],
+            [
+                float(
+                    row.get(
+                        "output_token_throughput_per_gpu_tps",
+                        row["output_token_throughput_tps"],
+                    )
+                )
+                for row in values
+            ],
             marker="o",
             label=hardware,
         )
@@ -263,9 +349,18 @@ def plot_summary(csv_path, output):
             marker="o",
             label=hardware,
         )
-    axes[0].set(xlabel="concurrency", ylabel="output token/s", title="Native throughput")
+        axes[2].plot(x, [float(row["p90_itl_s"]) for row in values], marker="o", label=hardware)
+        if all(row.get("p90_e2e_s") not in (None, "") for row in values):
+            axes[3].plot(x, [float(row["p90_e2e_s"]) for row in values], marker="o", label=hardware)
+        axes[4].plot(x, [100 * float(row["gpu_cache_hit_rate"]) for row in values], marker="o", label=f"{hardware} GPU")
+        axes[4].plot(x, [100 * float(row["cpu_cache_hit_rate"]) for row in values], marker="x", linestyle="--", label=f"{hardware} CPU")
+    axes[0].set(xlabel="concurrency", ylabel="output token/s/GPU", title="Native throughput")
     axes[1].set(xlabel="concurrency", ylabel="p90 TTFT (s)", title="Native p90 TTFT")
-    for axis in axes:
+    axes[2].set(xlabel="concurrency", ylabel="p90 ITL (s)", title="Native p90 ITL")
+    axes[3].set(xlabel="concurrency", ylabel="p90 E2E (s)", title="Native p90 E2E")
+    axes[4].set(xlabel="concurrency", ylabel="cache hit (%)", title="GPU/CPU cache hit")
+    axes[5].axis("off")
+    for axis in axes[:5]:
         axis.grid(alpha=0.25)
         axis.legend()
     output = Path(output)
@@ -286,7 +381,8 @@ def main(argv=None):
     parser.add_argument(
         "--baseline-root",
         type=Path,
-        help="Existing seed0 checkpoint root to include in a multi-seed summary.",
+        action="append",
+        help="Existing result root(s) to include in a multi-seed summary; repeat for split batches.",
     )
     parser.add_argument("--result-root", type=Path, default=ROOT / "results/agentx-matrix")
     parser.add_argument(
@@ -323,7 +419,9 @@ def main(argv=None):
                 for seed in seeds
             ]
             results = [future.result() for future in as_completed(futures)]
-        print(json.dumps(sorted(results, key=lambda item: item["id"]), indent=2))
+        print(json.dumps(sorted(results, key=lambda item: (item["id"], item.get("seed", -1))), indent=2))
+        if any(result.get("exit_code", 1) != 0 for result in results):
+            raise SystemExit(1)
     elif args.action == "summary":
         print(
             json.dumps(
@@ -331,13 +429,14 @@ def main(argv=None):
                     args.result_root,
                     args.output or args.result_root / "summary.csv",
                     args.baseline_root,
+                    matrix_path=args.matrix,
                 ),
                 indent=2,
             )
         )
     else:
         summary_path = args.result_root / "summary.csv"
-        summarize(args.result_root, summary_path, args.baseline_root)
+        summarize(args.result_root, summary_path, args.baseline_root, matrix_path=args.matrix)
         print(json.dumps(plot_summary(summary_path, args.output or args.result_root / "summary.png"), indent=2))
 
 

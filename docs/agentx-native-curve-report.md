@@ -44,3 +44,18 @@ The B300 TP4+EP4 attention-DP slice is also complete:
 The remaining TP8/HBM points are recorded with exact reference topology
 metadata but have not been counted as completed full windows; the native
 HBM-only path is substantially slower during first long-prefill admission.
+
+That TP8/HBM slice has now completed all six configured seed-0 windows and
+passed the same validator. It is an extension slice because its independently
+verified reference metrics are not checked into the repository:
+
+| GPU | concurrency | output token/s | p90 TTFT (s) | p90 ITL (s) | GPU hit | CPU hit |
+|---|---:|---:|---:|---:|---:|---:|
+| B200 | 1 | 77.178 | 4.465 | 0.015 | 96.238% | 0.000% |
+| B200 | 4 | 98.826 | 1.350 | 0.036 | 96.918% | 0.000% |
+| B200 | 8 | 165.338 | 2.557 | 0.056 | 96.528% | 0.000% |
+| B200 | 14 | 177.556 | 4.402 | 0.094 | 95.835% | 0.000% |
+| B300 | 1 | 96.070 | 3.570 | 0.010 | 96.798% | 0.000% |
+| B300 | 4 | 134.094 | 1.141 | 0.021 | 97.216% | 0.000% |
+
+The machine-readable files are `results/agentx-dsv4-full/native-curve/20261002-tp8-seed0/summary.csv`, `summary.png` and `validation.json`. Seed-1/2 reruns for the full curve are kept in the active matrix batch; aggregate results are published only after every selected point has a successful status.
