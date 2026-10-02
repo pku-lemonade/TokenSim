@@ -329,7 +329,6 @@ class LLMWorker(Worker):
                 adaptive_long_prefill_threshold=adaptive_long_prefill_threshold,
                 mtp_acceptance_length=mtp_acceptance_length,
                 mtp_seed=mtp_seed + id,
-                native_attention_context_scale=native_attention_context_scale,
             )
         elif batching == "static":
             self.scheduler = LLMStaticScheduler(
