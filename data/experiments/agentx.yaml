@@ -69,6 +69,56 @@ experiments:
       config_commit: c62f6e335bbe041a862670ff1d1fa747cdcecab9
       config_source: benchmarks/single_node/agentic/dsv4_fp4_b300_vllm_mtp.sh
       metrics_file: reference/b300-c384-dep8-simplecpu/key_point.json
+  # Final ablations keep the full model and one-hour protocol. They are not
+  # reference-comparable points: only one behavior is disabled at a time.
+  - id: b200-c196-dep8-hbm-mtp
+    groups: [ablations]
+    hardware: b200
+    cluster: data/clusters/8_b200/dep8.json
+    concurrency: 196
+    max_num_seqs: 49
+    max_num_batched_tokens: 8192
+    gpu_memory_utilization: 0.90
+    cache_backend: hbm
+    parallelism: {tp: 1, dp: 8, ep: 8, pp: 1}
+    num_gpus: 8
+  - id: b300-c384-dep8-hbm-mtp
+    groups: [ablations]
+    hardware: b300
+    cluster: data/clusters/8_b300/dep8.json
+    concurrency: 384
+    max_num_seqs: 96
+    max_num_batched_tokens: 16384
+    gpu_memory_utilization: 0.92
+    cache_backend: hbm
+    parallelism: {tp: 1, dp: 8, ep: 8, pp: 1}
+    num_gpus: 8
+  - id: b200-c196-dep8-simplecpu-nomtp
+    groups: [ablations]
+    hardware: b200
+    cluster: data/clusters/8_b200/dep8.json
+    concurrency: 196
+    max_num_seqs: 49
+    max_num_batched_tokens: 8192
+    gpu_memory_utilization: 0.90
+    host_memory: {available_cpu_dram_mib: 3095781, cpu_budget_per_rank_bytes: 356125000000}
+    cache_backend: simple_cpu
+    parallelism: {tp: 1, dp: 8, ep: 8, pp: 1}
+    num_gpus: 8
+    speculative: {method: mtp, num_speculative_tokens: 3, acceptance_length: 1.0}
+  - id: b300-c384-dep8-simplecpu-nomtp
+    groups: [ablations]
+    hardware: b300
+    cluster: data/clusters/8_b300/dep8.json
+    concurrency: 384
+    max_num_seqs: 96
+    max_num_batched_tokens: 16384
+    gpu_memory_utilization: 0.92
+    host_memory: {available_cpu_dram_mib: 2964436, cpu_budget_per_rank_bytes: 356125000000}
+    cache_backend: simple_cpu
+    parallelism: {tp: 1, dp: 8, ep: 8, pp: 1}
+    num_gpus: 8
+    speculative: {method: mtp, num_speculative_tokens: 3, acceptance_length: 1.0}
   # Executable DEP8 curve points. Their scheduler budgets follow the
   # reference recipes: max_num_seqs = 2*concurrency / DP world size.
   - id: b200-c32-dep8-simplecpu

@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def command(point, defaults, result, connector, *, random_seed=0):
+    speculative = point.get("speculative", defaults.get("speculative") or {})
     return [
         sys.executable,
         str(ROOT / "benchmark.py"),
@@ -65,10 +66,7 @@ def command(point, defaults, result, connector, *, random_seed=0):
         point.get("mhc_backend", defaults.get("mhc_backend", "generic")),
         "--mtp_acceptance_length",
         str(
-            point.get(
-                "mtp_acceptance_length",
-                (defaults.get("speculative") or {}).get("acceptance_length", 1.0),
-            )
+            point.get("mtp_acceptance_length", speculative.get("acceptance_length", 1.0))
         ),
         *(
             []
