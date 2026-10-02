@@ -887,7 +887,7 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 - [x] **CPU 缓存卸载任务 1** SimpleCPU 与 Mooncake 均有配置入口和由模拟器计算的 DRAM/shared pool；结果保留容量、块数和各 tier 命中。
 - [x] **CPU 缓存卸载任务 2** 两种后端分别实现写回、命中加载、等待、异步重叠、取消释放和 PCIe/网络队列；75% 理论带宽作为显式假设保留在 manifest 和结果中。
 - [x] **CPU 缓存卸载任务 2.1：SimpleCPU 加载后的恢复准入** 复制完成回到 KV-holding waiting；已有 running 先执行，token/cadence/名额/完整输入和本步 query/lookahead 分配均通过后才 RUNNING，失败时保留已加载页等待而非抢占重载。400 项测试及两组完整主点验证，B200 抢占减少约 96%，但最终性能仍未验收。
-- [ ] **CPU 缓存卸载任务 3** 对比 external hit 趋势（B200 74.4%、B300 17.8%）。
+- [x] **CPU 缓存卸载任务 3** 已在 SimpleCPU/Mooncake 主点和曲线结果中分别保留 GPU/CPU 命中率；B200 的 CPU 命中显著高于 B300，趋势与参考一致，分母差异在报告中单列。
 - [x] **CPU 缓存卸载任务 4** SimpleCPU 本地寻址与 Mooncake shared object/PoolKey、预算、淘汰、跨 worker 可见性、异步传输、等待、取消和链路竞争均已接入并由 native Mooncake 验收记录。
 
 涉及文件：`TokenSim/config/kv_transfer_config.py`、现有 Mooncake 配置及新增的 SimpleCPU 对照配置；保留两种后端，统一配置选择、容量核算和统计接口。
@@ -948,7 +948,7 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 - [x] **算子耗时任务 5** 处理 B300 CSA generation 缺 bs<64 数据的问题（决策 19）。
 - [x] **算子耗时任务 6** MTP 层按 SWA-only 处理（决策 20）。
 - [x] **算子耗时任务 7（具体近似已确认）** 区分请求数与每请求 query 数，估算 verify q=4 的 attention 成本。以 Pro 实测为基准，分别估算新增 query 的计算和按实际实现可复用 KV 的读取量；分项 q=1/q=4 数据只在计时语义可对应时辅助校验，不把整个模块盲目乘四或乘一个跨模型比值。记录读写量、计算量和缩放依据（决策 30.4）。
-- [ ] **算子耗时任务 8** FlashInfer 与 FlashMLA 的差异（决策 23）：先核对 AIC 表元数据、collector 与采集版本记录，再对照只读本地 vLLM，核实两端的主 KV 布局和 indexer dtype。采集版本无法确认的部分保留推断标记；不修改本地源码或下载已拒绝的历史镜像，再按决策 23.2 估算字节差异。
+- [x] **算子耗时任务 8** 已核对 AIC collector、只读 vLLM 和运行日志：native 表为 FlashMLA/FP8 source layout，参考为 FlashInfer/plain FP8 + MXFP4 indexer；原始与修正布局、来源版本和不可比原因保留在 attention report 与 backend provenance，未引入无配对证据的固定系数。
 - [x] **算子耗时任务 9（负载近似已确认）** 修复逐请求从零开始轮转导致负载集中到同一专家的 bug，统计先汇总整步 route 并合理分配余数。耗时查询使用 `power_law_1.01` 实测分布，不再叠加同源 straggler 惩罚；统计用直方图不得暗中改变这一成本假设。hash 路由层保留结构与路由差异，无法还原逐 token 路由时也明确记录统计近似。
   - 2026-10-01 已完成：整步合成 route、EP 交错余数和跨 step 轮转保留显式直方图，阶段缓存与零负载分母已修复。DSV4 查询改为 MXFP4/`power_law_1.01`，取消同源 straggler；413 项全仓测试及两个完整一小时主点的版本/配置、输入/输出、取消/引用、route/EP 负载和时间守恒验收通过。当前 routed kernel 仍为显式标注的临时对照，完整 MegaMoE/shared expert 成本由任务 10 和 12 继续实现。详见 [本部分报告](agentx-moe-distribution-report.md)。
 - [x] **算子耗时任务 10（借表方案已确认）** 对实际采用匹配融合 kernel 的配置，分别借用 GB200/GB300 的 DSV4 mega-MoE 表估算 B200/B300，初始换算系数为 1.0；记录硬件、框架、通信与 shared expert 的计时范围差异，并评估借表敏感性。按 rank 本地 token 数查询；不均匀 rank 的组合方式按源码核对。表中已含 dispatch/combine 时不再另加该部分 all-to-all；其他 kernel 的配置按各自数据与通信路径估算。

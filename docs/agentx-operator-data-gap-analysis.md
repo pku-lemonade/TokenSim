@@ -178,19 +178,21 @@ AgentX 是闭环测试。一个配置响应较慢，就会导致它在 1800 秒�
 
 修复后需要加入最低样本量检查、多 seed 运行和低样本警告。
 
-### 4.7 DeepSeek-V4 仍是 proxy
+### 4.7 历史 proxy 结论已被 native 模型阶段替代
 
-当前 `DeepSeek-V4-Proxy` 只是近似模型，虽然已经接入新的 model catalog，并支持 compressed KV，但仍然没有真实 DeepSeek V4 的：
+本节记录的是 2026-09-30 的 proxy 基线，不能用于当前 native 结果。旧
+`DeepSeek-V4-Proxy` 配置已经删除，旧结果目录仅保留作历史考古；当前
+矩阵使用完整 DeepSeek-V4-Pro。native 阶段已接入：
 
-- kernel 形状；
-- expert 路由分布；
-- MTP/speculative decoding；
-- chunked prefill；
-- CUDA Graph；
-- fused MoE 实现；
-- 真实 scheduler 参数。
+- kernel 形状和 operator table provenance；
+- MegaMoE expert 路由与 shared expert 成本；
+- MTP/speculative decoding 和 q=4 verify；
+- chunked prefill 与完整输入准入；
+- native CSA/HCA attention、mHC 和 fused MoE 实现；
+- 矩阵中的 scheduler 参数、DP lockstep 和缓存后端。
 
-这会影响最终精度，但优先级低于设备选择和 EP 拓扑错误。
+FlashMLA 表与参考 FlashInfer 的后端差异、跨硬件 MegaMoE 借表和 shared
+fusion 仍是最终精度报告中的已知近似。
 
 ## 5. 修复建议
 
