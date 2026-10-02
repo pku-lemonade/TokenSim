@@ -46,7 +46,11 @@ def audit(root):
         if dp is not None:
             compute = sum(dp["local_compute_seconds_per_rank"].values())
             wait = sum(dp["synchronization_wait_seconds_per_rank"].values())
-            assert abs(compute + wait - len(final["workers"]) * dp["elapsed_step_seconds"]) < 1e-6
+            assert abs(
+                compute + wait
+                - len(dp["local_compute_seconds_per_rank"])
+                * dp["elapsed_step_seconds"]
+            ) < 1e-6
         rows.append(
             {
                 "run": str(point_dir),
