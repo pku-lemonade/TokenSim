@@ -7,6 +7,7 @@ import argparse
 import csv
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
+import statistics
 from pathlib import Path
 import subprocess
 import sys
@@ -102,26 +103,33 @@ def run_point(point, result_root, backend, seed=0):
     return {"id": point["id"], "exit_code": process.returncode}
 
 
-def summarize(result_root, output):
+def summarize(result_root, output, baseline_root=None):
     rows = []
-    root = Path(result_root)
-    candidates = (
-        sorted(root.glob("*/b200/agentx_c196.json"))
-        + sorted(root.glob("*/b300/agentx_c384.json"))
-        + sorted(root.glob("b200/agentx_c196.json"))
-        + sorted(root.glob("b300/agentx_c384.json"))
+    roots = [Path(result_root)]
+    if baseline_root:
+        roots.append(Path(baseline_root))
+    candidates = sorted(
+        result
+        for root in roots
+        for result in root.rglob("agentx_c*.json")
+        if result.parent.name in {"b200", "b300"}
     )
+    point_rows = []
     for result in candidates:
         point_dir = result.parent.parent
         data = json.loads(result.read_text())
         metrics = data["agentx_metrics"]
         manifest_path = result.parent / "run_manifest.json"
         point_id = point_dir.name
+        seed = next(
+            (part[4:] for part in result.parts if part.startswith("seed")),
+            "0",
+        )
         if manifest_path.is_file():
             try:
-                point_id = json.loads(manifest_path.read_text()).get("point", {}).get(
-                    "id", point_id
-                )
+                manifest = json.loads(manifest_path.read_text())
+                point_id = manifest.get("point", {}).get("id", point_id)
+                seed = str(manifest.get("simulation_seed", seed))
             except (OSError, ValueError):
                 pass
         reference_path = ROOT / "data/reference" / point_id / "key_point.json"
@@ -130,8 +138,11 @@ def summarize(result_root, output):
             reference_metrics = json.loads(reference_path.read_text()).get("metrics", {})
         reference_output = reference_metrics.get("output_tput_tps")
         output_tps = metrics["output_token_throughput_tps"]
-        rows.append(
-            {
+        row = {
+            "row_type": "seed",
+            "seed": seed,
+            "point_id": point_id,
+            **{
                 "run": point_dir.name,
                 "hardware": result.parent.name,
                 "output_token_throughput_tps": output_tps,
@@ -148,12 +159,37 @@ def summarize(result_root, output):
                 "gpu_cache_hit_rate": metrics["gpu_cache_hit_rate"],
                 "cpu_cache_hit_rate": metrics["cpu_cache_hit_rate"],
                 "request_count": metrics["request_count"],
-            }
+            },
+        }
+        point_rows.append(row)
+    rows.extend(point_rows)
+    grouped = {}
+    for row in point_rows:
+        grouped.setdefault((row["point_id"], row["hardware"]), []).append(row)
+    for (point_id, hardware), values in grouped.items():
+        if len(values) < 2:
+            continue
+        numeric = "output_token_throughput_tps"
+        samples = [float(v[numeric]) for v in values]
+        aggregate = dict(values[0])
+        aggregate.update(
+            row_type="aggregate",
+            seed="mean",
+            output_token_throughput_tps=statistics.mean(samples),
+            output_tps_min=min(samples),
+            output_tps_max=max(samples),
+            output_tps_stdev=statistics.pstdev(samples),
         )
+        rows.append(aggregate)
     output = Path(output)
     output.parent.mkdir(parents=True, exist_ok=True)
     with output.open("w", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=list(rows[0]) if rows else ["run"])
+        fieldnames = []
+        for row in rows:
+            for field in row:
+                if field not in fieldnames:
+                    fieldnames.append(field)
+        writer = csv.DictWriter(handle, fieldnames=fieldnames or ["run"], extrasaction="ignore")
         writer.writeheader()
         writer.writerows(rows)
     return {"rows": len(rows), "output": str(output)}
@@ -167,6 +203,11 @@ def main(argv=None):
     parser.add_argument("--group")
     parser.add_argument("--hardware")
     parser.add_argument("--output", type=Path)
+    parser.add_argument(
+        "--baseline-root",
+        type=Path,
+        help="Existing seed0 checkpoint root to include in a multi-seed summary.",
+    )
     parser.add_argument("--result-root", type=Path, default=ROOT / "results/agentx-matrix")
     parser.add_argument(
         "--backend",
@@ -204,7 +245,16 @@ def main(argv=None):
             results = [future.result() for future in as_completed(futures)]
         print(json.dumps(sorted(results, key=lambda item: item["id"]), indent=2))
     else:
-        print(json.dumps(summarize(args.result_root, args.output or args.result_root / "summary.csv"), indent=2))
+        print(
+            json.dumps(
+                summarize(
+                    args.result_root,
+                    args.output or args.result_root / "summary.csv",
+                    args.baseline_root,
+                ),
+                indent=2,
+            )
+        )
 
 
 if __name__ == "__main__":
