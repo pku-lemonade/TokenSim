@@ -16,3 +16,9 @@ attention scalar as a sufficient fix; remaining error includes the complete
 module/backend scope, prefill scheduling, cache pressure and other operator
 provenance differences. Evidence is in
 `results/agentx-dsv4-full/sensitivity-aic-attn/`.
+
+An upper-bound run with context attention set to zero still produced only
+670.881 token/s on B200 and 1,294.908 token/s on B300. This confirms that the
+remaining gap is not explained by context-attention latency alone; removing a
+real operator would be an invalid production model, so the formal scale remains
+1.0.
