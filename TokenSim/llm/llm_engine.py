@@ -192,6 +192,7 @@ class LLMWorker(Worker):
         mhc_backend: str = "generic",
         mtp_acceptance_length: float = 1.0,
         mtp_seed: int = 0,
+        native_attention_context_scale: float = 1.0,
     ):
         super().__init__(env, id)
         self.hardware_context = hardware
@@ -328,6 +329,7 @@ class LLMWorker(Worker):
                 adaptive_long_prefill_threshold=adaptive_long_prefill_threshold,
                 mtp_acceptance_length=mtp_acceptance_length,
                 mtp_seed=mtp_seed + id,
+                native_attention_context_scale=native_attention_context_scale,
             )
         elif batching == "static":
             self.scheduler = LLMStaticScheduler(
@@ -557,6 +559,7 @@ class LLMEngine(Worker):
         mhc_backend: str = "generic",
         mtp_acceptance_length: float = 1.0,
         mtp_seed: int = 0,
+        native_attention_context_scale: float = 1.0,
         long_prefill_token_threshold: int = 0,
         prefill_schedule_interval: int = 1,
         adaptive_long_prefill_threshold: bool = False,
@@ -625,6 +628,7 @@ class LLMEngine(Worker):
                 mhc_backend=mhc_backend,
                 mtp_acceptance_length=mtp_acceptance_length,
                 mtp_seed=mtp_seed,
+                native_attention_context_scale=native_attention_context_scale,
                 latency_fallback=latency_fallback,
                 operator_backend=operator_backend,
                 decode_context_bucket=decode_context_bucket,

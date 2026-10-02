@@ -152,6 +152,7 @@ class OperatorTableLatencyBackend(LatencyBackend):
         mhc_backend: str = "generic",
         expected_decode_query_len: int = 1,
         max_num_seqs: int = 64,
+        native_attention_context_scale: float = 1.0,
     ) -> None:
         if fallback not in FALLBACK_POLICIES:
             raise ConfigurationError(
@@ -218,6 +219,7 @@ class OperatorTableLatencyBackend(LatencyBackend):
                 f"unsupported DSV4 attention backend: {attention_backend}"
             )
         self.attention_backend = attention_backend
+        self.native_attention_context_scale = native_attention_context_scale
         self.mtp_query_width = max(1, int(expected_decode_query_len))
         self.native_attention = None
         if attention_backend == "native_dsv4":
