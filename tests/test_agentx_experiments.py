@@ -44,6 +44,47 @@ def test_matrix_selection_and_summary(tmp_path):
     assert "output_token_throughput_tps" in output.read_text()
 
 
+def test_summary_records_actual_gpu_normalization_and_seed_aggregate(tmp_path):
+    for seed, value in ((1, 8.0), (2, 10.0)):
+        result = tmp_path / f"seed{seed}" / "b200-c196-dep8-simplecpu" / "b200" / "agentx_c196.json"
+        result.parent.mkdir(parents=True)
+        (result.parent / "run_manifest.json").write_text(
+            json.dumps(
+                {
+                    "simulation_seed": seed,
+                    "point": {
+                        "id": "b200-c196-dep8-simplecpu",
+                        "num_gpus": 8,
+                        "cache_backend": "simple_cpu",
+                        "parallelism": {"tp": 1, "dp": 8, "ep": 8},
+                    },
+                }
+            )
+        )
+        result.write_text(
+            json.dumps(
+                {
+                    "agentx_metrics": {
+                        "output_token_throughput_tps": value,
+                        "input_token_throughput_tps": 16,
+                        "ttft_s": {"p90": 3},
+                        "tpot_s": {"p90": 4},
+                        "e2e_s": {"p90": 5},
+                        "gpu_cache_hit_rate": 0.5,
+                        "cpu_cache_hit_rate": 0.2,
+                        "request_count": 5,
+                    }
+                }
+            )
+        )
+    output = tmp_path / "summary.csv"
+    summarize(tmp_path, output)
+    rows = list(__import__("csv").DictReader(output.open()))
+    aggregate = next(row for row in rows if row["row_type"] == "aggregate")
+    assert float(aggregate["output_token_throughput_per_gpu_tps"]) == 1.125
+    assert float(aggregate["output_tps_stdev"]) == 1.0
+
+
 def test_successful_point_is_skipped_for_resume(tmp_path):
     target = tmp_path / "seed0" / "point" / "b200"
     target.mkdir(parents=True)
