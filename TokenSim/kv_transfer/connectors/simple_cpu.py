@@ -109,7 +109,7 @@ class SimpleCPUOffloadConnector(BaseKVConnector):
 
     def _load(self, req, targets, boundary):
         issued = self.env.now
-        bytes_ = len(targets) * self.manager.layout.physical_slot_bytes
+        bytes_ = self._transfer_bytes(page for _, _, page, _ in targets)
         yield self.env.process(self.read_link.transfer(bytes_))
         # Cancellation releases request references immediately. DMA pins keep
         # targets private and resident until this point, then release them.
@@ -129,7 +129,7 @@ class SimpleCPUOffloadConnector(BaseKVConnector):
         if req.cancel_requested:
             self.scheduler.loading.pop(req.id, None)
         self.loads.pop(req.id, None)
-        self.stats.record_transfer(
+        self._record_transfer(
             blocks=len(targets),
             bytes_=bytes_,
             latency=self.env.now - issued,
@@ -153,13 +153,13 @@ class SimpleCPUOffloadConnector(BaseKVConnector):
 
     def _save(self, batch):
         issued = self.env.now
-        bytes_ = len(batch) * self.manager.layout.physical_slot_bytes
+        bytes_ = self._transfer_bytes(page for page, _ in batch)
         yield self.env.process(self.write_link.transfer(bytes_))
         for page, block in batch:
             self.store.finish_write(page)
             self.manager.unpin_transfer(block)
         self.write_jobs -= 1
-        self.stats.record_transfer(
+        self._record_transfer(
             blocks=len(batch),
             bytes_=bytes_,
             latency=self.env.now - issued,
@@ -167,6 +167,12 @@ class SimpleCPUOffloadConnector(BaseKVConnector):
             blocking_latency=0.0,
         )
         self.notify()
+
+    def _transfer_bytes(self, pages):
+        return sum(self.manager.layout.physical_slot_bytes for _ in pages)
+
+    def _record_transfer(self, **values):
+        self.stats.record_transfer(**values)
 
     def request_finished(self, req, block_ids):
         self.scheduler.loading.pop(req.id, None)

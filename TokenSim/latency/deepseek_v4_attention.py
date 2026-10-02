@@ -6,6 +6,7 @@ import math
 
 from TokenSim.errors import ConfigurationError
 from TokenSim.operator_data.lookup import LookupPolicy, MissingOperatorDataError, OperatorLookup
+from TokenSim.operator_data.schema import TABLE_SPECS
 
 
 @dataclass(frozen=True)
@@ -40,7 +41,21 @@ class DeepSeekV4AttentionEstimator:
             analytical_scaler=self._analytical_work,
         )
         self.cache = {}
-        self.axis_cache = {}
+        # Runtime lengths are often unique. Caching whole-table scans by
+        # length merely repeats that scan at each new context position.
+        spec = TABLE_SPECS["dsv4_attention"]
+        self._discrete_fields = spec.discrete_fields
+        self._axis_constraints = {
+            axis: tuple(name for name in spec.axis_names if name != axis)
+            for axis in spec.axis_names
+        }
+        index = {}
+        for row in backend.package.tables["dsv4_attention"]:
+            discrete = self._discrete_key(row)
+            for axis, fields in self._axis_constraints.items():
+                identity = (axis, discrete, tuple(row[name] for name in fields))
+                index.setdefault(identity, set()).add(row[axis])
+        self.axis_cache = {key: sorted(values) for key, values in index.items()}
         self.counts = Counter()
         # ``ModelSpec.layer_specs`` includes the reusable MTP layer after the
         # main stack; the complete attention tables here cover only the 61
@@ -138,51 +153,20 @@ class DeepSeekV4AttentionEstimator:
         return result
 
     def _axis_values(self, key, axis, *, extra=None):
-        """Cached axis values for one discrete geometry.
-
-        ``OperatorLookup.axis_values`` intentionally favors diagnostics and
-        scans a table.  Runtime attention queries are much more frequent, so
-        build the same discrete-key index once per worker.
-        """
-        from TokenSim.operator_data.schema import TABLE_SPECS
-
-        spec = TABLE_SPECS["dsv4_attention"]
+        """Axis values for the same discrete key and exact other-axis values."""
         extras = dict([extra]) if extra else {}
-        constraints = {
-            field: key[field]
-            for field in spec.axis_names
-            if field != axis and field not in extras
-        }
-        identity = tuple(
-            (field, key[field])
-            for field in spec.discrete_fields
-        ) + tuple(sorted(constraints.items())) + tuple(sorted(extras.items())) + (("axis", axis),)
-        cached = self.axis_cache.get(identity)
-        if cached is not None:
-            return cached
-        values = sorted(
-            {
-                row[axis]
-                for row in self.backend.package.tables["dsv4_attention"]
-                if all(
-                    row[field] == key[field]
-                    or str(row[field]).lower() == str(key[field]).lower()
-                    for field in spec.discrete_fields
-                )
-                and all(
-                    row[field] == value
-                    or str(row[field]).lower() == str(value).lower()
-                    for field, value in extras.items()
-                )
-                and all(
-                    row[field] == value
-                    or str(row[field]).lower() == str(value).lower()
-                    for field, value in constraints.items()
-                )
-            }
+        identity = (
+            axis,
+            self._discrete_key(key),
+            tuple(extras.get(name, key[name]) for name in self._axis_constraints[axis]),
         )
-        self.axis_cache[identity] = values
-        return values
+        return self.axis_cache.get(identity, [])
+
+    def _discrete_key(self, key):
+        return tuple(
+            value.lower() if isinstance(value, str) else value
+            for value in (key[name] for name in self._discrete_fields)
+        )
 
     def estimate_prefill(self, batch_size, query_tokens, prefix_tokens):
         total = 0.0
