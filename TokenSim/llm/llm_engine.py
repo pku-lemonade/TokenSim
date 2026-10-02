@@ -549,6 +549,7 @@ class LLMEngine(Worker):
         gpu_memory_utilization: float = 1.0,
         router_policy: str = "none",
         router_backend_url: str = "http://localhost:8889",
+        router_mapping: dict | None = None,
         dp_lockstep: bool = False,
         dp_sync_interval: int = 16,
         moe_execution=None,
@@ -665,6 +666,14 @@ class LLMEngine(Worker):
 
             self.router = ConsistentHashRouter(
                 self.prefill_workers.workers, backend_url=router_backend_url
+            )
+        elif router_policy == "fixed_mapping":
+            from TokenSim.placement.consistent_hash import FixedWorkerRouter
+
+            self.router = FixedWorkerRouter(
+                self.prefill_workers.workers,
+                router_mapping or {},
+                backend_url=router_backend_url,
             )
         elif router_policy != "none":
             raise ConfigurationError(f"unsupported router policy: {router_policy}")

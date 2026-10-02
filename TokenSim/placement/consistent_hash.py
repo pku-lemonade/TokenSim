@@ -126,3 +126,58 @@ class ConsistentHashRouter:
             "new_sessions_per_rank": dict(self.session_counts),
             "affinity_sessions_retained": len(self.sessions),
         }
+
+
+class FixedWorkerRouter:
+    """Replay a verified historical conversation-to-rank mapping.
+
+    Unknown conversations deliberately fall back to a normal consistent hash
+    and are counted. This keeps the diagnostic runnable without fabricating a
+    rank while making coverage explicit in ``describe``.
+    """
+
+    def __init__(self, workers, mapping, *, backend_url="http://localhost:8889"):
+        self.workers = {w.dp_rank: w for w in workers}
+        self.mapping = {str(key): int(value) for key, value in mapping.items()}
+        if any(rank not in self.workers for rank in self.mapping.values()):
+            raise ConfigurationError("fixed worker mapping references an unknown DP rank")
+        self.fallback = ConsistentHashRouter(workers, backend_url=backend_url)
+        self.request_counts = Counter()
+        self.mapped_request_counts = Counter()
+        self.missing_keys = Counter()
+        self.session_counts = Counter()
+
+    def select(self, request):
+        key = getattr(request, "agentx_conversation_id", None) or request.chat_id
+        rank = self.mapping.get(str(key))
+        if rank is None:
+            self.missing_keys[str(key)] += 1
+            worker = self.fallback.select(request)
+            rank = worker.dp_rank
+        else:
+            request.dp_rank = rank
+            worker = self.workers[rank]
+            request.routing_worker_id = worker.id
+            self.mapped_request_counts[rank] += 1
+        self.request_counts[rank] += 1
+        self.session_counts[rank] += 1
+        return worker
+
+    def reset_stats(self):
+        self.request_counts.clear()
+        self.mapped_request_counts.clear()
+        self.missing_keys.clear()
+        self.session_counts.clear()
+        self.fallback.reset_stats()
+
+    def describe(self):
+        return {
+            "policy": "fixed_worker_mapping",
+            "fallback_policy": "consistent_hash",
+            "mapping_entries": len(self.mapping),
+            "requests_per_rank": dict(self.request_counts),
+            "mapped_requests_per_rank": dict(self.mapped_request_counts),
+            "missing_key_count": sum(self.missing_keys.values()),
+            "missing_key_examples": list(self.missing_keys)[:20],
+            "fallback": self.fallback.describe(),
+        }

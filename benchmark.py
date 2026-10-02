@@ -201,6 +201,15 @@ def main(
         )
         tqdm_manager.set_total(len(requests))
 
+    router_mapping = None
+    router_mapping_path = getattr(args, "router_mapping_path", None)
+    if router_mapping_path:
+        router_mapping = json.loads(Path(router_mapping_path).read_text())
+        if isinstance(router_mapping, dict) and "mapping" in router_mapping:
+            router_mapping = router_mapping["mapping"]
+        if not isinstance(router_mapping, dict):
+            raise ConfigurationError("router mapping file must contain a JSON object")
+
     engine = LLMEngine(
         env=env,
         block_size=args.block_size,
@@ -221,6 +230,7 @@ def main(
             else args.router_policy
         ),
         router_backend_url=getattr(args, "router_backend_url", "http://localhost:8889"),
+        router_mapping=router_mapping,
         dp_lockstep=(
             native_agentx
             if getattr(args, "dp_lockstep", None) is None
@@ -500,9 +510,12 @@ if __name__ == "__main__":
     parser.add_argument("--max_occupy_ratio", type=float, default=1.0)
     parser.add_argument("--gpu_memory_utilization", type=float, default=1.0)
     parser.add_argument(
-        "--router_policy", choices=["auto", "none", "consistent_hash"], default="auto"
+        "--router_policy",
+        choices=["auto", "none", "consistent_hash", "fixed_mapping"],
+        default="auto",
     )
     parser.add_argument("--router_backend_url", default="http://localhost:8889")
+    parser.add_argument("--router_mapping_path", default=None)
     parser.add_argument(
         "--dp_lockstep", action=argparse.BooleanOptionalAction, default=None
     )
