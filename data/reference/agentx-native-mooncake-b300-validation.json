@@ -1,0 +1,935 @@
+{
+  "scope": "native Mooncake shared DRAM pages with async import/save, shared network queue, group-aware PoolKeys and DP lockstep wakeups",
+  "formal_model_accuracy_accepted": false,
+  "trace_pool": 393,
+  "issue_window_seconds": 3600,
+  "link_counters": "cumulative warmup+profiling; connector result counters reset after warmup",
+  "checkpoints": {
+    "b300": {
+      "result_sha256": "ddfeea130bec064bdf4cdd6b91147350a01c7d25ab499cf5f51f65433ecd3400",
+      "phase_counts": {
+        "warmup": {
+          "sent": 4249,
+          "successful": 4249
+        },
+        "profiling": {
+          "sent": 6256,
+          "successful": 5803,
+          "cancelled": 453
+        }
+      },
+      "warmup_seconds": 5973.201860572091,
+      "phase_elapsed_seconds": 3630.6020958858553,
+      "observation_seconds": 3629.9285625754965,
+      "output_tps": 1045.468783911108,
+      "gpu_hit_percent": 94.98017671499129,
+      "cpu_hit_percent": 0.7602108603521277,
+      "cache_source_observation": "first-admission",
+      "ttft_p90": 101.59586816109113,
+      "tpot_p90": 0.42013654873529244,
+      "e2e_mean": 264.2705712733134,
+      "sync_wait_fraction": 0.20952382654269514,
+      "mean_successful_input_tokens": 100780.8760985697,
+      "mean_successful_output_tokens": 653.9681199379631,
+      "preemptions": 0,
+      "recomputed_tokens": 0,
+      "external_hit_fraction_of_gpu_misses": 0.15144175744640961,
+      "diagnostic_accuracy": {
+        "output_tput_per_gpu": {
+          "delta_percent": -83.56249410385001,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        },
+        "p90_ttft": {
+          "delta_percent": 437.0959689700828,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        },
+        "p90_itl": {
+          "delta_percent": 749.0095386267175,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        },
+        "gpu_cache_hit_rate": {
+          "delta_percent": 5.650919593983628,
+          "acceptable": true,
+          "preferred": true,
+          "status": "preferred"
+        },
+        "cpu_cache_hit_rate": {
+          "delta_percent": -53.61739717192631,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        }
+      },
+      "final_workers": [
+        {
+          "worker_id": 0,
+          "running": 0,
+          "waiting": 0,
+          "loading": 0,
+          "loaded_waiting": 0,
+          "inflight_prefills": 0,
+          "inflight_prefill_reserved_slots": 0,
+          "external_cache": {
+            "backend": "MooncakeStoreConnector",
+            "native_async": true,
+            "service_scope": "engine-shared DRAM; all compatible DP replicas",
+            "key_scope": "model/layout/TP/PP + group/complete salted prefix/subslot; DP excluded",
+            "runtime_budget_shared_bytes": 3298534883328,
+            "staging_bytes": 137438953472,
+            "storage": {
+              "scope": "mooncake:shared-dram",
+              "capacity_bytes": 3161095929856,
+              "allocation_unit_bytes": null,
+              "used_bytes": 949144907776,
+              "peak_used_bytes": 949144907776,
+              "resident_pages": 859666,
+              "pinned_pages": 0,
+              "evictions": 0
+            },
+            "read": {
+              "path": "shared-network then PCIe",
+              "host": {
+                "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+                "utilization_assumption": 0.75,
+                "bytes": 9277841408,
+                "jobs": 22,
+                "queue_wait_seconds": 5.768639312009327e-06,
+                "service_seconds": 0.09671018133333333
+              },
+              "shared_network": {
+                "theoretical_bandwidth_bytes_per_s": 100000000000.0,
+                "utilization_assumption": 0.75,
+                "bytes": 56391221248,
+                "jobs": 180,
+                "queue_wait_seconds": 0.2079096605966697,
+                "service_seconds": 0.754042949973334
+              }
+            },
+            "write": {
+              "path": "PCIe then shared-network",
+              "host": {
+                "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+                "utilization_assumption": 0.75,
+                "bytes": 113988446208,
+                "jobs": 2989,
+                "queue_wait_seconds": 0.0,
+                "service_seconds": 1.1963466480000136
+              },
+              "shared_network": {
+                "theoretical_bandwidth_bytes_per_s": 100000000000.0,
+                "utilization_assumption": 0.75,
+                "bytes": 949144907776,
+                "jobs": 20991,
+                "queue_wait_seconds": 29.84469519142879,
+                "service_seconds": 12.907157437013149
+              }
+            },
+            "loading_requests": 0,
+            "write_jobs": 0,
+            "save_scope": "newly computed complete retained group pages; duplicate writes suppressed",
+            "source_scope_limit": "DRAM only; one compute node; serial PCIe/network transfer approximation"
+          },
+          "dma_pinned_slots": 0,
+          "defer_prefills": true,
+          "prefill_capacity_bound": false,
+          "scheduler_stats": {
+            "steps": 5167,
+            "deferred_running_prefills": 42448,
+            "deferred_waiting_prefills": 2075,
+            "capacity_bound_steps": 0,
+            "scheduled_context_tokens": 3385216,
+            "scheduled_decode_tokens": 558394,
+            "scheduled_decode_query_tokens": 934844,
+            "max_num_seqs_gate": 0,
+            "full_input_gate": 0,
+            "async_load_reservation_gate": 0,
+            "max_inflight_prefill_reserved_slots": 33279,
+            "loaded_kv_capacity_gate": 0,
+            "loaded_kv_resumptions": 13,
+            "async_load_admissions": 13
+          },
+          "free_slots": 87072,
+          "watermark_slots": 0,
+          "used_slots": 1,
+          "peak_used_slots": 42863,
+          "allocations": 7039222,
+          "releases": 7721069,
+          "evictions": 30698,
+          "cached_slots": 82795
+        },
+        {
+          "worker_id": 1,
+          "running": 0,
+          "waiting": 0,
+          "loading": 0,
+          "loaded_waiting": 0,
+          "inflight_prefills": 0,
+          "inflight_prefill_reserved_slots": 0,
+          "external_cache": {
+            "backend": "MooncakeStoreConnector",
+            "native_async": true,
+            "service_scope": "engine-shared DRAM; all compatible DP replicas",
+            "key_scope": "model/layout/TP/PP + group/complete salted prefix/subslot; DP excluded",
+            "runtime_budget_shared_bytes": 3298534883328,
+            "staging_bytes": 137438953472,
+            "storage": {
+              "scope": "mooncake:shared-dram",
+              "capacity_bytes": 3161095929856,
+              "allocation_unit_bytes": null,
+              "used_bytes": 949144907776,
+              "peak_used_bytes": 949144907776,
+              "resident_pages": 859666,
+              "pinned_pages": 0,
+              "evictions": 0
+            },
+            "read": {
+              "path": "shared-network then PCIe",
+              "host": {
+                "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+                "utilization_assumption": 0.75,
+                "bytes": 1715718144,
+                "jobs": 12,
+                "queue_wait_seconds": 0.0,
+                "service_seconds": 0.017908064
+              },
+              "shared_network": {
+                "theoretical_bandwidth_bytes_per_s": 100000000000.0,
+                "utilization_assumption": 0.75,
+                "bytes": 56391221248,
+                "jobs": 180,
+                "queue_wait_seconds": 0.2079096605966697,
+                "service_seconds": 0.754042949973334
+              }
+            },
+            "write": {
+              "path": "PCIe then shared-network",
+              "host": {
+                "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+                "utilization_assumption": 0.75,
+                "bytes": 113692491776,
+                "jobs": 2480,
+                "queue_wait_seconds": 0.0,
+                "service_seconds": 1.1917367893333417
+              },
+              "shared_network": {
+                "theoretical_bandwidth_bytes_per_s": 100000000000.0,
+                "utilization_assumption": 0.75,
+                "bytes": 949144907776,
+                "jobs": 20991,
+                "queue_wait_seconds": 29.84469519142879,
+                "service_seconds": 12.907157437013149
+              }
+            },
+            "loading_requests": 0,
+            "write_jobs": 0,
+            "save_scope": "newly computed complete retained group pages; duplicate writes suppressed",
+            "source_scope_limit": "DRAM only; one compute node; serial PCIe/network transfer approximation"
+          },
+          "dma_pinned_slots": 0,
+          "defer_prefills": true,
+          "prefill_capacity_bound": false,
+          "scheduler_stats": {
+            "steps": 5167,
+            "deferred_running_prefills": 38992,
+            "deferred_waiting_prefills": 1922,
+            "capacity_bound_steps": 1,
+            "scheduled_context_tokens": 3144384,
+            "scheduled_decode_tokens": 478548,
+            "scheduled_decode_query_tokens": 795975,
+            "max_num_seqs_gate": 0,
+            "full_input_gate": 0,
+            "async_load_reservation_gate": 0,
+            "max_inflight_prefill_reserved_slots": 26833,
+            "loaded_kv_capacity_gate": 0,
+            "loaded_kv_resumptions": 11,
+            "async_load_admissions": 11
+          },
+          "free_slots": 87072,
+          "watermark_slots": 0,
+          "used_slots": 1,
+          "peak_used_slots": 40758,
+          "allocations": 7136110,
+          "releases": 7896497,
+          "evictions": 26425,
+          "cached_slots": 83081
+        },
+        {
+          "worker_id": 2,
+          "running": 0,
+          "waiting": 0,
+          "loading": 0,
+          "loaded_waiting": 0,
+          "inflight_prefills": 0,
+          "inflight_prefill_reserved_slots": 0,
+          "external_cache": {
+            "backend": "MooncakeStoreConnector",
+            "native_async": true,
+            "service_scope": "engine-shared DRAM; all compatible DP replicas",
+            "key_scope": "model/layout/TP/PP + group/complete salted prefix/subslot; DP excluded",
+            "runtime_budget_shared_bytes": 3298534883328,
+            "staging_bytes": 137438953472,
+            "storage": {
+              "scope": "mooncake:shared-dram",
+              "capacity_bytes": 3161095929856,
+              "allocation_unit_bytes": null,
+              "used_bytes": 949144907776,
+              "peak_used_bytes": 949144907776,
+              "resident_pages": 859666,
+              "pinned_pages": 0,
+              "evictions": 0
+            },
+            "read": {
+              "path": "shared-network then PCIe",
+              "host": {
+                "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+                "utilization_assumption": 0.75,
+                "bytes": 7257456640,
+                "jobs": 23,
+                "queue_wait_seconds": 0.0,
+                "service_seconds": 0.07566750666666668
+              },
+              "shared_network": {
+                "theoretical_bandwidth_bytes_per_s": 100000000000.0,
+                "utilization_assumption": 0.75,
+                "bytes": 56391221248,
+                "jobs": 180,
+                "queue_wait_seconds": 0.2079096605966697,
+                "service_seconds": 0.754042949973334
+              }
+            },
+            "write": {
+              "path": "PCIe then shared-network",
+              "host": {
+                "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+                "utilization_assumption": 0.75,
+                "bytes": 124622139392,
+                "jobs": 2810,
+                "queue_wait_seconds": 0.0,
+                "service_seconds": 1.3065772853333457
+              },
+              "shared_network": {
+                "theoretical_bandwidth_bytes_per_s": 100000000000.0,
+                "utilization_assumption": 0.75,
+                "bytes": 949144907776,
+                "jobs": 20991,
+                "queue_wait_seconds": 29.84469519142879,
+                "service_seconds": 12.907157437013149
+              }
+            },
+            "loading_requests": 0,
+            "write_jobs": 0,
+            "save_scope": "newly computed complete retained group pages; duplicate writes suppressed",
+            "source_scope_limit": "DRAM only; one compute node; serial PCIe/network transfer approximation"
+          },
+          "dma_pinned_slots": 0,
+          "defer_prefills": true,
+          "prefill_capacity_bound": false,
+          "scheduler_stats": {
+            "steps": 5167,
+            "deferred_running_prefills": 43929,
+            "deferred_waiting_prefills": 2198,
+            "capacity_bound_steps": 1,
+            "scheduled_context_tokens": 3578432,
+            "scheduled_decode_tokens": 539619,
+            "scheduled_decode_query_tokens": 897355,
+            "max_num_seqs_gate": 0,
+            "full_input_gate": 0,
+            "async_load_reservation_gate": 0,
+            "max_inflight_prefill_reserved_slots": 31769,
+            "loaded_kv_capacity_gate": 0,
+            "loaded_kv_resumptions": 17,
+            "async_load_admissions": 17
+          },
+          "free_slots": 87072,
+          "watermark_slots": 0,
+          "used_slots": 1,
+          "peak_used_slots": 48477,
+          "allocations": 7769167,
+          "releases": 8583821,
+          "evictions": 41074,
+          "cached_slots": 82711
+        },
+        {
+          "worker_id": 3,
+          "running": 0,
+          "waiting": 0,
+          "loading": 0,
+          "loaded_waiting": 0,
+          "inflight_prefills": 0,
+          "inflight_prefill_reserved_slots": 0,
+          "external_cache": {
+            "backend": "MooncakeStoreConnector",
+            "native_async": true,
+            "service_scope": "engine-shared DRAM; all compatible DP replicas",
+            "key_scope": "model/layout/TP/PP + group/complete salted prefix/subslot; DP excluded",
+            "runtime_budget_shared_bytes": 3298534883328,
+            "staging_bytes": 137438953472,
+            "storage": {
+              "scope": "mooncake:shared-dram",
+              "capacity_bytes": 3161095929856,
+              "allocation_unit_bytes": null,
+              "used_bytes": 949144907776,
+              "peak_used_bytes": 949144907776,
+              "resident_pages": 859666,
+              "pinned_pages": 0,
+              "evictions": 0
+            },
+            "read": {
+              "path": "shared-network then PCIe",
+              "host": {
+                "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+                "utilization_assumption": 0.75,
+                "bytes": 6825951232,
+                "jobs": 32,
+                "queue_wait_seconds": 0.009382255893797264,
+                "service_seconds": 0.07119965866666667
+              },
+              "shared_network": {
+                "theoretical_bandwidth_bytes_per_s": 100000000000.0,
+                "utilization_assumption": 0.75,
+                "bytes": 56391221248,
+                "jobs": 180,
+                "queue_wait_seconds": 0.2079096605966697,
+                "service_seconds": 0.754042949973334
+              }
+            },
+            "write": {
+              "path": "PCIe then shared-network",
+              "host": {
+                "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+                "utilization_assumption": 0.75,
+                "bytes": 132810584064,
+                "jobs": 2841,
+                "queue_wait_seconds": 0.0,
+                "service_seconds": 1.3919665840000095
+              },
+              "shared_network": {
+                "theoretical_bandwidth_bytes_per_s": 100000000000.0,
+                "utilization_assumption": 0.75,
+                "bytes": 949144907776,
+                "jobs": 20991,
+                "queue_wait_seconds": 29.84469519142879,
+                "service_seconds": 12.907157437013149
+              }
+            },
+            "loading_requests": 0,
+            "write_jobs": 0,
+            "save_scope": "newly computed complete retained group pages; duplicate writes suppressed",
+            "source_scope_limit": "DRAM only; one compute node; serial PCIe/network transfer approximation"
+          },
+          "dma_pinned_slots": 0,
+          "defer_prefills": true,
+          "prefill_capacity_bound": false,
+          "scheduler_stats": {
+            "steps": 5167,
+            "deferred_running_prefills": 53582,
+            "deferred_waiting_prefills": 2193,
+            "capacity_bound_steps": 3,
+            "scheduled_context_tokens": 4219072,
+            "scheduled_decode_tokens": 587052,
+            "scheduled_decode_query_tokens": 952635,
+            "max_num_seqs_gate": 0,
+            "full_input_gate": 0,
+            "async_load_reservation_gate": 0,
+            "max_inflight_prefill_reserved_slots": 40116,
+            "loaded_kv_capacity_gate": 0,
+            "loaded_kv_resumptions": 20,
+            "async_load_admissions": 20
+          },
+          "free_slots": 87072,
+          "watermark_slots": 0,
+          "used_slots": 1,
+          "peak_used_slots": 46848,
+          "allocations": 8468626,
+          "releases": 9267945,
+          "evictions": 50996,
+          "cached_slots": 81431
+        },
+        {
+          "worker_id": 4,
+          "running": 0,
+          "waiting": 0,
+          "loading": 0,
+          "loaded_waiting": 0,
+          "inflight_prefills": 0,
+          "inflight_prefill_reserved_slots": 0,
+          "external_cache": {
+            "backend": "MooncakeStoreConnector",
+            "native_async": true,
+            "service_scope": "engine-shared DRAM; all compatible DP replicas",
+            "key_scope": "model/layout/TP/PP + group/complete salted prefix/subslot; DP excluded",
+            "runtime_budget_shared_bytes": 3298534883328,
+            "staging_bytes": 137438953472,
+            "storage": {
+              "scope": "mooncake:shared-dram",
+              "capacity_bytes": 3161095929856,
+              "allocation_unit_bytes": null,
+              "used_bytes": 949144907776,
+              "peak_used_bytes": 949144907776,
+              "resident_pages": 859666,
+              "pinned_pages": 0,
+              "evictions": 0
+            },
+            "read": {
+              "path": "shared-network then PCIe",
+              "host": {
+                "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+                "utilization_assumption": 0.75,
+                "bytes": 6009292800,
+                "jobs": 13,
+                "queue_wait_seconds": 0.0,
+                "service_seconds": 0.06263579999999999
+              },
+              "shared_network": {
+                "theoretical_bandwidth_bytes_per_s": 100000000000.0,
+                "utilization_assumption": 0.75,
+                "bytes": 56391221248,
+                "jobs": 180,
+                "queue_wait_seconds": 0.2079096605966697,
+                "service_seconds": 0.754042949973334
+              }
+            },
+            "write": {
+              "path": "PCIe then shared-network",
+              "host": {
+                "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+                "utilization_assumption": 0.75,
+                "bytes": 109754949632,
+                "jobs": 2326,
+                "queue_wait_seconds": 0.0,
+                "service_seconds": 1.1502587253333436
+              },
+              "shared_network": {
+                "theoretical_bandwidth_bytes_per_s": 100000000000.0,
+                "utilization_assumption": 0.75,
+                "bytes": 949144907776,
+                "jobs": 20991,
+                "queue_wait_seconds": 29.84469519142879,
+                "service_seconds": 12.907157437013149
+              }
+            },
+            "loading_requests": 0,
+            "write_jobs": 0,
+            "save_scope": "newly computed complete retained group pages; duplicate writes suppressed",
+            "source_scope_limit": "DRAM only; one compute node; serial PCIe/network transfer approximation"
+          },
+          "dma_pinned_slots": 0,
+          "defer_prefills": true,
+          "prefill_capacity_bound": false,
+          "scheduler_stats": {
+            "steps": 5167,
+            "deferred_running_prefills": 39692,
+            "deferred_waiting_prefills": 2131,
+            "capacity_bound_steps": 2,
+            "scheduled_context_tokens": 3199808,
+            "scheduled_decode_tokens": 564584,
+            "scheduled_decode_query_tokens": 935677,
+            "max_num_seqs_gate": 0,
+            "full_input_gate": 0,
+            "async_load_reservation_gate": 0,
+            "max_inflight_prefill_reserved_slots": 32310,
+            "loaded_kv_capacity_gate": 0,
+            "loaded_kv_resumptions": 9,
+            "async_load_admissions": 9
+          },
+          "free_slots": 87072,
+          "watermark_slots": 0,
+          "used_slots": 1,
+          "peak_used_slots": 46626,
+          "allocations": 6690364,
+          "releases": 7449644,
+          "evictions": 25667,
+          "cached_slots": 83272
+        },
+        {
+          "worker_id": 5,
+          "running": 0,
+          "waiting": 0,
+          "loading": 0,
+          "loaded_waiting": 0,
+          "inflight_prefills": 0,
+          "inflight_prefill_reserved_slots": 0,
+          "external_cache": {
+            "backend": "MooncakeStoreConnector",
+            "native_async": true,
+            "service_scope": "engine-shared DRAM; all compatible DP replicas",
+            "key_scope": "model/layout/TP/PP + group/complete salted prefix/subslot; DP excluded",
+            "runtime_budget_shared_bytes": 3298534883328,
+            "staging_bytes": 137438953472,
+            "storage": {
+              "scope": "mooncake:shared-dram",
+              "capacity_bytes": 3161095929856,
+              "allocation_unit_bytes": null,
+              "used_bytes": 949144907776,
+              "peak_used_bytes": 949144907776,
+              "resident_pages": 859666,
+              "pinned_pages": 0,
+              "evictions": 0
+            },
+            "read": {
+              "path": "shared-network then PCIe",
+              "host": {
+                "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+                "utilization_assumption": 0.75,
+                "bytes": 7036948480,
+                "jobs": 28,
+                "queue_wait_seconds": 0.0,
+                "service_seconds": 0.07338554666666666
+              },
+              "shared_network": {
+                "theoretical_bandwidth_bytes_per_s": 100000000000.0,
+                "utilization_assumption": 0.75,
+                "bytes": 56391221248,
+                "jobs": 180,
+                "queue_wait_seconds": 0.2079096605966697,
+                "service_seconds": 0.754042949973334
+              }
+            },
+            "write": {
+              "path": "PCIe then shared-network",
+              "host": {
+                "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+                "utilization_assumption": 0.75,
+                "bytes": 110532691968,
+                "jobs": 2861,
+                "queue_wait_seconds": 0.0,
+                "service_seconds": 1.15996520800002
+              },
+              "shared_network": {
+                "theoretical_bandwidth_bytes_per_s": 100000000000.0,
+                "utilization_assumption": 0.75,
+                "bytes": 949144907776,
+                "jobs": 20991,
+                "queue_wait_seconds": 29.84469519142879,
+                "service_seconds": 12.907157437013149
+              }
+            },
+            "loading_requests": 0,
+            "write_jobs": 0,
+            "save_scope": "newly computed complete retained group pages; duplicate writes suppressed",
+            "source_scope_limit": "DRAM only; one compute node; serial PCIe/network transfer approximation"
+          },
+          "dma_pinned_slots": 0,
+          "defer_prefills": true,
+          "prefill_capacity_bound": false,
+          "scheduler_stats": {
+            "steps": 5167,
+            "deferred_running_prefills": 31005,
+            "deferred_waiting_prefills": 2087,
+            "capacity_bound_steps": 0,
+            "scheduled_context_tokens": 2478464,
+            "scheduled_decode_tokens": 465536,
+            "scheduled_decode_query_tokens": 778723,
+            "max_num_seqs_gate": 0,
+            "full_input_gate": 0,
+            "async_load_reservation_gate": 0,
+            "max_inflight_prefill_reserved_slots": 24093,
+            "loaded_kv_capacity_gate": 0,
+            "loaded_kv_resumptions": 21,
+            "async_load_admissions": 21
+          },
+          "free_slots": 87072,
+          "watermark_slots": 0,
+          "used_slots": 1,
+          "peak_used_slots": 35762,
+          "allocations": 6975610,
+          "releases": 7654445,
+          "evictions": 28093,
+          "cached_slots": 83486
+        },
+        {
+          "worker_id": 6,
+          "running": 0,
+          "waiting": 0,
+          "loading": 0,
+          "loaded_waiting": 0,
+          "inflight_prefills": 0,
+          "inflight_prefill_reserved_slots": 0,
+          "external_cache": {
+            "backend": "MooncakeStoreConnector",
+            "native_async": true,
+            "service_scope": "engine-shared DRAM; all compatible DP replicas",
+            "key_scope": "model/layout/TP/PP + group/complete salted prefix/subslot; DP excluded",
+            "runtime_budget_shared_bytes": 3298534883328,
+            "staging_bytes": 137438953472,
+            "storage": {
+              "scope": "mooncake:shared-dram",
+              "capacity_bytes": 3161095929856,
+              "allocation_unit_bytes": null,
+              "used_bytes": 949144907776,
+              "peak_used_bytes": 949144907776,
+              "resident_pages": 859666,
+              "pinned_pages": 0,
+              "evictions": 0
+            },
+            "read": {
+              "path": "shared-network then PCIe",
+              "host": {
+                "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+                "utilization_assumption": 0.75,
+                "bytes": 9032833024,
+                "jobs": 28,
+                "queue_wait_seconds": 0.006196066239681386,
+                "service_seconds": 0.09417601066666667
+              },
+              "shared_network": {
+                "theoretical_bandwidth_bytes_per_s": 100000000000.0,
+                "utilization_assumption": 0.75,
+                "bytes": 56391221248,
+                "jobs": 180,
+                "queue_wait_seconds": 0.2079096605966697,
+                "service_seconds": 0.754042949973334
+              }
+            },
+            "write": {
+              "path": "PCIe then shared-network",
+              "host": {
+                "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+                "utilization_assumption": 0.75,
+                "bytes": 118311421952,
+                "jobs": 2009,
+                "queue_wait_seconds": 0.0,
+                "service_seconds": 1.2384376453333366
+              },
+              "shared_network": {
+                "theoretical_bandwidth_bytes_per_s": 100000000000.0,
+                "utilization_assumption": 0.75,
+                "bytes": 949144907776,
+                "jobs": 20991,
+                "queue_wait_seconds": 29.84469519142879,
+                "service_seconds": 12.907157437013149
+              }
+            },
+            "loading_requests": 0,
+            "write_jobs": 0,
+            "save_scope": "newly computed complete retained group pages; duplicate writes suppressed",
+            "source_scope_limit": "DRAM only; one compute node; serial PCIe/network transfer approximation"
+          },
+          "dma_pinned_slots": 0,
+          "defer_prefills": true,
+          "prefill_capacity_bound": false,
+          "scheduler_stats": {
+            "steps": 5167,
+            "deferred_running_prefills": 58081,
+            "deferred_waiting_prefills": 2517,
+            "capacity_bound_steps": 0,
+            "scheduled_context_tokens": 4535552,
+            "scheduled_decode_tokens": 586097,
+            "scheduled_decode_query_tokens": 977642,
+            "max_num_seqs_gate": 0,
+            "full_input_gate": 0,
+            "async_load_reservation_gate": 0,
+            "max_inflight_prefill_reserved_slots": 44790,
+            "loaded_kv_capacity_gate": 0,
+            "loaded_kv_resumptions": 18,
+            "async_load_admissions": 18
+          },
+          "free_slots": 87072,
+          "watermark_slots": 0,
+          "used_slots": 1,
+          "peak_used_slots": 41456,
+          "allocations": 7368848,
+          "releases": 8086536,
+          "evictions": 41937,
+          "cached_slots": 82390
+        },
+        {
+          "worker_id": 7,
+          "running": 0,
+          "waiting": 0,
+          "loading": 0,
+          "loaded_waiting": 0,
+          "inflight_prefills": 0,
+          "inflight_prefill_reserved_slots": 0,
+          "external_cache": {
+            "backend": "MooncakeStoreConnector",
+            "native_async": true,
+            "service_scope": "engine-shared DRAM; all compatible DP replicas",
+            "key_scope": "model/layout/TP/PP + group/complete salted prefix/subslot; DP excluded",
+            "runtime_budget_shared_bytes": 3298534883328,
+            "staging_bytes": 137438953472,
+            "storage": {
+              "scope": "mooncake:shared-dram",
+              "capacity_bytes": 3161095929856,
+              "allocation_unit_bytes": null,
+              "used_bytes": 949144907776,
+              "peak_used_bytes": 949144907776,
+              "resident_pages": 859666,
+              "pinned_pages": 0,
+              "evictions": 0
+            },
+            "read": {
+              "path": "shared-network then PCIe",
+              "host": {
+                "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+                "utilization_assumption": 0.75,
+                "bytes": 9235179520,
+                "jobs": 22,
+                "queue_wait_seconds": 0.0,
+                "service_seconds": 0.09626578666666664
+              },
+              "shared_network": {
+                "theoretical_bandwidth_bytes_per_s": 100000000000.0,
+                "utilization_assumption": 0.75,
+                "bytes": 56391221248,
+                "jobs": 180,
+                "queue_wait_seconds": 0.2079096605966697,
+                "service_seconds": 0.754042949973334
+              }
+            },
+            "write": {
+              "path": "PCIe then shared-network",
+              "host": {
+                "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+                "utilization_assumption": 0.75,
+                "bytes": 125432182784,
+                "jobs": 2675,
+                "queue_wait_seconds": 0.0,
+                "service_seconds": 1.314610237333349
+              },
+              "shared_network": {
+                "theoretical_bandwidth_bytes_per_s": 100000000000.0,
+                "utilization_assumption": 0.75,
+                "bytes": 949144907776,
+                "jobs": 20991,
+                "queue_wait_seconds": 29.84469519142879,
+                "service_seconds": 12.907157437013149
+              }
+            },
+            "loading_requests": 0,
+            "write_jobs": 0,
+            "save_scope": "newly computed complete retained group pages; duplicate writes suppressed",
+            "source_scope_limit": "DRAM only; one compute node; serial PCIe/network transfer approximation"
+          },
+          "dma_pinned_slots": 0,
+          "defer_prefills": true,
+          "prefill_capacity_bound": false,
+          "scheduler_stats": {
+            "steps": 5167,
+            "deferred_running_prefills": 55097,
+            "deferred_waiting_prefills": 2288,
+            "capacity_bound_steps": 3,
+            "scheduled_context_tokens": 4367040,
+            "scheduled_decode_tokens": 640676,
+            "scheduled_decode_query_tokens": 1097640,
+            "max_num_seqs_gate": 0,
+            "full_input_gate": 0,
+            "async_load_reservation_gate": 0,
+            "max_inflight_prefill_reserved_slots": 37622,
+            "loaded_kv_capacity_gate": 0,
+            "loaded_kv_resumptions": 16,
+            "async_load_admissions": 16
+          },
+          "free_slots": 87072,
+          "watermark_slots": 0,
+          "used_slots": 1,
+          "peak_used_slots": 50689,
+          "allocations": 8221839,
+          "releases": 9023149,
+          "evictions": 49643,
+          "cached_slots": 82789
+        }
+      ],
+      "per_rank": [
+        {
+          "rank": 0,
+          "successful": 693,
+          "cancelled": 54,
+          "input_tokens": 68072064,
+          "gpu_hit_tokens": 64487680,
+          "cpu_hit_tokens": 520192,
+          "max_used_gpu_slots": 42246,
+          "full_input_gate": 0
+        },
+        {
+          "rank": 1,
+          "successful": 642,
+          "cancelled": 49,
+          "input_tokens": 71820032,
+          "gpu_hit_tokens": 68903424,
+          "cpu_hit_tokens": 171264,
+          "max_used_gpu_slots": 39998,
+          "full_input_gate": 0
+        },
+        {
+          "rank": 2,
+          "successful": 702,
+          "cancelled": 64,
+          "input_tokens": 79447808,
+          "gpu_hit_tokens": 75861760,
+          "cpu_hit_tokens": 486656,
+          "max_used_gpu_slots": 48043,
+          "full_input_gate": 0
+        },
+        {
+          "rank": 3,
+          "successful": 732,
+          "cancelled": 63,
+          "input_tokens": 69992128,
+          "gpu_hit_tokens": 65950720,
+          "cpu_hit_tokens": 865792,
+          "max_used_gpu_slots": 45308,
+          "full_input_gate": 0
+        },
+        {
+          "rank": 4,
+          "successful": 684,
+          "cancelled": 58,
+          "input_tokens": 71256000,
+          "gpu_hit_tokens": 68162560,
+          "cpu_hit_tokens": 283392,
+          "max_used_gpu_slots": 46020,
+          "full_input_gate": 0
+        },
+        {
+          "rank": 5,
+          "successful": 683,
+          "cancelled": 46,
+          "input_tokens": 63974016,
+          "gpu_hit_tokens": 61319424,
+          "cpu_hit_tokens": 339712,
+          "max_used_gpu_slots": 35762,
+          "full_input_gate": 0
+        },
+        {
+          "rank": 6,
+          "successful": 890,
+          "cancelled": 61,
+          "input_tokens": 77102784,
+          "gpu_hit_tokens": 72479488,
+          "cpu_hit_tokens": 551168,
+          "max_used_gpu_slots": 40590,
+          "full_input_gate": 0
+        },
+        {
+          "rank": 7,
+          "successful": 777,
+          "cancelled": 58,
+          "input_tokens": 83166592,
+          "gpu_hit_tokens": 78308864,
+          "cpu_hit_tokens": 1227776,
+          "max_used_gpu_slots": 49465,
+          "full_input_gate": 0
+        }
+      ],
+      "checks": "counts/output/input decomposition/cancellation/pool/DP conservation passed",
+      "native_mooncake": {
+        "shared_store": true,
+        "native_async": true,
+        "memory_hit_tokens": 5744896,
+        "query_tokens": 303617,
+        "transferred_bytes": 328493717504,
+        "effective_bandwidth_gbps": 19.202184527351676,
+        "output_token_throughput_tps": 1045.468783911108,
+        "final_references_released": true
+      }
+    }
+  },
+  "inflight_reservations_verified": true
+}
