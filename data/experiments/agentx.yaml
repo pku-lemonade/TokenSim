@@ -69,6 +69,89 @@ experiments:
       config_commit: c62f6e335bbe041a862670ff1d1fa747cdcecab9
       config_source: benchmarks/single_node/agentic/dsv4_fp4_b300_vllm_mtp.sh
       metrics_file: reference/b300-c384-dep8-simplecpu/key_point.json
+  # Executable DEP8 curve points. Their scheduler budgets follow the
+  # reference recipes: max_num_seqs = 2*concurrency / DP world size.
+  - id: b200-c32-dep8-simplecpu
+    groups: [curve, dep8]
+    hardware: b200
+    cluster: data/clusters/8_b200/dep8.json
+    concurrency: 32
+    max_num_seqs: 8
+    max_num_batched_tokens: 8192
+    gpu_memory_utilization: 0.90
+    host_memory: {available_cpu_dram_mib: 3095781, cpu_budget_per_rank_bytes: 356125000000}
+  - id: b200-c64-dep8-simplecpu
+    groups: [curve, dep8]
+    hardware: b200
+    cluster: data/clusters/8_b200/dep8.json
+    concurrency: 64
+    max_num_seqs: 16
+    max_num_batched_tokens: 8192
+    gpu_memory_utilization: 0.90
+    host_memory: {available_cpu_dram_mib: 3095781, cpu_budget_per_rank_bytes: 356125000000}
+  - id: b200-c96-dep8-simplecpu
+    groups: [curve, dep8]
+    hardware: b200
+    cluster: data/clusters/8_b200/dep8.json
+    concurrency: 96
+    max_num_seqs: 24
+    max_num_batched_tokens: 8192
+    gpu_memory_utilization: 0.90
+    host_memory: {available_cpu_dram_mib: 3095781, cpu_budget_per_rank_bytes: 356125000000}
+  - id: b200-c128-dep8-simplecpu
+    groups: [curve, dep8]
+    hardware: b200
+    cluster: data/clusters/8_b200/dep8.json
+    concurrency: 128
+    max_num_seqs: 32
+    max_num_batched_tokens: 8192
+    gpu_memory_utilization: 0.90
+    host_memory: {available_cpu_dram_mib: 3095781, cpu_budget_per_rank_bytes: 356125000000}
+  - id: b200-c160-dep8-simplecpu
+    groups: [curve, dep8]
+    hardware: b200
+    cluster: data/clusters/8_b200/dep8.json
+    concurrency: 160
+    max_num_seqs: 40
+    max_num_batched_tokens: 8192
+    gpu_memory_utilization: 0.90
+    host_memory: {available_cpu_dram_mib: 3095781, cpu_budget_per_rank_bytes: 356125000000}
+  - id: b300-c128-dep8-simplecpu
+    groups: [curve, dep8]
+    hardware: b300
+    cluster: data/clusters/8_b300/dep8.json
+    concurrency: 128
+    max_num_seqs: 32
+    max_num_batched_tokens: 16384
+    gpu_memory_utilization: 0.92
+    host_memory: {available_cpu_dram_mib: 2964436, cpu_budget_per_rank_bytes: 356125000000}
+  - id: b300-c256-dep8-simplecpu
+    groups: [curve, dep8]
+    hardware: b300
+    cluster: data/clusters/8_b300/dep8.json
+    concurrency: 256
+    max_num_seqs: 64
+    max_num_batched_tokens: 16384
+    gpu_memory_utilization: 0.92
+    host_memory: {available_cpu_dram_mib: 2964436, cpu_budget_per_rank_bytes: 356125000000}
+  - id: b300-c512-dep8-simplecpu
+    groups: [curve, dep8]
+    hardware: b300
+    cluster: data/clusters/8_b300/dep8.json
+    concurrency: 512
+    max_num_seqs: 128
+    max_num_batched_tokens: 16384
+    gpu_memory_utilization: 0.92
+    host_memory: {available_cpu_dram_mib: 2964436, cpu_budget_per_rank_bytes: 356125000000}
+  - id: b300-c576-dep8-simplecpu
+    groups: [curve, dep8]
+    hardware: b300
+    cluster: data/clusters/8_b300/dep8.json
+    concurrency: 576
+    max_num_seqs: 144
+    max_num_batched_tokens: 16384
+    gpu_memory_utilization: 0.92
+    host_memory: {available_cpu_dram_mib: 2964436, cpu_budget_per_rank_bytes: 356125000000}
 
 # Reference curve index from the research plan. These entries intentionally
 # remain metadata-only until each point's exact cluster, GPU count, offload
