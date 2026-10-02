@@ -233,6 +233,10 @@ def plot_summary(csv_path, output):
     rows = list(csv.DictReader(Path(csv_path).open()))
     aggregate = [row for row in rows if row.get("row_type") == "aggregate"]
     if not aggregate:
+        # A deterministic single-seed curve is still a valid exploratory
+        # plot; multi-seed runs add aggregate rows automatically.
+        aggregate = [row for row in rows if row.get("row_type") == "seed"]
+    if not aggregate:
         raise SystemExit("summary has no aggregate seed rows to plot")
     figure, axes = plt.subplots(1, 2, figsize=(11, 4), constrained_layout=True)
     for hardware in sorted({row["hardware"] for row in aggregate}):
