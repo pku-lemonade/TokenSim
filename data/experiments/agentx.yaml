@@ -162,6 +162,8 @@ experiments:
     gpu_memory_utilization: 0.90
     cache_backend: hbm
     moe_backend: generic
+    num_gpus: 8
+    parallelism: {tp: 8, dp: 1, ep: 1, pp: 1}
   - id: b200-c4-tp8-hbm
     groups: [curve, tp8]
     hardware: b200
@@ -172,6 +174,8 @@ experiments:
     gpu_memory_utilization: 0.90
     cache_backend: hbm
     moe_backend: generic
+    num_gpus: 8
+    parallelism: {tp: 8, dp: 1, ep: 1, pp: 1}
   - id: b200-c8-tp8-hbm
     groups: [curve, tp8]
     hardware: b200
@@ -182,6 +186,8 @@ experiments:
     gpu_memory_utilization: 0.90
     cache_backend: hbm
     moe_backend: generic
+    num_gpus: 8
+    parallelism: {tp: 8, dp: 1, ep: 1, pp: 1}
   - id: b200-c14-tp8-hbm
     groups: [curve, tp8]
     hardware: b200
@@ -192,6 +198,8 @@ experiments:
     gpu_memory_utilization: 0.90
     cache_backend: hbm
     moe_backend: generic
+    num_gpus: 8
+    parallelism: {tp: 8, dp: 1, ep: 1, pp: 1}
   - id: b300-c1-tp8-hbm
     groups: [curve, tp8]
     hardware: b300
@@ -202,6 +210,8 @@ experiments:
     gpu_memory_utilization: 0.95
     cache_backend: hbm
     moe_backend: generic
+    num_gpus: 8
+    parallelism: {tp: 8, dp: 1, ep: 1, pp: 1}
   - id: b300-c4-tp8-hbm
     groups: [curve, tp8]
     hardware: b300
@@ -212,6 +222,8 @@ experiments:
     gpu_memory_utilization: 0.95
     cache_backend: hbm
     moe_backend: generic
+    num_gpus: 8
+    parallelism: {tp: 8, dp: 1, ep: 1, pp: 1}
   - id: b300-c8-tp4-hbm
     groups: [curve, tp4]
     hardware: b300
@@ -223,6 +235,7 @@ experiments:
     cache_backend: hbm
     num_gpus: 4
     moe_backend: generic
+    parallelism: {tp: 4, dp: 1, ep: 1, pp: 1}
   - id: b300-c16-tp4-simplecpu
     groups: [curve, tp4]
     hardware: b300
@@ -235,6 +248,7 @@ experiments:
     cache_backend: simple_cpu
     num_gpus: 4
     moe_backend: generic
+    parallelism: {tp: 4, dp: 1, ep: 1, pp: 1}
   - id: b300-c48-tp4-ep4-simplecpu
     groups: [curve, tp4_ep4]
     hardware: b300
@@ -245,6 +259,8 @@ experiments:
     gpu_memory_utilization: 0.95
     host_memory: {available_cpu_dram_mib: 2964436, cpu_budget_per_rank_bytes: 356125000000}
     cache_backend: simple_cpu
+    num_gpus: 8
+    parallelism: {tp: 4, dp: 2, ep: 4, pp: 1}
   - id: b300-c64-tp4-ep4-simplecpu
     groups: [curve, tp4_ep4]
     hardware: b300
@@ -255,6 +271,8 @@ experiments:
     gpu_memory_utilization: 0.95
     host_memory: {available_cpu_dram_mib: 2964436, cpu_budget_per_rank_bytes: 356125000000}
     cache_backend: simple_cpu
+    num_gpus: 8
+    parallelism: {tp: 4, dp: 2, ep: 4, pp: 1}
 
 # Reference curve index from the research plan. These entries intentionally
 # remain metadata-only until each point's exact cluster, GPU count, offload
