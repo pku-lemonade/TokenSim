@@ -823,7 +823,7 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 
 - [x] **请求回放任务 1** 按 aiperf 完成预热，然后模拟 3,600 秒；到时停止发新请求，等待 30 秒，取消仍未完成的请求，再按参考执行最多 10 秒的取消收尾。预热与收尾不占这一小时的发请求窗口。
 - [x] **请求回放任务 2** 直接使用 trace 里的 OSL。
-- [ ] **请求回放任务 3（诊断方案已确认）** 增加按参考 `credit_issued_ns` 固定发出时间的可选诊断模式，用于分离回放时序与引擎速度误差。处理耗时仍由模拟器计算，不叠加历史 API 耗时；记录参考身份、时间起点和缺失映射。按需在两个主检查点运行完整一小时，结果标为诊断，不能替代正式闭环结果。
+- [x] **请求回放任务 3（诊断方案已确认）** 增加 `--agentx_issue_mode recorded` 固定记录时间诊断模式；两个主点均完成完整 3,600 秒窗口、grace 和取消收尾。结果保存在 `results/agentx-dsv4-full/diagnostics-recorded-issue/`，仅用于分离回放时序与引擎速度误差，不替代闭环正式结果。
 - [x] **请求回放任务 4** 以全部 393 条 trace 为负载池，按 aiperf 的起点抽样和会话复用规则回放，保留依赖与等待；窗口内回放完一棵请求树后，继续从共享抽样器领取下一条。既不强制全部从第一轮开始，也不以遍历全部原始请求作为结束条件。
 - [x] **请求回放任务 5** 分别报告预热与正式测量的发出、成功、错误、取消和收尾后残留请求数，以及使用过的 trace 数、唯一原始请求数和回放次数。按参考口径处理预热、宽限期和取消；未被窗口选中的原始请求不算模拟失败。
 - [x] **请求回放任务 6** 将会话拆分、请求间依赖和跨请求流等待关系作为 GPU 路由的输入，先核对这些关系，再进行会话到 GPU 的映射与缓存复用验证。
@@ -872,7 +872,7 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 - [x] **GPU 同步与请求路由任务 1** DP lockstep：8 个 rank 每步同步，步长取各 rank 的最大值；空闲 rank 跑 dummy batch（对照 `core.py:2225-2240`）。
 - [x] **GPU 同步与请求路由任务 2** 全局 step_counter：所有 rank 相同，wave 结束时重置，供 请求调度 的 interval 使用；当前只读源码的完成状态检查间隔为 16，旧 32 步记录另列版本差异。
 - [x] **GPU 同步与请求路由任务 3（已确认方向）** 独立 consistent-hash router 已放在请求回放与 worker 调度器之间，以会话／subagent ID 稳定路由，并在结果中记录 worker、请求量、在途量与缓存命中；逐点策略由矩阵配置表达。
-- [ ] **GPU 同步与请求路由任务 4（诊断方案已确认）** 增加固定实测 worker 分配的可选模式，通过 router.log 与原始会话身份映射诊断路由误差。仅使用可以核对的映射，报告覆盖率与缺失项，不伪造未观测会话的实测归属。按需在两个主检查点运行完整一小时；正式参考曲线由 router 模拟分配。
+- [ ] **GPU 同步与请求路由任务 4（诊断方案已确认）** 固定实测 worker 映射仍需历史 router.log 身份覆盖率适配；当前正式曲线继续使用内部 consistent-hash router，未伪造未观测会话归属。
 - [x] **GPU 同步与请求路由任务 5** 已用最终 native B200 c196 seed0 诊断并记录于 `data/reference/agentx-native-router-rank3-audit.json`：rank3 请求数、计算时间和等待均非最大，rank6 才是主要负载/等待点；历史 server-log rank3 现象属于不同运行，不能直接归因到 native 闭环。
 
 涉及文件：`TokenSim/placement/policies.py`（:47、:91-96）、`TokenSim/llm/llm_engine.py`（`_build_worker_pool`，:619）、`TokenSim/workload/agentx.py`。
@@ -957,7 +957,7 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
   - 2026-10-02 已完成数据导入与 native mHC estimator 接线；完整 mHC 独立窗口待当前 attention 阶段之后验收。
 - [x] **算子耗时任务 12.1：原生低秩投影与 GEMM dtype** 按 DSV4 实际 replicated/column/grouped/row-parallel 几何替代稠密 QKV/O；router 与 lm_head 使用 BF16，grouped FP8 einsum 输出 BF16，缺失匹配实测时标为单 launch 解析估算。采集 manifest 与运行时形状一致；405 项全仓测试及两个完整一小时主点的请求、缓存、取消、DP 时间、源码和配置身份核对通过。shared expert、gate 融合附加工作及 MTP query 计时范围随后单独完成，任务 12 整体保持未勾选。
 - [x] **算子耗时任务 12** 逐项核对 router、lm_head、shared expert 的 dtype、调用次数和 query 形状；shared expert 按实际路径融合或独立计时，不预设其与 routed MoE 完全重叠，也不重复计算已计入融合表的部分。
-- [ ] **算子耗时任务 13（校准范围已确认）** 用少量参数描述 step overhead，拟区分 CUDA graph 与 eager 执行；分类按实际配置和执行路径判断。只用 B200 校准，记录用于拟合的实验点、目标和参数，冻结参数后验证 B300；B300 的硬件规格和实际运行配置仍按该 SKU 输入。不得按 B300 误差追加专用修正，也不得用 overhead 掩盖已知的算子或通信重复计费。
+- [x] **算子耗时任务 13（校准范围已确认）** 已完成 B200 校准审计并冻结 `step_overhead_us=0`，直接用于 B300；两 SKU 组件时间均记录 overhead=0。正 overhead 无法解释当前“模拟器更慢”的误差，证据见 [overhead 校准报告](agentx-overhead-calibration-report.md)，未追加 SKU 修正。
 - [x] **算子耗时任务 14.1：测量阶段分项守恒** 预热结束后重置 operator 查询、step 与 component 计数，保留查表缓存和全程 missing-shape 清单；两个完整主点的 profiling 分项和均与 DP local compute seconds（含 dummy）一致。旧结果含预热的分项不作直接百分比对照，完整模块分解和最终比较继续由任务 14 完成。
 - [x] **算子耗时任务 14** 输出 native result 的 attention / MoE / GEMM / elementwise / comm / overhead 分解，并与旧 proxy 分解分开报告；FlashMLA/FlashInfer 和跨硬件借表差异不折算成伪精度。
 - [ ] **算子耗时任务 15（已确认）** 增加独立诊断入口，在隔离环境离线调用 AIC；对同一模型、形状、batch、长度和并行配置比较一次前向估算及算子分项。固定并记录 AIC 版本与数据来源，区分导入／组合错误和已知不同假设。正式 TokenSim 模拟不依赖 AIC 运行环境；此诊断不替代完整的一小时模拟。
@@ -1001,8 +1001,8 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 ### 最终验证
 
 - [x] **最终验证任务 1** 两个 SKU 按 §5.1 完成预热及一小时模拟；主点和已配置曲线均使用三个修复后的模拟 seed，报告明确标注固定一小时窗口且不要求全部原始请求完成。
-- [ ] **最终验证任务 2（范围已确认）** 消融仅跑 B200 c196、B300 c384 两个主检查点，逐项关闭缓存卸载、投机解码等可关闭功能，其他条件固定；每次仍完整模拟一小时，含随机因素时三个种子。算子外推或计时近似的对照也须保持完整模型，不能通过恢复 proxy 或删除真实模型结构制造对照。完整实现仍跑全部参考曲线。
-- [ ] **最终验证任务 3（已确认）** 泛化：冻结 B200 校准的额外开销参数，直接用于 B300，不按 SKU 再拟合；报告 B200 校准点与 B300 验证点的误差。
+- [x] **最终验证任务 2（范围已确认）** B200 c196/B300 c384 已完成 HBM-only 和 MTP-disabled 两类完整三 seed 消融；完整模型和一小时协议保持不变，结果见 [最终消融报告](agentx-final-ablation-report.md)。
+- [x] **最终验证任务 3（已确认）** 三 seed 主点和消融均使用同一组额外开销输入；B200/B300 结果直接比较，未按 SKU 重新拟合。当前 step overhead 明确为设备数据中的 0，绝对误差来自 attention/operator provenance，而非新增 SKU 修正。
 - [ ] **最终验证任务 4（已确认）** 汇总 AIC 同形状离线估算对照，给出分项差异与解释。
 - [x] **最终验证任务 5** 更新 `docs/agentx.md`，迁移到 native matrix workflow 并明确旧 proxy 结果的历史性质。
 - [x] **最终验证任务 6（已确认范围）** 统一实验脚本已完成 TP8、TP4、TP4/EP4、DEP8 曲线和 SimpleCPU/HBM 配置选择；逐点输出三 seed 汇总、绘图、生命周期校验和可比较参考误差。
