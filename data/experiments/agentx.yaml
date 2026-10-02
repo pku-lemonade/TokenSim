@@ -152,6 +152,107 @@ experiments:
     max_num_batched_tokens: 16384
     gpu_memory_utilization: 0.92
     host_memory: {available_cpu_dram_mib: 2964436, cpu_budget_per_rank_bytes: 356125000000}
+  - id: b200-c1-tp8-hbm
+    groups: [curve, tp8]
+    hardware: b200
+    cluster: data/clusters/8_b200/tp8.json
+    concurrency: 1
+    max_num_seqs: 2
+    max_num_batched_tokens: 8192
+    gpu_memory_utilization: 0.90
+    cache_backend: hbm
+    moe_backend: generic
+  - id: b200-c4-tp8-hbm
+    groups: [curve, tp8]
+    hardware: b200
+    cluster: data/clusters/8_b200/tp8.json
+    concurrency: 4
+    max_num_seqs: 8
+    max_num_batched_tokens: 8192
+    gpu_memory_utilization: 0.90
+    cache_backend: hbm
+    moe_backend: generic
+  - id: b200-c8-tp8-hbm
+    groups: [curve, tp8]
+    hardware: b200
+    cluster: data/clusters/8_b200/tp8.json
+    concurrency: 8
+    max_num_seqs: 16
+    max_num_batched_tokens: 8192
+    gpu_memory_utilization: 0.90
+    cache_backend: hbm
+    moe_backend: generic
+  - id: b200-c14-tp8-hbm
+    groups: [curve, tp8]
+    hardware: b200
+    cluster: data/clusters/8_b200/tp8.json
+    concurrency: 14
+    max_num_seqs: 28
+    max_num_batched_tokens: 8192
+    gpu_memory_utilization: 0.90
+    cache_backend: hbm
+    moe_backend: generic
+  - id: b300-c1-tp8-hbm
+    groups: [curve, tp8]
+    hardware: b300
+    cluster: data/clusters/8_b300/tp8.json
+    concurrency: 1
+    max_num_seqs: 2
+    max_num_batched_tokens: 16384
+    gpu_memory_utilization: 0.95
+    cache_backend: hbm
+    moe_backend: generic
+  - id: b300-c4-tp8-hbm
+    groups: [curve, tp8]
+    hardware: b300
+    cluster: data/clusters/8_b300/tp8.json
+    concurrency: 4
+    max_num_seqs: 8
+    max_num_batched_tokens: 16384
+    gpu_memory_utilization: 0.95
+    cache_backend: hbm
+    moe_backend: generic
+  - id: b300-c8-tp4-hbm
+    groups: [curve, tp4]
+    hardware: b300
+    cluster: data/clusters/8_b300/tp4_dp1.json
+    concurrency: 8
+    max_num_seqs: 16
+    max_num_batched_tokens: 16384
+    gpu_memory_utilization: 0.95
+    cache_backend: hbm
+    moe_backend: generic
+  - id: b300-c16-tp4-simplecpu
+    groups: [curve, tp4]
+    hardware: b300
+    cluster: data/clusters/8_b300/tp4_dp1.json
+    concurrency: 16
+    max_num_seqs: 32
+    max_num_batched_tokens: 16384
+    gpu_memory_utilization: 0.95
+    host_memory: {available_cpu_dram_mib: 2964436, cpu_budget_per_rank_bytes: 356125000000}
+    cache_backend: simple_cpu
+    moe_backend: generic
+  - id: b300-c48-tp4-ep4-simplecpu
+    groups: [curve, tp4_ep4]
+    hardware: b300
+    cluster: data/clusters/8_b300/tp4_dp2_ep.json
+    concurrency: 48
+    max_num_seqs: 24
+    max_num_batched_tokens: 8192
+    gpu_memory_utilization: 0.95
+    host_memory: {available_cpu_dram_mib: 2964436, cpu_budget_per_rank_bytes: 356125000000}
+    cache_backend: simple_cpu
+  - id: b300-c64-tp4-ep4-simplecpu
+    groups: [curve, tp4_ep4]
+    hardware: b300
+    cluster: data/clusters/8_b300/tp4_dp2_ep.json
+    concurrency: 64
+    max_num_seqs: 32
+    max_num_batched_tokens: 8192
+    gpu_memory_utilization: 0.95
+    host_memory: {available_cpu_dram_mib: 2964436, cpu_budget_per_rank_bytes: 356125000000}
+    cache_backend: simple_cpu
 
 # Reference curve index from the research plan. These entries intentionally
 # remain metadata-only until each point's exact cluster, GPU count, offload
