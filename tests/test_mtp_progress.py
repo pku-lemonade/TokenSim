@@ -39,6 +39,20 @@ class MTPProgressTest(TestCase):
         self.assertEqual(accepted, 1)
         self.assertEqual(scheduler._query_tokens(req, accepted), 1)
 
+    def test_simulation_seed_changes_deterministic_acceptance_stream(self):
+        first = self.scheduler()
+        second = self.scheduler()
+        second.mtp_seed = 1
+        values_first = []
+        values_second = []
+        for request_id in range(256):
+            req_first = Request(request_id, 8, 20, 16)
+            req_second = Request(request_id, 8, 20, 16)
+            req_first.generation_idx = req_second.generation_idx = 1
+            values_first.append(first._decode_output_tokens(req_first, 19))
+            values_second.append(second._decode_output_tokens(req_second, 19))
+        self.assertNotEqual(values_first, values_second)
+
     def test_request_advance_counts_accepted_tokens_once(self):
         env = simpy.Environment()
         req = Request(1, 8, 8, 16)

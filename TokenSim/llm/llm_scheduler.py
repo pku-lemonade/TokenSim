@@ -573,7 +573,12 @@ class LLMPagedAttnScheduler(LLMScheduler):
         state = (
             (int(req.id) * 1103515245)
             + (int(req.generation_idx) * 12345)
-            + self.mtp_seed
+            # Mix the simulation seed before reducing to a uint32.  Adding
+            # seed 1 or 2 directly changes the fraction by only 1e-10, which
+            # can leave two supposedly independent runs bit-identical.  The
+            # multiplicative constant is the standard golden-ratio hash step
+            # and keeps request/generation identity deterministic.
+            + (int(self.mtp_seed) * 0x9E3779B9)
         ) & 0xFFFFFFFF
         fraction = state / 4294967296.0
         accepted = high if fraction < self.mtp_acceptance_length - low else low
