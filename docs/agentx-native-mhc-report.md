@@ -15,6 +15,16 @@
 
 两组完整窗口的 component 与 DP local compute 守恒，mHC pre/post scope、FP32 参数/BF16 residual 和 `num_sites=2` 均在 backend provenance 中保留。相对 attention 阶段，mHC 增加 elementwise 时间并进一步降低吞吐；该结果仍受 FlashMLA 借表、MTP 近似和缓存压力影响，不能单独作为整体精度结论。
 
+最终主点的三 seed 复核使用修复后的 MTP seed 混合，并通过完整生命周期校验：
+
+| SKU | mean output token/s | seed stdev | mean p90 TTFT (s) | mean p90 ITL (s) |
+|---|---:|---:|---:|---:|
+| B200 c196 | 522.135 | 10.091 | 263.624 | 0.401 |
+| B300 c384 | 1,027.989 | 3.426 | 104.064 | 0.425 |
+
+逐 seed 结果和 `summary.csv` 保存在
+`results/agentx-dsv4-full/native-checkpoints-final/`；三个 seed 的输出和请求数均不再完全相同。
+
 导入复现：
 
 ```bash

@@ -4,7 +4,7 @@
 > 执行顺序：参考数据与完整模型准备 → 请求回放 → GPU 分配与缓存复用 → 调度行为 → 算子耗时校准 → 完整曲线验证。
 > 源码基准：只读参考 `/home/zhuohang/Serving/vllm-note`，本轮记录 HEAD `30f5c01d4ebb`；不下载历史镜像、不修改或切换此目录。本文旧行号和旧 HEAD 下的源码结论需按此版本重新定位；历史运行日志仍作为实验事实保留。
 > 分支：`agentx-support`（基于 `b2b685a`）
-> 状态：**2026-10-02 已完成 MegaMoE/shared expert、native CSA/HCA attention、MTP 2/3 推进与 q=4 target verify、native mHC，以及 native Mooncake shared-page adapter 的代码和两组完整一小时主点验收。统一矩阵已支持 list/check/expand/run/summary/plot、断点续跑、实际 GPU 数归一化和多 seed；DEP8、TP4/EP4、TP8/HBM 曲线的 seed0 全窗口均已完成并通过逐点守恒校验，seed1/seed2 正在补齐。完整阶段吞吐依次为：MegaMoE B200/B300 1,733.192／3,440.686，native attention+MTP 592.617／1,140.733，native mHC+attention+MTP 567.198／1,114.907，native Mooncake B200/B300 583.269／1,045.469 token/s。CSA/HCA 表为 FlashMLA 借用数据，参考使用 FlashInfer；mHC、shared fusion 和跨硬件 MegaMoE 含有明确 B/D 级近似，因此最终整体精度仍未通过 25% 门槛。报告见 [原生 MegaMoE](agentx-native-megamoe-report.md)、[原生 attention](agentx-native-attention-report.md)、[原生 mHC](agentx-native-mhc-report.md)、[Mooncake](agentx-mooncake-report.md)、[原生曲线](agentx-native-curve-report.md)。**
+> 状态：**2026-10-02 已完成 MegaMoE/shared expert、native CSA/HCA attention、MTP 2/3 推进与 q=4 target verify、native mHC，以及 native Mooncake shared-page adapter 的代码和两组完整一小时主点验收。统一矩阵已支持 list/check/expand/run/summary/plot、断点续跑、实际 GPU 数归一化和多 seed；DEP8、TP4/EP4、TP8/HBM 的 19 个曲线点已完成 seed0/1/2 全窗口并通过逐点守恒校验，所有 seed1/2 状态成功且 seed 间输出存在差异。修复后的三 seed 主点均已成功：B200 均值 522.135、B300 均值 1,027.989 token/s。完整阶段吞吐依次为：MegaMoE B200/B300 1,733.192／3,440.686，native attention+MTP 592.617／1,140.733，native mHC+attention+MTP 567.198／1,114.907，native Mooncake B200/B300 583.269／1,045.469 token/s。CSA/HCA 表为 FlashMLA 借用数据，参考使用 FlashInfer；mHC、shared fusion 和跨硬件 MegaMoE 含有明确 B/D 级近似，因此最终整体精度仍未通过 25% 门槛。报告见 [原生 MegaMoE](agentx-native-megamoe-report.md)、[原生 attention](agentx-native-attention-report.md)、[原生 mHC](agentx-native-mhc-report.md)、[Mooncake](agentx-mooncake-report.md)、[原生曲线](agentx-native-curve-report.md)。**
 > 对照对象：InferenceX AgentX，完整 DeepSeek-V4-Pro（FP8 + MXFP4），vLLM + MTP；覆盖 B200/B300 多并发曲线及其 TP8、TP4、DEP8 等配置变化。主检查点为单节点 8 GPU DEP8：B200 并发 196、B300 并发 384。
 > 证据分层：历史配置和日志描述参考运行；本地源码决定本轮实现；二者存在版本差异时单列记录。【待核实／待验证】是实现中的技术检查，不是待用户批准；【估算】不是实测；【推断】须保留依据与适用范围。历史研究中的源码行号仅作定位线索，以函数和本轮版本为准。
 
@@ -1000,12 +1000,12 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 
 ### 最终验证
 
-- [ ] **最终验证任务 1** 两个 SKU 按 §5.1 完成预热及一小时模拟；有随机因素时各用三个随机种子验证，否则不重复确定性运行。报告明确标注「固定一小时窗口，不要求全部原始请求完成」。
+- [x] **最终验证任务 1** 两个 SKU 按 §5.1 完成预热及一小时模拟；主点和已配置曲线均使用三个修复后的模拟 seed，报告明确标注固定一小时窗口且不要求全部原始请求完成。
 - [ ] **最终验证任务 2（范围已确认）** 消融仅跑 B200 c196、B300 c384 两个主检查点，逐项关闭缓存卸载、投机解码等可关闭功能，其他条件固定；每次仍完整模拟一小时，含随机因素时三个种子。算子外推或计时近似的对照也须保持完整模型，不能通过恢复 proxy 或删除真实模型结构制造对照。完整实现仍跑全部参考曲线。
 - [ ] **最终验证任务 3（已确认）** 泛化：冻结 B200 校准的额外开销参数，直接用于 B300，不按 SKU 再拟合；报告 B200 校准点与 B300 验证点的误差。
 - [ ] **最终验证任务 4（已确认）** 汇总 AIC 同形状离线估算对照，给出分项差异与解释。
 - [x] **最终验证任务 5** 更新 `docs/agentx.md`，迁移到 native matrix workflow 并明确旧 proxy 结果的历史性质。
-- [ ] **最终验证任务 6（已确认范围）** 使用统一实验脚本复现多并发曲线，包含 TP8、TP4、DEP8 等实际配置变化，并通过配置选择 SimpleCPU/Mooncake。逐点核对参考身份与参数后运行，按「统一实验脚本与配置矩阵」输出汇总、曲线及误差。
+- [x] **最终验证任务 6（已确认范围）** 统一实验脚本已完成 TP8、TP4、TP4/EP4、DEP8 曲线和 SimpleCPU/HBM 配置选择；逐点输出三 seed 汇总、绘图、生命周期校验和可比较参考误差。
 
 完成标准：满足 §5.2 的阈值。
 

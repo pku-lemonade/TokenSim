@@ -58,4 +58,35 @@ verified reference metrics are not checked into the repository:
 | B300 | 1 | 96.070 | 3.570 | 0.010 | 96.798% | 0.000% |
 | B300 | 4 | 134.094 | 1.141 | 0.021 | 97.216% | 0.000% |
 
-The machine-readable files are `results/agentx-dsv4-full/native-curve/20261002-tp8-seed0/summary.csv`, `summary.png` and `validation.json`. Seed-1/2 reruns for the full curve are kept in the active matrix batch; aggregate results are published only after every selected point has a successful status.
+The machine-readable files are `results/agentx-dsv4-full/native-curve/20261002-tp8-seed0/summary.csv`, `summary.png` and `validation.json`.
+
+The complete 19-point curve now has seed 0/1/2 results. All 38 seed-1/2
+windows passed the validator, and no point had identical throughput across the
+three seeds after the MTP seed-mixing fix. Aggregate output throughput is:
+
+| point | mean output token/s | seed stdev |
+|---|---:|---:|
+| B200 c1 TP8 HBM | 76.689 | 0.762 |
+| B200 c4 TP8 HBM | 101.083 | 3.576 |
+| B200 c8 TP8 HBM | 161.537 | 2.791 |
+| B200 c14 TP8 HBM | 176.974 | 0.913 |
+| B200 c32 DEP8 | 297.581 | 3.333 |
+| B200 c64 DEP8 | 412.354 | 3.847 |
+| B200 c96 DEP8 | 553.972 | 9.303 |
+| B200 c128 DEP8 | 571.293 | 5.560 |
+| B200 c160 DEP8 | 562.646 | 3.511 |
+| B300 c1 TP8 HBM | 95.658 | 0.361 |
+| B300 c4 TP8 HBM | 136.334 | 1.616 |
+| B300 c8 TP4 HBM | 196.696 | 4.776 |
+| B300 c16 TP4 SimpleCPU | 219.104 | 2.606 |
+| B300 c48 TP4/EP4 | 404.131 | 7.435 |
+| B300 c64 TP4/EP4 | 388.556 | 4.685 |
+| B300 c128 DEP8 | 907.886 | 7.262 |
+| B300 c256 DEP8 | 920.590 | 4.748 |
+| B300 c512 DEP8 | 953.513 | 6.998 |
+| B300 c576 DEP8 | 789.623 | 4.680 |
+
+The final curve summary and plot are
+`results/agentx-dsv4-full/native-curve/summary.csv` and
+`results/agentx-dsv4-full/native-curve/summary.png`; the seed-1/2 lifecycle
+evidence is in `results/agentx-dsv4-full/native-curve/20261002-all-seeds/validation.json`.
