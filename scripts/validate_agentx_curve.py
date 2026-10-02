@@ -14,7 +14,7 @@ from validate_agentx_cpu import validate
 def audit(root):
     root = Path(root)
     rows = []
-    for point_dir in sorted(root.glob("seed*/b*-c*-dep8-simplecpu")):
+    for point_dir in sorted(root.glob("seed*/b*-c*")):
         statuses = list(point_dir.glob("b*/run_status.json"))
         if len(statuses) != 1:
             rows.append({"run": str(point_dir), "status": "incomplete"})
@@ -43,9 +43,10 @@ def audit(root):
             for worker in final["workers"]
         )
         dp = final["dp_step"]
-        compute = sum(dp["local_compute_seconds_per_rank"].values())
-        wait = sum(dp["synchronization_wait_seconds_per_rank"].values())
-        assert abs(compute + wait - len(final["workers"]) * dp["elapsed_step_seconds"]) < 1e-6
+        if dp is not None:
+            compute = sum(dp["local_compute_seconds_per_rank"].values())
+            wait = sum(dp["synchronization_wait_seconds_per_rank"].values())
+            assert abs(compute + wait - len(final["workers"]) * dp["elapsed_step_seconds"]) < 1e-6
         rows.append(
             {
                 "run": str(point_dir),

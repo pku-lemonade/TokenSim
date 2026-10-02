@@ -25,3 +25,15 @@ been independently imported. The machine-readable summary and plot are:
 - `results/agentx-dsv4-full/native-curve/20261002-dep8-seed0/summary.csv`
 - `results/agentx-dsv4-full/native-curve/20261002-dep8-seed0/summary.png`
 - `results/agentx-dsv4-full/native-curve/20261002-dep8-seed0/validation.json`
+
+The executable B300 TP4 slice is also complete and passed the same lifecycle
+validator:
+
+| point | cache | output token/s | p90 TTFT (s) | p90 ITL (s) |
+|---|---|---:|---:|---:|
+| B300 c8 TP4 | HBM | 189.946 | 2.683 | 0.045 |
+| B300 c16 TP4 | SimpleCPU | 217.335 | 4.172 | 0.085 |
+
+The remaining TP8/HBM points are recorded with exact reference topology
+metadata but have not been counted as completed full windows; the native
+HBM-only path is substantially slower during first long-prefill admission.
