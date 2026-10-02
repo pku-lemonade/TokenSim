@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import heapq
 import math
 import uuid
 from collections import Counter, defaultdict
@@ -182,6 +183,8 @@ class NativeAgentXReplay:
         self.in_flight_at_window_end = 0
         self.cancel_unreturned = 0
         self._cached_wake = None
+        self._recorded_timer_heap = []
+        self._recorded_timer_sequence = 0
 
     @property
     def profile_elapsed(self):
@@ -232,6 +235,37 @@ class NativeAgentXReplay:
     def _recorded_due(self, origin_s, request_s):
         anchor = self.profile_started_at if self.profile_started_at is not None else self.env.now
         return anchor + max(0.0, request_s - origin_s)
+
+    def _set_due(self, cursor, due):
+        cursor.due = due
+        if self.issue_mode == "recorded" and due is not None:
+            self._recorded_timer_sequence += 1
+            heapq.heappush(
+                self._recorded_timer_heap,
+                (due, self._recorded_timer_sequence, cursor),
+            )
+
+    def _register_play_timers(self, play):
+        if self.issue_mode != "recorded":
+            return
+        for cursor in play.active_streams.values():
+            if cursor.due is not None:
+                self._set_due(cursor, cursor.due)
+
+    def _next_recorded_timer(self):
+        while self._recorded_timer_heap:
+            due, _, cursor = self._recorded_timer_heap[0]
+            if (
+                cursor.terminal
+                or not cursor.active
+                or cursor.in_flight is not None
+                or cursor.due != due
+                or due <= self.env.now + 1e-9
+            ):
+                heapq.heappop(self._recorded_timer_heap)
+                continue
+            return due
+        return None
 
     def _next_due(self, play, cursor, turn):
         if self.issue_mode == "recorded":
@@ -311,6 +345,7 @@ class NativeAgentXReplay:
             idle_started_at=self.env.now,
         )
         self.play_count += 1
+        self._register_play_timers(play)
         return play
 
     def _joins_ready(self, play, cursor):
@@ -439,7 +474,7 @@ class NativeAgentXReplay:
                 cursor.index += 1
                 if cursor.index >= len(cursor.conversation.turns):
                     play.set_terminal(cursor)
-                cursor.due = (
+                due = (
                     self.env.now
                     if self.phase == "pressure"
                     else self._next_due(
@@ -448,6 +483,7 @@ class NativeAgentXReplay:
                     if not cursor.terminal
                     else None
                 )
+                self._set_due(cursor, due)
                 if cursor.conversation is play.graph.root:
                     self._open_branches(play, old_turn)
             else:
@@ -527,18 +563,18 @@ class NativeAgentXReplay:
                 if not cursor.terminal:
                     play.active_streams[cid] = cursor
                 if self.phase == "pressure":
-                    cursor.due = self.env.now
+                    self._set_due(cursor, self.env.now)
                 elif self.issue_mode == "recorded":
-                    cursor.due = self._next_due(
+                    self._set_due(cursor, self._next_due(
                         play, cursor, cursor.conversation.turns[cursor.index]
-                    )
+                    ))
                 else:
                     offset = max(
                         0.0,
                         cursor.conversation.turns[cursor.index].request.t
                         - completed_turn.request.end_s,
                     )
-                    cursor.due = self.env.now + offset
+                    self._set_due(cursor, self.env.now + offset)
 
     def _recycle(self):
         for lane, play in enumerate(self.trees):
@@ -631,6 +667,9 @@ class NativeAgentXReplay:
     def _wake_at(self, boundary):
         if not self.accepting:
             return boundary
+        if self.issue_mode == "recorded":
+            next_due = self._next_recorded_timer()
+            return min(boundary, next_due) if next_due is not None else boundary
         candidates = [boundary]
         for play in self.trees:
             if (
@@ -670,10 +709,15 @@ class NativeAgentXReplay:
             if hasattr(self.engine, "raise_if_failed")
             else None
         )
+        has_future_timer = (
+            self._next_recorded_timer() is not None
+            if self.issue_mode == "recorded"
+            else any(self._future_timers(play) for play in self.trees)
+        )
         if (
             self.accepting
             and not self._in_flight
-            and not any(self._future_timers(play) for play in self.trees)
+            and not has_future_timer
         ):
             raise SimulationStateError(
                 "AgentX graph has no ready request, future timer, or in-flight predecessor"
@@ -800,11 +844,12 @@ class NativeAgentXReplay:
                     and cursor.index < len(cursor.conversation.turns)
                 ):
                     turn = cursor.conversation.turns[cursor.index]
-                    cursor.due = (
+                    due = (
                         self._recorded_due(play.origin_s, turn.request.t)
                         if self.issue_mode == "recorded"
                         else self.env.now + max(0, turn.request.t - play.origin_s)
                     )
+                    self._set_due(cursor, due)
                     if self._joins_ready(play, cursor):
                         offsets.append(max(0, turn.request.t - play.origin_s))
         anchor = min(offsets, default=0)
