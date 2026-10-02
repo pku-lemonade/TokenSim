@@ -1,0 +1,212 @@
+{
+  "schema_version": 1,
+  "shape": {
+    "isl": 1024,
+    "osl": 128,
+    "batch_size": 8,
+    "tp_size": 8,
+    "moe_ep_size": 8,
+    "attention_dp_size": 1
+  },
+  "aic_source_commit": "f254959eb89e2f206b8f9a77051644d7c1cbdb89",
+  "aic": {
+    "b200_sxm": {
+      "schema_version": 1,
+      "mode": "aic_same_shape_diagnostic",
+      "status": "runtime_available",
+      "model": "DeepSeek-V4-Pro-NVFP4",
+      "system": "b200_sxm",
+      "backend": "vllm",
+      "aic_root": "/tmp/aiconfigurator",
+      "source_files": [
+        {
+          "path": "aic-core/rust/aiconfigurator-core/Cargo.toml",
+          "sha256": "d17cd0f40ef2193bdcc45605be10b71c0017152a808d00978fd9421a69749b6e"
+        }
+      ],
+      "reason": null,
+      "runtime": {
+        "python": "3.12.13 | packaged by Anaconda, Inc. | (main, Mar 19 2026, 20:20:58) [GCC 14.3.0]",
+        "aiconfigurator_version": "0.12.0",
+        "rust_extension": true
+      },
+      "estimate": {
+        "ttft_ms": 177.4079355939571,
+        "tpot_ms": 29.88119249932076,
+        "raw": {
+          "model": "/tmp/aic-model-nv",
+          "isl": 1024,
+          "osl": 128,
+          "prefix": 0,
+          "concurrency": 8,
+          "request_rate": 2.0139367529764676,
+          "bs": 8,
+          "global_bs": 8,
+          "ttft": 177.4079355939571,
+          "tpot": 29.88119249932076,
+          "seq/s": 2.0139367529764676,
+          "seq/s/gpu": 0.25174209412205845,
+          "tokens/s": 255.7699676280114,
+          "tokens/s/gpu": 31.971245953501423,
+          "tokens/s/user": 33.46586653202449,
+          "request_latency": 3972.319383007694,
+          "encoder_latency": 0,
+          "encoder_memory": 0.0,
+          "num_total_gpus": 8,
+          "tp": 8,
+          "pp": 1,
+          "dp": 1,
+          "moe_tp": 1,
+          "moe_ep": 8,
+          "cp": 1,
+          "parallel": "tp8pp1dp1etp1ep8",
+          "gemm": "fp8_block",
+          "kvcache": "fp8",
+          "fmha": "bfloat16",
+          "moe": "nvfp4",
+          "comm": "half",
+          "memory": 114.7173201367259,
+          "balance_score": 0.0625,
+          "num_ctx_reqs": 1.0,
+          "num_gen_reqs": 7.0,
+          "num_tokens": 1031.0,
+          "ctx_tokens": 1024,
+          "gen_tokens": 7.0,
+          "backend": "vllm",
+          "version": "0.24.0",
+          "system": "b200_sxm",
+          "power_w": null,
+          "power_coverage": 0.0
+        },
+        "per_ops_data": {
+          "mix_step": {
+            "context_embedding": 0.0053994181818181825,
+            "context_mhc_pre": 3.791888671875,
+            "context_attn_norm": 0.4757290181818182,
+            "context_mhc_post": 3.152746875,
+            "context_ffn_norm": 0.4757290181818182,
+            "context_shared_gate_up_gemm": 15.318882265979168,
+            "context_shared_act_gate": 0.20652286753246757,
+            "context_shared_ffn2_gemm": 12.514122254194572,
+            "context_router_gemm": 0.6017354813788699,
+            "context_moe_pre_dispatch": 3.5078140613529833,
+            "context_moe": 17.999930159514772,
+            "context_moe_post_dispatch": 3.5078140613529833,
+            "context_logits_gemm": 0.03639525651525286,
+            "context_p2p": 0.0,
+            "context_attention (scaled)": 14.0551,
+            "generation_attention": 4.574143749999999
+          },
+          "genonly_step": {
+            "generation_embedding": 0.003018618181818182,
+            "generation_mhc_pre": 1.3969,
+            "generation_attn_norm": 0.1852714181818182,
+            "generation_attention": 4.47535,
+            "generation_mhc_post": 0.6466,
+            "generation_ffn_norm": 0.1852714181818182,
+            "generation_moe_overlap": 19.596064399088135,
+            "generation_logits_gemm": 0.03653260169245432,
+            "generation_p2p": 0.0
+          },
+          "scheduling": {
+            "num_mix_steps": 8.0,
+            "num_genonly_steps": 120.0,
+            "mix_step_latency_ms": 80.22395315924152,
+            "genonly_step_latency_ms": 26.525008455326045,
+            "mix_step_energy_wms": 0.0,
+            "genonly_step_energy_wms": 0.0,
+            "mix_efficiency": 1.0,
+            "decode_iterations": 128.0,
+            "mix_context_tokens": 1024.0,
+            "mix_decode_requests": 7.0,
+            "mix_decode_query_tokens": 7.0,
+            "decode_tokens_per_iteration": 1.0
+          }
+        },
+        "per_ops_source": {
+          "mix_step": {
+            "context_embedding": "empirical",
+            "context_mhc_pre": "silicon",
+            "context_attn_norm": "empirical",
+            "context_mhc_post": "silicon",
+            "context_ffn_norm": "empirical",
+            "context_shared_gate_up_gemm": "silicon",
+            "context_shared_act_gate": "empirical",
+            "context_shared_ffn2_gemm": "silicon",
+            "context_router_gemm": "silicon",
+            "context_moe_pre_dispatch": "silicon",
+            "context_moe": "silicon",
+            "context_moe_post_dispatch": "silicon",
+            "context_logits_gemm": "silicon",
+            "context_p2p": "silicon",
+            "context_attention (scaled)": "silicon",
+            "generation_attention": "silicon"
+          },
+          "genonly_step": {
+            "generation_embedding": "empirical",
+            "generation_mhc_pre": "silicon",
+            "generation_attn_norm": "empirical",
+            "generation_attention": "silicon",
+            "generation_mhc_post": "silicon",
+            "generation_ffn_norm": "empirical",
+            "generation_moe_overlap": "mixed",
+            "generation_logits_gemm": "silicon",
+            "generation_p2p": "silicon"
+          }
+        }
+      }
+    },
+    "b300_sxm": {
+      "schema_version": 1,
+      "mode": "aic_same_shape_diagnostic",
+      "status": "runtime_available",
+      "model": "DeepSeek-V4-Pro-NVFP4",
+      "system": "b300_sxm",
+      "backend": "vllm",
+      "aic_root": "/tmp/aiconfigurator",
+      "source_files": [
+        {
+          "path": "aic-core/rust/aiconfigurator-core/Cargo.toml",
+          "sha256": "d17cd0f40ef2193bdcc45605be10b71c0017152a808d00978fd9421a69749b6e"
+        }
+      ],
+      "reason": null,
+      "runtime": {
+        "python": "3.12.13 | packaged by Anaconda, Inc. | (main, Mar 19 2026, 20:20:58) [GCC 14.3.0]",
+        "aiconfigurator_version": "0.12.0",
+        "rust_extension": true
+      },
+      "estimate_error": "PerfDataNotAvailableError: perf database error: MoE data missing for MoeKey { quant: \"nvfp4\", distribution: \"power_law_1.01\", topk: 6, num_experts: 384, hidden_size: 7168, inter_size: 3072, moe_tp_size: 1, moe_ep_size: 8 } at /tmp/aiconfigurator/aic-core/src/aiconfigurator_core/systems/data/b300_sxm/vllm/0.24.0"
+    }
+  },
+  "tokensim": {
+    "b200_sxm": {
+      "device": "b200_sxm",
+      "shape": {
+        "batch_size": 8,
+        "query_tokens": 1024,
+        "context_tokens": 1024,
+        "tp": 8
+      },
+      "prefill_attention_us": 82911.6,
+      "decode_attention_us": 4491.8,
+      "provenance": {
+        "backend": "FLASHMLA_SPARSE_DSV4 borrowed module table",
+        "reference_backend": "FLASHINFER_MLA_SPARSE_DSV4",
+        "layer_counts": {
+          "hca": 31,
+          "csa": 30
+        },
+        "module_scope": "projection + compressor/indexer + sparse attention + output projection",
+        "kv_cache_source_layout": "fp8 source table; serving reference plain FP8",
+        "indexer_source_layout": "collector default; serving reference MXFP4",
+        "extrapolation": "measured boundary with DSV4 compressed-work analytical growth, max 64x"
+      }
+    }
+  },
+  "interpretation": [
+    "B200 uses the same batch/sequence/TP shape but AIC's NVFP4 preview config; dtype and backend provenance differ from formal native FP8/MXFP4 simulation.",
+    "B300 AIC has an explicit missing MegaMoE row and is not synthesized from B200.",
+    "This is a diagnostic composition comparison, not a reference calibration coefficient."
+  ]
+}

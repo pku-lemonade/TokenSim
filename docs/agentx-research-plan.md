@@ -960,7 +960,7 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 - [x] **算子耗时任务 13（校准范围已确认）** 已完成 B200 校准审计并冻结 `step_overhead_us=0`，直接用于 B300；两 SKU 组件时间均记录 overhead=0。正 overhead 无法解释当前“模拟器更慢”的误差，证据见 [overhead 校准报告](agentx-overhead-calibration-report.md)，未追加 SKU 修正。
 - [x] **算子耗时任务 14.1：测量阶段分项守恒** 预热结束后重置 operator 查询、step 与 component 计数，保留查表缓存和全程 missing-shape 清单；两个完整主点的 profiling 分项和均与 DP local compute seconds（含 dummy）一致。旧结果含预热的分项不作直接百分比对照，完整模块分解和最终比较继续由任务 14 完成。
 - [x] **算子耗时任务 14** 输出 native result 的 attention / MoE / GEMM / elementwise / comm / overhead 分解，并与旧 proxy 分解分开报告；FlashMLA/FlashInfer 和跨硬件借表差异不折算成伪精度。
-- [ ] **算子耗时任务 15（已确认）** 已增加独立入口 `scripts/run_agentx_aic_diagnostic.py` 和环境证据 `data/reference/agentx-aic-diagnostic.json`。当前 `/tmp/aic-full` 只有源码和 parquet，没有 Python packaging metadata、Rust extension 或可调用 `aiconfigurator_core._aiconfigurator_core`，当前环境也没有 Rust/maturin；因此同形状估算仍待外部 AIC runtime，不用 native table 查询冒充 AIC。
+- [x] **算子耗时任务 15（已确认）** 已用独立入口 `scripts/run_agentx_aic_diagnostic.py` 构建 AIC 0.12.0 Rust extension 并运行 B200 同形状估算；B300 明确记录为缺少匹配 NVFP4 MegaMoE 行，没有跨 SKU 猜测。AIC source commit、per-op source 和运行时身份保存在 `data/reference/agentx-aic-diagnostic.json`。
 
 涉及文件：`operator_table.py`、`lookup.py`、`schema.py`、`TokenSim/operator_data/importers/aiconfigurator.py`（375-435）、`TokenSim/moe/routing.py`、`data/devices/*.yaml`。
 完成标准：没有算子落进「未知 / 默认」分支；holdout 误差有记录；与 AIC 单步对照的偏差有解释。
@@ -1003,7 +1003,7 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 - [x] **最终验证任务 1** 两个 SKU 按 §5.1 完成预热及一小时模拟；主点和已配置曲线均使用三个修复后的模拟 seed，报告明确标注固定一小时窗口且不要求全部原始请求完成。
 - [x] **最终验证任务 2（范围已确认）** B200 c196/B300 c384 已完成 HBM-only 和 MTP-disabled 两类完整三 seed 消融；完整模型和一小时协议保持不变，结果见 [最终消融报告](agentx-final-ablation-report.md)。
 - [x] **最终验证任务 3（已确认）** 三 seed 主点和消融均使用同一组额外开销输入；B200/B300 结果直接比较，未按 SKU 重新拟合。当前 step overhead 明确为设备数据中的 0，绝对误差来自 attention/operator provenance，而非新增 SKU 修正。
-- [ ] **最终验证任务 4（已确认）** 依赖算子耗时任务 15 的可运行 AIC extension；当前保留未完成状态，避免把 native table 查询冒充 AIC 对照。
+- [x] **最终验证任务 4（已确认）** 已汇总 AIC B200 同形状离线估算与 TokenSim native attention 查询；B300 缺失行作为明确数据缺口保留。分项对照见 `data/reference/agentx-aic-shape-comparison.json`，不将差异折算为校准系数。
 - [x] **最终验证任务 5** 更新 `docs/agentx.md`，迁移到 native matrix workflow 并明确旧 proxy 结果的历史性质。
 - [x] **最终验证任务 6（已确认范围）** 统一实验脚本已完成 TP8、TP4、TP4/EP4、DEP8 曲线和 SimpleCPU/HBM 配置选择；逐点输出三 seed 汇总、绘图、生命周期校验和可比较参考误差。
 
