@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "mode": "aic_same_shape_diagnostic",
+  "status": "unavailable",
+  "model": "DeepSeek-V4-Pro",
+  "system": "b200_sxm",
+  "backend": "vllm",
+  "aic_root": "/tmp/aic-full",
+  "source_files": [
+    {
+      "path": "src/aiconfigurator/__init__.py",
+      "sha256": "a29c8c46cd05a6168cff89a87ff5526dd794959ec8412758bebb902281418442"
+    },
+    {
+      "path": "src/aiconfigurator/cli/api.py",
+      "sha256": "f3a18642ca90697a3f47002d70ab26d6c637944df6ff8012ff2296dd06712aed"
+    },
+    {
+      "path": "aic-core/rust/aiconfigurator-core/Cargo.toml",
+      "sha256": "d17cd0f40ef2193bdcc45605be10b71c0017152a808d00978fd9421a69749b6e"
+    }
+  ],
+  "reason": "AIC import unavailable: PackageNotFoundError: No package metadata was found for aiconfigurator",
+  "runtime": {
+    "python": "3.12.13 | packaged by Anaconda, Inc. | (main, Mar 19 2026, 20:20:58) [GCC 14.3.0]",
+    "distribution_metadata": null,
+    "rust_extension": false
+  }
+}

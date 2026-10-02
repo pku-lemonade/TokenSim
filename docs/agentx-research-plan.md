@@ -960,7 +960,7 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 - [x] **算子耗时任务 13（校准范围已确认）** 已完成 B200 校准审计并冻结 `step_overhead_us=0`，直接用于 B300；两 SKU 组件时间均记录 overhead=0。正 overhead 无法解释当前“模拟器更慢”的误差，证据见 [overhead 校准报告](agentx-overhead-calibration-report.md)，未追加 SKU 修正。
 - [x] **算子耗时任务 14.1：测量阶段分项守恒** 预热结束后重置 operator 查询、step 与 component 计数，保留查表缓存和全程 missing-shape 清单；两个完整主点的 profiling 分项和均与 DP local compute seconds（含 dummy）一致。旧结果含预热的分项不作直接百分比对照，完整模块分解和最终比较继续由任务 14 完成。
 - [x] **算子耗时任务 14** 输出 native result 的 attention / MoE / GEMM / elementwise / comm / overhead 分解，并与旧 proxy 分解分开报告；FlashMLA/FlashInfer 和跨硬件借表差异不折算成伪精度。
-- [ ] **算子耗时任务 15（已确认）** 独立 AIC 对照仍待外部运行时：本地 `/tmp/aic-full` 只有源码和 parquet，没有 Python packaging metadata、Rust extension 或可调用 `aiconfigurator_core._aiconfigurator_core`，当前环境也没有 Rust/maturin。已保留固定 AIC source commit 与 native table provenance；在未获得可运行的 AIC extension 前不生成伪造的同形状估算。
+- [ ] **算子耗时任务 15（已确认）** 已增加独立入口 `scripts/run_agentx_aic_diagnostic.py` 和环境证据 `data/reference/agentx-aic-diagnostic.json`。当前 `/tmp/aic-full` 只有源码和 parquet，没有 Python packaging metadata、Rust extension 或可调用 `aiconfigurator_core._aiconfigurator_core`，当前环境也没有 Rust/maturin；因此同形状估算仍待外部 AIC runtime，不用 native table 查询冒充 AIC。
 
 涉及文件：`operator_table.py`、`lookup.py`、`schema.py`、`TokenSim/operator_data/importers/aiconfigurator.py`（375-435）、`TokenSim/moe/routing.py`、`data/devices/*.yaml`。
 完成标准：没有算子落进「未知 / 默认」分支；holdout 误差有记录；与 AIC 单步对照的偏差有解释。
