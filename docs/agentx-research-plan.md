@@ -872,7 +872,7 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 - [x] **GPU 同步与请求路由任务 1** DP lockstep：8 个 rank 每步同步，步长取各 rank 的最大值；空闲 rank 跑 dummy batch（对照 `core.py:2225-2240`）。
 - [x] **GPU 同步与请求路由任务 2** 全局 step_counter：所有 rank 相同，wave 结束时重置，供 请求调度 的 interval 使用；当前只读源码的完成状态检查间隔为 16，旧 32 步记录另列版本差异。
 - [x] **GPU 同步与请求路由任务 3（已确认方向）** 独立 consistent-hash router 已放在请求回放与 worker 调度器之间，以会话／subagent ID 稳定路由，并在结果中记录 worker、请求量、在途量与缓存命中；逐点策略由矩阵配置表达。
-- [ ] **GPU 同步与请求路由任务 4（诊断方案已确认）** 固定实测 worker 映射仍需历史 router.log 身份覆盖率适配；当前正式曲线继续使用内部 consistent-hash router，未伪造未观测会话归属。
+- [x] **GPU 同步与请求路由任务 4（诊断方案已确认）** 历史 router.log 与 AIPerf correlation 已生成固定映射；B200/B300 两个完整诊断窗口均覆盖 100% native conversation、missing_key_count=0。正式曲线仍使用 consistent-hash；证据见 [fixed router report](agentx-fixed-router-report.md)。
 - [x] **GPU 同步与请求路由任务 5** 已用最终 native B200 c196 seed0 诊断并记录于 `data/reference/agentx-native-router-rank3-audit.json`：rank3 请求数、计算时间和等待均非最大，rank6 才是主要负载/等待点；历史 server-log rank3 现象属于不同运行，不能直接归因到 native 闭环。
 
 涉及文件：`TokenSim/placement/policies.py`（:47、:91-96）、`TokenSim/llm/llm_engine.py`（`_build_worker_pool`，:619）、`TokenSim/workload/agentx.py`。
