@@ -15,6 +15,8 @@ import sys
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 
 def deep_merge(base, override):
@@ -64,6 +66,32 @@ def check(points):
             value = point.get(key)
             if value and not (ROOT / value).is_file():
                 errors.append(f"{point['id']}: missing file {value}")
+        reference = point.get("reference") or {}
+        reference_path = None
+        if reference.get("metrics_file"):
+            reference_path = ROOT / reference["metrics_file"]
+            if not reference_path.is_file():
+                reference_path = ROOT / "data" / reference["metrics_file"]
+        if reference_path is not None and not reference_path.is_file():
+            errors.append(f"{point['id']}: missing reference metrics {reference['metrics_file']}")
+        try:
+            from TokenSim.config.cluster_config import ClusterConfig
+            from TokenSim.hardware.context import HardwareContext
+
+            cluster = ClusterConfig.from_file(ROOT / point["cluster"])
+            hardware = HardwareContext.load(ROOT / "data")
+            device = hardware.device(point["hardware"])
+            package = hardware.operator_package(device.device_id, "vllm")
+            required_tables = {"gemm", "dsv4_megamoe", "dsv4_attention", "mhc"}
+            missing_tables = sorted(required_tables - set(package.tables))
+            if missing_tables:
+                errors.append(f"{point['id']}: operator package missing {missing_tables}")
+            if int(cluster.num_workers) != int(point.get("num_gpus", cluster.num_workers)):
+                errors.append(
+                    f"{point['id']}: cluster workers {cluster.num_workers} != configured num_gpus {point.get('num_gpus')}"
+                )
+        except Exception as exc:
+            errors.append(f"{point.get('id')}: startup configuration check failed: {exc}")
         if point.get("concurrency", 0) <= 0 or point.get("max_num_seqs", 0) <= 0:
             errors.append(f"{point.get('id')}: concurrency/max_num_seqs must be positive")
         if point.get("trace_count") != 393:
