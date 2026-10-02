@@ -290,6 +290,7 @@ class LLMWorker(Worker):
                 else 0
             ),
             max_num_seqs=max_parallem_sum or 64,
+            native_attention_context_scale=native_attention_context_scale,
         )
         self.owned_expert_ids = (
             self.expert_placement.experts_for_rank(self.rank_info)
