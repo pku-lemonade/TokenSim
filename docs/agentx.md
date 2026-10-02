@@ -102,6 +102,18 @@ python scripts/run_agentx_experiments.py \
   --action expand --output /tmp/agentx-expanded.json
 ```
 
+For seeded native summaries and a reproducible throughput/TTFT figure:
+
+```bash
+python scripts/run_agentx_experiments.py \
+  --action run --group checkpoints --seeds 1,2 \
+  --result-root results/agentx-matrix/native-seeds
+python scripts/run_agentx_experiments.py \
+  --action plot --result-root results/agentx-matrix/native-seeds \
+  --baseline-root results/agentx-dsv4-full/native-mhc/20261002-mhc \
+  --output results/agentx-matrix/native-seeds/summary.png
+```
+
 Use `scripts/run_agentx_native.py` directly when selecting the `simple_cpu`,
 `hbm`, or Mooncake control backend. Mooncake's asynchronous shared-page
 adapter is still incomplete; its no-admission control is diagnostic only.
