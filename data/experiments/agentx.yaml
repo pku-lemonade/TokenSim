@@ -221,6 +221,7 @@ experiments:
     max_num_batched_tokens: 16384
     gpu_memory_utilization: 0.95
     cache_backend: hbm
+    num_gpus: 4
     moe_backend: generic
   - id: b300-c16-tp4-simplecpu
     groups: [curve, tp4]
@@ -232,6 +233,7 @@ experiments:
     gpu_memory_utilization: 0.95
     host_memory: {available_cpu_dram_mib: 2964436, cpu_budget_per_rank_bytes: 356125000000}
     cache_backend: simple_cpu
+    num_gpus: 4
     moe_backend: generic
   - id: b300-c48-tp4-ep4-simplecpu
     groups: [curve, tp4_ep4]
