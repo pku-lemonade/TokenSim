@@ -128,7 +128,7 @@ def run_point(point, result_root, backend, seed=0):
         "--result-root",
         str(target),
         "--backend",
-        backend,
+        point.get("cache_backend", backend),
         "--random-seed",
         str(seed),
     ]
