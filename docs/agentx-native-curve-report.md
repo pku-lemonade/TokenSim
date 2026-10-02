@@ -34,6 +34,13 @@ validator:
 | B300 c8 TP4 | HBM | 189.946 | 2.683 | 0.045 |
 | B300 c16 TP4 | SimpleCPU | 217.335 | 4.172 | 0.085 |
 
+The B300 TP4+EP4 attention-DP slice is also complete:
+
+| point | output token/s | p90 TTFT (s) | p90 ITL (s) |
+|---|---:|---:|---:|
+| B300 c48 TP4/EP4 | 397.753 | 27.225 | 0.119 |
+| B300 c64 TP4/EP4 | 394.361 | 37.242 | 0.167 |
+
 The remaining TP8/HBM points are recorded with exact reference topology
 metadata but have not been counted as completed full windows; the native
 HBM-only path is substantially slower during first long-prefill admission.
