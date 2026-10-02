@@ -8,7 +8,7 @@ from scripts.run_agentx_experiments import check, load_matrix, run_point, select
 
 def test_matrix_loads_and_resolves_checkpoint_defaults():
     document, points = load_matrix(Path("data/experiments/agentx.yaml"))
-    assert {point["id"] for point in points} == {
+    assert {point["id"] for point in select(points, group="checkpoints")} == {
         "b200-c196-dep8-simplecpu",
         "b300-c384-dep8-simplecpu",
     }
@@ -21,7 +21,7 @@ def test_matrix_loads_and_resolves_checkpoint_defaults():
 
 def test_matrix_selection_and_summary(tmp_path):
     _, points = load_matrix(Path("data/experiments/agentx.yaml"))
-    assert [point["hardware"] for point in select(points, hardware="b200")] == ["b200"]
+    assert [point["hardware"] for point in select(points, hardware="b200", group="checkpoints")] == ["b200"]
     result = tmp_path / "b200" / "agentx_c196.json"
     result.parent.mkdir(parents=True)
     result.write_text(

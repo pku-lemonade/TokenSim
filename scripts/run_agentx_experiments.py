@@ -57,6 +57,8 @@ def select(experiments, *, ids=None, group=None, hardware=None):
 
 def check(points):
     errors = []
+    hardware_context = None
+    packages = {}
     required = ("id", "hardware", "cluster", "concurrency", "max_num_seqs")
     for point in points:
         for key in required:
@@ -79,9 +81,13 @@ def check(points):
             from TokenSim.hardware.context import HardwareContext
 
             cluster = ClusterConfig.from_file(ROOT / point["cluster"])
-            hardware = HardwareContext.load(ROOT / "data")
-            device = hardware.device(point["hardware"])
-            package = hardware.operator_package(device.device_id, "vllm")
+            if hardware_context is None:
+                hardware_context = HardwareContext.load(ROOT / "data")
+            device = hardware_context.device(point["hardware"])
+            package = packages.get(device.device_id)
+            if package is None:
+                package = hardware_context.operator_package(device.device_id, "vllm")
+                packages[device.device_id] = package
             required_tables = {"gemm", "dsv4_megamoe", "dsv4_attention", "mhc"}
             missing_tables = sorted(required_tables - set(package.tables))
             if missing_tables:
