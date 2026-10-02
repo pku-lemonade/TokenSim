@@ -265,6 +265,7 @@ def main(
         mtp_acceptance_length=getattr(args, "mtp_acceptance_length", 1.0),
         mtp_seed=getattr(args, "random_seed", 0),
         native_attention_context_scale=getattr(args, "native_attention_context_scale", 1.0),
+        native_attention_generation_scale=getattr(args, "native_attention_generation_scale", 1.0),
         decode_context_bucket=args.decode_context_bucket,
         random_seed=args.random_seed,
         debug_print=getattr(args, "debug_print", False),
@@ -685,6 +686,12 @@ if __name__ == "__main__":
         type=float,
         default=1.0,
         help="Exploratory scale for native DSV4 context attention; formal runs keep 1.0.",
+    )
+    parser.add_argument(
+        "--native_attention_generation_scale",
+        type=float,
+        default=1.0,
+        help="Exploratory scale for native DSV4 generation attention; formal runs keep 1.0.",
     )
     parser.add_argument(
         "--mhc_backend",

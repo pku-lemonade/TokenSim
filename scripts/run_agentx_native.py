@@ -77,6 +77,8 @@ def command(point, defaults, result, connector, *, random_seed=0):
         ),
         "--native_attention_context_scale",
         str(point.get("native_attention_context_scale", defaults.get("native_attention_context_scale", 1.0))),
+        "--native_attention_generation_scale",
+        str(point.get("native_attention_generation_scale", defaults.get("native_attention_generation_scale", 1.0))),
         *(
             []
             if point.get("moe_shared_fusion", defaults.get("moe_shared_fusion", True))

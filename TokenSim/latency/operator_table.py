@@ -153,6 +153,7 @@ class OperatorTableLatencyBackend(LatencyBackend):
         expected_decode_query_len: int = 1,
         max_num_seqs: int = 64,
         native_attention_context_scale: float = 1.0,
+        native_attention_generation_scale: float = 1.0,
     ) -> None:
         if fallback not in FALLBACK_POLICIES:
             raise ConfigurationError(
@@ -220,6 +221,7 @@ class OperatorTableLatencyBackend(LatencyBackend):
             )
         self.attention_backend = attention_backend
         self.native_attention_context_scale = native_attention_context_scale
+        self.native_attention_generation_scale = native_attention_generation_scale
         self.mtp_query_width = max(1, int(expected_decode_query_len))
         self.native_attention = None
         if attention_backend == "native_dsv4":

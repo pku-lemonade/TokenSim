@@ -193,6 +193,7 @@ class LLMWorker(Worker):
         mtp_acceptance_length: float = 1.0,
         mtp_seed: int = 0,
         native_attention_context_scale: float = 1.0,
+        native_attention_generation_scale: float = 1.0,
     ):
         super().__init__(env, id)
         self.hardware_context = hardware
@@ -291,6 +292,7 @@ class LLMWorker(Worker):
             ),
             max_num_seqs=max_parallem_sum or 64,
             native_attention_context_scale=native_attention_context_scale,
+            native_attention_generation_scale=native_attention_generation_scale,
         )
         self.owned_expert_ids = (
             self.expert_placement.experts_for_rank(self.rank_info)
@@ -560,6 +562,7 @@ class LLMEngine(Worker):
         mtp_acceptance_length: float = 1.0,
         mtp_seed: int = 0,
         native_attention_context_scale: float = 1.0,
+        native_attention_generation_scale: float = 1.0,
         long_prefill_token_threshold: int = 0,
         prefill_schedule_interval: int = 1,
         adaptive_long_prefill_threshold: bool = False,
@@ -629,6 +632,7 @@ class LLMEngine(Worker):
                 mtp_acceptance_length=mtp_acceptance_length,
                 mtp_seed=mtp_seed,
                 native_attention_context_scale=native_attention_context_scale,
+                native_attention_generation_scale=native_attention_generation_scale,
                 latency_fallback=latency_fallback,
                 operator_backend=operator_backend,
                 decode_context_bucket=decode_context_bucket,

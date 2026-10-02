@@ -38,9 +38,16 @@ class DeepSeekV4AttentionEstimator:
         self.context_latency_scale = float(
             getattr(backend, "native_attention_context_scale", 1.0)
         )
+        self.generation_latency_scale = float(
+            getattr(backend, "native_attention_generation_scale", 1.0)
+        )
         if not math.isfinite(self.context_latency_scale) or self.context_latency_scale < 0:
             raise ConfigurationError(
                 "native attention context scale must be finite and nonnegative"
+            )
+        if not math.isfinite(self.generation_latency_scale) or self.generation_latency_scale < 0:
+            raise ConfigurationError(
+                "native attention generation scale must be finite and nonnegative"
             )
         self.lookup = OperatorLookup(
             backend.package,
@@ -191,6 +198,7 @@ class DeepSeekV4AttentionEstimator:
             total += self.layer_counts[kind] * self._query(
                 kind, "generation", batch_size, 1, context_tokens
             ).latency_us
+        total *= self.generation_latency_scale
         self.seconds += total * 1e-6
         return total
 
@@ -210,4 +218,5 @@ class DeepSeekV4AttentionEstimator:
             "indexer_source_layout": "collector default; serving reference MXFP4",
             "extrapolation": "measured boundary with DSV4 compressed-work analytical growth, max 64x",
             "context_latency_scale": self.context_latency_scale,
+            "generation_latency_scale": self.generation_latency_scale,
         }
