@@ -277,6 +277,7 @@ def main(
                 profile_duration=args.agentx_profile_duration,
                 workload_seed=42,
                 warmup=True,
+                issue_mode=args.agentx_issue_mode,
                 event_sink=lambda record: replay_logs.write("events", record),
                 request_sink=lambda record: replay_logs.write("requests", record),
             )
@@ -609,6 +610,12 @@ if __name__ == "__main__":
     parser.add_argument("--agentx_trace_count", type=int, default=8)
     parser.add_argument("--agentx_profile_duration", type=float, default=None)
     parser.add_argument("--agentx_max_requests", type=int, default=None)
+    parser.add_argument(
+        "--agentx_issue_mode",
+        choices=("closed_loop", "recorded"),
+        default="closed_loop",
+        help="Native diagnostic issue timing: closed-loop dependencies or recorded trace timestamps.",
+    )
     parser.add_argument("--agentx_idle_gap_cap", type=float, default=10.0)
     parser.add_argument(
         "--agentx_warmup",

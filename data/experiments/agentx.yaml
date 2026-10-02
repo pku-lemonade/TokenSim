@@ -16,6 +16,7 @@ defaults:
   grace_period_s: 30
   cancellation_timeout_s: 10
   router: consistent_hash
+  issue_mode: closed_loop
   router_backend_url: http://localhost:8889
   dp_lockstep: true
   dp_sync_interval: 16
@@ -119,6 +120,32 @@ experiments:
     parallelism: {tp: 1, dp: 8, ep: 8, pp: 1}
     num_gpus: 8
     speculative: {method: mtp, num_speculative_tokens: 3, acceptance_length: 1.0}
+  - id: b200-c196-dep8-recorded-issue
+    groups: [diagnostics]
+    hardware: b200
+    cluster: data/clusters/8_b200/dep8.json
+    concurrency: 196
+    max_num_seqs: 49
+    max_num_batched_tokens: 8192
+    gpu_memory_utilization: 0.90
+    host_memory: {available_cpu_dram_mib: 3095781, cpu_budget_per_rank_bytes: 356125000000}
+    cache_backend: simple_cpu
+    parallelism: {tp: 1, dp: 8, ep: 8, pp: 1}
+    num_gpus: 8
+    issue_mode: recorded
+  - id: b300-c384-dep8-recorded-issue
+    groups: [diagnostics]
+    hardware: b300
+    cluster: data/clusters/8_b300/dep8.json
+    concurrency: 384
+    max_num_seqs: 96
+    max_num_batched_tokens: 16384
+    gpu_memory_utilization: 0.92
+    host_memory: {available_cpu_dram_mib: 2964436, cpu_budget_per_rank_bytes: 356125000000}
+    cache_backend: simple_cpu
+    parallelism: {tp: 1, dp: 8, ep: 8, pp: 1}
+    num_gpus: 8
+    issue_mode: recorded
   # Executable DEP8 curve points. Their scheduler budgets follow the
   # reference recipes: max_num_seqs = 2*concurrency / DP world size.
   - id: b200-c32-dep8-simplecpu

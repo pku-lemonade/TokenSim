@@ -106,6 +106,7 @@ class NativeAgentXReplay:
         warmup_grace_period=1800.0,
         tree_idle_cap=300.0,
         system_idle_cap=10.0,
+        issue_mode="closed_loop",
         benchmark_id="agentx",
         event_sink=None,
         request_sink=None,
@@ -139,6 +140,9 @@ class NativeAgentXReplay:
         self.warmup, self.warmup_quota = warmup, warmup_requests_per_lane
         self.warmup_grace_period = warmup_grace_period
         self.tree_idle_cap, self.system_idle_cap = tree_idle_cap, system_idle_cap
+        if issue_mode not in ("closed_loop", "recorded"):
+            raise WorkloadValidationError("issue_mode must be closed_loop or recorded")
+        self.issue_mode = issue_mode
         self.benchmark_id = benchmark_id
         self.event_sink, self.request_sink = event_sink, request_sink
         self.snapshots = (
@@ -222,7 +226,17 @@ class NativeAgentXReplay:
             "system_idle_jumps": self.system_idle_jumps,
             "tree_idle_seconds_skipped": self.tree_idle_seconds_skipped,
             "system_idle_seconds_skipped": self.system_idle_seconds_skipped,
+            "issue_mode": self.issue_mode,
         }
+
+    def _recorded_due(self, origin_s, request_s):
+        anchor = self.profile_started_at if self.profile_started_at is not None else self.env.now
+        return anchor + max(0.0, request_s - origin_s)
+
+    def _next_due(self, play, cursor, turn):
+        if self.issue_mode == "recorded":
+            return self._recorded_due(play.origin_s, turn.request.t)
+        return self.env.now + turn.wait_after_previous_s
 
     def capacity_request(self):
         turns = [turn for graph in self.graphs for turn in graph.all_turns()]
@@ -260,11 +274,19 @@ class NativeAgentXReplay:
             active = state is not None if snapshot else conv is graph.root
             if state:
                 index = state.next_turn_index
-            due = (
-                self.env.now + state.dispatch_offset_s
-                if state
-                else self.env.now if active else None
-            )
+            if state:
+                due = self.env.now + state.dispatch_offset_s
+            elif active and index < len(conv.turns):
+                due = (
+                    self.env.now
+                    if self.issue_mode == "closed_loop"
+                    else self._recorded_due(
+                        snapshot.t_star_ms / 1000 if snapshot else 0.0,
+                        conv.turns[index].request.t,
+                    )
+                )
+            else:
+                due = None
             streams[conv.conversation_id] = StreamCursor(
                 conv, index, active, due, terminal=terminal, ordinal=ordinal
             )
@@ -418,11 +440,10 @@ class NativeAgentXReplay:
                 if cursor.index >= len(cursor.conversation.turns):
                     play.set_terminal(cursor)
                 cursor.due = (
-                    (
-                        self.env.now
-                        if self.phase == "pressure"
-                        else self.env.now
-                        + cursor.conversation.turns[cursor.index].wait_after_previous_s
+                    self.env.now
+                    if self.phase == "pressure"
+                    else self._next_due(
+                        play, cursor, cursor.conversation.turns[cursor.index]
                     )
                     if not cursor.terminal
                     else None
@@ -505,14 +526,19 @@ class NativeAgentXReplay:
                     continue
                 if not cursor.terminal:
                     play.active_streams[cid] = cursor
-                offset = max(
-                    0.0,
-                    cursor.conversation.turns[cursor.index].request.t
-                    - completed_turn.request.end_s,
-                )
-                cursor.due = (
-                    self.env.now if self.phase == "pressure" else self.env.now + offset
-                )
+                if self.phase == "pressure":
+                    cursor.due = self.env.now
+                elif self.issue_mode == "recorded":
+                    cursor.due = self._next_due(
+                        play, cursor, cursor.conversation.turns[cursor.index]
+                    )
+                else:
+                    offset = max(
+                        0.0,
+                        cursor.conversation.turns[cursor.index].request.t
+                        - completed_turn.request.end_s,
+                    )
+                    cursor.due = self.env.now + offset
 
     def _recycle(self):
         for lane, play in enumerate(self.trees):
@@ -566,7 +592,7 @@ class NativeAgentXReplay:
         ]
 
     def _idle_shifts(self):
-        if self.phase != "profiling" or not self.accepting:
+        if self.phase != "profiling" or not self.accepting or self.issue_mode == "recorded":
             return
         for play in self.trees:
             timers = self._future_timers(play)
@@ -773,14 +799,14 @@ class NativeAgentXReplay:
                     and not cursor.terminal
                     and cursor.index < len(cursor.conversation.turns)
                 ):
-                    offset = max(
-                        0,
-                        cursor.conversation.turns[cursor.index].request.t
-                        - play.origin_s,
+                    turn = cursor.conversation.turns[cursor.index]
+                    cursor.due = (
+                        self._recorded_due(play.origin_s, turn.request.t)
+                        if self.issue_mode == "recorded"
+                        else self.env.now + max(0, turn.request.t - play.origin_s)
                     )
-                    cursor.due = self.env.now + offset
                     if self._joins_ready(play, cursor):
-                        offsets.append(offset)
+                        offsets.append(max(0, turn.request.t - play.origin_s))
         anchor = min(offsets, default=0)
         for play in self.trees:
             play.idle_started_at = self.env.now

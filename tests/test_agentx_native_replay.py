@@ -385,6 +385,23 @@ class NativeReplayLifecycleTest(unittest.TestCase):
         self.assertAlmostEqual(first["b"].arrival_at, 20.1)
         self.assertGreater(replay.system_idle_jumps, 0)
 
+    def test_recorded_issue_mode_keeps_trace_timestamp_when_service_is_slow(self):
+        trees = [graph([row(0, [1]), row(10, [1, 2])], "recorded")]
+        _, engine, replay = self.run_replay(
+            trees,
+            concurrency=1,
+            warmup=False,
+            profile_duration=20,
+            latency=5.0,
+            issue_mode="recorded",
+            tree_idle_cap=None,
+            system_idle_cap=None,
+        )
+        turns = [request for request in engine.submitted if request.turn == 1]
+        self.assertEqual(len(turns), 1)
+        self.assertAlmostEqual(turns[0].arrival_at, 10.0)
+        self.assertEqual(replay.runtime_metadata()["issue_mode"], "recorded")
+
     def test_real_engine_replay_cancels_inflight_work_without_freeing_early(self):
         env = simpy.Environment()
         engine = real_engine(env, latency=5)

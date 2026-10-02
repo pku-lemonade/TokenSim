@@ -45,6 +45,8 @@ def command(point, defaults, result, connector, *, random_seed=0):
         str(point["gpu_memory_utilization"]),
         "--router_policy",
         defaults["router"],
+        "--agentx_issue_mode",
+        point.get("issue_mode", defaults.get("issue_mode", "closed_loop")),
         "--dp_lockstep",
         "--dp_sync_interval",
         str(defaults["dp_sync_interval"]),
