@@ -385,6 +385,30 @@ class NativeKVPoolTest(unittest.TestCase):
         self.assertEqual(max(manager.tables[req.id][3]), 64)
         manager.validate_conservation()
 
+    def test_scheduler_reserves_verify_queries_and_lookahead_at_page_boundary(self):
+        manager = self.manager()
+        req = request(0, 250)
+        manager.allocate(req)
+        self.compute(manager, req, 250)
+        req.generation_idx = 1
+        scheduler = object.__new__(LLMPagedAttnScheduler)
+        scheduler.block_manager = manager
+        scheduler.mtp_enabled = True
+        scheduler.cache_config = SimpleNamespace(hybrid_layout=self.layout)
+        self.assertTrue(scheduler._reserve_decode_slot(req, [], [], 2, 4))
+        # accepted=2 + K=3 stops at 255 and misses this page. The target
+        # forward plus lookahead covers token end 250 + 4 + 3 = 257.
+        full = self.layout.full_group
+        self.assertEqual(max(manager.tables[req.id][full.group_id]), 1)
+        for group in self.layout.groups:
+            self.assertGreaterEqual(
+                (max(manager.tables[req.id][group.group_id]) + 1) * group.block_tokens, 257
+            )
+        manager.validate_conservation()
+        manager.free(req)
+        manager.validate_conservation()
+        self.assertEqual(sum(block.ref_count for block in manager.blocks), 1)
+
     def test_scheduler_uses_native_pool_and_prefill_chunks(self):
         hardware = HardwareContext.load("data")
         parallel = ClusterConfig.from_file(

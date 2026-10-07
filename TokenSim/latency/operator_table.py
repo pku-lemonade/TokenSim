@@ -195,6 +195,7 @@ class OperatorTableLatencyBackend(LatencyBackend):
         )
         self.decode_context_bucket = max(1, int(decode_context_bucket))
         self.stats = OperatorStats(missing=missing_report or MissingShapeReport())
+        self.target_logits_counts = Counter()
         self.moe_stats = MoEStats(
             effective_moe_config=model.moe.to_dict(),
             expert_placement=expert_placement.to_dict() if expert_placement else None,
@@ -316,6 +317,8 @@ class OperatorTableLatencyBackend(LatencyBackend):
         self.stats.step_count += 1
         tokens = 0
         sampling = 0
+        decode_logits_rows = 0
+        prefill_logits_rows = 0
         context_groups: Counter = Counter()
         decode_buckets: Counter = Counter()
         for req in requests:
@@ -324,14 +327,23 @@ class OperatorTableLatencyBackend(LatencyBackend):
             tokens += q_len
             if is_decode_step(req):
                 decode_buckets[(self._bucket(kv_len), q_len)] += 1
-                sampling += 1
+                sampling += q_len if self.model.deepseek_v4 else 1
+                decode_logits_rows += q_len
             else:
                 # Chunk of a context build: q_len new tokens attending to the
                 # kv_len tokens present after this step (cached prefix, earlier
                 # chunks and the chunk itself).
                 context_groups[(q_len, kv_len)] += 1
-                if kv_len >= req.context_len:
-                    sampling += 1  # last chunk: logits for the next token
+                if self.model.deepseek_v4 or kv_len >= req.context_len:
+                    # V2 computes a bonus logit row for each prefill request,
+                    # including partial chunks whose sampled token is discarded.
+                    sampling += 1
+                    prefill_logits_rows += 1
+        if self.model.deepseek_v4 and self.is_last_stage:
+            self.target_logits_counts["steps"] += 1
+            self.target_logits_counts["decode_rows"] += decode_logits_rows
+            self.target_logits_counts["prefill_rows"] += prefill_logits_rows
+            self.target_logits_counts["rows"] += sampling
         attention_us = sum(
             self._attention_prefill(count, q_len, kv_len)
             for (q_len, kv_len), count in context_groups.items()
@@ -413,6 +425,7 @@ class OperatorTableLatencyBackend(LatencyBackend):
     def stats_dict(self) -> dict[str, Any]:
         return {
             **self.stats.as_dict(),
+            "dsv4_target_logits": dict(self.target_logits_counts),
             **(self.native_attention.stats_dict() if self.native_attention else {}),
             **(self.native_mhc.stats_dict() if self.native_mhc else {}),
             **(self.native_moe.stats_dict() if self.native_moe else {}),
@@ -426,6 +439,7 @@ class OperatorTableLatencyBackend(LatencyBackend):
         # Retain lookup caches and the shared compute/communication collection
         # checklist, but remove warmup estimates from measured time breakdown.
         self.stats = OperatorStats(missing=self.stats.missing)
+        self.target_logits_counts.clear()
         if self.native_moe:
             self.native_moe.reset_stats()
         if self.native_attention:
@@ -449,8 +463,9 @@ class OperatorTableLatencyBackend(LatencyBackend):
     ) -> float:
         """Sum every operator of the layers on this rank for a step of ``tokens`` tokens.
 
-        ``requests`` is the number of sequences sampling a token this step (LM
-        head rows); ``attention_us`` is the attention core already resolved per
+        ``requests`` is the number of target logits rows (one per prefill
+        request, and one per decode query under DSV4 MTP); ``attention_us`` is
+        the attention core already resolved per
         shape by the caller.
         """
         model = self.model

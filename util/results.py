@@ -190,10 +190,13 @@ def get_latency_stats(engine: LLMEngine) -> dict[str, Any]:
     native_attention_counts = {}
     native_attention_decode_batches = {}
     native_attention_mtp_kv = {}
+    target_logits_counts = {}
     for worker in getattr(engine, "workers", []):
         backend = getattr(worker, "latency_backend", None)
         if backend is None:
             continue
+        for key, value in getattr(backend, "target_logits_counts", {}).items():
+            target_logits_counts[key] = target_logits_counts.get(key, 0) + value
         native = getattr(backend, "native_moe", None)
         if native is not None:
             extra = native.stats_dict()
@@ -258,6 +261,7 @@ def get_latency_stats(engine: LLMEngine) -> dict[str, Any]:
             if native_attention_counts
             else {}
         ),
+        **({"dsv4_target_logits": target_logits_counts} if target_logits_counts else {}),
         # Grouped by table and discrete key with the requested axis ranges;
         # the full report goes to missing_shapes_<qps>.json.
         "operator_missing_shapes": aggregate.missing_shape_records()[:200],

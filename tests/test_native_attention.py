@@ -98,6 +98,32 @@ class NativeAttentionTest(TestCase):
         self.assertAlmostEqual(backend.native_attention.seconds, latency_us * 1e-6)
         self.assertEqual(backend.native_attention.decode_batch_stats["batches"], 1)
 
+    def test_target_logits_cover_verify_rows_and_partial_prefills(self):
+        backend = self.backend(native=False, native_moe=False)
+        requests = []
+        for i in range(2):
+            req = Request(i, 1024, 20, 256)
+            req.scheduled_tokens = req.scheduled_query_tokens = 512
+            requests.append(req)
+        decode = Request(2, 1024, 2, 256)
+        decode.generation_idx = 1
+        decode.num_computed_tokens = 1024
+        decode.scheduled_tokens = 1  # final output token
+        decode.scheduled_query_tokens = 4
+        requests.append(decode)
+        composed = []
+        with patch.object(backend, "_attention_prefill", return_value=0), patch.object(
+            backend, "_attention_decode", return_value=0
+        ), patch.object(backend, "_compose", side_effect=lambda **args: composed.append(args) or 0):
+            backend.estimate_step_latency(requests)
+        self.assertEqual(composed[0]["requests"], 6)  # two bonus + four verify logits
+        self.assertEqual(composed[0]["tokens"], 1028)
+        self.assertEqual(backend.target_logits_counts["decode_rows"], 4)
+        self.assertEqual(backend.target_logits_counts["prefill_rows"], 2)
+        self.assertEqual(backend.target_logits_counts["rows"], 6)
+        backend.reset_profile_stats()
+        self.assertEqual(backend.target_logits_counts, {})
+
     def test_homogeneous_batch_preserves_measured_lookup(self):
         for sku in ("b200", "b300"):
             estimator = self.backend(sku).native_attention

@@ -1,0 +1,23 @@
+{
+  "pid": 701237,
+  "started_unix_s": 1791375432.0767553,
+  "command": [
+    "/home/zhuohang/miniconda3/bin/python",
+    "scripts/run_agentx_experiments.py",
+    "--action",
+    "run",
+    "--group",
+    "checkpoints",
+    "--seeds",
+    "0",
+    "--result-root",
+    "results/agentx-dsv4-full/native-target-budget/20261007-target-scope",
+    "--max-parallel",
+    "2"
+  ],
+  "result_root": "results/agentx-dsv4-full/native-target-budget/20261007-target-scope",
+  "log": "/tmp/agentx-target-budget-run.log",
+  "benchmark_pids": {
+    "b300": 701944
+  }
+}

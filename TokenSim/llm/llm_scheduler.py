@@ -587,8 +587,11 @@ class LLMPagedAttnScheduler(LLMScheduler):
     def _query_tokens(self, req: Request, accepted: int) -> int:
         if req.is_context_build or not self.mtp_enabled:
             return accepted
-        remaining = max(1, req.decode_len - req.generation_idx)
-        return min(1 + self.cache_config.hybrid_layout.speculative_tokens, remaining)
+        # Target verification still processes the complete speculative input
+        # even when only one output token remains. Output progress is clipped
+        # separately in _decode_output_tokens; partial queries would also
+        # defeat the serving runner's uniform decode graph.
+        return 1 + self.cache_config.hybrid_layout.speculative_tokens
 
     def _budget_cost(self, req: Request, accepted: int) -> int:
         return self._query_tokens(req, accepted) if not req.is_context_build else accepted
@@ -630,7 +633,7 @@ class LLMPagedAttnScheduler(LLMScheduler):
         if getattr(self.block_manager, "native_hybrid", False):
             lookahead = self._decode_lookahead(req)
             while not self.block_manager.can_ensure_slots(
-                req, accepted_tokens, lookahead=lookahead
+                req, query_tokens, lookahead=lookahead
             ):
                 if queue:
                     victim = queue.pop(-1)
@@ -641,7 +644,7 @@ class LLMPagedAttnScheduler(LLMScheduler):
                     preempted.append(req)
                     return False
             self.block_manager.ensure_slots(
-                req, accepted_tokens, lookahead=lookahead
+                req, query_tokens, lookahead=lookahead
             )
             return True
         while True:

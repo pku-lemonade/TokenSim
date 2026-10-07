@@ -1,0 +1,12 @@
+{
+  "scope": "raw input alignment check for cached-prefill padding follow-up",
+  "raw_requests": 98827,
+  "input_length_mod256_counts": {
+    "0": 23545,
+    "64": 24269,
+    "128": 27122,
+    "192": 23891
+  },
+  "interpretation": "fresh raw prompts do not leave a one-token suffix after a complete 256-token hit; preempted/recomputed contexts include generated progress and still need separate checking",
+  "not_a_runtime_padding_counter": true
+}

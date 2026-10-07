@@ -31,13 +31,21 @@ class MTPProgressTest(TestCase):
         self.assertEqual(set(values), {2, 3})
         self.assertGreater(values.count(2), values.count(3))
 
-    def test_final_step_truncates_query_width(self):
+    def test_final_step_truncates_output_and_preserves_query_width(self):
         scheduler = self.scheduler()
         req = Request(1, 8, 2, 16)
         req.generation_idx = 1
         accepted = scheduler._decode_output_tokens(req, 1)
         self.assertEqual(accepted, 1)
-        self.assertEqual(scheduler._query_tokens(req, accepted), 1)
+        self.assertEqual(scheduler._query_tokens(req, accepted), 4)
+
+    def test_final_step_requires_the_complete_verify_budget(self):
+        scheduler = self.scheduler()
+        req = Request(1, 8, 2, 16)
+        req.generation_idx = 1
+        req.num_computed_tokens = 8
+        self.assertEqual(scheduler._step_tokens(req, 3), 0)
+        self.assertEqual(scheduler._step_tokens(req, 4), 1)
 
     def test_simulation_seed_changes_deterministic_acceptance_stream(self):
         first = self.scheduler()

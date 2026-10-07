@@ -99,6 +99,7 @@ class LLMResult:
     native_dsv4_attention_counts: dict[str, int] | None = None
     native_dsv4_attention_decode_batches: dict[str, int] | None = None
     native_dsv4_attention_mtp_kv: dict[str, float] | None = None
+    dsv4_target_logits: dict[str, int] | None = None
     operator_missing_shape_count: int = 0
     operator_missing_shape_groups: int = 0
     operator_missing_per_table: dict[str, Any] | None = None
