@@ -5,6 +5,7 @@
 > 源码基准：只读参考 `/home/zhuohang/Serving/vllm-note`，本轮记录 HEAD `30f5c01d4ebb`；不下载历史镜像、不修改或切换此目录。本文旧行号和旧 HEAD 下的源码结论需按此版本重新定位；历史运行日志仍作为实验事实保留。
 > 分支：`agentx-support`（基于 `b2b685a`）
 > 状态：**2026-10-02 已完成 MegaMoE/shared expert、native CSA/HCA attention、MTP 2/3 推进与 q=4 target verify、native mHC，以及 native Mooncake shared-page adapter 的代码和两组完整一小时主点验收。统一矩阵已支持 list/check/expand/run/summary/plot、断点续跑、实际 GPU 数归一化和多 seed；DEP8、TP4/EP4、TP8/HBM 的 19 个曲线点已完成 seed0/1/2 全窗口并通过逐点守恒校验，所有 seed1/2 状态成功且 seed 间输出存在差异。修复后的三 seed 主点均已成功：B200 均值 522.135、B300 均值 1,027.989 token/s。完整阶段吞吐依次为：MegaMoE B200/B300 1,733.192／3,440.686，native attention+MTP 592.617／1,140.733，native mHC+attention+MTP 567.198／1,114.907，native Mooncake B200/B300 583.269／1,045.469 token/s。已完成 HBM/MTP 消融、记录时序、固定历史 worker 映射和独立 AIC B200 shape diagnostic；AIC B300 的缺失 MegaMoE 行、FlashMLA/FlashInfer 后端差异、mHC/shared fusion 和跨硬件 MegaMoE 借表均保留为明确近似，因此最终绝对吞吐仍未通过 25% 门槛。报告见 [原生 MegaMoE](agentx-native-megamoe-report.md)、[原生 attention](agentx-native-attention-report.md)、[原生 mHC](agentx-native-mhc-report.md)、[Mooncake](agentx-mooncake-report.md)、[原生曲线](agentx-native-curve-report.md)、[AIC 诊断](agentx-aic-diagnostic-report.md)。**
+> 2026-10-07 重新审计：上面的运行结果是历史基线，不是最终精度验收。native decode 按长度组重复计费已修复；482 项全仓测试、B200/B300 seed0 完整窗口和严格守恒验收通过。输出吞吐为 1,053.931 / 1,862.202 token/s，相对配对基线提高 105.51% / 80.36%，相对参考仍低约 70.72%。下一阶段修正整模块 compressed-work 外推，再分别完成 MTP KV 复用、draft 全模块成本、混合批投影范围与 AIC 同形状对照。B300 历史 worker 映射的回放实例身份也需修正，不能仅靠复选框清零认定全部完成。见 [整批 decode 报告](agentx-decode-batch-report.md)。
 > 对照对象：InferenceX AgentX，完整 DeepSeek-V4-Pro（FP8 + MXFP4），vLLM + MTP；覆盖 B200/B300 多并发曲线及其 TP8、TP4、DEP8 等配置变化。主检查点为单节点 8 GPU DEP8：B200 并发 196、B300 并发 384。
 > 证据分层：历史配置和日志描述参考运行；本地源码决定本轮实现；二者存在版本差异时单列记录。【待核实／待验证】是实现中的技术检查，不是待用户批准；【估算】不是实测；【推断】须保留依据与适用范围。历史研究中的源码行号仅作定位线索，以函数和本轮版本为准。
 
@@ -872,7 +873,7 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 - [x] **GPU 同步与请求路由任务 1** DP lockstep：8 个 rank 每步同步，步长取各 rank 的最大值；空闲 rank 跑 dummy batch（对照 `core.py:2225-2240`）。
 - [x] **GPU 同步与请求路由任务 2** 全局 step_counter：所有 rank 相同，wave 结束时重置，供 请求调度 的 interval 使用；当前只读源码的完成状态检查间隔为 16，旧 32 步记录另列版本差异。
 - [x] **GPU 同步与请求路由任务 3（已确认方向）** 独立 consistent-hash router 已放在请求回放与 worker 调度器之间，以会话／subagent ID 稳定路由，并在结果中记录 worker、请求量、在途量与缓存命中；逐点策略由矩阵配置表达。
-- [x] **GPU 同步与请求路由任务 4（诊断方案已确认）** 历史 router.log 与 AIPerf correlation 已生成固定映射；B200/B300 两个完整诊断窗口均覆盖 100% native conversation、missing_key_count=0。正式曲线仍使用 consistent-hash；证据见 [fixed router report](agentx-fixed-router-report.md)。
+- [ ] **GPU 同步与请求路由任务 4（诊断方案已确认，重新审计发现 B300 498 个会话跨回放实例对应多个历史 rank，conversation-only 映射未通过）** 历史 router.log 与 AIPerf correlation 已生成固定映射；B200/B300 两个完整诊断窗口均覆盖 100% native conversation、missing_key_count=0。正式曲线仍使用 consistent-hash；证据见 [fixed router report](agentx-fixed-router-report.md)。
 - [x] **GPU 同步与请求路由任务 5** 已用最终 native B200 c196 seed0 诊断并记录于 `data/reference/agentx-native-router-rank3-audit.json`：rank3 请求数、计算时间和等待均非最大，rank6 才是主要负载/等待点；历史 server-log rank3 现象属于不同运行，不能直接归因到 native 闭环。
 
 涉及文件：`TokenSim/placement/policies.py`（:47、:91-96）、`TokenSim/llm/llm_engine.py`（`_build_worker_pool`，:619）、`TokenSim/workload/agentx.py`。
@@ -930,7 +931,7 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 目标：用 AL 参数推进，并计入 verify 和 draft 的成本。
 
 - [x] **投机解码任务 1（方案已确认）** 每个请求的 decode step 以 51% / 49% 概率推进 2 / 3 个 token。随机状态与 trace 抽样分离；记录模拟种子，保证相同配置和种子可复现。请求结束时限制为剩余输出长度，分别记录抽样推进量和实际产出，避免把末步截断误判为接受长度偏差。
-- [x] **投机解码任务 2（方案已确认）** 在平均接受长度推进的同时，按本地 vLLM 的实际 MTP 调用分别估算草稿模块与输出投影的成本；内部采用查表／理论模型，不生成真实 token 或执行真实张量。分别列出校验与草稿的形状、调用次数、耗时和来源，避免漏计输出投影或重复计费。多 query 校验按已确认的计算与读取分项方案处理（决策 30.1、30.4）。
+- [ ] **投机解码任务 2（方案已确认，重新审计发现当前 draft 仅计输入投影和 head，SWA/MoE/mHC 等完整模块未计齐）** 在平均接受长度推进的同时，按本地 vLLM 的实际 MTP 调用分别估算草稿模块与输出投影的成本；内部采用查表／理论模型，不生成真实 token 或执行真实张量。分别列出校验与草稿的形状、调用次数、耗时和来源，避免漏计输出投影或重复计费。多 query 校验按已确认的计算与读取分项方案处理（决策 30.1、30.4）。
 - [x] **投机解码任务 3** KV lookahead K（与 缓存容量与前缀命中任务 5 一致）。
 - [x] **投机解码任务 4** ITL 按 aiperf 口径统计。
 
@@ -943,11 +944,11 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 
 - [x] **算子耗时任务 1（实测优先已确认）** 导入经模型、硬件、dtype、TP/EP、后端与计时范围检查的 AIC 数据：dsv4_csa / dsv4_hca 的 context 和 generation 表，分项表（`dsv4_hca_attn`、`dsv4_paged_mqa_logits`），`mhc_module_perf`，匹配的 MoE 数据。`dsv4_csa_topk_calib_perf` 等其他框架数据只有确认目标执行路径需要时才使用。GB200 / GB300 的 DSV4 mega-MoE 借表仍按决策 26 处理。记录仓库版本、原始文件、计时单位和近似来源；保留源数据附带的许可证与归属说明。
 - [x] **算子耗时任务 2** 逐层组合：每层按 ratio 选 CSA / HCA / SWA 表，沿用现有混合批次的正常处理流程。接入 DSV4 模块表时先建立计时范围清单，模块已包含的投影、压缩、indexer 不再重复计费；MoE 等模块外的共用工作按该步总 token 数估算一次。输入处理与输出生成按各自实际形状查询，记录无法由现有模块表反映的融合或重叠误差。
-- [x] **算子耗时任务 3（缺失形状可估算已确认）** 先尝试同配置精确匹配和范围内插值，表外使用以实测为基准的 AIC 式理论成本比例外推。移植 `dsv4_attention_sol_ms` 前核对各组成项，缓存字节按已核实配置参数化。用留出的实测点验证（例如用 ≤32K 数据预测 64K），用分项长上下文数据检查趋势，分别报告插值、外推与跨配置近似的覆盖比例。没有可匹配的基础数据时明确记录缺口，不静默套用其他模型。
+- [ ] **算子耗时任务 3（缺失形状可估算已确认，重新审计发现当前 compressed-work 比例错误放大上下文无关投影）** 先尝试同配置精确匹配和范围内插值，表外使用以实测为基准的 AIC 式理论成本比例外推。移植 `dsv4_attention_sol_ms` 前核对各组成项，缓存字节按已核实配置参数化。用留出的实测点验证（例如用 ≤32K 数据预测 64K），用分项长上下文数据检查趋势，分别报告插值、外推与跨配置近似的覆盖比例。没有可匹配的基础数据时明确记录缺口，不静默套用其他模型。
 - [x] **算子耗时任务 4（清洗策略已确认）** `scripts/audit_agentx_operator_data.py` 审计 B200/B300/GB200/GB300 的 30 张 native 表：无 null/非有限/非正耗时和缺失 key；重复 key 与单轴下降全部保留并记录。证据见 `data/reference/agentx-native-operator-cleaning-audit.json`，没有按非单调或偏大耗时删除数据。
 - [x] **算子耗时任务 5** 处理 B300 CSA generation 缺 bs<64 数据的问题（决策 19）。
-- [x] **算子耗时任务 6** MTP 层按 SWA-only 处理（决策 20）。
-- [x] **算子耗时任务 7（具体近似已确认）** 区分请求数与每请求 query 数，估算 verify q=4 的 attention 成本。以 Pro 实测为基准，分别估算新增 query 的计算和按实际实现可复用 KV 的读取量；分项 q=1/q=4 数据只在计时语义可对应时辅助校验，不把整个模块盲目乘四或乘一个跨模型比值。记录读写量、计算量和缩放依据（决策 30.4）。
+- [ ] **算子耗时任务 6（结构已实现，draft 的 SWA 费用尚待接入）** MTP 层按 SWA-only 处理（决策 20）。
+- [ ] **算子耗时任务 7（具体近似已确认，重新审计发现 query-width 直接展开仍未分离计算与 KV 读取）** 区分请求数与每请求 query 数，估算 verify q=4 的 attention 成本。以 Pro 实测为基准，分别估算新增 query 的计算和按实际实现可复用 KV 的读取量；分项 q=1/q=4 数据只在计时语义可对应时辅助校验，不把整个模块盲目乘四或乘一个跨模型比值。记录读写量、计算量和缩放依据（决策 30.4）。
 - [x] **算子耗时任务 8** 已核对 AIC collector、只读 vLLM 和运行日志：native 表为 FlashMLA/FP8 source layout，参考为 FlashInfer/plain FP8 + MXFP4 indexer；原始与修正布局、来源版本和不可比原因保留在 attention report 与 backend provenance，未引入无配对证据的固定系数。
 - [x] **算子耗时任务 9（负载近似已确认）** 修复逐请求从零开始轮转导致负载集中到同一专家的 bug，统计先汇总整步 route 并合理分配余数。耗时查询使用 `power_law_1.01` 实测分布，不再叠加同源 straggler 惩罚；统计用直方图不得暗中改变这一成本假设。hash 路由层保留结构与路由差异，无法还原逐 token 路由时也明确记录统计近似。
   - 2026-10-01 已完成：整步合成 route、EP 交错余数和跨 step 轮转保留显式直方图，阶段缓存与零负载分母已修复。DSV4 查询改为 MXFP4/`power_law_1.01`，取消同源 straggler；413 项全仓测试及两个完整一小时主点的版本/配置、输入/输出、取消/引用、route/EP 负载和时间守恒验收通过。当前 routed kernel 仍为显式标注的临时对照，完整 MegaMoE/shared expert 成本由任务 10 和 12 继续实现。详见 [本部分报告](agentx-moe-distribution-report.md)。
@@ -960,7 +961,7 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 - [x] **算子耗时任务 13（校准范围已确认）** 已完成 B200 校准审计并冻结 `step_overhead_us=0`，直接用于 B300；两 SKU 组件时间均记录 overhead=0。正 overhead 无法解释当前“模拟器更慢”的误差，证据见 [overhead 校准报告](agentx-overhead-calibration-report.md)，未追加 SKU 修正。
 - [x] **算子耗时任务 14.1：测量阶段分项守恒** 预热结束后重置 operator 查询、step 与 component 计数，保留查表缓存和全程 missing-shape 清单；两个完整主点的 profiling 分项和均与 DP local compute seconds（含 dummy）一致。旧结果含预热的分项不作直接百分比对照，完整模块分解和最终比较继续由任务 14 完成。
 - [x] **算子耗时任务 14** 输出 native result 的 attention / MoE / GEMM / elementwise / comm / overhead 分解，并与旧 proxy 分解分开报告；FlashMLA/FlashInfer 和跨硬件借表差异不折算成伪精度。
-- [x] **算子耗时任务 15（已确认）** 已用独立入口 `scripts/run_agentx_aic_diagnostic.py` 构建 AIC 0.12.0 Rust extension 并运行 B200 同形状估算；B300 明确记录为缺少匹配 NVFP4 MegaMoE 行，没有跨 SKU 猜测。AIC source commit、per-op source 和运行时身份保存在 `data/reference/agentx-aic-diagnostic.json`。
+- [ ] **算子耗时任务 15（已确认，当前对照的量化与 context/decode 实际 batch 不一致，需补匹配对照）** 已用独立入口 `scripts/run_agentx_aic_diagnostic.py` 构建 AIC 0.12.0 Rust extension 并运行 B200 同形状估算；B300 明确记录为缺少匹配 NVFP4 MegaMoE 行，没有跨 SKU 猜测。AIC source commit、per-op source 和运行时身份保存在 `data/reference/agentx-aic-diagnostic.json`。
 
 涉及文件：`operator_table.py`、`lookup.py`、`schema.py`、`TokenSim/operator_data/importers/aiconfigurator.py`（375-435）、`TokenSim/moe/routing.py`、`data/devices/*.yaml`。
 完成标准：没有算子落进「未知 / 默认」分支；holdout 误差有记录；与 AIC 单步对照的偏差有解释。
@@ -1003,9 +1004,11 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 - [x] **最终验证任务 1** 两个 SKU 按 §5.1 完成预热及一小时模拟；主点和已配置曲线均使用三个修复后的模拟 seed，报告明确标注固定一小时窗口且不要求全部原始请求完成。
 - [x] **最终验证任务 2（范围已确认）** B200 c196/B300 c384 已完成 HBM-only 和 MTP-disabled 两类完整三 seed 消融；完整模型和一小时协议保持不变，结果见 [最终消融报告](agentx-final-ablation-report.md)。
 - [x] **最终验证任务 3（已确认）** 三 seed 主点和消融均使用同一组额外开销输入；B200/B300 结果直接比较，未按 SKU 重新拟合。当前 step overhead 明确为设备数据中的 0，绝对误差来自 attention/operator provenance，而非新增 SKU 修正。
-- [x] **最终验证任务 4（已确认）** 已汇总 AIC B200 同形状离线估算与 TokenSim native attention 查询；B300 缺失行作为明确数据缺口保留。分项对照见 `data/reference/agentx-aic-shape-comparison.json`，不将差异折算为校准系数。
+- [ ] **最终验证任务 4（已确认，尚未证实相同模型、形状与算子范围）** 已汇总 AIC B200 同形状离线估算与 TokenSim native attention 查询；B300 缺失行作为明确数据缺口保留。分项对照见 `data/reference/agentx-aic-shape-comparison.json`，不将差异折算为校准系数。
 - [x] **最终验证任务 5** 更新 `docs/agentx.md`，迁移到 native matrix workflow 并明确旧 proxy 结果的历史性质。
 - [x] **最终验证任务 6（已确认范围）** 统一实验脚本已完成 TP8、TP4、TP4/EP4、DEP8 曲线和 SimpleCPU/HBM 配置选择；逐点输出三 seed 汇总、绘图、生命周期校验和可比较参考误差。
+
+- [ ] **最终精度验收** 用当前实现重新完成全部必需验证，满足 §5.2 的 25% 门槛。历史三 seed 和曲线仅证明对应代码版本的流程，不能替代修复后的精度验证。
 
 完成标准：满足 §5.2 的阈值。
 

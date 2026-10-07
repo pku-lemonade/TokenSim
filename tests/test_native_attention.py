@@ -1,12 +1,15 @@
 """Regression tests for measured DSV4 CSA/HCA attention integration."""
 
 from unittest import TestCase
+from unittest.mock import patch
 
 from TokenSim.config.config import ParallelConfig, ParallelRankInfo
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.context import HardwareContext
 from TokenSim.latency.operator_table import OperatorTableLatencyBackend
 from TokenSim.operator_data.package import OperatorDataPackage
+from TokenSim.latency.deepseek_v4_attention import AttentionEstimate
+from TokenSim.llm.llm_request import Request
 
 
 class NativeAttentionTest(TestCase):
@@ -70,6 +73,67 @@ class NativeAttentionTest(TestCase):
             backend.native_attention._query("hca", "generation", 64, 1, 8192).source_id,
             "aiconfigurator-borrowed:b200_sxm:dsv4_attention:vllm:0.24.0",
         )
+
+    def test_ragged_decode_does_not_repeat_projection_launches(self):
+        backend = self.backend()
+        requests = []
+        for identifier, context in enumerate((8192, 65536)):
+            request = Request(identifier, context, 20, 256)
+            request.generation_idx = 1
+            request.num_computed_tokens = context
+            request.scheduled_tokens = 2
+            request.scheduled_query_tokens = 4
+            requests.append(request)
+
+        def measured_module(_kind, _phase, batch, _query, _context):
+            # Common launch/weight work + linear query work. Changing KV
+            # lengths does not cause another projection launch in serving.
+            return AttentionEstimate(100.0 + 2.0 * batch, "exact", "fixture")
+
+        with patch.object(backend.native_attention, "_query", side_effect=measured_module), patch.object(
+            backend, "_compose", side_effect=lambda **step: step["attention_us"]
+        ):
+            latency_us = backend.estimate_step_latency(requests)
+        self.assertEqual(latency_us, 61 * (100.0 + 2.0 * 8))
+        self.assertAlmostEqual(backend.native_attention.seconds, latency_us * 1e-6)
+        self.assertEqual(backend.native_attention.decode_batch_stats["batches"], 1)
+
+    def test_homogeneous_batch_preserves_measured_lookup(self):
+        for sku in ("b200", "b300"):
+            estimator = self.backend(sku).native_attention
+            expected = estimator.estimate_decode(64, 8192)
+            estimator.reset_stats()
+            actual = estimator.estimate_decode_batch({(8192, 4): 16})
+            self.assertEqual(actual, expected)
+            self.assertAlmostEqual(estimator.seconds, actual * 1e-6)
+            self.assertEqual(estimator.decode_batch_stats["query_rows"], 64)
+
+    def test_ragged_estimate_stays_within_uniform_full_batch_costs(self):
+        estimator = self.backend().native_attention
+        uniform = [estimator.estimate_decode(64, context) for context in (8192, 65536)]
+        estimator.reset_stats()
+        actual = estimator.estimate_decode_batch({(8192, 1): 32, (65536, 1): 32})
+        self.assertGreaterEqual(actual, min(uniform))
+        self.assertLessEqual(actual, max(uniform))
+        self.assertAlmostEqual(estimator.seconds, actual * 1e-6)
+        estimator.reset_stats()
+        self.assertEqual(estimator.decode_batch_stats, {})
+        self.assertEqual(estimator.seconds, 0.0)
+
+    def test_long_context_uses_supported_slices_without_changing_source_rows(self):
+        for sku in ("b200", "b300"):
+            estimator = self.backend(sku).native_attention
+            original = estimator.backend.package.tables["dsv4_attention"]
+            value = estimator.estimate_decode_batch({(737408, 4): 17})
+            self.assertGreater(value, 0)
+            self.assertGreater(estimator.decode_batch_stats["ragged_grid_lookup_queries"], 0)
+            self.assertIs(estimator.backend.package.tables["dsv4_attention"], original)
+            self.assertEqual(estimator.lookup.policy.max_extrapolation_ratio, 64.0)
+
+    def test_ragged_grid_keeps_extrapolation_limit(self):
+        estimator = self.backend().native_attention
+        with self.assertRaises(ConfigurationError):
+            estimator.estimate_decode(64, 65 * 65536)
 
     def test_native_attention_does_not_add_projection_gemms(self):
         backend = self.backend(native_moe=False)

@@ -336,10 +336,16 @@ class OperatorTableLatencyBackend(LatencyBackend):
             self._attention_prefill(count, q_len, kv_len)
             for (q_len, kv_len), count in context_groups.items()
         )
-        attention_us += sum(
-            self._attention_decode(count, context, query_width)
-            for (context, query_width), count in decode_buckets.items()
-        )
+        if self.native_attention:
+            # Native rows time a complete attention module, including shared
+            # projection work. Length buckets describe the ragged KV workload;
+            # they are not separate serving module invocations.
+            attention_us += self.native_attention.estimate_decode_batch(decode_buckets)
+        else:
+            attention_us += sum(
+                self._attention_decode(count, context, query_width)
+                for (context, query_width), count in decode_buckets.items()
+            )
         return self._compose(
             tokens=tokens,
             requests=max(1, sampling),

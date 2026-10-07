@@ -95,6 +95,9 @@ class LLMResult:
     operator_match_type_counts: dict[str, int] | None = None
     operator_table_match_counts: dict[str, Any] | None = None
     operator_component_seconds: dict[str, float] | None = None
+    native_dsv4_attention_seconds: float | None = None
+    native_dsv4_attention_counts: dict[str, int] | None = None
+    native_dsv4_attention_decode_batches: dict[str, int] | None = None
     operator_missing_shape_count: int = 0
     operator_missing_shape_groups: int = 0
     operator_missing_per_table: dict[str, Any] | None = None

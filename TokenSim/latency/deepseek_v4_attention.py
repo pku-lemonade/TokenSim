@@ -7,6 +7,7 @@ import math
 from TokenSim.errors import ConfigurationError
 from TokenSim.operator_data.lookup import LookupPolicy, MissingOperatorDataError, OperatorLookup
 from TokenSim.operator_data.schema import TABLE_SPECS
+from TokenSim.operator_data.package import OperatorDataPackage
 
 
 @dataclass(frozen=True)
@@ -14,6 +15,7 @@ class AttentionEstimate:
     latency_us: float
     match: str
     source_id: str
+    ragged_grid: bool = False
 
 
 class DeepSeekV4AttentionEstimator:
@@ -70,6 +72,12 @@ class DeepSeekV4AttentionEstimator:
                 identity = (axis, discrete, tuple(row[name] for name in fields))
                 index.setdefault(identity, set()).add(row[axis])
         self.axis_cache = {key: sorted(values) for key, values in index.items()}
+        self.generation_slices = {}
+        for row in backend.package.tables["dsv4_attention"]:
+            if row["phase"] == "generation":
+                batches = self.generation_slices.setdefault(self._discrete_key(row), {})
+                batches.setdefault(row["batch_size"], []).append(row)
+        self.generation_slice_lookups = {}
         self.counts = Counter()
         # ``ModelSpec.layer_specs`` includes the reusable MTP layer after the
         # main stack; the complete attention tables here cover only the 61
@@ -83,6 +91,7 @@ class DeepSeekV4AttentionEstimator:
     def reset_stats(self):
         self.counts.clear()
         self.seconds = 0.0
+        self.decode_batch_stats = Counter()
 
     def _analytical_work(self, _table, key):
         batch = max(1, float(key["batch_size"]))
@@ -145,26 +154,74 @@ class DeepSeekV4AttentionEstimator:
             self.counts[f"{phase}:{layer_kind}:{cached.match}"] = self.counts.get(
                 f"{phase}:{layer_kind}:{cached.match}", 0
             ) + 1
+            if cached.ragged_grid:
+                self.decode_batch_stats["ragged_grid_lookup_queries"] += 1
             return cached
+        ragged_grid = False
         try:
             row = self.lookup.lookup("dsv4_attention", key)
         except MissingOperatorDataError as exc:
-            # This is a configuration/data error for native mode.  Falling
-            # back to dense GQA would silently double count or erase DSV4
-            # modules, so expose the missing discrete geometry instead.
-            self.backend.stats.record_missing(exc)
-            raise ConfigurationError(str(exc)) from exc
+            if phase == "generation" and exc.kind == "out_of_range":
+                try:
+                    row = self._query_supported_generation_slices(key)
+                    ragged_grid = True
+                except MissingOperatorDataError:
+                    self.backend.stats.record_missing(exc)
+                    raise ConfigurationError(str(exc)) from exc
+            else:
+                # Expose missing discrete geometry instead of silently
+                # substituting a dense GQA module or another model.
+                self.backend.stats.record_missing(exc)
+                raise ConfigurationError(str(exc)) from exc
         result = AttentionEstimate(
             row.latency_us,
             "clamped" if clamped and row.match_type == "exact" else row.match_type,
             row.source_id,
+            ragged_grid,
         )
         if len(self.cache) > 65536:
             self.cache.clear()
         self.cache[identity] = result
         self.backend.stats.record("dsv4_attention", result.match)
         self.counts[f"{phase}:{layer_kind}:{result.match}"] += 1
+        if ragged_grid:
+            self.decode_batch_stats["ragged_grid_lookup_queries"] += 1
         return result
+
+    def _query_supported_generation_slices(self, key):
+        """Keep only neighboring batch slices that support the context bound.
+
+        The collector's context range shrinks at large batches. A batch=128
+        neighbor measured only to context=6144 must not prevent using a
+        batch=64 neighbor measured to 16384 for a long-context query. Retain
+        the same discrete geometry and all samples in each supported slice;
+        the ordinary lookup still applies its 64x bounds along both axes.
+        No source rows or extrapolation limits are changed.
+        """
+        discrete = self._discrete_key(key)
+        slices = self.generation_slices.get(discrete, {})
+        context = key["context_len"]
+        limit = self.lookup.policy.max_extrapolation_ratio
+        supported = tuple(
+            batch for batch, rows in sorted(slices.items())
+            if context <= limit * max(row["context_len"] for row in rows)
+            and context * limit >= min(row["context_len"] for row in rows)
+        )
+        if not supported:
+            raise MissingOperatorDataError(
+                "dsv4_attention", key, "no batch slice supports the context bound", "out_of_range"
+            )
+        identity = (discrete, supported)
+        lookup = self.generation_slice_lookups.get(identity)
+        if lookup is None:
+            package = OperatorDataPackage.from_rows(
+                self.backend.package.meta,
+                {"dsv4_attention": [row for batch in supported for row in slices[batch]]},
+            )
+            lookup = self.generation_slice_lookups[identity] = OperatorLookup(
+                package, self.lookup.policy, analytical_scaler=self._analytical_work
+            )
+        return lookup.lookup("dsv4_attention", key)
 
     def _axis_values(self, key, axis, *, extra=None):
         """Axis values for the same discrete key and exact other-axis values."""
@@ -192,20 +249,54 @@ class DeepSeekV4AttentionEstimator:
         self.seconds += total * 1e-6
         return total
 
-    def estimate_decode(self, batch_size, context_tokens):
+    def _decode_us(self, batch_size, context_tokens):
         total = 0.0
         for kind in ("csa", "hca"):
             total += self.layer_counts[kind] * self._query(
                 kind, "generation", batch_size, 1, context_tokens
             ).latency_us
         total *= self.generation_latency_scale
+        return total
+
+    def estimate_decode(self, batch_size, context_tokens):
+        total = self._decode_us(batch_size, context_tokens)
         self.seconds += total * 1e-6
+        return total
+
+    def estimate_decode_batch(self, buckets):
+        """Price one ragged decode batch, not a full module per length bucket.
+
+        ``buckets`` maps (KV length, target query width) to request count.
+        Module measurements include projections and their weight reads, which
+        serving executes once over the full query tensor. For heterogeneous
+        lengths use a query-row-weighted mixture of uniform, full-batch table
+        estimates. This reproduces homogeneous batches exactly and counts the
+        common module work once. The mixture is an approximation, not a
+        measurement of the ragged batch. Query-width expansion is retained
+        here; multi-query KV reuse needs separate modeling.
+        """
+        rows_by_context = Counter()
+        for (context, query_width), count in buckets.items():
+            if count > 0:
+                rows_by_context[context] += count * max(1, int(query_width))
+        rows = sum(rows_by_context.values())
+        if not rows:
+            return 0.0
+        total = sum(
+            count / rows * self._decode_us(rows, context)
+            for context, count in sorted(rows_by_context.items())
+        )
+        self.seconds += total * 1e-6
+        self.decode_batch_stats["batches"] += 1
+        self.decode_batch_stats["length_groups"] += len(rows_by_context)
+        self.decode_batch_stats["query_rows"] += rows
         return total
 
     def stats_dict(self):
         return {
             "native_dsv4_attention_seconds": self.seconds,
             "native_dsv4_attention_counts": dict(self.counts),
+            "native_dsv4_attention_decode_batches": dict(self.decode_batch_stats),
         }
 
     def describe(self):
@@ -219,4 +310,7 @@ class DeepSeekV4AttentionEstimator:
             "extrapolation": "measured boundary with DSV4 compressed-work analytical growth, max 64x",
             "context_latency_scale": self.context_latency_scale,
             "generation_latency_scale": self.generation_latency_scale,
+            "decode_batch_composition": "query-row-weighted uniform full-batch module estimates; common projections counted once",
+            "decode_query_width": "expanded query rows; multi-query KV reuse remains an approximation",
+            "generation_ragged_grid": "on out-of-range neighbors, use same-geometry batch slices within the existing 64x context/batch bound",
         }

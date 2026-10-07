@@ -188,6 +188,7 @@ def get_latency_stats(engine: LLMEngine) -> dict[str, Any]:
     native_counts = {}
     native_attention_total = 0.0
     native_attention_counts = {}
+    native_attention_decode_batches = {}
     for worker in getattr(engine, "workers", []):
         backend = getattr(worker, "latency_backend", None)
         if backend is None:
@@ -213,6 +214,10 @@ def get_latency_stats(engine: LLMEngine) -> dict[str, Any]:
             for key, count in extra["native_dsv4_attention_counts"].items():
                 native_attention_counts[key] = (
                     native_attention_counts.get(key, 0) + count
+                )
+            for key, count in extra["native_dsv4_attention_decode_batches"].items():
+                native_attention_decode_batches[key] = (
+                    native_attention_decode_batches.get(key, 0) + count
                 )
         stats = getattr(backend, "stats", None)
         if isinstance(stats, OperatorStats):
@@ -244,6 +249,7 @@ def get_latency_stats(engine: LLMEngine) -> dict[str, Any]:
             {
                 "native_dsv4_attention_seconds": native_attention_total,
                 "native_dsv4_attention_counts": native_attention_counts,
+                "native_dsv4_attention_decode_batches": native_attention_decode_batches,
             }
             if native_attention_counts
             else {}
