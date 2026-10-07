@@ -1,0 +1,58 @@
+{
+  "scope": "native mHC residual ownership and SP row count; result schema preserves routed/shared summaries",
+  "reference_vllm_commit": "30f5c01d4ebb5c493ed86195db24d0ec5b3ce3d7",
+  "implementation_parent_commit": "5f9c1a8dc1b1ec4159a862ee07b2a73238b382ef",
+  "source_checks": [
+    {
+      "path": "/tmp/aiconfigurator/collector/vllm/collect_mhc_module.py",
+      "role": "collector norm_weight=None and pre/post num_sites=2",
+      "sha256": "c8bffb1eb4ac2d02426c7ba95fb3c162206137e1e391e9c39141be926bb02df6"
+    },
+    {
+      "path": "/home/zhuohang/Serving/vllm-note/vllm/models/deepseek_v4/nvidia/model.py",
+      "role": "SP predicate and weighted residual reconstruction",
+      "sha256": "5d5a74e339cd110def9b5e37a56fa602a42cdece98811013fb69700a0274a224"
+    },
+    {
+      "path": "/home/zhuohang/Serving/vllm-note/vllm/model_executor/kernels/mhc/tilelang.py",
+      "role": "native mHC post implementation",
+      "sha256": "204e19209db5b19eb3dd25ea6ae10c84425dee02ef5bc896eca3f83da6149a8e"
+    },
+    {
+      "path": "/home/zhuohang/TokenSim/TokenSim-Open/TokenSim/latency/operator_table.py",
+      "role": "native branch removes redundant residual and uses SP row count",
+      "sha256": "98aafe3dc9c5fd6dd4210e21df0fcf69b5c039e299ebc3e9e35e8ff94b91ad39"
+    }
+  ],
+  "facts": [
+    "collector explicitly excludes RMSNorm (norm_weight=None); retain a separate RMSNorm estimate",
+    "native post already includes weighted residual reconstruction; do not bill generic residual_add again",
+    "main mHC/norm rows use ceil(T/TP) under EP and TP>1 when MegaMoE or DP>1",
+    "TP1 DEP8 checkpoint shapes and all computed cache budgets stay unchanged",
+    "native routed and shared fields were emitted by the previous producer but discarded by its result schema; old files are immutable"
+  ],
+  "verification": {
+    "full_suite": {
+      "passed": 509,
+      "subtests_passed": 14,
+      "warnings": 32,
+      "elapsed_seconds": 142.95,
+      "log": "data/reference/agentx-mhc-scope/full-tests.txt",
+      "log_sha256": "374667d787ec9d431c691c242f4fcf067dc37e85c5d4fa3ca7b9f8960ceadd5f"
+    },
+    "full_windows": {
+      "status": "passed",
+      "evidence": "data/reference/agentx-mhc-scope/pipeline-validation.json",
+      "trace_pool": 393,
+      "seed": 0,
+      "issue_window_seconds": 3600,
+      "grace_seconds": 30,
+      "hardware": [
+        "b200",
+        "b300"
+      ]
+    }
+  },
+  "accuracy_accepted": false,
+  "remaining_output_scope_followup": "data/reference/agentx-mhc-scope/target-head-followup.json"
+}

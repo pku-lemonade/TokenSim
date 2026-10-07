@@ -102,6 +102,10 @@ class LLMResult:
     dsv4_target_logits: dict[str, int] | None = None
     native_dsv4_mtp_counts: dict[str, int] | None = None
     native_dsv4_mtp_component_seconds: dict[str, float] | None = None
+    native_megamoe_routed_seconds: float | None = None
+    native_megamoe_shared_seconds: float | None = None
+    native_megamoe_max_rank_rows: int | None = None
+    native_megamoe_counts: dict[str, int] | None = None
     operator_missing_shape_count: int = 0
     operator_missing_shape_groups: int = 0
     operator_missing_per_table: dict[str, Any] | None = None

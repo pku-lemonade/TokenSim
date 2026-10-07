@@ -498,10 +498,17 @@ class OperatorTableLatencyBackend(LatencyBackend):
             attn_gemm_us = self._gemm(
                 T, self.q_dim_local + 2 * self.kv_dim_local, h
             ) + self._gemm(T, h, self.q_dim_local)
-        attn_elem_us = self._elementwise("rmsnorm", T, h) + self._elementwise(
-            "residual_add", T, h
+        # mHC runs on SP shards before the attention all-gather. Match the
+        # serving predicate; TP1 DEP8 keeps its full row count.
+        mhc_sp = bool(
+            self.native_mhc and self.ep_enabled and self.tp > 1
+            and (self.native_moe or self.parallel_config.data_parallel_size > 1)
         )
-        mhc_us = self.native_mhc.estimate(T) if self.native_mhc else 0.0
+        norm_rows = math.ceil(T / self.tp) if mhc_sp else T
+        attn_elem_us = self._elementwise("rmsnorm", norm_rows, h)
+        if not self.native_mhc:
+            attn_elem_us += self._elementwise("residual_add", T, h)
+        mhc_us = self.native_mhc.estimate(norm_rows) if self.native_mhc else 0.0
         if not self.native_attention:
             attn_elem_us += self._elementwise(
                 "rope", T, self.q_dim_local + self.kv_dim_local
@@ -529,9 +536,11 @@ class OperatorTableLatencyBackend(LatencyBackend):
                 h,
                 dtype=model.operator_dtype("router") if model.deepseek_v4 else None,
             )
-            moe_elem_us = self._elementwise("rmsnorm", T, h) + self._elementwise(
-                "residual_add", T, h
-            )
+            moe_elem_us = self._elementwise("rmsnorm", norm_rows, h)
+            if not self.native_mhc:
+                # Native post already reconstructs the weighted residual.
+                # The unfused collector pre does not own the output RMSNorm.
+                moe_elem_us += self._elementwise("residual_add", T, h)
             moe_us = self._moe_layers(T, requests_list)
             if self.ep_enabled and not self.native_moe:
                 moe_comm_bytes = int(

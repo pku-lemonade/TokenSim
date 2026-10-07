@@ -1,0 +1,63 @@
+{
+  "scope": "read-only cached-prefill padding and attention/graph metadata audit; no runtime scheduling changes in mHC stage",
+  "source_checks": [
+    {
+      "role": "scheduler padding conditions",
+      "path": "/home/zhuohang/Serving/vllm-note/vllm/v1/core/sched/scheduler.py",
+      "sha256": "ead13eb4613651208b73deb533cb23a33e111a3a8899d98d0fef0eae67d99b84"
+    },
+    {
+      "role": "V2 cached-prefill graph metadata",
+      "path": "/home/zhuohang/Serving/vllm-note/vllm/v1/worker/gpu/model_runner.py",
+      "sha256": "217e4b87c0bd22c4e98640775d7b4e3349000f79d37f9f7d3e569768786c3a7f"
+    },
+    {
+      "role": "invalid placeholder draft rejection",
+      "path": "/home/zhuohang/Serving/vllm-note/vllm/v1/worker/gpu/spec_decode/rejection_sampler_utils.py",
+      "sha256": "d9f29ad1ce4fe40a078a78b21d73fab97bbbe018775acb480c0ad14dea0c5c35"
+    },
+    {
+      "role": "short-query SWA metadata",
+      "path": "/home/zhuohang/Serving/vllm-note/vllm/v1/attention/backends/mla/sparse_swa.py",
+      "sha256": "078ae14df3a5fa8a49a62715b852093e1ed6b0bc2c0f826be252f82ba9dc0b1e"
+    },
+    {
+      "role": "metadata split defaults",
+      "path": "/home/zhuohang/Serving/vllm-note/vllm/v1/attention/backends/utils.py",
+      "sha256": "7d35af7b6b9c255c6762eb89702bb1a3ed0d1b292722be46dd6455ecf2410641"
+    }
+  ],
+  "facts": [
+    "waiting admission pads a one-real-token tail to 1+K only with MTP, no already-scheduled prefill, running work or positive computed prefix, enough token budget, and room for one sampled output before max_model_len",
+    "padding inserts K invalid (-1) draft tokens; sampler rejects invalid placeholders even in synthetic mode, so cached-prefill still emits one output",
+    "V2 recognizes a one-token prompt extension over positive computed prefix as decode-graph eligible while retaining the prompt/recompute progress role",
+    "SWA metadata uses query-length threshold 1+K; short context rows may use decode attention without becoming stochastic 2/3-token output steps",
+    "running scheduling caps query rows by max_model_len - computed_tokens - 1; terminal output clipping is a separate requirement"
+  ],
+  "baseline_observations": {
+    "b200": {
+      "source_requests_sha256": "f7a9f9c99643d181a8acda15fdfbaa8fdc55f54cf9eafcbff09efb75cb4f22ea",
+      "observed_first_admission_requests": 10106,
+      "one_token_first_admission_input_tails": 0,
+      "requests_with_readmission": 41,
+      "one_token_latest_input_tails": 0,
+      "limitation": "input-only request logs cannot identify generated-progress tail length or per-step short context chunks"
+    },
+    "b300": {
+      "source_requests_sha256": "b207db33c2467937f8cabeee0aac8335ccc9f6cc00bfa674f84270880d2ecd6a",
+      "observed_first_admission_requests": 20518,
+      "one_token_first_admission_input_tails": 0,
+      "requests_with_readmission": 0,
+      "one_token_latest_input_tails": 0,
+      "limitation": "input-only request logs cannot identify generated-progress tail length or per-step short context chunks"
+    }
+  },
+  "remaining_implementation": [
+    "separate request progress, attention metadata, and uniform decode graph roles",
+    "waiting/loaded cached-tail padding with token/KV/head budgets while preserving one output",
+    "model-length cap and rejection of invalid over-length requests with cleanup",
+    "dedicated counters and strict source-derived edge regressions"
+  ],
+  "dataset_bound_evidence": "data/reference/agentx-mtp-kv/target-budget-followup.json; max input+output+7=996586 below 1048576",
+  "accuracy_accepted": false
+}

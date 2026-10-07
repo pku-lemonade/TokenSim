@@ -10,6 +10,7 @@ from TokenSim.latency.operator_table import OperatorTableLatencyBackend
 from TokenSim.latency.deepseek_v4_moe import MoEPass, RankShape
 from TokenSim.llm.llm_request import Request
 from util.results import get_latency_stats
+from TokenSim.config.psla_config import LLMResult
 
 
 class FullMTPTest(TestCase):
@@ -117,6 +118,8 @@ class FullMTPTest(TestCase):
         self.assertEqual(result["native_dsv4_mtp_counts"]["passes"], 3)
         self.assertAlmostEqual(result["native_megamoe_routed_seconds"] + result["native_megamoe_shared_seconds"],
                                backend.stats.component_seconds["moe"])
+        self.assertTrue({"native_megamoe_routed_seconds", "native_megamoe_shared_seconds",
+                         "native_megamoe_counts", "native_megamoe_max_rank_rows"} <= LLMResult.__dataclass_fields__.keys())
         backend.reset_profile_stats()
         self.assertEqual(mtp.counts, {})
         self.assertEqual(mtp.component_seconds, {})

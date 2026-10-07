@@ -1,0 +1,67 @@
+{
+  "scope": "read-only output-head row/scope audit; no runtime edits in mHC stage",
+  "source_checks": [
+    {
+      "path": "/home/zhuohang/Serving/vllm-note/vllm/models/deepseek_v4/nvidia/model.py",
+      "sha256": "5d5a74e339cd110def9b5e37a56fa602a42cdece98811013fb69700a0274a224"
+    },
+    {
+      "path": "/home/zhuohang/Serving/vllm-note/vllm/models/deepseek_v4/nvidia/mtp.py",
+      "sha256": "c0ca46dbe43e01a32379c3ce45a6b578e68871755a39399f7918d06e383fbebf"
+    },
+    {
+      "path": "TokenSim/latency/operator_table.py",
+      "sha256": "98aafe3dc9c5fd6dd4210e21df0fcf69b5c039e299ebc3e9e35e8ff94b91ad39"
+    },
+    {
+      "path": "TokenSim/latency/deepseek_v4_mtp.py",
+      "sha256": "5a35bbc50c1686fea5dee0afadeebfe46ed0b07650f620ec6f6629ea73130e4b"
+    },
+    {
+      "path": "util/results.py",
+      "sha256": "f47c3994e3839d83b02fb3dddf36ef3a1ea4b32ad5d18fdc10251b77c6084e68"
+    },
+    {
+      "path": "TokenSim/config/psla_config.py",
+      "sha256": "8329c9c63932340e1a1aa179272dd099eabdbeb0064fd79701babc40f0561558"
+    }
+  ],
+  "verified_source_facts": [
+    "target model forward applies hc_head and final norm to all forward rows before compute_logits selects logits rows",
+    "dedicated MTP forward returns the flat pre-hc_head residual; its hc_head and shared norm are deferred to compute_logits",
+    "draft _head(head_rows) therefore uses selected logits rows correctly; do not expand the dedicated draft head to its initial full-token batch",
+    "target lm_head still covers all decode queries and one bonus row per prefill; leave that previously verified selection unchanged"
+  ],
+  "logic_probe": {
+    "scope": "main target only; draft costs patched out for independent scope inspection",
+    "target_forward_rows": 512,
+    "target_selected_logits_rows": 1,
+    "observed_elementwise_queries": [
+      {
+        "op": "rmsnorm",
+        "rows": 512
+      },
+      {
+        "op": "rmsnorm",
+        "rows": 512
+      },
+      {
+        "op": "rmsnorm",
+        "rows": 1
+      }
+    ],
+    "missing_target_hc_head": true,
+    "expected_target_final_norm_rows": 512,
+    "observed_target_final_norm_rows": 1
+  },
+  "pending": "separate target hc_head/final norm over full forward rows from selected lm_head rows; retain selected-row draft head; export the actual measured mHC summary",
+  "accuracy_accepted": false,
+  "remaining_observability_gap": {
+    "fields": [
+      "native_mhc_seconds",
+      "native_mhc_counts"
+    ],
+    "reason": "backend exposes native mHC statistics, but get_latency_stats does not aggregate main/draft mHC and LLMResult has no native mHC fields",
+    "required_time_units": "main estimator seconds are per-layer shape costs; multiply by layers_local; draft seconds already represent the actual one-layer passes"
+  }
+}

@@ -247,6 +247,37 @@ class NativeAttentionTest(TestCase):
         self.assertEqual(len(backend.native_mhc.counts), 2)
         self.assertEqual(backend.native_mhc.describe()["hc_mult"], 4)
 
+    def test_native_mhc_owns_residual_and_retains_unfused_norm_work(self):
+        template = self.backend(native=False, native_moe=False)
+        backend = OperatorTableLatencyBackend(
+            device=template.device, model=self.model, parallel_config=template.parallel_config,
+            rank_info=template.rank_info, package=template.package, mhc_backend="native_dsv4",
+        )
+        operations = []
+        with patch.object(backend, "_elementwise", side_effect=lambda name, *args: operations.append(name) or 1), patch.object(
+            backend, "_gemm", return_value=0
+        ), patch.object(backend, "_moe_layers", return_value=0):
+            backend._compose(tokens=64, requests=16, attention_us=0, requests_list=[])
+        self.assertNotIn("residual_add", operations)
+        self.assertEqual(operations.count("rmsnorm"), 3)  # attention, FFN, target head
+        self.assertGreater(backend.native_mhc.seconds, 0)
+
+    def test_native_mhc_uses_sequence_parallel_rows_before_attention_gather(self):
+        template = self.backend(native=False, native_moe=False)
+        parallel = ParallelConfig(tensor_parallel_size=4, data_parallel_size=2,
+                                  enable_expert_parallel=True)
+        backend = OperatorTableLatencyBackend(
+            device=template.device, model=self.model, parallel_config=parallel,
+            package=template.package, mhc_backend="native_dsv4",
+        )
+        calls = []
+        with patch.object(backend.native_mhc, "estimate", return_value=1) as mhc, patch.object(
+            backend, "_elementwise", side_effect=lambda name, rows, hidden: calls.append((name, rows)) or 1
+        ), patch.object(backend, "_gemm", return_value=0), patch.object(backend, "_moe_layers", return_value=0):
+            backend._compose(tokens=66, requests=8, attention_us=0, requests_list=[])
+        mhc.assert_called_once_with(17)
+        self.assertEqual([rows for name, rows in calls if name == "rmsnorm"], [17, 17, 8])
+
 
 if __name__ == "__main__":
     import unittest

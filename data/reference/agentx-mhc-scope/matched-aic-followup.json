@@ -1,0 +1,40 @@
+{
+  "scope": "read-only matched FP8/MXFP4 mixed-shape diagnostic capability; no runtime pricing changes",
+  "shape": {
+    "context_tokens": 512,
+    "num_decode_requests": 16,
+    "input_length": 512,
+    "prefix_tokens": 65536,
+    "output_length": 444,
+    "tp": 1,
+    "dp": 8,
+    "ep": 8,
+    "K": 3
+  },
+  "model_config": {
+    "path": "/tmp/aic-full/aic-core/src/aiconfigurator_core/model_configs/deepseek-ai--DeepSeek-V4-Pro_config.json",
+    "sha256": "6fccb45a06b59a94033d0c74ec23bf860e67bc0f4ebc18ea1e33d357fac3336c"
+  },
+  "aic_commit": "f254959eb89e2f206b8f9a77051644d7c1cbdb89",
+  "cases": {
+    "b200_sxm": {
+      "backend": "vllm",
+      "version": "0.24.0",
+      "status": "unavailable",
+      "error": "HuggingFaceDownloadError: Failed to download /tmp/aic-full/aic-core/src/aiconfigurator_core/model_configs/deepseek-ai--DeepSeek-V4-Pro_config.json's config.json from HuggingFace: HuggingFace returned HTTP error 404: Not Found. URL: https://huggingface.co//tmp/aic-full/aic-core/src/aiconfigurator_core/model_configs/deepseek-ai--DeepSeek-V4-Pro_config.json/raw/main/config.json. If using a gated model, authenticate via one of the following (in priority order): (1) set the HF_TOKEN environment variable, (2) set the HUGGING_FACE_HUB_TOKEN environment variable, or (3) run `huggingface-cli login` (token stored at /home/zhuohang/.cache/huggingface/token)."
+    },
+    "b300_sxm": {
+      "backend": "vllm",
+      "version": "0.24.0",
+      "status": "unavailable",
+      "error": "HuggingFaceDownloadError: Failed to download /tmp/aic-full/aic-core/src/aiconfigurator_core/model_configs/deepseek-ai--DeepSeek-V4-Pro_config.json's config.json from HuggingFace: HuggingFace returned HTTP error 404: Not Found. URL: https://huggingface.co//tmp/aic-full/aic-core/src/aiconfigurator_core/model_configs/deepseek-ai--DeepSeek-V4-Pro_config.json/raw/main/config.json. If using a gated model, authenticate via one of the following (in priority order): (1) set the HF_TOKEN environment variable, (2) set the HUGGING_FACE_HUB_TOKEN environment variable, or (3) run `huggingface-cli login` (token stored at /home/zhuohang/.cache/huggingface/token)."
+    },
+    "gb200": {
+      "backend": "sglang",
+      "version": "0.5.12",
+      "status": "unavailable",
+      "error": "HuggingFaceDownloadError: Failed to download /tmp/aic-full/aic-core/src/aiconfigurator_core/model_configs/deepseek-ai--DeepSeek-V4-Pro_config.json's config.json from HuggingFace: HuggingFace returned HTTP error 404: Not Found. URL: https://huggingface.co//tmp/aic-full/aic-core/src/aiconfigurator_core/model_configs/deepseek-ai--DeepSeek-V4-Pro_config.json/raw/main/config.json. If using a gated model, authenticate via one of the following (in priority order): (1) set the HF_TOKEN environment variable, (2) set the HUGGING_FACE_HUB_TOKEN environment variable, or (3) run `huggingface-cli login` (token stored at /home/zhuohang/.cache/huggingface/token)."
+    }
+  },
+  "conclusion": "No target throughput calibration is inferred. Native MegaMoE may be unsupported on the vLLM AIC builder; any SGLang/GB200 result must retain those differences and the AIC draft-layer scope."
+}
