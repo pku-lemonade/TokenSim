@@ -81,8 +81,8 @@ class NativeAttentionTest(TestCase):
             request = Request(identifier, context, 20, 256)
             request.generation_idx = 1
             request.num_computed_tokens = context
-            request.scheduled_tokens = 2
-            request.scheduled_query_tokens = 4
+            request.scheduled_tokens = 1
+            request.scheduled_query_tokens = 1
             requests.append(request)
 
         def measured_module(_kind, _phase, batch, _query, _context):
@@ -94,7 +94,7 @@ class NativeAttentionTest(TestCase):
             backend, "_compose", side_effect=lambda **step: step["attention_us"]
         ):
             latency_us = backend.estimate_step_latency(requests)
-        self.assertEqual(latency_us, 61 * (100.0 + 2.0 * 8))
+        self.assertEqual(latency_us, 61 * (100.0 + 2.0 * 2))
         self.assertAlmostEqual(backend.native_attention.seconds, latency_us * 1e-6)
         self.assertEqual(backend.native_attention.decode_batch_stats["batches"], 1)
 
@@ -103,10 +103,53 @@ class NativeAttentionTest(TestCase):
             estimator = self.backend(sku).native_attention
             expected = estimator.estimate_decode(64, 8192)
             estimator.reset_stats()
-            actual = estimator.estimate_decode_batch({(8192, 4): 16})
+            actual = estimator.estimate_decode_batch({(8192, 1): 64})
             self.assertEqual(actual, expected)
             self.assertAlmostEqual(estimator.seconds, actual * 1e-6)
             self.assertEqual(estimator.decode_batch_stats["query_rows"], 64)
+
+    def test_mtp_reuses_indexer_kv_without_removing_query_work(self):
+        estimator = self.backend().native_attention
+        independent = estimator.estimate_decode(64, 131072)
+        estimator.reset_stats()
+        verify = estimator.estimate_decode_batch({(131072, 4): 16})
+        self.assertLess(verify, independent)
+        stats = estimator.mtp_kv_stats
+        self.assertAlmostEqual(stats["source_geometry_indexer_bytes_after"] * 2,
+                               stats["source_geometry_indexer_bytes_before"])
+        self.assertAlmostEqual(stats["estimated_seconds_saved"], (independent - verify) * 1e-6)
+        self.assertEqual(estimator.decode_batch_stats["requests"], 16)
+        self.assertEqual(estimator.decode_batch_stats["query_rows"], 64)
+        self.assertEqual(estimator.decode_batch_stats["indexer_query_tiles"], 32)
+        estimator.reset_stats()
+        self.assertEqual(estimator.mtp_kv_stats, {})
+
+    def test_mixed_verify_widths_share_only_request_local_indexer_reads(self):
+        estimator = self.backend().native_attention
+        estimator.estimate_decode_batch({(131072, 1): 16, (131072, 4): 12})
+        stats = estimator.mtp_kv_stats
+        self.assertAlmostEqual(stats["source_geometry_indexer_bytes_after"] /
+                               stats["source_geometry_indexer_bytes_before"], 40 / 64)
+        self.assertEqual(estimator.decode_batch_stats["requests"], 28)
+
+    def test_three_query_tail_counts_two_indexer_tiles(self):
+        estimator = self.backend().native_attention
+        estimator.estimate_decode_batch({(131072, 3): 16})
+        self.assertEqual(estimator.decode_batch_stats["indexer_query_tiles"], 32)
+        stats = estimator.mtp_kv_stats
+        self.assertAlmostEqual(stats["source_geometry_indexer_bytes_after"] /
+                               stats["source_geometry_indexer_bytes_before"], 2 / 3)
+
+    def test_b300_mtp_correction_preserves_the_source_grid_clamp(self):
+        estimator = self.backend("b300").native_attention
+        shape = estimator._query("csa", "generation", 4, 1, 8192)
+        self.assertEqual(shape.source_batch_size, 64)
+        independent = estimator.estimate_decode(4, 8192)
+        estimator.reset_stats()
+        value = estimator.estimate_decode_batch({(8192, 4): 1})
+        self.assertGreater(value, 0)
+        self.assertLess(value, independent)
+        self.assertTrue(any("clamped" in k or "extrapolated" in k for k in estimator.counts))
 
     def test_ragged_estimate_stays_within_uniform_full_batch_costs(self):
         estimator = self.backend().native_attention

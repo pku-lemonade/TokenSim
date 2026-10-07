@@ -1,0 +1,23 @@
+{
+  "pid": 545901,
+  "started_unix_s": 1791370822.032797,
+  "command": [
+    "/home/zhuohang/miniconda3/bin/python",
+    "scripts/run_agentx_experiments.py",
+    "--action",
+    "run",
+    "--group",
+    "checkpoints",
+    "--hardware",
+    "b300",
+    "--seeds",
+    "0",
+    "--result-root",
+    "results/agentx-dsv4-full/native-mtp-kv/20261007-query-tiles-b300-retry1",
+    "--max-parallel",
+    "1"
+  ],
+  "log": "/tmp/agentx-mtp-kv-b300-retry1-run.log",
+  "result_root": "results/agentx-dsv4-full/native-mtp-kv/20261007-query-tiles-b300-retry1",
+  "reason": "previous supervisor exit 143, benchmark PID missing, no complete result; independent process session"
+}

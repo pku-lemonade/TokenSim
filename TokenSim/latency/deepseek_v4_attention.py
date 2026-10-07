@@ -17,6 +17,8 @@ class AttentionEstimate:
     match: str
     source_id: str
     ragged_grid: bool = False
+    source_batch_size: int | None = None
+    source_context_len: int | None = None
 
 
 class DeepSeekV4AttentionEstimator:
@@ -53,6 +55,13 @@ class DeepSeekV4AttentionEstimator:
                 "native attention generation scale must be finite and nonnegative"
             )
         self.sol = DeepSeekV4AttentionSOL(self.model, backend.device)
+        # Pinned DeepGEMM SM100 paged MQA uses BLOCK_Q = 128 / num_heads.
+        # Indexer heads are replicated under TP. Pro has 64 -> two queries
+        # per KV-reading Q-block; q=4 requires two such blocks.
+        index_heads = self.model.deepseek_v4.index_n_heads
+        if index_heads > 128 or 128 % index_heads:
+            raise ConfigurationError("native SM100 indexer Q-block needs heads dividing 128")
+        self.indexer_queries_per_tile = 128 // index_heads
         self.lookup = OperatorLookup(
             backend.package,
             LookupPolicy(extrapolate="analytical", max_extrapolation_ratio=64.0),
@@ -95,9 +104,10 @@ class DeepSeekV4AttentionEstimator:
         self.counts.clear()
         self.seconds = 0.0
         self.decode_batch_stats = Counter()
+        self.mtp_kv_stats = Counter()
 
     def _analytical_work(self, _table, key):
-        return self.sol.work(key).latency_us
+        return self.sol.estimate_us(key)
 
     def _query(self, layer_kind, phase, batch_size, input_seq_len, context_len):
         key = {
@@ -165,6 +175,8 @@ class DeepSeekV4AttentionEstimator:
             "clamped" if clamped and row.match_type == "exact" else row.match_type,
             row.source_id,
             ragged_grid,
+            key["batch_size"],
+            key["context_len"],
         )
         if len(self.cache) > 65536:
             self.cache.clear()
@@ -237,12 +249,33 @@ class DeepSeekV4AttentionEstimator:
         self.seconds += total * 1e-6
         return total
 
-    def _decode_us(self, batch_size, context_tokens):
+    def _decode_us(self, batch_size, context_tokens, *, indexer_kv_fraction=1.0, byte_weight=1.0):
         total = 0.0
         for kind in ("csa", "hca"):
-            total += self.layer_counts[kind] * self._query(
+            estimate = self._query(
                 kind, "generation", batch_size, 1, context_tokens
-            ).latency_us
+            )
+            latency = estimate.latency_us
+            if kind == "csa" and indexer_kv_fraction < 1:
+                # Honor the source lookup's small-shape clamp. Reuse changes
+                # request-local KV reads, not its conservative query-row grid.
+                key = {
+                    "phase": "generation", "batch_size": estimate.source_batch_size or batch_size,
+                    "input_seq_len": 1, "context_len": estimate.source_context_len or context_tokens,
+                    "compress_ratio": 4, "num_heads": self.model.num_attention_heads // self.tp,
+                    "tp_size": self.tp,
+                }
+                math_us, memory_us, indexer_bytes = self.sol.limits_us(key)
+                source = max(math_us, memory_us)
+                target = max(math_us, memory_us - (1 - indexer_kv_fraction) * indexer_bytes / self.sol.bandwidth * 1e6)
+                corrected = latency * target / source
+                layers = self.layer_counts[kind]
+                self.mtp_kv_stats["source_geometry_indexer_bytes_before"] += byte_weight * layers * indexer_bytes
+                self.mtp_kv_stats["source_geometry_indexer_bytes_after"] += byte_weight * layers * indexer_bytes * indexer_kv_fraction
+                self.mtp_kv_stats["estimated_seconds_saved"] += byte_weight * layers * (latency - corrected) * self.generation_latency_scale * 1e-6
+                self.mtp_kv_stats["csa_adjustment_queries"] += 1
+                latency = corrected
+            total += self.layer_counts[kind] * latency
         total *= self.generation_latency_scale
         return total
 
@@ -258,26 +291,38 @@ class DeepSeekV4AttentionEstimator:
         Module measurements include projections and their weight reads, which
         serving executes once over the full query tensor. For heterogeneous
         lengths use a query-row-weighted mixture of uniform, full-batch table
-        estimates. This reproduces homogeneous batches exactly and counts the
+        estimates. This reproduces homogeneous q=1 batches exactly and counts the
         common module work once. The mixture is an approximation, not a
-        measurement of the ragged batch. Query-width expansion is retained
-        here; multi-query KV reuse needs separate modeling.
+        measurement of the ragged batch. Query-width expansion supplies the
+        compute budget; indexer KV reads are shared within each Q-block using SOL.
         """
         rows_by_context = Counter()
+        requests_by_context = Counter()
+        tiles_by_context = Counter()
         for (context, query_width), count in buckets.items():
             if count > 0:
                 rows_by_context[context] += count * max(1, int(query_width))
+                requests_by_context[context] += count
+                width = max(1, int(query_width))
+                tiles_by_context[context] += count * math.ceil(width / self.indexer_queries_per_tile)
         rows = sum(rows_by_context.values())
         if not rows:
             return 0.0
         total = sum(
-            count / rows * self._decode_us(rows, context)
+            count / rows * self._decode_us(
+                rows, context, indexer_kv_fraction=tiles_by_context[context] / count,
+                byte_weight=count / rows,
+            )
             for context, count in sorted(rows_by_context.items())
         )
         self.seconds += total * 1e-6
         self.decode_batch_stats["batches"] += 1
         self.decode_batch_stats["length_groups"] += len(rows_by_context)
         self.decode_batch_stats["query_rows"] += rows
+        self.decode_batch_stats["requests"] += sum(requests_by_context.values())
+        self.decode_batch_stats["indexer_query_tiles"] += sum(tiles_by_context.values())
+        if rows > sum(requests_by_context.values()):
+            self.mtp_kv_stats["batches"] += 1
         return total
 
     def stats_dict(self):
@@ -285,6 +330,7 @@ class DeepSeekV4AttentionEstimator:
             "native_dsv4_attention_seconds": self.seconds,
             "native_dsv4_attention_counts": dict(self.counts),
             "native_dsv4_attention_decode_batches": dict(self.decode_batch_stats),
+            "native_dsv4_attention_mtp_kv": dict(self.mtp_kv_stats),
         }
 
     def describe(self):
@@ -301,6 +347,16 @@ class DeepSeekV4AttentionEstimator:
             "context_latency_scale": self.context_latency_scale,
             "generation_latency_scale": self.generation_latency_scale,
             "decode_batch_composition": "query-row-weighted uniform full-batch module estimates; common projections counted once",
-            "decode_query_width": "expanded query rows; multi-query KV reuse remains an approximation",
+            "decode_query_width": "expanded query compute and sparse-attention reads; indexer KV reuse within Q-blocks",
+            "mtp_indexer_kv_reuse": {
+                "basis": "pinned DeepGEMM SM100 paged MQA groups request Q-blocks; BLOCK_Q = 128 / indexer heads",
+                "query_math": "unchanged at the full expanded query-row count",
+                "indexer_queries_per_tile": self.indexer_queries_per_tile,
+                "indexer_kv_read_fraction": "sum(requests * ceil(query width / BLOCK_Q)) / query rows, per context; source geometry including clamps",
+                "cross_q_block_l2_reuse": "not credited without measured traffic; tile reads are a conservative streaming estimate",
+                "sparse_attention_kv_reads": "per query retained; FlashInfer sparse indices may differ across queries",
+                "layout_correction": False,
+                "latency": "measured full-query-row module times adjusted/source SOL; math bound retained",
+            },
             "generation_ragged_grid": "on out-of-range neighbors, use same-geometry batch slices within the existing 64x context/batch bound",
         }

@@ -5,7 +5,7 @@
 > 源码基准：只读参考 `/home/zhuohang/Serving/vllm-note`，本轮记录 HEAD `30f5c01d4ebb`；不下载历史镜像、不修改或切换此目录。本文旧行号和旧 HEAD 下的源码结论需按此版本重新定位；历史运行日志仍作为实验事实保留。
 > 分支：`agentx-support`（基于 `b2b685a`）
 > 历史实现与结果（不是最终精度验收）：**2026-10-02 已完成 MegaMoE/shared expert、native CSA/HCA attention、MTP 2/3 推进与 q=4 target verify、native mHC，以及 native Mooncake shared-page adapter 的代码和两组完整一小时主点验收。统一矩阵已支持 list/check/expand/run/summary/plot、断点续跑、实际 GPU 数归一化和多 seed；DEP8、TP4/EP4、TP8/HBM 的 19 个曲线点已完成 seed0/1/2 全窗口并通过逐点守恒校验，所有 seed1/2 状态成功且 seed 间输出存在差异。修复后的三 seed 主点均已成功：B200 均值 522.135、B300 均值 1,027.989 token/s。完整阶段吞吐依次为：MegaMoE B200/B300 1,733.192／3,440.686，native attention+MTP 592.617／1,140.733，native mHC+attention+MTP 567.198／1,114.907，native Mooncake B200/B300 583.269／1,045.469 token/s。已完成 HBM/MTP 消融、记录时序、固定历史 worker 映射和独立 AIC B200 shape diagnostic；AIC B300 的缺失 MegaMoE 行、FlashMLA/FlashInfer 后端差异、mHC/shared fusion 和跨硬件 MegaMoE 借表均保留为明确近似，因此最终绝对吞吐仍未通过 25% 门槛。报告见 [原生 MegaMoE](agentx-native-megamoe-report.md)、[原生 attention](agentx-native-attention-report.md)、[原生 mHC](agentx-native-mhc-report.md)、[Mooncake](agentx-mooncake-report.md)、[原生曲线](agentx-native-curve-report.md)、[AIC 诊断](agentx-aic-diagnostic-report.md)。**
-> 当前状态（2026-10-07）：native decode 整批计费已提交 `bd7a637`，随后完成 FLOP/byte SOL 外推与多轴邻点修正；489 项全仓测试、两组 seed0 完整窗口和严格验收通过。最新输出吞吐为 B200 1,759.873 / B300 3,634.417 token/s，较上一阶段提高 66.98% / 95.17%，相对参考仍低 51.10% / 42.86%，最终 25% 精度门槛未通过。下一阶段依次处理 MTP KV 读取复用、draft 全模块成本和混合批投影；同时继续核对不均匀 DP 的 MoE 成本、buffer 生命周期、B300 历史映射身份及 AIC 同配置对照。修复后最终三 seed 曲线仍待验证。见 [整批 decode 报告](agentx-decode-batch-report.md)、[SOL 报告](agentx-attention-sol-report.md)。
+> 当前状态（2026-10-07）：decode 整批计费与 SOL 外推已提交，MTP indexer Q-block 读取复用也完成 496 项全仓测试和两组完整主点严格验收。最新输出吞吐为 B200 1,803.965 / B300 3,885.424 token/s，较 SOL 基线提高 2.51% / 6.91%，相对参考仍低 49.88% / 38.91%，最终 25% 门槛未通过。下一部分修正 target query/KV/logits 范围，再独立接入完整 draft 成本、消除 native mHC 重复 residual_add，并核对混合批投影、不均匀 DP MoE 成本、buffer 生命周期、历史映射身份和 AIC 同配置对照。修复后最终三 seed 曲线仍待验证。见 [整批 decode](agentx-decode-batch-report.md)、[SOL](agentx-attention-sol-report.md)、[MTP tile 复用](agentx-mtp-kv-report.md)。
 > 对照对象：InferenceX AgentX，完整 DeepSeek-V4-Pro（FP8 + MXFP4），vLLM + MTP；覆盖 B200/B300 多并发曲线及其 TP8、TP4、DEP8 等配置变化。主检查点为单节点 8 GPU DEP8：B200 并发 196、B300 并发 384。
 > 证据分层：历史配置和日志描述参考运行；本地源码决定本轮实现；二者存在版本差异时单列记录。【待核实／待验证】是实现中的技术检查，不是待用户批准；【估算】不是实测；【推断】须保留依据与适用范围。历史研究中的源码行号仅作定位线索，以函数和本轮版本为准。
 
@@ -854,7 +854,7 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 - [x] **缓存容量与前缀命中任务 2** HBM 与 CPU 容量均由模拟器按硬件、完整模型 dtype、运行时预算和实际 KV 布局计算；日志 KV 等效值与 CPU block 数只作误差对照，不覆盖模拟容量。
 - [x] **缓存容量与前缀命中任务 3** 增加 DSV4 单份 latent、压缩 KV、indexer 与窗口状态的专用布局，保留 GQA 的 K/V 两份；不全局删除 ×2。复核 swap 上限，把 swap 与 offload 分开，禁止用旧的等效 token 容量覆盖自动计算结果。
 - [x] **缓存容量与前缀命中任务 4** 主点引擎块按 256 token，从原始 64-token hash 聚合完整块，保留前缀链与回放作用域；其他点按配置转换。prefix 最多命中 n−1 个 token；按 retention 32768 及混合组可恢复边界截断，以当前源码核对窗口、请求末尾与分叉点的状态保留。
-- [x] **缓存容量与前缀命中任务 5** MTP lookahead：每个 decode 请求预留 K 个 slot。
+- [ ] **缓存容量与前缀命中任务 5（K 已传递；重新核查发现 decode 用 accepted token 而非 query token 作为预留基数）** MTP lookahead：每个 decode 请求按 target query 范围及 K 个 lookahead slot 预留。见 `agentx-mtp-kv/target-budget-followup.json` 的 250→257 token 跨块例子。
 - [x] **缓存容量与前缀命中任务 6** 结果 JSON 分别记录 DP worker 的 HBM、SimpleCPU DRAM 或 Mooncake shared pool 容量、命中和传输；Mooncake 使用共享 PoolKey，不复制成独立 worker 池。
 - [x] **缓存容量与前缀命中任务 7** 用源码推导的分配、释放、命中和容量边界用例验证 TokenSim 缓存管理器；不将运行真实 vLLM 或下载历史镜像设为前提。
 - [x] **缓存容量与前缀命中任务 8** 分离逻辑 block、物理 page 和 slot；SimpleCPU/Mooncake 异步在途需求、引用、驱逐、抢占、取消和 DMA pin 生命周期均有完整窗口及专项验证。
@@ -906,7 +906,7 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
   - long_prefill_token_threshold；
   - defer（有 decode 时才推迟）；
   - capacity_bound（放行步结束时仍有 waiting，则下一轮不节流）。
-- [x] **请求调度任务 3** max_num_seqs（49/96）、token 预算（8192/16384）和 MTP decode 的 1+K query/lookahead 预算均由矩阵与 scheduler 配置驱动。
+- [ ] **请求调度任务 3（配置已接入；末步 verify 不应随剩余输出缩短，KV 基数需用 query 而非 accepted）** max_num_seqs（49/96）、token 预算（8192/16384）和 MTP decode 的 1+K query/lookahead 预算均由矩阵与 scheduler 配置驱动。
 - [x] **请求调度任务 4** 抢占策略对齐 vLLM：当前 `_reserve_decode_slot` 用 `queue.pop(-1)`，需要对照 vLLM 的抢占顺序。
 - [x] **请求调度任务 4.1** 原生混合缓存按默认启用的完整输入检查对齐 `scheduler_reserve_full_isl`、`full_sequence_must_fit` 与 `_inflight_prefill_reserved_blocks`：接纳前检查完整输入，按 chunk 分配；异步导入只使用扣除已有 prefill 承诺及额外 decode 块后的空闲页。虚拟窗口表包含跳过/null 前缀的位置，取消、抢占和 decode 释放承诺；GPU/CPU 共用容量状态。391 项测试及两个完整主点验证通过，剩余性能问题未误标为解决。
 - [x] **请求调度任务 5** 已增加 scheduler 边界、MTP query/lookahead、完整输入准入、异步加载和取消释放回归测试，直接驱动 TokenSim scheduler，不运行真实 vLLM。
@@ -932,7 +932,7 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 
 - [x] **投机解码任务 1（方案已确认）** 每个请求的 decode step 以 51% / 49% 概率推进 2 / 3 个 token。随机状态与 trace 抽样分离；记录模拟种子，保证相同配置和种子可复现。请求结束时限制为剩余输出长度，分别记录抽样推进量和实际产出，避免把末步截断误判为接受长度偏差。
 - [ ] **投机解码任务 2（方案已确认，重新审计发现当前 draft 仅计输入投影和 head，SWA/MoE/mHC 等完整模块未计齐）** 在平均接受长度推进的同时，按本地 vLLM 的实际 MTP 调用分别估算草稿模块与输出投影的成本；内部采用查表／理论模型，不生成真实 token 或执行真实张量。分别列出校验与草稿的形状、调用次数、耗时和来源，避免漏计输出投影或重复计费。多 query 校验按已确认的计算与读取分项方案处理（决策 30.1、30.4）。
-- [x] **投机解码任务 3** KV lookahead K（与 缓存容量与前缀命中任务 5 一致）。
+- [ ] **投机解码任务 3（K 已传递，实际预留基数尚待修正）** KV lookahead K（与 缓存容量与前缀命中任务 5 一致）。
 - [x] **投机解码任务 4** ITL 按 aiperf 口径统计。
 
 完成标准：未截断的推进量抽样符合 51% / 49% 分布，期望为 2.49；固定种子可复现，末步不超出请求输出长度。报告抽样数及实测均值，完整运行中受末步截断、取消影响的实际平均产出单独统计；成本分解和针对边界的单元测试通过。
@@ -948,13 +948,13 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 - [x] **算子耗时任务 4（清洗策略已确认）** `scripts/audit_agentx_operator_data.py` 审计 B200/B300/GB200/GB300 的 30 张 native 表：无 null/非有限/非正耗时和缺失 key；重复 key 与单轴下降全部保留并记录。证据见 `data/reference/agentx-native-operator-cleaning-audit.json`，没有按非单调或偏大耗时删除数据。
 - [x] **算子耗时任务 5** 处理 B300 CSA generation 缺 bs<64 数据的问题（决策 19）。
 - [ ] **算子耗时任务 6（结构已实现，draft 的 SWA 费用尚待接入）** MTP 层按 SWA-only 处理（决策 20）。
-- [ ] **算子耗时任务 7（具体近似已确认，重新审计发现 query-width 直接展开仍未分离计算与 KV 读取）** 区分请求数与每请求 query 数，估算 verify q=4 的 attention 成本。以 Pro 实测为基准，分别估算新增 query 的计算和按实际实现可复用 KV 的读取量；分项 q=1/q=4 数据只在计时语义可对应时辅助校验，不把整个模块盲目乘四或乘一个跨模型比值。记录读写量、计算量和缩放依据（决策 30.4）。
+- [x] **算子耗时任务 7（Q-block 内读取复用已完成独立验收；source-layout 和后端差异仍明示）** 区分请求数与每请求 query 数，估算 verify q=4 的 attention 成本。以 Pro 实测为基准，分别估算新增 query 的计算和按实际实现可复用 KV 的读取量；分项 q=1/q=4 数据只在计时语义可对应时辅助校验，不把整个模块盲目乘四或乘一个跨模型比值。记录读写量、计算量和缩放依据（决策 30.4）。
 - [x] **算子耗时任务 8** 已核对 AIC collector、只读 vLLM 和运行日志：native 表为 FlashMLA/FP8 source layout，参考为 FlashInfer/plain FP8 + MXFP4 indexer；原始与修正布局、来源版本和不可比原因保留在 attention report 与 backend provenance，未引入无配对证据的固定系数。
 - [x] **算子耗时任务 9（负载近似已确认）** 修复逐请求从零开始轮转导致负载集中到同一专家的 bug，统计先汇总整步 route 并合理分配余数。耗时查询使用 `power_law_1.01` 实测分布，不再叠加同源 straggler 惩罚；统计用直方图不得暗中改变这一成本假设。hash 路由层保留结构与路由差异，无法还原逐 token 路由时也明确记录统计近似。
   - 2026-10-01 已完成：整步合成 route、EP 交错余数和跨 step 轮转保留显式直方图，阶段缓存与零负载分母已修复。DSV4 查询改为 MXFP4/`power_law_1.01`，取消同源 straggler；413 项全仓测试及两个完整一小时主点的版本/配置、输入/输出、取消/引用、route/EP 负载和时间守恒验收通过。当前 routed kernel 仍为显式标注的临时对照，完整 MegaMoE/shared expert 成本由任务 10 和 12 继续实现。详见 [本部分报告](agentx-moe-distribution-report.md)。
 - [x] **算子耗时任务 10（借表方案已确认）** 对实际采用匹配融合 kernel 的配置，分别借用 GB200/GB300 的 DSV4 mega-MoE 表估算 B200/B300，初始换算系数为 1.0；记录硬件、框架、通信与 shared expert 的计时范围差异，并评估借表敏感性。按 rank 本地 token 数查询；不均匀 rank 的组合方式按源码核对。表中已含 dispatch/combine 时不再另加该部分 all-to-all；其他 kernel 的配置按各自数据与通信路径估算。
   - 2026-10-02 已完成：导入 GB200/GB300 Pro EP4/8 MegaMoE，native estimator 使用 DP lockstep rank-local 形状、图/eager 分支、TP/SP 分片和共同最大 rank 计时；dispatch/combine 不再另计 EP all-to-all，shared FP8 fused 增量显式标注 D 级。B200/B300 完整主点吞吐为 1,733.192／3,440.686 token/s，证据见 [原生 MegaMoE 报告](agentx-native-megamoe-report.md)。
-- [x] **算子耗时任务 11** 导入匹配的 mHC 实测表，核对 FP32 参数、BF16 激活、num_sites 及 pre/post 计时范围，标注与 serving 融合路径的差异（P10、决策 27）。
+- [ ] **算子耗时任务 11（实测已导入；重新核查发现 post 已包含残差工作，外层 generic residual_add 尚未消除）** 导入匹配的 mHC 实测表，核对 FP32 参数、BF16 激活、num_sites 及 pre/post 计时范围，标注与 serving 融合路径的差异（P10、决策 27）。unfused collector 不含输出 RMSNorm，其估算仍单独保留；不套用其他硬件的融合时延比。
   - 2026-10-02 已完成数据导入与 native mHC estimator 接线；完整 mHC 独立窗口待当前 attention 阶段之后验收。
 - [x] **算子耗时任务 12.1：原生低秩投影与 GEMM dtype** 按 DSV4 实际 replicated/column/grouped/row-parallel 几何替代稠密 QKV/O；router 与 lm_head 使用 BF16，grouped FP8 einsum 输出 BF16，缺失匹配实测时标为单 launch 解析估算。采集 manifest 与运行时形状一致；405 项全仓测试及两个完整一小时主点的请求、缓存、取消、DP 时间、源码和配置身份核对通过。shared expert、gate 融合附加工作及 MTP query 计时范围随后单独完成，任务 12 整体保持未勾选。
 - [ ] **算子耗时任务 12（主干 dtype/shared 路径已实现，MTP target/draft head 的实际行数与调用范围仍待核对）** 逐项核对 router、lm_head、shared expert 的 dtype、调用次数和 query 形状；shared expert 按实际路径融合或独立计时，不预设其与 routed MoE 完全重叠，也不重复计算已计入融合表的部分。

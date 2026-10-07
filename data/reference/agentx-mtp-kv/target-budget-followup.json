@@ -1,0 +1,98 @@
+{
+  "scope": "read-only next-stage source audit; no scheduling/head changes in tile-reuse stage",
+  "vllm_head": "30f5c01d4ebb5c493ed86195db24d0ec5b3ce3d7",
+  "source_checks": [
+    {
+      "role": "scheduler uniform verification",
+      "path": "/home/zhuohang/Serving/vllm-note/vllm/v1/core/sched/scheduler.py",
+      "sha256": "ead13eb4613651208b73deb533cb23a33e111a3a8899d98d0fef0eae67d99b84"
+    },
+    {
+      "role": "async draft placeholders",
+      "path": "/home/zhuohang/Serving/vllm-note/vllm/v1/core/sched/async_scheduler.py",
+      "sha256": "38d296e77e4d612e696241c67298eb1ca9b6a48b483cd33d35495bf31691032e"
+    },
+    {
+      "role": "query + lookahead allocation",
+      "path": "/home/zhuohang/Serving/vllm-note/vllm/v1/core/kv_cache_manager.py",
+      "sha256": "62d1e370eb043f1632a1e1a019471b5cb0440f65f045970c7d3bb120841a2b1f"
+    },
+    {
+      "role": "target logits rows",
+      "path": "/home/zhuohang/Serving/vllm-note/vllm/v1/worker/gpu/model_runner.py",
+      "sha256": "217e4b87c0bd22c4e98640775d7b4e3349000f79d37f9f7d3e569768786c3a7f"
+    }
+  ],
+  "findings": {
+    "terminal_output": "clip accepted output; source keeps full speculative input/query batch until request is removed",
+    "target_query_rows": "1+K even on a final decode step; model-length scheduling cap is separate",
+    "kv_end": "computed_tokens + scheduled_query_tokens + lookahead K (capped by max model length)",
+    "target_head_rows": "num_requests + total_scheduled_draft_tokens; every prefill request has a bonus row including partial chunks",
+    "current_divergences": [
+      "scheduler clips target query to remaining output count",
+      "_reserve_decode_slot receives query_tokens but passes accepted_tokens to the KV manager",
+      "target lm_head counts decode requests once, excludes most partial prefill rows"
+    ]
+  },
+  "dataset_bounds": {
+    "raw_requests": 98827,
+    "max_input_output_plus_seven": 996586,
+    "max_request": {
+      "trace_id": "61c4d4d16f2ff84b31dc5970560c55d07dc7",
+      "outer_index": 519,
+      "inner_index": null,
+      "input_tokens": 987200,
+      "output_tokens": 9379
+    },
+    "above_model_limit_count": 0
+  },
+  "pending_checks": [
+    "cached-prefill single-token padding",
+    "model-length edge behavior",
+    "head and full draft shape/cost separation"
+  ],
+  "boundary_example": {
+    "computed_tokens": 250,
+    "accepted_output_tokens": 2,
+    "target_queries": 4,
+    "lookahead": 3,
+    "full_group_block_tokens": 256,
+    "current_kv_end": 255,
+    "source_kv_end": 257,
+    "current_full_pages": 1,
+    "source_full_pages": 2,
+    "reason": "query_tokens argument is present but unused by reserve path"
+  },
+  "direct_current_code_reproductions": {
+    "final_output_one": {
+      "actual_query_rows": 1,
+      "source_expected_query_rows": 4
+    },
+    "allocator_two_accepted_four_queries": {
+      "calls": [
+        {
+          "op": "can",
+          "tokens": 2,
+          "lookahead": 3
+        },
+        {
+          "op": "ensure",
+          "tokens": 2,
+          "lookahead": 3
+        }
+      ],
+      "actual_end": 255,
+      "source_expected_end": 257
+    },
+    "two_partial_prefills": {
+      "captured": [
+        {
+          "tokens": 1024,
+          "head_rows_arg": 1
+        }
+      ],
+      "source_expected_target_logits_rows": 2
+    },
+    "scope": "logic probes; not benchmark or accuracy evidence"
+  }
+}

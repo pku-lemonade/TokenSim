@@ -90,6 +90,62 @@ class DeepSeekV4AttentionSOL:
             }.items()
         }
         self.bandwidth = device.memory_bandwidth_bytes_per_s.value
+        self._growth_geometry = {}
+
+    def limits_us(self, key):
+        """Return math/memory bounds and indexer bytes without building a report.
+
+        Cache only length-independent physical terms, not fitted latency. The
+        diagnostic ``work`` method remains the explicit FLOP/byte accounting.
+        """
+        ratio, heads, tp = (int(key[name]) for name in ("compress_ratio", "num_heads", "tp_size"))
+        identity = (ratio, heads, tp)
+        constants = self._growth_geometry.get(identity)
+        if constants is None:
+            base = self.work({**key, "phase": "generation", "batch_size": 1,
+                              "input_seq_len": 1, "context_len": 0})
+            constants = (
+                base.math_seconds * 1e6,
+                sum(value for name, value in base.bytes.items() if "weights" in name),
+                base.bytes["activations"] + base.bytes["rope"],
+                4 * heads * self.model.head_dim / self.compute_rates["attention"] * 1e6,
+                2 * self.model.deepseek_v4.index_n_heads * self.model.deepseek_v4.index_head_dim
+                / self.compute_rates["indexer"] * 1e6 if ratio == 4 else 0,
+            )
+            self._growth_geometry[identity] = constants
+        math_per_token, weights, activation_per_token, attention_per_pair, indexer_per_pair = constants
+        batch = max(1, int(key["batch_size"]))
+        context = max(0, int(key["context_len"]))
+        prefill = key["phase"] == "context"
+        queries = max(1, int(key["input_seq_len"])) if prefill else 1
+        prefix = context if prefill else max(0, context - 1)
+        kv_len = prefix + queries if prefill else prefix
+        compressed_len = kv_len // ratio if ratio > 1 else 0
+        limit = self.model.deepseek_v4.index_topk if ratio == 4 else compressed_len
+        if prefill:
+            pairs = causal_limited_pairs(batch, queries, prefix, self.model.sliding_window)
+            if ratio > 1:
+                pairs += compressed_context_pairs(batch, queries, prefix, ratio, limit)
+        else:
+            pairs = batch * (min(kv_len, self.model.sliding_window) + min(compressed_len, limit))
+        tokens = batch * queries
+        indexer_bytes = batch * compressed_len * self.config.indexer_state_bytes if ratio == 4 else 0
+        math_us = math_per_token * tokens + attention_per_pair * pairs + indexer_per_pair * tokens * compressed_len
+        memory_us = (weights + activation_per_token * tokens + pairs * self.config.kv_state_bytes + indexer_bytes) / self.bandwidth * 1e6
+        return math_us, memory_us, indexer_bytes
+
+    def estimate_us(self, key, *, indexer_kv_fraction=1.0):
+        """Retain per-query math and sparse KV reads; share only indexer KV.
+
+        ``indexer_kv_fraction`` is Q-block_count/query_rows for a generation
+        batch. The source table has one independent request per query row;
+        target queries share KV within the kernel's bounded Q-block.
+        """
+        if not 0 < indexer_kv_fraction <= 1:
+            raise ConfigurationError("indexer KV request/query fraction must be in (0, 1]")
+        math_us, memory_us, indexer_bytes = self.limits_us(key)
+        memory_us -= (1 - indexer_kv_fraction) * indexer_bytes / self.bandwidth * 1e6
+        return max(math_us, memory_us)
 
     def work(self, key):
         """Price the source table's uniform q=1 generation or prefill shape.

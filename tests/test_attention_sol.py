@@ -1,9 +1,11 @@
 """Physical attention growth and multi-axis measured-boundary regressions."""
 
 import math
+from dataclasses import replace
 from unittest import TestCase
 
 from TokenSim.hardware.context import HardwareContext
+from TokenSim.hardware.device import SourcedValue
 from TokenSim.latency.deepseek_v4_attention_sol import (
     AttentionSOLConfig,
     DeepSeekV4AttentionSOL,
@@ -79,6 +81,33 @@ class AttentionSOLTest(TestCase):
         self.assertLess(serving.bytes["attention_kv"], original.bytes["attention_kv"])
         self.assertLess(serving.bytes["indexer_kv"], original.bytes["indexer_kv"])
         self.assertLess(serving.memory_seconds, original.memory_seconds)
+
+    def test_growth_fast_path_matches_explicit_flop_byte_accounting(self):
+        for ratio in (1, 4, 128):
+            for tp in (1, 4, 8):
+                for phase, queries, context in (("generation", 1, 1), ("generation", 1, 1048576),
+                                                ("context", 512, 0), ("context", 4096, 62464)):
+                    key = self.key(compress_ratio=ratio, tp_size=tp, num_heads=128 // tp,
+                                   phase=phase, input_seq_len=queries, context_len=context)
+                    self.assertAlmostEqual(self.sol.estimate_us(key), self.sol.work(key).latency_us, places=8)
+
+    def test_kv_reuse_is_neutral_when_query_math_is_the_bound(self):
+        device = replace(self.device, memory_bandwidth_bytes_per_s=SourcedValue(1e20, "fixture", "D"))
+        sol = DeepSeekV4AttentionSOL(self.model, device)
+        key = self.key(context_len=1048576)
+        self.assertEqual(sol.estimate_us(key, indexer_kv_fraction=0.25), sol.estimate_us(key))
+
+    def test_indexer_reuse_retains_hca_and_per_query_sparse_kv_work(self):
+        key = self.key(context_len=131072)
+        work = self.sol.work(key)
+        math_us, memory_us, indexer_bytes = self.sol.limits_us(key)
+        actual = self.sol.estimate_us(key, indexer_kv_fraction=0.25)
+        expected = max(math_us, (sum(work.bytes.values()) - 0.75 * work.bytes["indexer_kv"]) / self.sol.bandwidth * 1e6)
+        self.assertAlmostEqual(actual, expected)
+        self.assertAlmostEqual(memory_us, work.memory_seconds * 1e6)
+        self.assertEqual(indexer_bytes, work.bytes["indexer_kv"])
+        hca = self.key(layer_kind="hca", compress_ratio=128, context_len=131072)
+        self.assertEqual(self.sol.estimate_us(hca, indexer_kv_fraction=0.25), self.sol.estimate_us(hca))
 
     def test_joint_extrapolation_preserves_one_boundary_efficiency(self):
         package = OperatorDataPackage.from_rows(self.package.meta, {"dsv4_attention": [self.row]})
