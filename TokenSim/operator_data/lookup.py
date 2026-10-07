@@ -108,10 +108,16 @@ class OperatorLookup:
         package: OperatorDataPackage,
         policy: LookupPolicy | None = None,
         analytical_scaler: AnalyticalScaler | None = None,
+        *,
+        bind_analytical_axes: bool = False,
     ) -> None:
         self.package = package
         self.policy = policy or LookupPolicy()
         self.analytical_scaler = analytical_scaler
+        # Nonseparable growth models (fixed weights + variable KV reads)
+        # must evaluate inner-axis growth at the selected outer-axis node.
+        # Opt in per consumer; existing generic interpolation stays intact.
+        self.bind_analytical_axes = bind_analytical_axes
         # The index is owned by the (immutable) package and shared by every
         # lookup created for it; see OperatorDataPackage.lookup_index.
         index = package.lookup_index
@@ -244,8 +250,10 @@ class OperatorLookup:
         upper = [v for v in values if v > target]
         if lower and upper:
             lo, hi = lower[-1], upper[0]
-            lat_lo, src_lo, flag_lo = self._resolve(spec, rest, node[lo], key, table_name, scaler)
-            lat_hi, src_hi, flag_hi = self._resolve(spec, rest, node[hi], key, table_name, scaler)
+            key_lo = {**key, axis.name: lo} if self.bind_analytical_axes else key
+            key_hi = {**key, axis.name: hi} if self.bind_analytical_axes else key
+            lat_lo, src_lo, flag_lo = self._resolve(spec, rest, node[lo], key_lo, table_name, scaler)
+            lat_hi, src_hi, flag_hi = self._resolve(spec, rest, node[hi], key_hi, table_name, scaler)
             weight = _blend_weight(axis, lo, hi, target)
             latency = lat_lo + weight * (lat_hi - lat_lo)
             return latency, src_lo | src_hi, flag_lo | flag_hi | {"interpolated"}
@@ -270,7 +278,8 @@ class OperatorLookup:
                 f"exceeds max_extrapolation_ratio={max_ratio}",
                 kind="out_of_range",
             )
-        latency, sources, flags = self._resolve(spec, rest, node[boundary], key, table_name, scaler)
+        boundary_key = {**key, axis.name: boundary} if self.bind_analytical_axes else key
+        latency, sources, flags = self._resolve(spec, rest, node[boundary], boundary_key, table_name, scaler)
         flags = flags | {"extrapolated"}
         if mode == "hold":
             return latency, sources, flags | {"held"}

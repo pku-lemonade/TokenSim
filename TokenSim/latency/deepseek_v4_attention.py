@@ -8,6 +8,7 @@ from TokenSim.errors import ConfigurationError
 from TokenSim.operator_data.lookup import LookupPolicy, MissingOperatorDataError, OperatorLookup
 from TokenSim.operator_data.schema import TABLE_SPECS
 from TokenSim.operator_data.package import OperatorDataPackage
+from TokenSim.latency.deepseek_v4_attention_sol import DeepSeekV4AttentionSOL
 
 
 @dataclass(frozen=True)
@@ -51,10 +52,12 @@ class DeepSeekV4AttentionEstimator:
             raise ConfigurationError(
                 "native attention generation scale must be finite and nonnegative"
             )
+        self.sol = DeepSeekV4AttentionSOL(self.model, backend.device)
         self.lookup = OperatorLookup(
             backend.package,
             LookupPolicy(extrapolate="analytical", max_extrapolation_ratio=64.0),
             analytical_scaler=self._analytical_work,
+            bind_analytical_axes=True,
         )
         self.cache = {}
         # Runtime lengths are often unique. Caching whole-table scans by
@@ -94,23 +97,7 @@ class DeepSeekV4AttentionEstimator:
         self.decode_batch_stats = Counter()
 
     def _analytical_work(self, _table, key):
-        batch = max(1, float(key["batch_size"]))
-        query = max(1, float(key["input_seq_len"]))
-        context = max(0.0, float(key["context_len"]))
-        ratio = float(key["compress_ratio"])
-        if key["phase"] == "generation":
-            if key["layer_kind"] == "csa":
-                attended = min(1024.0, context / max(1.0, ratio)) + 128.0
-                indexer = context / max(1.0, ratio)
-            else:
-                attended = context / max(1.0, ratio) + 128.0
-                indexer = 0.0
-            return batch * (1.0 + attended + indexer)
-        # The module performs one query for every input token.  Prefix work is
-        # compressed, while projection and SWA work remain linear in queries.
-        prefix = context / max(1.0, ratio)
-        indexer = prefix if key["layer_kind"] == "csa" else 0.0
-        return batch * query * (1.0 + 128.0 + prefix + indexer)
+        return self.sol.work(key).latency_us
 
     def _query(self, layer_kind, phase, batch_size, input_seq_len, context_len):
         key = {
@@ -219,7 +206,8 @@ class DeepSeekV4AttentionEstimator:
                 {"dsv4_attention": [row for batch in supported for row in slices[batch]]},
             )
             lookup = self.generation_slice_lookups[identity] = OperatorLookup(
-                package, self.lookup.policy, analytical_scaler=self._analytical_work
+                package, self.lookup.policy, analytical_scaler=self._analytical_work,
+                bind_analytical_axes=True,
             )
         return lookup.lookup("dsv4_attention", key)
 
@@ -307,7 +295,9 @@ class DeepSeekV4AttentionEstimator:
             "module_scope": "projection + compressor/indexer + sparse attention + output projection",
             "kv_cache_source_layout": "fp8 source table; serving reference plain FP8",
             "indexer_source_layout": "collector default; serving reference MXFP4",
-            "extrapolation": "measured boundary with DSV4 compressed-work analytical growth, max 64x",
+            "extrapolation": "measured boundary with parameterized DSV4 FLOP/byte SOL growth, max 64x",
+            "extrapolation_sol": self.sol.describe(),
+            "extrapolation_axis_binding": "each inner-axis growth uses its measured outer-axis node",
             "context_latency_scale": self.context_latency_scale,
             "generation_latency_scale": self.generation_latency_scale,
             "decode_batch_composition": "query-row-weighted uniform full-batch module estimates; common projections counted once",
