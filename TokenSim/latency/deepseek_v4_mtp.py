@@ -7,8 +7,9 @@ from TokenSim.errors import ConfigurationError
 from TokenSim.latency.base import query_tokens
 from TokenSim.latency.deepseek_v4_attention_sol import causal_limited_pairs
 from TokenSim.latency.deepseek_v4_gemm import attention_projections
+from TokenSim.latency.deepseek_v4_head import DeepSeekV4HCHead
 from TokenSim.latency.deepseek_v4_mhc import DeepSeekV4MHC
-from TokenSim.latency.deepseek_v4_moe import MegaMoEEstimator, MoEPass, RankShape
+from TokenSim.latency.deepseek_v4_moe import MegaMoEEstimator, MoEPass, RankShape, uniform_decode_rows
 
 
 class DeepSeekV4MTPEstimator:
@@ -25,6 +26,7 @@ class DeepSeekV4MTPEstimator:
         )
         self.projections = attention_projections(self.model, backend.tp)
         self.mhc = DeepSeekV4MHC(backend) if backend.native_mhc else None
+        self.hc_head = DeepSeekV4HCHead(backend, scope="draft")
         self.initial_moe = self.decode_moe = None
         if backend.native_moe:
             self.initial_moe = MegaMoEEstimator(
@@ -40,6 +42,7 @@ class DeepSeekV4MTPEstimator:
 
     def reset_stats(self):
         self.counts, self.component_seconds = Counter(), Counter()
+        self.hc_head.reset_stats()
         if self.mhc:
             self.mhc.reset_stats()
         for moe in (self.initial_moe, self.decode_moe):
@@ -73,10 +76,9 @@ class DeepSeekV4MTPEstimator:
         later = MoEPass({rank: RankShape(self._request_count(shape, own_count=len(requests) if rank == dp else None),
                                        1, False, self._request_count(shape, own_count=len(requests) if rank == dp else None))
                          for rank, shape in step.ranks.items()})
-        initial_graph = all(not s.context_build and s.query_width == self.k + 1 for s in step.ranks.values())
-        initial_upper = max(s.tokens for s in step.ranks.values())
-        initial_graph = initial_graph and initial_upper <= self.max_num_seqs * (self.k + 1)
-        initial_rows = math.ceil(initial_upper / (self.k + 1)) * (self.k + 1) if initial_graph else actual_rows
+        padded = uniform_decode_rows(step, self.k + 1, self.max_num_seqs)
+        initial_graph = padded is not None
+        initial_rows = padded if initial_graph else actual_rows
         initial_heads = initial_rows // (self.k + 1) if initial_graph else len(requests)
         later_rows = max(s.tokens for s in later.ranks.values())
         # Later draft decodes have their own q=1 FULL_DECODE_ONLY capture.
@@ -139,12 +141,8 @@ class DeepSeekV4MTPEstimator:
         return routed + shared
 
     def _head(self, rows):
-        h, hc = self.model.hidden_size, self.spec.hc_mult
-        # hc_head: FP32 gate projection/RMS/reweight, BF16 residual input and
-        # dense output. There is no matching full hc_head table in this package.
-        weight_bytes = 4 * (hc * hc * h + hc + 1)
-        head = self._stream_us("mtp_hc_head", weight_bytes + rows * h * (2 * hc + 2),
-                               flops=rows * h * (2 * hc * hc + 8 * hc))
+        h = self.model.hidden_size
+        head = self.hc_head.estimate(rows)
         return head + self.backend._elementwise("rmsnorm", rows, h) + self.backend._gemm(
             rows, self.backend.vocab_local, h, dtype=self.model.operator_dtype("lm_head"))
 
@@ -208,4 +206,5 @@ class DeepSeekV4MTPEstimator:
                 "mhc": "measured pre/post num_sites=2" if self.mhc else "explicit generic analytical pre/post",
                 "moe": "one native routed/shared layer per pass" if self.initial_moe else "generic routed/shared primitives + EP communication",
                 "head": "one row/request (capture padding where FULL); analytic hc_head + norm + BF16 shared lm_head",
+                "hc_head": self.hc_head.describe(),
                 "analytical_gaps_grade": "D: SWA core, embedding/input-add and hc_head; no paired full draft module table"}

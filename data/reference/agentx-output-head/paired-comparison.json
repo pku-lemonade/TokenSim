@@ -1,0 +1,329 @@
+{
+  "scope": "paired full-window accuracy and component report for target output scope; no fitted multipliers",
+  "baseline_commit": "cf5bde3",
+  "formal_model_accuracy_accepted": false,
+  "hardware": {
+    "b200": {
+      "root": "results/agentx-dsv4-full/native-output-head/20261008-full-forward/seed0/b200-c196-dep8-simplecpu/b200",
+      "run_status": {
+        "exit_code": 0,
+        "started_unix_s": 1791393038.9796162,
+        "elapsed_wall_s": 1628.4505021572113
+      },
+      "diagnostic_accuracy": {
+        "output_tps": {
+          "delta_percent": -49.07966356016418,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        },
+        "input_tps": {
+          "delta_percent": -49.26196159516515,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        },
+        "ttft_p90": {
+          "delta_percent": 279.5460416963904,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        },
+        "itl_p90": {
+          "delta_percent": 157.39932672354348,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        },
+        "e2e_mean": {
+          "delta_percent": 124.80594909097142,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        },
+        "gpu_hit_rate": {
+          "delta_percent": -53.65567049639699,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        },
+        "cpu_hit_rate": {
+          "delta_percent": 167.40420929955783,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        }
+      },
+      "cache_percentage_point_differences": {
+        "gpu": -36.60550808275691,
+        "cpu": 39.71832269841309
+      },
+      "component_comparison": {
+        "gemm": {
+          "before_seconds": 576.6221605232115,
+          "after_seconds": 569.8929808647373,
+          "before_us_per_step": 3680.817590920306,
+          "after_us_per_step": 3695.612295501772
+        },
+        "attention": {
+          "before_seconds": 5625.322502635217,
+          "after_seconds": 5561.310364611506,
+          "before_us_per_step": 35908.75869826382,
+          "after_us_per_step": 36063.695558022315
+        },
+        "moe": {
+          "before_seconds": 8818.921770193994,
+          "after_seconds": 8818.773383829805,
+          "before_us_per_step": 56294.822861518194,
+          "after_us_per_step": 57187.521943283136
+        },
+        "elementwise": {
+          "before_seconds": 704.363565535228,
+          "after_seconds": 695.4235288101111,
+          "before_us_per_step": 4496.243779588576,
+          "after_us_per_step": 4509.646249287398
+        },
+        "lm_head": {
+          "before_seconds": 190.81326110217032,
+          "after_seconds": 188.99379335364358,
+          "before_us_per_step": 1218.0399161358027,
+          "after_us_per_step": 1225.5770994607517
+        },
+        "comm": {
+          "before_seconds": 0.0,
+          "after_seconds": 0.0,
+          "before_us_per_step": 0.0,
+          "after_us_per_step": 0.0
+        },
+        "overhead": {
+          "before_seconds": 0.0,
+          "after_seconds": 0.0,
+          "before_us_per_step": 0.0,
+          "after_us_per_step": 0.0
+        }
+      },
+      "success_count": 7822,
+      "mean_successful_input_tokens": 110829.98312452059,
+      "mean_successful_output_tokens": 850.5177703912043,
+      "output_head": {
+        "counts": {
+          "target_calls": 154208,
+          "target_rows": 57053326,
+          "draft_calls": 462624,
+          "draft_rows": 11337007
+        },
+        "seconds": {
+          "target": 1.138002039002511,
+          "draft": 1.554247909007524
+        },
+        "target_logits": {
+          "steps": 154208,
+          "decode_rows": 11950724,
+          "prefill_rows": 89007,
+          "rows": 12039731,
+          "forward_rows": 55963538,
+          "output_forward_rows": 57053326,
+          "hc_head_rows": 57053326,
+          "final_norm_rows": 57053326
+        },
+        "provenance": {
+          "hc_head": {
+            "scope": "target",
+            "source_grade": "D",
+            "source": "analytical FP32 gating and BF16 hyper-residual reduction; no matched module measurement",
+            "hidden_size": 7168,
+            "hc_mult": 4,
+            "parameter_bytes": 458772,
+            "input_output_bytes_per_row": 71680,
+            "flops_per_row": 458752,
+            "cost": "max(math_seconds, memory_seconds) + existing kernel_launch_us",
+            "excludes": "final/shared RMSNorm and selected-row lm_head, billed separately"
+          },
+          "forward_rows": "full target batch, including eligible synchronized decode capture padding",
+          "final_norm_rows": "same full forward rows, after SP gather",
+          "lm_head_rows": "selected decode queries and one bonus row per prefill request"
+        }
+      },
+      "native_mhc": {
+        "main_seconds": 566.8122180562866,
+        "draft_seconds": 19.742126373113294,
+        "total_seconds": 586.5543444293999,
+        "shape_lookup_counts": {
+          "main": {
+            "pre:exact": 29906,
+            "post:exact": 29906,
+            "pre:interpolated": 124302,
+            "post:interpolated": 124302
+          },
+          "draft": {
+            "pre:exact": 48041,
+            "post:exact": 48041,
+            "pre:interpolated": 414583,
+            "post:interpolated": 414583
+          }
+        }
+      }
+    },
+    "b300": {
+      "root": "results/agentx-dsv4-full/native-output-head/20261008-full-forward/seed0/b300-c384-dep8-simplecpu/b300",
+      "run_status": {
+        "exit_code": 0,
+        "started_unix_s": 1791393038.9775195,
+        "elapsed_wall_s": 3246.9157898426056
+      },
+      "diagnostic_accuracy": {
+        "output_tps": {
+          "delta_percent": -40.17239498603025,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        },
+        "input_tps": {
+          "delta_percent": -35.83572020743383,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        },
+        "ttft_p90": {
+          "delta_percent": 53.56057891358501,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        },
+        "itl_p90": {
+          "delta_percent": 108.36142674990347,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        },
+        "e2e_mean": {
+          "delta_percent": 66.70991314205281,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        },
+        "gpu_hit_rate": {
+          "delta_percent": 5.565176867027222,
+          "acceptable": true,
+          "preferred": true,
+          "status": "preferred"
+        },
+        "cpu_hit_rate": {
+          "delta_percent": -61.20149726879585,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        }
+      },
+      "cache_percentage_point_differences": {
+        "gpu": 5.003094003457475,
+        "cpu": -1.0030925402355637
+      },
+      "component_comparison": {
+        "gemm": {
+          "before_seconds": 633.5382148724801,
+          "after_seconds": 631.184154538322,
+          "before_us_per_step": 4118.591473843355,
+          "after_us_per_step": 4083.748411868025
+        },
+        "attention": {
+          "before_seconds": 10025.411866076,
+          "after_seconds": 10028.173351535497,
+          "before_us_per_step": 65174.56226646037,
+          "after_us_per_step": 64882.07396179799
+        },
+        "moe": {
+          "before_seconds": 8079.4856024414485,
+          "after_seconds": 8114.889830484324,
+          "before_us_per_step": 52524.21990353552,
+          "after_us_per_step": 52503.16919309216
+        },
+        "elementwise": {
+          "before_seconds": 997.6885011269746,
+          "after_seconds": 1000.7723211463774,
+          "before_us_per_step": 6485.909228254204,
+          "after_us_per_step": 6474.976197893229
+        },
+        "lm_head": {
+          "before_seconds": 193.84076868717503,
+          "after_seconds": 197.07908517686576,
+          "before_us_per_step": 1260.1464575565258,
+          "after_us_per_step": 1275.0976007819988
+        },
+        "comm": {
+          "before_seconds": 0.0,
+          "after_seconds": 0.0,
+          "before_us_per_step": 0.0,
+          "after_us_per_step": 0.0
+        },
+        "overhead": {
+          "before_seconds": 0.0,
+          "after_seconds": 0.0,
+          "before_us_per_step": 0.0,
+          "after_us_per_step": 0.0
+        }
+      },
+      "success_count": 16085,
+      "mean_successful_input_tokens": 117844.02163506372,
+      "mean_successful_output_tokens": 858.7293751942804,
+      "output_head": {
+        "counts": {
+          "target_calls": 154560,
+          "target_rows": 117211160,
+          "draft_calls": 463680,
+          "draft_rows": 22026986
+        },
+        "seconds": {
+          "target": 1.8302289917937333,
+          "draft": 1.6800106060387243
+        },
+        "target_logits": {
+          "steps": 154560,
+          "decode_rows": 24345260,
+          "prefill_rows": 180676,
+          "rows": 24525936,
+          "forward_rows": 113332204,
+          "output_forward_rows": 117211160,
+          "hc_head_rows": 117211160,
+          "final_norm_rows": 117211160
+        },
+        "provenance": {
+          "hc_head": {
+            "scope": "target",
+            "source_grade": "D",
+            "source": "analytical FP32 gating and BF16 hyper-residual reduction; no matched module measurement",
+            "hidden_size": 7168,
+            "hc_mult": 4,
+            "parameter_bytes": 458772,
+            "input_output_bytes_per_row": 71680,
+            "flops_per_row": 458752,
+            "cost": "max(math_seconds, memory_seconds) + existing kernel_launch_us",
+            "excludes": "final/shared RMSNorm and selected-row lm_head, billed separately"
+          },
+          "forward_rows": "full target batch, including eligible synchronized decode capture padding",
+          "final_norm_rows": "same full forward rows, after SP gather",
+          "lm_head_rows": "selected decode queries and one bonus row per prefill request"
+        }
+      },
+      "native_mhc": {
+        "main_seconds": 822.9818802640262,
+        "draft_seconds": 24.161325049231774,
+        "total_seconds": 847.143205313258,
+        "shape_lookup_counts": {
+          "main": {
+            "pre:exact": 19415,
+            "post:exact": 19415,
+            "pre:interpolated": 135145,
+            "post:interpolated": 135145
+          },
+          "draft": {
+            "pre:exact": 46344,
+            "post:exact": 46344,
+            "pre:interpolated": 417336,
+            "post:interpolated": 417336
+          }
+        }
+      }
+    }
+  }
+}

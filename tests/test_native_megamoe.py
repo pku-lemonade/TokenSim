@@ -166,6 +166,7 @@ class NativeMegaMoETest(unittest.TestCase):
             backend, "_elementwise", return_value=0
         ), patch.object(backend, "_query", return_value=Mock(latency_us=0)), patch.object(
             backend.native_mtp, "estimate", return_value={}
+        ), patch.object(backend.dsv4_hc_head, "estimate", return_value=0
         ):
             latency = backend._compose(
                 tokens=64, requests=1, attention_us=0, requests_list=[r]

@@ -224,6 +224,13 @@ class OperatorTableLatencyBackend(LatencyBackend):
         self.native_attention_context_scale = native_attention_context_scale
         self.native_attention_generation_scale = native_attention_generation_scale
         self.mtp_query_width = max(1, int(expected_decode_query_len))
+        self.max_num_seqs = max_num_seqs
+        self.moe_step = None
+        self.dsv4_hc_head = None
+        if model.deepseek_v4 and self.is_last_stage:
+            from TokenSim.latency.deepseek_v4_head import DeepSeekV4HCHead
+
+            self.dsv4_hc_head = DeepSeekV4HCHead(self, scope="target")
         self.native_attention = None
         if attention_backend == "native_dsv4":
             from TokenSim.latency.deepseek_v4_attention import (
@@ -410,6 +417,13 @@ class OperatorTableLatencyBackend(LatencyBackend):
                 self.native_attention.describe() if self.native_attention else None
             ),
             "native_mhc": self.native_mhc.describe() if self.native_mhc else None,
+            "dsv4_target_output": (
+                {"hc_head": self.dsv4_hc_head.describe(),
+                 "forward_rows": "full target batch, including eligible synchronized decode capture padding",
+                 "final_norm_rows": "same full forward rows, after SP gather",
+                 "lm_head_rows": "selected decode queries and one bonus row per prefill request"}
+                if self.dsv4_hc_head else None
+            ),
             "missing_shape_scope": "cumulative collection checklist; estimate counters reset after warmup",
             "moe_cost_dtype": self.moe_dtype,
             "moe_cost_distribution_candidates": list(self.moe_distributions),
@@ -439,6 +453,7 @@ class OperatorTableLatencyBackend(LatencyBackend):
         }
 
     def set_moe_step(self, step):
+        self.moe_step = step
         if self.native_moe:
             self.native_moe.set_step(step)
         if self.native_mtp:
@@ -449,6 +464,8 @@ class OperatorTableLatencyBackend(LatencyBackend):
         # checklist, but remove warmup estimates from measured time breakdown.
         self.stats = OperatorStats(missing=self.stats.missing)
         self.target_logits_counts.clear()
+        if self.dsv4_hc_head:
+            self.dsv4_hc_head.reset_stats()
         if self.native_mtp:
             self.native_mtp.reset_stats()
         if self.native_moe:
@@ -502,6 +519,7 @@ class OperatorTableLatencyBackend(LatencyBackend):
         # serving predicate; TP1 DEP8 keeps its full row count.
         mhc_sp = bool(
             self.native_mhc and self.ep_enabled and self.tp > 1
+            and self.parallel_config.pipeline_parallel_size == 1
             and (self.native_moe or self.parallel_config.data_parallel_size > 1)
         )
         norm_rows = math.ceil(T / self.tp) if mhc_sp else T
@@ -569,7 +587,30 @@ class OperatorTableLatencyBackend(LatencyBackend):
                 self.vocab_local,
                 h,
                 dtype=model.operator_dtype("lm_head") if model.deepseek_v4 else None,
-            ) + self._elementwise("rmsnorm", max(1, requests), h)
+            )
+            if self.dsv4_hc_head:
+                from TokenSim.latency.deepseek_v4_moe import MoEPass, RankShape, uniform_decode_rows
+
+                step = self.moe_step
+                if step is None:
+                    widths = {query_tokens(req) for req in requests_list}
+                    context = any(req.is_context_build for req in requests_list)
+                    step = MoEPass({self.rank_info.dp_rank: RankShape(
+                        T, next(iter(widths)) if len(widths) == 1 and not context else None,
+                        context, len(requests_list),
+                    )})
+                padded = uniform_decode_rows(step, self.mtp_query_width, self.max_num_seqs)
+                output_rows = padded if padded is not None else T
+                # The target reduces the hyper-residual and normalizes every
+                # forward row before logits selection. SP has already gathered.
+                lm_head_us += self.dsv4_hc_head.estimate(output_rows)
+                lm_head_us += self._elementwise("rmsnorm", output_rows, h)
+                self.target_logits_counts["forward_rows"] += T
+                self.target_logits_counts["output_forward_rows"] += output_rows
+                self.target_logits_counts["hc_head_rows"] += output_rows
+                self.target_logits_counts["final_norm_rows"] += output_rows
+            else:
+                lm_head_us += self._elementwise("rmsnorm", max(1, requests), h)
 
         # MTP draft passes use the dedicated module's two hidden projections
         # and shared target head.  Verify q=1+K is already represented by the

@@ -1,0 +1,51 @@
+{
+  "scope": "read-only follow-up for cached context recovery; no cache edits during output-head windows",
+  "source_checks": [
+    {
+      "path": "TokenSim/block/hybrid_manager.py",
+      "sha256": "ebb10468dc6a603b8cfa31ee53fad41df6efbf923bd41d5fc117b734a84678cc"
+    },
+    {
+      "path": "TokenSim/llm/llm_request.py",
+      "sha256": "f63caf282e4ba06559d90440e56e8c838f6aa0dbeec527db09b31897788546a1"
+    },
+    {
+      "path": "/home/zhuohang/Serving/vllm-note/vllm/v1/core/kv_cache_manager.py",
+      "sha256": "62d1e370eb043f1632a1e1a019471b5cb0440f65f045970c7d3bb120841a2b1f"
+    },
+    {
+      "path": "/home/zhuohang/Serving/vllm-note/vllm/v1/request.py",
+      "sha256": "dd7c30bf8b0894dc123a739c299c0133566f8cc075b081e45905f1c29506e69d"
+    }
+  ],
+  "facts": [
+    "vLLM get_computed_blocks caps a hit at request.num_tokens - 1, including generated context on resume",
+    "vLLM append_output_token_ids updates the full block hash chain",
+    "native HybridKVManager _input_keys and fine_keys include only original prompt hashes; _slot_key returns None past those keys",
+    "native plan_reuse caps its hit at prefill_len - 1 even when a request has generated outputs",
+    "cache_computed cannot publish generated full blocks without their keys"
+  ],
+  "full_group_bound_examples": [
+    {
+      "prompt_tokens": 256,
+      "generated_tokens": 1,
+      "context_tokens": 257,
+      "current_prompt_based_hit_cap_blocks": 0,
+      "source_context_based_hit_cap_blocks": 1,
+      "source_permitted_prefix_tokens": 256
+    },
+    {
+      "prompt_tokens": 256,
+      "generated_tokens": 257,
+      "context_tokens": 513,
+      "current_prompt_based_hit_cap_blocks": 0,
+      "source_context_based_hit_cap_blocks": 2,
+      "source_permitted_prefix_tokens": 512,
+      "current_known_full_prompt_keys": 1
+    }
+  ],
+  "limitation": "These are maximum full-group bounds, not proven recoverable mixed-cache hits. All sliding-window/EAGLE state, retention and tier-availability checks must also pass. Do not claim the example necessarily yields a one-token tail.",
+  "next_action": "align prompt versus resumed-context hit limits and identity, then implement conditional one-real-token padding and attention/graph roles; retain first-admission input-token metric denominators",
+  "output_token_identity": "TokenSim produces accepted lengths rather than true token IDs; any private generated-state key must preserve same-request recovery without crediting unproven cross-request matches",
+  "formal_accuracy_accepted": false
+}

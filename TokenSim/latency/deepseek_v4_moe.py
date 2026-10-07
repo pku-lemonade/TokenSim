@@ -29,6 +29,19 @@ class MoEPass:
     cache: dict = field(default_factory=dict)
 
 
+def uniform_decode_rows(step, query_width, max_num_seqs):
+    """Rows in an eligible synchronized FULL_DECODE_ONLY capture, else None."""
+    if not step.ranks or not all(
+        not shape.context_build and shape.query_width == query_width
+        for shape in step.ranks.values()
+    ):
+        return None
+    upper = max(shape.tokens for shape in step.ranks.values())
+    if upper > max_num_seqs * query_width:
+        return None
+    return query_width * math.ceil(upper / query_width)
+
+
 @dataclass(frozen=True)
 class ModuleEstimate:
     latency_us: float
@@ -177,18 +190,8 @@ class MegaMoEEstimator:
             step = self.step
         # FULL_DECODE_ONLY: a context rank forces eager; a staged q=1 decode
         # cannot use the reference MTP q=4 captures. Keep actual query widths.
-        graph = all(
-            not s.context_build and s.query_width == self.expected_query_width
-            for s in step.ranks.values()
-        )
-        upper = max(s.tokens for s in step.ranks.values())
-        if upper > self.max_num_seqs * self.expected_query_width:
-            graph = False
-        padded = (
-            self.expected_query_width * math.ceil(upper / self.expected_query_width)
-            if graph
-            else None
-        )
+        padded = uniform_decode_rows(step, self.expected_query_width, self.max_num_seqs)
+        graph = padded is not None
         group = self.parallel.expert_parallel_group(dp, self.backend.rank_info.tp_rank)
         rows = {}
         for other_dp, shape in step.ranks.items():

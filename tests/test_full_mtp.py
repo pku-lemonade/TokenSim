@@ -3,14 +3,16 @@
 from unittest import TestCase
 from unittest.mock import Mock, patch
 from types import SimpleNamespace
+from dataclasses import asdict
+import json
 
-from TokenSim.config.config import ParallelConfig, ParallelRankInfo
+from TokenSim.config.config import ClusterConfig, ParallelConfig, ParallelRankInfo
 from TokenSim.hardware.context import HardwareContext
 from TokenSim.latency.operator_table import OperatorTableLatencyBackend
 from TokenSim.latency.deepseek_v4_moe import MoEPass, RankShape
 from TokenSim.llm.llm_request import Request
 from util.results import get_latency_stats
-from TokenSim.config.psla_config import LLMResult
+from TokenSim.config.psla_config import LLMResult, MetricData
 
 
 class FullMTPTest(TestCase):
@@ -77,6 +79,46 @@ class FullMTPTest(TestCase):
         self.assertEqual(counts["eager_passes"], 1)
         self.assertEqual(counts["graph_passes"], 2)
 
+    def test_partial_prefill_target_output_runs_before_logits_selection(self):
+        backend = self.backend()
+        req = Request(0, 8192, 20, 256)
+        req.scheduled_tokens = req.scheduled_query_tokens = 512
+        self.set_uniform_step(backend, tokens=512, count=1, context=True)
+        head_gemm_rows = []
+        original = backend._gemm
+
+        def record_gemm(rows, n, k, **kwargs):
+            if n == backend.vocab_local:
+                head_gemm_rows.append(rows)
+            return original(rows, n, k, **kwargs)
+
+        with patch.object(backend, "_gemm", side_effect=record_gemm):
+            backend.estimate_step_latency([req])
+        self.assertEqual(backend.dsv4_hc_head.rows, 512)
+        self.assertEqual(backend.target_logits_counts["final_norm_rows"], 512)
+        self.assertEqual(backend.target_logits_counts["rows"], 1)
+        self.assertEqual(backend.native_mtp.hc_head.rows, 3)
+        self.assertEqual(head_gemm_rows, [1, 1, 1, 1])
+
+    def test_target_output_uses_dp_capture_rows_after_sequence_gather(self):
+        backend = self.backend(tp=4, dp=2)
+        backend.set_moe_step(MoEPass({0: RankShape(16, 4, False, 4),
+                                     1: RankShape(32, 4, False, 8)}))
+        backend.estimate_step_latency(self.decode_requests(4))
+        self.assertEqual(backend.target_logits_counts["forward_rows"], 16)
+        self.assertEqual(backend.dsv4_hc_head.rows, 32)
+        self.assertEqual(backend.target_logits_counts["final_norm_rows"], 32)
+        self.assertEqual(backend.target_logits_counts["rows"], 16)
+        self.assertEqual(backend.native_mtp.hc_head.rows, 24)
+
+    def test_remote_context_rank_keeps_target_output_at_local_eager_rows(self):
+        backend = self.backend()
+        backend.set_moe_step(MoEPass({rank: RankShape(512, None, True, 1) if rank == 1
+                                     else RankShape(16, 4, False, 4) for rank in range(8)}))
+        backend.estimate_step_latency(self.decode_requests(4))
+        self.assertEqual(backend.dsv4_hc_head.rows, 16)
+        self.assertEqual(backend.target_logits_counts["final_norm_rows"], 16)
+
     def test_tp_sp_padding_and_draft_collectives_are_explicit(self):
         comm = Mock()
         comm.describe.return_value = {"ep_group_link": "node", "ep_group_size": 8}
@@ -120,9 +162,33 @@ class FullMTPTest(TestCase):
                                backend.stats.component_seconds["moe"])
         self.assertTrue({"native_megamoe_routed_seconds", "native_megamoe_shared_seconds",
                          "native_megamoe_counts", "native_megamoe_max_rank_rows"} <= LLMResult.__dataclass_fields__.keys())
+        self.assertAlmostEqual(result["native_mhc_main_seconds"],
+                               backend.native_mhc.seconds * self.model.num_layers)
+        self.assertAlmostEqual(result["native_mhc_draft_seconds"], mtp.mhc.seconds)
+        self.assertAlmostEqual(result["native_mhc_seconds"],
+                               result["native_mhc_main_seconds"] + result["native_mhc_draft_seconds"])
+        self.assertLessEqual(result["native_mhc_seconds"], backend.stats.component_seconds["elementwise"])
+        self.assertEqual(sum(result["native_mhc_counts"]["main"].values()), 2)
+        self.assertEqual(sum(result["native_mhc_counts"]["draft"].values()), 6)
+        self.assertEqual(result["dsv4_hc_head_counts"]["target_rows"], 64)
+        self.assertEqual(result["dsv4_hc_head_counts"]["draft_rows"], 48)
+        exported = LLMResult(
+            cluster=ClusterConfig.from_file("data/clusters/8_b200/dep8.json"),
+            qps=1, request_count=1, prefill_lens=[8192], decode_lens=[20],
+            batching="paged-attn", request_time=MetricData.from_list([1]),
+            prefill_time=MetricData.from_list([1]), decode_time=MetricData.from_list([1]),
+            duration=1, output_qps=1, output_token_ps=20, notdone=[], **result,
+        )
+        saved = json.loads(json.dumps(asdict(exported)))
+        self.assertEqual(saved["native_mhc_counts"], result["native_mhc_counts"])
+        self.assertEqual(saved["dsv4_hc_head_seconds"], result["dsv4_hc_head_seconds"])
         backend.reset_profile_stats()
         self.assertEqual(mtp.counts, {})
         self.assertEqual(mtp.component_seconds, {})
+        self.assertEqual(backend.dsv4_hc_head.rows, 0)
+        self.assertEqual(mtp.hc_head.rows, 0)
+        self.assertEqual(backend.native_mhc.seconds, 0)
+        self.assertEqual(mtp.mhc.seconds, 0)
 
     def test_disabled_mtp_has_no_draft_estimator(self):
         self.assertIsNone(self.backend(enabled=False).native_mtp)

@@ -100,6 +100,12 @@ class LLMResult:
     native_dsv4_attention_decode_batches: dict[str, int] | None = None
     native_dsv4_attention_mtp_kv: dict[str, float] | None = None
     dsv4_target_logits: dict[str, int] | None = None
+    dsv4_hc_head_counts: dict[str, int] | None = None
+    dsv4_hc_head_seconds: dict[str, float] | None = None
+    native_mhc_seconds: float | None = None
+    native_mhc_main_seconds: float | None = None
+    native_mhc_draft_seconds: float | None = None
+    native_mhc_counts: dict[str, dict[str, int]] | None = None
     native_dsv4_mtp_counts: dict[str, int] | None = None
     native_dsv4_mtp_component_seconds: dict[str, float] | None = None
     native_megamoe_routed_seconds: float | None = None

@@ -276,7 +276,7 @@ class NativeAttentionTest(TestCase):
         ), patch.object(backend, "_gemm", return_value=0), patch.object(backend, "_moe_layers", return_value=0):
             backend._compose(tokens=66, requests=8, attention_us=0, requests_list=[])
         mhc.assert_called_once_with(17)
-        self.assertEqual([rows for name, rows in calls if name == "rmsnorm"], [17, 17, 8])
+        self.assertEqual([rows for name, rows in calls if name == "rmsnorm"], [17, 17, 66])
 
 
 if __name__ == "__main__":

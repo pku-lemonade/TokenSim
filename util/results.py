@@ -191,6 +191,9 @@ def get_latency_stats(engine: LLMEngine) -> dict[str, Any]:
     native_attention_decode_batches = {}
     native_attention_mtp_kv = {}
     target_logits_counts = {}
+    hc_head_counts, hc_head_seconds = {}, {}
+    mhc_seconds = {"main": 0.0, "draft": 0.0}
+    mhc_counts = {"main": {}, "draft": {}}
     mtp_counts, mtp_components = {}, {}
     for worker in getattr(engine, "workers", []):
         backend = getattr(worker, "latency_backend", None)
@@ -204,6 +207,25 @@ def get_latency_stats(engine: LLMEngine) -> dict[str, Any]:
                 mtp_components[key] = mtp_components.get(key, 0) + value
         for key, value in getattr(backend, "target_logits_counts", {}).items():
             target_logits_counts[key] = target_logits_counts.get(key, 0) + value
+        for role, head in (
+            ("target", getattr(backend, "dsv4_hc_head", None)),
+            ("draft", getattr(mtp, "hc_head", None)),
+        ):
+            if head is not None:
+                for key, value in (("calls", head.calls), ("rows", head.rows)):
+                    name = f"{role}_{key}"
+                    hc_head_counts[name] = hc_head_counts.get(name, 0) + value
+                hc_head_seconds[role] = hc_head_seconds.get(role, 0.0) + head.seconds
+        for role, estimator, layers in (
+            ("main", getattr(backend, "native_mhc", None), getattr(backend, "layers_local", 0)),
+            ("draft", getattr(mtp, "mhc", None), 1),
+        ):
+            if estimator is not None:
+                # Main estimates resolve one layer shape, then _compose pays
+                # layers_local copies. Each draft estimate is one actual pass.
+                mhc_seconds[role] += estimator.seconds * layers
+                for key, value in estimator.counts.items():
+                    mhc_counts[role][key] = mhc_counts[role].get(key, 0) + value
         native_estimators = [getattr(backend, "native_moe", None)]
         if mtp:
             native_estimators.extend([mtp.initial_moe, mtp.decode_moe])
@@ -273,6 +295,12 @@ def get_latency_stats(engine: LLMEngine) -> dict[str, Any]:
             else {}
         ),
         **({"dsv4_target_logits": target_logits_counts} if target_logits_counts else {}),
+        **({"dsv4_hc_head_counts": hc_head_counts,
+            "dsv4_hc_head_seconds": hc_head_seconds} if hc_head_counts else {}),
+        **({"native_mhc_seconds": sum(mhc_seconds.values()),
+            "native_mhc_main_seconds": mhc_seconds["main"],
+            "native_mhc_draft_seconds": mhc_seconds["draft"],
+            "native_mhc_counts": mhc_counts} if any(mhc_counts.values()) else {}),
         **({"native_dsv4_mtp_counts": mtp_counts,
             "native_dsv4_mtp_component_seconds": mtp_components} if mtp_counts else {}),
         # Grouped by table and discrete key with the requested axis ranges;
