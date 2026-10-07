@@ -3,12 +3,14 @@ from __future__ import annotations
 import unittest
 import json
 import tempfile
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 
 import simpy
 
 from TokenSim.block.hybrid_manager import HybridKVBlockManager
+from TokenSim.block.prefix_cache import RequestLocalPrefixKey
 from TokenSim.config.kv_layout import deepseek_v4_kv_layout
 from TokenSim.config.model_config import ModelCatalog
 from TokenSim.config.cache_config import CacheConfig
@@ -195,6 +197,93 @@ class NativeKVPoolTest(unittest.TestCase):
         self.assertTrue(manager.can_ensure_slots(req, 512))
         manager.ensure_slots(req, 512)
         manager.validate_conservation()
+
+    def generated_checkpoint(self):
+        manager = self.manager()
+        req = request(71, 32256)
+        req.decode_len = 2048
+        manager.allocate(req)
+        req.record_context_admission(0, 0)
+        self.compute(manager, req, req.prefill_len)
+        req._append_tokens(1025)
+        req.generation_idx = 1025
+        self.compute(manager, req, 1024)
+        manager.release_request_blocks(req)
+        req.prepare_recompute()
+        return manager, req
+
+    def test_generated_retention_checkpoint_recovers_only_the_same_request(self):
+        manager, req = self.generated_checkpoint()
+        plan = manager.plan_reuse(req)
+        self.assertEqual(plan.hit_tokens, 32768)
+        self.assertIsInstance(plan.input_keys[127], RequestLocalPrefixKey)
+        self.assertEqual(plan.effective_prefill_tokens, 0)
+        other = request(72, 32256)
+        other._append_tokens(1025)
+        other.generation_idx = 1025
+        self.assertLessEqual(manager.plan_reuse(other).hit_tokens, 32000)
+        manager.allocate(req)
+        req.record_context_admission(plan.hit_tokens, 0)
+        req.start_context_build(plan.hit_tokens)
+        self.assertEqual(req.remaining_context_tokens, 513)
+        self.assertEqual(req.reloaded_generated_gpu_tokens, 512)
+        self.assertEqual(req.cached_prefill_tokens, req.prefill_len)
+        self.assertTrue(manager.validate_conservation())
+        manager.release_request_blocks(req)
+
+    def test_missing_generated_eagle_peek_forces_all_group_recovery_back(self):
+        manager, req = self.generated_checkpoint()
+        self.assertEqual(manager.plan_reuse(req).hit_tokens, 32768)
+        eagle = next(group for group in self.layout.groups if group.eagle)
+        key = manager._slot_key(eagle, 32768 // eagle.block_tokens,
+                                manager._input_keys(req), req)
+        self.assertIsInstance(key[1], RequestLocalPrefixKey)
+        manager._evict(manager.cache[key])
+        self.assertLessEqual(manager.plan_reuse(req).hit_tokens, 32000)
+        self.assertTrue(manager.validate_conservation())
+
+    def test_full_group_context_limit_leaves_last_real_token_and_updates_keys(self):
+        # Isolate the full-group n-1 contract; mixed groups may lower the hit.
+        layout = replace(self.layout, groups=(self.layout.full_group,))
+        manager = HybridKVBlockManager(layout, 32, self.model.model_id)
+        req = request(73, 256)
+        req.decode_len = 1024
+        manager.allocate(req)
+        self.compute(manager, req, 256)
+        self.assertEqual(len(manager._input_keys(req)), 1)
+        req._append_tokens(513)
+        req.generation_idx = 513
+        self.compute(manager, req, 512)
+        keys = manager._input_keys(req)
+        self.assertEqual(len(keys), 3)
+        self.assertTrue(all(isinstance(key, RequestLocalPrefixKey) for key in keys[1:]))
+        manager.release_request_blocks(req)
+        req.prepare_recompute()
+        plan = manager.plan_reuse(req)
+        self.assertEqual(plan.hit_tokens, 768)
+        self.assertEqual(plan.reuse_miss_blocks, 0)
+        req.start_context_build(plan.hit_tokens)
+        self.assertEqual(req.remaining_context_tokens, 1)
+        self.assertTrue(manager.validate_conservation())
+
+    def test_context_metrics_preserve_first_input_and_separate_generated_tiers(self):
+        req = request(74, 256)
+        req.record_context_admission(0, 0)
+        first = req.first_prefill_source
+        req._append_tokens(513)
+        req.generation_idx = 513
+        req.record_context_admission(512, 256)
+        self.assertIs(req.first_prefill_source, first)
+        self.assertEqual(first.computed_tokens, 256)
+        self.assertEqual(req.gpu_cached_context_tokens, 512)
+        self.assertEqual(req.external_cached_context_tokens, 256)
+        self.assertEqual(req.reloaded_gpu_tokens, 256)
+        self.assertEqual(req.reloaded_cpu_tokens, 0)
+        self.assertEqual(req.reloaded_generated_gpu_tokens, 256)
+        self.assertEqual(req.reloaded_generated_cpu_tokens, 256)
+        self.assertEqual(req.cached_prefill_tokens, 256)
+        self.assertEqual(req.external_cached_prefill_tokens, 0)
+        self.assertEqual(req.effective_prefill_tokens, 0)
 
     def test_all_groups_required_for_prefix_recovery_and_hit_is_at_most_n_minus_one(
         self,

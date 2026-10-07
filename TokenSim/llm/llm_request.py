@@ -231,10 +231,14 @@ class Request:
     cached_prefill_tokens: int = 0
     gpu_cached_prefill_tokens: int = 0
     external_cached_prefill_tokens: int = 0
+    gpu_cached_context_tokens: int = 0
+    external_cached_context_tokens: int = 0
     first_prefill_source: PrefillSourceStats | None = field(default=None, repr=False)
     prefill_admission_count: int = 0
     reloaded_gpu_tokens: int = 0
     reloaded_cpu_tokens: int = 0
+    reloaded_generated_gpu_tokens: int = 0
+    reloaded_generated_cpu_tokens: int = 0
     effective_prefill_tokens: int | None = None
     reuse_hit_blocks: int = 0
     reuse_miss_blocks: int = 0
@@ -407,6 +411,23 @@ class Request:
             self.reloaded_gpu_tokens += gpu_tokens
             self.reloaded_cpu_tokens += cpu_tokens
         self.prefill_admission_count += 1
+
+    def record_context_admission(self, gpu_tokens, cpu_tokens):
+        """Record a whole-context hit without expanding the input denominator."""
+        if min(gpu_tokens, cpu_tokens) < 0 or gpu_tokens + cpu_tokens >= self.context_len:
+            raise SimulationStateError("context-source tokens must leave a real query")
+        self.gpu_cached_context_tokens = gpu_tokens
+        self.external_cached_context_tokens = cpu_tokens
+        prompt_gpu = min(gpu_tokens, self.prefill_len)
+        prompt_cpu = min(cpu_tokens, max(0, self.prefill_len - prompt_gpu))
+        self.gpu_cached_prefill_tokens = prompt_gpu
+        self.external_cached_prefill_tokens = prompt_cpu
+        self.cached_prefill_tokens = prompt_gpu + prompt_cpu
+        self.cached_prefill_blocks = self.cached_prefill_tokens // self.block_size
+        self.effective_prefill_tokens = self.prefill_len - self.cached_prefill_tokens
+        self.reloaded_generated_gpu_tokens += gpu_tokens - prompt_gpu
+        self.reloaded_generated_cpu_tokens += cpu_tokens - prompt_cpu
+        self.record_prefill_admission(prompt_gpu, prompt_cpu)
 
     @property
     def num_physical_token_blocks(self):

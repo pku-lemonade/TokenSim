@@ -99,10 +99,13 @@ class SimpleCPUOffloadConnector(BaseKVConnector):
             raise
         for _, _, _, block in targets:
             self.manager.pin_transfer(block)
-        req.external_cached_prefill_tokens = boundary - req.gpu_cached_prefill_tokens
-        req.cached_prefill_tokens = boundary
-        req.cached_prefill_blocks = boundary // req.block_size
-        req.effective_prefill_tokens = req.prefill_len - boundary
+        req.external_cached_context_tokens = boundary - req.gpu_cached_context_tokens
+        req.gpu_cached_prefill_tokens = min(req.prefill_len, req.gpu_cached_context_tokens)
+        req.external_cached_prefill_tokens = min(req.external_cached_context_tokens,
+                                                max(0, req.prefill_len - req.gpu_cached_prefill_tokens))
+        req.cached_prefill_tokens = min(req.prefill_len, boundary)
+        req.cached_prefill_blocks = req.cached_prefill_tokens // req.block_size
+        req.effective_prefill_tokens = max(0, req.prefill_len - boundary)
         req.status = RequestStatus.WAITING_FOR_KV
         self.scheduler.loading[req.id] = req
         self.loads[req.id] = self.env.process(self._load(req, targets, boundary))

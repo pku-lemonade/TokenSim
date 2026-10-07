@@ -467,19 +467,21 @@ class LLMPagedAttnScheduler(LLMScheduler):
         local_plan = self.block_manager.kv_cache_manager.plan_reuse(req)
         if getattr(self.connector, "native_async", False):
             self.block_manager.allocate(req)
-            req.gpu_cached_prefill_tokens = local_plan.hit_tokens
+            req.gpu_cached_context_tokens = local_plan.hit_tokens
+            req.gpu_cached_prefill_tokens = min(req.prefill_len, local_plan.hit_tokens)
             req.external_cached_prefill_tokens = 0
+            req.external_cached_context_tokens = 0
             if external and external[1]:
                 self.connector.begin_load(req, *external)
-                req.record_prefill_admission(
-                    local_plan.hit_tokens, req.external_cached_prefill_tokens
+                req.record_context_admission(
+                    local_plan.hit_tokens, req.external_cached_context_tokens
                 )
                 self.inflight_prefills[req.id] = req
                 return
             if req.needs_recompute:
                 req.recompute_tokens = max(0, req.context_len - local_plan.hit_tokens)
             req.start_context_build(local_plan.hit_tokens)
-            req.record_prefill_admission(local_plan.hit_tokens, 0)
+            req.record_context_admission(local_plan.hit_tokens, 0)
             req.status = RequestStatus.RUNNING
             return
         # Reuse the already-built prefix chain in external-cache connectors.
@@ -510,7 +512,7 @@ class LLMPagedAttnScheduler(LLMScheduler):
         req.start_context_build(req.context_len - to_compute)
         req.status = RequestStatus.RUNNING
         if getattr(self.block_manager, "native_hybrid", False):
-            req.record_prefill_admission(local_plan.hit_tokens, num_external_tokens)
+            req.record_context_admission(local_plan.hit_tokens, num_external_tokens)
 
     def _spec_decode_step_blocks(self):
         layout = getattr(self.block_manager, "layout", None)

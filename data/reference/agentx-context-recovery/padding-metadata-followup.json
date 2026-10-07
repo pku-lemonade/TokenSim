@@ -1,0 +1,89 @@
+{
+  "scope": "read-only next-stage padding/metadata requirements; no runtime edits during context recovery windows",
+  "source_checks": [
+    {
+      "path": "/home/zhuohang/Serving/vllm-note/vllm/v1/core/sched/scheduler.py",
+      "sha256": "ead13eb4613651208b73deb533cb23a33e111a3a8899d98d0fef0eae67d99b84"
+    },
+    {
+      "path": "/home/zhuohang/Serving/vllm-note/vllm/v1/worker/gpu/model_runner.py",
+      "sha256": "217e4b87c0bd22c4e98640775d7b4e3349000f79d37f9f7d3e569768786c3a7f"
+    },
+    {
+      "path": "/home/zhuohang/Serving/vllm-note/vllm/v1/attention/backends/utils.py",
+      "sha256": "7d35af7b6b9c255c6762eb89702bb1a3ed0d1b292722be46dd6455ecf2410641"
+    },
+    {
+      "path": "TokenSim/llm/llm_scheduler.py",
+      "sha256": "80e9c255425ee44df5e657834d0acb466816187f510b17fd680087022f686a4d"
+    },
+    {
+      "path": "TokenSim/llm/dp_coordinator.py",
+      "sha256": "2a8b30a10a2e5c9ee78c83d7a6975ce9bc71a77914852e666b584f26a2d49fc5"
+    },
+    {
+      "path": "TokenSim/latency/base.py",
+      "sha256": "d1fbe13a55167bc14fb3024ddf91aed229e45b23ab00eb63c321d7aa6c468a2a"
+    }
+  ],
+  "requirements": [
+    {
+      "role": "request progress",
+      "rule": "prefill/recompute completes the real context and emits one token; invalid placeholder drafts do not increase accepted progress"
+    },
+    {
+      "role": "attention metadata",
+      "rule": "short query chunks may use decode attention under the configured q threshold, even while real context is being rebuilt; indexer uniform/varlen support remains a separate check"
+    },
+    {
+      "role": "target logits",
+      "rule": "one bonus row for ordinary context chunks, q rows when K invalid draft placeholders are explicitly scheduled"
+    },
+    {
+      "role": "graph eligibility",
+      "rule": "runner is_prefilling is computed_prefill_tokens < original prompt length; one-real-token extension over a positive computed prefix is eligible, including placeholder padding"
+    },
+    {
+      "role": "waiting padding",
+      "rule": "MTP K>0, real suffix one, no scheduled prefill, existing running work or positive prefix, enough complete q=1+K budget, and room for one sampled output before max_model_len"
+    },
+    {
+      "role": "running query bound",
+      "rule": "scheduled query width capped by max_model_len - computed_tokens - 1 independently of remaining output clipping"
+    },
+    {
+      "role": "KV reservation",
+      "rule": "actual query width plus K lookahead reserved; cache only finalized context; asynchronous loading executes no model forward"
+    }
+  ],
+  "examples": [
+    {
+      "prompt_tokens": 256,
+      "generated_tokens": 260,
+      "computed_context_tokens": 512,
+      "remaining_real_context_tokens": 4,
+      "request_progress_role": "recompute",
+      "runner_is_prefilling": false,
+      "uniform_q4_capture_may_be_eligible": true,
+      "output_tokens_after_context_build": 1
+    },
+    {
+      "prompt_tokens": 257,
+      "generated_tokens": 0,
+      "computed_context_tokens": 256,
+      "remaining_real_context_tokens": 1,
+      "request_progress_role": "prefill",
+      "runner_is_prefilling": true,
+      "one_token_extension_is_graph_eligible": true,
+      "padding_subject_to_admission_conditions": true
+    }
+  ],
+  "current_divergences": [
+    "DP coordinator suppresses graph eligibility whenever is_context_build is true",
+    "latency base treats every context build as context attention, including short query metadata",
+    "target head selection currently derives sampling rows solely from is_decode_step",
+    "waiting and loaded waiting do not reserve one-real-token placeholder verify rows"
+  ],
+  "acceptance": "source-derived boundary tests plus full B200/B300 windows; no change to fixed AL2.49, trace lengths or original input denominators",
+  "formal_accuracy_evidence": false
+}

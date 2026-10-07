@@ -514,6 +514,10 @@ class NativeAgentXReplay:
             "prefill_admission_count": req.prefill_admission_count,
             "reloaded_gpu_tokens": req.reloaded_gpu_tokens,
             "reloaded_cpu_tokens": req.reloaded_cpu_tokens,
+            "reloaded_generated_gpu_tokens": req.reloaded_generated_gpu_tokens,
+            "reloaded_generated_cpu_tokens": req.reloaded_generated_cpu_tokens,
+            "latest_gpu_context_hit_tokens": req.gpu_cached_context_tokens,
+            "latest_cpu_context_hit_tokens": req.external_cached_context_tokens,
             "recomputation_count": req.recomputation_count,
             "recomputed_tokens": req.recomputed_tokens_total,
             "latest_gpu_hit_tokens": req.cached_prefill_tokens

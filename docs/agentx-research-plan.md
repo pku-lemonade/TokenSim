@@ -5,7 +5,7 @@
 > 源码基准：只读参考 `/home/zhuohang/Serving/vllm-note`，本轮记录 HEAD `30f5c01d4ebb`；不下载历史镜像、不修改或切换此目录。本文旧行号和旧 HEAD 下的源码结论需按此版本重新定位；历史运行日志仍作为实验事实保留。
 > 分支：`agentx-support`（基于 `b2b685a`）
 > 历史实现与结果（不是最终精度验收）：**2026-10-02 已完成 MegaMoE/shared expert、native CSA/HCA attention、MTP 2/3 推进与 q=4 target verify、native mHC，以及 native Mooncake shared-page adapter 的代码和两组完整一小时主点验收。统一矩阵已支持 list/check/expand/run/summary/plot、断点续跑、实际 GPU 数归一化和多 seed；DEP8、TP4/EP4、TP8/HBM 的 19 个曲线点已完成 seed0/1/2 全窗口并通过逐点守恒校验，所有 seed1/2 状态成功且 seed 间输出存在差异。修复后的三 seed 主点均已成功：B200 均值 522.135、B300 均值 1,027.989 token/s。完整阶段吞吐依次为：MegaMoE B200/B300 1,733.192／3,440.686，native attention+MTP 592.617／1,140.733，native mHC+attention+MTP 567.198／1,114.907，native Mooncake B200/B300 583.269／1,045.469 token/s。已完成 HBM/MTP 消融、记录时序、固定历史 worker 映射和独立 AIC B200 shape diagnostic；AIC B300 的缺失 MegaMoE 行、FlashMLA/FlashInfer 后端差异、mHC/shared fusion 和跨硬件 MegaMoE 借表均保留为明确近似，因此最终绝对吞吐仍未通过 25% 门槛。报告见 [原生 MegaMoE](agentx-native-megamoe-report.md)、[原生 attention](agentx-native-attention-report.md)、[原生 mHC](agentx-native-mhc-report.md)、[Mooncake](agentx-mooncake-report.md)、[原生曲线](agentx-native-curve-report.md)、[AIC 诊断](agentx-aic-diagnostic-report.md)。**
-> 当前状态（2026-10-08）：主干 hc_head/final norm 的全 forward 行范围与 capture padding 已补齐，native main/draft mHC 实际时间已计权汇总和导出；512 项测试及 B200/B300 两组完整一小时主点严格验收通过。最新吞吐 B200 1,832.757 / B300 3,805.194 token/s，比上一阶段变化 −2.914% / +0.512%，参考误差仍为 −49.08% / −40.17%，整体 25% 门槛未通过。固定形状差分只有输出头分项增加，幅度约 0.010%–0.016%，不能将闭环吞吐变化直接归为该算子费用。下一部分修正 resumed context 的缓存边界/身份与 cached-prefill padding、metadata，再完成混合投影、非均匀 DP MoE、buffer 生命周期、历史映射与匹配 AIC 对照；最终三 seed 矩阵待实现冻结后重跑。见 [输出头与 mHC 汇总](agentx-output-head-report.md)。
+> 当前状态（2026-10-08）：native GPU/CPU cache keys 随 accepted context 增长，恢复 cap 对齐 context n−1，未知 generated/partial 内容仅允许同一请求恢复，原始 input 分母与 generated reload 分开记录；517 项测试、16 个子测试及两个完整主点严格验收通过。最新输出吞吐 B200 1,781.095 / B300 3,805.127 token/s，对基线变化 −2.819% / −0.002%，参考误差仍为 −50.51% / −40.17%，整体 25% 精度未通过。两个 seed0 主点的成功请求均无 generated checkpoint reload，功能恢复证据来自满足全部混合状态条件的专项回归，不宣称当前窗口的吞吐收益。下一部分完成 cached-prefill padding、attention/logits/graph metadata 与 model-length edge；混合投影、非均匀 DP MoE、buffer 生命周期、历史映射、匹配 AIC 和最终三 seed 全矩阵仍待完成。见 [上下文缓存恢复](agentx-context-recovery-report.md)。
 > 对照对象：InferenceX AgentX，完整 DeepSeek-V4-Pro（FP8 + MXFP4），vLLM + MTP；覆盖 B200/B300 多并发曲线及其 TP8、TP4、DEP8 等配置变化。主检查点为单节点 8 GPU DEP8：B200 并发 196、B300 并发 384。
 > 证据分层：历史配置和日志描述参考运行；本地源码决定本轮实现；二者存在版本差异时单列记录。【待核实／待验证】是实现中的技术检查，不是待用户批准；【估算】不是实测；【推断】须保留依据与适用范围。历史研究中的源码行号仅作定位线索，以函数和本轮版本为准。
 
@@ -856,6 +856,7 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 - [x] **缓存容量与前缀命中任务 4** 主点引擎块按 256 token，从原始 64-token hash 聚合完整块，保留前缀链与回放作用域；其他点按配置转换。prefix 最多命中 n−1 个 token；按 retention 32768 及混合组可恢复边界截断，以当前源码核对窗口、请求末尾与分叉点的状态保留。
 - [ ] **缓存容量与前缀命中任务 5（decode query + K 已独立验证；prefill/draft 全调用范围已计入并验证）** MTP lookahead：每个 decode 请求按 target query 范围及 K 个 lookahead slot 预留。见 `agentx-mtp-kv/target-budget-followup.json` 的 250→257 token 跨块例子。
 - [x] **缓存容量与前缀命中任务 6** 结果 JSON 分别记录 DP worker 的 HBM、SimpleCPU DRAM 或 Mooncake shared pool 容量、命中和传输；Mooncake 使用共享 PoolKey，不复制成独立 worker 池。
+  - 2026-10-08：完整 context n−1 hit cap、原 prompt shared keys 与 request-private generated/partial keys、fine/group identities、GPU/CPU all-group/EAGLE/readiness 恢复及输入/生成计数隔离已独立实现。517 项测试、16 subtests 与两组完整一小时窗口验收通过；两个主点均无 generated reload，保留功能证据与性能结果的范围区别，见 [恢复报告](agentx-context-recovery-report.md)。
 - [x] **缓存容量与前缀命中任务 7** 用源码推导的分配、释放、命中和容量边界用例验证 TokenSim 缓存管理器；不将运行真实 vLLM 或下载历史镜像设为前提。
 - [x] **缓存容量与前缀命中任务 8** 分离逻辑 block、物理 page 和 slot；SimpleCPU/Mooncake 异步在途需求、引用、驱逐、抢占、取消和 DMA pin 生命周期均有完整窗口及专项验证。
 - [x] **缓存容量与前缀命中任务 9** 输出每 worker 的硬件预算、权重／激活／运行时等扣除项、分组布局、物理块数和日志等效值。核对 P7 的历史容量重建，但不硬编码历史分组、块数或负内存增量。
@@ -906,7 +907,7 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
   - long_prefill_token_threshold；
   - defer（有 decode 时才推迟）；
   - capacity_bound（放行步结束时仍有 waiting，则下一轮不节流）。
-- [ ] **请求调度任务 3（末步及 decode KV 已修复；resumed context 的 prompt-only hit cap 与 cached-prefill padding/metadata 仍待修正）** max_num_seqs（49/96）、token 预算（8192/16384）和 MTP decode 的 1+K query/lookahead 预算均由矩阵与 scheduler 配置驱动。
+- [ ] **请求调度任务 3（末步/decode KV 与 resumed-context cache identity/hit cap 已修复；cached-prefill padding/metadata 和 model-length edge 仍待修正）** max_num_seqs（49/96）、token 预算（8192/16384）和 MTP decode 的 1+K query/lookahead 预算均由矩阵与 scheduler 配置驱动。
 - [x] **请求调度任务 4** 抢占策略对齐 vLLM：当前 `_reserve_decode_slot` 用 `queue.pop(-1)`，需要对照 vLLM 的抢占顺序。
 - [x] **请求调度任务 4.1** 原生混合缓存按默认启用的完整输入检查对齐 `scheduler_reserve_full_isl`、`full_sequence_must_fit` 与 `_inflight_prefill_reserved_blocks`：接纳前检查完整输入，按 chunk 分配；异步导入只使用扣除已有 prefill 承诺及额外 decode 块后的空闲页。虚拟窗口表包含跳过/null 前缀的位置，取消、抢占和 decode 释放承诺；GPU/CPU 共用容量状态。391 项测试及两个完整主点验证通过，剩余性能问题未误标为解决。
 - [x] **请求调度任务 5** 已增加 scheduler 边界、MTP query/lookahead、完整输入准入、异步加载和取消释放回归测试，直接驱动 TokenSim scheduler，不运行真实 vLLM。

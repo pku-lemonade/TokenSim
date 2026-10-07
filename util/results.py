@@ -524,6 +524,8 @@ def get_agentx_metrics(
             ),
             reloaded_gpu_tokens=sum(r.reloaded_gpu_tokens for r in requests),
             reloaded_cpu_tokens=sum(r.reloaded_cpu_tokens for r in requests),
+            reloaded_generated_gpu_tokens=sum(r.reloaded_generated_gpu_tokens for r in requests),
+            reloaded_generated_cpu_tokens=sum(r.reloaded_generated_cpu_tokens for r in requests),
             recomputed_tokens=sum(r.recomputed_tokens_total for r in requests),
             latest_gpu_hit_tokens=sum(
                 r.cached_prefill_tokens - r.external_cached_prefill_tokens

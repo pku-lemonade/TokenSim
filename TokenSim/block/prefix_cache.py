@@ -13,6 +13,22 @@ class PrefixCacheKey:
     extra_hash: str
 
 
+@dataclass(frozen=True)
+class RequestLocalPrefixKey:
+    """Unknown token content can only recover the same request's KV state.
+
+    Request IDs are unique within an engine/replay, and native stores belong
+    to that engine. A separate key type prevents trace hashes from granting
+    cross-request reuse of synthetic generated tokens or a partial prompt.
+    """
+
+    request_id: int
+    block_tokens: int
+    block_index: int
+    prompt_parent: PrefixCacheKey | None
+    extra_hash: str
+
+
 def make_extra_hash(
     model: str,
     cache_salt: str | None = None,

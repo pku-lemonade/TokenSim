@@ -195,7 +195,7 @@ class NativeMooncakeStoreConnector(SimpleCPUOffloadConnector):
         boundary, hits = super().probe(req, local_plan)
         self.mooncake_stats.get_count += 1
         self.mooncake_stats.cache_query_tokens += max(
-            0, req.prefill_len - local_plan.hit_tokens
+            0, req.context_len - local_plan.hit_tokens
         )
         self.mooncake_stats.local_gpu_hit_tokens += local_plan.hit_tokens
         if hits:

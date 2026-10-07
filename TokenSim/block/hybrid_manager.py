@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 from TokenSim.block.block import Device, PhysicalTokenBlock
 from TokenSim.block.block_table import BlockTable
-from TokenSim.block.prefix_cache import build_prefix_keys
+from TokenSim.block.prefix_cache import build_prefix_keys, make_extra_hash, RequestLocalPrefixKey
 from TokenSim.config.kv_layout import HybridKVLayout, cdiv
 from TokenSim.errors import OutOfBlocksError, SimulationStateError
 
@@ -41,7 +41,7 @@ class HybridReusePlan:
 
     @property
     def reuse_miss_blocks(self):
-        return self.full_input_blocks - len(self.hit_blocks) if self.has_hash_ids else 0
+        return max(0, self.full_input_blocks - len(self.hit_blocks)) if self.has_hash_ids else 0
 
 
 class HybridKVBlockManager:
@@ -98,7 +98,21 @@ class HybridKVBlockManager:
                     req.reuse_group,
                 )
             )
-        return self.keys[req.id]
+        return self._extend_context_keys(req, self.keys, self.block_size)
+
+    def _extend_context_keys(self, req, cache, block_tokens):
+        keys = cache[req.id]
+        blocks = req.context_len // block_tokens
+        if len(keys) < blocks:
+            # Known prompt hashes remain shareable. Everything beyond that
+            # proof uses a request-private identity, including a mixed block
+            # containing the prompt's partial tail and generated outputs.
+            parent = next((key for key in reversed(keys) if not isinstance(key, RequestLocalPrefixKey)), None)
+            extra = make_extra_hash(self.model, req.cache_salt, req.reuse_group)
+            keys += tuple(RequestLocalPrefixKey(req.id, block_tokens, index, parent, extra)
+                          for index in range(len(keys), blocks))
+            cache[req.id] = keys
+        return keys
 
     def _slot_key(self, group, index, keys, req=None):
         if (
@@ -116,7 +130,7 @@ class HybridKVBlockManager:
                         req.reuse_group,
                     )
                 )
-            fine = self.fine_keys[req.id]
+            fine = self._extend_context_keys(req, self.fine_keys, trace_size)
             containing = ((index + 1) * group.block_tokens - 1) // trace_size
             if containing >= len(fine):
                 return None
@@ -143,7 +157,7 @@ class HybridKVBlockManager:
 
     def plan_reuse(self, req):
         keys = self._input_keys(req)
-        maximum = min(len(keys), max(0, (req.prefill_len - 1) // self.block_size))
+        maximum = min(len(keys), max(0, (req.context_len - 1) // self.block_size))
         full = self.layout.full_group
         contiguous = 0
         while (
@@ -194,7 +208,7 @@ class HybridKVBlockManager:
             req.num_logical_token_blocks,
             bool(req.hash_ids),
             matched,
-            req.prefill_len - matched,
+            max(0, req.prefill_len - matched),
             full_hits,
             group_hits,
         )
@@ -225,7 +239,7 @@ class HybridKVBlockManager:
         """
         keys = self._input_keys(req)
         start = local_tokens // self.block_size
-        maximum = min(len(keys), max(0, (req.prefill_len - 1) // self.block_size))
+        maximum = min(len(keys), max(0, (req.context_len - 1) // self.block_size))
         full = self.layout.full_group
         contiguous = start
         while (
@@ -516,8 +530,9 @@ class HybridKVBlockManager:
             for index, block in pairs:
                 self._acquire(block)
                 self.tables[req.id][gid][index] = block
-        req.cached_prefill_blocks = plan.hit_tokens // self.block_size
-        req.cached_prefill_tokens = plan.hit_tokens
+        req.cached_prefill_tokens = min(req.prefill_len, plan.hit_tokens)
+        req.cached_prefill_blocks = req.cached_prefill_tokens // self.block_size
+        req.gpu_cached_context_tokens = plan.hit_tokens
         req.effective_prefill_tokens = plan.effective_prefill_tokens
         req.reuse_hit_blocks = req.cached_prefill_blocks
         req.reuse_miss_blocks = plan.reuse_miss_blocks

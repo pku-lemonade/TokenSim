@@ -43,6 +43,57 @@ def engine(env, *, lockstep=True, extra=None, connector_name="SimpleCPUOffloadCo
 
 
 class NativeSimpleCPUTest(unittest.TestCase):
+    def test_generated_checkpoint_cpu_resume_in_both_native_backends(self):
+        from tests.test_hybrid_kv_cache import NativeKVPoolTest
+        for name, extra in (
+            ("SimpleCPUOffloadConnector", {"cpu_bytes_to_use_per_rank": 4000000000}),
+            ("MooncakeStoreConnector", {"mode": "standalone-store", "protocol": "rdma",
+             "global_segment_size": 4000000000, "local_buffer_size": 1000000,
+             "load_async": True, "transfer_overlap": True, "bandwidth_gbps": 50}),
+        ):
+            with self.subTest(connector=name):
+                env = simpy.Environment()
+                e = engine(env, extra=extra, connector_name=name)
+                w = e.workers[0]
+                manager = w.scheduler.block_manager
+                r = request(75, 32256)
+                r.decode_len = 2048
+                r.record_context_admission(0, 0)
+                manager.allocate(r)
+                helper = NativeKVPoolTest()
+                helper.compute(manager, r, 32256)
+                r._append_tokens(1025)
+                r.generation_idx = 1025
+                helper.compute(manager, r, 1024)
+                manager.release_request_blocks(r)
+                r.prepare_recompute()
+                # Manual cache production bypasses the worker's post-forward
+                # save hook; run that hook before expecting CPU-ready pages.
+                self.assertTrue(w.connector.pending_writes)
+                w.connector.wait_for_save()
+                env.run(until=0.1)
+                self.assertEqual(w.connector.write_jobs, 0)
+                for block in manager.blocks[1:]:
+                    if block.block_hash is not None:
+                        manager._evict(block)
+                self.assertEqual(manager.plan_reuse(r).hit_tokens, 0)
+                boundary, _ = w.connector.probe(r, manager.plan_reuse(r))
+                self.assertEqual(boundary, 32768)
+                r.dp_rank = 0
+                r.arrive(env)
+                e.add_requests_burst([r])
+                env.run(until=r.completion_event)
+                env.run(until=env.now + 0.1)
+                e.raise_if_failed()
+                self.assertGreaterEqual(r.reloaded_generated_cpu_tokens, 512)
+                self.assertEqual(r.first_prefill_source.computed_tokens, 32256)
+                self.assertLessEqual(r.cached_prefill_tokens, r.prefill_len)
+                self.assertEqual(r.generation_idx, r.decode_len)
+                self.assertFalse(manager.transfer_references)
+                self.assertEqual(manager.get_num_allocated_blocks(), 1)
+                self.assertTrue(manager.validate_conservation())
+                self.assertTrue(w.connector.store.validate())
+
     def test_cache_metric_decomposition_does_not_fill_missing_legacy_cpu_observations(
         self,
     ):

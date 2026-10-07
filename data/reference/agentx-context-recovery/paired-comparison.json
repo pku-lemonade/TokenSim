@@ -1,0 +1,413 @@
+{
+  "scope": "paired complete context-recovery windows; counts and source identity verified, accuracy unaccepted",
+  "baseline_commit": "72a0e14",
+  "formal_model_accuracy_accepted": false,
+  "hardware": {
+    "b200": {
+      "root": "results/agentx-dsv4-full/native-context-recovery/20261008-private-context/seed0/b200-c196-dep8-simplecpu/b200",
+      "run_status": {
+        "exit_code": 0,
+        "started_unix_s": 1791398894.601291,
+        "elapsed_wall_s": 1603.9152710437775
+      },
+      "diagnostic_accuracy": {
+        "input_tps": {
+          "delta_percent": -50.03841750892941,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        },
+        "output_tps": {
+          "delta_percent": -50.514995224374694,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        },
+        "ttft_p90": {
+          "delta_percent": 298.6755110305545,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        },
+        "itl_p90": {
+          "delta_percent": 155.03207930864394,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        },
+        "e2e_mean": {
+          "delta_percent": 125.33446445205998,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        },
+        "gpu_hit_rate": {
+          "delta_percent": -54.28105912007821,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        },
+        "cpu_hit_rate": {
+          "delta_percent": 168.7232208664032,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        }
+      },
+      "cache_percentage_point_differences": {
+        "gpu": -37.03216696349095,
+        "cpu": 40.031271382762824
+      },
+      "context_recovery": {
+        "readmission_count": 74,
+        "reloaded_gpu_tokens": 2109952,
+        "reloaded_cpu_tokens": 10354688,
+        "reloaded_generated_gpu_tokens": 0,
+        "reloaded_generated_cpu_tokens": 0,
+        "recomputed_tokens": 169443
+      },
+      "component_comparison": {
+        "gemm": {
+          "before_seconds": 569.8929808647373,
+          "after_seconds": 554.5120196734656,
+          "before_us_per_step": 3695.612295501772,
+          "after_us_per_step": 3694.3823930915255
+        },
+        "attention": {
+          "before_seconds": 5561.310364611506,
+          "after_seconds": 5551.360779047206,
+          "before_us_per_step": 36063.695558022315,
+          "after_us_per_step": 36985.40120354444
+        },
+        "moe": {
+          "before_seconds": 8818.773383829805,
+          "after_seconds": 8709.345953143094,
+          "before_us_per_step": 57187.521943283136,
+          "after_us_per_step": 58025.170245330286
+        },
+        "elementwise": {
+          "before_seconds": 695.4235288101111,
+          "after_seconds": 684.5846851476837,
+          "before_us_per_step": 4509.646249287398,
+          "after_us_per_step": 4560.9788745048745
+        },
+        "lm_head": {
+          "before_seconds": 188.99379335364358,
+          "after_seconds": 184.01851642806022,
+          "before_us_per_step": 1225.5770994607517,
+          "after_us_per_step": 1226.0054660221474
+        },
+        "comm": {
+          "before_seconds": 0.0,
+          "after_seconds": 0.0,
+          "before_us_per_step": 0.0,
+          "after_us_per_step": 0.0
+        },
+        "overhead": {
+          "before_seconds": 0.0,
+          "after_seconds": 0.0,
+          "before_us_per_step": 0.0,
+          "after_us_per_step": 0.0
+        }
+      },
+      "storage_comparison": {
+        "before": {
+          "external_resident_pages": 707323,
+          "external_evictions": 0,
+          "per_rank": [
+            {
+              "resident_pages": 88030,
+              "used_bytes": 108171264000,
+              "evictions": 0
+            },
+            {
+              "resident_pages": 87941,
+              "used_bytes": 108061900800,
+              "evictions": 0
+            },
+            {
+              "resident_pages": 78144,
+              "used_bytes": 96023347200,
+              "evictions": 0
+            },
+            {
+              "resident_pages": 100142,
+              "used_bytes": 123054489600,
+              "evictions": 0
+            },
+            {
+              "resident_pages": 86824,
+              "used_bytes": 106689331200,
+              "evictions": 0
+            },
+            {
+              "resident_pages": 85554,
+              "used_bytes": 105128755200,
+              "evictions": 0
+            },
+            {
+              "resident_pages": 93016,
+              "used_bytes": 114298060800,
+              "evictions": 0
+            },
+            {
+              "resident_pages": 87672,
+              "used_bytes": 107731353600,
+              "evictions": 0
+            }
+          ]
+        },
+        "after": {
+          "external_resident_pages": 735457,
+          "external_evictions": 0,
+          "per_rank": [
+            {
+              "resident_pages": 92609,
+              "used_bytes": 113797939200,
+              "evictions": 0
+            },
+            {
+              "resident_pages": 91336,
+              "used_bytes": 112233676800,
+              "evictions": 0
+            },
+            {
+              "resident_pages": 78847,
+              "used_bytes": 96887193600,
+              "evictions": 0
+            },
+            {
+              "resident_pages": 100994,
+              "used_bytes": 124101427200,
+              "evictions": 0
+            },
+            {
+              "resident_pages": 90932,
+              "used_bytes": 111737241600,
+              "evictions": 0
+            },
+            {
+              "resident_pages": 94280,
+              "used_bytes": 115851264000,
+              "evictions": 0
+            },
+            {
+              "resident_pages": 93222,
+              "used_bytes": 114551193600,
+              "evictions": 0
+            },
+            {
+              "resident_pages": 93237,
+              "used_bytes": 114569625600,
+              "evictions": 0
+            }
+          ]
+        }
+      },
+      "observed_generated_prefix_recovery": false
+    },
+    "b300": {
+      "root": "results/agentx-dsv4-full/native-context-recovery/20261008-private-context/seed0/b300-c384-dep8-simplecpu/b300",
+      "run_status": {
+        "exit_code": 0,
+        "started_unix_s": 1791398894.601278,
+        "elapsed_wall_s": 3226.483517885208
+      },
+      "diagnostic_accuracy": {
+        "input_tps": {
+          "delta_percent": -35.96232201698929,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        },
+        "output_tps": {
+          "delta_percent": -40.17344566053007,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        },
+        "ttft_p90": {
+          "delta_percent": 53.21467831334654,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        },
+        "itl_p90": {
+          "delta_percent": 108.81030946158883,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        },
+        "e2e_mean": {
+          "delta_percent": 68.41629542465608,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        },
+        "gpu_hit_rate": {
+          "delta_percent": 5.441603525023853,
+          "acceptable": true,
+          "preferred": true,
+          "status": "preferred"
+        },
+        "cpu_hit_rate": {
+          "delta_percent": -52.41546105424453,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        }
+      },
+      "cache_percentage_point_differences": {
+        "gpu": 4.89200156899644,
+        "cpu": -0.8590894066790679
+      },
+      "context_recovery": {
+        "readmission_count": 0,
+        "reloaded_gpu_tokens": 0,
+        "reloaded_cpu_tokens": 0,
+        "reloaded_generated_gpu_tokens": 0,
+        "reloaded_generated_cpu_tokens": 0,
+        "recomputed_tokens": 0
+      },
+      "component_comparison": {
+        "gemm": {
+          "before_seconds": 631.184154538322,
+          "after_seconds": 629.667309750956,
+          "before_us_per_step": 4083.748411868025,
+          "after_us_per_step": 4105.59771106721
+        },
+        "attention": {
+          "before_seconds": 10028.173351535497,
+          "after_seconds": 9960.590016348051,
+          "before_us_per_step": 64882.07396179799,
+          "after_us_per_step": 64945.686299280496
+        },
+        "moe": {
+          "before_seconds": 8114.889830484324,
+          "after_seconds": 8097.875754786065,
+          "before_us_per_step": 52503.16919309216,
+          "after_us_per_step": 52800.29572522342
+        },
+        "elementwise": {
+          "before_seconds": 1000.7723211463774,
+          "after_seconds": 993.0032102556189,
+          "before_us_per_step": 6474.976197893229,
+          "after_us_per_step": 6474.6440604012505
+        },
+        "lm_head": {
+          "before_seconds": 197.07908517686576,
+          "after_seconds": 195.6988568106846,
+          "before_us_per_step": 1275.0976007819988,
+          "after_us_per_step": 1276.0084033871772
+        },
+        "comm": {
+          "before_seconds": 0.0,
+          "after_seconds": 0.0,
+          "before_us_per_step": 0.0,
+          "after_us_per_step": 0.0
+        },
+        "overhead": {
+          "before_seconds": 0.0,
+          "after_seconds": 0.0,
+          "before_us_per_step": 0.0,
+          "after_us_per_step": 0.0
+        }
+      },
+      "storage_comparison": {
+        "before": {
+          "external_resident_pages": 1436981,
+          "external_evictions": 0,
+          "per_rank": [
+            {
+              "resident_pages": 174174,
+              "used_bytes": 214025011200,
+              "evictions": 0
+            },
+            {
+              "resident_pages": 165399,
+              "used_bytes": 203242291200,
+              "evictions": 0
+            },
+            {
+              "resident_pages": 173589,
+              "used_bytes": 213306163200,
+              "evictions": 0
+            },
+            {
+              "resident_pages": 198763,
+              "used_bytes": 244239974400,
+              "evictions": 0
+            },
+            {
+              "resident_pages": 177612,
+              "used_bytes": 218249625600,
+              "evictions": 0
+            },
+            {
+              "resident_pages": 184141,
+              "used_bytes": 226272460800,
+              "evictions": 0
+            },
+            {
+              "resident_pages": 177831,
+              "used_bytes": 218518732800,
+              "evictions": 0
+            },
+            {
+              "resident_pages": 185472,
+              "used_bytes": 227907993600,
+              "evictions": 0
+            }
+          ]
+        },
+        "after": {
+          "external_resident_pages": 1494385,
+          "external_evictions": 0,
+          "per_rank": [
+            {
+              "resident_pages": 176854,
+              "used_bytes": 217318195200,
+              "evictions": 0
+            },
+            {
+              "resident_pages": 168932,
+              "used_bytes": 207583641600,
+              "evictions": 0
+            },
+            {
+              "resident_pages": 185768,
+              "used_bytes": 228271718400,
+              "evictions": 0
+            },
+            {
+              "resident_pages": 208935,
+              "used_bytes": 256739328000,
+              "evictions": 0
+            },
+            {
+              "resident_pages": 184810,
+              "used_bytes": 227094528000,
+              "evictions": 0
+            },
+            {
+              "resident_pages": 193693,
+              "used_bytes": 238009958400,
+              "evictions": 0
+            },
+            {
+              "resident_pages": 181086,
+              "used_bytes": 222518476800,
+              "evictions": 0
+            },
+            {
+              "resident_pages": 194307,
+              "used_bytes": 238764441600,
+              "evictions": 0
+            }
+          ]
+        }
+      },
+      "observed_generated_prefix_recovery": false
+    }
+  }
+}
