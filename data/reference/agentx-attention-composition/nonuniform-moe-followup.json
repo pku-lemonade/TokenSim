@@ -1,0 +1,919 @@
+{
+  "scope": "read-only nonuniform MegaMoE geometry follow-up; no runtime timing edits",
+  "deepgemm_commit": "e1f418c2a4f20818221f6b0e578b4c2f634d4c3f",
+  "source_checks": [
+    {
+      "path": "/tmp/tokensim-deepgemm-nonuniform-audit/heuristics.hpp",
+      "source": "https://raw.githubusercontent.com/vllm-project/DeepGEMM/e1f418c2a4f20818221f6b0e578b4c2f634d4c3f/csrc/jit_kernels/heuristics/mega_moe.hpp",
+      "sha256": "14377e043ca46900662cbc9ece5c14f78bd2fa89624bf39a69845ecca799bb82"
+    },
+    {
+      "path": "/tmp/tokensim-deepgemm-nonuniform-audit/fp8-fp4-api.hpp",
+      "source": "https://raw.githubusercontent.com/vllm-project/DeepGEMM/e1f418c2a4f20818221f6b0e578b4c2f634d4c3f/csrc/jit_kernels/impls/sm100_fp8_fp4_mega_moe.hpp",
+      "sha256": "ca1a14f300c87eadb5f88c5b220d8f6f88c9336b1410911b4325168f9b0d10cb"
+    },
+    {
+      "path": "/tmp/tokensim-deepgemm-nonuniform-audit/fp8-fp4-kernel.cuh",
+      "source": "https://raw.githubusercontent.com/vllm-project/DeepGEMM/e1f418c2a4f20818221f6b0e578b4c2f634d4c3f/deep_gemm/include/deep_gemm/impls/sm100_fp8_fp4_mega_moe.cuh",
+      "sha256": "2e725484419819a1e87bfe76ed5c90799b980701fb8f9f2816910a4d2082ca9b"
+    },
+    {
+      "path": "/tmp/aiconfigurator/collector/helper.py",
+      "sha256": "6c3d32d6cb1003ad7869293cda4c6379b4944c497a640c2cc8a634492687b84d"
+    },
+    {
+      "path": "/tmp/aiconfigurator/collector/sglang/collect_dsv4_megamoe.py",
+      "sha256": "77fee6d6cd872d46db54179655f3f2559c55cc04b2fb56b715e44e70aa77cfa9"
+    },
+    {
+      "path": "/tmp/aiconfigurator/collector/sglang/dsv4_megamoe_workload.py",
+      "sha256": "0ce3fd89c6b14035916eeea5bc057252811d51293ad621eaa72b7c45779b689c"
+    },
+    {
+      "path": "/home/zhuohang/Serving/vllm-note/vllm/models/deepseek_v4/nvidia/model.py",
+      "sha256": "5d5a74e339cd110def9b5e37a56fa602a42cdece98811013fb69700a0274a224"
+    }
+  ],
+  "facts": [
+    "collector builds global routing from sum(local rows), then random-shuffles intact token rows across source ranks",
+    "pinned block choice uses local input rows to estimate tokens per expert as local_rows*EP*topk/num_experts plus sqrt margin",
+    "dispatch source metadata scans local token count; expert scheduler reads globally accumulated actual recv counts",
+    "expert tasks use ceil(actual expert received rows/BLOCK_M) per destination rank",
+    "combine reduction scans local output token count; collectives preserve slow source/output cost"
+  ],
+  "cases": [
+    {
+      "local_rows": [
+        4096,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64
+      ],
+      "global_rows": 4544,
+      "uniform_mean_rows": 568.0,
+      "uniform_max_global_rows": 32768,
+      "actual_local_block_geometry": [
+        {
+          "rank": 0,
+          "source_rows": 4096,
+          "block_m": 192,
+          "received_expert_selections": 4235,
+          "m_tasks": 55,
+          "tiled_rows": 10560
+        },
+        {
+          "rank": 1,
+          "source_rows": 64,
+          "block_m": 16,
+          "received_expert_selections": 2750,
+          "m_tasks": 193,
+          "tiled_rows": 3088
+        },
+        {
+          "rank": 2,
+          "source_rows": 64,
+          "block_m": 16,
+          "received_expert_selections": 3626,
+          "m_tasks": 254,
+          "tiled_rows": 4064
+        },
+        {
+          "rank": 3,
+          "source_rows": 64,
+          "block_m": 16,
+          "received_expert_selections": 3645,
+          "m_tasks": 250,
+          "tiled_rows": 4000
+        },
+        {
+          "rank": 4,
+          "source_rows": 64,
+          "block_m": 16,
+          "received_expert_selections": 3192,
+          "m_tasks": 221,
+          "tiled_rows": 3536
+        },
+        {
+          "rank": 5,
+          "source_rows": 64,
+          "block_m": 16,
+          "received_expert_selections": 2687,
+          "m_tasks": 193,
+          "tiled_rows": 3088
+        },
+        {
+          "rank": 6,
+          "source_rows": 64,
+          "block_m": 16,
+          "received_expert_selections": 4068,
+          "m_tasks": 279,
+          "tiled_rows": 4464
+        },
+        {
+          "rank": 7,
+          "source_rows": 64,
+          "block_m": 16,
+          "received_expert_selections": 3061,
+          "m_tasks": 216,
+          "tiled_rows": 3456
+        }
+      ],
+      "uniform_mean_block_geometry": [
+        {
+          "rank": 0,
+          "source_rows": 568.0,
+          "block_m": 128,
+          "received_expert_selections": 4235,
+          "m_tasks": 64,
+          "tiled_rows": 8192
+        },
+        {
+          "rank": 1,
+          "source_rows": 568.0,
+          "block_m": 128,
+          "received_expert_selections": 2750,
+          "m_tasks": 48,
+          "tiled_rows": 6144
+        },
+        {
+          "rank": 2,
+          "source_rows": 568.0,
+          "block_m": 128,
+          "received_expert_selections": 3626,
+          "m_tasks": 59,
+          "tiled_rows": 7552
+        },
+        {
+          "rank": 3,
+          "source_rows": 568.0,
+          "block_m": 128,
+          "received_expert_selections": 3645,
+          "m_tasks": 60,
+          "tiled_rows": 7680
+        },
+        {
+          "rank": 4,
+          "source_rows": 568.0,
+          "block_m": 128,
+          "received_expert_selections": 3192,
+          "m_tasks": 56,
+          "tiled_rows": 7168
+        },
+        {
+          "rank": 5,
+          "source_rows": 568.0,
+          "block_m": 128,
+          "received_expert_selections": 2687,
+          "m_tasks": 53,
+          "tiled_rows": 6784
+        },
+        {
+          "rank": 6,
+          "source_rows": 568.0,
+          "block_m": 128,
+          "received_expert_selections": 4068,
+          "m_tasks": 63,
+          "tiled_rows": 8064
+        },
+        {
+          "rank": 7,
+          "source_rows": 568.0,
+          "block_m": 128,
+          "received_expert_selections": 3061,
+          "m_tasks": 59,
+          "tiled_rows": 7552
+        }
+      ],
+      "routing_fixture_seed": 2025,
+      "routing_fixture": "current AIC power_law_1.01 generator; exact historical route seed is unrecorded",
+      "conserved_expert_selections": 27264,
+      "uniform_max_block_geometry": [
+        {
+          "rank": 0,
+          "source_rows": 4096,
+          "block_m": 192,
+          "received_expert_selections": 30660,
+          "m_tasks": 191,
+          "tiled_rows": 36672
+        },
+        {
+          "rank": 1,
+          "source_rows": 4096,
+          "block_m": 192,
+          "received_expert_selections": 19208,
+          "m_tasks": 126,
+          "tiled_rows": 24192
+        },
+        {
+          "rank": 2,
+          "source_rows": 4096,
+          "block_m": 192,
+          "received_expert_selections": 27506,
+          "m_tasks": 175,
+          "tiled_rows": 33600
+        },
+        {
+          "rank": 3,
+          "source_rows": 4096,
+          "block_m": 192,
+          "received_expert_selections": 26314,
+          "m_tasks": 171,
+          "tiled_rows": 32832
+        },
+        {
+          "rank": 4,
+          "source_rows": 4096,
+          "block_m": 192,
+          "received_expert_selections": 22019,
+          "m_tasks": 144,
+          "tiled_rows": 27648
+        },
+        {
+          "rank": 5,
+          "source_rows": 4096,
+          "block_m": 192,
+          "received_expert_selections": 19772,
+          "m_tasks": 137,
+          "tiled_rows": 26304
+        },
+        {
+          "rank": 6,
+          "source_rows": 4096,
+          "block_m": 192,
+          "received_expert_selections": 29582,
+          "m_tasks": 183,
+          "tiled_rows": 35136
+        },
+        {
+          "rank": 7,
+          "source_rows": 4096,
+          "block_m": 192,
+          "received_expert_selections": 21547,
+          "m_tasks": 145,
+          "tiled_rows": 27840
+        }
+      ]
+    },
+    {
+      "local_rows": [
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
+        4096
+      ],
+      "global_rows": 4544,
+      "uniform_mean_rows": 568.0,
+      "uniform_max_global_rows": 32768,
+      "actual_local_block_geometry": [
+        {
+          "rank": 0,
+          "source_rows": 64,
+          "block_m": 16,
+          "received_expert_selections": 4235,
+          "m_tasks": 289,
+          "tiled_rows": 4624
+        },
+        {
+          "rank": 1,
+          "source_rows": 64,
+          "block_m": 16,
+          "received_expert_selections": 2750,
+          "m_tasks": 193,
+          "tiled_rows": 3088
+        },
+        {
+          "rank": 2,
+          "source_rows": 64,
+          "block_m": 16,
+          "received_expert_selections": 3626,
+          "m_tasks": 254,
+          "tiled_rows": 4064
+        },
+        {
+          "rank": 3,
+          "source_rows": 64,
+          "block_m": 16,
+          "received_expert_selections": 3645,
+          "m_tasks": 250,
+          "tiled_rows": 4000
+        },
+        {
+          "rank": 4,
+          "source_rows": 64,
+          "block_m": 16,
+          "received_expert_selections": 3192,
+          "m_tasks": 221,
+          "tiled_rows": 3536
+        },
+        {
+          "rank": 5,
+          "source_rows": 64,
+          "block_m": 16,
+          "received_expert_selections": 2687,
+          "m_tasks": 193,
+          "tiled_rows": 3088
+        },
+        {
+          "rank": 6,
+          "source_rows": 64,
+          "block_m": 16,
+          "received_expert_selections": 4068,
+          "m_tasks": 279,
+          "tiled_rows": 4464
+        },
+        {
+          "rank": 7,
+          "source_rows": 4096,
+          "block_m": 192,
+          "received_expert_selections": 3061,
+          "m_tasks": 53,
+          "tiled_rows": 10176
+        }
+      ],
+      "uniform_mean_block_geometry": [
+        {
+          "rank": 0,
+          "source_rows": 568.0,
+          "block_m": 128,
+          "received_expert_selections": 4235,
+          "m_tasks": 64,
+          "tiled_rows": 8192
+        },
+        {
+          "rank": 1,
+          "source_rows": 568.0,
+          "block_m": 128,
+          "received_expert_selections": 2750,
+          "m_tasks": 48,
+          "tiled_rows": 6144
+        },
+        {
+          "rank": 2,
+          "source_rows": 568.0,
+          "block_m": 128,
+          "received_expert_selections": 3626,
+          "m_tasks": 59,
+          "tiled_rows": 7552
+        },
+        {
+          "rank": 3,
+          "source_rows": 568.0,
+          "block_m": 128,
+          "received_expert_selections": 3645,
+          "m_tasks": 60,
+          "tiled_rows": 7680
+        },
+        {
+          "rank": 4,
+          "source_rows": 568.0,
+          "block_m": 128,
+          "received_expert_selections": 3192,
+          "m_tasks": 56,
+          "tiled_rows": 7168
+        },
+        {
+          "rank": 5,
+          "source_rows": 568.0,
+          "block_m": 128,
+          "received_expert_selections": 2687,
+          "m_tasks": 53,
+          "tiled_rows": 6784
+        },
+        {
+          "rank": 6,
+          "source_rows": 568.0,
+          "block_m": 128,
+          "received_expert_selections": 4068,
+          "m_tasks": 63,
+          "tiled_rows": 8064
+        },
+        {
+          "rank": 7,
+          "source_rows": 568.0,
+          "block_m": 128,
+          "received_expert_selections": 3061,
+          "m_tasks": 59,
+          "tiled_rows": 7552
+        }
+      ],
+      "routing_fixture_seed": 2025,
+      "routing_fixture": "current AIC power_law_1.01 generator; exact historical route seed is unrecorded",
+      "conserved_expert_selections": 27264,
+      "uniform_max_block_geometry": [
+        {
+          "rank": 0,
+          "source_rows": 4096,
+          "block_m": 192,
+          "received_expert_selections": 30660,
+          "m_tasks": 191,
+          "tiled_rows": 36672
+        },
+        {
+          "rank": 1,
+          "source_rows": 4096,
+          "block_m": 192,
+          "received_expert_selections": 19208,
+          "m_tasks": 126,
+          "tiled_rows": 24192
+        },
+        {
+          "rank": 2,
+          "source_rows": 4096,
+          "block_m": 192,
+          "received_expert_selections": 27506,
+          "m_tasks": 175,
+          "tiled_rows": 33600
+        },
+        {
+          "rank": 3,
+          "source_rows": 4096,
+          "block_m": 192,
+          "received_expert_selections": 26314,
+          "m_tasks": 171,
+          "tiled_rows": 32832
+        },
+        {
+          "rank": 4,
+          "source_rows": 4096,
+          "block_m": 192,
+          "received_expert_selections": 22019,
+          "m_tasks": 144,
+          "tiled_rows": 27648
+        },
+        {
+          "rank": 5,
+          "source_rows": 4096,
+          "block_m": 192,
+          "received_expert_selections": 19772,
+          "m_tasks": 137,
+          "tiled_rows": 26304
+        },
+        {
+          "rank": 6,
+          "source_rows": 4096,
+          "block_m": 192,
+          "received_expert_selections": 29582,
+          "m_tasks": 183,
+          "tiled_rows": 35136
+        },
+        {
+          "rank": 7,
+          "source_rows": 4096,
+          "block_m": 192,
+          "received_expert_selections": 21547,
+          "m_tasks": 145,
+          "tiled_rows": 27840
+        }
+      ]
+    },
+    {
+      "local_rows": [
+        1024,
+        1024,
+        1024,
+        1024,
+        16,
+        16,
+        16,
+        16
+      ],
+      "global_rows": 4160,
+      "uniform_mean_rows": 520.0,
+      "uniform_max_global_rows": 8192,
+      "actual_local_block_geometry": [
+        {
+          "rank": 0,
+          "source_rows": 1024,
+          "block_m": 192,
+          "received_expert_selections": 3875,
+          "m_tasks": 53,
+          "tiled_rows": 10176
+        },
+        {
+          "rank": 1,
+          "source_rows": 1024,
+          "block_m": 192,
+          "received_expert_selections": 2523,
+          "m_tasks": 45,
+          "tiled_rows": 8640
+        },
+        {
+          "rank": 2,
+          "source_rows": 1024,
+          "block_m": 192,
+          "received_expert_selections": 3314,
+          "m_tasks": 53,
+          "tiled_rows": 10176
+        },
+        {
+          "rank": 3,
+          "source_rows": 1024,
+          "block_m": 192,
+          "received_expert_selections": 3336,
+          "m_tasks": 52,
+          "tiled_rows": 9984
+        },
+        {
+          "rank": 4,
+          "source_rows": 16,
+          "block_m": 16,
+          "received_expert_selections": 2932,
+          "m_tasks": 210,
+          "tiled_rows": 3360
+        },
+        {
+          "rank": 5,
+          "source_rows": 16,
+          "block_m": 16,
+          "received_expert_selections": 2457,
+          "m_tasks": 180,
+          "tiled_rows": 2880
+        },
+        {
+          "rank": 6,
+          "source_rows": 16,
+          "block_m": 16,
+          "received_expert_selections": 3722,
+          "m_tasks": 262,
+          "tiled_rows": 4192
+        },
+        {
+          "rank": 7,
+          "source_rows": 16,
+          "block_m": 16,
+          "received_expert_selections": 2801,
+          "m_tasks": 204,
+          "tiled_rows": 3264
+        }
+      ],
+      "uniform_mean_block_geometry": [
+        {
+          "rank": 0,
+          "source_rows": 520.0,
+          "block_m": 128,
+          "received_expert_selections": 3875,
+          "m_tasks": 63,
+          "tiled_rows": 8064
+        },
+        {
+          "rank": 1,
+          "source_rows": 520.0,
+          "block_m": 128,
+          "received_expert_selections": 2523,
+          "m_tasks": 49,
+          "tiled_rows": 6272
+        },
+        {
+          "rank": 2,
+          "source_rows": 520.0,
+          "block_m": 128,
+          "received_expert_selections": 3314,
+          "m_tasks": 59,
+          "tiled_rows": 7552
+        },
+        {
+          "rank": 3,
+          "source_rows": 520.0,
+          "block_m": 128,
+          "received_expert_selections": 3336,
+          "m_tasks": 59,
+          "tiled_rows": 7552
+        },
+        {
+          "rank": 4,
+          "source_rows": 520.0,
+          "block_m": 128,
+          "received_expert_selections": 2932,
+          "m_tasks": 55,
+          "tiled_rows": 7040
+        },
+        {
+          "rank": 5,
+          "source_rows": 520.0,
+          "block_m": 128,
+          "received_expert_selections": 2457,
+          "m_tasks": 53,
+          "tiled_rows": 6784
+        },
+        {
+          "rank": 6,
+          "source_rows": 520.0,
+          "block_m": 128,
+          "received_expert_selections": 3722,
+          "m_tasks": 64,
+          "tiled_rows": 8192
+        },
+        {
+          "rank": 7,
+          "source_rows": 520.0,
+          "block_m": 128,
+          "received_expert_selections": 2801,
+          "m_tasks": 59,
+          "tiled_rows": 7552
+        }
+      ],
+      "routing_fixture_seed": 2025,
+      "routing_fixture": "current AIC power_law_1.01 generator; exact historical route seed is unrecorded",
+      "conserved_expert_selections": 24960,
+      "uniform_max_block_geometry": [
+        {
+          "rank": 0,
+          "source_rows": 1024,
+          "block_m": 192,
+          "received_expert_selections": 7650,
+          "m_tasks": 71,
+          "tiled_rows": 13632
+        },
+        {
+          "rank": 1,
+          "source_rows": 1024,
+          "block_m": 192,
+          "received_expert_selections": 4908,
+          "m_tasks": 57,
+          "tiled_rows": 10944
+        },
+        {
+          "rank": 2,
+          "source_rows": 1024,
+          "block_m": 192,
+          "received_expert_selections": 6640,
+          "m_tasks": 67,
+          "tiled_rows": 12864
+        },
+        {
+          "rank": 3,
+          "source_rows": 1024,
+          "block_m": 192,
+          "received_expert_selections": 6577,
+          "m_tasks": 69,
+          "tiled_rows": 13248
+        },
+        {
+          "rank": 4,
+          "source_rows": 1024,
+          "block_m": 192,
+          "received_expert_selections": 5680,
+          "m_tasks": 63,
+          "tiled_rows": 12096
+        },
+        {
+          "rank": 5,
+          "source_rows": 1024,
+          "block_m": 192,
+          "received_expert_selections": 4868,
+          "m_tasks": 62,
+          "tiled_rows": 11904
+        },
+        {
+          "rank": 6,
+          "source_rows": 1024,
+          "block_m": 192,
+          "received_expert_selections": 7358,
+          "m_tasks": 69,
+          "tiled_rows": 13248
+        },
+        {
+          "rank": 7,
+          "source_rows": 1024,
+          "block_m": 192,
+          "received_expert_selections": 5471,
+          "m_tasks": 64,
+          "tiled_rows": 12288
+        }
+      ]
+    },
+    {
+      "local_rows": [
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64,
+        64
+      ],
+      "global_rows": 512,
+      "uniform_mean_rows": 64.0,
+      "uniform_max_global_rows": 512,
+      "actual_local_block_geometry": [
+        {
+          "rank": 0,
+          "source_rows": 64,
+          "block_m": 16,
+          "received_expert_selections": 466,
+          "m_tasks": 53,
+          "tiled_rows": 848
+        },
+        {
+          "rank": 1,
+          "source_rows": 64,
+          "block_m": 16,
+          "received_expert_selections": 320,
+          "m_tasks": 41,
+          "tiled_rows": 656
+        },
+        {
+          "rank": 2,
+          "source_rows": 64,
+          "block_m": 16,
+          "received_expert_selections": 387,
+          "m_tasks": 50,
+          "tiled_rows": 800
+        },
+        {
+          "rank": 3,
+          "source_rows": 64,
+          "block_m": 16,
+          "received_expert_selections": 408,
+          "m_tasks": 52,
+          "tiled_rows": 832
+        },
+        {
+          "rank": 4,
+          "source_rows": 64,
+          "block_m": 16,
+          "received_expert_selections": 382,
+          "m_tasks": 50,
+          "tiled_rows": 800
+        },
+        {
+          "rank": 5,
+          "source_rows": 64,
+          "block_m": 16,
+          "received_expert_selections": 303,
+          "m_tasks": 45,
+          "tiled_rows": 720
+        },
+        {
+          "rank": 6,
+          "source_rows": 64,
+          "block_m": 16,
+          "received_expert_selections": 452,
+          "m_tasks": 56,
+          "tiled_rows": 896
+        },
+        {
+          "rank": 7,
+          "source_rows": 64,
+          "block_m": 16,
+          "received_expert_selections": 354,
+          "m_tasks": 48,
+          "tiled_rows": 768
+        }
+      ],
+      "uniform_mean_block_geometry": [
+        {
+          "rank": 0,
+          "source_rows": 64.0,
+          "block_m": 16,
+          "received_expert_selections": 466,
+          "m_tasks": 53,
+          "tiled_rows": 848
+        },
+        {
+          "rank": 1,
+          "source_rows": 64.0,
+          "block_m": 16,
+          "received_expert_selections": 320,
+          "m_tasks": 41,
+          "tiled_rows": 656
+        },
+        {
+          "rank": 2,
+          "source_rows": 64.0,
+          "block_m": 16,
+          "received_expert_selections": 387,
+          "m_tasks": 50,
+          "tiled_rows": 800
+        },
+        {
+          "rank": 3,
+          "source_rows": 64.0,
+          "block_m": 16,
+          "received_expert_selections": 408,
+          "m_tasks": 52,
+          "tiled_rows": 832
+        },
+        {
+          "rank": 4,
+          "source_rows": 64.0,
+          "block_m": 16,
+          "received_expert_selections": 382,
+          "m_tasks": 50,
+          "tiled_rows": 800
+        },
+        {
+          "rank": 5,
+          "source_rows": 64.0,
+          "block_m": 16,
+          "received_expert_selections": 303,
+          "m_tasks": 45,
+          "tiled_rows": 720
+        },
+        {
+          "rank": 6,
+          "source_rows": 64.0,
+          "block_m": 16,
+          "received_expert_selections": 452,
+          "m_tasks": 56,
+          "tiled_rows": 896
+        },
+        {
+          "rank": 7,
+          "source_rows": 64.0,
+          "block_m": 16,
+          "received_expert_selections": 354,
+          "m_tasks": 48,
+          "tiled_rows": 768
+        }
+      ],
+      "routing_fixture_seed": 2025,
+      "routing_fixture": "current AIC power_law_1.01 generator; exact historical route seed is unrecorded",
+      "conserved_expert_selections": 3072,
+      "uniform_max_block_geometry": [
+        {
+          "rank": 0,
+          "source_rows": 64,
+          "block_m": 16,
+          "received_expert_selections": 466,
+          "m_tasks": 53,
+          "tiled_rows": 848
+        },
+        {
+          "rank": 1,
+          "source_rows": 64,
+          "block_m": 16,
+          "received_expert_selections": 320,
+          "m_tasks": 41,
+          "tiled_rows": 656
+        },
+        {
+          "rank": 2,
+          "source_rows": 64,
+          "block_m": 16,
+          "received_expert_selections": 387,
+          "m_tasks": 50,
+          "tiled_rows": 800
+        },
+        {
+          "rank": 3,
+          "source_rows": 64,
+          "block_m": 16,
+          "received_expert_selections": 408,
+          "m_tasks": 52,
+          "tiled_rows": 832
+        },
+        {
+          "rank": 4,
+          "source_rows": 64,
+          "block_m": 16,
+          "received_expert_selections": 382,
+          "m_tasks": 50,
+          "tiled_rows": 800
+        },
+        {
+          "rank": 5,
+          "source_rows": 64,
+          "block_m": 16,
+          "received_expert_selections": 303,
+          "m_tasks": 45,
+          "tiled_rows": 720
+        },
+        {
+          "rank": 6,
+          "source_rows": 64,
+          "block_m": 16,
+          "received_expert_selections": 452,
+          "m_tasks": 56,
+          "tiled_rows": 896
+        },
+        {
+          "rank": 7,
+          "source_rows": 64,
+          "block_m": 16,
+          "received_expert_selections": 354,
+          "m_tasks": 48,
+          "tiled_rows": 768
+        }
+      ]
+    }
+  ],
+  "next_action": "retain global expert work, per-destination block geometry and critical-source dispatch/combine; normalize a physical composition to matching uniform measured anchors without replacing max by mean",
+  "formal_accuracy_evidence": false,
+  "timing_estimate_implemented": false,
+  "uncertainty": [
+    "geometry is from the current pinned DeepGEMM; raw collector data does not record its exact DeepGEMM commit",
+    "routing fixture uses the current AIC generator with seed2025, not an asserted historical expert histogram",
+    "M tasks alone are not latency; MMA rows, repeated weight reads, cache reuse, source scans and collective ordering all matter",
+    "uniform maximum is a surrogate, not a proven upper bound when target BLOCK_M differs; mean substitution is also unvalidated"
+  ]
+}

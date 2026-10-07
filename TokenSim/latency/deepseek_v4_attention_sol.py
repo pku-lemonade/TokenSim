@@ -91,6 +91,7 @@ class DeepSeekV4AttentionSOL:
         }
         self.bandwidth = device.memory_bandwidth_bytes_per_s.value
         self._growth_geometry = {}
+        self._shared_geometry = {}
 
     def limits_us(self, key):
         """Return math/memory bounds and indexer bytes without building a report.
@@ -146,6 +147,45 @@ class DeepSeekV4AttentionSOL:
         math_us, memory_us, indexer_bytes = self.limits_us(key)
         memory_us -= (1 - indexer_kv_fraction) * indexer_bytes / self.bandwidth * 1e6
         return max(math_us, memory_us)
+
+    def shared_phase_us(self, key, *, indexer_kv_fraction=1.0):
+        """Separate full-tensor projections from context-dependent kernel work.
+
+        Input/output and compressor-input GEMMs, index-query/weight projections,
+        activation preparation and weight reads are common. Sparse attention,
+        index scoring/KV reads and compressor pointwise work remain in the
+        phase component. These are separate roofline bounds, not measured
+        component latencies; their sum need not equal the module roofline.
+        A caller must normalize their allocation to the measured whole module.
+        """
+        if not 0 < indexer_kv_fraction <= 1:
+            raise ConfigurationError("indexer KV request/query fraction must be in (0, 1]")
+        ratio, heads, tp = (int(key[name]) for name in ("compress_ratio", "num_heads", "tp_size"))
+        identity = (ratio, heads, tp)
+        constants = self._shared_geometry.get(identity)
+        if constants is None:
+            base = self.work({**key, "phase": "generation", "batch_size": 1,
+                              "input_seq_len": 1, "context_len": 0})
+            pointwise = 0
+            if ratio > 1:
+                pointwise = 2 * (2 if ratio == 4 else 1) * self.model.head_dim
+                if ratio == 4:
+                    pointwise += 4 * self.model.deepseek_v4.index_head_dim
+            common_math = base.math_seconds * 1e6 - pointwise / self.compute_rates["compressor"] * 1e6
+            constants = (common_math,
+                         sum(value for name, value in base.bytes.items() if "weights" in name),
+                         base.bytes["activations"] + base.bytes["rope"])
+            self._shared_geometry[identity] = constants
+        math_per_row, weights, activation_per_row = constants
+        rows = max(1, int(key["batch_size"])) * (
+            max(1, int(key["input_seq_len"])) if key["phase"] == "context" else 1
+        )
+        common_math = math_per_row * rows
+        common_memory = (weights + activation_per_row * rows) / self.bandwidth * 1e6
+        math_us, memory_us, indexer_bytes = self.limits_us(key)
+        phase_memory = memory_us - common_memory - (1 - indexer_kv_fraction) * indexer_bytes / self.bandwidth * 1e6
+        return (max(common_math, common_memory),
+                max(0.0, math_us - common_math, phase_memory))
 
     def work(self, key):
         """Price the source table's uniform q=1 generation or prefill shape.

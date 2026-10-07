@@ -1,0 +1,43 @@
+{
+  "scope": "read-only synchronized decode capture projection-row follow-up; no runtime or timing edits",
+  "source_checks": [
+    {
+      "path": "/home/zhuohang/Serving/vllm-note/vllm/v1/worker/gpu/model_runner.py",
+      "sha256": "217e4b87c0bd22c4e98640775d7b4e3349000f79d37f9f7d3e569768786c3a7f"
+    },
+    {
+      "path": "/home/zhuohang/Serving/vllm-note/vllm/v1/worker/gpu/cudagraph_utils.py",
+      "sha256": "cc090e6749029baaa5055135215acc112ce034a32fc1e886f0f02054ad488b58"
+    },
+    {
+      "path": "/home/zhuohang/Serving/vllm-note/vllm/models/deepseek_v4/attention.py",
+      "sha256": "5e5879328f61dcdbfb43901750240438cec5572cc5c8bc330bd63cea053b5fb5"
+    },
+    {
+      "path": "TokenSim/latency/operator_table.py",
+      "sha256": "c33375cdb55fd406fab7575a26668ef9b8af7ef3dc08080ed1ef8286a063347a"
+    },
+    {
+      "path": "TokenSim/latency/deepseek_v4_attention.py",
+      "sha256": "a1e4374fe9d95fb79ee4a9bcef4f06e3ff8ec5f9b198ad984de138832a4de3fb"
+    }
+  ],
+  "facts": [
+    "serving FULL capture runs model input/output at descriptor rows and slices final outputs to the required shape",
+    "attention.forward executes shared projections on hidden_states.shape[0]",
+    "TokenSim target hc_head/final norm already distinguishes actual forward rows and eligible synchronized output/capture rows",
+    "TokenSim native attention lookup currently starts from request query rows; mixed context/decode composition is eager and does not add capture rows"
+  ],
+  "baseline_output_forward_rows_minus_actual_forward_rows": {
+    "b200": 942892,
+    "b300": 4087928
+  },
+  "uncertainty": [
+    "descriptor padding must not be charged as real request progress, accepted output or populated KV reads",
+    "native table small-shape source floors can already exceed capture rows; do not add the full padded projection twice",
+    "need source metadata split and a source-derived mixed/remote-context test before changing the decode path"
+  ],
+  "next_action": "independently reconcile eligible decode shared projection rows with the synchronized descriptor while preserving actual sparse/indexer query ownership, measured anchors and source floors",
+  "formal_accuracy_evidence": false,
+  "runtime_change": false
+}

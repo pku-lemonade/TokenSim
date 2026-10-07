@@ -1,0 +1,66 @@
+{
+  "scope": "shared attention projections across context groups and mixed metadata phases",
+  "parent_commit": "dd7da919e406442c1b45a27ccb578a48602b5e11",
+  "vllm_commit": "30f5c01d4ebb5c493ed86195db24d0ec5b3ce3d7",
+  "source_checks": [
+    {
+      "path": "/home/zhuohang/Serving/vllm-note/vllm/models/deepseek_v4/attention.py",
+      "sha256": "5e5879328f61dcdbfb43901750240438cec5572cc5c8bc330bd63cea053b5fb5"
+    },
+    {
+      "path": "/home/zhuohang/Serving/vllm-note/vllm/models/deepseek_v4/nvidia/flashinfer_sparse.py",
+      "sha256": "f9add43cb828118e141db6b925d7f756524226cd91ede0ab6fe26b1b1c78b1de"
+    }
+  ],
+  "source_facts": [
+    "DeepseekV4Attention.forward invokes full-tensor input projection preparation and output projection once",
+    "compressor-input GEMMs and indexer weight/query projections use the full hidden/query tensor",
+    "FlashInfer forward_mqa retains separate decode and prefill sparse calls; the change does not merge those phase costs"
+  ],
+  "allocation": {
+    "shared": "four main projections, compressor-input GEMMs, index-query/weight projections, weight reads and activation preparation",
+    "phase": "sparse attention, context-dependent index scoring/KV reads and compressor pointwise work",
+    "equations": [
+      "C_j=max(shared_math_j,shared_memory_j); R_j=max(phase_math_j,phase_memory_j)",
+      "eta_j=measured_whole_module_j/(C_j+R_j), with existing q-block adjustment and phase scales",
+      "eta_common=sum(real_rows_j*eta_j)/total_real_rows",
+      "T_composed=eta_common*C(max(total_real_rows,max_source_rows))+sum(phase_weight_j*eta_j*R_j)"
+    ],
+    "phase_weights": "one per context group; query-row weights for uniform full-decode batch contexts",
+    "homogeneous": "single context group and decode-only paths preserve the current whole-module costs exactly",
+    "new_fitted_multipliers": false,
+    "new_overlap_credit": false
+  },
+  "uncertainty": [
+    "module tables do not isolate individual launches, fusion or aux-stream overlap; SOL allocation is an estimate",
+    "context groups retain separate phase residual estimates even though serving groups prefill into one varlen kernel; no unmeasured launch savings applied",
+    "source FlashMLA layout/provenance and FlashInfer serving differences are unchanged",
+    "missing state/cache-write detail in the preexisting SOL model remains a model uncertainty"
+  ],
+  "verification": {
+    "full_suite": {
+      "passed": 537,
+      "subtests_passed": 29,
+      "warnings": 32,
+      "elapsed_seconds": 156.72,
+      "log": "data/reference/agentx-attention-composition/full-tests.txt",
+      "sha256": "bf4dcec39b2eaed9d8bbda1ac721902d54a83558375a201e96541e2990e06b67"
+    },
+    "full_windows": {
+      "status": "both complete and strictly validated",
+      "root": "results/agentx-dsv4-full/native-attention-composition/20261008-shared-projections",
+      "validation": "data/reference/agentx-attention-composition/pipeline-validation.json",
+      "validation_sha256": "603b96e6f4559689686426a004925ca941994f52fb2dc6f0a36c8075ea836d47",
+      "output_tps": {
+        "b200": 1816.9549254842843,
+        "b300": 3857.2965083119584
+      },
+      "preemptions": {
+        "b200": 132,
+        "b300": 0
+      }
+    }
+  },
+  "formal_model_accuracy_accepted": false,
+  "next_action": "independent context query/prefix diagonal-grid clamp correction before nonuniform MoE; keep capture projection, memory lifetimes and original final scope pending"
+}

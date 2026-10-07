@@ -1,0 +1,41 @@
+{
+  "scope": "read-only buffer lifetimes and graph-pool follow-up; no memory budget or capacity edits",
+  "source_checks": [
+    {
+      "path": "/home/zhuohang/Serving/vllm-note/vllm/models/deepseek_v4/nvidia/model.py",
+      "sha256": "5d5a74e339cd110def9b5e37a56fa602a42cdece98811013fb69700a0274a224"
+    },
+    {
+      "path": "/home/zhuohang/Serving/vllm-note/vllm/compilation/breakable_cudagraph.py",
+      "sha256": "a2e487d0c2e2e9836b0db7eac427787e0b23de94d8ca8a4b32ee79e043891bcf"
+    },
+    {
+      "path": "/home/zhuohang/Serving/vllm-note/vllm/v1/worker/gpu/cudagraph_utils.py",
+      "sha256": "cc090e6749029baaa5055135215acc112ce034a32fc1e886f0f02054ad488b58"
+    },
+    {
+      "path": "TokenSim/config/memory_budget.py",
+      "sha256": "d8cee6af3b1132010061ee680e6a0f1837ac753867c8a1fc87bb9cd141c3e189"
+    }
+  ],
+  "facts": [
+    "DeepseekV4MegaMoE._symm_buffer_cache is class-level and keys group/device/model/capacity/shared geometry; same configurations reuse the same buffer across layer instances",
+    "current reference max_num_tokens is the unsharded scheduler max_num_batched_tokens; do not divide persistent buffer capacity by TP merely because active input rows are SP-sharded",
+    "shared_l1 activation aliases input_x; independent scale view and shared_l2 storage remain required",
+    "FULL_DECODE_ONLY does not use the breakable PIECEWISE capture runner; eager-break decorator runs inline under FULL",
+    "breakable wrapper uses weak tensor arguments and outputs to avoid pinning pool slots across descriptors",
+    "reference GPU graph memory profiling uses a throwaway pool and releases profiling captures; FULL sample deltas and actual PIECEWISE/speculator scopes differ",
+    "TokenSim currently sums activation shape envelopes, a generic dispatch envelope and a per-layer graph workspace envelope; exact aliases and lifetime remain unimplemented",
+    "FULL graph memory extrapolation treats first capture as pool baseline and second sample as incremental per-graph cost, with a1MiB floor; it does not sum one activation workspace per model layer"
+  ],
+  "constraints": [
+    "ABI signal struct and ring/buffer size derivations from previous audit remain applicable only within their recorded SM scenario and pinned-source scope",
+    "AIC other_mem=3.5GiB is a generic conservative reserve; no evidence to remove or overlap-credit it",
+    "weak-ref/global-pool facts alone do not measure peak bytes; build storage identities and live intervals before replacing envelopes",
+    "retain persistent source/indexer buffers, runtime/NCCL reserve and cross-version caveats independent of reference KV pool error",
+    "per-graph1MiB extrapolation floor is a graph profiling rule, not the missing activation bytes or a fitted capacity input"
+  ],
+  "next_action": "replace communication envelope with verified native allocation shapes, then derive activation/capture peak from source storage identities and lifetimes; keep assumptions and capacity errors visible",
+  "formal_accuracy_evidence": false,
+  "runtime_change": false
+}

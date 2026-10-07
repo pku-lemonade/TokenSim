@@ -19,6 +19,7 @@ class AttentionEstimate:
     ragged_grid: bool = False
     source_batch_size: int | None = None
     source_context_len: int | None = None
+    source_query_tokens: int | None = None
 
 
 class DeepSeekV4AttentionEstimator:
@@ -105,6 +106,7 @@ class DeepSeekV4AttentionEstimator:
         self.seconds = 0.0
         self.decode_batch_stats = Counter()
         self.mtp_kv_stats = Counter()
+        self.composition_stats = Counter()
 
     def _analytical_work(self, _table, key):
         return self.sol.estimate_us(key)
@@ -177,6 +179,7 @@ class DeepSeekV4AttentionEstimator:
             ragged_grid,
             key["batch_size"],
             key["context_len"],
+            key["input_seq_len"],
         )
         if len(self.cache) > 65536:
             self.cache.clear()
@@ -249,33 +252,41 @@ class DeepSeekV4AttentionEstimator:
         self.seconds += total * 1e-6
         return total
 
+    def _sol_key(self, kind, phase, batch, queries, context, estimate=None):
+        return {
+            "phase": phase,
+            "batch_size": (estimate.source_batch_size or batch) if estimate else batch,
+            "input_seq_len": (estimate.source_query_tokens or queries) if estimate else queries,
+            "context_len": (estimate.source_context_len if estimate.source_context_len is not None else context) if estimate else context,
+            "compress_ratio": 4 if kind == "csa" else 128,
+            "num_heads": self.model.num_attention_heads // self.tp, "tp_size": self.tp,
+        }
+
+    def _decode_layer(self, kind, batch_size, context_tokens, *, indexer_kv_fraction=1.0, byte_weight=1.0):
+        estimate = self._query(kind, "generation", batch_size, 1, context_tokens)
+        latency = estimate.latency_us
+        key = self._sol_key(kind, "generation", batch_size, 1, context_tokens, estimate)
+        if kind == "csa" and indexer_kv_fraction < 1:
+            # Honor source-grid clamps; reuse changes only request-local reads.
+            math_us, memory_us, indexer_bytes = self.sol.limits_us(key)
+            source = max(math_us, memory_us)
+            target = max(math_us, memory_us - (1 - indexer_kv_fraction) * indexer_bytes / self.sol.bandwidth * 1e6)
+            corrected = latency * target / source
+            layers = self.layer_counts[kind]
+            self.mtp_kv_stats["source_geometry_indexer_bytes_before"] += byte_weight * layers * indexer_bytes
+            self.mtp_kv_stats["source_geometry_indexer_bytes_after"] += byte_weight * layers * indexer_bytes * indexer_kv_fraction
+            self.mtp_kv_stats["estimated_seconds_saved"] += byte_weight * layers * (latency - corrected) * self.generation_latency_scale * 1e-6
+            self.mtp_kv_stats["csa_adjustment_queries"] += 1
+            latency = corrected
+        return latency, key
+
     def _decode_us(self, batch_size, context_tokens, *, indexer_kv_fraction=1.0, byte_weight=1.0):
-        total = 0.0
-        for kind in ("csa", "hca"):
-            estimate = self._query(
-                kind, "generation", batch_size, 1, context_tokens
-            )
-            latency = estimate.latency_us
-            if kind == "csa" and indexer_kv_fraction < 1:
-                # Honor the source lookup's small-shape clamp. Reuse changes
-                # request-local KV reads, not its conservative query-row grid.
-                key = {
-                    "phase": "generation", "batch_size": estimate.source_batch_size or batch_size,
-                    "input_seq_len": 1, "context_len": estimate.source_context_len or context_tokens,
-                    "compress_ratio": 4, "num_heads": self.model.num_attention_heads // self.tp,
-                    "tp_size": self.tp,
-                }
-                math_us, memory_us, indexer_bytes = self.sol.limits_us(key)
-                source = max(math_us, memory_us)
-                target = max(math_us, memory_us - (1 - indexer_kv_fraction) * indexer_bytes / self.sol.bandwidth * 1e6)
-                corrected = latency * target / source
-                layers = self.layer_counts[kind]
-                self.mtp_kv_stats["source_geometry_indexer_bytes_before"] += byte_weight * layers * indexer_bytes
-                self.mtp_kv_stats["source_geometry_indexer_bytes_after"] += byte_weight * layers * indexer_bytes * indexer_kv_fraction
-                self.mtp_kv_stats["estimated_seconds_saved"] += byte_weight * layers * (latency - corrected) * self.generation_latency_scale * 1e-6
-                self.mtp_kv_stats["csa_adjustment_queries"] += 1
-                latency = corrected
-            total += self.layer_counts[kind] * latency
+        total = sum(
+            self.layer_counts[kind] * self._decode_layer(
+                kind, batch_size, context_tokens,
+                indexer_kv_fraction=indexer_kv_fraction, byte_weight=byte_weight,
+            )[0] for kind in ("csa", "hca")
+        )
         total *= self.generation_latency_scale
         return total
 
@@ -296,15 +307,7 @@ class DeepSeekV4AttentionEstimator:
         measurement of the ragged batch. Query-width expansion supplies the
         compute budget; indexer KV reads are shared within each Q-block using SOL.
         """
-        rows_by_context = Counter()
-        requests_by_context = Counter()
-        tiles_by_context = Counter()
-        for (context, query_width), count in buckets.items():
-            if count > 0:
-                rows_by_context[context] += count * max(1, int(query_width))
-                requests_by_context[context] += count
-                width = max(1, int(query_width))
-                tiles_by_context[context] += count * math.ceil(width / self.indexer_queries_per_tile)
+        rows_by_context, requests_by_context, tiles_by_context = self._decode_geometry(buckets)
         rows = sum(rows_by_context.values())
         if not rows:
             return 0.0
@@ -316,6 +319,23 @@ class DeepSeekV4AttentionEstimator:
             for context, count in sorted(rows_by_context.items())
         )
         self.seconds += total * 1e-6
+        self._record_decode_batch(rows_by_context, requests_by_context, tiles_by_context)
+        return total
+
+    def _decode_geometry(self, buckets):
+        rows_by_context = Counter()
+        requests_by_context = Counter()
+        tiles_by_context = Counter()
+        for (context, query_width), count in buckets.items():
+            if count > 0:
+                rows_by_context[context] += count * max(1, int(query_width))
+                requests_by_context[context] += count
+                width = max(1, int(query_width))
+                tiles_by_context[context] += count * math.ceil(width / self.indexer_queries_per_tile)
+        return rows_by_context, requests_by_context, tiles_by_context
+
+    def _record_decode_batch(self, rows_by_context, requests_by_context, tiles_by_context):
+        rows = sum(rows_by_context.values())
         self.decode_batch_stats["batches"] += 1
         self.decode_batch_stats["length_groups"] += len(rows_by_context)
         self.decode_batch_stats["query_rows"] += rows
@@ -323,6 +343,77 @@ class DeepSeekV4AttentionEstimator:
         self.decode_batch_stats["indexer_query_tiles"] += sum(tiles_by_context.values())
         if rows > sum(requests_by_context.values()):
             self.mtp_kv_stats["batches"] += 1
+
+    def estimate_batch(self, context_groups, decode_buckets):
+        """Own common projections once across context groups and decode.
+
+        Whole-module samples cannot identify individual kernel times. Allocate
+        each sample to two separate SOL bounds, then normalize both parts to
+        that measured latency. Keep the phase parts and price the common part
+        once at full tensor rows, using row-weighted anchor efficiencies.
+        This is an explicit composition estimate, with no fitted multiplier or
+        additional overlap credit. Single context groups and decode-only batches
+        use their existing complete module estimates unchanged.
+        """
+        groups = {shape: count for shape, count in context_groups.items() if count > 0}
+        rows_by_context, requests_by_context, tiles_by_context = self._decode_geometry(decode_buckets)
+        decode_rows = sum(rows_by_context.values())
+        if not groups:
+            return self.estimate_decode_batch(decode_buckets)
+        if len(groups) == 1 and not decode_rows:
+            (queries, context), count = next(iter(groups.items()))
+            return self.estimate_prefill(count, queries, context)
+        context_rows = sum(queries * count for (queries, _), count in groups.items())
+        rows = context_rows + decode_rows
+        total = shared_total = phase_total = standalone_total = 0.0
+        for kind in ("csa", "hca"):
+            parts = []
+            for (queries, context), count in sorted(groups.items()):
+                estimate = self._query(kind, "context", count, queries, context)
+                key = self._sol_key(kind, "context", count, queries, context, estimate)
+                common, phase = self.sol.shared_phase_us(key)
+                efficiency = estimate.latency_us * self.context_latency_scale / (common + phase)
+                parts.append((queries * count, 1.0, efficiency, common, phase,
+                              key["batch_size"] * key["input_seq_len"]))
+            for context, count in sorted(rows_by_context.items()):
+                fraction = tiles_by_context[context] / count
+                weight = count / decode_rows
+                latency, key = self._decode_layer(kind, decode_rows, context,
+                                                 indexer_kv_fraction=fraction, byte_weight=weight)
+                common, phase = self.sol.shared_phase_us(key, indexer_kv_fraction=fraction)
+                efficiency = latency * self.generation_latency_scale / (common + phase)
+                parts.append((count, weight, efficiency, common, phase, key["batch_size"]))
+            # Keep the largest source row floor for small clamped samples.
+            # No phase-specific source floor or measured residual is removed.
+            common_rows = max(rows, max(part[5] for part in parts))
+            common_key = self._sol_key(kind, "generation", common_rows, 1, 0)
+            common_us = self.sol.shared_phase_us(common_key)[0]
+            efficiency = sum(count * eta for count, _, eta, *_ in parts) / rows
+            shared = common_us * efficiency
+            phase = sum(weight * eta * work for _, weight, eta, _, work, _ in parts)
+            standalone = sum(weight * eta * (common + work) for _, weight, eta, common, work, _ in parts)
+            layers = self.layer_counts[kind]
+            shared_total += layers * shared
+            phase_total += layers * phase
+            standalone_total += layers * standalone
+            total += layers * (shared + phase)
+            self.composition_stats["source_floor_projection_rows"] += layers * common_rows
+        if decode_rows:
+            self._record_decode_batch(rows_by_context, requests_by_context, tiles_by_context)
+        self.seconds += total * 1e-6
+        stats = self.composition_stats
+        stats["batches"] += 1
+        stats["mixed_phase_batches"] += int(bool(decode_rows))
+        stats["context_group_batches"] += int(len(groups) > 1)
+        stats["context_groups"] += len(groups)
+        stats["decode_length_groups"] += len(rows_by_context)
+        stats["query_rows"] += rows
+        stats["shared_layer_invocations"] += self.model.num_layers
+        stats["logical_projection_rows"] += rows * self.model.num_layers
+        stats["shared_projection_seconds"] += shared_total * 1e-6
+        stats["phase_seconds"] += phase_total * 1e-6
+        stats["standalone_module_seconds"] += standalone_total * 1e-6
+        stats["avoided_shared_seconds"] += (standalone_total - total) * 1e-6
         return total
 
     def stats_dict(self):
@@ -331,6 +422,7 @@ class DeepSeekV4AttentionEstimator:
             "native_dsv4_attention_counts": dict(self.counts),
             "native_dsv4_attention_decode_batches": dict(self.decode_batch_stats),
             "native_dsv4_attention_mtp_kv": dict(self.mtp_kv_stats),
+            "native_dsv4_attention_composition": dict(self.composition_stats),
         }
 
     def describe(self):
@@ -347,6 +439,15 @@ class DeepSeekV4AttentionEstimator:
             "context_latency_scale": self.context_latency_scale,
             "generation_latency_scale": self.generation_latency_scale,
             "decode_batch_composition": "query-row-weighted uniform full-batch module estimates; common projections counted once",
+            "mixed_batch_composition": {
+                "shared_scope": "full-tensor input/output, compressor-input and index-query/weight projections, weights and activation preparation",
+                "phase_scope": "sparse attention, index scoring/KV reads and compressor pointwise work; context and decode kept separate",
+                "allocation": "two SOL roofline bounds normalized to each whole-module sample; common efficiency row-weighted at total query rows",
+                "source_clamps": "each phase retains its source geometry; common rows retain the largest source floor",
+                "homogeneous": "single context group and decode-only batches unchanged",
+                "uncertainty": "whole-module tables do not measure component launches, ragged fusion or aux-stream overlap; no extra overlap credit",
+                "fitted_multiplier": False,
+            },
             "decode_query_width": "expanded query compute and sparse-attention reads; indexer KV reuse within Q-blocks",
             "mtp_indexer_kv_reuse": {
                 "basis": "pinned DeepGEMM SM100 paged MQA groups request Q-blocks; BLOCK_Q = 128 / indexer heads",

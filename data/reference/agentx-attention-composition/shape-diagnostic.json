@@ -1,0 +1,380 @@
+{
+  "scope": "offline table-shape ownership diagnostic; no replay or fitted calibration",
+  "homogeneous": [
+    {
+      "hardware": "b200",
+      "tp": 1,
+      "phase": "context",
+      "latency_us": 27972.698860956072,
+      "exactly_preserved": true
+    },
+    {
+      "hardware": "b200",
+      "tp": 1,
+      "phase": "generation-q4",
+      "latency_us": 9005.790460840093,
+      "exactly_preserved": true
+    },
+    {
+      "hardware": "b200",
+      "tp": 4,
+      "phase": "context",
+      "latency_us": 17737.049951656856,
+      "exactly_preserved": true
+    },
+    {
+      "hardware": "b200",
+      "tp": 4,
+      "phase": "generation-q4",
+      "latency_us": 6129.456222500801,
+      "exactly_preserved": true
+    },
+    {
+      "hardware": "b200",
+      "tp": 8,
+      "phase": "context",
+      "latency_us": 16231.506957749018,
+      "exactly_preserved": true
+    },
+    {
+      "hardware": "b200",
+      "tp": 8,
+      "phase": "generation-q4",
+      "latency_us": 5534.241537779475,
+      "exactly_preserved": true
+    },
+    {
+      "hardware": "b300",
+      "tp": 1,
+      "phase": "context",
+      "latency_us": 27092.085891935072,
+      "exactly_preserved": true
+    },
+    {
+      "hardware": "b300",
+      "tp": 1,
+      "phase": "generation-q4",
+      "latency_us": 8963.201244958362,
+      "exactly_preserved": true
+    },
+    {
+      "hardware": "b300",
+      "tp": 4,
+      "phase": "context",
+      "latency_us": 16745.35705340338,
+      "exactly_preserved": true
+    },
+    {
+      "hardware": "b300",
+      "tp": 4,
+      "phase": "generation-q4",
+      "latency_us": 5907.561459829751,
+      "exactly_preserved": true
+    },
+    {
+      "hardware": "b300",
+      "tp": 8,
+      "phase": "context",
+      "latency_us": 15451.89407756754,
+      "exactly_preserved": true
+    },
+    {
+      "hardware": "b300",
+      "tp": 8,
+      "phase": "generation-q4",
+      "latency_us": 5353.698715572013,
+      "exactly_preserved": true
+    }
+  ],
+  "composition": [
+    {
+      "hardware": "b200",
+      "context_groups": [
+        {
+          "queries": 512,
+          "prefix": 65536,
+          "count": 1
+        },
+        {
+          "queries": 512,
+          "prefix": 131072,
+          "count": 1
+        }
+      ],
+      "decode_buckets": [
+        {
+          "context": 8192,
+          "query_width": 4,
+          "count": 16
+        }
+      ],
+      "standalone_us": 70890.24238513045,
+      "composed_us": 64579.747050324695,
+      "change_percent": -8.90178270307256,
+      "composition": {
+        "source_floor_projection_rows": 66368,
+        "batches": 1,
+        "mixed_phase_batches": 1,
+        "context_group_batches": 1,
+        "context_groups": 2,
+        "decode_length_groups": 1,
+        "query_rows": 1088,
+        "shared_layer_invocations": 61,
+        "logical_projection_rows": 66368,
+        "shared_projection_seconds": 0.031105385683185653,
+        "phase_seconds": 0.03347436136713904,
+        "standalone_module_seconds": 0.07089024238513045,
+        "avoided_shared_seconds": 0.006310495334805753
+      }
+    },
+    {
+      "hardware": "b200",
+      "context_groups": [
+        {
+          "queries": 512,
+          "prefix": 131072,
+          "count": 1
+        }
+      ],
+      "decode_buckets": [
+        {
+          "context": 131072,
+          "query_width": 4,
+          "count": 32
+        }
+      ],
+      "standalone_us": 50913.398100208666,
+      "composed_us": 45273.24973388383,
+      "change_percent": -11.077925608547668,
+      "composition": {
+        "source_floor_projection_rows": 39040,
+        "batches": 1,
+        "mixed_phase_batches": 1,
+        "context_group_batches": 0,
+        "context_groups": 1,
+        "decode_length_groups": 1,
+        "query_rows": 640,
+        "shared_layer_invocations": 61,
+        "logical_projection_rows": 39040,
+        "shared_projection_seconds": 0.018786953589490722,
+        "phase_seconds": 0.0264862961443931,
+        "standalone_module_seconds": 0.050913398100208666,
+        "avoided_shared_seconds": 0.005640148366324836
+      }
+    },
+    {
+      "hardware": "b200",
+      "context_groups": [
+        {
+          "queries": 512,
+          "prefix": 65536,
+          "count": 8
+        }
+      ],
+      "decode_buckets": [
+        {
+          "context": 65536,
+          "query_width": 4,
+          "count": 40
+        }
+      ],
+      "standalone_us": 190493.25919547817,
+      "composed_us": 185250.67941879926,
+      "change_percent": -2.7521077642433167,
+      "composition": {
+        "source_floor_projection_rows": 259616,
+        "batches": 1,
+        "mixed_phase_batches": 1,
+        "context_group_batches": 0,
+        "context_groups": 1,
+        "decode_length_groups": 1,
+        "query_rows": 4256,
+        "shared_layer_invocations": 61,
+        "logical_projection_rows": 259616,
+        "shared_projection_seconds": 0.09645972051358216,
+        "phase_seconds": 0.08879095890521709,
+        "standalone_module_seconds": 0.19049325919547813,
+        "avoided_shared_seconds": 0.005242579776678875
+      }
+    },
+    {
+      "hardware": "b200",
+      "context_groups": [
+        {
+          "queries": 512,
+          "prefix": 65536,
+          "count": 1
+        },
+        {
+          "queries": 512,
+          "prefix": 131072,
+          "count": 1
+        }
+      ],
+      "decode_buckets": [],
+      "standalone_us": 61884.451924290355,
+      "composed_us": 61884.45192429035,
+      "change_percent": -1.1102230246251565e-14,
+      "composition": {
+        "source_floor_projection_rows": 62464,
+        "batches": 1,
+        "mixed_phase_batches": 0,
+        "context_group_batches": 1,
+        "context_groups": 2,
+        "decode_length_groups": 0,
+        "query_rows": 1024,
+        "shared_layer_invocations": 61,
+        "logical_projection_rows": 62464,
+        "shared_projection_seconds": 0.029381287549373677,
+        "phase_seconds": 0.03250316437491667,
+        "standalone_module_seconds": 0.06188445192429036,
+        "avoided_shared_seconds": 1.455191522836685e-17
+      }
+    },
+    {
+      "hardware": "b300",
+      "context_groups": [
+        {
+          "queries": 512,
+          "prefix": 65536,
+          "count": 1
+        },
+        {
+          "queries": 512,
+          "prefix": 131072,
+          "count": 1
+        }
+      ],
+      "decode_buckets": [
+        {
+          "context": 8192,
+          "query_width": 4,
+          "count": 16
+        }
+      ],
+      "standalone_us": 68905.56719651789,
+      "composed_us": 62641.257177848536,
+      "change_percent": -9.091152244351486,
+      "composition": {
+        "source_floor_projection_rows": 66368,
+        "batches": 1,
+        "mixed_phase_batches": 1,
+        "context_group_batches": 1,
+        "context_groups": 2,
+        "decode_length_groups": 1,
+        "query_rows": 1088,
+        "shared_layer_invocations": 61,
+        "logical_projection_rows": 66368,
+        "shared_projection_seconds": 0.030205498408430294,
+        "phase_seconds": 0.03243575876941824,
+        "standalone_module_seconds": 0.06890556719651789,
+        "avoided_shared_seconds": 0.0062643100186693555
+      }
+    },
+    {
+      "hardware": "b300",
+      "context_groups": [
+        {
+          "queries": 512,
+          "prefix": 131072,
+          "count": 1
+        }
+      ],
+      "decode_buckets": [
+        {
+          "context": 131072,
+          "query_width": 4,
+          "count": 32
+        }
+      ],
+      "standalone_us": 49515.377716381525,
+      "composed_us": 44017.58231919882,
+      "change_percent": -11.103208035033996,
+      "composition": {
+        "source_floor_projection_rows": 39040,
+        "batches": 1,
+        "mixed_phase_batches": 1,
+        "context_group_batches": 0,
+        "context_groups": 1,
+        "decode_length_groups": 1,
+        "query_rows": 640,
+        "shared_layer_invocations": 61,
+        "logical_projection_rows": 39040,
+        "shared_projection_seconds": 0.018277831275627578,
+        "phase_seconds": 0.025739751043571235,
+        "standalone_module_seconds": 0.04951537771638152,
+        "avoided_shared_seconds": 0.005497795397182708
+      }
+    },
+    {
+      "hardware": "b300",
+      "context_groups": [
+        {
+          "queries": 512,
+          "prefix": 65536,
+          "count": 8
+        }
+      ],
+      "decode_buckets": [
+        {
+          "context": 65536,
+          "query_width": 4,
+          "count": 40
+        }
+      ],
+      "standalone_us": 184227.4631163068,
+      "composed_us": 179133.6149358671,
+      "change_percent": -2.764977650060696,
+      "composition": {
+        "source_floor_projection_rows": 259616,
+        "batches": 1,
+        "mixed_phase_batches": 1,
+        "context_group_batches": 0,
+        "context_groups": 1,
+        "decode_length_groups": 1,
+        "query_rows": 4256,
+        "shared_layer_invocations": 61,
+        "logical_projection_rows": 259616,
+        "shared_projection_seconds": 0.09330605238693838,
+        "phase_seconds": 0.08582756254892872,
+        "standalone_module_seconds": 0.1842274631163068,
+        "avoided_shared_seconds": 0.005093848180439701
+      }
+    },
+    {
+      "hardware": "b300",
+      "context_groups": [
+        {
+          "queries": 512,
+          "prefix": 65536,
+          "count": 1
+        },
+        {
+          "queries": 512,
+          "prefix": 131072,
+          "count": 1
+        }
+      ],
+      "decode_buckets": [],
+      "standalone_us": 59942.365951559535,
+      "composed_us": 59942.365951559535,
+      "change_percent": 0.0,
+      "composition": {
+        "source_floor_projection_rows": 62464,
+        "batches": 1,
+        "mixed_phase_batches": 0,
+        "context_group_batches": 1,
+        "context_groups": 2,
+        "decode_length_groups": 0,
+        "query_rows": 1024,
+        "shared_layer_invocations": 61,
+        "logical_projection_rows": 62464,
+        "shared_projection_seconds": 0.028479839367004756,
+        "phase_seconds": 0.03146252658455477,
+        "standalone_module_seconds": 0.05994236595155953,
+        "avoided_shared_seconds": 0.0
+      }
+    }
+  ],
+  "formal_accuracy_evidence": false
+}

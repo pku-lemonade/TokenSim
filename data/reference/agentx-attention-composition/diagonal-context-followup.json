@@ -1,0 +1,551 @@
+{
+  "scope": "read-only context query/prefix diagonal-grid clamp investigation; running source unchanged",
+  "source_checks": [
+    {
+      "path": "TokenSim/latency/deepseek_v4_attention.py",
+      "sha256": "a1e4374fe9d95fb79ee4a9bcef4f06e3ff8ec5f9b198ad984de138832a4de3fb"
+    },
+    {
+      "path": "TokenSim/operator_data/lookup.py",
+      "sha256": "777506d6838d1b2dcae9231fc5ba274d8fe032a4e9c37627ce7ee31d5727cbdf"
+    }
+  ],
+  "facts": [
+    "many context rows use context_len=65536-input_seq_len, so exact-prefix query minima are not global lower bounds",
+    "the pre-lookup query clamp uses exact other-axis coordinates, which can inflate a supported query to an unrelated diagonal-grid node",
+    "ordinary same-discrete-geometry lookup preserves the actual query and resolves the existing context/query grid without new data, capacity or fitted multipliers"
+  ],
+  "cases": [
+    {
+      "hardware": "b200",
+      "kind": "csa",
+      "requested": {
+        "layer_kind": "csa",
+        "phase": "context",
+        "mla_dtype": "bf16",
+        "kv_cache_dtype": "fp8",
+        "kernel_source": "flashmla_sparse_dsv4",
+        "kernel_dtype": "fp8_block",
+        "model": "deepseek-ai/deepseek-v4-pro",
+        "architecture": "deepseekv4forcausallm",
+        "num_heads": 128,
+        "tp_size": 1,
+        "batch_size": 1,
+        "input_seq_len": 512,
+        "context_len": 49152,
+        "compress_ratio": 4
+      },
+      "current": {
+        "latency_us": 13326.3,
+        "match": "clamped",
+        "source_batch": 1,
+        "source_query": 16384,
+        "source_prefix": 49152
+      },
+      "ordinary_same_geometry_lookup": {
+        "latency_us": 576.7932773109243,
+        "match": "interpolated",
+        "source_id": "aiconfigurator-borrowed:b200_sxm:dsv4_attention:vllm:0.24.0"
+      },
+      "relative_cost_difference_percent": 2210.4118102986085
+    },
+    {
+      "hardware": "b200",
+      "kind": "csa",
+      "requested": {
+        "layer_kind": "csa",
+        "phase": "context",
+        "mla_dtype": "bf16",
+        "kv_cache_dtype": "fp8",
+        "kernel_source": "flashmla_sparse_dsv4",
+        "kernel_dtype": "fp8_block",
+        "model": "deepseek-ai/deepseek-v4-pro",
+        "architecture": "deepseekv4forcausallm",
+        "num_heads": 128,
+        "tp_size": 1,
+        "batch_size": 1,
+        "input_seq_len": 256,
+        "context_len": 61440,
+        "compress_ratio": 4
+      },
+      "current": {
+        "latency_us": 3497.9,
+        "match": "clamped",
+        "source_batch": 1,
+        "source_query": 4096,
+        "source_prefix": 61440
+      },
+      "ordinary_same_geometry_lookup": {
+        "latency_us": 355.8456066945607,
+        "match": "interpolated",
+        "source_id": "aiconfigurator-borrowed:b200_sxm:dsv4_attention:vllm:0.24.0"
+      },
+      "relative_cost_difference_percent": 882.9824885269456
+    },
+    {
+      "hardware": "b200",
+      "kind": "csa",
+      "requested": {
+        "layer_kind": "csa",
+        "phase": "context",
+        "mla_dtype": "bf16",
+        "kv_cache_dtype": "fp8",
+        "kernel_source": "flashmla_sparse_dsv4",
+        "kernel_dtype": "fp8_block",
+        "model": "deepseek-ai/deepseek-v4-pro",
+        "architecture": "deepseekv4forcausallm",
+        "num_heads": 128,
+        "tp_size": 1,
+        "batch_size": 1,
+        "input_seq_len": 128,
+        "context_len": 65024,
+        "compress_ratio": 4
+      },
+      "current": {
+        "latency_us": 568.9,
+        "match": "clamped",
+        "source_batch": 1,
+        "source_query": 512,
+        "source_prefix": 65024
+      },
+      "ordinary_same_geometry_lookup": {
+        "latency_us": 272.0634655532359,
+        "match": "interpolated",
+        "source_id": "aiconfigurator-borrowed:b200_sxm:dsv4_attention:vllm:0.24.0"
+      },
+      "relative_cost_difference_percent": 109.10562130904
+    },
+    {
+      "hardware": "b200",
+      "kind": "csa",
+      "requested": {
+        "layer_kind": "csa",
+        "phase": "context",
+        "mla_dtype": "bf16",
+        "kv_cache_dtype": "fp8",
+        "kernel_source": "flashmla_sparse_dsv4",
+        "kernel_dtype": "fp8_block",
+        "model": "deepseek-ai/deepseek-v4-pro",
+        "architecture": "deepseekv4forcausallm",
+        "num_heads": 128,
+        "tp_size": 1,
+        "batch_size": 1,
+        "input_seq_len": 512,
+        "context_len": 65024,
+        "compress_ratio": 4
+      },
+      "current": {
+        "latency_us": 568.9,
+        "match": "clamped",
+        "source_batch": 1,
+        "source_query": 512,
+        "source_prefix": 65024
+      },
+      "ordinary_same_geometry_lookup": {
+        "latency_us": 568.9,
+        "match": "exact",
+        "source_id": "aiconfigurator-borrowed:b200_sxm:dsv4_attention:vllm:0.24.0"
+      },
+      "relative_cost_difference_percent": 0.0
+    },
+    {
+      "hardware": "b200",
+      "kind": "hca",
+      "requested": {
+        "layer_kind": "hca",
+        "phase": "context",
+        "mla_dtype": "bf16",
+        "kv_cache_dtype": "fp8",
+        "kernel_source": "flashmla_sparse_dsv4",
+        "kernel_dtype": "fp8_block",
+        "model": "deepseek-ai/deepseek-v4-pro",
+        "architecture": "deepseekv4forcausallm",
+        "num_heads": 128,
+        "tp_size": 1,
+        "batch_size": 1,
+        "input_seq_len": 512,
+        "context_len": 49152,
+        "compress_ratio": 128
+      },
+      "current": {
+        "latency_us": 8073.499999999999,
+        "match": "clamped",
+        "source_batch": 1,
+        "source_query": 16384,
+        "source_prefix": 49152
+      },
+      "ordinary_same_geometry_lookup": {
+        "latency_us": 338.9159663865546,
+        "match": "interpolated",
+        "source_id": "aiconfigurator-borrowed:b200_sxm:dsv4_attention:vllm:0.24.0"
+      },
+      "relative_cost_difference_percent": 2282.153926260197
+    },
+    {
+      "hardware": "b200",
+      "kind": "hca",
+      "requested": {
+        "layer_kind": "hca",
+        "phase": "context",
+        "mla_dtype": "bf16",
+        "kv_cache_dtype": "fp8",
+        "kernel_source": "flashmla_sparse_dsv4",
+        "kernel_dtype": "fp8_block",
+        "model": "deepseek-ai/deepseek-v4-pro",
+        "architecture": "deepseekv4forcausallm",
+        "num_heads": 128,
+        "tp_size": 1,
+        "batch_size": 1,
+        "input_seq_len": 256,
+        "context_len": 61440,
+        "compress_ratio": 128
+      },
+      "current": {
+        "latency_us": 2129.3,
+        "match": "clamped",
+        "source_batch": 1,
+        "source_query": 4096,
+        "source_prefix": 61440
+      },
+      "ordinary_same_geometry_lookup": {
+        "latency_us": 230.17489539748954,
+        "match": "interpolated",
+        "source_id": "aiconfigurator-borrowed:b200_sxm:dsv4_attention:vllm:0.24.0"
+      },
+      "relative_cost_difference_percent": 825.0791648337266
+    },
+    {
+      "hardware": "b200",
+      "kind": "hca",
+      "requested": {
+        "layer_kind": "hca",
+        "phase": "context",
+        "mla_dtype": "bf16",
+        "kv_cache_dtype": "fp8",
+        "kernel_source": "flashmla_sparse_dsv4",
+        "kernel_dtype": "fp8_block",
+        "model": "deepseek-ai/deepseek-v4-pro",
+        "architecture": "deepseekv4forcausallm",
+        "num_heads": 128,
+        "tp_size": 1,
+        "batch_size": 1,
+        "input_seq_len": 128,
+        "context_len": 65024,
+        "compress_ratio": 128
+      },
+      "current": {
+        "latency_us": 350.3,
+        "match": "clamped",
+        "source_batch": 1,
+        "source_query": 512,
+        "source_prefix": 65024
+      },
+      "ordinary_same_geometry_lookup": {
+        "latency_us": 169.61106471816282,
+        "match": "interpolated",
+        "source_id": "aiconfigurator-borrowed:b200_sxm:dsv4_attention:vllm:0.24.0"
+      },
+      "relative_cost_difference_percent": 106.531337199069
+    },
+    {
+      "hardware": "b200",
+      "kind": "hca",
+      "requested": {
+        "layer_kind": "hca",
+        "phase": "context",
+        "mla_dtype": "bf16",
+        "kv_cache_dtype": "fp8",
+        "kernel_source": "flashmla_sparse_dsv4",
+        "kernel_dtype": "fp8_block",
+        "model": "deepseek-ai/deepseek-v4-pro",
+        "architecture": "deepseekv4forcausallm",
+        "num_heads": 128,
+        "tp_size": 1,
+        "batch_size": 1,
+        "input_seq_len": 512,
+        "context_len": 65024,
+        "compress_ratio": 128
+      },
+      "current": {
+        "latency_us": 350.3,
+        "match": "clamped",
+        "source_batch": 1,
+        "source_query": 512,
+        "source_prefix": 65024
+      },
+      "ordinary_same_geometry_lookup": {
+        "latency_us": 350.3,
+        "match": "exact",
+        "source_id": "aiconfigurator-borrowed:b200_sxm:dsv4_attention:vllm:0.24.0"
+      },
+      "relative_cost_difference_percent": 0.0
+    },
+    {
+      "hardware": "b300",
+      "kind": "csa",
+      "requested": {
+        "layer_kind": "csa",
+        "phase": "context",
+        "mla_dtype": "bf16",
+        "kv_cache_dtype": "fp8",
+        "kernel_source": "flashmla_sparse_dsv4",
+        "kernel_dtype": "fp8_block",
+        "model": "deepseek-ai/deepseek-v4-pro",
+        "architecture": "deepseekv4forcausallm",
+        "num_heads": 128,
+        "tp_size": 1,
+        "batch_size": 1,
+        "input_seq_len": 512,
+        "context_len": 49152,
+        "compress_ratio": 4
+      },
+      "current": {
+        "latency_us": 12877.1,
+        "match": "clamped",
+        "source_batch": 1,
+        "source_query": 16384,
+        "source_prefix": 49152
+      },
+      "ordinary_same_geometry_lookup": {
+        "latency_us": 555.2739495798319,
+        "match": "interpolated",
+        "source_id": "aiconfigurator-borrowed:b300_sxm:dsv4_attention:vllm:0.24.0"
+      },
+      "relative_cost_difference_percent": 2219.053506785961
+    },
+    {
+      "hardware": "b300",
+      "kind": "csa",
+      "requested": {
+        "layer_kind": "csa",
+        "phase": "context",
+        "mla_dtype": "bf16",
+        "kv_cache_dtype": "fp8",
+        "kernel_source": "flashmla_sparse_dsv4",
+        "kernel_dtype": "fp8_block",
+        "model": "deepseek-ai/deepseek-v4-pro",
+        "architecture": "deepseekv4forcausallm",
+        "num_heads": 128,
+        "tp_size": 1,
+        "batch_size": 1,
+        "input_seq_len": 256,
+        "context_len": 61440,
+        "compress_ratio": 4
+      },
+      "current": {
+        "latency_us": 3376.3,
+        "match": "clamped",
+        "source_batch": 1,
+        "source_query": 4096,
+        "source_prefix": 61440
+      },
+      "ordinary_same_geometry_lookup": {
+        "latency_us": 349.3405857740586,
+        "match": "interpolated",
+        "source_id": "aiconfigurator-borrowed:b300_sxm:dsv4_attention:vllm:0.24.0"
+      },
+      "relative_cost_difference_percent": 866.4780267425538
+    },
+    {
+      "hardware": "b300",
+      "kind": "csa",
+      "requested": {
+        "layer_kind": "csa",
+        "phase": "context",
+        "mla_dtype": "bf16",
+        "kv_cache_dtype": "fp8",
+        "kernel_source": "flashmla_sparse_dsv4",
+        "kernel_dtype": "fp8_block",
+        "model": "deepseek-ai/deepseek-v4-pro",
+        "architecture": "deepseekv4forcausallm",
+        "num_heads": 128,
+        "tp_size": 1,
+        "batch_size": 1,
+        "input_seq_len": 128,
+        "context_len": 65024,
+        "compress_ratio": 4
+      },
+      "current": {
+        "latency_us": 549.1,
+        "match": "clamped",
+        "source_batch": 1,
+        "source_query": 512,
+        "source_prefix": 65024
+      },
+      "ordinary_same_geometry_lookup": {
+        "latency_us": 260.3947807933194,
+        "match": "interpolated",
+        "source_id": "aiconfigurator-borrowed:b300_sxm:dsv4_attention:vllm:0.24.0"
+      },
+      "relative_cost_difference_percent": 110.87212206293482
+    },
+    {
+      "hardware": "b300",
+      "kind": "csa",
+      "requested": {
+        "layer_kind": "csa",
+        "phase": "context",
+        "mla_dtype": "bf16",
+        "kv_cache_dtype": "fp8",
+        "kernel_source": "flashmla_sparse_dsv4",
+        "kernel_dtype": "fp8_block",
+        "model": "deepseek-ai/deepseek-v4-pro",
+        "architecture": "deepseekv4forcausallm",
+        "num_heads": 128,
+        "tp_size": 1,
+        "batch_size": 1,
+        "input_seq_len": 512,
+        "context_len": 65024,
+        "compress_ratio": 4
+      },
+      "current": {
+        "latency_us": 549.1,
+        "match": "clamped",
+        "source_batch": 1,
+        "source_query": 512,
+        "source_prefix": 65024
+      },
+      "ordinary_same_geometry_lookup": {
+        "latency_us": 549.1,
+        "match": "exact",
+        "source_id": "aiconfigurator-borrowed:b300_sxm:dsv4_attention:vllm:0.24.0"
+      },
+      "relative_cost_difference_percent": 0.0
+    },
+    {
+      "hardware": "b300",
+      "kind": "hca",
+      "requested": {
+        "layer_kind": "hca",
+        "phase": "context",
+        "mla_dtype": "bf16",
+        "kv_cache_dtype": "fp8",
+        "kernel_source": "flashmla_sparse_dsv4",
+        "kernel_dtype": "fp8_block",
+        "model": "deepseek-ai/deepseek-v4-pro",
+        "architecture": "deepseekv4forcausallm",
+        "num_heads": 128,
+        "tp_size": 1,
+        "batch_size": 1,
+        "input_seq_len": 512,
+        "context_len": 49152,
+        "compress_ratio": 128
+      },
+      "current": {
+        "latency_us": 7820.2,
+        "match": "clamped",
+        "source_batch": 1,
+        "source_query": 16384,
+        "source_prefix": 49152
+      },
+      "ordinary_same_geometry_lookup": {
+        "latency_us": 329.87226890756307,
+        "match": "interpolated",
+        "source_id": "aiconfigurator-borrowed:b300_sxm:dsv4_attention:vllm:0.24.0"
+      },
+      "relative_cost_difference_percent": 2270.675178576887
+    },
+    {
+      "hardware": "b300",
+      "kind": "hca",
+      "requested": {
+        "layer_kind": "hca",
+        "phase": "context",
+        "mla_dtype": "bf16",
+        "kv_cache_dtype": "fp8",
+        "kernel_source": "flashmla_sparse_dsv4",
+        "kernel_dtype": "fp8_block",
+        "model": "deepseek-ai/deepseek-v4-pro",
+        "architecture": "deepseekv4forcausallm",
+        "num_heads": 128,
+        "tp_size": 1,
+        "batch_size": 1,
+        "input_seq_len": 256,
+        "context_len": 61440,
+        "compress_ratio": 128
+      },
+      "current": {
+        "latency_us": 2060.2,
+        "match": "clamped",
+        "source_batch": 1,
+        "source_query": 4096,
+        "source_prefix": 61440
+      },
+      "ordinary_same_geometry_lookup": {
+        "latency_us": 224.17531380753138,
+        "match": "interpolated",
+        "source_id": "aiconfigurator-borrowed:b300_sxm:dsv4_attention:vllm:0.24.0"
+      },
+      "relative_cost_difference_percent": 819.0128765778427
+    },
+    {
+      "hardware": "b300",
+      "kind": "hca",
+      "requested": {
+        "layer_kind": "hca",
+        "phase": "context",
+        "mla_dtype": "bf16",
+        "kv_cache_dtype": "fp8",
+        "kernel_source": "flashmla_sparse_dsv4",
+        "kernel_dtype": "fp8_block",
+        "model": "deepseek-ai/deepseek-v4-pro",
+        "architecture": "deepseekv4forcausallm",
+        "num_heads": 128,
+        "tp_size": 1,
+        "batch_size": 1,
+        "input_seq_len": 128,
+        "context_len": 65024,
+        "compress_ratio": 128
+      },
+      "current": {
+        "latency_us": 341.1,
+        "match": "clamped",
+        "source_batch": 1,
+        "source_query": 512,
+        "source_prefix": 65024
+      },
+      "ordinary_same_geometry_lookup": {
+        "latency_us": 165.9098121085595,
+        "match": "interpolated",
+        "source_id": "aiconfigurator-borrowed:b300_sxm:dsv4_attention:vllm:0.24.0"
+      },
+      "relative_cost_difference_percent": 105.59362684155693
+    },
+    {
+      "hardware": "b300",
+      "kind": "hca",
+      "requested": {
+        "layer_kind": "hca",
+        "phase": "context",
+        "mla_dtype": "bf16",
+        "kv_cache_dtype": "fp8",
+        "kernel_source": "flashmla_sparse_dsv4",
+        "kernel_dtype": "fp8_block",
+        "model": "deepseek-ai/deepseek-v4-pro",
+        "architecture": "deepseekv4forcausallm",
+        "num_heads": 128,
+        "tp_size": 1,
+        "batch_size": 1,
+        "input_seq_len": 512,
+        "context_len": 65024,
+        "compress_ratio": 128
+      },
+      "current": {
+        "latency_us": 341.1,
+        "match": "clamped",
+        "source_batch": 1,
+        "source_query": 512,
+        "source_prefix": 65024
+      },
+      "ordinary_same_geometry_lookup": {
+        "latency_us": 341.1,
+        "match": "exact",
+        "source_id": "aiconfigurator-borrowed:b300_sxm:dsv4_attention:vllm:0.24.0"
+      },
+      "relative_cost_difference_percent": 0.0
+    }
+  ],
+  "next_action": "independently remove false query inflation from coupled-axis samples while retaining true global source floors and bounded same-geometry interpolation/extrapolation; cover exact rows, neighboring prefixes and full windows",
+  "formal_accuracy_evidence": false,
+  "runtime_change": false
+}

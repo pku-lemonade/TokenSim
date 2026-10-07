@@ -97,6 +97,29 @@ class AttentionSOLTest(TestCase):
         key = self.key(context_len=1048576)
         self.assertEqual(sol.estimate_us(key, indexer_kv_fraction=0.25), sol.estimate_us(key))
 
+    def test_shared_work_depends_on_rows_and_geometry_not_phase_or_context(self):
+        for ratio in (1, 4, 128):
+            for tp in (1, 4, 8):
+                with self.subTest(ratio=ratio, tp=tp):
+                    base = self.key(compress_ratio=ratio, tp_size=tp, num_heads=128 // tp)
+                    shared, phase = self.sol.shared_phase_us({**base, "batch_size": 512, "context_len": 16384})
+                    context_shared, context_phase = self.sol.shared_phase_us(
+                        {**base, "phase": "context", "batch_size": 1,
+                         "input_seq_len": 512, "context_len": 131072})
+                    self.assertEqual(shared, context_shared)
+                    self.assertGreater(shared, 0)
+                    self.assertGreaterEqual(phase, 0)
+                    self.assertGreaterEqual(context_phase, 0)
+                    self.assertGreaterEqual(shared + phase, self.sol.estimate_us({**base, "batch_size": 512}))
+
+    def test_shared_phase_reuse_changes_only_phase_bound(self):
+        key = self.key(context_len=1048576)
+        common, phase = self.sol.shared_phase_us(key)
+        shared_after, phase_after = self.sol.shared_phase_us(key, indexer_kv_fraction=0.5)
+        self.assertEqual(shared_after, common)
+        self.assertLessEqual(phase_after, phase)
+        self.assertGreaterEqual(phase_after, 0)
+
     def test_indexer_reuse_retains_hca_and_per_query_sparse_kv_work(self):
         key = self.key(context_len=131072)
         work = self.sol.work(key)
