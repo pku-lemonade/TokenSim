@@ -1,0 +1,57 @@
+{
+  "scope": "complete dedicated MTP pass accounting and prefill lookahead",
+  "baseline_commit": "235c820",
+  "logic_tests": {
+    "command": "pytest -q",
+    "passed": 507,
+    "warnings": 32,
+    "subtests_passed": 14,
+    "runtime_seconds": 139.38,
+    "log": "/tmp/agentx-full-mtp-tests.log"
+  },
+  "source_checks": [
+    {
+      "path": "/home/zhuohang/Serving/vllm-note/vllm/models/deepseek_v4/nvidia/mtp.py",
+      "sha256": "c0ca46dbe43e01a32379c3ce45a6b578e68871755a39399f7918d06e383fbebf"
+    },
+    {
+      "path": "/home/zhuohang/Serving/vllm-note/vllm/v1/worker/gpu/spec_decode/autoregressive/speculator.py",
+      "sha256": "c40e801436bc78a77624e1d2c688db823a21b73ffc65f75d18ad78ffeef18118"
+    },
+    {
+      "path": "/home/zhuohang/Serving/vllm-note/vllm/v1/worker/gpu/spec_decode/autoregressive/cudagraph_utils.py",
+      "sha256": "42ee43d95882608576c7a98e8c64865eb4053838d0c647661469d00dc71aa0b1"
+    },
+    {
+      "path": "/home/zhuohang/Serving/vllm-note/vllm/models/deepseek_v4/nvidia/model.py",
+      "sha256": "5d5a74e339cd110def9b5e37a56fa602a42cdece98811013fb69700a0274a224"
+    }
+  ],
+  "result_root": "results/agentx-dsv4-full/native-full-mtp/20261007-three-passes",
+  "stage_acceptance_pending": false,
+  "formal_accuracy_accepted": false,
+  "declared_analytical_gaps": [
+    "SWA core without full matching Pro SWA table",
+    "hc_head without matching full table",
+    "embedding/input-add stream estimates",
+    "generic MHC when consumer selects generic backend"
+  ],
+  "open_requirements": [
+    "cached-prefill padding and max-model-len edge policy",
+    "main mHC duplicate residual and fusion/SP scope",
+    "mixed target module projections",
+    "nonuniform DP MoE cost",
+    "buffer lifecycle and final three-seed matrix"
+  ],
+  "schema_export_gap": {
+    "field_names": [
+      "native_megamoe_routed_seconds",
+      "native_megamoe_shared_seconds",
+      "native_megamoe_counts"
+    ],
+    "current_behavior": "util emits combined native summaries but LLMResult omits those optional fields",
+    "equivalent_total_ledger": "main moe_compute_latency + moe_straggler_latency + native_dsv4_mtp_component_seconds.moe",
+    "followup": "preserve native summaries in result schema before final matrix; do not rewrite existing results or skip component checks"
+  },
+  "completed_pipeline_evidence": "data/reference/agentx-full-mtp/pipeline-validation.json"
+}

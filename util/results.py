@@ -191,14 +191,25 @@ def get_latency_stats(engine: LLMEngine) -> dict[str, Any]:
     native_attention_decode_batches = {}
     native_attention_mtp_kv = {}
     target_logits_counts = {}
+    mtp_counts, mtp_components = {}, {}
     for worker in getattr(engine, "workers", []):
         backend = getattr(worker, "latency_backend", None)
         if backend is None:
             continue
+        mtp = getattr(backend, "native_mtp", None)
+        if mtp:
+            for key, value in mtp.counts.items():
+                mtp_counts[key] = mtp_counts.get(key, 0) + value
+            for key, value in mtp.component_seconds.items():
+                mtp_components[key] = mtp_components.get(key, 0) + value
         for key, value in getattr(backend, "target_logits_counts", {}).items():
             target_logits_counts[key] = target_logits_counts.get(key, 0) + value
-        native = getattr(backend, "native_moe", None)
-        if native is not None:
+        native_estimators = [getattr(backend, "native_moe", None)]
+        if mtp:
+            native_estimators.extend([mtp.initial_moe, mtp.decode_moe])
+        for native in native_estimators:
+            if native is None:
+                continue
             extra = native.stats_dict()
             for key in (
                 "native_megamoe_routed_seconds",
@@ -262,6 +273,8 @@ def get_latency_stats(engine: LLMEngine) -> dict[str, Any]:
             else {}
         ),
         **({"dsv4_target_logits": target_logits_counts} if target_logits_counts else {}),
+        **({"native_dsv4_mtp_counts": mtp_counts,
+            "native_dsv4_mtp_component_seconds": mtp_components} if mtp_counts else {}),
         # Grouped by table and discrete key with the requested axis ranges;
         # the full report goes to missing_shapes_<qps>.json.
         "operator_missing_shapes": aggregate.missing_shape_records()[:200],

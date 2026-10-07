@@ -178,6 +178,7 @@ class DPStepCoordinator:
                             else dummy_width
                         ),
                         context,
+                        len(batch) if batch else 1,
                     )
                 moe_step = MoEPass(shapes)
                 for worker in self.workers:

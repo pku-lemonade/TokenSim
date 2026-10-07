@@ -5,7 +5,7 @@
 > 源码基准：只读参考 `/home/zhuohang/Serving/vllm-note`，本轮记录 HEAD `30f5c01d4ebb`；不下载历史镜像、不修改或切换此目录。本文旧行号和旧 HEAD 下的源码结论需按此版本重新定位；历史运行日志仍作为实验事实保留。
 > 分支：`agentx-support`（基于 `b2b685a`）
 > 历史实现与结果（不是最终精度验收）：**2026-10-02 已完成 MegaMoE/shared expert、native CSA/HCA attention、MTP 2/3 推进与 q=4 target verify、native mHC，以及 native Mooncake shared-page adapter 的代码和两组完整一小时主点验收。统一矩阵已支持 list/check/expand/run/summary/plot、断点续跑、实际 GPU 数归一化和多 seed；DEP8、TP4/EP4、TP8/HBM 的 19 个曲线点已完成 seed0/1/2 全窗口并通过逐点守恒校验，所有 seed1/2 状态成功且 seed 间输出存在差异。修复后的三 seed 主点均已成功：B200 均值 522.135、B300 均值 1,027.989 token/s。完整阶段吞吐依次为：MegaMoE B200/B300 1,733.192／3,440.686，native attention+MTP 592.617／1,140.733，native mHC+attention+MTP 567.198／1,114.907，native Mooncake B200/B300 583.269／1,045.469 token/s。已完成 HBM/MTP 消融、记录时序、固定历史 worker 映射和独立 AIC B200 shape diagnostic；AIC B300 的缺失 MegaMoE 行、FlashMLA/FlashInfer 后端差异、mHC/shared fusion 和跨硬件 MegaMoE 借表均保留为明确近似，因此最终绝对吞吐仍未通过 25% 门槛。报告见 [原生 MegaMoE](agentx-native-megamoe-report.md)、[原生 attention](agentx-native-attention-report.md)、[原生 mHC](agentx-native-mhc-report.md)、[Mooncake](agentx-mooncake-report.md)、[原生曲线](agentx-native-curve-report.md)、[AIC 诊断](agentx-aic-diagnostic-report.md)。**
-> 当前状态（2026-10-07）：decode 整批、SOL 和 MTP indexer Q-block 复用已提交；target 末步 query、decode KV 预留基数及 logits 行数也完成 499 项测试和两组完整主点验收。最新吞吐 B200 1,845.484 / B300 3,865.835 token/s，较 tile 基线 +2.30% / −0.50%，相对参考仍低 48.73% / 39.22%，整体 25% 门槛未通过。接下来完整建模 draft 模块与缓存范围，再分别处理 cached-prefill padding、mHC 重复残差、混合批投影、不均匀 DP MoE、buffer 生命周期、历史映射与 AIC 同配置对照；最终三 seed 矩阵仍待修复后重跑。见 [MTP tile](agentx-mtp-kv-report.md)、[target budget](agentx-target-budget-report.md)。
+> 当前状态（2026-10-07）：target query/KV/logits 已提交 `235c820`；完整 MTP draft 三次 pass、SWA/MoE/mHC/head 与通信也通过 507 项测试和两组完整主点严格验收。最新吞吐为 B200 1,803.074 / B300 3,777.004 token/s，相对参考仍低 49.90% / 40.62%，整体 25% 门槛未通过。下一部分消除 main native mHC 重复残差并保留 native summary 字段，再核对 cached-prefill padding、混合投影、非均匀 DP MoE、buffer 生命周期、历史映射与 AIC 同配置对照；最终三 seed 矩阵仍待完整实现冻结后重跑。见 [target budget](agentx-target-budget-report.md)、[完整 MTP](agentx-full-mtp-report.md)。
 > 对照对象：InferenceX AgentX，完整 DeepSeek-V4-Pro（FP8 + MXFP4），vLLM + MTP；覆盖 B200/B300 多并发曲线及其 TP8、TP4、DEP8 等配置变化。主检查点为单节点 8 GPU DEP8：B200 并发 196、B300 并发 384。
 > 证据分层：历史配置和日志描述参考运行；本地源码决定本轮实现；二者存在版本差异时单列记录。【待核实／待验证】是实现中的技术检查，不是待用户批准；【估算】不是实测；【推断】须保留依据与适用范围。历史研究中的源码行号仅作定位线索，以函数和本轮版本为准。
 
@@ -854,7 +854,7 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 - [x] **缓存容量与前缀命中任务 2** HBM 与 CPU 容量均由模拟器按硬件、完整模型 dtype、运行时预算和实际 KV 布局计算；日志 KV 等效值与 CPU block 数只作误差对照，不覆盖模拟容量。
 - [x] **缓存容量与前缀命中任务 3** 增加 DSV4 单份 latent、压缩 KV、indexer 与窗口状态的专用布局，保留 GQA 的 K/V 两份；不全局删除 ×2。复核 swap 上限，把 swap 与 offload 分开，禁止用旧的等效 token 容量覆盖自动计算结果。
 - [x] **缓存容量与前缀命中任务 4** 主点引擎块按 256 token，从原始 64-token hash 聚合完整块，保留前缀链与回放作用域；其他点按配置转换。prefix 最多命中 n−1 个 token；按 retention 32768 及混合组可恢复边界截断，以当前源码核对窗口、请求末尾与分叉点的状态保留。
-- [ ] **缓存容量与前缀命中任务 5（decode query + K 已独立验证；prefill/draft 全调用范围随后核对）** MTP lookahead：每个 decode 请求按 target query 范围及 K 个 lookahead slot 预留。见 `agentx-mtp-kv/target-budget-followup.json` 的 250→257 token 跨块例子。
+- [ ] **缓存容量与前缀命中任务 5（decode query + K 已独立验证；prefill/draft 全调用范围已计入并验证）** MTP lookahead：每个 decode 请求按 target query 范围及 K 个 lookahead slot 预留。见 `agentx-mtp-kv/target-budget-followup.json` 的 250→257 token 跨块例子。
 - [x] **缓存容量与前缀命中任务 6** 结果 JSON 分别记录 DP worker 的 HBM、SimpleCPU DRAM 或 Mooncake shared pool 容量、命中和传输；Mooncake 使用共享 PoolKey，不复制成独立 worker 池。
 - [x] **缓存容量与前缀命中任务 7** 用源码推导的分配、释放、命中和容量边界用例验证 TokenSim 缓存管理器；不将运行真实 vLLM 或下载历史镜像设为前提。
 - [x] **缓存容量与前缀命中任务 8** 分离逻辑 block、物理 page 和 slot；SimpleCPU/Mooncake 异步在途需求、引用、驱逐、抢占、取消和 DMA pin 生命周期均有完整窗口及专项验证。
@@ -931,8 +931,8 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 目标：用 AL 参数推进，并计入 verify 和 draft 的成本。
 
 - [x] **投机解码任务 1（方案已确认）** 每个请求的 decode step 以 51% / 49% 概率推进 2 / 3 个 token。随机状态与 trace 抽样分离；记录模拟种子，保证相同配置和种子可复现。请求结束时限制为剩余输出长度，分别记录抽样推进量和实际产出，避免把末步截断误判为接受长度偏差。
-- [ ] **投机解码任务 2（方案已确认，重新审计发现当前 draft 仅计输入投影和 head，SWA/MoE/mHC 等完整模块未计齐）** 在平均接受长度推进的同时，按本地 vLLM 的实际 MTP 调用分别估算草稿模块与输出投影的成本；内部采用查表／理论模型，不生成真实 token 或执行真实张量。分别列出校验与草稿的形状、调用次数、耗时和来源，避免漏计输出投影或重复计费。多 query 校验按已确认的计算与读取分项方案处理（决策 30.1、30.4）。
-- [ ] **投机解码任务 3（decode 基数已修复并验证；prefill/draft 范围仍待核对）** KV lookahead K（与 缓存容量与前缀命中任务 5 一致）。
+- [x] **投机解码任务 2（完整 pass/模块/head 已计齐并独立验证；缺失 SWA/hc_head 实测明确为解析估算）** 在平均接受长度推进的同时，按本地 vLLM 的实际 MTP 调用分别估算草稿模块与输出投影的成本；内部采用查表／理论模型，不生成真实 token 或执行真实张量。分别列出校验与草稿的形状、调用次数、耗时和来源，避免漏计输出投影或重复计费。多 query 校验按已确认的计算与读取分项方案处理（决策 30.1、30.4）。
+- [ ] **投机解码任务 3（decode 基数已修复并验证；prefill/draft 范围已计入并验证）** KV lookahead K（与 缓存容量与前缀命中任务 5 一致）。
 - [x] **投机解码任务 4** ITL 按 aiperf 口径统计。
 
 完成标准：未截断的推进量抽样符合 51% / 49% 分布，期望为 2.49；固定种子可复现，末步不超出请求输出长度。报告抽样数及实测均值，完整运行中受末步截断、取消影响的实际平均产出单独统计；成本分解和针对边界的单元测试通过。
@@ -947,7 +947,7 @@ AIC 没有这套 AgentX 回放行为。可选的固定参考发出时间模式�
 - [ ] **算子耗时任务 3（SOL 增长和多轴邻点已修复，完整主点及 holdout 已记录；部分 context 留出误差仍超界）** 先尝试同配置精确匹配和范围内插值，表外使用以实测为基准的 AIC 式理论成本比例外推。移植 `dsv4_attention_sol_ms` 前核对各组成项，缓存字节按已核实配置参数化。用留出的实测点验证（例如用 ≤32K 数据预测 64K），用分项长上下文数据检查趋势，分别报告插值、外推与跨配置近似的覆盖比例。没有可匹配的基础数据时明确记录缺口，不静默套用其他模型。
 - [x] **算子耗时任务 4（清洗策略已确认）** `scripts/audit_agentx_operator_data.py` 审计 B200/B300/GB200/GB300 的 30 张 native 表：无 null/非有限/非正耗时和缺失 key；重复 key 与单轴下降全部保留并记录。证据见 `data/reference/agentx-native-operator-cleaning-audit.json`，没有按非单调或偏大耗时删除数据。
 - [x] **算子耗时任务 5** 处理 B300 CSA generation 缺 bs<64 数据的问题（决策 19）。
-- [ ] **算子耗时任务 6（结构已实现，draft 的 SWA 费用尚待接入）** MTP 层按 SWA-only 处理（决策 20）。
+- [x] **算子耗时任务 6（SWA-only draft 已计入三次 pass 并通过独立验证）** MTP 层按 SWA-only 处理（决策 20）。
 - [x] **算子耗时任务 7（Q-block 内读取复用已完成独立验收；source-layout 和后端差异仍明示）** 区分请求数与每请求 query 数，估算 verify q=4 的 attention 成本。以 Pro 实测为基准，分别估算新增 query 的计算和按实际实现可复用 KV 的读取量；分项 q=1/q=4 数据只在计时语义可对应时辅助校验，不把整个模块盲目乘四或乘一个跨模型比值。记录读写量、计算量和缩放依据（决策 30.4）。
 - [x] **算子耗时任务 8** 已核对 AIC collector、只读 vLLM 和运行日志：native 表为 FlashMLA/FP8 source layout，参考为 FlashInfer/plain FP8 + MXFP4 indexer；原始与修正布局、来源版本和不可比原因保留在 attention report 与 backend provenance，未引入无配对证据的固定系数。
 - [x] **算子耗时任务 9（负载近似已确认）** 修复逐请求从零开始轮转导致负载集中到同一专家的 bug，统计先汇总整步 route 并合理分配余数。耗时查询使用 `power_law_1.01` 实测分布，不再叠加同源 straggler 惩罚；统计用直方图不得暗中改变这一成本假设。hash 路由层保留结构与路由差异，无法还原逐 token 路由时也明确记录统计近似。

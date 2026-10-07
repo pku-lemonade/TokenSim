@@ -47,6 +47,12 @@ class MTPProgressTest(TestCase):
         self.assertEqual(scheduler._step_tokens(req, 3), 0)
         self.assertEqual(scheduler._step_tokens(req, 4), 1)
 
+    def test_prefill_forward_also_reserves_draft_lookahead(self):
+        scheduler = self.scheduler()
+        req = Request(1, 1024, 20, 16)
+        self.assertTrue(req.is_context_build)
+        self.assertEqual(scheduler._decode_lookahead(req), 3)
+
     def test_simulation_seed_changes_deterministic_acceptance_stream(self):
         first = self.scheduler()
         second = self.scheduler()

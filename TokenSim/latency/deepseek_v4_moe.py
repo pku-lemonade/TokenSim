@@ -18,6 +18,7 @@ class RankShape:
     tokens: int
     query_width: int | None
     context_build: bool
+    requests: int | None = None
 
 
 @dataclass
@@ -237,7 +238,7 @@ class MegaMoEEstimator:
         activation = 5 * rows * i / device.peak_compute_for("fp32").value
         return (max(compute, memory) + activation) * 1e6
 
-    def estimate(self, local_tokens):
+    def estimate(self, local_tokens, *, layers=None):
         if not self.topology_checked and self.backend.communicator is not None:
             description = self.backend.communicator.describe()
             if (
@@ -281,7 +282,9 @@ class MegaMoEEstimator:
             self.counts["shared:serial_measured_gemm_plus_activation"] += 1
         else:
             shared = 0.0
-        layers = self.backend.moe_layers_local
+        layers = self.backend.moe_layers_local if layers is None else layers
+        if layers < 1:
+            raise ConfigurationError("MegaMoE pass needs at least one layer")
         self.routed_seconds += routed * layers * 1e-6
         self.shared_seconds += shared * layers * 1e-6
         self.counts["rank_estimates"] += 1

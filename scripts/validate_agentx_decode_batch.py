@@ -33,7 +33,8 @@ def audit(batch_root, *, seed=0, hardware=("b200", "b300")):
         assert batches["query_rows"] >= query_rows
         assert result["native_dsv4_attention_seconds"] > 0
         components = result["operator_component_seconds"]
-        assert abs(result["native_dsv4_attention_seconds"] - components["attention"]) < 1e-6
+        draft_attention = (result.get("native_dsv4_mtp_component_seconds") or {}).get("attention", 0)
+        assert abs(result["native_dsv4_attention_seconds"] + draft_attention - components["attention"]) < 1e-6
         local = sum(result["dp_step_stats"]["local_compute_seconds_per_rank"].values())
         assert abs(sum(components.values()) - local) < 1e-6 * max(1, local)
         points[sku] = {

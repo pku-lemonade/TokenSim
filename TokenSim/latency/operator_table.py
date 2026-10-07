@@ -250,6 +250,11 @@ class OperatorTableLatencyBackend(LatencyBackend):
                 expected_query_width=expected_decode_query_len,
                 max_num_seqs=max_num_seqs,
             )
+        self.native_mtp = None
+        if model.deepseek_v4 and self.mtp_query_width > 1:
+            from TokenSim.latency.deepseek_v4_mtp import DeepSeekV4MTPEstimator
+
+            self.native_mtp = DeepSeekV4MTPEstimator(self, max_num_seqs=max_num_seqs)
 
     # -- dimensions -------------------------------------------------------------
 
@@ -420,12 +425,14 @@ class OperatorTableLatencyBackend(LatencyBackend):
                 )
             ),
             "native_megamoe": self.native_moe.describe() if self.native_moe else None,
+            "native_dsv4_mtp": self.native_mtp.describe() if self.native_mtp else None,
         }
 
     def stats_dict(self) -> dict[str, Any]:
         return {
             **self.stats.as_dict(),
             "dsv4_target_logits": dict(self.target_logits_counts),
+            **(self.native_mtp.stats_dict() if self.native_mtp else {}),
             **(self.native_attention.stats_dict() if self.native_attention else {}),
             **(self.native_mhc.stats_dict() if self.native_mhc else {}),
             **(self.native_moe.stats_dict() if self.native_moe else {}),
@@ -434,12 +441,16 @@ class OperatorTableLatencyBackend(LatencyBackend):
     def set_moe_step(self, step):
         if self.native_moe:
             self.native_moe.set_step(step)
+        if self.native_mtp:
+            self.native_mtp.set_step(step)
 
     def reset_profile_stats(self):
         # Retain lookup caches and the shared compute/communication collection
         # checklist, but remove warmup estimates from measured time breakdown.
         self.stats = OperatorStats(missing=self.stats.missing)
         self.target_logits_counts.clear()
+        if self.native_mtp:
+            self.native_mtp.reset_stats()
         if self.native_moe:
             self.native_moe.reset_stats()
         if self.native_attention:
@@ -555,7 +566,7 @@ class OperatorTableLatencyBackend(LatencyBackend):
         # and shared target head.  Verify q=1+K is already represented by the
         # target query width; only the extra draft rows are added here.
         draft_rows = 0
-        if self.mtp_query_width > 1:
+        if self.mtp_query_width > 1 and not self.native_mtp:
             draft_rows = sum(
                 max(0, int(getattr(req, "query_tokens", 1)) - 1)
                 for req in requests_list
@@ -579,6 +590,13 @@ class OperatorTableLatencyBackend(LatencyBackend):
 
         overhead_us = self.device.step_overhead_us.value
 
+        draft = self.native_mtp.estimate(requests_list) if self.native_mtp else {}
+        layer_gemm_us += draft.get("gemm", 0)
+        layer_attention_us += draft.get("attention", 0)
+        layer_elem_us += draft.get("elementwise", 0)
+        moe_us += draft.get("moe", 0)
+        lm_head_us += draft.get("lm_head", 0)
+
         stats.record_component("gemm", layer_gemm_us * 1e-6)
         stats.record_component("attention", layer_attention_us * 1e-6)
         stats.record_component("elementwise", layer_elem_us * 1e-6)
@@ -594,7 +612,7 @@ class OperatorTableLatencyBackend(LatencyBackend):
             + lm_head_us
             + overhead_us
         ) * 1e-6
-        comm_s = self._communication(T, moe_comm_bytes)
+        comm_s = self._communication(T, moe_comm_bytes) + draft.get("comm", 0) * 1e-6
         stats.record_component("comm", comm_s)
         return compute_s + comm_s
 

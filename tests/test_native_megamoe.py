@@ -164,7 +164,9 @@ class NativeMegaMoETest(unittest.TestCase):
         r = Request(0, 64, 1, 256)
         with patch.object(backend, "_gemm", return_value=0), patch.object(
             backend, "_elementwise", return_value=0
-        ), patch.object(backend, "_query", return_value=Mock(latency_us=0)):
+        ), patch.object(backend, "_query", return_value=Mock(latency_us=0)), patch.object(
+            backend.native_mtp, "estimate", return_value={}
+        ):
             latency = backend._compose(
                 tokens=64, requests=1, attention_us=0, requests_list=[r]
             )
@@ -172,6 +174,13 @@ class NativeMegaMoETest(unittest.TestCase):
         self.assertGreater(latency, 0)
         self.assertAlmostEqual(backend.stats.component_seconds["moe"], latency)
         self.assertEqual(backend.moe_stats.moe_straggler_latency, 0)
+
+    def test_explicit_single_layer_scope_does_not_price_the_target_stack(self):
+        backend = self.backend()
+        backend.set_moe_step(self.step([64] * 8))
+        total, routed, shared = backend.native_moe.estimate(64, layers=1)
+        self.assertAlmostEqual(total, routed + shared)
+        self.assertAlmostEqual(backend.native_moe.routed_seconds, routed * 1e-6)
 
     def test_disabled_shared_fusion_prices_two_serial_fp8_matrices_and_activation(self):
         backend = self.backend(fusion=False)

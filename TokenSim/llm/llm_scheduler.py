@@ -597,7 +597,9 @@ class LLMPagedAttnScheduler(LLMScheduler):
         return self._query_tokens(req, accepted) if not req.is_context_build else accepted
 
     def _decode_lookahead(self, req: Request) -> int:
-        if not self.mtp_enabled or req.is_context_build:
+        # The initial draft pass also runs over prefill chunks. Only async
+        # KV loading skips a forward (and therefore its lookahead allocation).
+        if not self.mtp_enabled:
             return 0
         return int(
             getattr(getattr(self.cache_config, "hybrid_layout", None), "speculative_tokens", 0)
@@ -607,13 +609,14 @@ class LLMPagedAttnScheduler(LLMScheduler):
         # The same FCFS youngest-victim rule applies to prefill/recompute
         # allocation, not only decode growth. Never publish canceled or
         # uncomputed blocks while releasing a victim.
-        while not self.block_manager.can_ensure_slots(req, tokens):
+        lookahead = self._decode_lookahead(req)
+        while not self.block_manager.can_ensure_slots(req, tokens, lookahead=lookahead):
             victim = queue.pop() if queue else req
             self._preempt(victim)
             preempted.append(victim)
             if victim is req:
                 return False
-        self.block_manager.ensure_slots(req, tokens)
+        self.block_manager.ensure_slots(req, tokens, lookahead=lookahead)
         return True
 
     def _reserve_decode_slot(
