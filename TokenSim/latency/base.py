@@ -57,3 +57,8 @@ def is_decode_step(req: Request) -> bool:
     return int(getattr(req, "generation_idx", 0)) > 0 and not bool(
         getattr(req, "needs_recompute", False)
     )
+
+
+def is_decode_attention_step(req: Request, max_query_len: int) -> bool:
+    """SM100 varlen SWA/indexer split: short extends use decode metadata."""
+    return query_tokens(req) <= max_query_len

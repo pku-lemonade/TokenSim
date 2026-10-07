@@ -15,6 +15,7 @@ class RequestStatus(Enum):
     WAITING_FOR_KV = auto()
     WAITING_FOR_CONNECTOR_FREE = auto()
     FINISHED_STOPPED = auto()
+    FINISHED_LENGTH_CAPPED = auto()
     CANCEL_PENDING = auto()
     FINISHED_CANCELLED = auto()
 
@@ -274,6 +275,9 @@ class Request:
     # verifies 1+K query positions.  Ordinary requests keep this equal to
     # scheduled_tokens.
     scheduled_query_tokens: int = field(default=0, repr=False)
+    scheduled_placeholder_tokens: int = field(default=0, repr=False)
+    prefill_chunk_pending: bool = field(default=False, repr=False)
+    max_model_len: int | None = field(default=None, repr=False)
     cancel_requested: bool = field(default=False, repr=False)
     cancel_requested_at: float | None = field(default=None, repr=False)
     cancelled_at: float | None = field(default=None, repr=False)
@@ -325,7 +329,10 @@ class Request:
 
     @property
     def is_done(self) -> bool:
-        return not self.cancel_requested and self.generation_idx == self.decode_len
+        return not self.cancel_requested and (
+            self.generation_idx >= self.decode_len
+            or (self.max_model_len is not None and self.context_len >= self.max_model_len)
+        )
 
     def request_cancel(self, env: simpy.Environment) -> simpy.Event:
         if self.cancellation_event is None:
@@ -371,6 +378,22 @@ class Request:
         return self.is_prefill or self.needs_recompute
 
     @property
+    def is_prompt_prefilling(self) -> bool:
+        """Serving's original-prompt progress, independent of output replay."""
+        return self.is_context_build and self.num_computed_tokens < self.prefill_len
+
+    @property
+    def decode_graph_eligible(self) -> bool:
+        return not self.is_prompt_prefilling or (
+            self.step_tokens == 1 and self.num_computed_tokens > 0
+        )
+
+    @property
+    def logits_tokens(self) -> int:
+        # Invalid placeholder drafts still require logits but yield one output.
+        return 1 + self.scheduled_placeholder_tokens if self.is_context_build else self.query_tokens
+
+    @property
     def step_tokens(self) -> int:
         """Tokens this request computes in the current step.
 
@@ -396,6 +419,7 @@ class Request:
         )
         self.scheduled_tokens = 0
         self.scheduled_query_tokens = 0
+        self.scheduled_placeholder_tokens = 0
 
     def record_prefill_admission(self, gpu_tokens, cpu_tokens):
         if (
@@ -492,6 +516,7 @@ class Request:
         tokens = self.step_tokens
         self.scheduled_tokens = 0
         self.scheduled_query_tokens = 0
+        self.scheduled_placeholder_tokens = 0
         self.num_computed_tokens += tokens
         if self.is_prefill:
             self.prefill_chunks += 1
@@ -527,6 +552,8 @@ class Request:
         if self.cancel_requested:
             return None
         output_tokens = max(1, min(output_tokens, self.decode_len - self.generation_idx))
+        if self.max_model_len is not None:
+            output_tokens = min(output_tokens, max(0, self.max_model_len - self.context_len))
         self.generation_idx += output_tokens
         self._append_tokens(output_tokens)
         step_time = env.now - self._last_event_at
@@ -543,6 +570,8 @@ class Request:
             self.decode_service_time_sum += latency
             self.decode_batch_sum += batch
         if self.is_done:
+            if self.max_model_len is not None and self.context_len >= self.max_model_len:
+                self.status = RequestStatus.FINISHED_LENGTH_CAPPED
             self.completed_at = env.now
             request_time = self.complete_timing()
             if self.record_timing:
@@ -573,6 +602,7 @@ class Request:
         self.num_computed_tokens = 0
         self.scheduled_tokens = 0
         self.scheduled_query_tokens = 0
+        self.scheduled_placeholder_tokens = 0
 
     def finish_recompute(self, latency: float) -> None:
         self.needs_recompute = False

@@ -538,6 +538,7 @@ class NativeAgentXReplay:
             "cancellation_acknowledged": (
                 req.cancelled_at is not None if req.cancel_requested else None
             ),
+            "length_capped": req.max_model_len is not None and req.context_len >= req.max_model_len,
             "ttft_s": req.prefill_latency if req.generation_idx else None,
             "latency_s": (
                 req.completed_at - req.arrival_at

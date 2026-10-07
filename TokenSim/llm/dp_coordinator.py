@@ -164,7 +164,7 @@ class DPStepCoordinator:
                 for worker in self.workers:
                     batch = batches[worker.id]
                     widths = {r.query_tokens for r in batch}
-                    context = any(r.is_context_build for r in batch)
+                    context = any(not r.decode_graph_eligible for r in batch)
                     dummy_width = self.dummies[worker.id].query_tokens
                     shapes[worker.dp_rank] = RankShape(
                         token_counts[worker.dp_rank] if batch else dummy_width,

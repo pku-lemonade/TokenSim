@@ -547,7 +547,7 @@ class HybridKVBlockManager:
         return range(start // group.block_tokens, cdiv(end, group.block_tokens))
 
     def can_ensure_slots(self, req, scheduled_tokens, *, lookahead=0):
-        end = req.num_computed_tokens + scheduled_tokens + lookahead
+        end = min(self.layout.max_model_len, req.num_computed_tokens + scheduled_tokens + lookahead)
         needed = sum(
             (
                 max(0, cdiv(end, g.block_tokens) - len(self.tables[req.id][g.group_id]))
@@ -572,7 +572,7 @@ class HybridKVBlockManager:
         return needed <= len(self.free_slots) + reclaimable
 
     def ensure_slots(self, req, scheduled_tokens, *, lookahead=0):
-        end = req.num_computed_tokens + scheduled_tokens + lookahead
+        end = min(self.layout.max_model_len, req.num_computed_tokens + scheduled_tokens + lookahead)
         changed = False
         # Reclaim all old windows before allocating any group's new blocks.
         # can_ensure_slots includes these reclaimable slots in its decision.

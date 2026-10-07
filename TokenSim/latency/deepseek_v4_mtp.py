@@ -68,7 +68,7 @@ class DeepSeekV4MTPEstimator:
             if self.backend.parallel_config.data_parallel_size > 1:
                 raise ConfigurationError("MTP needs the synchronized DP request snapshot")
             widths = {query_tokens(r) for r in requests}
-            context = any(r.is_context_build for r in requests)
+            context = any(not r.decode_graph_eligible for r in requests)
             step = MoEPass({dp: RankShape(actual_rows, next(iter(widths)) if len(widths) == 1 and not context else None,
                                         context, len(requests))})
         else:

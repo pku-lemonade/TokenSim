@@ -27,6 +27,7 @@ from TokenSim.hardware.device import DeviceSpec, dtype_bytes
 from TokenSim.latency.base import (
     LatencyBackend,
     is_decode_step,
+    is_decode_attention_step,
     step_kv_len,
     step_tokens,
     query_tokens,
@@ -337,20 +338,28 @@ class OperatorTableLatencyBackend(LatencyBackend):
             q_len = query_tokens(req)
             kv_len = step_kv_len(req)
             tokens += q_len
-            if is_decode_step(req):
+            decode_attention = (is_decode_attention_step(req, self.mtp_query_width)
+                                if self.native_attention else is_decode_step(req))
+            if decode_attention:
                 decode_buckets[(self._bucket(kv_len), q_len)] += 1
-                sampling += q_len if self.model.deepseek_v4 else 1
-                decode_logits_rows += q_len
             else:
                 # Chunk of a context build: q_len new tokens attending to the
                 # kv_len tokens present after this step (cached prefix, earlier
                 # chunks and the chunk itself).
                 context_groups[(q_len, kv_len)] += 1
-                if self.model.deepseek_v4 or kv_len >= req.context_len:
-                    # V2 computes a bonus logit row for each prefill request,
-                    # including partial chunks whose sampled token is discarded.
-                    sampling += 1
-                    prefill_logits_rows += 1
+            if self.model.deepseek_v4:
+                # Logits ownership follows proposals, not attention metadata.
+                rows = req.logits_tokens
+                sampling += rows
+                if req.is_context_build:
+                    prefill_logits_rows += rows
+                    self.target_logits_counts["context_decode_metadata_rows"] += q_len if decode_attention else 0
+                    self.target_logits_counts["placeholder_rows"] += req.scheduled_placeholder_tokens
+                    self.target_logits_counts["context_graph_eligible_requests"] += int(req.decode_graph_eligible)
+                else:
+                    decode_logits_rows += rows
+            elif is_decode_step(req) or kv_len >= req.context_len:
+                sampling += 1
         if self.model.deepseek_v4 and self.is_last_stage:
             self.target_logits_counts["steps"] += 1
             self.target_logits_counts["decode_rows"] += decode_logits_rows
@@ -594,7 +603,7 @@ class OperatorTableLatencyBackend(LatencyBackend):
                 step = self.moe_step
                 if step is None:
                     widths = {query_tokens(req) for req in requests_list}
-                    context = any(req.is_context_build for req in requests_list)
+                    context = any(not req.decode_graph_eligible for req in requests_list)
                     step = MoEPass({self.rank_info.dp_rank: RankShape(
                         T, next(iter(widths)) if len(widths) == 1 and not context else None,
                         context, len(requests_list),
