@@ -91,9 +91,10 @@ class CacheConfig:
             from TokenSim.config.weight_memory import deepseek_v4_weight_memory
 
             self.weight_memory_report = deepseek_v4_weight_memory(
-                model, self.parallel_config, self.rank_info, self.expert_placement
+                model, self.parallel_config, self.rank_info, self.expert_placement,
+                include_mtp=speculative_tokens > 0,
             )
-            self.model_param_size_unsharded = deepseek_v4_weight_memory(model)[
+            self.model_param_size_unsharded = deepseek_v4_weight_memory(model, include_mtp=speculative_tokens > 0)[
                 "total_bytes"
             ]
             self.model_param_size = self.weight_memory_report["total_bytes"]
@@ -106,6 +107,7 @@ class CacheConfig:
                 max_num_batched_tokens=max_num_batched_tokens,
                 max_concurrent_batches=max_concurrent_batches,
                 speculative_tokens=speculative_tokens,
+                include_mtp=speculative_tokens > 0,
             )
             self.memory_budget = deepseek_v4_memory_budget(
                 model,

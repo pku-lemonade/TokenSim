@@ -1,0 +1,83 @@
+{
+  "stage": "explicit MTP/K execution and complete disabled ablation",
+  "parent_commit": "8c42261ae1bf086b082c4e1d713b5ada43a31a5b",
+  "runtime_frozen": true,
+  "full_suite": {
+    "status": "passed",
+    "passed": 595,
+    "subtests_passed": 193,
+    "warnings": 32,
+    "elapsed_seconds": 202.87,
+    "log": "data/reference/agentx-mtp-execution/full-tests.txt",
+    "sha256": "2af3fd3c3032c17bdb1de5c5e7ae15a943e32586fc3265f747dacfedfa263fcd"
+  },
+  "checkpoints": {
+    "b200-main": {
+      "status": "strictly accepted and analyzed",
+      "terminal": {
+        "exit_code": 0,
+        "started_unix_s": 1791462757.2519925,
+        "elapsed_wall_s": 2210.2521381378174
+      },
+      "validation": "data/reference/agentx-mtp-execution/b200-main-validation.json",
+      "analysis": "data/reference/agentx-mtp-execution/b200-main-analysis.json"
+    },
+    "b300-main": {
+      "status": "strictly accepted and analyzed",
+      "terminal": {
+        "exit_code": 0,
+        "started_unix_s": 1791462757.2519999,
+        "elapsed_wall_s": 5079.794949531555
+      },
+      "validation": "data/reference/agentx-mtp-execution/b300-main-validation.json",
+      "analysis": "data/reference/agentx-mtp-execution/b300-main-analysis.json"
+    },
+    "b200-disabled": {
+      "status": "strictly accepted and analyzed",
+      "terminal": {
+        "exit_code": 0,
+        "started_unix_s": 1791462757.25207,
+        "elapsed_wall_s": 3052.4971356391907
+      },
+      "validation": "data/reference/agentx-mtp-execution/b200-disabled-validation.json",
+      "analysis": "data/reference/agentx-mtp-execution/b200-disabled-analysis.json"
+    },
+    "b300-disabled": {
+      "status": "strictly accepted and analyzed",
+      "terminal": {
+        "exit_code": 0,
+        "started_unix_s": 1791462757.2519999,
+        "elapsed_wall_s": 6703.973384380341
+      },
+      "validation": "data/reference/agentx-mtp-execution/b300-disabled-validation.json",
+      "analysis": "data/reference/agentx-mtp-execution/b300-disabled-analysis.json"
+    }
+  },
+  "observed_unix_s": 1791470104.4765427,
+  "monitor_tool_session_id": 87379,
+  "rerun_performed": false,
+  "overall_goal_status": "active; full original scope and25% accuracy gate unachieved",
+  "previous_goal_turn_classification": "progress:all four original explicit K3/K0 windows terminal and strictly accepted;complete paired analysis and plots;enabled metrics unchanged on both SKUs;disabled path counters/costs zero;overall25% and current-code final matrix remain open",
+  "next_isolated_preparation": {
+    "path": "/tmp/tokensim-agentx-moe-efficiency-20261008",
+    "tests_passed": 601,
+    "subtests_passed": 339,
+    "integrated": false,
+    "full_windows_started": false
+  },
+  "stage_closeout": "implementation validated;report and plan synchronization before independent commit",
+  "artifacts_sha256": {
+    "pipeline-validation.json": "19de6410fa4910710da1324cce4a03d1724510189c50f1e36ef722aefe81709a",
+    "paired-analysis.json": "fbd3920c9ecd8a51456bc65dc08c7518088f0595916b6adb03ed76938350955e",
+    "paired-comparison.png": "dd23ff276c74cf12cb554636677f709d29d6727cf00551310c89732fd4657210",
+    "paired-comparison.svg": "e2e2023346ba26467d0adf642a5bc19fddf4cbdf07df1f428b25db4ba7f06e93",
+    "b200-main-validation.json": "6ad7cd5d188faa6e14d4fab7b503c8173546094c4cdcb0fa5ede0df37ed3612d",
+    "b200-main-analysis.json": "7320e9b36a3c3afcebc0ff6072548dcb012cd1bc6421de826db599e82fe8ab28",
+    "b300-main-validation.json": "e8aa44f0c393fbdab26f2ca9e8e56fa431bcb473223a0b55ead221f1aa2cac2b",
+    "b300-main-analysis.json": "5949611d08770a86ef14c5fedcc31f1528d711c142c00b90d7ab6013456d1c94",
+    "b200-disabled-validation.json": "d2b25a15b37a1734a3713ab058ef1fb03cf6037e9399b6b0fa87c3090940cdfe",
+    "b200-disabled-analysis.json": "6cdd653f960a316425168b860618d6873511da35e70d40b5f7902b5e9384d809",
+    "b300-disabled-validation.json": "4b2d242c20f87af7cdfd676c43db414498b1f64194c50213d1f226ba56fbd4fd",
+    "b300-disabled-analysis.json": "596ae136c3140c82ebd8be27b51661871e91353df1e2236d4d9a04e7db4831ae"
+  }
+}

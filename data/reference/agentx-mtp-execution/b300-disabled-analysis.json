@@ -1,0 +1,149 @@
+{
+  "scope": "current K3 versus validated memory-stage baseline and complete current K0 ablation",
+  "validation_sha256": "4b2d242c20f87af7cdfd676c43db414498b1f64194c50213d1f226ba56fbd4fd",
+  "formal_model_accuracy_accepted": false,
+  "points": {
+    "b300-disabled": {
+      "result_sha256": "4b79df1ed6ff3ae0341e24f368b347d7a2fc9ccddc09aee7a3163df432dd721a",
+      "terminal": {
+        "exit_code": 0,
+        "started_unix_s": 1791462757.2519999,
+        "elapsed_wall_s": 6703.973384380341
+      },
+      "phase_counts": {
+        "warmup": {
+          "sent": 4249,
+          "successful": 4249
+        },
+        "profiling": {
+          "sent": 18060,
+          "successful": 17760,
+          "cancelled": 300
+        }
+      },
+      "metrics": {
+        "output_tps": {
+          "prior_k3": 5443.542729056805,
+          "current": 4224.0088368027145,
+          "change_vs_prior_k3_percent": -22.403312565995005
+        },
+        "input_tps": {
+          "prior_k3": 712099.2567388555,
+          "current": 570630.8469480856,
+          "change_vs_prior_k3_percent": -19.86638919392243
+        },
+        "gpu_hit_fraction": {
+          "prior_k3": 0.9471225047805361,
+          "current": 0.9487905189208259,
+          "change_vs_prior_k3_percent": 0.17611387459073313
+        },
+        "cpu_hit_fraction": {
+          "prior_k3": 0.007770874966233556,
+          "current": 0.005099674744643168,
+          "change_vs_prior_k3_percent": -34.37451037621167
+        },
+        "ttft_p90_s": {
+          "prior_k3": 19.435934223957435,
+          "current": 12.608688173242538,
+          "change_vs_prior_k3_percent": -35.12692506593991
+        },
+        "itl_p90_s": {
+          "prior_k3": 0.06734567769611309,
+          "current": 0.088316067840385,
+          "change_vs_prior_k3_percent": 31.138435103285378
+        },
+        "e2e_mean_s": {
+          "prior_k3": 57.642955887956035,
+          "current": 74.914725295838,
+          "change_vs_prior_k3_percent": 29.963365240072193
+        }
+      },
+      "execution_k": 0,
+      "preemptions": 0,
+      "request_log_sha256": "ef2f5011da568df5ef62fc2ea58178de44289db5ad0c7ed9bede208df219c004",
+      "extra_admissions_all_profiling_terminal": 0,
+      "derived_capacity": {
+        "slots": 95246,
+        "weight_bytes": 131450759116,
+        "available_kv_bytes": 117038938364,
+        "log_equivalent_tokens": 5728614
+      },
+      "draft_counts": {},
+      "draft_component_seconds": {},
+      "main_counts": {
+        "steps": 372752,
+        "logical_rows": 115946519,
+        "full_rows": 118836050,
+        "capture_padding_rows": 2889531,
+        "sp_rows": 118836050,
+        "sp_tail_rows": 0,
+        "sp_steps": 0,
+        "graph_padded_steps": 281000,
+        "attention_projection_layer_rows": 7248999050,
+        "mhc_layer_rows": 7248999050,
+        "norm_layer_rows": 14497998100,
+        "router_layer_rows": 7248999050
+      },
+      "normalized_components_seconds_per_million_output": {
+        "gemm": 10.652142327144754,
+        "attention": 642.4781140635514,
+        "moe": 778.1143848547705,
+        "elementwise": 98.16158032134409,
+        "lm_head": 7.732080057681413,
+        "comm": 0.0,
+        "overhead": 0.0
+      },
+      "normalization_is_analysis_only": true,
+      "per_rank": [
+        {
+          "rank": 0,
+          "profiling_terminal_requests": 2316,
+          "extra_admissions": 0
+        },
+        {
+          "rank": 1,
+          "profiling_terminal_requests": 1889,
+          "extra_admissions": 0
+        },
+        {
+          "rank": 2,
+          "profiling_terminal_requests": 2197,
+          "extra_admissions": 0
+        },
+        {
+          "rank": 3,
+          "profiling_terminal_requests": 2044,
+          "extra_admissions": 0
+        },
+        {
+          "rank": 4,
+          "profiling_terminal_requests": 2263,
+          "extra_admissions": 0
+        },
+        {
+          "rank": 5,
+          "profiling_terminal_requests": 2598,
+          "extra_admissions": 0
+        },
+        {
+          "rank": 6,
+          "profiling_terminal_requests": 2585,
+          "extra_admissions": 0
+        },
+        {
+          "rank": 7,
+          "profiling_terminal_requests": 2168,
+          "extra_admissions": 0
+        }
+      ],
+      "independent_reference_compatible": false
+    }
+  },
+  "ablation": {},
+  "limits": [
+    "seed0 complete windows do not replace final current-code seed coverage",
+    "disabled points have no independent reference identity; compare K0/K3 current-source behavior",
+    "closed-loop traces/cache/admissions change when K and module allocation change",
+    "existing native operator/kernel/allocator uncertainty unchanged"
+  ]
+}

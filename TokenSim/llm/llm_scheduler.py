@@ -210,6 +210,7 @@ class LLMPagedAttnScheduler(LLMScheduler):
         long_prefill_token_threshold: int = 0,
         adaptive_long_prefill_threshold: bool = False,
         mtp_acceptance_length: float = 1.0,
+        mtp_enabled: bool | None = None,
         mtp_seed: int = 0,
     ):
         super().__init__(connector=connector)
@@ -231,7 +232,9 @@ class LLMPagedAttnScheduler(LLMScheduler):
         self.mtp_enabled = bool(
             getattr(getattr(self.cache_config, "hybrid_layout", None), "speculative_tokens", 0)
             and self.mtp_acceptance_length > 1
-        )
+        ) if mtp_enabled is None else bool(mtp_enabled)
+        if self.mtp_enabled and not getattr(getattr(self.cache_config, "hybrid_layout", None), "speculative_tokens", 0):
+            raise ConfigurationError("enabled MTP scheduler requires positive cache K")
         self.prefill_capacity_bound = False
         self.defer_prefills = False
         self.effective_long_prefill_threshold = 0

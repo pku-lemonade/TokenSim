@@ -69,7 +69,7 @@ def _legacy_memory_budget(
     # sharing the pool. Runtime has not measured these allocations.
     graph = (
         capture_tokens
-        * (model.num_layers + spec.num_nextn_predict_layers)
+        * (model.num_layers + (spec.num_nextn_predict_layers if speculative_tokens else 0))
         * (
             query_width * 2
             + spec.hc_mult * model.hidden_size * 2

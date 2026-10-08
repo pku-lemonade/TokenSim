@@ -191,6 +191,7 @@ class LLMWorker(Worker):
         attention_backend: str = "generic",
         mhc_backend: str = "generic",
         mtp_acceptance_length: float = 1.0,
+        mtp_num_speculative_tokens: int | None = None,
         mtp_seed: int = 0,
         native_attention_context_scale: float = 1.0,
         native_attention_generation_scale: float = 1.0,
@@ -223,6 +224,11 @@ class LLMWorker(Worker):
         self.device_index = placement.device_index(self.id)
 
         self.block_size = block_size
+        from TokenSim.config.speculative_execution import resolve_mtp_tokens
+
+        self.mtp_num_speculative_tokens = resolve_mtp_tokens(
+            self.model_spec, mtp_acceptance_length, mtp_num_speculative_tokens
+        )
         self.cache_config = CacheConfig(
             self.block_size,
             self.device,
@@ -237,6 +243,7 @@ class LLMWorker(Worker):
             kv_cache_capacity_tokens_per_dp_rank=kv_cache_capacity_tokens_per_dp_rank,
             moe_execution=moe_execution if moe_execution is not None else {"backend": "generic"},
             attention_backend=attention_backend,
+            speculative_tokens=self.mtp_num_speculative_tokens,
         )
         self.preempted_cnt = 0
         self.pending_connector_metadata: KVConnectorMetadata | None = None
@@ -333,6 +340,7 @@ class LLMWorker(Worker):
                 long_prefill_token_threshold=long_prefill_token_threshold,
                 adaptive_long_prefill_threshold=adaptive_long_prefill_threshold,
                 mtp_acceptance_length=mtp_acceptance_length,
+                mtp_enabled=self.mtp_num_speculative_tokens > 0,
                 mtp_seed=mtp_seed + id,
             )
         elif batching == "static":
@@ -562,6 +570,7 @@ class LLMEngine(Worker):
         attention_backend: str = "generic",
         mhc_backend: str = "generic",
         mtp_acceptance_length: float = 1.0,
+        mtp_num_speculative_tokens: int | None = None,
         mtp_seed: int = 0,
         native_attention_context_scale: float = 1.0,
         native_attention_generation_scale: float = 1.0,
@@ -632,6 +641,7 @@ class LLMEngine(Worker):
                 attention_backend=attention_backend,
                 mhc_backend=mhc_backend,
                 mtp_acceptance_length=mtp_acceptance_length,
+                mtp_num_speculative_tokens=mtp_num_speculative_tokens,
                 mtp_seed=mtp_seed,
                 native_attention_context_scale=native_attention_context_scale,
                 native_attention_generation_scale=native_attention_generation_scale,

@@ -263,6 +263,7 @@ def main(
         attention_backend=getattr(args, "attention_backend", "generic"),
         mhc_backend=getattr(args, "mhc_backend", "generic"),
         mtp_acceptance_length=getattr(args, "mtp_acceptance_length", 1.0),
+        mtp_num_speculative_tokens=getattr(args, "mtp_num_speculative_tokens", None),
         mtp_seed=getattr(args, "random_seed", 0),
         native_attention_context_scale=getattr(args, "native_attention_context_scale", 1.0),
         native_attention_generation_scale=getattr(args, "native_attention_generation_scale", 1.0),
@@ -680,6 +681,12 @@ if __name__ == "__main__":
         type=float,
         default=1.0,
         help="Synthetic MTP average accepted output tokens (2.49 for the AgentX reference).",
+    )
+    parser.add_argument(
+        "--mtp_num_speculative_tokens",
+        type=int,
+        default=None,
+        help="MTP draft token count K;0 disables drafting, while positive K is independent of accepted length.",
     )
     parser.add_argument(
         "--native_attention_context_scale",

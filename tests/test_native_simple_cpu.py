@@ -15,7 +15,8 @@ from TokenSim.llm.llm_request import RequestStatus
 from tests.test_hybrid_kv_cache import request
 
 
-def engine(env, *, lockstep=True, extra=None, connector_name="SimpleCPUOffloadConnector"):
+def engine(env, *, lockstep=True, extra=None, connector_name="SimpleCPUOffloadConnector",
+           mtp_num_speculative_tokens=None):
     cluster = ClusterConfig.from_file("data/clusters/8_b200/dep8.json")
     e = LLMEngine(
         env=env,
@@ -36,6 +37,7 @@ def engine(env, *, lockstep=True, extra=None, connector_name="SimpleCPUOffloadCo
         gpu_memory_utilization=0.9,
         latency_backend_type="analytical",
         dp_lockstep=lockstep,
+        mtp_num_speculative_tokens=mtp_num_speculative_tokens,
     )
     for w in e.workers:
         w.dynamic_batch = lambda requests: 0.001
@@ -112,9 +114,9 @@ class NativeSimpleCPUTest(unittest.TestCase):
         self.assertEqual(metrics["cpu_cache_hit_rate"], 0.5)
         self.assertEqual(metrics["computed_input_tokens"], 256)
 
-    def seeded(self, *, lockstep=True):
+    def seeded(self, *, lockstep=True, mtp_num_speculative_tokens=None):
         env = simpy.Environment()
-        e = engine(env, lockstep=lockstep)
+        e = engine(env, lockstep=lockstep, mtp_num_speculative_tokens=mtp_num_speculative_tokens)
         r = request(0, 4096)
         r.dp_rank = 0
         r.arrive(env)

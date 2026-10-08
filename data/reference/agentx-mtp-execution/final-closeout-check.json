@@ -1,0 +1,27 @@
+{
+  "scope": "final source/suite/original result/terminal checks for explicit MTP execution stage",
+  "observed_unix_s": 1791470104.4765427,
+  "checks": {
+    "runtime_and_execution_input_hashes_match_frozen_launch": true,
+    "passing_full_suite_log_hash_matches": true,
+    "all_four_original_terminal_results_and_request_log_hashes_match": true,
+    "all_seven_enabled_metrics_equal_8c42261": true,
+    "both_disabled_points_have_zero_draft_counts_and_components": true
+  },
+  "artifacts_sha256": {
+    "pipeline-validation.json": "19de6410fa4910710da1324cce4a03d1724510189c50f1e36ef722aefe81709a",
+    "paired-analysis.json": "fbd3920c9ecd8a51456bc65dc08c7518088f0595916b6adb03ed76938350955e",
+    "paired-comparison.png": "dd23ff276c74cf12cb554636677f709d29d6727cf00551310c89732fd4657210",
+    "paired-comparison.svg": "e2e2023346ba26467d0adf642a5bc19fddf4cbdf07df1f428b25db4ba7f06e93",
+    "b200-main-validation.json": "6ad7cd5d188faa6e14d4fab7b503c8173546094c4cdcb0fa5ede0df37ed3612d",
+    "b200-main-analysis.json": "7320e9b36a3c3afcebc0ff6072548dcb012cd1bc6421de826db599e82fe8ab28",
+    "b300-main-validation.json": "e8aa44f0c393fbdab26f2ca9e8e56fa431bcb473223a0b55ead221f1aa2cac2b",
+    "b300-main-analysis.json": "5949611d08770a86ef14c5fedcc31f1528d711c142c00b90d7ab6013456d1c94",
+    "b200-disabled-validation.json": "d2b25a15b37a1734a3713ab058ef1fb03cf6037e9399b6b0fa87c3090940cdfe",
+    "b200-disabled-analysis.json": "6cdd653f960a316425168b860618d6873511da35e70d40b5f7902b5e9384d809",
+    "b300-disabled-validation.json": "4b2d242c20f87af7cdfd676c43db414498b1f64194c50213d1f226ba56fbd4fd",
+    "b300-disabled-analysis.json": "596ae136c3140c82ebd8be27b51661871e91353df1e2236d4d9a04e7db4831ae"
+  },
+  "rerun_performed": false,
+  "formal_model_accuracy_accepted": false
+}

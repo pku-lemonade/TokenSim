@@ -1,0 +1,501 @@
+{
+  "scope": "current35-point startup plus actual cluster/declared topology and explicit MTP/K wiring; no benchmarks launched",
+  "matrix_sha256": "5d6e0011b270b4b683aaa22fa19ea8fcc52ee0b4f33109d349bdf74eb8d89470",
+  "startup_check": {
+    "points": 35,
+    "valid": true
+  },
+  "points": [
+    {
+      "id": "b200-c196-dep8-simplecpu",
+      "declared_and_actual_parallelism": {
+        "tp": 1,
+        "dp": 8,
+        "ep": 8,
+        "pp": 1
+      },
+      "gpu_count": 8,
+      "execution_k": 3,
+      "accepted_length": 2.49,
+      "full_trace_pool": 393,
+      "full_issue_window": 3600
+    },
+    {
+      "id": "b300-c384-dep8-simplecpu",
+      "declared_and_actual_parallelism": {
+        "tp": 1,
+        "dp": 8,
+        "ep": 8,
+        "pp": 1
+      },
+      "gpu_count": 8,
+      "execution_k": 3,
+      "accepted_length": 2.49,
+      "full_trace_pool": 393,
+      "full_issue_window": 3600
+    },
+    {
+      "id": "b200-c196-dep8-hbm-mtp",
+      "declared_and_actual_parallelism": {
+        "tp": 1,
+        "dp": 8,
+        "ep": 8,
+        "pp": 1
+      },
+      "gpu_count": 8,
+      "execution_k": 3,
+      "accepted_length": 2.49,
+      "full_trace_pool": 393,
+      "full_issue_window": 3600
+    },
+    {
+      "id": "b300-c384-dep8-hbm-mtp",
+      "declared_and_actual_parallelism": {
+        "tp": 1,
+        "dp": 8,
+        "ep": 8,
+        "pp": 1
+      },
+      "gpu_count": 8,
+      "execution_k": 3,
+      "accepted_length": 2.49,
+      "full_trace_pool": 393,
+      "full_issue_window": 3600
+    },
+    {
+      "id": "b200-c196-dep8-simplecpu-nomtp",
+      "declared_and_actual_parallelism": {
+        "tp": 1,
+        "dp": 8,
+        "ep": 8,
+        "pp": 1
+      },
+      "gpu_count": 8,
+      "execution_k": 0,
+      "accepted_length": 1.0,
+      "full_trace_pool": 393,
+      "full_issue_window": 3600
+    },
+    {
+      "id": "b300-c384-dep8-simplecpu-nomtp",
+      "declared_and_actual_parallelism": {
+        "tp": 1,
+        "dp": 8,
+        "ep": 8,
+        "pp": 1
+      },
+      "gpu_count": 8,
+      "execution_k": 0,
+      "accepted_length": 1.0,
+      "full_trace_pool": 393,
+      "full_issue_window": 3600
+    },
+    {
+      "id": "b200-c196-dep8-recorded-issue",
+      "declared_and_actual_parallelism": {
+        "tp": 1,
+        "dp": 8,
+        "ep": 8,
+        "pp": 1
+      },
+      "gpu_count": 8,
+      "execution_k": 3,
+      "accepted_length": 2.49,
+      "full_trace_pool": 393,
+      "full_issue_window": 3600
+    },
+    {
+      "id": "b300-c384-dep8-recorded-issue",
+      "declared_and_actual_parallelism": {
+        "tp": 1,
+        "dp": 8,
+        "ep": 8,
+        "pp": 1
+      },
+      "gpu_count": 8,
+      "execution_k": 3,
+      "accepted_length": 2.49,
+      "full_trace_pool": 393,
+      "full_issue_window": 3600
+    },
+    {
+      "id": "b200-c196-dep8-fixed-router",
+      "declared_and_actual_parallelism": {
+        "tp": 1,
+        "dp": 8,
+        "ep": 8,
+        "pp": 1
+      },
+      "gpu_count": 8,
+      "execution_k": 3,
+      "accepted_length": 2.49,
+      "full_trace_pool": 393,
+      "full_issue_window": 3600
+    },
+    {
+      "id": "b300-c384-dep8-fixed-router",
+      "declared_and_actual_parallelism": {
+        "tp": 1,
+        "dp": 8,
+        "ep": 8,
+        "pp": 1
+      },
+      "gpu_count": 8,
+      "execution_k": 3,
+      "accepted_length": 2.49,
+      "full_trace_pool": 393,
+      "full_issue_window": 3600
+    },
+    {
+      "id": "b200-c196-dep8-aic-attn-sensitivity",
+      "declared_and_actual_parallelism": {
+        "tp": 1,
+        "dp": 8,
+        "ep": 8,
+        "pp": 1
+      },
+      "gpu_count": 8,
+      "execution_k": 3,
+      "accepted_length": 2.49,
+      "full_trace_pool": 393,
+      "full_issue_window": 3600
+    },
+    {
+      "id": "b300-c384-dep8-aic-attn-sensitivity",
+      "declared_and_actual_parallelism": {
+        "tp": 1,
+        "dp": 8,
+        "ep": 8,
+        "pp": 1
+      },
+      "gpu_count": 8,
+      "execution_k": 3,
+      "accepted_length": 2.49,
+      "full_trace_pool": 393,
+      "full_issue_window": 3600
+    },
+    {
+      "id": "b200-c196-dep8-zero-context-attn",
+      "declared_and_actual_parallelism": {
+        "tp": 1,
+        "dp": 8,
+        "ep": 8,
+        "pp": 1
+      },
+      "gpu_count": 8,
+      "execution_k": 3,
+      "accepted_length": 2.49,
+      "full_trace_pool": 393,
+      "full_issue_window": 3600
+    },
+    {
+      "id": "b300-c384-dep8-zero-context-attn",
+      "declared_and_actual_parallelism": {
+        "tp": 1,
+        "dp": 8,
+        "ep": 8,
+        "pp": 1
+      },
+      "gpu_count": 8,
+      "execution_k": 3,
+      "accepted_length": 2.49,
+      "full_trace_pool": 393,
+      "full_issue_window": 3600
+    },
+    {
+      "id": "b200-c196-dep8-zero-all-attn",
+      "declared_and_actual_parallelism": {
+        "tp": 1,
+        "dp": 8,
+        "ep": 8,
+        "pp": 1
+      },
+      "gpu_count": 8,
+      "execution_k": 3,
+      "accepted_length": 2.49,
+      "full_trace_pool": 393,
+      "full_issue_window": 3600
+    },
+    {
+      "id": "b300-c384-dep8-zero-all-attn",
+      "declared_and_actual_parallelism": {
+        "tp": 1,
+        "dp": 8,
+        "ep": 8,
+        "pp": 1
+      },
+      "gpu_count": 8,
+      "execution_k": 3,
+      "accepted_length": 2.49,
+      "full_trace_pool": 393,
+      "full_issue_window": 3600
+    },
+    {
+      "id": "b200-c32-dep8-simplecpu",
+      "declared_and_actual_parallelism": {
+        "tp": 1,
+        "dp": 8,
+        "ep": 8,
+        "pp": 1
+      },
+      "gpu_count": 8,
+      "execution_k": 3,
+      "accepted_length": 2.49,
+      "full_trace_pool": 393,
+      "full_issue_window": 3600
+    },
+    {
+      "id": "b200-c64-dep8-simplecpu",
+      "declared_and_actual_parallelism": {
+        "tp": 1,
+        "dp": 8,
+        "ep": 8,
+        "pp": 1
+      },
+      "gpu_count": 8,
+      "execution_k": 3,
+      "accepted_length": 2.49,
+      "full_trace_pool": 393,
+      "full_issue_window": 3600
+    },
+    {
+      "id": "b200-c96-dep8-simplecpu",
+      "declared_and_actual_parallelism": {
+        "tp": 1,
+        "dp": 8,
+        "ep": 8,
+        "pp": 1
+      },
+      "gpu_count": 8,
+      "execution_k": 3,
+      "accepted_length": 2.49,
+      "full_trace_pool": 393,
+      "full_issue_window": 3600
+    },
+    {
+      "id": "b200-c128-dep8-simplecpu",
+      "declared_and_actual_parallelism": {
+        "tp": 1,
+        "dp": 8,
+        "ep": 8,
+        "pp": 1
+      },
+      "gpu_count": 8,
+      "execution_k": 3,
+      "accepted_length": 2.49,
+      "full_trace_pool": 393,
+      "full_issue_window": 3600
+    },
+    {
+      "id": "b200-c160-dep8-simplecpu",
+      "declared_and_actual_parallelism": {
+        "tp": 1,
+        "dp": 8,
+        "ep": 8,
+        "pp": 1
+      },
+      "gpu_count": 8,
+      "execution_k": 3,
+      "accepted_length": 2.49,
+      "full_trace_pool": 393,
+      "full_issue_window": 3600
+    },
+    {
+      "id": "b300-c128-dep8-simplecpu",
+      "declared_and_actual_parallelism": {
+        "tp": 1,
+        "dp": 8,
+        "ep": 8,
+        "pp": 1
+      },
+      "gpu_count": 8,
+      "execution_k": 3,
+      "accepted_length": 2.49,
+      "full_trace_pool": 393,
+      "full_issue_window": 3600
+    },
+    {
+      "id": "b300-c256-dep8-simplecpu",
+      "declared_and_actual_parallelism": {
+        "tp": 1,
+        "dp": 8,
+        "ep": 8,
+        "pp": 1
+      },
+      "gpu_count": 8,
+      "execution_k": 3,
+      "accepted_length": 2.49,
+      "full_trace_pool": 393,
+      "full_issue_window": 3600
+    },
+    {
+      "id": "b300-c512-dep8-simplecpu",
+      "declared_and_actual_parallelism": {
+        "tp": 1,
+        "dp": 8,
+        "ep": 8,
+        "pp": 1
+      },
+      "gpu_count": 8,
+      "execution_k": 3,
+      "accepted_length": 2.49,
+      "full_trace_pool": 393,
+      "full_issue_window": 3600
+    },
+    {
+      "id": "b300-c576-dep8-simplecpu",
+      "declared_and_actual_parallelism": {
+        "tp": 1,
+        "dp": 8,
+        "ep": 8,
+        "pp": 1
+      },
+      "gpu_count": 8,
+      "execution_k": 3,
+      "accepted_length": 2.49,
+      "full_trace_pool": 393,
+      "full_issue_window": 3600
+    },
+    {
+      "id": "b200-c1-tp8-hbm",
+      "declared_and_actual_parallelism": {
+        "tp": 8,
+        "dp": 1,
+        "ep": 1,
+        "pp": 1
+      },
+      "gpu_count": 8,
+      "execution_k": 3,
+      "accepted_length": 2.49,
+      "full_trace_pool": 393,
+      "full_issue_window": 3600
+    },
+    {
+      "id": "b200-c4-tp8-hbm",
+      "declared_and_actual_parallelism": {
+        "tp": 8,
+        "dp": 1,
+        "ep": 1,
+        "pp": 1
+      },
+      "gpu_count": 8,
+      "execution_k": 3,
+      "accepted_length": 2.49,
+      "full_trace_pool": 393,
+      "full_issue_window": 3600
+    },
+    {
+      "id": "b200-c8-tp8-hbm",
+      "declared_and_actual_parallelism": {
+        "tp": 8,
+        "dp": 1,
+        "ep": 1,
+        "pp": 1
+      },
+      "gpu_count": 8,
+      "execution_k": 3,
+      "accepted_length": 2.49,
+      "full_trace_pool": 393,
+      "full_issue_window": 3600
+    },
+    {
+      "id": "b200-c14-tp8-hbm",
+      "declared_and_actual_parallelism": {
+        "tp": 8,
+        "dp": 1,
+        "ep": 1,
+        "pp": 1
+      },
+      "gpu_count": 8,
+      "execution_k": 3,
+      "accepted_length": 2.49,
+      "full_trace_pool": 393,
+      "full_issue_window": 3600
+    },
+    {
+      "id": "b300-c1-tp8-hbm",
+      "declared_and_actual_parallelism": {
+        "tp": 8,
+        "dp": 1,
+        "ep": 1,
+        "pp": 1
+      },
+      "gpu_count": 8,
+      "execution_k": 3,
+      "accepted_length": 2.49,
+      "full_trace_pool": 393,
+      "full_issue_window": 3600
+    },
+    {
+      "id": "b300-c4-tp8-hbm",
+      "declared_and_actual_parallelism": {
+        "tp": 8,
+        "dp": 1,
+        "ep": 1,
+        "pp": 1
+      },
+      "gpu_count": 8,
+      "execution_k": 3,
+      "accepted_length": 2.49,
+      "full_trace_pool": 393,
+      "full_issue_window": 3600
+    },
+    {
+      "id": "b300-c8-tp4-hbm",
+      "declared_and_actual_parallelism": {
+        "tp": 4,
+        "dp": 1,
+        "ep": 1,
+        "pp": 1
+      },
+      "gpu_count": 4,
+      "execution_k": 3,
+      "accepted_length": 2.49,
+      "full_trace_pool": 393,
+      "full_issue_window": 3600
+    },
+    {
+      "id": "b300-c16-tp4-simplecpu",
+      "declared_and_actual_parallelism": {
+        "tp": 4,
+        "dp": 1,
+        "ep": 1,
+        "pp": 1
+      },
+      "gpu_count": 4,
+      "execution_k": 3,
+      "accepted_length": 2.49,
+      "full_trace_pool": 393,
+      "full_issue_window": 3600
+    },
+    {
+      "id": "b300-c48-tp4-ep4-simplecpu",
+      "declared_and_actual_parallelism": {
+        "tp": 4,
+        "dp": 2,
+        "ep": 4,
+        "pp": 1
+      },
+      "gpu_count": 8,
+      "execution_k": 3,
+      "accepted_length": 2.49,
+      "full_trace_pool": 393,
+      "full_issue_window": 3600
+    },
+    {
+      "id": "b300-c64-tp4-ep4-simplecpu",
+      "declared_and_actual_parallelism": {
+        "tp": 4,
+        "dp": 2,
+        "ep": 4,
+        "pp": 1
+      },
+      "gpu_count": 8,
+      "execution_k": 3,
+      "accepted_length": 2.49,
+      "full_trace_pool": 393,
+      "full_issue_window": 3600
+    }
+  ],
+  "formal_model_accuracy_accepted": false
+}

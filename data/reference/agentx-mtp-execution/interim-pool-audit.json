@@ -1,0 +1,69 @@
+{
+  "scope": "interim all original window pool conservation; not complete performance acceptance",
+  "points": {
+    "b200-main": {
+      "observed_windows": 90,
+      "last_phase": "complete",
+      "last_simulation_time": 5332.474245112685,
+      "all_observed_pool_windows_conserved": true,
+      "maximum_used_slots_per_rank": {
+        "0": 22208,
+        "1": 18359,
+        "2": 22197,
+        "3": 21818,
+        "4": 22118,
+        "5": 16911,
+        "6": 17395,
+        "7": 21485
+      }
+    },
+    "b300-main": {
+      "observed_windows": 99,
+      "last_phase": "profiling",
+      "last_simulation_time": 5880,
+      "all_observed_pool_windows_conserved": true,
+      "maximum_used_slots_per_rank": {
+        "0": 38595,
+        "1": 40654,
+        "2": 42519,
+        "3": 41567,
+        "4": 41457,
+        "5": 35507,
+        "6": 35124,
+        "7": 41372
+      }
+    },
+    "b200-disabled": {
+      "observed_windows": 90,
+      "last_phase": "complete",
+      "last_simulation_time": 5294.570411132173,
+      "all_observed_pool_windows_conserved": true,
+      "maximum_used_slots_per_rank": {
+        "0": 23189,
+        "1": 18609,
+        "2": 23249,
+        "3": 22267,
+        "4": 25289,
+        "5": 17968,
+        "6": 17228,
+        "7": 24494
+      }
+    },
+    "b300-disabled": {
+      "observed_windows": 85,
+      "last_phase": "profiling",
+      "last_simulation_time": 5040,
+      "all_observed_pool_windows_conserved": true,
+      "maximum_used_slots_per_rank": {
+        "0": 40414,
+        "1": 35899,
+        "2": 40701,
+        "3": 43097,
+        "4": 42589,
+        "5": 37270,
+        "6": 31977,
+        "7": 40719
+      }
+    }
+  }
+}

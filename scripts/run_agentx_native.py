@@ -75,6 +75,8 @@ def command(point, defaults, result, connector, *, random_seed=0):
         str(
             point.get("mtp_acceptance_length", speculative.get("acceptance_length", 1.0))
         ),
+        "--mtp_num_speculative_tokens",
+        str(speculative.get("num_speculative_tokens", 0)),
         "--native_attention_context_scale",
         str(point.get("native_attention_context_scale", defaults.get("native_attention_context_scale", 1.0))),
         "--native_attention_generation_scale",

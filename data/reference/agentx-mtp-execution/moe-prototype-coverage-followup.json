@@ -1,0 +1,1004 @@
+{
+  "scope": "isolated prototype source-curve applicability; not runtime-query coverage or serving accuracy",
+  "formal_model_accuracy_accepted": false,
+  "hardware": {
+    "b200": [
+      {
+        "ep": 4,
+        "curves": [
+          {
+            "phase": "context",
+            "effective_capacity": 32832,
+            "points": 6
+          },
+          {
+            "phase": "generation",
+            "effective_capacity": 576,
+            "points": 10
+          }
+        ],
+        "anchor_scope_checks": [
+          {
+            "phase": "generation",
+            "anchor_rows": 4,
+            "identified_capacity": 576,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 16,
+            "identified_capacity": 576,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 32,
+            "identified_capacity": 576,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 64,
+            "identified_capacity": 576,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 96,
+            "identified_capacity": 576,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 128,
+            "identified_capacity": 576,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 192,
+            "identified_capacity": 576,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 256,
+            "identified_capacity": 576,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 384,
+            "identified_capacity": 576,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 512,
+            "identified_capacity": 576,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 768,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 1024,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 8192,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 4,
+            "identified_capacity": 32832,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 16,
+            "identified_capacity": 32832,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 32,
+            "identified_capacity": 32832,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 64,
+            "identified_capacity": 32832,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 96,
+            "identified_capacity": 32832,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 128,
+            "identified_capacity": 32832,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 192,
+            "identified_capacity": 32832,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 256,
+            "identified_capacity": 32832,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 384,
+            "identified_capacity": 32832,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 512,
+            "identified_capacity": 32832,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 768,
+            "identified_capacity": 32832,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 1024,
+            "identified_capacity": 32832,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 8192,
+            "identified_capacity": 32832,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 4,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 16,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 32,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 64,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 96,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 128,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 192,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 256,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 384,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 512,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 768,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 1024,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 8192,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          }
+        ]
+      },
+      {
+        "ep": 8,
+        "curves": [
+          {
+            "phase": "context",
+            "effective_capacity": 32832,
+            "points": 6
+          },
+          {
+            "phase": "generation",
+            "effective_capacity": 576,
+            "points": 10
+          }
+        ],
+        "anchor_scope_checks": [
+          {
+            "phase": "generation",
+            "anchor_rows": 4,
+            "identified_capacity": 576,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 16,
+            "identified_capacity": 576,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 32,
+            "identified_capacity": 576,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 64,
+            "identified_capacity": 576,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 96,
+            "identified_capacity": 576,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 128,
+            "identified_capacity": 576,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 192,
+            "identified_capacity": 576,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 256,
+            "identified_capacity": 576,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 384,
+            "identified_capacity": 576,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 512,
+            "identified_capacity": 576,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 768,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 1024,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 8192,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 4,
+            "identified_capacity": 32832,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 16,
+            "identified_capacity": 32832,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 32,
+            "identified_capacity": 32832,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 64,
+            "identified_capacity": 32832,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 96,
+            "identified_capacity": 32832,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 128,
+            "identified_capacity": 32832,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 192,
+            "identified_capacity": 32832,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 256,
+            "identified_capacity": 32832,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 384,
+            "identified_capacity": 32832,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 512,
+            "identified_capacity": 32832,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 768,
+            "identified_capacity": 32832,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 1024,
+            "identified_capacity": 32832,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 8192,
+            "identified_capacity": 32832,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 4,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 16,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 32,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 64,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 96,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 128,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 192,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 256,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 384,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 512,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 768,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 1024,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 8192,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          }
+        ]
+      }
+    ],
+    "b300": [
+      {
+        "ep": 4,
+        "curves": [
+          {
+            "phase": "generation",
+            "effective_capacity": 192,
+            "points": 8
+          }
+        ],
+        "anchor_scope_checks": [
+          {
+            "phase": "generation",
+            "anchor_rows": 4,
+            "identified_capacity": 192,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 16,
+            "identified_capacity": 192,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 32,
+            "identified_capacity": 192,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 64,
+            "identified_capacity": 192,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 96,
+            "identified_capacity": 192,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 128,
+            "identified_capacity": 192,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 192,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 256,
+            "identified_capacity": 384,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 384,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 512,
+            "identified_capacity": 576,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 768,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 1024,
+            "identified_capacity": 1152,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 8192,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 4,
+            "identified_capacity": 1152,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 16,
+            "identified_capacity": 1152,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 32,
+            "identified_capacity": 1152,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 64,
+            "identified_capacity": 1152,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 96,
+            "identified_capacity": 1152,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 128,
+            "identified_capacity": 1152,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 192,
+            "identified_capacity": 1152,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 256,
+            "identified_capacity": 1152,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 384,
+            "identified_capacity": 1152,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 512,
+            "identified_capacity": 1152,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 768,
+            "identified_capacity": 1152,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 1024,
+            "identified_capacity": 1152,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 8192,
+            "identified_capacity": 8256,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 4,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 16,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 32,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 64,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 96,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 128,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 192,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 256,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 384,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 512,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 768,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 1024,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 8192,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          }
+        ]
+      },
+      {
+        "ep": 8,
+        "curves": [
+          {
+            "phase": "generation",
+            "effective_capacity": 192,
+            "points": 8
+          }
+        ],
+        "anchor_scope_checks": [
+          {
+            "phase": "generation",
+            "anchor_rows": 4,
+            "identified_capacity": 192,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 16,
+            "identified_capacity": 192,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 32,
+            "identified_capacity": 192,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 64,
+            "identified_capacity": 192,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 96,
+            "identified_capacity": 192,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 128,
+            "identified_capacity": 192,
+            "has_supported_same_capacity_curve": true
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 192,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 256,
+            "identified_capacity": 384,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 384,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 512,
+            "identified_capacity": 576,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 768,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 1024,
+            "identified_capacity": 1152,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "generation",
+            "anchor_rows": 8192,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 4,
+            "identified_capacity": 1152,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 16,
+            "identified_capacity": 1152,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 32,
+            "identified_capacity": 1152,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 64,
+            "identified_capacity": 1152,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 96,
+            "identified_capacity": 1152,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 128,
+            "identified_capacity": 1152,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 192,
+            "identified_capacity": 1152,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 256,
+            "identified_capacity": 1152,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 384,
+            "identified_capacity": 1152,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 512,
+            "identified_capacity": 1152,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 768,
+            "identified_capacity": 1152,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 1024,
+            "identified_capacity": 1152,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "context",
+            "anchor_rows": 8192,
+            "identified_capacity": 8256,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 4,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 16,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 32,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 64,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 96,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 128,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 192,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 256,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 384,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 512,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 768,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 1024,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          },
+          {
+            "phase": "cross_buffer_regime",
+            "anchor_rows": 8192,
+            "identified_capacity": null,
+            "has_supported_same_capacity_curve": false
+          }
+        ]
+      }
+    ]
+  }
+}

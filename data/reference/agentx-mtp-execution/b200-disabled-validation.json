@@ -1,0 +1,3218 @@
+{
+  "scope": "explicit MTP execution; K3 reference preserved and K0 completely disabled",
+  "formal_model_accuracy_accepted": false,
+  "checkpoints": {
+    "b200-disabled": {
+      "result_sha256": "afddd5f9648519a24dd961fc3fb2f92985ad885fff06576bd3ef087a578864f5",
+      "phase_counts": {
+        "warmup": {
+          "sent": 2171,
+          "successful": 2171
+        },
+        "profiling": {
+          "sent": 8403,
+          "successful": 8311,
+          "cancelled": 92
+        }
+      },
+      "warmup_seconds": 1664.5433190020665,
+      "phase_elapsed_seconds": 3630.027092130106,
+      "observation_seconds": 3629.8199129074274,
+      "output_tps": 1933.1777246159372,
+      "gpu_hit_percent": 55.199362783530425,
+      "cpu_hit_percent": 39.80983505010024,
+      "cache_source_observation": "first-admission",
+      "ttft_p90": 24.432745679591108,
+      "tpot_p90": 0.12580871223179704,
+      "e2e_mean": 88.52766499951417,
+      "sync_wait_fraction": 0.23957143087493232,
+      "mean_successful_input_tokens": 110890.18409337023,
+      "mean_successful_output_tokens": 844.3131993743232,
+      "preemptions": 39,
+      "recomputed_tokens": 13192,
+      "external_hit_fraction_of_gpu_misses": 0.8885997504398303,
+      "diagnostic_accuracy": {
+        "output_tput_per_gpu": {
+          "delta_percent": -46.2896181964226,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        },
+        "p90_ttft": {
+          "delta_percent": 50.7587686858735,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        },
+        "p90_itl": {
+          "delta_percent": 150.38654329444614,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        },
+        "gpu_cache_hit_rate": {
+          "delta_percent": -19.089804342332606,
+          "acceptable": true,
+          "preferred": false,
+          "status": "acceptable"
+        },
+        "cpu_cache_hit_rate": {
+          "delta_percent": 67.78991422953821,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        }
+      },
+      "final_workers": [
+        {
+          "worker_id": 0,
+          "running": 0,
+          "waiting": 0,
+          "loading": 0,
+          "loaded_waiting": 0,
+          "inflight_prefills": 0,
+          "inflight_prefill_reserved_slots": 0,
+          "external_cache": {
+            "backend": "SimpleCPUOffloadConnector",
+            "runtime_budget_per_rank_bytes": 356125000000,
+            "storage": {
+              "scope": "worker:0",
+              "capacity_bytes": 356123443200,
+              "allocation_unit_bytes": 1228800,
+              "used_bytes": 129854668800,
+              "peak_used_bytes": 129854668800,
+              "resident_pages": 105676,
+              "pinned_pages": 0,
+              "evictions": 0
+            },
+            "read": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 361512960000,
+              "jobs": 519,
+              "queue_wait_seconds": 0.6254086000012649,
+              "service_seconds": 3.7673170000000025
+            },
+            "write": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 129854668800,
+              "jobs": 9362,
+              "queue_wait_seconds": 0.0,
+              "service_seconds": 1.3807388000000151
+            },
+            "loading_requests": 0,
+            "write_jobs": 0
+          },
+          "dma_pinned_slots": 0,
+          "defer_prefills": true,
+          "prefill_capacity_bound": false,
+          "scheduler_stats": {
+            "steps": 41052,
+            "deferred_running_prefills": 59208,
+            "deferred_waiting_prefills": 6585,
+            "capacity_bound_steps": 6601,
+            "scheduled_context_tokens": 6644879,
+            "scheduled_context_query_tokens": 6644879,
+            "scheduled_placeholder_queries": 0,
+            "padded_context_admissions": 0,
+            "scheduled_logits_rows": 1065764,
+            "scheduled_decode_tokens": 1052309,
+            "scheduled_decode_query_tokens": 1052309,
+            "max_num_seqs_gate": 0,
+            "full_input_gate": 6547,
+            "async_load_reservation_gate": 354,
+            "max_inflight_prefill_reserved_slots": 18471,
+            "loaded_kv_capacity_gate": 51,
+            "loaded_kv_resumptions": 501,
+            "async_load_admissions": 501
+          },
+          "free_slots": 25356,
+          "watermark_slots": 0,
+          "used_slots": 1,
+          "peak_used_slots": 25357,
+          "allocations": 6997673,
+          "releases": 7734239,
+          "evictions": 377162,
+          "cached_slots": 24488
+        },
+        {
+          "worker_id": 1,
+          "running": 0,
+          "waiting": 0,
+          "loading": 0,
+          "loaded_waiting": 0,
+          "inflight_prefills": 0,
+          "inflight_prefill_reserved_slots": 0,
+          "external_cache": {
+            "backend": "SimpleCPUOffloadConnector",
+            "runtime_budget_per_rank_bytes": 356125000000,
+            "storage": {
+              "scope": "worker:1",
+              "capacity_bytes": 356123443200,
+              "allocation_unit_bytes": 1228800,
+              "used_bytes": 105319219200,
+              "peak_used_bytes": 105319219200,
+              "resident_pages": 85709,
+              "pinned_pages": 0,
+              "evictions": 0
+            },
+            "read": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 69358387200,
+              "jobs": 82,
+              "queue_wait_seconds": 0.22903240000005098,
+              "service_seconds": 0.7227292000000001
+            },
+            "write": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 105319219200,
+              "jobs": 5978,
+              "queue_wait_seconds": 0.0,
+              "service_seconds": 1.1150091999999916
+            },
+            "loading_requests": 0,
+            "write_jobs": 0
+          },
+          "dma_pinned_slots": 0,
+          "defer_prefills": true,
+          "prefill_capacity_bound": false,
+          "scheduler_stats": {
+            "steps": 41052,
+            "deferred_running_prefills": 68791,
+            "deferred_waiting_prefills": 4386,
+            "capacity_bound_steps": 4,
+            "scheduled_context_tokens": 5348224,
+            "scheduled_context_query_tokens": 5348224,
+            "scheduled_placeholder_queries": 0,
+            "padded_context_admissions": 0,
+            "scheduled_logits_rows": 786027,
+            "scheduled_decode_tokens": 775261,
+            "scheduled_decode_query_tokens": 775261,
+            "max_num_seqs_gate": 0,
+            "full_input_gate": 4,
+            "async_load_reservation_gate": 4,
+            "max_inflight_prefill_reserved_slots": 13667,
+            "loaded_kv_capacity_gate": 0,
+            "loaded_kv_resumptions": 77,
+            "async_load_admissions": 77
+          },
+          "free_slots": 25356,
+          "watermark_slots": 0,
+          "used_slots": 1,
+          "peak_used_slots": 19444,
+          "allocations": 5409248,
+          "releases": 6089594,
+          "evictions": 119201,
+          "cached_slots": 24423
+        },
+        {
+          "worker_id": 2,
+          "running": 0,
+          "waiting": 0,
+          "loading": 0,
+          "loaded_waiting": 0,
+          "inflight_prefills": 0,
+          "inflight_prefill_reserved_slots": 0,
+          "external_cache": {
+            "backend": "SimpleCPUOffloadConnector",
+            "runtime_budget_per_rank_bytes": 356125000000,
+            "storage": {
+              "scope": "worker:2",
+              "capacity_bytes": 356123443200,
+              "allocation_unit_bytes": 1228800,
+              "used_bytes": 104740454400,
+              "peak_used_bytes": 104740454400,
+              "resident_pages": 85238,
+              "pinned_pages": 0,
+              "evictions": 0
+            },
+            "read": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 267859968000,
+              "jobs": 326,
+              "queue_wait_seconds": 0.35749540000085744,
+              "service_seconds": 2.791186
+            },
+            "write": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 104740454400,
+              "jobs": 7214,
+              "queue_wait_seconds": 0.0,
+              "service_seconds": 1.1126884000000172
+            },
+            "loading_requests": 0,
+            "write_jobs": 0
+          },
+          "dma_pinned_slots": 0,
+          "defer_prefills": true,
+          "prefill_capacity_bound": false,
+          "scheduler_stats": {
+            "steps": 41052,
+            "deferred_running_prefills": 54882,
+            "deferred_waiting_prefills": 5783,
+            "capacity_bound_steps": 1479,
+            "scheduled_context_tokens": 4678656,
+            "scheduled_context_query_tokens": 4678656,
+            "scheduled_placeholder_queries": 0,
+            "padded_context_admissions": 0,
+            "scheduled_logits_rows": 866649,
+            "scheduled_decode_tokens": 857158,
+            "scheduled_decode_query_tokens": 857158,
+            "max_num_seqs_gate": 0,
+            "full_input_gate": 1478,
+            "async_load_reservation_gate": 106,
+            "max_inflight_prefill_reserved_slots": 10922,
+            "loaded_kv_capacity_gate": 0,
+            "loaded_kv_resumptions": 322,
+            "async_load_admissions": 322
+          },
+          "free_slots": 25356,
+          "watermark_slots": 0,
+          "used_slots": 1,
+          "peak_used_slots": 24460,
+          "allocations": 5457413,
+          "releases": 6163796,
+          "evictions": 280364,
+          "cached_slots": 24404
+        },
+        {
+          "worker_id": 3,
+          "running": 0,
+          "waiting": 0,
+          "loading": 0,
+          "loaded_waiting": 0,
+          "inflight_prefills": 0,
+          "inflight_prefill_reserved_slots": 0,
+          "external_cache": {
+            "backend": "SimpleCPUOffloadConnector",
+            "runtime_budget_per_rank_bytes": 356125000000,
+            "storage": {
+              "scope": "worker:3",
+              "capacity_bytes": 356123443200,
+              "allocation_unit_bytes": 1228800,
+              "used_bytes": 126271488000,
+              "peak_used_bytes": 126271488000,
+              "resident_pages": 102760,
+              "pinned_pages": 0,
+              "evictions": 0
+            },
+            "read": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 267885772800,
+              "jobs": 400,
+              "queue_wait_seconds": 0.2023661999999149,
+              "service_seconds": 2.7916767999999976
+            },
+            "write": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 126271488000,
+              "jobs": 8090,
+              "queue_wait_seconds": 0.0,
+              "service_seconds": 1.3395979999999903
+            },
+            "loading_requests": 0,
+            "write_jobs": 0
+          },
+          "dma_pinned_slots": 0,
+          "defer_prefills": true,
+          "prefill_capacity_bound": false,
+          "scheduler_stats": {
+            "steps": 41052,
+            "deferred_running_prefills": 78069,
+            "deferred_waiting_prefills": 6288,
+            "capacity_bound_steps": 3894,
+            "scheduled_context_tokens": 7907584,
+            "scheduled_context_query_tokens": 7907584,
+            "scheduled_placeholder_queries": 0,
+            "padded_context_admissions": 0,
+            "scheduled_logits_rows": 956320,
+            "scheduled_decode_tokens": 940418,
+            "scheduled_decode_query_tokens": 940418,
+            "max_num_seqs_gate": 0,
+            "full_input_gate": 3892,
+            "async_load_reservation_gate": 220,
+            "max_inflight_prefill_reserved_slots": 15239,
+            "loaded_kv_capacity_gate": 0,
+            "loaded_kv_resumptions": 395,
+            "async_load_admissions": 395
+          },
+          "free_slots": 25356,
+          "watermark_slots": 0,
+          "used_slots": 1,
+          "peak_used_slots": 24068,
+          "allocations": 6719252,
+          "releases": 7448444,
+          "evictions": 298600,
+          "cached_slots": 24479
+        },
+        {
+          "worker_id": 4,
+          "running": 0,
+          "waiting": 0,
+          "loading": 0,
+          "loaded_waiting": 0,
+          "inflight_prefills": 0,
+          "inflight_prefill_reserved_slots": 0,
+          "external_cache": {
+            "backend": "SimpleCPUOffloadConnector",
+            "runtime_budget_per_rank_bytes": 356125000000,
+            "storage": {
+              "scope": "worker:4",
+              "capacity_bytes": 356123443200,
+              "allocation_unit_bytes": 1228800,
+              "used_bytes": 120110284800,
+              "peak_used_bytes": 120110284800,
+              "resident_pages": 97746,
+              "pinned_pages": 0,
+              "evictions": 0
+            },
+            "read": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 575238144000,
+              "jobs": 717,
+              "queue_wait_seconds": 2.4571436000029507,
+              "service_seconds": 5.994214999999995
+            },
+            "write": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 120110284800,
+              "jobs": 10548,
+              "queue_wait_seconds": 0.0,
+              "service_seconds": 1.2827928000000353
+            },
+            "loading_requests": 0,
+            "write_jobs": 0
+          },
+          "dma_pinned_slots": 0,
+          "defer_prefills": true,
+          "prefill_capacity_bound": false,
+          "scheduler_stats": {
+            "steps": 41052,
+            "deferred_running_prefills": 21693,
+            "deferred_waiting_prefills": 3483,
+            "capacity_bound_steps": 20893,
+            "scheduled_context_tokens": 5829297,
+            "scheduled_context_query_tokens": 5829297,
+            "scheduled_placeholder_queries": 0,
+            "padded_context_admissions": 0,
+            "scheduled_logits_rows": 889109,
+            "scheduled_decode_tokens": 877330,
+            "scheduled_decode_query_tokens": 877330,
+            "max_num_seqs_gate": 0,
+            "full_input_gate": 19588,
+            "async_load_reservation_gate": 1096,
+            "max_inflight_prefill_reserved_slots": 17618,
+            "loaded_kv_capacity_gate": 1281,
+            "loaded_kv_resumptions": 650,
+            "async_load_admissions": 650
+          },
+          "free_slots": 25356,
+          "watermark_slots": 0,
+          "used_slots": 1,
+          "peak_used_slots": 25357,
+          "allocations": 6962327,
+          "releases": 7783307,
+          "evictions": 542828,
+          "cached_slots": 24616
+        },
+        {
+          "worker_id": 5,
+          "running": 0,
+          "waiting": 0,
+          "loading": 0,
+          "loaded_waiting": 0,
+          "inflight_prefills": 0,
+          "inflight_prefill_reserved_slots": 0,
+          "external_cache": {
+            "backend": "SimpleCPUOffloadConnector",
+            "runtime_budget_per_rank_bytes": 356125000000,
+            "storage": {
+              "scope": "worker:5",
+              "capacity_bytes": 356123443200,
+              "allocation_unit_bytes": 1228800,
+              "used_bytes": 111417753600,
+              "peak_used_bytes": 111417753600,
+              "resident_pages": 90672,
+              "pinned_pages": 0,
+              "evictions": 0
+            },
+            "read": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 68404838400,
+              "jobs": 90,
+              "queue_wait_seconds": 0.04358619999993607,
+              "service_seconds": 0.7128204000000001
+            },
+            "write": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 111417753600,
+              "jobs": 6581,
+              "queue_wait_seconds": 0.0,
+              "service_seconds": 1.1803445999999813
+            },
+            "loading_requests": 0,
+            "write_jobs": 0
+          },
+          "dma_pinned_slots": 0,
+          "defer_prefills": true,
+          "prefill_capacity_bound": false,
+          "scheduler_stats": {
+            "steps": 41052,
+            "deferred_running_prefills": 65270,
+            "deferred_waiting_prefills": 5192,
+            "capacity_bound_steps": 13,
+            "scheduled_context_tokens": 5197632,
+            "scheduled_context_query_tokens": 5197632,
+            "scheduled_placeholder_queries": 0,
+            "padded_context_admissions": 0,
+            "scheduled_logits_rows": 926308,
+            "scheduled_decode_tokens": 915764,
+            "scheduled_decode_query_tokens": 915764,
+            "max_num_seqs_gate": 0,
+            "full_input_gate": 13,
+            "async_load_reservation_gate": 13,
+            "max_inflight_prefill_reserved_slots": 17335,
+            "loaded_kv_capacity_gate": 0,
+            "loaded_kv_resumptions": 90,
+            "async_load_admissions": 90
+          },
+          "free_slots": 25356,
+          "watermark_slots": 0,
+          "used_slots": 1,
+          "peak_used_slots": 18654,
+          "allocations": 5568331,
+          "releases": 6212393,
+          "evictions": 124843,
+          "cached_slots": 24317
+        },
+        {
+          "worker_id": 6,
+          "running": 0,
+          "waiting": 0,
+          "loading": 0,
+          "loaded_waiting": 0,
+          "inflight_prefills": 0,
+          "inflight_prefill_reserved_slots": 0,
+          "external_cache": {
+            "backend": "SimpleCPUOffloadConnector",
+            "runtime_budget_per_rank_bytes": 356125000000,
+            "storage": {
+              "scope": "worker:6",
+              "capacity_bytes": 356123443200,
+              "allocation_unit_bytes": 1228800,
+              "used_bytes": 119192371200,
+              "peak_used_bytes": 119192371200,
+              "resident_pages": 96999,
+              "pinned_pages": 0,
+              "evictions": 0
+            },
+            "read": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 34794700800,
+              "jobs": 55,
+              "queue_wait_seconds": 0.2416117999994185,
+              "service_seconds": 0.36260980000000004
+            },
+            "write": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 119192371200,
+              "jobs": 6212,
+              "queue_wait_seconds": 0.0,
+              "service_seconds": 1.2602231999999896
+            },
+            "loading_requests": 0,
+            "write_jobs": 0
+          },
+          "dma_pinned_slots": 0,
+          "defer_prefills": true,
+          "prefill_capacity_bound": false,
+          "scheduler_stats": {
+            "steps": 41052,
+            "deferred_running_prefills": 71652,
+            "deferred_waiting_prefills": 5425,
+            "capacity_bound_steps": 0,
+            "scheduled_context_tokens": 5657024,
+            "scheduled_context_query_tokens": 5657024,
+            "scheduled_placeholder_queries": 0,
+            "padded_context_admissions": 0,
+            "scheduled_logits_rows": 957550,
+            "scheduled_decode_tokens": 945976,
+            "scheduled_decode_query_tokens": 945976,
+            "max_num_seqs_gate": 0,
+            "full_input_gate": 0,
+            "async_load_reservation_gate": 0,
+            "max_inflight_prefill_reserved_slots": 7131,
+            "loaded_kv_capacity_gate": 0,
+            "loaded_kv_resumptions": 54,
+            "async_load_admissions": 54
+          },
+          "free_slots": 25356,
+          "watermark_slots": 0,
+          "used_slots": 1,
+          "peak_used_slots": 17581,
+          "allocations": 5699594,
+          "releases": 6335622,
+          "evictions": 103471,
+          "cached_slots": 24118
+        },
+        {
+          "worker_id": 7,
+          "running": 0,
+          "waiting": 0,
+          "loading": 0,
+          "loaded_waiting": 0,
+          "inflight_prefills": 0,
+          "inflight_prefill_reserved_slots": 0,
+          "external_cache": {
+            "backend": "SimpleCPUOffloadConnector",
+            "runtime_budget_per_rank_bytes": 356125000000,
+            "storage": {
+              "scope": "worker:7",
+              "capacity_bytes": 356123443200,
+              "allocation_unit_bytes": 1228800,
+              "used_bytes": 118087680000,
+              "peak_used_bytes": 118087680000,
+              "resident_pages": 96100,
+              "pinned_pages": 0,
+              "evictions": 0
+            },
+            "read": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 352473907200,
+              "jobs": 451,
+              "queue_wait_seconds": 0.9189867999980379,
+              "service_seconds": 3.672956199999999
+            },
+            "write": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 118087680000,
+              "jobs": 8436,
+              "queue_wait_seconds": 0.0,
+              "service_seconds": 1.2553879999999793
+            },
+            "loading_requests": 0,
+            "write_jobs": 0
+          },
+          "dma_pinned_slots": 0,
+          "defer_prefills": true,
+          "prefill_capacity_bound": false,
+          "scheduler_stats": {
+            "steps": 41052,
+            "deferred_running_prefills": 59531,
+            "deferred_waiting_prefills": 6372,
+            "capacity_bound_steps": 5322,
+            "scheduled_context_tokens": 5731153,
+            "scheduled_context_query_tokens": 5731153,
+            "scheduled_placeholder_queries": 0,
+            "padded_context_admissions": 0,
+            "scheduled_logits_rows": 1112285,
+            "scheduled_decode_tokens": 1100639,
+            "scheduled_decode_query_tokens": 1100639,
+            "max_num_seqs_gate": 0,
+            "full_input_gate": 5300,
+            "async_load_reservation_gate": 185,
+            "max_inflight_prefill_reserved_slots": 10376,
+            "loaded_kv_capacity_gate": 22,
+            "loaded_kv_resumptions": 437,
+            "async_load_admissions": 437
+          },
+          "free_slots": 25356,
+          "watermark_slots": 0,
+          "used_slots": 1,
+          "peak_used_slots": 25357,
+          "allocations": 6476729,
+          "releases": 7253928,
+          "evictions": 362837,
+          "cached_slots": 24435
+        }
+      ],
+      "per_rank": [
+        {
+          "rank": 0,
+          "successful": 1132,
+          "cancelled": 15,
+          "input_tokens": 119105024,
+          "gpu_hit_tokens": 48073472,
+          "cpu_hit_tokens": 64496384,
+          "max_used_gpu_slots": 23189,
+          "full_input_gate": 6547
+        },
+        {
+          "rank": 1,
+          "successful": 897,
+          "cancelled": 12,
+          "input_tokens": 111081536,
+          "gpu_hit_tokens": 92576256,
+          "cpu_hit_tokens": 13530368,
+          "max_used_gpu_slots": 18609,
+          "full_input_gate": 4
+        },
+        {
+          "rank": 2,
+          "successful": 942,
+          "cancelled": 12,
+          "input_tokens": 119236416,
+          "gpu_hit_tokens": 61862656,
+          "cpu_hit_tokens": 52769280,
+          "max_used_gpu_slots": 23249,
+          "full_input_gate": 1478
+        },
+        {
+          "rank": 3,
+          "successful": 1089,
+          "cancelled": 14,
+          "input_tokens": 119824448,
+          "gpu_hit_tokens": 60853504,
+          "cpu_hit_tokens": 51143424,
+          "max_used_gpu_slots": 22267,
+          "full_input_gate": 3892
+        },
+        {
+          "rank": 4,
+          "successful": 920,
+          "cancelled": 6,
+          "input_tokens": 123393664,
+          "gpu_hit_tokens": 17531392,
+          "cpu_hit_tokens": 100073728,
+          "max_used_gpu_slots": 25289,
+          "full_input_gate": 19588
+        },
+        {
+          "rank": 5,
+          "successful": 1099,
+          "cancelled": 8,
+          "input_tokens": 104762432,
+          "gpu_hit_tokens": 87234304,
+          "cpu_hit_tokens": 12370944,
+          "max_used_gpu_slots": 17968,
+          "full_input_gate": 13
+        },
+        {
+          "rank": 6,
+          "successful": 1186,
+          "cancelled": 9,
+          "input_tokens": 100461056,
+          "gpu_hit_tokens": 87959552,
+          "cpu_hit_tokens": 6890240,
+          "max_used_gpu_slots": 17228,
+          "full_input_gate": 0
+        },
+        {
+          "rank": 7,
+          "successful": 1046,
+          "cancelled": 16,
+          "input_tokens": 123743744,
+          "gpu_hit_tokens": 52630784,
+          "cpu_hit_tokens": 65616384,
+          "max_used_gpu_slots": 24494,
+          "full_input_gate": 5300
+        }
+      ],
+      "checks": "counts/output/input decomposition/cancellation/pool/DP conservation passed",
+      "execution_k": 0,
+      "complete_disabled_path_audited": true,
+      "all_window_pool_conservation_audited": true,
+      "audited_window_count": 90,
+      "no_independent_disabled_reference_identity": true,
+      "derived_budget_per_rank": {
+        "hardware_capacity_bytes": 193273528320,
+        "utilization": 0.9,
+        "hardware_budget_bytes": 173946175488,
+        "deductions": {
+          "weights": 131450759116,
+          "runtime_and_nccl_reserve": 4169138176,
+          "native_persistent_buffers": 3397772752,
+          "peak_activation_estimate": 3652059136,
+          "decode_graph_estimate": 117035120
+        },
+        "persistent_components": {
+          "target_topk": 33554432,
+          "draft_topk": 0,
+          "target_mtp_hidden": 0,
+          "drafter_hidden": 0,
+          "flashinfer_workspace": 134217728,
+          "compressed_rope_cache": 268435456,
+          "swa_rope_cache": 0,
+          "first_mhc_broadcast_weight": 688128,
+          "runner_and_drafter_input_buffers": 107088,
+          "indexer_shared_workspace": 714080256,
+          "mega_symmetric": 2246689664
+        },
+        "activation_components": {
+          "caller_residual": 469762048,
+          "caller_hidden": 117440512,
+          "attention_residual": 469762048,
+          "attention_input": 117440512,
+          "mix_coefficients": 1966080,
+          "qkv_raw": 33554432,
+          "qkv_normalized": 33554432,
+          "compressor_kv_score": 67108864,
+          "indexer_compressor_kv_score": 16777216,
+          "indexer_input_weights": 1048576,
+          "indexer_query_bf16": 134217728,
+          "indexer_query_quant": 35651584,
+          "indexer_output_weights": 2097152,
+          "query_bf16": 1073741824,
+          "query_fp8": 536870912,
+          "attention_output": 536870912,
+          "output_fp8_scales": 4194304
+        },
+        "activation_live_plans": [
+          {
+            "rows": 8192,
+            "sp_rows": 8192,
+            "gather_owner_rows": 8192,
+            "kind": "csa",
+            "draft": false,
+            "first_layer": true,
+            "graph": false,
+            "peak_bytes": 3182297088,
+            "peak_phase": "parallel_query_quant",
+            "phases": [
+              {
+                "phase": "mtp_input",
+                "bytes": 0
+              },
+              {
+                "phase": "mhc_attention",
+                "bytes": 707428352
+              },
+              {
+                "phase": "input_projections",
+                "bytes": 1458896896
+              },
+              {
+                "phase": "parallel_query_quant",
+                "bytes": 3182297088
+              },
+              {
+                "phase": "sparse_indexer_attention",
+                "bytes": 3048079360
+              },
+              {
+                "phase": "output_projection",
+                "bytes": 1919811584
+              },
+              {
+                "phase": "mhc_ffn",
+                "bytes": 1294630912
+              },
+              {
+                "phase": "expert",
+                "bytes": 824639488
+              },
+              {
+                "phase": "final_residual",
+                "bytes": 941490176
+              },
+              {
+                "phase": "head_norm",
+                "bytes": 704643072
+              },
+              {
+                "phase": "logits_sampler",
+                "bytes": 273666484
+              }
+            ],
+            "storages": [
+              {
+                "storage": "caller_embedding",
+                "bytes": 117440512,
+                "begin_phase": 1,
+                "end_phase": 8,
+                "owner": "first-layer embedding, including SP view owner"
+              },
+              {
+                "storage": "attention_residual",
+                "bytes": 469762048,
+                "begin_phase": 1,
+                "end_phase": 7,
+                "owner": "first-layer broadcast residual"
+              },
+              {
+                "storage": "attention_input",
+                "bytes": 117440512,
+                "begin_phase": 1,
+                "end_phase": 6,
+                "owner": "mHC input or full all-gather owner sliced to positions"
+              },
+              {
+                "storage": "ffn_residual",
+                "bytes": 469762048,
+                "begin_phase": 6,
+                "end_phase": 9,
+                "owner": "second mHC transition; original caller still holds prior residual"
+              },
+              {
+                "storage": "ffn_input",
+                "bytes": 117440512,
+                "begin_phase": 6,
+                "end_phase": 8,
+                "owner": "mHC FFN normalized shard"
+              },
+              {
+                "storage": "mix_coefficients",
+                "bytes": 1966080,
+                "begin_phase": 1,
+                "end_phase": 9,
+                "owner": "caller/attention/FFN post and residual mix upper bound"
+              },
+              {
+                "storage": "mhc_scratch_pre",
+                "bytes": 819200,
+                "begin_phase": 1,
+                "end_phase": 2,
+                "owner": "mHC GEMM mixes/squared sums"
+              },
+              {
+                "storage": "mhc_scratch_ffn",
+                "bytes": 819200,
+                "begin_phase": 6,
+                "end_phase": 7,
+                "owner": "mHC GEMM mixes/squared sums"
+              },
+              {
+                "storage": "qkv_raw",
+                "bytes": 33554432,
+                "begin_phase": 2,
+                "end_phase": 6,
+                "owner": "fused input GEMM output"
+              },
+              {
+                "storage": "qkv_normalized",
+                "bytes": 33554432,
+                "begin_phase": 2,
+                "end_phase": 6,
+                "owner": "fused q/kv RMSNorm outputs"
+              },
+              {
+                "storage": "projection_fp8_input",
+                "bytes": 59179008,
+                "begin_phase": 2,
+                "end_phase": 3,
+                "owner": "input FP8 quantization and packed scales"
+              },
+              {
+                "storage": "compressor_kv_score",
+                "bytes": 67108864,
+                "begin_phase": 2,
+                "end_phase": 6,
+                "owner": "FP32 compressor projection retained by attention.forward"
+              },
+              {
+                "storage": "indexer_compressor_kv_score",
+                "bytes": 16777216,
+                "begin_phase": 2,
+                "end_phase": 6,
+                "owner": "FP32 indexer compressor projection"
+              },
+              {
+                "storage": "indexer_input_weights",
+                "bytes": 1048576,
+                "begin_phase": 2,
+                "end_phase": 6,
+                "owner": "BF16 indexer weights projection"
+              },
+              {
+                "storage": "indexer_query_bf16",
+                "bytes": 134217728,
+                "begin_phase": 3,
+                "end_phase": 4,
+                "owner": "parallel indexer query projection before quantization join"
+              },
+              {
+                "storage": "indexer_query_quant",
+                "bytes": 35651584,
+                "begin_phase": 3,
+                "end_phase": 5,
+                "owner": "indexer quantized values/scales"
+              },
+              {
+                "storage": "indexer_output_weights",
+                "bytes": 2097152,
+                "begin_phase": 3,
+                "end_phase": 5,
+                "owner": "FP32 indexer weights"
+              },
+              {
+                "storage": "indexer_logits",
+                "bytes": 536870912,
+                "begin_phase": 4,
+                "end_phase": 5,
+                "owner": "decode padded logits or context/profiling cap"
+              },
+              {
+                "storage": "previous_indexer_logits",
+                "bytes": 536870912,
+                "begin_phase": 4,
+                "end_phase": 5,
+                "owner": "context chunk-loop RHS retains previous logits"
+              },
+              {
+                "storage": "query_bf16",
+                "bytes": 1073741824,
+                "begin_phase": 3,
+                "end_phase": 4,
+                "owner": "query before plain-FP8 insert or in-place BF16 query"
+              },
+              {
+                "storage": "query_fp8",
+                "bytes": 536870912,
+                "begin_phase": 3,
+                "end_phase": 5,
+                "owner": "plain FP8 query returned to attention"
+              },
+              {
+                "storage": "attention_output",
+                "bytes": 536870912,
+                "begin_phase": 2,
+                "end_phase": 6,
+                "owner": "caller-owned FP8 epilogue or BF16 sparse-attention output"
+              },
+              {
+                "storage": "output_fp8_scales",
+                "bytes": 4194304,
+                "begin_phase": 2,
+                "end_phase": 6,
+                "owner": "fused epilogue packed TMA scales"
+              },
+              {
+                "storage": "output_grouped_z",
+                "bytes": 268435456,
+                "begin_phase": 5,
+                "end_phase": 6,
+                "owner": "grouped wo_a BF16 output"
+              },
+              {
+                "storage": "output_linear_quant",
+                "bytes": 134217728,
+                "begin_phase": 5,
+                "end_phase": 6,
+                "owner": "wo_b FP8 input staging"
+              },
+              {
+                "storage": "output_projection_result",
+                "bytes": 117440512,
+                "begin_phase": 5,
+                "end_phase": 7,
+                "owner": "wo_b output retained during next mHC RHS"
+              },
+              {
+                "storage": "expert_bf16_y",
+                "bytes": 117440512,
+                "begin_phase": 7,
+                "end_phase": 8,
+                "owner": "distinct MegaMoE output outside symmetric buffer"
+              },
+              {
+                "storage": "expert_topk",
+                "bytes": 589824,
+                "begin_phase": 7,
+                "end_phase": 8,
+                "owner": "int64 IDs and FP32 weights"
+              },
+              {
+                "storage": "final_reconstructed_residual",
+                "bytes": 469762048,
+                "begin_phase": 8,
+                "end_phase": 10,
+                "owner": "mhc_post final reconstruction"
+              },
+              {
+                "storage": "head_output",
+                "bytes": 117440512,
+                "begin_phase": 9,
+                "end_phase": 11,
+                "owner": "hc_head BF16 output"
+              },
+              {
+                "storage": "norm_output",
+                "bytes": 117440512,
+                "begin_phase": 9,
+                "end_phase": 11,
+                "owner": "final RMSNorm BF16 output"
+              },
+              {
+                "storage": "selected_hidden",
+                "bytes": 702464,
+                "begin_phase": 10,
+                "end_phase": 11,
+                "owner": "logits selected hidden rows"
+              },
+              {
+                "storage": "local_logits",
+                "bytes": 12669440,
+                "begin_phase": 10,
+                "end_phase": 11,
+                "owner": "BF16 vocabulary projection"
+              },
+              {
+                "storage": "processed_logits",
+                "bytes": 25338880,
+                "begin_phase": 10,
+                "end_phase": 11,
+                "owner": "optional sampler FP32 copy upper bound"
+              },
+              {
+                "storage": "gumbel_scratch",
+                "bytes": 74676,
+                "begin_phase": 10,
+                "end_phase": 11,
+                "owner": "local argmax and max before sample reduction"
+              }
+            ],
+            "grade": "D source live-phase upper bound; allocator and parallel-branch simultaneity unmeasured"
+          },
+          {
+            "rows": 8192,
+            "sp_rows": 8192,
+            "gather_owner_rows": 8192,
+            "kind": "csa",
+            "draft": false,
+            "first_layer": false,
+            "graph": false,
+            "peak_bytes": 3652059136,
+            "peak_phase": "parallel_query_quant",
+            "phases": [
+              {
+                "phase": "mtp_input",
+                "bytes": 0
+              },
+              {
+                "phase": "mhc_attention",
+                "bytes": 1177190400
+              },
+              {
+                "phase": "input_projections",
+                "bytes": 1928658944
+              },
+              {
+                "phase": "parallel_query_quant",
+                "bytes": 3652059136
+              },
+              {
+                "phase": "sparse_indexer_attention",
+                "bytes": 3517841408
+              },
+              {
+                "phase": "output_projection",
+                "bytes": 2389573632
+              },
+              {
+                "phase": "mhc_ffn",
+                "bytes": 1764392960
+              },
+              {
+                "phase": "expert",
+                "bytes": 1294401536
+              },
+              {
+                "phase": "final_residual",
+                "bytes": 941490176
+              },
+              {
+                "phase": "head_norm",
+                "bytes": 704643072
+              },
+              {
+                "phase": "logits_sampler",
+                "bytes": 273666484
+              }
+            ],
+            "storages": [
+              {
+                "storage": "caller_residual",
+                "bytes": 469762048,
+                "begin_phase": 1,
+                "end_phase": 8,
+                "owner": "model caller holds previous residual through layer RHS"
+              },
+              {
+                "storage": "caller_hidden",
+                "bytes": 117440512,
+                "begin_phase": 1,
+                "end_phase": 8,
+                "owner": "model caller holds previous FFN output"
+              },
+              {
+                "storage": "attention_residual",
+                "bytes": 469762048,
+                "begin_phase": 1,
+                "end_phase": 7,
+                "owner": "first mHC transition residual"
+              },
+              {
+                "storage": "attention_input",
+                "bytes": 117440512,
+                "begin_phase": 1,
+                "end_phase": 6,
+                "owner": "mHC input or full all-gather owner sliced to positions"
+              },
+              {
+                "storage": "ffn_residual",
+                "bytes": 469762048,
+                "begin_phase": 6,
+                "end_phase": 9,
+                "owner": "second mHC transition; original caller still holds prior residual"
+              },
+              {
+                "storage": "ffn_input",
+                "bytes": 117440512,
+                "begin_phase": 6,
+                "end_phase": 8,
+                "owner": "mHC FFN normalized shard"
+              },
+              {
+                "storage": "mix_coefficients",
+                "bytes": 1966080,
+                "begin_phase": 1,
+                "end_phase": 9,
+                "owner": "caller/attention/FFN post and residual mix upper bound"
+              },
+              {
+                "storage": "mhc_scratch_pre",
+                "bytes": 819200,
+                "begin_phase": 1,
+                "end_phase": 2,
+                "owner": "mHC GEMM mixes/squared sums"
+              },
+              {
+                "storage": "mhc_scratch_ffn",
+                "bytes": 819200,
+                "begin_phase": 6,
+                "end_phase": 7,
+                "owner": "mHC GEMM mixes/squared sums"
+              },
+              {
+                "storage": "qkv_raw",
+                "bytes": 33554432,
+                "begin_phase": 2,
+                "end_phase": 6,
+                "owner": "fused input GEMM output"
+              },
+              {
+                "storage": "qkv_normalized",
+                "bytes": 33554432,
+                "begin_phase": 2,
+                "end_phase": 6,
+                "owner": "fused q/kv RMSNorm outputs"
+              },
+              {
+                "storage": "projection_fp8_input",
+                "bytes": 59179008,
+                "begin_phase": 2,
+                "end_phase": 3,
+                "owner": "input FP8 quantization and packed scales"
+              },
+              {
+                "storage": "compressor_kv_score",
+                "bytes": 67108864,
+                "begin_phase": 2,
+                "end_phase": 6,
+                "owner": "FP32 compressor projection retained by attention.forward"
+              },
+              {
+                "storage": "indexer_compressor_kv_score",
+                "bytes": 16777216,
+                "begin_phase": 2,
+                "end_phase": 6,
+                "owner": "FP32 indexer compressor projection"
+              },
+              {
+                "storage": "indexer_input_weights",
+                "bytes": 1048576,
+                "begin_phase": 2,
+                "end_phase": 6,
+                "owner": "BF16 indexer weights projection"
+              },
+              {
+                "storage": "indexer_query_bf16",
+                "bytes": 134217728,
+                "begin_phase": 3,
+                "end_phase": 4,
+                "owner": "parallel indexer query projection before quantization join"
+              },
+              {
+                "storage": "indexer_query_quant",
+                "bytes": 35651584,
+                "begin_phase": 3,
+                "end_phase": 5,
+                "owner": "indexer quantized values/scales"
+              },
+              {
+                "storage": "indexer_output_weights",
+                "bytes": 2097152,
+                "begin_phase": 3,
+                "end_phase": 5,
+                "owner": "FP32 indexer weights"
+              },
+              {
+                "storage": "indexer_logits",
+                "bytes": 536870912,
+                "begin_phase": 4,
+                "end_phase": 5,
+                "owner": "decode padded logits or context/profiling cap"
+              },
+              {
+                "storage": "previous_indexer_logits",
+                "bytes": 536870912,
+                "begin_phase": 4,
+                "end_phase": 5,
+                "owner": "context chunk-loop RHS retains previous logits"
+              },
+              {
+                "storage": "query_bf16",
+                "bytes": 1073741824,
+                "begin_phase": 3,
+                "end_phase": 4,
+                "owner": "query before plain-FP8 insert or in-place BF16 query"
+              },
+              {
+                "storage": "query_fp8",
+                "bytes": 536870912,
+                "begin_phase": 3,
+                "end_phase": 5,
+                "owner": "plain FP8 query returned to attention"
+              },
+              {
+                "storage": "attention_output",
+                "bytes": 536870912,
+                "begin_phase": 2,
+                "end_phase": 6,
+                "owner": "caller-owned FP8 epilogue or BF16 sparse-attention output"
+              },
+              {
+                "storage": "output_fp8_scales",
+                "bytes": 4194304,
+                "begin_phase": 2,
+                "end_phase": 6,
+                "owner": "fused epilogue packed TMA scales"
+              },
+              {
+                "storage": "output_grouped_z",
+                "bytes": 268435456,
+                "begin_phase": 5,
+                "end_phase": 6,
+                "owner": "grouped wo_a BF16 output"
+              },
+              {
+                "storage": "output_linear_quant",
+                "bytes": 134217728,
+                "begin_phase": 5,
+                "end_phase": 6,
+                "owner": "wo_b FP8 input staging"
+              },
+              {
+                "storage": "output_projection_result",
+                "bytes": 117440512,
+                "begin_phase": 5,
+                "end_phase": 7,
+                "owner": "wo_b output retained during next mHC RHS"
+              },
+              {
+                "storage": "expert_bf16_y",
+                "bytes": 117440512,
+                "begin_phase": 7,
+                "end_phase": 8,
+                "owner": "distinct MegaMoE output outside symmetric buffer"
+              },
+              {
+                "storage": "expert_topk",
+                "bytes": 589824,
+                "begin_phase": 7,
+                "end_phase": 8,
+                "owner": "int64 IDs and FP32 weights"
+              },
+              {
+                "storage": "final_reconstructed_residual",
+                "bytes": 469762048,
+                "begin_phase": 8,
+                "end_phase": 10,
+                "owner": "mhc_post final reconstruction"
+              },
+              {
+                "storage": "head_output",
+                "bytes": 117440512,
+                "begin_phase": 9,
+                "end_phase": 11,
+                "owner": "hc_head BF16 output"
+              },
+              {
+                "storage": "norm_output",
+                "bytes": 117440512,
+                "begin_phase": 9,
+                "end_phase": 11,
+                "owner": "final RMSNorm BF16 output"
+              },
+              {
+                "storage": "selected_hidden",
+                "bytes": 702464,
+                "begin_phase": 10,
+                "end_phase": 11,
+                "owner": "logits selected hidden rows"
+              },
+              {
+                "storage": "local_logits",
+                "bytes": 12669440,
+                "begin_phase": 10,
+                "end_phase": 11,
+                "owner": "BF16 vocabulary projection"
+              },
+              {
+                "storage": "processed_logits",
+                "bytes": 25338880,
+                "begin_phase": 10,
+                "end_phase": 11,
+                "owner": "optional sampler FP32 copy upper bound"
+              },
+              {
+                "storage": "gumbel_scratch",
+                "bytes": 74676,
+                "begin_phase": 10,
+                "end_phase": 11,
+                "owner": "local argmax and max before sample reduction"
+              }
+            ],
+            "grade": "D source live-phase upper bound; allocator and parallel-branch simultaneity unmeasured"
+          },
+          {
+            "rows": 8192,
+            "sp_rows": 8192,
+            "gather_owner_rows": 8192,
+            "kind": "hca",
+            "draft": false,
+            "first_layer": true,
+            "graph": false,
+            "peak_bytes": 2958950400,
+            "peak_phase": "parallel_query_quant",
+            "phases": [
+              {
+                "phase": "mtp_input",
+                "bytes": 0
+              },
+              {
+                "phase": "mhc_attention",
+                "bytes": 707428352
+              },
+              {
+                "phase": "input_projections",
+                "bytes": 1407516672
+              },
+              {
+                "phase": "parallel_query_quant",
+                "bytes": 2958950400
+              },
+              {
+                "phase": "sparse_indexer_attention",
+                "bytes": 1885208576
+              },
+              {
+                "phase": "output_projection",
+                "bytes": 1868431360
+              },
+              {
+                "phase": "mhc_ffn",
+                "bytes": 1294630912
+              },
+              {
+                "phase": "expert",
+                "bytes": 824639488
+              },
+              {
+                "phase": "final_residual",
+                "bytes": 941490176
+              },
+              {
+                "phase": "head_norm",
+                "bytes": 704643072
+              },
+              {
+                "phase": "logits_sampler",
+                "bytes": 273666484
+              }
+            ],
+            "storages": [
+              {
+                "storage": "caller_embedding",
+                "bytes": 117440512,
+                "begin_phase": 1,
+                "end_phase": 8,
+                "owner": "first-layer embedding, including SP view owner"
+              },
+              {
+                "storage": "attention_residual",
+                "bytes": 469762048,
+                "begin_phase": 1,
+                "end_phase": 7,
+                "owner": "first-layer broadcast residual"
+              },
+              {
+                "storage": "attention_input",
+                "bytes": 117440512,
+                "begin_phase": 1,
+                "end_phase": 6,
+                "owner": "mHC input or full all-gather owner sliced to positions"
+              },
+              {
+                "storage": "ffn_residual",
+                "bytes": 469762048,
+                "begin_phase": 6,
+                "end_phase": 9,
+                "owner": "second mHC transition; original caller still holds prior residual"
+              },
+              {
+                "storage": "ffn_input",
+                "bytes": 117440512,
+                "begin_phase": 6,
+                "end_phase": 8,
+                "owner": "mHC FFN normalized shard"
+              },
+              {
+                "storage": "mix_coefficients",
+                "bytes": 1966080,
+                "begin_phase": 1,
+                "end_phase": 9,
+                "owner": "caller/attention/FFN post and residual mix upper bound"
+              },
+              {
+                "storage": "mhc_scratch_pre",
+                "bytes": 819200,
+                "begin_phase": 1,
+                "end_phase": 2,
+                "owner": "mHC GEMM mixes/squared sums"
+              },
+              {
+                "storage": "mhc_scratch_ffn",
+                "bytes": 819200,
+                "begin_phase": 6,
+                "end_phase": 7,
+                "owner": "mHC GEMM mixes/squared sums"
+              },
+              {
+                "storage": "qkv_raw",
+                "bytes": 33554432,
+                "begin_phase": 2,
+                "end_phase": 6,
+                "owner": "fused input GEMM output"
+              },
+              {
+                "storage": "qkv_normalized",
+                "bytes": 33554432,
+                "begin_phase": 2,
+                "end_phase": 6,
+                "owner": "fused q/kv RMSNorm outputs"
+              },
+              {
+                "storage": "projection_fp8_input",
+                "bytes": 59179008,
+                "begin_phase": 2,
+                "end_phase": 3,
+                "owner": "input FP8 quantization and packed scales"
+              },
+              {
+                "storage": "compressor_kv_score",
+                "bytes": 33554432,
+                "begin_phase": 2,
+                "end_phase": 6,
+                "owner": "FP32 compressor projection retained by attention.forward"
+              },
+              {
+                "storage": "query_bf16",
+                "bytes": 1073741824,
+                "begin_phase": 3,
+                "end_phase": 4,
+                "owner": "query before plain-FP8 insert or in-place BF16 query"
+              },
+              {
+                "storage": "query_fp8",
+                "bytes": 536870912,
+                "begin_phase": 3,
+                "end_phase": 5,
+                "owner": "plain FP8 query returned to attention"
+              },
+              {
+                "storage": "attention_output",
+                "bytes": 536870912,
+                "begin_phase": 2,
+                "end_phase": 6,
+                "owner": "caller-owned FP8 epilogue or BF16 sparse-attention output"
+              },
+              {
+                "storage": "output_fp8_scales",
+                "bytes": 4194304,
+                "begin_phase": 2,
+                "end_phase": 6,
+                "owner": "fused epilogue packed TMA scales"
+              },
+              {
+                "storage": "output_grouped_z",
+                "bytes": 268435456,
+                "begin_phase": 5,
+                "end_phase": 6,
+                "owner": "grouped wo_a BF16 output"
+              },
+              {
+                "storage": "output_linear_quant",
+                "bytes": 134217728,
+                "begin_phase": 5,
+                "end_phase": 6,
+                "owner": "wo_b FP8 input staging"
+              },
+              {
+                "storage": "output_projection_result",
+                "bytes": 117440512,
+                "begin_phase": 5,
+                "end_phase": 7,
+                "owner": "wo_b output retained during next mHC RHS"
+              },
+              {
+                "storage": "expert_bf16_y",
+                "bytes": 117440512,
+                "begin_phase": 7,
+                "end_phase": 8,
+                "owner": "distinct MegaMoE output outside symmetric buffer"
+              },
+              {
+                "storage": "expert_topk",
+                "bytes": 589824,
+                "begin_phase": 7,
+                "end_phase": 8,
+                "owner": "int64 IDs and FP32 weights"
+              },
+              {
+                "storage": "final_reconstructed_residual",
+                "bytes": 469762048,
+                "begin_phase": 8,
+                "end_phase": 10,
+                "owner": "mhc_post final reconstruction"
+              },
+              {
+                "storage": "head_output",
+                "bytes": 117440512,
+                "begin_phase": 9,
+                "end_phase": 11,
+                "owner": "hc_head BF16 output"
+              },
+              {
+                "storage": "norm_output",
+                "bytes": 117440512,
+                "begin_phase": 9,
+                "end_phase": 11,
+                "owner": "final RMSNorm BF16 output"
+              },
+              {
+                "storage": "selected_hidden",
+                "bytes": 702464,
+                "begin_phase": 10,
+                "end_phase": 11,
+                "owner": "logits selected hidden rows"
+              },
+              {
+                "storage": "local_logits",
+                "bytes": 12669440,
+                "begin_phase": 10,
+                "end_phase": 11,
+                "owner": "BF16 vocabulary projection"
+              },
+              {
+                "storage": "processed_logits",
+                "bytes": 25338880,
+                "begin_phase": 10,
+                "end_phase": 11,
+                "owner": "optional sampler FP32 copy upper bound"
+              },
+              {
+                "storage": "gumbel_scratch",
+                "bytes": 74676,
+                "begin_phase": 10,
+                "end_phase": 11,
+                "owner": "local argmax and max before sample reduction"
+              }
+            ],
+            "grade": "D source live-phase upper bound; allocator and parallel-branch simultaneity unmeasured"
+          },
+          {
+            "rows": 8192,
+            "sp_rows": 8192,
+            "gather_owner_rows": 8192,
+            "kind": "hca",
+            "draft": false,
+            "first_layer": false,
+            "graph": false,
+            "peak_bytes": 3428712448,
+            "peak_phase": "parallel_query_quant",
+            "phases": [
+              {
+                "phase": "mtp_input",
+                "bytes": 0
+              },
+              {
+                "phase": "mhc_attention",
+                "bytes": 1177190400
+              },
+              {
+                "phase": "input_projections",
+                "bytes": 1877278720
+              },
+              {
+                "phase": "parallel_query_quant",
+                "bytes": 3428712448
+              },
+              {
+                "phase": "sparse_indexer_attention",
+                "bytes": 2354970624
+              },
+              {
+                "phase": "output_projection",
+                "bytes": 2338193408
+              },
+              {
+                "phase": "mhc_ffn",
+                "bytes": 1764392960
+              },
+              {
+                "phase": "expert",
+                "bytes": 1294401536
+              },
+              {
+                "phase": "final_residual",
+                "bytes": 941490176
+              },
+              {
+                "phase": "head_norm",
+                "bytes": 704643072
+              },
+              {
+                "phase": "logits_sampler",
+                "bytes": 273666484
+              }
+            ],
+            "storages": [
+              {
+                "storage": "caller_residual",
+                "bytes": 469762048,
+                "begin_phase": 1,
+                "end_phase": 8,
+                "owner": "model caller holds previous residual through layer RHS"
+              },
+              {
+                "storage": "caller_hidden",
+                "bytes": 117440512,
+                "begin_phase": 1,
+                "end_phase": 8,
+                "owner": "model caller holds previous FFN output"
+              },
+              {
+                "storage": "attention_residual",
+                "bytes": 469762048,
+                "begin_phase": 1,
+                "end_phase": 7,
+                "owner": "first mHC transition residual"
+              },
+              {
+                "storage": "attention_input",
+                "bytes": 117440512,
+                "begin_phase": 1,
+                "end_phase": 6,
+                "owner": "mHC input or full all-gather owner sliced to positions"
+              },
+              {
+                "storage": "ffn_residual",
+                "bytes": 469762048,
+                "begin_phase": 6,
+                "end_phase": 9,
+                "owner": "second mHC transition; original caller still holds prior residual"
+              },
+              {
+                "storage": "ffn_input",
+                "bytes": 117440512,
+                "begin_phase": 6,
+                "end_phase": 8,
+                "owner": "mHC FFN normalized shard"
+              },
+              {
+                "storage": "mix_coefficients",
+                "bytes": 1966080,
+                "begin_phase": 1,
+                "end_phase": 9,
+                "owner": "caller/attention/FFN post and residual mix upper bound"
+              },
+              {
+                "storage": "mhc_scratch_pre",
+                "bytes": 819200,
+                "begin_phase": 1,
+                "end_phase": 2,
+                "owner": "mHC GEMM mixes/squared sums"
+              },
+              {
+                "storage": "mhc_scratch_ffn",
+                "bytes": 819200,
+                "begin_phase": 6,
+                "end_phase": 7,
+                "owner": "mHC GEMM mixes/squared sums"
+              },
+              {
+                "storage": "qkv_raw",
+                "bytes": 33554432,
+                "begin_phase": 2,
+                "end_phase": 6,
+                "owner": "fused input GEMM output"
+              },
+              {
+                "storage": "qkv_normalized",
+                "bytes": 33554432,
+                "begin_phase": 2,
+                "end_phase": 6,
+                "owner": "fused q/kv RMSNorm outputs"
+              },
+              {
+                "storage": "projection_fp8_input",
+                "bytes": 59179008,
+                "begin_phase": 2,
+                "end_phase": 3,
+                "owner": "input FP8 quantization and packed scales"
+              },
+              {
+                "storage": "compressor_kv_score",
+                "bytes": 33554432,
+                "begin_phase": 2,
+                "end_phase": 6,
+                "owner": "FP32 compressor projection retained by attention.forward"
+              },
+              {
+                "storage": "query_bf16",
+                "bytes": 1073741824,
+                "begin_phase": 3,
+                "end_phase": 4,
+                "owner": "query before plain-FP8 insert or in-place BF16 query"
+              },
+              {
+                "storage": "query_fp8",
+                "bytes": 536870912,
+                "begin_phase": 3,
+                "end_phase": 5,
+                "owner": "plain FP8 query returned to attention"
+              },
+              {
+                "storage": "attention_output",
+                "bytes": 536870912,
+                "begin_phase": 2,
+                "end_phase": 6,
+                "owner": "caller-owned FP8 epilogue or BF16 sparse-attention output"
+              },
+              {
+                "storage": "output_fp8_scales",
+                "bytes": 4194304,
+                "begin_phase": 2,
+                "end_phase": 6,
+                "owner": "fused epilogue packed TMA scales"
+              },
+              {
+                "storage": "output_grouped_z",
+                "bytes": 268435456,
+                "begin_phase": 5,
+                "end_phase": 6,
+                "owner": "grouped wo_a BF16 output"
+              },
+              {
+                "storage": "output_linear_quant",
+                "bytes": 134217728,
+                "begin_phase": 5,
+                "end_phase": 6,
+                "owner": "wo_b FP8 input staging"
+              },
+              {
+                "storage": "output_projection_result",
+                "bytes": 117440512,
+                "begin_phase": 5,
+                "end_phase": 7,
+                "owner": "wo_b output retained during next mHC RHS"
+              },
+              {
+                "storage": "expert_bf16_y",
+                "bytes": 117440512,
+                "begin_phase": 7,
+                "end_phase": 8,
+                "owner": "distinct MegaMoE output outside symmetric buffer"
+              },
+              {
+                "storage": "expert_topk",
+                "bytes": 589824,
+                "begin_phase": 7,
+                "end_phase": 8,
+                "owner": "int64 IDs and FP32 weights"
+              },
+              {
+                "storage": "final_reconstructed_residual",
+                "bytes": 469762048,
+                "begin_phase": 8,
+                "end_phase": 10,
+                "owner": "mhc_post final reconstruction"
+              },
+              {
+                "storage": "head_output",
+                "bytes": 117440512,
+                "begin_phase": 9,
+                "end_phase": 11,
+                "owner": "hc_head BF16 output"
+              },
+              {
+                "storage": "norm_output",
+                "bytes": 117440512,
+                "begin_phase": 9,
+                "end_phase": 11,
+                "owner": "final RMSNorm BF16 output"
+              },
+              {
+                "storage": "selected_hidden",
+                "bytes": 702464,
+                "begin_phase": 10,
+                "end_phase": 11,
+                "owner": "logits selected hidden rows"
+              },
+              {
+                "storage": "local_logits",
+                "bytes": 12669440,
+                "begin_phase": 10,
+                "end_phase": 11,
+                "owner": "BF16 vocabulary projection"
+              },
+              {
+                "storage": "processed_logits",
+                "bytes": 25338880,
+                "begin_phase": 10,
+                "end_phase": 11,
+                "owner": "optional sampler FP32 copy upper bound"
+              },
+              {
+                "storage": "gumbel_scratch",
+                "bytes": 74676,
+                "begin_phase": 10,
+                "end_phase": 11,
+                "owner": "local argmax and max before sample reduction"
+              }
+            ],
+            "grade": "D source live-phase upper bound; allocator and parallel-branch simultaneity unmeasured"
+          }
+        ],
+        "communication_components": {
+          "workspace": 41554304,
+          "input_x": 68812800,
+          "input_scales": 2150400,
+          "topk_ids": 460800,
+          "topk_weights": 230400,
+          "shared_l1_scales": 34406400,
+          "shared_l2_x": 29491200,
+          "shared_l2_scales": 14745600,
+          "ring_l1_x": 509214720,
+          "ring_l1_scales": 254607360,
+          "ring_l1_weights": 284160,
+          "ring_l2_x": 218234880,
+          "ring_l2_scales": 109117440,
+          "combine_output": 963379200
+        },
+        "native_mega_storage": {
+          "bytes": 2246689664,
+          "components": {
+            "workspace": 41554304,
+            "input_x": 68812800,
+            "input_scales": 2150400,
+            "topk_ids": 460800,
+            "topk_weights": 230400,
+            "shared_l1_scales": 34406400,
+            "shared_l2_x": 29491200,
+            "shared_l2_scales": 14745600,
+            "ring_l1_x": 509214720,
+            "ring_l1_scales": 254607360,
+            "ring_l1_weights": 284160,
+            "ring_l2_x": 218234880,
+            "ring_l2_scales": 109117440,
+            "combine_output": 963379200
+          },
+          "intervals": [
+            {
+              "storage": "workspace",
+              "start_byte": 0,
+              "end_byte": 41554304,
+              "bytes": 41554304
+            },
+            {
+              "storage": "input_x",
+              "start_byte": 41554304,
+              "end_byte": 110367104,
+              "bytes": 68812800
+            },
+            {
+              "storage": "input_scales",
+              "start_byte": 110367104,
+              "end_byte": 112517504,
+              "bytes": 2150400
+            },
+            {
+              "storage": "topk_ids",
+              "start_byte": 112517504,
+              "end_byte": 112978304,
+              "bytes": 460800
+            },
+            {
+              "storage": "topk_weights",
+              "start_byte": 112978304,
+              "end_byte": 113208704,
+              "bytes": 230400
+            },
+            {
+              "storage": "shared_l1_scales",
+              "start_byte": 113208704,
+              "end_byte": 147615104,
+              "bytes": 34406400
+            },
+            {
+              "storage": "shared_l2_x",
+              "start_byte": 147615104,
+              "end_byte": 177106304,
+              "bytes": 29491200
+            },
+            {
+              "storage": "shared_l2_scales",
+              "start_byte": 177106304,
+              "end_byte": 191851904,
+              "bytes": 14745600
+            },
+            {
+              "storage": "ring_l1_x",
+              "start_byte": 191851904,
+              "end_byte": 701066624,
+              "bytes": 509214720
+            },
+            {
+              "storage": "ring_l1_scales",
+              "start_byte": 701066624,
+              "end_byte": 955673984,
+              "bytes": 254607360
+            },
+            {
+              "storage": "ring_l1_weights",
+              "start_byte": 955673984,
+              "end_byte": 955958144,
+              "bytes": 284160
+            },
+            {
+              "storage": "ring_l2_x",
+              "start_byte": 955958144,
+              "end_byte": 1174193024,
+              "bytes": 218234880
+            },
+            {
+              "storage": "ring_l2_scales",
+              "start_byte": 1174193024,
+              "end_byte": 1283310464,
+              "bytes": 109117440
+            },
+            {
+              "storage": "combine_output",
+              "start_byte": 1283310464,
+              "end_byte": 2246689664,
+              "bytes": 963379200
+            }
+          ],
+          "aliases": {
+            "shared_l1_x": "input_x"
+          },
+          "cache_instances_per_rank": 1,
+          "unsharded_scheduler_tokens": 8192,
+          "aligned_tokens": 9600,
+          "ring_tokens": 71040,
+          "scale_ring_tokens": 1136640,
+          "sms_assumption": 148,
+          "sms_measured_for_reference": false,
+          "cache_key_geometry": {
+            "ep": 8,
+            "experts": 384,
+            "capacity": 9600,
+            "topk": 6,
+            "hidden": 7168,
+            "intermediate": 3072,
+            "shared_experts": 1
+          },
+          "scope": "pinned native allocation; borrowed timing kernel revision remains unverified"
+        },
+        "indexer_workspace": {
+          "gather_rows": 10485760,
+          "values_bytes": 671088640,
+          "scales_bytes": 41943040,
+          "radix_bytes": 1048576,
+          "workspace_lanes": 1
+        },
+        "graph_storage": {
+          "capture_rows": 49,
+          "target_descriptors": 49,
+          "draft_prefill_descriptors": 0,
+          "draft_decode_descriptors": 0,
+          "total_descriptors": 49,
+          "shared_pool_live_peak_bytes": 66001008,
+          "persistent_target_output_bytes": 702464,
+          "driver_increment_proxy_bytes": 50331648,
+          "bytes": 117035120,
+          "plans": [
+            {
+              "rows": 49,
+              "sp_rows": 49,
+              "gather_owner_rows": 49,
+              "kind": "csa",
+              "draft": false,
+              "first_layer": true,
+              "graph": true,
+              "peak_bytes": 63191152,
+              "peak_phase": "sparse_indexer_attention",
+              "phases": [
+                {
+                  "phase": "mtp_input",
+                  "bytes": 0
+                },
+                {
+                  "phase": "mhc_attention",
+                  "bytes": 4775344
+                },
+                {
+                  "phase": "input_projections",
+                  "bytes": 8727848
+                },
+                {
+                  "phase": "parallel_query_quant",
+                  "bytes": 19036272
+                },
+                {
+                  "phase": "sparse_indexer_attention",
+                  "bytes": 63191152
+                },
+                {
+                  "phase": "output_projection",
+                  "bytes": 11484784
+                },
+                {
+                  "phase": "mhc_ffn",
+                  "bytes": 8287664
+                },
+                {
+                  "phase": "expert",
+                  "bytes": 4932536
+                },
+                {
+                  "phase": "final_residual",
+                  "bytes": 5631472
+                },
+                {
+                  "phase": "head_norm",
+                  "bytes": 4214784
+                },
+                {
+                  "phase": "logits_sampler",
+                  "bytes": 40190388
+                }
+              ],
+              "storages": [
+                {
+                  "storage": "caller_embedding",
+                  "bytes": 702464,
+                  "begin_phase": 1,
+                  "end_phase": 8,
+                  "owner": "first-layer embedding, including SP view owner"
+                },
+                {
+                  "storage": "attention_residual",
+                  "bytes": 2809856,
+                  "begin_phase": 1,
+                  "end_phase": 7,
+                  "owner": "first-layer broadcast residual"
+                },
+                {
+                  "storage": "attention_input",
+                  "bytes": 702464,
+                  "begin_phase": 1,
+                  "end_phase": 6,
+                  "owner": "mHC input or full all-gather owner sliced to positions"
+                },
+                {
+                  "storage": "ffn_residual",
+                  "bytes": 2809856,
+                  "begin_phase": 6,
+                  "end_phase": 9,
+                  "owner": "second mHC transition; original caller still holds prior residual"
+                },
+                {
+                  "storage": "ffn_input",
+                  "bytes": 702464,
+                  "begin_phase": 6,
+                  "end_phase": 8,
+                  "owner": "mHC FFN normalized shard"
+                },
+                {
+                  "storage": "mix_coefficients",
+                  "bytes": 11760,
+                  "begin_phase": 1,
+                  "end_phase": 9,
+                  "owner": "caller/attention/FFN post and residual mix upper bound"
+                },
+                {
+                  "storage": "mhc_scratch_pre",
+                  "bytes": 548800,
+                  "begin_phase": 1,
+                  "end_phase": 2,
+                  "owner": "mHC GEMM mixes/squared sums"
+                },
+                {
+                  "storage": "mhc_scratch_ffn",
+                  "bytes": 548800,
+                  "begin_phase": 6,
+                  "end_phase": 7,
+                  "owner": "mHC GEMM mixes/squared sums"
+                },
+                {
+                  "storage": "qkv_raw",
+                  "bytes": 200704,
+                  "begin_phase": 2,
+                  "end_phase": 6,
+                  "owner": "fused input GEMM output"
+                },
+                {
+                  "storage": "qkv_normalized",
+                  "bytes": 200704,
+                  "begin_phase": 2,
+                  "end_phase": 6,
+                  "owner": "fused q/kv RMSNorm outputs"
+                },
+                {
+                  "storage": "projection_fp8_input",
+                  "bytes": 353976,
+                  "begin_phase": 2,
+                  "end_phase": 3,
+                  "owner": "input FP8 quantization and packed scales"
+                },
+                {
+                  "storage": "compressor_kv_score",
+                  "bytes": 401408,
+                  "begin_phase": 2,
+                  "end_phase": 6,
+                  "owner": "FP32 compressor projection retained by attention.forward"
+                },
+                {
+                  "storage": "indexer_compressor_kv_score",
+                  "bytes": 100352,
+                  "begin_phase": 2,
+                  "end_phase": 6,
+                  "owner": "FP32 indexer compressor projection"
+                },
+                {
+                  "storage": "indexer_input_weights",
+                  "bytes": 6272,
+                  "begin_phase": 2,
+                  "end_phase": 6,
+                  "owner": "BF16 indexer weights projection"
+                },
+                {
+                  "storage": "indexer_query_bf16",
+                  "bytes": 802816,
+                  "begin_phase": 3,
+                  "end_phase": 4,
+                  "owner": "parallel indexer query projection before quantization join"
+                },
+                {
+                  "storage": "indexer_query_quant",
+                  "bytes": 213248,
+                  "begin_phase": 3,
+                  "end_phase": 5,
+                  "owner": "indexer quantized values/scales"
+                },
+                {
+                  "storage": "indexer_output_weights",
+                  "bytes": 12544,
+                  "begin_phase": 3,
+                  "end_phase": 5,
+                  "owner": "FP32 indexer weights"
+                },
+                {
+                  "storage": "indexer_logits",
+                  "bytes": 51380224,
+                  "begin_phase": 4,
+                  "end_phase": 5,
+                  "owner": "decode padded logits or context/profiling cap"
+                },
+                {
+                  "storage": "query_bf16",
+                  "bytes": 6422528,
+                  "begin_phase": 3,
+                  "end_phase": 4,
+                  "owner": "query before plain-FP8 insert or in-place BF16 query"
+                },
+                {
+                  "storage": "query_fp8",
+                  "bytes": 3211264,
+                  "begin_phase": 3,
+                  "end_phase": 5,
+                  "owner": "plain FP8 query returned to attention"
+                },
+                {
+                  "storage": "attention_output",
+                  "bytes": 3211264,
+                  "begin_phase": 2,
+                  "end_phase": 6,
+                  "owner": "caller-owned FP8 epilogue or BF16 sparse-attention output"
+                },
+                {
+                  "storage": "output_fp8_scales",
+                  "bytes": 26624,
+                  "begin_phase": 2,
+                  "end_phase": 6,
+                  "owner": "fused epilogue packed TMA scales"
+                },
+                {
+                  "storage": "output_grouped_z",
+                  "bytes": 1605632,
+                  "begin_phase": 5,
+                  "end_phase": 6,
+                  "owner": "grouped wo_a BF16 output"
+                },
+                {
+                  "storage": "output_linear_quant",
+                  "bytes": 802816,
+                  "begin_phase": 5,
+                  "end_phase": 6,
+                  "owner": "wo_b FP8 input staging"
+                },
+                {
+                  "storage": "output_projection_result",
+                  "bytes": 702464,
+                  "begin_phase": 5,
+                  "end_phase": 7,
+                  "owner": "wo_b output retained during next mHC RHS"
+                },
+                {
+                  "storage": "expert_bf16_y",
+                  "bytes": 702464,
+                  "begin_phase": 7,
+                  "end_phase": 8,
+                  "owner": "distinct MegaMoE output outside symmetric buffer"
+                },
+                {
+                  "storage": "expert_topk",
+                  "bytes": 3528,
+                  "begin_phase": 7,
+                  "end_phase": 8,
+                  "owner": "int64 IDs and FP32 weights"
+                },
+                {
+                  "storage": "final_reconstructed_residual",
+                  "bytes": 2809856,
+                  "begin_phase": 8,
+                  "end_phase": 10,
+                  "owner": "mhc_post final reconstruction"
+                },
+                {
+                  "storage": "head_output",
+                  "bytes": 702464,
+                  "begin_phase": 9,
+                  "end_phase": 11,
+                  "owner": "hc_head BF16 output"
+                },
+                {
+                  "storage": "norm_output",
+                  "bytes": 702464,
+                  "begin_phase": 9,
+                  "end_phase": 11,
+                  "owner": "final RMSNorm BF16 output"
+                },
+                {
+                  "storage": "selected_hidden",
+                  "bytes": 702464,
+                  "begin_phase": 10,
+                  "end_phase": 11,
+                  "owner": "logits selected hidden rows"
+                },
+                {
+                  "storage": "local_logits",
+                  "bytes": 12669440,
+                  "begin_phase": 10,
+                  "end_phase": 11,
+                  "owner": "BF16 vocabulary projection"
+                },
+                {
+                  "storage": "processed_logits",
+                  "bytes": 25338880,
+                  "begin_phase": 10,
+                  "end_phase": 11,
+                  "owner": "optional sampler FP32 copy upper bound"
+                },
+                {
+                  "storage": "gumbel_scratch",
+                  "bytes": 74676,
+                  "begin_phase": 10,
+                  "end_phase": 11,
+                  "owner": "local argmax and max before sample reduction"
+                }
+              ],
+              "grade": "D source live-phase upper bound; allocator and parallel-branch simultaneity unmeasured"
+            },
+            {
+              "rows": 49,
+              "sp_rows": 49,
+              "gather_owner_rows": 49,
+              "kind": "csa",
+              "draft": false,
+              "first_layer": false,
+              "graph": true,
+              "peak_bytes": 66001008,
+              "peak_phase": "sparse_indexer_attention",
+              "phases": [
+                {
+                  "phase": "mtp_input",
+                  "bytes": 0
+                },
+                {
+                  "phase": "mhc_attention",
+                  "bytes": 7585200
+                },
+                {
+                  "phase": "input_projections",
+                  "bytes": 11537704
+                },
+                {
+                  "phase": "parallel_query_quant",
+                  "bytes": 21846128
+                },
+                {
+                  "phase": "sparse_indexer_attention",
+                  "bytes": 66001008
+                },
+                {
+                  "phase": "output_projection",
+                  "bytes": 14294640
+                },
+                {
+                  "phase": "mhc_ffn",
+                  "bytes": 11097520
+                },
+                {
+                  "phase": "expert",
+                  "bytes": 7742392
+                },
+                {
+                  "phase": "final_residual",
+                  "bytes": 5631472
+                },
+                {
+                  "phase": "head_norm",
+                  "bytes": 4214784
+                },
+                {
+                  "phase": "logits_sampler",
+                  "bytes": 40190388
+                }
+              ],
+              "storages": [
+                {
+                  "storage": "caller_residual",
+                  "bytes": 2809856,
+                  "begin_phase": 1,
+                  "end_phase": 8,
+                  "owner": "model caller holds previous residual through layer RHS"
+                },
+                {
+                  "storage": "caller_hidden",
+                  "bytes": 702464,
+                  "begin_phase": 1,
+                  "end_phase": 8,
+                  "owner": "model caller holds previous FFN output"
+                },
+                {
+                  "storage": "attention_residual",
+                  "bytes": 2809856,
+                  "begin_phase": 1,
+                  "end_phase": 7,
+                  "owner": "first mHC transition residual"
+                },
+                {
+                  "storage": "attention_input",
+                  "bytes": 702464,
+                  "begin_phase": 1,
+                  "end_phase": 6,
+                  "owner": "mHC input or full all-gather owner sliced to positions"
+                },
+                {
+                  "storage": "ffn_residual",
+                  "bytes": 2809856,
+                  "begin_phase": 6,
+                  "end_phase": 9,
+                  "owner": "second mHC transition; original caller still holds prior residual"
+                },
+                {
+                  "storage": "ffn_input",
+                  "bytes": 702464,
+                  "begin_phase": 6,
+                  "end_phase": 8,
+                  "owner": "mHC FFN normalized shard"
+                },
+                {
+                  "storage": "mix_coefficients",
+                  "bytes": 11760,
+                  "begin_phase": 1,
+                  "end_phase": 9,
+                  "owner": "caller/attention/FFN post and residual mix upper bound"
+                },
+                {
+                  "storage": "mhc_scratch_pre",
+                  "bytes": 548800,
+                  "begin_phase": 1,
+                  "end_phase": 2,
+                  "owner": "mHC GEMM mixes/squared sums"
+                },
+                {
+                  "storage": "mhc_scratch_ffn",
+                  "bytes": 548800,
+                  "begin_phase": 6,
+                  "end_phase": 7,
+                  "owner": "mHC GEMM mixes/squared sums"
+                },
+                {
+                  "storage": "qkv_raw",
+                  "bytes": 200704,
+                  "begin_phase": 2,
+                  "end_phase": 6,
+                  "owner": "fused input GEMM output"
+                },
+                {
+                  "storage": "qkv_normalized",
+                  "bytes": 200704,
+                  "begin_phase": 2,
+                  "end_phase": 6,
+                  "owner": "fused q/kv RMSNorm outputs"
+                },
+                {
+                  "storage": "projection_fp8_input",
+                  "bytes": 353976,
+                  "begin_phase": 2,
+                  "end_phase": 3,
+                  "owner": "input FP8 quantization and packed scales"
+                },
+                {
+                  "storage": "compressor_kv_score",
+                  "bytes": 401408,
+                  "begin_phase": 2,
+                  "end_phase": 6,
+                  "owner": "FP32 compressor projection retained by attention.forward"
+                },
+                {
+                  "storage": "indexer_compressor_kv_score",
+                  "bytes": 100352,
+                  "begin_phase": 2,
+                  "end_phase": 6,
+                  "owner": "FP32 indexer compressor projection"
+                },
+                {
+                  "storage": "indexer_input_weights",
+                  "bytes": 6272,
+                  "begin_phase": 2,
+                  "end_phase": 6,
+                  "owner": "BF16 indexer weights projection"
+                },
+                {
+                  "storage": "indexer_query_bf16",
+                  "bytes": 802816,
+                  "begin_phase": 3,
+                  "end_phase": 4,
+                  "owner": "parallel indexer query projection before quantization join"
+                },
+                {
+                  "storage": "indexer_query_quant",
+                  "bytes": 213248,
+                  "begin_phase": 3,
+                  "end_phase": 5,
+                  "owner": "indexer quantized values/scales"
+                },
+                {
+                  "storage": "indexer_output_weights",
+                  "bytes": 12544,
+                  "begin_phase": 3,
+                  "end_phase": 5,
+                  "owner": "FP32 indexer weights"
+                },
+                {
+                  "storage": "indexer_logits",
+                  "bytes": 51380224,
+                  "begin_phase": 4,
+                  "end_phase": 5,
+                  "owner": "decode padded logits or context/profiling cap"
+                },
+                {
+                  "storage": "query_bf16",
+                  "bytes": 6422528,
+                  "begin_phase": 3,
+                  "end_phase": 4,
+                  "owner": "query before plain-FP8 insert or in-place BF16 query"
+                },
+                {
+                  "storage": "query_fp8",
+                  "bytes": 3211264,
+                  "begin_phase": 3,
+                  "end_phase": 5,
+                  "owner": "plain FP8 query returned to attention"
+                },
+                {
+                  "storage": "attention_output",
+                  "bytes": 3211264,
+                  "begin_phase": 2,
+                  "end_phase": 6,
+                  "owner": "caller-owned FP8 epilogue or BF16 sparse-attention output"
+                },
+                {
+                  "storage": "output_fp8_scales",
+                  "bytes": 26624,
+                  "begin_phase": 2,
+                  "end_phase": 6,
+                  "owner": "fused epilogue packed TMA scales"
+                },
+                {
+                  "storage": "output_grouped_z",
+                  "bytes": 1605632,
+                  "begin_phase": 5,
+                  "end_phase": 6,
+                  "owner": "grouped wo_a BF16 output"
+                },
+                {
+                  "storage": "output_linear_quant",
+                  "bytes": 802816,
+                  "begin_phase": 5,
+                  "end_phase": 6,
+                  "owner": "wo_b FP8 input staging"
+                },
+                {
+                  "storage": "output_projection_result",
+                  "bytes": 702464,
+                  "begin_phase": 5,
+                  "end_phase": 7,
+                  "owner": "wo_b output retained during next mHC RHS"
+                },
+                {
+                  "storage": "expert_bf16_y",
+                  "bytes": 702464,
+                  "begin_phase": 7,
+                  "end_phase": 8,
+                  "owner": "distinct MegaMoE output outside symmetric buffer"
+                },
+                {
+                  "storage": "expert_topk",
+                  "bytes": 3528,
+                  "begin_phase": 7,
+                  "end_phase": 8,
+                  "owner": "int64 IDs and FP32 weights"
+                },
+                {
+                  "storage": "final_reconstructed_residual",
+                  "bytes": 2809856,
+                  "begin_phase": 8,
+                  "end_phase": 10,
+                  "owner": "mhc_post final reconstruction"
+                },
+                {
+                  "storage": "head_output",
+                  "bytes": 702464,
+                  "begin_phase": 9,
+                  "end_phase": 11,
+                  "owner": "hc_head BF16 output"
+                },
+                {
+                  "storage": "norm_output",
+                  "bytes": 702464,
+                  "begin_phase": 9,
+                  "end_phase": 11,
+                  "owner": "final RMSNorm BF16 output"
+                },
+                {
+                  "storage": "selected_hidden",
+                  "bytes": 702464,
+                  "begin_phase": 10,
+                  "end_phase": 11,
+                  "owner": "logits selected hidden rows"
+                },
+                {
+                  "storage": "local_logits",
+                  "bytes": 12669440,
+                  "begin_phase": 10,
+                  "end_phase": 11,
+                  "owner": "BF16 vocabulary projection"
+                },
+                {
+                  "storage": "processed_logits",
+                  "bytes": 25338880,
+                  "begin_phase": 10,
+                  "end_phase": 11,
+                  "owner": "optional sampler FP32 copy upper bound"
+                },
+                {
+                  "storage": "gumbel_scratch",
+                  "bytes": 74676,
+                  "begin_phase": 10,
+                  "end_phase": 11,
+                  "owner": "local argmax and max before sample reduction"
+                }
+              ],
+              "grade": "D source live-phase upper bound; allocator and parallel-branch simultaneity unmeasured"
+            },
+            {
+              "rows": 49,
+              "sp_rows": 49,
+              "gather_owner_rows": 49,
+              "kind": "hca",
+              "draft": false,
+              "first_layer": true,
+              "graph": true,
+              "peak_bytes": 40190388,
+              "peak_phase": "logits_sampler",
+              "phases": [
+                {
+                  "phase": "mtp_input",
+                  "bytes": 0
+                },
+                {
+                  "phase": "mhc_attention",
+                  "bytes": 4775344
+                },
+                {
+                  "phase": "input_projections",
+                  "bytes": 8420520
+                },
+                {
+                  "phase": "parallel_query_quant",
+                  "bytes": 17700336
+                },
+                {
+                  "phase": "sparse_indexer_attention",
+                  "bytes": 11277808
+                },
+                {
+                  "phase": "output_projection",
+                  "bytes": 11177456
+                },
+                {
+                  "phase": "mhc_ffn",
+                  "bytes": 8287664
+                },
+                {
+                  "phase": "expert",
+                  "bytes": 4932536
+                },
+                {
+                  "phase": "final_residual",
+                  "bytes": 5631472
+                },
+                {
+                  "phase": "head_norm",
+                  "bytes": 4214784
+                },
+                {
+                  "phase": "logits_sampler",
+                  "bytes": 40190388
+                }
+              ],
+              "storages": [
+                {
+                  "storage": "caller_embedding",
+                  "bytes": 702464,
+                  "begin_phase": 1,
+                  "end_phase": 8,
+                  "owner": "first-layer embedding, including SP view owner"
+                },
+                {
+                  "storage": "attention_residual",
+                  "bytes": 2809856,
+                  "begin_phase": 1,
+                  "end_phase": 7,
+                  "owner": "first-layer broadcast residual"
+                },
+                {
+                  "storage": "attention_input",
+                  "bytes": 702464,
+                  "begin_phase": 1,
+                  "end_phase": 6,
+                  "owner": "mHC input or full all-gather owner sliced to positions"
+                },
+                {
+                  "storage": "ffn_residual",
+                  "bytes": 2809856,
+                  "begin_phase": 6,
+                  "end_phase": 9,
+                  "owner": "second mHC transition; original caller still holds prior residual"
+                },
+                {
+                  "storage": "ffn_input",
+                  "bytes": 702464,
+                  "begin_phase": 6,
+                  "end_phase": 8,
+                  "owner": "mHC FFN normalized shard"
+                },
+                {
+                  "storage": "mix_coefficients",
+                  "bytes": 11760,
+                  "begin_phase": 1,
+                  "end_phase": 9,
+                  "owner": "caller/attention/FFN post and residual mix upper bound"
+                },
+                {
+                  "storage": "mhc_scratch_pre",
+                  "bytes": 548800,
+                  "begin_phase": 1,
+                  "end_phase": 2,
+                  "owner": "mHC GEMM mixes/squared sums"
+                },
+                {
+                  "storage": "mhc_scratch_ffn",
+                  "bytes": 548800,
+                  "begin_phase": 6,
+                  "end_phase": 7,
+                  "owner": "mHC GEMM mixes/squared sums"
+                },
+                {
+                  "storage": "qkv_raw",
+                  "bytes": 200704,
+                  "begin_phase": 2,
+                  "end_phase": 6,
+                  "owner": "fused input GEMM output"
+                },
+                {
+                  "storage": "qkv_normalized",
+                  "bytes": 200704,
+                  "begin_phase": 2,
+                  "end_phase": 6,
+                  "owner": "fused q/kv RMSNorm outputs"
+                },
+                {
+                  "storage": "projection_fp8_input",
+                  "bytes": 353976,
+                  "begin_phase": 2,
+                  "end_phase": 3,
+                  "owner": "input FP8 quantization and packed scales"
+                },
+                {
+                  "storage": "compressor_kv_score",
+                  "bytes": 200704,
+                  "begin_phase": 2,
+                  "end_phase": 6,
+                  "owner": "FP32 compressor projection retained by attention.forward"
+                },
+                {
+                  "storage": "query_bf16",
+                  "bytes": 6422528,
+                  "begin_phase": 3,
+                  "end_phase": 4,
+                  "owner": "query before plain-FP8 insert or in-place BF16 query"
+                },
+                {
+                  "storage": "query_fp8",
+                  "bytes": 3211264,
+                  "begin_phase": 3,
+                  "end_phase": 5,
+                  "owner": "plain FP8 query returned to attention"
+                },
+                {
+                  "storage": "attention_output",
+                  "bytes": 3211264,
+                  "begin_phase": 2,
+                  "end_phase": 6,
+                  "owner": "caller-owned FP8 epilogue or BF16 sparse-attention output"
+                },
+                {
+                  "storage": "output_fp8_scales",
+                  "bytes": 26624,
+                  "begin_phase": 2,
+                  "end_phase": 6,
+                  "owner": "fused epilogue packed TMA scales"
+                },
+                {
+                  "storage": "output_grouped_z",
+                  "bytes": 1605632,
+                  "begin_phase": 5,
+                  "end_phase": 6,
+                  "owner": "grouped wo_a BF16 output"
+                },
+                {
+                  "storage": "output_linear_quant",
+                  "bytes": 802816,
+                  "begin_phase": 5,
+                  "end_phase": 6,
+                  "owner": "wo_b FP8 input staging"
+                },
+                {
+                  "storage": "output_projection_result",
+                  "bytes": 702464,
+                  "begin_phase": 5,
+                  "end_phase": 7,
+                  "owner": "wo_b output retained during next mHC RHS"
+                },
+                {
+                  "storage": "expert_bf16_y",
+                  "bytes": 702464,
+                  "begin_phase": 7,
+                  "end_phase": 8,
+                  "owner": "distinct MegaMoE output outside symmetric buffer"
+                },
+                {
+                  "storage": "expert_topk",
+                  "bytes": 3528,
+                  "begin_phase": 7,
+                  "end_phase": 8,
+                  "owner": "int64 IDs and FP32 weights"
+                },
+                {
+                  "storage": "final_reconstructed_residual",
+                  "bytes": 2809856,
+                  "begin_phase": 8,
+                  "end_phase": 10,
+                  "owner": "mhc_post final reconstruction"
+                },
+                {
+                  "storage": "head_output",
+                  "bytes": 702464,
+                  "begin_phase": 9,
+                  "end_phase": 11,
+                  "owner": "hc_head BF16 output"
+                },
+                {
+                  "storage": "norm_output",
+                  "bytes": 702464,
+                  "begin_phase": 9,
+                  "end_phase": 11,
+                  "owner": "final RMSNorm BF16 output"
+                },
+                {
+                  "storage": "selected_hidden",
+                  "bytes": 702464,
+                  "begin_phase": 10,
+                  "end_phase": 11,
+                  "owner": "logits selected hidden rows"
+                },
+                {
+                  "storage": "local_logits",
+                  "bytes": 12669440,
+                  "begin_phase": 10,
+                  "end_phase": 11,
+                  "owner": "BF16 vocabulary projection"
+                },
+                {
+                  "storage": "processed_logits",
+                  "bytes": 25338880,
+                  "begin_phase": 10,
+                  "end_phase": 11,
+                  "owner": "optional sampler FP32 copy upper bound"
+                },
+                {
+                  "storage": "gumbel_scratch",
+                  "bytes": 74676,
+                  "begin_phase": 10,
+                  "end_phase": 11,
+                  "owner": "local argmax and max before sample reduction"
+                }
+              ],
+              "grade": "D source live-phase upper bound; allocator and parallel-branch simultaneity unmeasured"
+            },
+            {
+              "rows": 49,
+              "sp_rows": 49,
+              "gather_owner_rows": 49,
+              "kind": "hca",
+              "draft": false,
+              "first_layer": false,
+              "graph": true,
+              "peak_bytes": 40190388,
+              "peak_phase": "logits_sampler",
+              "phases": [
+                {
+                  "phase": "mtp_input",
+                  "bytes": 0
+                },
+                {
+                  "phase": "mhc_attention",
+                  "bytes": 7585200
+                },
+                {
+                  "phase": "input_projections",
+                  "bytes": 11230376
+                },
+                {
+                  "phase": "parallel_query_quant",
+                  "bytes": 20510192
+                },
+                {
+                  "phase": "sparse_indexer_attention",
+                  "bytes": 14087664
+                },
+                {
+                  "phase": "output_projection",
+                  "bytes": 13987312
+                },
+                {
+                  "phase": "mhc_ffn",
+                  "bytes": 11097520
+                },
+                {
+                  "phase": "expert",
+                  "bytes": 7742392
+                },
+                {
+                  "phase": "final_residual",
+                  "bytes": 5631472
+                },
+                {
+                  "phase": "head_norm",
+                  "bytes": 4214784
+                },
+                {
+                  "phase": "logits_sampler",
+                  "bytes": 40190388
+                }
+              ],
+              "storages": [
+                {
+                  "storage": "caller_residual",
+                  "bytes": 2809856,
+                  "begin_phase": 1,
+                  "end_phase": 8,
+                  "owner": "model caller holds previous residual through layer RHS"
+                },
+                {
+                  "storage": "caller_hidden",
+                  "bytes": 702464,
+                  "begin_phase": 1,
+                  "end_phase": 8,
+                  "owner": "model caller holds previous FFN output"
+                },
+                {
+                  "storage": "attention_residual",
+                  "bytes": 2809856,
+                  "begin_phase": 1,
+                  "end_phase": 7,
+                  "owner": "first mHC transition residual"
+                },
+                {
+                  "storage": "attention_input",
+                  "bytes": 702464,
+                  "begin_phase": 1,
+                  "end_phase": 6,
+                  "owner": "mHC input or full all-gather owner sliced to positions"
+                },
+                {
+                  "storage": "ffn_residual",
+                  "bytes": 2809856,
+                  "begin_phase": 6,
+                  "end_phase": 9,
+                  "owner": "second mHC transition; original caller still holds prior residual"
+                },
+                {
+                  "storage": "ffn_input",
+                  "bytes": 702464,
+                  "begin_phase": 6,
+                  "end_phase": 8,
+                  "owner": "mHC FFN normalized shard"
+                },
+                {
+                  "storage": "mix_coefficients",
+                  "bytes": 11760,
+                  "begin_phase": 1,
+                  "end_phase": 9,
+                  "owner": "caller/attention/FFN post and residual mix upper bound"
+                },
+                {
+                  "storage": "mhc_scratch_pre",
+                  "bytes": 548800,
+                  "begin_phase": 1,
+                  "end_phase": 2,
+                  "owner": "mHC GEMM mixes/squared sums"
+                },
+                {
+                  "storage": "mhc_scratch_ffn",
+                  "bytes": 548800,
+                  "begin_phase": 6,
+                  "end_phase": 7,
+                  "owner": "mHC GEMM mixes/squared sums"
+                },
+                {
+                  "storage": "qkv_raw",
+                  "bytes": 200704,
+                  "begin_phase": 2,
+                  "end_phase": 6,
+                  "owner": "fused input GEMM output"
+                },
+                {
+                  "storage": "qkv_normalized",
+                  "bytes": 200704,
+                  "begin_phase": 2,
+                  "end_phase": 6,
+                  "owner": "fused q/kv RMSNorm outputs"
+                },
+                {
+                  "storage": "projection_fp8_input",
+                  "bytes": 353976,
+                  "begin_phase": 2,
+                  "end_phase": 3,
+                  "owner": "input FP8 quantization and packed scales"
+                },
+                {
+                  "storage": "compressor_kv_score",
+                  "bytes": 200704,
+                  "begin_phase": 2,
+                  "end_phase": 6,
+                  "owner": "FP32 compressor projection retained by attention.forward"
+                },
+                {
+                  "storage": "query_bf16",
+                  "bytes": 6422528,
+                  "begin_phase": 3,
+                  "end_phase": 4,
+                  "owner": "query before plain-FP8 insert or in-place BF16 query"
+                },
+                {
+                  "storage": "query_fp8",
+                  "bytes": 3211264,
+                  "begin_phase": 3,
+                  "end_phase": 5,
+                  "owner": "plain FP8 query returned to attention"
+                },
+                {
+                  "storage": "attention_output",
+                  "bytes": 3211264,
+                  "begin_phase": 2,
+                  "end_phase": 6,
+                  "owner": "caller-owned FP8 epilogue or BF16 sparse-attention output"
+                },
+                {
+                  "storage": "output_fp8_scales",
+                  "bytes": 26624,
+                  "begin_phase": 2,
+                  "end_phase": 6,
+                  "owner": "fused epilogue packed TMA scales"
+                },
+                {
+                  "storage": "output_grouped_z",
+                  "bytes": 1605632,
+                  "begin_phase": 5,
+                  "end_phase": 6,
+                  "owner": "grouped wo_a BF16 output"
+                },
+                {
+                  "storage": "output_linear_quant",
+                  "bytes": 802816,
+                  "begin_phase": 5,
+                  "end_phase": 6,
+                  "owner": "wo_b FP8 input staging"
+                },
+                {
+                  "storage": "output_projection_result",
+                  "bytes": 702464,
+                  "begin_phase": 5,
+                  "end_phase": 7,
+                  "owner": "wo_b output retained during next mHC RHS"
+                },
+                {
+                  "storage": "expert_bf16_y",
+                  "bytes": 702464,
+                  "begin_phase": 7,
+                  "end_phase": 8,
+                  "owner": "distinct MegaMoE output outside symmetric buffer"
+                },
+                {
+                  "storage": "expert_topk",
+                  "bytes": 3528,
+                  "begin_phase": 7,
+                  "end_phase": 8,
+                  "owner": "int64 IDs and FP32 weights"
+                },
+                {
+                  "storage": "final_reconstructed_residual",
+                  "bytes": 2809856,
+                  "begin_phase": 8,
+                  "end_phase": 10,
+                  "owner": "mhc_post final reconstruction"
+                },
+                {
+                  "storage": "head_output",
+                  "bytes": 702464,
+                  "begin_phase": 9,
+                  "end_phase": 11,
+                  "owner": "hc_head BF16 output"
+                },
+                {
+                  "storage": "norm_output",
+                  "bytes": 702464,
+                  "begin_phase": 9,
+                  "end_phase": 11,
+                  "owner": "final RMSNorm BF16 output"
+                },
+                {
+                  "storage": "selected_hidden",
+                  "bytes": 702464,
+                  "begin_phase": 10,
+                  "end_phase": 11,
+                  "owner": "logits selected hidden rows"
+                },
+                {
+                  "storage": "local_logits",
+                  "bytes": 12669440,
+                  "begin_phase": 10,
+                  "end_phase": 11,
+                  "owner": "BF16 vocabulary projection"
+                },
+                {
+                  "storage": "processed_logits",
+                  "bytes": 25338880,
+                  "begin_phase": 10,
+                  "end_phase": 11,
+                  "owner": "optional sampler FP32 copy upper bound"
+                },
+                {
+                  "storage": "gumbel_scratch",
+                  "bytes": 74676,
+                  "begin_phase": 10,
+                  "end_phase": 11,
+                  "owner": "local argmax and max before sample reduction"
+                }
+              ],
+              "grade": "D source live-phase upper bound; allocator and parallel-branch simultaneity unmeasured"
+            }
+          ],
+          "scope": "one shared pool across layer sites and descriptors; target output has a separate retained owner",
+          "driver_grade": "D: target profiler1MiB per-descriptor floor used for unmeasured target/draft driver increments"
+        },
+        "available_kv_bytes": 31159411188,
+        "estimation_grade": "D",
+        "storage_model": "native named persistent allocations plus source live-phase upper bounds",
+        "vllm_source_revision": "30f5c01d4ebb5c493ed86195db24d0ec5b3ce3d7",
+        "deepgemm_source_revision": "e1f418c2a4f20818221f6b0e578b4c2f634d4c3f",
+        "assumptions": [
+          "148 SM shared scenario for both SKUs; no reference hardware query or timing-version match",
+          "BF16 activation and plain-FP8 FlashInfer source allocations; source-config RoPE extent equals model maximum position",
+          "parallel query/quant branches conservatively co-live until join; CUDA allocator reserved-memory/fragmentation unmeasured",
+          "context indexer loop may retain old logits during RHS; profiling cap512MiB and one shared gather/radix lane follow pinned defaults",
+          "native expert intermediates/shared L1 input are symmetric-buffer regions/aliases; standalone BF16 y is a separate transient",
+          "graph scratch reused across layer sites; largest target/draft live bound used once, plus separate fixed output and driver-floor proxy",
+          "generic fused-MoE activation/EP envelopes remain unverified when selected; no native ring claimed for that path",
+          "runtime/NCCL reserve retained in full; no overlap credit or reference-capacity fit",
+          "sampler FP32 processing copy is a conservative optional-path bound; cached probabilistic draft logits not assumed for synthetic sampling"
+        ],
+        "comparison_policy": "report differences and sensitivity; never fit KV capacity or use negative profiler increments"
+      }
+    }
+  }
+}

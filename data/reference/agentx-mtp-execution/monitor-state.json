@@ -1,0 +1,39 @@
+{
+  "observed_unix_s": 1791469470.4870422,
+  "checkpoints": {
+    "b200-main": {
+      "status": "complete",
+      "terminal": {
+        "exit_code": 0,
+        "started_unix_s": 1791462757.2519925,
+        "elapsed_wall_s": 2210.2521381378174
+      }
+    },
+    "b300-main": {
+      "status": "complete",
+      "terminal": {
+        "exit_code": 0,
+        "started_unix_s": 1791462757.2519999,
+        "elapsed_wall_s": 5079.794949531555
+      }
+    },
+    "b200-disabled": {
+      "status": "complete",
+      "terminal": {
+        "exit_code": 0,
+        "started_unix_s": 1791462757.25207,
+        "elapsed_wall_s": 3052.4971356391907
+      }
+    },
+    "b300-disabled": {
+      "status": "complete",
+      "terminal": {
+        "exit_code": 0,
+        "started_unix_s": 1791462757.2519999,
+        "elapsed_wall_s": 6703.973384380341
+      }
+    }
+  },
+  "runtime_hashes_verified": true,
+  "rerun_performed": false
+}

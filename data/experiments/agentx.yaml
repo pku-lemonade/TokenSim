@@ -106,7 +106,7 @@ experiments:
     cache_backend: simple_cpu
     parallelism: {tp: 1, dp: 8, ep: 8, pp: 1}
     num_gpus: 8
-    speculative: {method: mtp, num_speculative_tokens: 3, acceptance_length: 1.0}
+    speculative: {method: mtp, num_speculative_tokens: 0, acceptance_length: 1.0}
   - id: b300-c384-dep8-simplecpu-nomtp
     groups: [ablations]
     hardware: b300
@@ -119,7 +119,7 @@ experiments:
     cache_backend: simple_cpu
     parallelism: {tp: 1, dp: 8, ep: 8, pp: 1}
     num_gpus: 8
-    speculative: {method: mtp, num_speculative_tokens: 3, acceptance_length: 1.0}
+    speculative: {method: mtp, num_speculative_tokens: 0, acceptance_length: 1.0}
   - id: b200-c196-dep8-recorded-issue
     groups: [diagnostics]
     hardware: b200

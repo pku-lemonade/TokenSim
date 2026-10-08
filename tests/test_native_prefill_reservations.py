@@ -11,9 +11,9 @@ from tests.test_hybrid_kv_cache import request
 
 
 class NativePrefillReservationTest(unittest.TestCase):
-    def scheduler(self):
+    def scheduler(self, *, mtp_tokens=None):
         env = simpy.Environment()
-        e = cpu_tests.engine(env)
+        e = cpu_tests.engine(env, mtp_num_speculative_tokens=mtp_tokens)
         scheduler = e.workers[0].scheduler
         # These tests isolate scheduler reservations. DMA/publication is
         # exercised below and by the native SimpleCPU engine suite.
@@ -21,22 +21,25 @@ class NativePrefillReservationTest(unittest.TestCase):
         return env, e, scheduler
 
     def test_partial_gpu_prefill_reservation_uses_virtual_window_lengths(self):
-        env, e, s = self.scheduler()
+        env, e, s = self.scheduler(mtp_tokens=3)
         r = request(0, 4096)
         s.add_requests([r])
         output = s.schedule_output()
         self.assertEqual(output.running, [r])
         self.assertEqual(r.scheduled_tokens, 512)
         # With max_in_flight_tokens=1024 the window admission caps are:
-        # 19, 19, 145, 259. Full pages need 16; virtual lengths after this
-        # allocation are 8, 8, 64, 128, 2. Remaining sum = 248, plus spec 1.
+        # 19, 19, 145, 259. Full pages need16. Explicit K3 makes the
+        # physical end515: virtual ends9,9,65,129 and full3. Remaining
+        # = (19-9)*2 + (145-65) + (259-129) + (16-3) =243, plus spec1.
         manager = s.block_manager
-        self.assertEqual(manager.remaining_admission_slots(r), 248)
-        self.assertEqual(s._inflight_prefill_reserved_blocks(), 249)
+        self.assertTrue(s.mtp_enabled)
+        self.assertEqual(manager.remaining_admission_slots(r), 243)
+        self.assertEqual(s._inflight_prefill_reserved_blocks(), 244)
         r.num_computed_tokens = 512
-        manager.ensure_slots(r, 512)
-        self.assertEqual(manager.remaining_admission_slots(r), 38)
-        self.assertEqual(s._inflight_prefill_reserved_blocks(), 39)
+        manager.ensure_slots(r, 512, lookahead=3)
+        # Next physical end1027 gives virtual ends17,17,129,257/full5.
+        self.assertEqual(manager.remaining_admission_slots(r), 33)
+        self.assertEqual(s._inflight_prefill_reserved_blocks(), 34)
         # Removed old window positions are null entries in the source;
         # physical window length must not replace their absolute table end.
         self.assertLess(len(manager.tables[r.id][4]), 256)
@@ -81,19 +84,19 @@ class NativePrefillReservationTest(unittest.TestCase):
 
     def test_async_import_cannot_consume_existing_prefill_commitment(self):
         helper = cpu_tests.NativeSimpleCPUTest()
-        env, e, worker = helper.seeded()
+        env, e, worker = helper.seeded(mtp_num_speculative_tokens=3)
         s = worker.scheduler
         old = s.block_manager
         manager = HybridKVBlockManager(old.layout, 460, old.model)
         s.block_manager = worker.connector.manager = manager
         manager.publish_callbacks.append(worker.connector._queue_write)
-        # This miss passes full-input admission (458 slots) but allocates
-        # only the first chunk (210 slots). It still needs 248 + spec 1.
+        # This miss passes full-input admission (458 slots). Explicit K3
+        # allocates215 slots for the first chunk, leaving243 + spec1.
         miss = request(10, 4096, scope="new-tree")
         s.add_requests([miss])
         first = s.schedule_output()
         self.assertEqual(first.running, [miss])
-        self.assertEqual(s._inflight_prefill_reserved_blocks(), 249)
+        self.assertEqual(s._inflight_prefill_reserved_blocks(), 244)
         hit = request(11, 4096)
         local = manager.plan_reuse(hit)
         boundary, pairs = worker.connector.probe(hit, local)
@@ -169,7 +172,7 @@ class NativePrefillReservationTest(unittest.TestCase):
         self,
     ):
         helper = cpu_tests.NativeSimpleCPUTest()
-        env, e, worker = helper.seeded()
+        env, e, worker = helper.seeded(mtp_num_speculative_tokens=3)
         worker.connector.read_link.bandwidth_bytes_per_s = 10000000
         r = request(1, 4096)
         r.dp_rank = 0

@@ -1,0 +1,8 @@
+{
+  "scope": "observer/validator bootstrap repair only; original benchmark processes retained",
+  "stopped_monitor_session": 44106,
+  "reason": "K0 point had explicit defaults and omitted K3 reference/provenance; unnormalized point equality rejected a completed original window",
+  "repair": "normalize only known inherited cache/parallel/GPU fields and documentation provenance; assert host capacities, all other fields, actual stable command and complete transfer JSON equal",
+  "benchmark_rerun_performed": false,
+  "accepted_original_b200_disabled": "b200-disabled-validation.json"
+}
