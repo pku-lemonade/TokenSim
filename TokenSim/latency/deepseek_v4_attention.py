@@ -86,10 +86,18 @@ class DeepSeekV4AttentionEstimator:
                 index.setdefault(identity, set()).add(row[axis])
         self.axis_cache = {key: sorted(values) for key, values in index.items()}
         self.generation_slices = {}
+        self.context_query_floors = {}
         for row in backend.package.tables["dsv4_attention"]:
             if row["phase"] == "generation":
                 batches = self.generation_slices.setdefault(self._discrete_key(row), {})
                 batches.setdefault(row["batch_size"], []).append(row)
+            elif row["phase"] == "context":
+                # Some samples use prefix = total_context - query. The only
+                # query at an exact prefix is not the minimum legal query for
+                # that batch. Retain genuine query floors across its prefixes.
+                floors = self.context_query_floors.setdefault(self._discrete_key(row), {})
+                batch = row["batch_size"]
+                floors[batch] = min(floors.get(batch, row["input_seq_len"]), row["input_seq_len"])
         self.generation_slice_lookups = {}
         self.counts = Counter()
         # ``ModelSpec.layer_specs`` includes the reusable MTP layer after the
@@ -142,6 +150,16 @@ class DeepSeekV4AttentionEstimator:
                 key["input_seq_len"] = min(zero_prefix)
                 clamped = True
         for axis in ("batch_size", "input_seq_len", "context_len"):
+            if phase == "context" and axis == "input_seq_len":
+                floors = self.context_query_floors.get(self._discrete_key(key), {})
+                floor = floors.get(key["batch_size"], min(floors.values()) if floors else None)
+                if floor is not None and key[axis] < floor:
+                    key[axis] = floor
+                    clamped = True
+                # Resolve the actual query's prefix along the existing 2D
+                # grid. An exact-prefix query minimum would replace a valid
+                # q512/prefix49152 lookup with q16384, for example.
+                continue
             values = self._axis_values(key, axis)
             if values and key[axis] < values[0]:
                 key[axis] = values[0]
@@ -460,4 +478,5 @@ class DeepSeekV4AttentionEstimator:
                 "latency": "measured full-query-row module times adjusted/source SOL; math bound retained",
             },
             "generation_ragged_grid": "on out-of-range neighbors, use same-geometry batch slices within the existing 64x context/batch bound",
+            "context_query_grid": "query floors across prefixes for the matching geometry/batch; coupled query/prefix samples do not inflate supported queries",
         }

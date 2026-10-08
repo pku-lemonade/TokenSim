@@ -1,0 +1,2271 @@
+{
+  "scope": "context query/prefix grid correction with measured anchors, true floors and unchanged runtime budgets",
+  "seed": 0,
+  "trace_pool": 393,
+  "issue_window_seconds": 3600,
+  "formal_model_accuracy_accepted": false,
+  "checkpoints": {
+    "b200": {
+      "result_sha256": "4b04ce3cefe7029f54f15afc7eb00dd26738a4f04de1a9ccf1edfaf4dbf1916f",
+      "phase_counts": {
+        "warmup": {
+          "sent": 2171,
+          "successful": 2171
+        },
+        "profiling": {
+          "sent": 9853,
+          "successful": 9781,
+          "cancelled": 72
+        }
+      },
+      "warmup_seconds": 1640.0000875200155,
+      "phase_elapsed_seconds": 3630.0744737853447,
+      "observation_seconds": 3629.739699870206,
+      "output_tps": 2451.044354590532,
+      "gpu_hit_percent": 36.264231624910636,
+      "cpu_hit_percent": 59.08049521041387,
+      "cache_source_observation": "first-admission",
+      "ttft_p90": 41.83127665134225,
+      "tpot_p90": 0.09065597240069775,
+      "e2e_mean": 71.90289990107915,
+      "sync_wait_fraction": 0.3407418204319772,
+      "mean_successful_input_tokens": 117271.09129945813,
+      "mean_successful_output_tokens": 909.5852162355587,
+      "preemptions": 59,
+      "recomputed_tokens": 148856,
+      "external_hit_fraction_of_gpu_misses": 0.9269598016410677,
+      "diagnostic_accuracy": {
+        "output_tput_per_gpu": {
+          "delta_percent": -31.90148715958616,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        },
+        "p90_ttft": {
+          "delta_percent": 158.11391986870746,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        },
+        "p90_itl": {
+          "delta_percent": 80.42498930110217,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        },
+        "gpu_cache_hit_rate": {
+          "delta_percent": -46.84456616550043,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        },
+        "cpu_cache_hit_rate": {
+          "delta_percent": 149.0116126208121,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        }
+      },
+      "final_workers": [
+        {
+          "worker_id": 0,
+          "running": 0,
+          "waiting": 0,
+          "loading": 0,
+          "loaded_waiting": 0,
+          "inflight_prefills": 0,
+          "inflight_prefill_reserved_slots": 0,
+          "external_cache": {
+            "backend": "SimpleCPUOffloadConnector",
+            "runtime_budget_per_rank_bytes": 356125000000,
+            "storage": {
+              "scope": "worker:0",
+              "capacity_bytes": 356123443200,
+              "allocation_unit_bytes": 1228800,
+              "used_bytes": 133918310400,
+              "peak_used_bytes": 133918310400,
+              "resident_pages": 108983,
+              "pinned_pages": 0,
+              "evictions": 0
+            },
+            "read": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 518075596800,
+              "jobs": 751,
+              "queue_wait_seconds": 1.3468728000025294,
+              "service_seconds": 5.398873799999999
+            },
+            "write": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 133918310400,
+              "jobs": 10349,
+              "queue_wait_seconds": 0.0,
+              "service_seconds": 1.4260293999999614
+            },
+            "loading_requests": 0,
+            "write_jobs": 0
+          },
+          "dma_pinned_slots": 0,
+          "defer_prefills": false,
+          "prefill_capacity_bound": false,
+          "scheduler_stats": {
+            "steps": 26958,
+            "deferred_running_prefills": 40110,
+            "deferred_waiting_prefills": 4875,
+            "capacity_bound_steps": 8917,
+            "scheduled_context_tokens": 7252033,
+            "scheduled_context_query_tokens": 7252033,
+            "scheduled_placeholder_queries": 0,
+            "padded_context_admissions": 0,
+            "scheduled_logits_rows": 1958131,
+            "scheduled_decode_tokens": 1177705,
+            "scheduled_decode_query_tokens": 1943560,
+            "max_num_seqs_gate": 0,
+            "full_input_gate": 8493,
+            "async_load_reservation_gate": 1139,
+            "max_inflight_prefill_reserved_slots": 16401,
+            "loaded_kv_capacity_gate": 422,
+            "loaded_kv_resumptions": 729,
+            "async_load_admissions": 729
+          },
+          "free_slots": 21020,
+          "watermark_slots": 0,
+          "used_slots": 1,
+          "peak_used_slots": 21021,
+          "allocations": 7285167,
+          "releases": 8073032,
+          "evictions": 513166,
+          "cached_slots": 19408
+        },
+        {
+          "worker_id": 1,
+          "running": 0,
+          "waiting": 0,
+          "loading": 0,
+          "loaded_waiting": 0,
+          "inflight_prefills": 0,
+          "inflight_prefill_reserved_slots": 0,
+          "external_cache": {
+            "backend": "SimpleCPUOffloadConnector",
+            "runtime_budget_per_rank_bytes": 356125000000,
+            "storage": {
+              "scope": "worker:1",
+              "capacity_bytes": 356123443200,
+              "allocation_unit_bytes": 1228800,
+              "used_bytes": 124767436800,
+              "peak_used_bytes": 124767436800,
+              "resident_pages": 101536,
+              "pinned_pages": 0,
+              "evictions": 0
+            },
+            "read": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 294185779200,
+              "jobs": 362,
+              "queue_wait_seconds": 1.5519055999976672,
+              "service_seconds": 3.0655211999999983
+            },
+            "write": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 124767436800,
+              "jobs": 6565,
+              "queue_wait_seconds": 0.0,
+              "service_seconds": 1.319355799999972
+            },
+            "loading_requests": 0,
+            "write_jobs": 0
+          },
+          "dma_pinned_slots": 0,
+          "defer_prefills": false,
+          "prefill_capacity_bound": false,
+          "scheduler_stats": {
+            "steps": 26958,
+            "deferred_running_prefills": 69929,
+            "deferred_waiting_prefills": 5909,
+            "capacity_bound_steps": 864,
+            "scheduled_context_tokens": 6311104,
+            "scheduled_context_query_tokens": 6311104,
+            "scheduled_placeholder_queries": 0,
+            "padded_context_admissions": 0,
+            "scheduled_logits_rows": 1881274,
+            "scheduled_decode_tokens": 1108503,
+            "scheduled_decode_query_tokens": 1868504,
+            "max_num_seqs_gate": 0,
+            "full_input_gate": 864,
+            "async_load_reservation_gate": 105,
+            "max_inflight_prefill_reserved_slots": 20853,
+            "loaded_kv_capacity_gate": 0,
+            "loaded_kv_resumptions": 310,
+            "async_load_admissions": 310
+          },
+          "free_slots": 21020,
+          "watermark_slots": 0,
+          "used_slots": 1,
+          "peak_used_slots": 19577,
+          "allocations": 6151685,
+          "releases": 6978332,
+          "evictions": 323437,
+          "cached_slots": 19922
+        },
+        {
+          "worker_id": 2,
+          "running": 0,
+          "waiting": 0,
+          "loading": 0,
+          "loaded_waiting": 0,
+          "inflight_prefills": 0,
+          "inflight_prefill_reserved_slots": 0,
+          "external_cache": {
+            "backend": "SimpleCPUOffloadConnector",
+            "runtime_budget_per_rank_bytes": 356125000000,
+            "storage": {
+              "scope": "worker:2",
+              "capacity_bytes": 356123443200,
+              "allocation_unit_bytes": 1228800,
+              "used_bytes": 115086950400,
+              "peak_used_bytes": 115086950400,
+              "resident_pages": 93658,
+              "pinned_pages": 0,
+              "evictions": 0
+            },
+            "read": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 464820633600,
+              "jobs": 601,
+              "queue_wait_seconds": 1.2158536000011964,
+              "service_seconds": 4.843684600000002
+            },
+            "write": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 115086950400,
+              "jobs": 8958,
+              "queue_wait_seconds": 0.0,
+              "service_seconds": 1.2256964000000163
+            },
+            "loading_requests": 0,
+            "write_jobs": 0
+          },
+          "dma_pinned_slots": 0,
+          "defer_prefills": false,
+          "prefill_capacity_bound": false,
+          "scheduler_stats": {
+            "steps": 26958,
+            "deferred_running_prefills": 41211,
+            "deferred_waiting_prefills": 4631,
+            "capacity_bound_steps": 6094,
+            "scheduled_context_tokens": 5637249,
+            "scheduled_context_query_tokens": 5637249,
+            "scheduled_placeholder_queries": 0,
+            "padded_context_admissions": 0,
+            "scheduled_logits_rows": 1701592,
+            "scheduled_decode_tokens": 1021117,
+            "scheduled_decode_query_tokens": 1690168,
+            "max_num_seqs_gate": 0,
+            "full_input_gate": 5841,
+            "async_load_reservation_gate": 557,
+            "max_inflight_prefill_reserved_slots": 18068,
+            "loaded_kv_capacity_gate": 237,
+            "loaded_kv_resumptions": 568,
+            "async_load_admissions": 568
+          },
+          "free_slots": 21020,
+          "watermark_slots": 0,
+          "used_slots": 1,
+          "peak_used_slots": 21021,
+          "allocations": 6087836,
+          "releases": 6892324,
+          "evictions": 454178,
+          "cached_slots": 20303
+        },
+        {
+          "worker_id": 3,
+          "running": 0,
+          "waiting": 0,
+          "loading": 0,
+          "loaded_waiting": 0,
+          "inflight_prefills": 0,
+          "inflight_prefill_reserved_slots": 0,
+          "external_cache": {
+            "backend": "SimpleCPUOffloadConnector",
+            "runtime_budget_per_rank_bytes": 356125000000,
+            "storage": {
+              "scope": "worker:3",
+              "capacity_bytes": 356123443200,
+              "allocation_unit_bytes": 1228800,
+              "used_bytes": 134082969600,
+              "peak_used_bytes": 134082969600,
+              "resident_pages": 109117,
+              "pinned_pages": 0,
+              "evictions": 0
+            },
+            "read": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 468462796800,
+              "jobs": 701,
+              "queue_wait_seconds": 0.9365515999980971,
+              "service_seconds": 4.881923800000006
+            },
+            "write": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 134082969600,
+              "jobs": 10022,
+              "queue_wait_seconds": 0.0,
+              "service_seconds": 1.4267635999999966
+            },
+            "loading_requests": 0,
+            "write_jobs": 0
+          },
+          "dma_pinned_slots": 0,
+          "defer_prefills": false,
+          "prefill_capacity_bound": false,
+          "scheduler_stats": {
+            "steps": 26958,
+            "deferred_running_prefills": 47453,
+            "deferred_waiting_prefills": 4335,
+            "capacity_bound_steps": 7680,
+            "scheduled_context_tokens": 8424384,
+            "scheduled_context_query_tokens": 8424384,
+            "scheduled_placeholder_queries": 0,
+            "padded_context_admissions": 0,
+            "scheduled_logits_rows": 1908924,
+            "scheduled_decode_tokens": 1121140,
+            "scheduled_decode_query_tokens": 1892008,
+            "max_num_seqs_gate": 0,
+            "full_input_gate": 7538,
+            "async_load_reservation_gate": 927,
+            "max_inflight_prefill_reserved_slots": 14399,
+            "loaded_kv_capacity_gate": 139,
+            "loaded_kv_resumptions": 665,
+            "async_load_admissions": 665
+          },
+          "free_slots": 21020,
+          "watermark_slots": 0,
+          "used_slots": 1,
+          "peak_used_slots": 21021,
+          "allocations": 7211297,
+          "releases": 8007768,
+          "evictions": 474229,
+          "cached_slots": 19501
+        },
+        {
+          "worker_id": 4,
+          "running": 0,
+          "waiting": 0,
+          "loading": 0,
+          "loaded_waiting": 0,
+          "inflight_prefills": 0,
+          "inflight_prefill_reserved_slots": 0,
+          "external_cache": {
+            "backend": "SimpleCPUOffloadConnector",
+            "runtime_budget_per_rank_bytes": 356125000000,
+            "storage": {
+              "scope": "worker:4",
+              "capacity_bytes": 356123443200,
+              "allocation_unit_bytes": 1228800,
+              "used_bytes": 130816819200,
+              "peak_used_bytes": 130816819200,
+              "resident_pages": 106459,
+              "pinned_pages": 0,
+              "evictions": 0
+            },
+            "read": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 838032998400,
+              "jobs": 1045,
+              "queue_wait_seconds": 5.571158399995397,
+              "service_seconds": 8.732645399999987
+            },
+            "write": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 130816819200,
+              "jobs": 12029,
+              "queue_wait_seconds": 0.0,
+              "service_seconds": 1.398762199999965
+            },
+            "loading_requests": 0,
+            "write_jobs": 0
+          },
+          "dma_pinned_slots": 0,
+          "defer_prefills": false,
+          "prefill_capacity_bound": false,
+          "scheduler_stats": {
+            "steps": 26958,
+            "deferred_running_prefills": 8891,
+            "deferred_waiting_prefills": 1282,
+            "capacity_bound_steps": 18875,
+            "scheduled_context_tokens": 6752565,
+            "scheduled_context_query_tokens": 6752565,
+            "scheduled_placeholder_queries": 0,
+            "padded_context_admissions": 0,
+            "scheduled_logits_rows": 1780680,
+            "scheduled_decode_tokens": 1054570,
+            "scheduled_decode_query_tokens": 1767152,
+            "max_num_seqs_gate": 0,
+            "full_input_gate": 17268,
+            "async_load_reservation_gate": 1270,
+            "max_inflight_prefill_reserved_slots": 20212,
+            "loaded_kv_capacity_gate": 1573,
+            "loaded_kv_resumptions": 933,
+            "async_load_admissions": 933
+          },
+          "free_slots": 21020,
+          "watermark_slots": 0,
+          "used_slots": 1,
+          "peak_used_slots": 21021,
+          "allocations": 7564679,
+          "releases": 8505406,
+          "evictions": 770554,
+          "cached_slots": 20176
+        },
+        {
+          "worker_id": 5,
+          "running": 0,
+          "waiting": 0,
+          "loading": 0,
+          "loaded_waiting": 0,
+          "inflight_prefills": 0,
+          "inflight_prefill_reserved_slots": 0,
+          "external_cache": {
+            "backend": "SimpleCPUOffloadConnector",
+            "runtime_budget_per_rank_bytes": 356125000000,
+            "storage": {
+              "scope": "worker:5",
+              "capacity_bytes": 356123443200,
+              "allocation_unit_bytes": 1228800,
+              "used_bytes": 134666649600,
+              "peak_used_bytes": 134666649600,
+              "resident_pages": 109592,
+              "pinned_pages": 0,
+              "evictions": 0
+            },
+            "read": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 339011174400,
+              "jobs": 467,
+              "queue_wait_seconds": 0.7484151999985897,
+              "service_seconds": 3.5327674000000004
+            },
+            "write": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 134666649600,
+              "jobs": 7661,
+              "queue_wait_seconds": 0.0,
+              "service_seconds": 1.4257605999999274
+            },
+            "loading_requests": 0,
+            "write_jobs": 0
+          },
+          "dma_pinned_slots": 0,
+          "defer_prefills": false,
+          "prefill_capacity_bound": false,
+          "scheduler_stats": {
+            "steps": 26958,
+            "deferred_running_prefills": 67002,
+            "deferred_waiting_prefills": 6784,
+            "capacity_bound_steps": 1515,
+            "scheduled_context_tokens": 6348672,
+            "scheduled_context_query_tokens": 6348672,
+            "scheduled_placeholder_queries": 0,
+            "padded_context_admissions": 0,
+            "scheduled_logits_rows": 2155903,
+            "scheduled_decode_tokens": 1290540,
+            "scheduled_decode_query_tokens": 2142956,
+            "max_num_seqs_gate": 0,
+            "full_input_gate": 1515,
+            "async_load_reservation_gate": 233,
+            "max_inflight_prefill_reserved_slots": 12535,
+            "loaded_kv_capacity_gate": 0,
+            "loaded_kv_resumptions": 455,
+            "async_load_admissions": 455
+          },
+          "free_slots": 21020,
+          "watermark_slots": 0,
+          "used_slots": 1,
+          "peak_used_slots": 19991,
+          "allocations": 6575091,
+          "releases": 7405570,
+          "evictions": 369475,
+          "cached_slots": 19522
+        },
+        {
+          "worker_id": 6,
+          "running": 0,
+          "waiting": 0,
+          "loading": 0,
+          "loaded_waiting": 0,
+          "inflight_prefills": 0,
+          "inflight_prefill_reserved_slots": 0,
+          "external_cache": {
+            "backend": "SimpleCPUOffloadConnector",
+            "runtime_budget_per_rank_bytes": 356125000000,
+            "storage": {
+              "scope": "worker:6",
+              "capacity_bytes": 356123443200,
+              "allocation_unit_bytes": 1228800,
+              "used_bytes": 133810176000,
+              "peak_used_bytes": 133810176000,
+              "resident_pages": 108895,
+              "pinned_pages": 0,
+              "evictions": 0
+            },
+            "read": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 113778278400,
+              "jobs": 202,
+              "queue_wait_seconds": 0.7800723999985166,
+              "service_seconds": 1.1857963999999999
+            },
+            "write": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 133810176000,
+              "jobs": 6238,
+              "queue_wait_seconds": 0.0,
+              "service_seconds": 1.4125699999999577
+            },
+            "loading_requests": 0,
+            "write_jobs": 0
+          },
+          "dma_pinned_slots": 0,
+          "defer_prefills": false,
+          "prefill_capacity_bound": false,
+          "scheduler_stats": {
+            "steps": 26958,
+            "deferred_running_prefills": 84644,
+            "deferred_waiting_prefills": 5758,
+            "capacity_bound_steps": 226,
+            "scheduled_context_tokens": 7195648,
+            "scheduled_context_query_tokens": 7195648,
+            "scheduled_placeholder_queries": 0,
+            "padded_context_admissions": 0,
+            "scheduled_logits_rows": 1851039,
+            "scheduled_decode_tokens": 1088546,
+            "scheduled_decode_query_tokens": 1836412,
+            "max_num_seqs_gate": 0,
+            "full_input_gate": 226,
+            "async_load_reservation_gate": 52,
+            "max_inflight_prefill_reserved_slots": 17088,
+            "loaded_kv_capacity_gate": 0,
+            "loaded_kv_resumptions": 175,
+            "async_load_admissions": 175
+          },
+          "free_slots": 21020,
+          "watermark_slots": 0,
+          "used_slots": 1,
+          "peak_used_slots": 17575,
+          "allocations": 6415587,
+          "releases": 7132816,
+          "evictions": 185702,
+          "cached_slots": 19076
+        },
+        {
+          "worker_id": 7,
+          "running": 0,
+          "waiting": 0,
+          "loading": 0,
+          "loaded_waiting": 0,
+          "inflight_prefills": 0,
+          "inflight_prefill_reserved_slots": 0,
+          "external_cache": {
+            "backend": "SimpleCPUOffloadConnector",
+            "runtime_budget_per_rank_bytes": 356125000000,
+            "storage": {
+              "scope": "worker:7",
+              "capacity_bytes": 356123443200,
+              "allocation_unit_bytes": 1228800,
+              "used_bytes": 135016857600,
+              "peak_used_bytes": 135016857600,
+              "resident_pages": 109877,
+              "pinned_pages": 0,
+              "evictions": 0
+            },
+            "read": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 768976896000,
+              "jobs": 901,
+              "queue_wait_seconds": 3.1647058000012294,
+              "service_seconds": 8.012879
+            },
+            "write": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 135016857600,
+              "jobs": 11333,
+              "queue_wait_seconds": 0.0,
+              "service_seconds": 1.4404245999999477
+            },
+            "loading_requests": 0,
+            "write_jobs": 0
+          },
+          "dma_pinned_slots": 0,
+          "defer_prefills": false,
+          "prefill_capacity_bound": false,
+          "scheduler_stats": {
+            "steps": 26958,
+            "deferred_running_prefills": 43697,
+            "deferred_waiting_prefills": 5074,
+            "capacity_bound_steps": 9885,
+            "scheduled_context_tokens": 7505281,
+            "scheduled_context_query_tokens": 7505281,
+            "scheduled_placeholder_queries": 0,
+            "padded_context_admissions": 0,
+            "scheduled_logits_rows": 2118775,
+            "scheduled_decode_tokens": 1285169,
+            "scheduled_decode_query_tokens": 2103596,
+            "max_num_seqs_gate": 0,
+            "full_input_gate": 9463,
+            "async_load_reservation_gate": 947,
+            "max_inflight_prefill_reserved_slots": 18441,
+            "loaded_kv_capacity_gate": 418,
+            "loaded_kv_resumptions": 785,
+            "async_load_admissions": 785
+          },
+          "free_slots": 21020,
+          "watermark_slots": 0,
+          "used_slots": 1,
+          "peak_used_slots": 21021,
+          "allocations": 7655910,
+          "releases": 8611255,
+          "evictions": 721520,
+          "cached_slots": 19618
+        }
+      ],
+      "per_rank": [
+        {
+          "rank": 0,
+          "successful": 1188,
+          "cancelled": 6,
+          "input_tokens": 137467456,
+          "gpu_hit_tokens": 30631936,
+          "cpu_hit_tokens": 99699712,
+          "max_used_gpu_slots": 20850,
+          "full_input_gate": 8493
+        },
+        {
+          "rank": 1,
+          "successful": 1237,
+          "cancelled": 12,
+          "input_tokens": 144350080,
+          "gpu_hit_tokens": 88912896,
+          "cpu_hit_tokens": 49496832,
+          "max_used_gpu_slots": 17694,
+          "full_input_gate": 864
+        },
+        {
+          "rank": 2,
+          "successful": 1073,
+          "cancelled": 5,
+          "input_tokens": 143331328,
+          "gpu_hit_tokens": 51335168,
+          "cpu_hit_tokens": 86452224,
+          "max_used_gpu_slots": 20985,
+          "full_input_gate": 5841
+        },
+        {
+          "rank": 3,
+          "successful": 1184,
+          "cancelled": 10,
+          "input_tokens": 136393472,
+          "gpu_hit_tokens": 40568064,
+          "cpu_hit_tokens": 87548672,
+          "max_used_gpu_slots": 20501,
+          "full_input_gate": 7538
+        },
+        {
+          "rank": 4,
+          "successful": 1110,
+          "cancelled": 9,
+          "input_tokens": 151470144,
+          "gpu_hit_tokens": 8255488,
+          "cpu_hit_tokens": 136706560,
+          "max_used_gpu_slots": 20977,
+          "full_input_gate": 17268
+        },
+        {
+          "rank": 5,
+          "successful": 1403,
+          "cancelled": 7,
+          "input_tokens": 146118016,
+          "gpu_hit_tokens": 74234368,
+          "cpu_hit_tokens": 65823232,
+          "max_used_gpu_slots": 18696,
+          "full_input_gate": 1515
+        },
+        {
+          "rank": 6,
+          "successful": 1350,
+          "cancelled": 11,
+          "input_tokens": 119355776,
+          "gpu_hit_tokens": 93026560,
+          "cpu_hit_tokens": 19590144,
+          "max_used_gpu_slots": 16676,
+          "full_input_gate": 226
+        },
+        {
+          "rank": 7,
+          "successful": 1236,
+          "cancelled": 12,
+          "input_tokens": 168542272,
+          "gpu_hit_tokens": 28996608,
+          "cpu_hit_tokens": 132352768,
+          "max_used_gpu_slots": 20975,
+          "full_input_gate": 9463
+        }
+      ],
+      "checks": "counts/output/input decomposition/cancellation/pool/DP conservation passed",
+      "decode_batch_stats": {
+        "batches": 215495,
+        "length_groups": 3769554,
+        "query_rows": 15245032,
+        "requests": 3811258,
+        "indexer_query_tiles": 7622516,
+        "ragged_grid_lookup_queries": 601582
+      },
+      "component_seconds": {
+        "gemm": 797.1613643540809,
+        "attention": 5908.080141869003,
+        "moe": 11246.667637769779,
+        "elementwise": 931.3431167671221,
+        "lm_head": 261.9980535129005,
+        "comm": 0.0,
+        "overhead": 0.0
+      },
+      "attention_provenance": {
+        "backend": "FLASHMLA_SPARSE_DSV4 borrowed module table",
+        "reference_backend": "FLASHINFER_MLA_SPARSE_DSV4",
+        "layer_counts": {
+          "hca": 31,
+          "csa": 30
+        },
+        "module_scope": "projection + compressor/indexer + sparse attention + output projection",
+        "kv_cache_source_layout": "fp8 source table; serving reference plain FP8",
+        "indexer_source_layout": "collector default; serving reference MXFP4",
+        "extrapolation": "measured boundary with parameterized DSV4 FLOP/byte SOL growth, max 64x",
+        "extrapolation_sol": {
+          "model": "DSV4 FLOP/byte roofline anchored to measured boundary efficiency",
+          "basis": "AIC dsv4_attention_sol_ms; local grouped FP8 output and BF16 compressors from vLLM",
+          "config": {
+            "kv_state_bytes": 584.0,
+            "indexer_state_bytes": 132.0,
+            "projection_dtype": "fp8_block",
+            "output_absorption_dtype": "fp8_block",
+            "compressor_dtype": "bf16",
+            "attention_dtype": "bf16",
+            "indexer_dtype": "fp8"
+          },
+          "cache_layout_evidence": "source-table layouts inferred from collector defaults and current vLLM; historical version unverified",
+          "source_to_reference_layout_correction": false,
+          "compute_flops_per_s": {
+            "projection": 4500000000000000.0,
+            "output_absorption": 4500000000000000.0,
+            "compressor": 2250000000000000.0,
+            "indexer": 4500000000000000.0,
+            "indexer_weights": 2250000000000000.0,
+            "attention": 2250000000000000.0
+          },
+          "memory_bandwidth_bytes_per_s": 7700000000000.0,
+          "efficiency": "measured(boundary) / SOL(boundary); no fitted throughput multiplier"
+        },
+        "extrapolation_axis_binding": "each inner-axis growth uses its measured outer-axis node",
+        "context_latency_scale": 1.0,
+        "generation_latency_scale": 1.0,
+        "decode_batch_composition": "query-row-weighted uniform full-batch module estimates; common projections counted once",
+        "mixed_batch_composition": {
+          "shared_scope": "full-tensor input/output, compressor-input and index-query/weight projections, weights and activation preparation",
+          "phase_scope": "sparse attention, index scoring/KV reads and compressor pointwise work; context and decode kept separate",
+          "allocation": "two SOL roofline bounds normalized to each whole-module sample; common efficiency row-weighted at total query rows",
+          "source_clamps": "each phase retains its source geometry; common rows retain the largest source floor",
+          "homogeneous": "single context group and decode-only batches unchanged",
+          "uncertainty": "whole-module tables do not measure component launches, ragged fusion or aux-stream overlap; no extra overlap credit",
+          "fitted_multiplier": false
+        },
+        "decode_query_width": "expanded query compute and sparse-attention reads; indexer KV reuse within Q-blocks",
+        "mtp_indexer_kv_reuse": {
+          "basis": "pinned DeepGEMM SM100 paged MQA groups request Q-blocks; BLOCK_Q = 128 / indexer heads",
+          "query_math": "unchanged at the full expanded query-row count",
+          "indexer_queries_per_tile": 2,
+          "indexer_kv_read_fraction": "sum(requests * ceil(query width / BLOCK_Q)) / query rows, per context; source geometry including clamps",
+          "cross_q_block_l2_reuse": "not credited without measured traffic; tile reads are a conservative streaming estimate",
+          "sparse_attention_kv_reads": "per query retained; FlashInfer sparse indices may differ across queries",
+          "layout_correction": false,
+          "latency": "measured full-query-row module times adjusted/source SOL; math bound retained"
+        },
+        "generation_ragged_grid": "on out-of-range neighbors, use same-geometry batch slices within the existing 64x context/batch bound",
+        "context_query_grid": "query floors across prefixes for the matching geometry/batch; coupled query/prefix samples do not inflate supported queries"
+      },
+      "native_attention_seconds_preserved_in_result": true,
+      "component_time_conservation": true,
+      "composition": {
+        "source_floor_projection_rows": 3572381308.0,
+        "batches": 43734.0,
+        "mixed_phase_batches": 43610.0,
+        "context_group_batches": 26808.0,
+        "context_groups": 109577.0,
+        "decode_length_groups": 846831.0,
+        "query_rows": 58563628.0,
+        "shared_layer_invocations": 2667774.0,
+        "logical_projection_rows": 3572381308.0,
+        "shared_projection_seconds": 1771.7391083823857,
+        "phase_seconds": 1962.9293858821395,
+        "standalone_module_seconds": 4031.399496031086,
+        "avoided_shared_seconds": 296.73100176655595
+      },
+      "query_metadata": {
+        "scheduler": {
+          "scheduled_context_tokens": 55426936,
+          "scheduled_context_query_tokens": 55426936,
+          "scheduled_decode_query_tokens": 15244356,
+          "scheduled_placeholder_queries": 0,
+          "padded_context_admissions": 0,
+          "scheduled_logits_rows": 15356318
+        },
+        "target_logits": {
+          "context_decode_metadata_rows": 0,
+          "placeholder_rows": 0,
+          "context_graph_eligible_requests": 0,
+          "steps": 215664,
+          "decode_rows": 15245032,
+          "prefill_rows": 111962,
+          "rows": 15356994,
+          "forward_rows": 70671968,
+          "output_forward_rows": 72370344,
+          "hc_head_rows": 72370344,
+          "final_norm_rows": 72370344
+        },
+        "formal_length_caps": 0
+      },
+      "paired_baseline": {
+        "root": "results/agentx-dsv4-full/native-attention-composition/20261008-shared-projections/seed0/b200-c196-dep8-simplecpu/b200",
+        "output_tps": 1816.9549254842843,
+        "throughput_change_percent": 34.89846777223931,
+        "source_changes": [
+          "TokenSim/latency/deepseek_v4_attention.py"
+        ],
+        "configuration_and_capacity_unchanged": true,
+        "context_clamped_queries_before": 4440,
+        "context_clamped_queries_after": 0
+      },
+      "paired_metrics": {
+        "input_tps": {
+          "baseline": 238123.5881651272,
+          "current": 316008.48513765767,
+          "reference": 470700.8790310961,
+          "baseline_change_percent": 32.707762205616135,
+          "reference_error_percent": -32.86426705041673
+        },
+        "output_tps": {
+          "baseline": 1816.9549254842843,
+          "current": 2451.044354590532,
+          "reference": 3599.262674552757,
+          "baseline_change_percent": 34.89846777223931,
+          "reference_error_percent": -31.90148715958616
+        },
+        "ttft_p90_s": {
+          "baseline": 56.41860377913006,
+          "current": 41.83127665134225,
+          "reference": 16.206517135000002,
+          "baseline_change_percent": -25.855526636027538,
+          "reference_error_percent": 158.11391986870746
+        },
+        "itl_p90_s": {
+          "baseline": 0.12473233569891332,
+          "current": 0.09065597240069775,
+          "reference": 0.05024579619035286,
+          "baseline_change_percent": -27.319590471288222,
+          "reference_error_percent": 80.42498930110217
+        },
+        "e2e_mean_s": {
+          "baseline": 95.5542301599839,
+          "current": 71.90289990107915,
+          "reference": 43.36484218156744,
+          "baseline_change_percent": -24.75173544834798,
+          "reference_error_percent": 65.80920460870958
+        },
+        "gpu_hit_fraction": {
+          "baseline": 0.28801413073521537,
+          "current": 0.36264231624910637,
+          "reference": 0.68223,
+          "baseline_change_percent": 25.9112930755818,
+          "reference_error_percent": -46.84456616550043,
+          "reference_difference_percentage_points": -31.958768375089363
+        },
+        "cpu_hit_fraction": {
+          "baseline": 0.6616662269815982,
+          "current": 0.5908049521041387,
+          "reference": 0.23726,
+          "baseline_change_percent": -10.709519692536784,
+          "reference_error_percent": 149.0116126208121,
+          "reference_difference_percentage_points": 35.35449521041387
+        }
+      },
+      "paired_components": {
+        "gemm": {
+          "baseline_seconds": 558.9282256224697,
+          "current_seconds": 797.1613643540809,
+          "difference_seconds": 238.23313873161123
+        },
+        "attention": {
+          "baseline_seconds": 5425.216475960368,
+          "current_seconds": 5908.080141869003,
+          "difference_seconds": 482.8636659086342
+        },
+        "moe": {
+          "baseline_seconds": 8817.691649891325,
+          "current_seconds": 11246.667637769779,
+          "difference_seconds": 2428.9759878784535
+        },
+        "elementwise": {
+          "baseline_seconds": 691.1248149281624,
+          "current_seconds": 931.3431167671221,
+          "difference_seconds": 240.21830183895963
+        },
+        "lm_head": {
+          "baseline_seconds": 185.35389767491037,
+          "current_seconds": 261.9980535129005,
+          "difference_seconds": 76.64415583799016
+        },
+        "comm": {
+          "baseline_seconds": 0.0,
+          "current_seconds": 0.0,
+          "difference_seconds": 0.0
+        },
+        "overhead": {
+          "baseline_seconds": 0.0,
+          "current_seconds": 0.0,
+          "difference_seconds": 0.0
+        }
+      },
+      "paired_per_rank": [
+        {
+          "rank": 0,
+          "baseline": {
+            "rank": 0,
+            "successful": 996,
+            "cancelled": 20,
+            "input_tokens": 104139008,
+            "gpu_hit_tokens": 19547904,
+            "cpu_hit_tokens": 79609600,
+            "max_used_gpu_slots": 20727,
+            "full_input_gate": 6577
+          },
+          "current": {
+            "rank": 0,
+            "successful": 1188,
+            "cancelled": 6,
+            "input_tokens": 137467456,
+            "gpu_hit_tokens": 30631936,
+            "cpu_hit_tokens": 99699712,
+            "max_used_gpu_slots": 20850,
+            "full_input_gate": 8493
+          }
+        },
+        {
+          "rank": 1,
+          "baseline": {
+            "rank": 1,
+            "successful": 1095,
+            "cancelled": 14,
+            "input_tokens": 122013824,
+            "gpu_hit_tokens": 63070720,
+            "cpu_hit_tokens": 53960704,
+            "max_used_gpu_slots": 18624,
+            "full_input_gate": 1345
+          },
+          "current": {
+            "rank": 1,
+            "successful": 1237,
+            "cancelled": 12,
+            "input_tokens": 144350080,
+            "gpu_hit_tokens": 88912896,
+            "cpu_hit_tokens": 49496832,
+            "max_used_gpu_slots": 17694,
+            "full_input_gate": 864
+          }
+        },
+        {
+          "rank": 2,
+          "baseline": {
+            "rank": 2,
+            "successful": 833,
+            "cancelled": 16,
+            "input_tokens": 107263552,
+            "gpu_hit_tokens": 14338560,
+            "cpu_hit_tokens": 88244480,
+            "max_used_gpu_slots": 21017,
+            "full_input_gate": 8711
+          },
+          "current": {
+            "rank": 2,
+            "successful": 1073,
+            "cancelled": 5,
+            "input_tokens": 143331328,
+            "gpu_hit_tokens": 51335168,
+            "cpu_hit_tokens": 86452224,
+            "max_used_gpu_slots": 20985,
+            "full_input_gate": 5841
+          }
+        },
+        {
+          "rank": 3,
+          "baseline": {
+            "rank": 3,
+            "successful": 975,
+            "cancelled": 15,
+            "input_tokens": 110871360,
+            "gpu_hit_tokens": 24644352,
+            "cpu_hit_tokens": 79142912,
+            "max_used_gpu_slots": 20969,
+            "full_input_gate": 5325
+          },
+          "current": {
+            "rank": 3,
+            "successful": 1184,
+            "cancelled": 10,
+            "input_tokens": 136393472,
+            "gpu_hit_tokens": 40568064,
+            "cpu_hit_tokens": 87548672,
+            "max_used_gpu_slots": 20501,
+            "full_input_gate": 7538
+          }
+        },
+        {
+          "rank": 4,
+          "baseline": {
+            "rank": 4,
+            "successful": 786,
+            "cancelled": 17,
+            "input_tokens": 105164352,
+            "gpu_hit_tokens": 3732480,
+            "cpu_hit_tokens": 96510720,
+            "max_used_gpu_slots": 20998,
+            "full_input_gate": 14019
+          },
+          "current": {
+            "rank": 4,
+            "successful": 1110,
+            "cancelled": 9,
+            "input_tokens": 151470144,
+            "gpu_hit_tokens": 8255488,
+            "cpu_hit_tokens": 136706560,
+            "max_used_gpu_slots": 20977,
+            "full_input_gate": 17268
+          }
+        },
+        {
+          "rank": 5,
+          "baseline": {
+            "rank": 5,
+            "successful": 1160,
+            "cancelled": 31,
+            "input_tokens": 113627712,
+            "gpu_hit_tokens": 38791936,
+            "cpu_hit_tokens": 68626688,
+            "max_used_gpu_slots": 20455,
+            "full_input_gate": 5382
+          },
+          "current": {
+            "rank": 5,
+            "successful": 1403,
+            "cancelled": 7,
+            "input_tokens": 146118016,
+            "gpu_hit_tokens": 74234368,
+            "cpu_hit_tokens": 65823232,
+            "max_used_gpu_slots": 18696,
+            "full_input_gate": 1515
+          }
+        },
+        {
+          "rank": 6,
+          "baseline": {
+            "rank": 6,
+            "successful": 1106,
+            "cancelled": 14,
+            "input_tokens": 96289664,
+            "gpu_hit_tokens": 66590208,
+            "cpu_hit_tokens": 23766016,
+            "max_used_gpu_slots": 17860,
+            "full_input_gate": 730
+          },
+          "current": {
+            "rank": 6,
+            "successful": 1350,
+            "cancelled": 11,
+            "input_tokens": 119355776,
+            "gpu_hit_tokens": 93026560,
+            "cpu_hit_tokens": 19590144,
+            "max_used_gpu_slots": 16676,
+            "full_input_gate": 226
+          }
+        },
+        {
+          "rank": 7,
+          "baseline": {
+            "rank": 7,
+            "successful": 868,
+            "cancelled": 13,
+            "input_tokens": 105006784,
+            "gpu_hit_tokens": 18236416,
+            "cpu_hit_tokens": 82067456,
+            "max_used_gpu_slots": 20988,
+            "full_input_gate": 7251
+          },
+          "current": {
+            "rank": 7,
+            "successful": 1236,
+            "cancelled": 12,
+            "input_tokens": 168542272,
+            "gpu_hit_tokens": 28996608,
+            "cpu_hit_tokens": 132352768,
+            "max_used_gpu_slots": 20975,
+            "full_input_gate": 9463
+          }
+        }
+      ]
+    },
+    "b300": {
+      "result_sha256": "756c9dcfe19ac77d7f20076efd2ff1f96be99fa7613750fb434bf71daffb813a",
+      "phase_counts": {
+        "warmup": {
+          "sent": 4249,
+          "successful": 4249
+        },
+        "profiling": {
+          "sent": 20704,
+          "successful": 20492,
+          "cancelled": 212
+        }
+      },
+      "warmup_seconds": 2381.5379658845,
+      "phase_elapsed_seconds": 3630.2550149220738,
+      "observation_seconds": 3629.872757560384,
+      "output_tps": 5054.759278209981,
+      "gpu_hit_percent": 94.58895275690799,
+      "cpu_hit_percent": 0.8904092798676565,
+      "cache_source_observation": "first-admission",
+      "ttft_p90": 20.51545576065556,
+      "tpot_p90": 0.07282710834220746,
+      "e2e_mean": 62.90426331011989,
+      "sync_wait_fraction": 0.1676837485403313,
+      "mean_successful_input_tokens": 118485.60609018154,
+      "mean_successful_output_tokens": 895.3802947491704,
+      "preemptions": 0,
+      "recomputed_tokens": 0,
+      "external_hit_fraction_of_gpu_misses": 0.16455396522445684,
+      "diagnostic_accuracy": {
+        "output_tput_per_gpu": {
+          "delta_percent": -20.52595283776545,
+          "acceptable": true,
+          "preferred": false,
+          "status": "acceptable"
+        },
+        "p90_ttft": {
+          "delta_percent": 8.456857449760925,
+          "acceptable": true,
+          "preferred": true,
+          "status": "preferred"
+        },
+        "p90_itl": {
+          "delta_percent": 47.168604681646386,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        },
+        "gpu_cache_hit_rate": {
+          "delta_percent": 5.215742777428245,
+          "acceptable": true,
+          "preferred": true,
+          "status": "preferred"
+        },
+        "cpu_cache_hit_rate": {
+          "delta_percent": -45.67362538940473,
+          "acceptable": false,
+          "preferred": false,
+          "status": "outside"
+        }
+      },
+      "final_workers": [
+        {
+          "worker_id": 0,
+          "running": 0,
+          "waiting": 0,
+          "loading": 0,
+          "loaded_waiting": 0,
+          "inflight_prefills": 0,
+          "inflight_prefill_reserved_slots": 0,
+          "external_cache": {
+            "backend": "SimpleCPUOffloadConnector",
+            "runtime_budget_per_rank_bytes": 356125000000,
+            "storage": {
+              "scope": "worker:0",
+              "capacity_bytes": 356123443200,
+              "allocation_unit_bytes": 1228800,
+              "used_bytes": 243623116800,
+              "peak_used_bytes": 243623116800,
+              "resident_pages": 198261,
+              "pinned_pages": 0,
+              "evictions": 0
+            },
+            "read": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 11602329600,
+              "jobs": 16,
+              "queue_wait_seconds": 0.0,
+              "service_seconds": 0.12090559999999999
+            },
+            "write": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 243623116800,
+              "jobs": 8108,
+              "queue_wait_seconds": 0.0,
+              "service_seconds": 2.562064799999805
+            },
+            "loading_requests": 0,
+            "write_jobs": 0
+          },
+          "dma_pinned_slots": 0,
+          "defer_prefills": false,
+          "prefill_capacity_bound": false,
+          "scheduler_stats": {
+            "steps": 27452,
+            "deferred_running_prefills": 167706,
+            "deferred_waiting_prefills": 9252,
+            "capacity_bound_steps": 0,
+            "scheduled_context_tokens": 12992896,
+            "scheduled_context_query_tokens": 12992896,
+            "scheduled_placeholder_queries": 0,
+            "padded_context_admissions": 0,
+            "scheduled_logits_rows": 3679432,
+            "scheduled_decode_tokens": 2183068,
+            "scheduled_decode_query_tokens": 3653228,
+            "max_num_seqs_gate": 0,
+            "full_input_gate": 0,
+            "async_load_reservation_gate": 0,
+            "max_inflight_prefill_reserved_slots": 34280,
+            "loaded_kv_capacity_gate": 0,
+            "loaded_kv_resumptions": 16,
+            "async_load_admissions": 16
+          },
+          "free_slots": 87072,
+          "watermark_slots": 0,
+          "used_slots": 1,
+          "peak_used_slots": 41281,
+          "allocations": 12055516,
+          "releases": 13552722,
+          "evictions": 126931,
+          "cached_slots": 84694
+        },
+        {
+          "worker_id": 1,
+          "running": 0,
+          "waiting": 0,
+          "loading": 0,
+          "loaded_waiting": 0,
+          "inflight_prefills": 0,
+          "inflight_prefill_reserved_slots": 0,
+          "external_cache": {
+            "backend": "SimpleCPUOffloadConnector",
+            "runtime_budget_per_rank_bytes": 356125000000,
+            "storage": {
+              "scope": "worker:1",
+              "capacity_bytes": 356123443200,
+              "allocation_unit_bytes": 1228800,
+              "used_bytes": 248217600000,
+              "peak_used_bytes": 248217600000,
+              "resident_pages": 202000,
+              "pinned_pages": 0,
+              "evictions": 0
+            },
+            "read": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 7453900800,
+              "jobs": 14,
+              "queue_wait_seconds": 0.0,
+              "service_seconds": 0.07768679999999999
+            },
+            "write": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 248217600000,
+              "jobs": 7563,
+              "queue_wait_seconds": 0.0,
+              "service_seconds": 2.6082889999997874
+            },
+            "loading_requests": 0,
+            "write_jobs": 0
+          },
+          "dma_pinned_slots": 0,
+          "defer_prefills": false,
+          "prefill_capacity_bound": false,
+          "scheduler_stats": {
+            "steps": 27452,
+            "deferred_running_prefills": 172417,
+            "deferred_waiting_prefills": 9284,
+            "capacity_bound_steps": 1,
+            "scheduled_context_tokens": 13358144,
+            "scheduled_context_query_tokens": 13358144,
+            "scheduled_placeholder_queries": 0,
+            "padded_context_admissions": 0,
+            "scheduled_logits_rows": 3705102,
+            "scheduled_decode_tokens": 2221681,
+            "scheduled_decode_query_tokens": 3678008,
+            "max_num_seqs_gate": 0,
+            "full_input_gate": 0,
+            "async_load_reservation_gate": 0,
+            "max_inflight_prefill_reserved_slots": 35441,
+            "loaded_kv_capacity_gate": 0,
+            "loaded_kv_resumptions": 14,
+            "async_load_admissions": 14
+          },
+          "free_slots": 87072,
+          "watermark_slots": 0,
+          "used_slots": 1,
+          "peak_used_slots": 41272,
+          "allocations": 12097207,
+          "releases": 13726689,
+          "evictions": 128938,
+          "cached_slots": 84370
+        },
+        {
+          "worker_id": 2,
+          "running": 0,
+          "waiting": 0,
+          "loading": 0,
+          "loaded_waiting": 0,
+          "inflight_prefills": 0,
+          "inflight_prefill_reserved_slots": 0,
+          "external_cache": {
+            "backend": "SimpleCPUOffloadConnector",
+            "runtime_budget_per_rank_bytes": 356125000000,
+            "storage": {
+              "scope": "worker:2",
+              "capacity_bytes": 356123443200,
+              "allocation_unit_bytes": 1228800,
+              "used_bytes": 276880588800,
+              "peak_used_bytes": 276880588800,
+              "resident_pages": 225326,
+              "pinned_pages": 0,
+              "evictions": 0
+            },
+            "read": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 16300032000,
+              "jobs": 22,
+              "queue_wait_seconds": 0.0,
+              "service_seconds": 0.16985800000000004
+            },
+            "write": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 276880588800,
+              "jobs": 8246,
+              "queue_wait_seconds": 0.0,
+              "service_seconds": 2.9089107999997577
+            },
+            "loading_requests": 0,
+            "write_jobs": 0
+          },
+          "dma_pinned_slots": 0,
+          "defer_prefills": false,
+          "prefill_capacity_bound": false,
+          "scheduler_stats": {
+            "steps": 27452,
+            "deferred_running_prefills": 180933,
+            "deferred_waiting_prefills": 10656,
+            "capacity_bound_steps": 1,
+            "scheduled_context_tokens": 14142720,
+            "scheduled_context_query_tokens": 14142720,
+            "scheduled_placeholder_queries": 0,
+            "padded_context_admissions": 0,
+            "scheduled_logits_rows": 4137494,
+            "scheduled_decode_tokens": 2412618,
+            "scheduled_decode_query_tokens": 4108692,
+            "max_num_seqs_gate": 0,
+            "full_input_gate": 0,
+            "async_load_reservation_gate": 0,
+            "max_inflight_prefill_reserved_slots": 38173,
+            "loaded_kv_capacity_gate": 0,
+            "loaded_kv_resumptions": 22,
+            "async_load_admissions": 22
+          },
+          "free_slots": 87072,
+          "watermark_slots": 0,
+          "used_slots": 1,
+          "peak_used_slots": 48077,
+          "allocations": 13202931,
+          "releases": 15234462,
+          "evictions": 159153,
+          "cached_slots": 84338
+        },
+        {
+          "worker_id": 3,
+          "running": 0,
+          "waiting": 0,
+          "loading": 0,
+          "loaded_waiting": 0,
+          "inflight_prefills": 0,
+          "inflight_prefill_reserved_slots": 0,
+          "external_cache": {
+            "backend": "SimpleCPUOffloadConnector",
+            "runtime_budget_per_rank_bytes": 356125000000,
+            "storage": {
+              "scope": "worker:3",
+              "capacity_bytes": 356123443200,
+              "allocation_unit_bytes": 1228800,
+              "used_bytes": 288980582400,
+              "peak_used_bytes": 288980582400,
+              "resident_pages": 235173,
+              "pinned_pages": 0,
+              "evictions": 0
+            },
+            "read": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 20459520000,
+              "jobs": 38,
+              "queue_wait_seconds": 0.0,
+              "service_seconds": 0.21323399999999998
+            },
+            "write": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 288980582400,
+              "jobs": 8316,
+              "queue_wait_seconds": 0.0,
+              "service_seconds": 3.035162399999751
+            },
+            "loading_requests": 0,
+            "write_jobs": 0
+          },
+          "dma_pinned_slots": 0,
+          "defer_prefills": false,
+          "prefill_capacity_bound": false,
+          "scheduler_stats": {
+            "steps": 27452,
+            "deferred_running_prefills": 205152,
+            "deferred_waiting_prefills": 10189,
+            "capacity_bound_steps": 3,
+            "scheduled_context_tokens": 15863808,
+            "scheduled_context_query_tokens": 15863808,
+            "scheduled_placeholder_queries": 0,
+            "padded_context_admissions": 0,
+            "scheduled_logits_rows": 4333317,
+            "scheduled_decode_tokens": 2569416,
+            "scheduled_decode_query_tokens": 4301192,
+            "max_num_seqs_gate": 0,
+            "full_input_gate": 0,
+            "async_load_reservation_gate": 0,
+            "max_inflight_prefill_reserved_slots": 37124,
+            "loaded_kv_capacity_gate": 0,
+            "loaded_kv_resumptions": 38,
+            "async_load_admissions": 38
+          },
+          "free_slots": 87072,
+          "watermark_slots": 0,
+          "used_slots": 1,
+          "peak_used_slots": 46030,
+          "allocations": 14196539,
+          "releases": 15897133,
+          "evictions": 175449,
+          "cached_slots": 84497
+        },
+        {
+          "worker_id": 4,
+          "running": 0,
+          "waiting": 0,
+          "loading": 0,
+          "loaded_waiting": 0,
+          "inflight_prefills": 0,
+          "inflight_prefill_reserved_slots": 0,
+          "external_cache": {
+            "backend": "SimpleCPUOffloadConnector",
+            "runtime_budget_per_rank_bytes": 356125000000,
+            "storage": {
+              "scope": "worker:4",
+              "capacity_bytes": 356123443200,
+              "allocation_unit_bytes": 1228800,
+              "used_bytes": 274446336000,
+              "peak_used_bytes": 274446336000,
+              "resident_pages": 223345,
+              "pinned_pages": 0,
+              "evictions": 0
+            },
+            "read": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 12289228800,
+              "jobs": 21,
+              "queue_wait_seconds": 0.0,
+              "service_seconds": 0.12807580000000005
+            },
+            "write": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 274446336000,
+              "jobs": 8063,
+              "queue_wait_seconds": 0.0,
+              "service_seconds": 2.8830049999997733
+            },
+            "loading_requests": 0,
+            "write_jobs": 0
+          },
+          "dma_pinned_slots": 0,
+          "defer_prefills": false,
+          "prefill_capacity_bound": false,
+          "scheduler_stats": {
+            "steps": 27452,
+            "deferred_running_prefills": 189515,
+            "deferred_waiting_prefills": 10970,
+            "capacity_bound_steps": 1,
+            "scheduled_context_tokens": 14784832,
+            "scheduled_context_query_tokens": 14784832,
+            "scheduled_placeholder_queries": 0,
+            "padded_context_admissions": 0,
+            "scheduled_logits_rows": 4541714,
+            "scheduled_decode_tokens": 2678577,
+            "scheduled_decode_query_tokens": 4511644,
+            "max_num_seqs_gate": 0,
+            "full_input_gate": 0,
+            "async_load_reservation_gate": 0,
+            "max_inflight_prefill_reserved_slots": 35059,
+            "loaded_kv_capacity_gate": 0,
+            "loaded_kv_resumptions": 21,
+            "async_load_admissions": 21
+          },
+          "free_slots": 87072,
+          "watermark_slots": 0,
+          "used_slots": 1,
+          "peak_used_slots": 47407,
+          "allocations": 12733445,
+          "releases": 14629667,
+          "evictions": 152787,
+          "cached_slots": 84637
+        },
+        {
+          "worker_id": 5,
+          "running": 0,
+          "waiting": 0,
+          "loading": 0,
+          "loaded_waiting": 0,
+          "inflight_prefills": 0,
+          "inflight_prefill_reserved_slots": 0,
+          "external_cache": {
+            "backend": "SimpleCPUOffloadConnector",
+            "runtime_budget_per_rank_bytes": 356125000000,
+            "storage": {
+              "scope": "worker:5",
+              "capacity_bytes": 356123443200,
+              "allocation_unit_bytes": 1228800,
+              "used_bytes": 264110899200,
+              "peak_used_bytes": 264110899200,
+              "resident_pages": 214934,
+              "pinned_pages": 0,
+              "evictions": 0
+            },
+            "read": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 16142745600,
+              "jobs": 21,
+              "queue_wait_seconds": 0.0,
+              "service_seconds": 0.16821660000000005
+            },
+            "write": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 264110899200,
+              "jobs": 7910,
+              "queue_wait_seconds": 0.0,
+              "service_seconds": 2.7748851999998023
+            },
+            "loading_requests": 0,
+            "write_jobs": 0
+          },
+          "dma_pinned_slots": 0,
+          "defer_prefills": false,
+          "prefill_capacity_bound": false,
+          "scheduler_stats": {
+            "steps": 27452,
+            "deferred_running_prefills": 167387,
+            "deferred_waiting_prefills": 10395,
+            "capacity_bound_steps": 0,
+            "scheduled_context_tokens": 13048384,
+            "scheduled_context_query_tokens": 13048384,
+            "scheduled_placeholder_queries": 0,
+            "padded_context_admissions": 0,
+            "scheduled_logits_rows": 3860814,
+            "scheduled_decode_tokens": 2272942,
+            "scheduled_decode_query_tokens": 3834192,
+            "max_num_seqs_gate": 0,
+            "full_input_gate": 0,
+            "async_load_reservation_gate": 0,
+            "max_inflight_prefill_reserved_slots": 36313,
+            "loaded_kv_capacity_gate": 0,
+            "loaded_kv_resumptions": 21,
+            "async_load_admissions": 21
+          },
+          "free_slots": 87072,
+          "watermark_slots": 0,
+          "used_slots": 1,
+          "peak_used_slots": 36143,
+          "allocations": 12405120,
+          "releases": 14135400,
+          "evictions": 149792,
+          "cached_slots": 84213
+        },
+        {
+          "worker_id": 6,
+          "running": 0,
+          "waiting": 0,
+          "loading": 0,
+          "loaded_waiting": 0,
+          "inflight_prefills": 0,
+          "inflight_prefill_reserved_slots": 0,
+          "external_cache": {
+            "backend": "SimpleCPUOffloadConnector",
+            "runtime_budget_per_rank_bytes": 356125000000,
+            "storage": {
+              "scope": "worker:6",
+              "capacity_bytes": 356123443200,
+              "allocation_unit_bytes": 1228800,
+              "used_bytes": 261674188800,
+              "peak_used_bytes": 261674188800,
+              "resident_pages": 212951,
+              "pinned_pages": 0,
+              "evictions": 0
+            },
+            "read": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 15734784000,
+              "jobs": 21,
+              "queue_wait_seconds": 0.0,
+              "service_seconds": 0.16396700000000006
+            },
+            "write": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 261674188800,
+              "jobs": 7099,
+              "queue_wait_seconds": 0.0,
+              "service_seconds": 2.7470697999997995
+            },
+            "loading_requests": 0,
+            "write_jobs": 0
+          },
+          "dma_pinned_slots": 0,
+          "defer_prefills": false,
+          "prefill_capacity_bound": false,
+          "scheduler_stats": {
+            "steps": 27452,
+            "deferred_running_prefills": 180946,
+            "deferred_waiting_prefills": 10142,
+            "capacity_bound_steps": 0,
+            "scheduled_context_tokens": 14028544,
+            "scheduled_context_query_tokens": 14028544,
+            "scheduled_placeholder_queries": 0,
+            "padded_context_admissions": 0,
+            "scheduled_logits_rows": 3602484,
+            "scheduled_decode_tokens": 2121413,
+            "scheduled_decode_query_tokens": 3573956,
+            "max_num_seqs_gate": 0,
+            "full_input_gate": 0,
+            "async_load_reservation_gate": 0,
+            "max_inflight_prefill_reserved_slots": 27619,
+            "loaded_kv_capacity_gate": 0,
+            "loaded_kv_resumptions": 21,
+            "async_load_admissions": 21
+          },
+          "free_slots": 87072,
+          "watermark_slots": 0,
+          "used_slots": 1,
+          "peak_used_slots": 32859,
+          "allocations": 12415554,
+          "releases": 13924214,
+          "evictions": 147475,
+          "cached_slots": 84508
+        },
+        {
+          "worker_id": 7,
+          "running": 0,
+          "waiting": 0,
+          "loading": 0,
+          "loaded_waiting": 0,
+          "inflight_prefills": 0,
+          "inflight_prefill_reserved_slots": 0,
+          "external_cache": {
+            "backend": "SimpleCPUOffloadConnector",
+            "runtime_budget_per_rank_bytes": 356125000000,
+            "storage": {
+              "scope": "worker:7",
+              "capacity_bytes": 356123443200,
+              "allocation_unit_bytes": 1228800,
+              "used_bytes": 277309440000,
+              "peak_used_bytes": 277309440000,
+              "resident_pages": 225675,
+              "pinned_pages": 0,
+              "evictions": 0
+            },
+            "read": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 20430028800,
+              "jobs": 30,
+              "queue_wait_seconds": 0.0,
+              "service_seconds": 0.21290280000000003
+            },
+            "write": {
+              "theoretical_bandwidth_bytes_per_s": 128000000000.0,
+              "utilization_assumption": 0.75,
+              "bytes": 277309440000,
+              "jobs": 8584,
+              "queue_wait_seconds": 0.0,
+              "service_seconds": 2.9143919999997245
+            },
+            "loading_requests": 0,
+            "write_jobs": 0
+          },
+          "dma_pinned_slots": 0,
+          "defer_prefills": false,
+          "prefill_capacity_bound": false,
+          "scheduler_stats": {
+            "steps": 27452,
+            "deferred_running_prefills": 192773,
+            "deferred_waiting_prefills": 10084,
+            "capacity_bound_steps": 2,
+            "scheduled_context_tokens": 14907712,
+            "scheduled_context_query_tokens": 14907712,
+            "scheduled_placeholder_queries": 0,
+            "padded_context_admissions": 0,
+            "scheduled_logits_rows": 4428781,
+            "scheduled_decode_tokens": 2625272,
+            "scheduled_decode_query_tokens": 4398600,
+            "max_num_seqs_gate": 0,
+            "full_input_gate": 0,
+            "async_load_reservation_gate": 0,
+            "max_inflight_prefill_reserved_slots": 33938,
+            "loaded_kv_capacity_gate": 0,
+            "loaded_kv_resumptions": 30,
+            "async_load_admissions": 30
+          },
+          "free_slots": 87072,
+          "watermark_slots": 0,
+          "used_slots": 1,
+          "peak_used_slots": 44028,
+          "allocations": 13897398,
+          "releases": 15805244,
+          "evictions": 167339,
+          "cached_slots": 83365
+        }
+      ],
+      "per_rank": [
+        {
+          "rank": 0,
+          "successful": 2221,
+          "cancelled": 22,
+          "input_tokens": 260970624,
+          "gpu_hit_tokens": 246427392,
+          "cpu_hit_tokens": 2294272,
+          "max_used_gpu_slots": 38832,
+          "full_input_gate": 0
+        },
+        {
+          "rank": 1,
+          "successful": 2295,
+          "cancelled": 32,
+          "input_tokens": 272560512,
+          "gpu_hit_tokens": 258342400,
+          "cpu_hit_tokens": 1159168,
+          "max_used_gpu_slots": 37920,
+          "full_input_gate": 0
+        },
+        {
+          "rank": 2,
+          "successful": 2673,
+          "cancelled": 29,
+          "input_tokens": 367954304,
+          "gpu_hit_tokens": 352147456,
+          "cpu_hit_tokens": 2217728,
+          "max_used_gpu_slots": 46051,
+          "full_input_gate": 0
+        },
+        {
+          "rank": 3,
+          "successful": 2664,
+          "cancelled": 27,
+          "input_tokens": 277716544,
+          "gpu_hit_tokens": 258198272,
+          "cpu_hit_tokens": 4048384,
+          "max_used_gpu_slots": 42659,
+          "full_input_gate": 0
+        },
+        {
+          "rank": 4,
+          "successful": 2814,
+          "cancelled": 30,
+          "input_tokens": 336261056,
+          "gpu_hit_tokens": 319662336,
+          "cpu_hit_tokens": 2028800,
+          "max_used_gpu_slots": 44255,
+          "full_input_gate": 0
+        },
+        {
+          "rank": 5,
+          "successful": 2674,
+          "cancelled": 26,
+          "input_tokens": 307086848,
+          "gpu_hit_tokens": 291392000,
+          "cpu_hit_tokens": 3146496,
+          "max_used_gpu_slots": 35529,
+          "full_input_gate": 0
+        },
+        {
+          "rank": 6,
+          "successful": 2643,
+          "cancelled": 19,
+          "input_tokens": 260051456,
+          "gpu_hit_tokens": 243303424,
+          "cpu_hit_tokens": 3147264,
+          "max_used_gpu_slots": 29550,
+          "full_input_gate": 0
+        },
+        {
+          "rank": 7,
+          "successful": 2508,
+          "cancelled": 27,
+          "input_tokens": 345405696,
+          "gpu_hit_tokens": 327153152,
+          "cpu_hit_tokens": 3577088,
+          "max_used_gpu_slots": 41084,
+          "full_input_gate": 0
+        }
+      ],
+      "checks": "counts/output/input decomposition/cancellation/pool/DP conservation passed",
+      "decode_batch_stats": {
+        "batches": 219458,
+        "length_groups": 7884212,
+        "query_rows": 32059520,
+        "requests": 8014880,
+        "indexer_query_tiles": 16029760,
+        "ragged_grid_lookup_queries": 2569260
+      },
+      "component_seconds": {
+        "gemm": 878.695021630359,
+        "attention": 10844.527158867866,
+        "moe": 10839.423735356917,
+        "elementwise": 1330.708458497682,
+        "lm_head": 278.8075925475114,
+        "comm": 0.0,
+        "overhead": 0.0
+      },
+      "attention_provenance": {
+        "backend": "FLASHMLA_SPARSE_DSV4 borrowed module table",
+        "reference_backend": "FLASHINFER_MLA_SPARSE_DSV4",
+        "layer_counts": {
+          "hca": 31,
+          "csa": 30
+        },
+        "module_scope": "projection + compressor/indexer + sparse attention + output projection",
+        "kv_cache_source_layout": "fp8 source table; serving reference plain FP8",
+        "indexer_source_layout": "collector default; serving reference MXFP4",
+        "extrapolation": "measured boundary with parameterized DSV4 FLOP/byte SOL growth, max 64x",
+        "extrapolation_sol": {
+          "model": "DSV4 FLOP/byte roofline anchored to measured boundary efficiency",
+          "basis": "AIC dsv4_attention_sol_ms; local grouped FP8 output and BF16 compressors from vLLM",
+          "config": {
+            "kv_state_bytes": 584.0,
+            "indexer_state_bytes": 132.0,
+            "projection_dtype": "fp8_block",
+            "output_absorption_dtype": "fp8_block",
+            "compressor_dtype": "bf16",
+            "attention_dtype": "bf16",
+            "indexer_dtype": "fp8"
+          },
+          "cache_layout_evidence": "source-table layouts inferred from collector defaults and current vLLM; historical version unverified",
+          "source_to_reference_layout_correction": false,
+          "compute_flops_per_s": {
+            "projection": 4500000000000000.0,
+            "output_absorption": 4500000000000000.0,
+            "compressor": 2250000000000000.0,
+            "indexer": 4500000000000000.0,
+            "indexer_weights": 2250000000000000.0,
+            "attention": 2250000000000000.0
+          },
+          "memory_bandwidth_bytes_per_s": 7750000000000.0,
+          "efficiency": "measured(boundary) / SOL(boundary); no fitted throughput multiplier"
+        },
+        "extrapolation_axis_binding": "each inner-axis growth uses its measured outer-axis node",
+        "context_latency_scale": 1.0,
+        "generation_latency_scale": 1.0,
+        "decode_batch_composition": "query-row-weighted uniform full-batch module estimates; common projections counted once",
+        "mixed_batch_composition": {
+          "shared_scope": "full-tensor input/output, compressor-input and index-query/weight projections, weights and activation preparation",
+          "phase_scope": "sparse attention, index scoring/KV reads and compressor pointwise work; context and decode kept separate",
+          "allocation": "two SOL roofline bounds normalized to each whole-module sample; common efficiency row-weighted at total query rows",
+          "source_clamps": "each phase retains its source geometry; common rows retain the largest source floor",
+          "homogeneous": "single context group and decode-only batches unchanged",
+          "uncertainty": "whole-module tables do not measure component launches, ragged fusion or aux-stream overlap; no extra overlap credit",
+          "fitted_multiplier": false
+        },
+        "decode_query_width": "expanded query compute and sparse-attention reads; indexer KV reuse within Q-blocks",
+        "mtp_indexer_kv_reuse": {
+          "basis": "pinned DeepGEMM SM100 paged MQA groups request Q-blocks; BLOCK_Q = 128 / indexer heads",
+          "query_math": "unchanged at the full expanded query-row count",
+          "indexer_queries_per_tile": 2,
+          "indexer_kv_read_fraction": "sum(requests * ceil(query width / BLOCK_Q)) / query rows, per context; source geometry including clamps",
+          "cross_q_block_l2_reuse": "not credited without measured traffic; tile reads are a conservative streaming estimate",
+          "sparse_attention_kv_reads": "per query retained; FlashInfer sparse indices may differ across queries",
+          "layout_correction": false,
+          "latency": "measured full-query-row module times adjusted/source SOL; math bound retained"
+        },
+        "generation_ragged_grid": "on out-of-range neighbors, use same-geometry batch slices within the existing 64x context/batch bound",
+        "context_query_grid": "query floors across prefixes for the matching geometry/batch; coupled query/prefix samples do not inflate supported queries"
+      },
+      "native_attention_seconds_preserved_in_result": true,
+      "component_time_conservation": true,
+      "composition": {
+        "source_floor_projection_rows": 7134512420.0,
+        "batches": 27490.0,
+        "mixed_phase_batches": 27393.0,
+        "context_group_batches": 27218.0,
+        "context_groups": 224290.0,
+        "decode_length_groups": 976116.0,
+        "query_rows": 116959220.0,
+        "shared_layer_invocations": 1676890.0,
+        "logical_projection_rows": 7134512420.0,
+        "shared_projection_seconds": 3456.951814046392,
+        "phase_seconds": 3627.322800549795,
+        "standalone_module_seconds": 7265.919249182835,
+        "avoided_shared_seconds": 181.64463458664403
+      },
+      "query_metadata": {
+        "scheduler": {
+          "scheduled_context_tokens": 113127040,
+          "scheduled_context_query_tokens": 113127040,
+          "scheduled_decode_query_tokens": 32059512,
+          "scheduled_placeholder_queries": 0,
+          "padded_context_admissions": 0,
+          "scheduled_logits_rows": 32289138
+        },
+        "target_logits": {
+          "steps": 219616,
+          "decode_rows": 32059520,
+          "prefill_rows": 229626,
+          "rows": 32289146,
+          "forward_rows": 145186560,
+          "output_forward_rows": 151098260,
+          "hc_head_rows": 151098260,
+          "final_norm_rows": 151098260,
+          "context_decode_metadata_rows": 0,
+          "placeholder_rows": 0,
+          "context_graph_eligible_requests": 0
+        },
+        "formal_length_caps": 0
+      },
+      "paired_baseline": {
+        "root": "results/agentx-dsv4-full/native-attention-composition/20261008-shared-projections/seed0/b300-c384-dep8-simplecpu/b300",
+        "output_tps": 3857.2965083119584,
+        "throughput_change_percent": 31.04409441477083,
+        "source_changes": [
+          "TokenSim/latency/deepseek_v4_attention.py"
+        ],
+        "configuration_and_capacity_unchanged": true,
+        "context_clamped_queries_before": 9090,
+        "context_clamped_queries_after": 0
+      },
+      "paired_metrics": {
+        "input_tps": {
+          "baseline": 527256.6233720881,
+          "current": 668895.9096273802,
+          "reference": 813831.8418069438,
+          "baseline_change_percent": 26.86344371540241,
+          "reference_error_percent": -17.809076117956202
+        },
+        "output_tps": {
+          "baseline": 3857.2965083119584,
+          "current": 5054.759278209981,
+          "reference": 6360.26408456516,
+          "baseline_change_percent": 31.04409441477083,
+          "reference_error_percent": -20.52595283776545
+        },
+        "ttft_p90_s": {
+          "baseline": 28.978697863977327,
+          "current": 20.51545576065556,
+          "reference": 18.915775584,
+          "baseline_change_percent": -29.205046213764508,
+          "reference_error_percent": 8.456857449760925
+        },
+        "itl_p90_s": {
+          "baseline": 0.10091214003963045,
+          "current": 0.07282710834220746,
+          "reference": 0.04948549216712784,
+          "baseline_change_percent": -27.831172430188644,
+          "reference_error_percent": 47.168604681646386
+        },
+        "e2e_mean_s": {
+          "baseline": 82.95847175507195,
+          "current": 62.90426331011989,
+          "reference": 50.87438818767539,
+          "baseline_change_percent": -24.173792044000596,
+          "reference_error_percent": 23.646230551346072
+        },
+        "gpu_hit_fraction": {
+          "baseline": 0.945596693200933,
+          "current": 0.9458895275690798,
+          "reference": 0.899,
+          "baseline_change_percent": 0.030968209835369187,
+          "reference_error_percent": 5.215742777428245,
+          "reference_difference_percentage_points": 4.688952756907982
+        },
+        "cpu_hit_fraction": {
+          "baseline": 0.009282477717805587,
+          "current": 0.008904092798676565,
+          "reference": 0.01639,
+          "baseline_change_percent": -4.076335334511027,
+          "reference_error_percent": -45.67362538940473,
+          "reference_difference_percentage_points": -0.7485907201323434
+        }
+      },
+      "paired_components": {
+        "gemm": {
+          "baseline_seconds": 644.5236091443956,
+          "current_seconds": 878.695021630359,
+          "difference_seconds": 234.1714124859634
+        },
+        "attention": {
+          "baseline_seconds": 9967.82587929563,
+          "current_seconds": 10844.527158867866,
+          "difference_seconds": 876.7012795722367
+        },
+        "moe": {
+          "baseline_seconds": 8183.780740844085,
+          "current_seconds": 10839.423735356917,
+          "difference_seconds": 2655.642994512832
+        },
+        "elementwise": {
+          "baseline_seconds": 1019.140988488169,
+          "current_seconds": 1330.708458497682,
+          "difference_seconds": 311.56747000951293
+        },
+        "lm_head": {
+          "baseline_seconds": 199.90839867888988,
+          "current_seconds": 278.8075925475114,
+          "difference_seconds": 78.8991938686215
+        },
+        "comm": {
+          "baseline_seconds": 0.0,
+          "current_seconds": 0.0,
+          "difference_seconds": 0.0
+        },
+        "overhead": {
+          "baseline_seconds": 0.0,
+          "current_seconds": 0.0,
+          "difference_seconds": 0.0
+        }
+      },
+      "paired_per_rank": [
+        {
+          "rank": 0,
+          "baseline": {
+            "rank": 0,
+            "successful": 2067,
+            "cancelled": 37,
+            "input_tokens": 220536256,
+            "gpu_hit_tokens": 207859456,
+            "cpu_hit_tokens": 1425664,
+            "max_used_gpu_slots": 38534,
+            "full_input_gate": 0
+          },
+          "current": {
+            "rank": 0,
+            "successful": 2221,
+            "cancelled": 22,
+            "input_tokens": 260970624,
+            "gpu_hit_tokens": 246427392,
+            "cpu_hit_tokens": 2294272,
+            "max_used_gpu_slots": 38832,
+            "full_input_gate": 0
+          }
+        },
+        {
+          "rank": 1,
+          "baseline": {
+            "rank": 1,
+            "successful": 1887,
+            "cancelled": 36,
+            "input_tokens": 225772800,
+            "gpu_hit_tokens": 213869056,
+            "cpu_hit_tokens": 1423616,
+            "max_used_gpu_slots": 38753,
+            "full_input_gate": 0
+          },
+          "current": {
+            "rank": 1,
+            "successful": 2295,
+            "cancelled": 32,
+            "input_tokens": 272560512,
+            "gpu_hit_tokens": 258342400,
+            "cpu_hit_tokens": 1159168,
+            "max_used_gpu_slots": 37920,
+            "full_input_gate": 0
+          }
+        },
+        {
+          "rank": 2,
+          "baseline": {
+            "rank": 2,
+            "successful": 1953,
+            "cancelled": 36,
+            "input_tokens": 274939584,
+            "gpu_hit_tokens": 265028608,
+            "cpu_hit_tokens": 879360,
+            "max_used_gpu_slots": 45593,
+            "full_input_gate": 0
+          },
+          "current": {
+            "rank": 2,
+            "successful": 2673,
+            "cancelled": 29,
+            "input_tokens": 367954304,
+            "gpu_hit_tokens": 352147456,
+            "cpu_hit_tokens": 2217728,
+            "max_used_gpu_slots": 46051,
+            "full_input_gate": 0
+          }
+        },
+        {
+          "rank": 3,
+          "baseline": {
+            "rank": 3,
+            "successful": 2074,
+            "cancelled": 31,
+            "input_tokens": 217680256,
+            "gpu_hit_tokens": 202182400,
+            "cpu_hit_tokens": 3362560,
+            "max_used_gpu_slots": 42251,
+            "full_input_gate": 0
+          },
+          "current": {
+            "rank": 3,
+            "successful": 2664,
+            "cancelled": 27,
+            "input_tokens": 277716544,
+            "gpu_hit_tokens": 258198272,
+            "cpu_hit_tokens": 4048384,
+            "max_used_gpu_slots": 42659,
+            "full_input_gate": 0
+          }
+        },
+        {
+          "rank": 4,
+          "baseline": {
+            "rank": 4,
+            "successful": 2056,
+            "cancelled": 37,
+            "input_tokens": 252622528,
+            "gpu_hit_tokens": 240291840,
+            "cpu_hit_tokens": 1355008,
+            "max_used_gpu_slots": 43041,
+            "full_input_gate": 0
+          },
+          "current": {
+            "rank": 4,
+            "successful": 2814,
+            "cancelled": 30,
+            "input_tokens": 336261056,
+            "gpu_hit_tokens": 319662336,
+            "cpu_hit_tokens": 2028800,
+            "max_used_gpu_slots": 44255,
+            "full_input_gate": 0
+          }
+        },
+        {
+          "rank": 5,
+          "baseline": {
+            "rank": 5,
+            "successful": 2121,
+            "cancelled": 44,
+            "input_tokens": 242133440,
+            "gpu_hit_tokens": 229249280,
+            "cpu_hit_tokens": 2921472,
+            "max_used_gpu_slots": 41849,
+            "full_input_gate": 0
+          },
+          "current": {
+            "rank": 5,
+            "successful": 2674,
+            "cancelled": 26,
+            "input_tokens": 307086848,
+            "gpu_hit_tokens": 291392000,
+            "cpu_hit_tokens": 3146496,
+            "max_used_gpu_slots": 35529,
+            "full_input_gate": 0
+          }
+        },
+        {
+          "rank": 6,
+          "baseline": {
+            "rank": 6,
+            "successful": 2077,
+            "cancelled": 33,
+            "input_tokens": 207157824,
+            "gpu_hit_tokens": 193661184,
+            "cpu_hit_tokens": 2574848,
+            "max_used_gpu_slots": 31697,
+            "full_input_gate": 0
+          },
+          "current": {
+            "rank": 6,
+            "successful": 2643,
+            "cancelled": 19,
+            "input_tokens": 260051456,
+            "gpu_hit_tokens": 243303424,
+            "cpu_hit_tokens": 3147264,
+            "max_used_gpu_slots": 29550,
+            "full_input_gate": 0
+          }
+        },
+        {
+          "rank": 7,
+          "baseline": {
+            "rank": 7,
+            "successful": 2130,
+            "cancelled": 41,
+            "input_tokens": 272577472,
+            "gpu_hit_tokens": 257181952,
+            "cpu_hit_tokens": 3818752,
+            "max_used_gpu_slots": 40958,
+            "full_input_gate": 0
+          },
+          "current": {
+            "rank": 7,
+            "successful": 2508,
+            "cancelled": 27,
+            "input_tokens": 345405696,
+            "gpu_hit_tokens": 327153152,
+            "cpu_hit_tokens": 3577088,
+            "max_used_gpu_slots": 41084,
+            "full_input_gate": 0
+          }
+        }
+      ]
+    }
+  }
+}

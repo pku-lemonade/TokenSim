@@ -1,0 +1,38 @@
+{
+  "scope": "independent context query/prefix diagonal-grid clamp correction",
+  "parent_commit": "55ba77797839331f0b0ea1095e04d642c106995e",
+  "source_change": "TokenSim/latency/deepseek_v4_attention.py",
+  "source_sha256": "677b6749547501a435b90078974d04ce8873cc557b692a1e04ff7d4ca57eff34",
+  "implementation": [
+    "minimum context query is derived across source prefixes for the same discrete geometry/batch",
+    "an exact-prefix diagonal sample cannot inflate a supported query",
+    "zero-prefix floor, generation batch floor and bounded64x lookup policy are retained",
+    "no table, capacity, acceptance-length, routing or scheduling changes"
+  ],
+  "verification": {
+    "focus": "45 passed,47 subtests passed; two SKUs TP1/2/4/8, short tails, neighboring prefixes and exact samples",
+    "full_suite": {
+      "passed": 543,
+      "subtests_passed": 63,
+      "warnings": 32,
+      "elapsed_seconds": 166.79,
+      "log": "data/reference/agentx-context-grid/full-tests.txt",
+      "sha256": "b8414537cc726e28d1fee318ca2ddad4679e8cc4ba743e115b05bbb626145729"
+    },
+    "full_windows": {
+      "status": "both complete and strictly validated",
+      "root": "results/agentx-dsv4-full/native-context-grid/20261008-preserve-query",
+      "validation": "data/reference/agentx-context-grid/pipeline-validation.json",
+      "validation_sha256": "80e6137bfed687c5e0a97b7bf46ea7ab8cb0bfdfa622be3128ce2fe9a0533527",
+      "output_tps": {
+        "b200": 2451.044354590532,
+        "b300": 5054.759278209981
+      },
+      "source_changes": [
+        "TokenSim/latency/deepseek_v4_attention.py"
+      ],
+      "configuration_capacity_dataset_unchanged": true
+    }
+  },
+  "formal_model_accuracy_accepted": false
+}
