@@ -73,9 +73,12 @@ class DeepSeekV4MTPEstimator:
                                         context, len(requests))})
         else:
             step = self.step
-        later = MoEPass({rank: RankShape(self._request_count(shape, own_count=len(requests) if rank == dp else None),
-                                       1, False, self._request_count(shape, own_count=len(requests) if rank == dp else None))
-                         for rank, shape in step.ranks.items()})
+        later_shapes = {}
+        for rank, shape in step.ranks.items():
+            count = self._request_count(shape, own_count=len(requests) if rank == dp else None)
+            valid_count = shape.valid_requests if shape.valid_requests is not None else count
+            later_shapes[rank] = RankShape(count, 1, False, count, valid_count, valid_count)
+        later = MoEPass(later_shapes)
         padded = uniform_decode_rows(step, self.k + 1, self.max_num_seqs)
         initial_graph = padded is not None
         initial_rows = padded if initial_graph else actual_rows

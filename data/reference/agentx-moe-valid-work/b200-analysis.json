@@ -1,0 +1,217 @@
+{
+  "scope": "one completed B200 window; B300 and combined acceptance pending",
+  "formal_model_accuracy_accepted": false,
+  "result_sha256": "da81a68d46fae23a47aa5285bbdf4a9695e2b879648c3981b44ddcd2dbe6b674",
+  "validation_sha256": "f88769f213494ca60041ed217dfd91e70972d346d5f1f6a76c23024c19ec9ad6",
+  "paired_metrics": {
+    "input_tps": {
+      "baseline": 316008.48513765767,
+      "current": 238426.8916483807,
+      "reference": 470700.8790310961,
+      "baseline_change_percent": -24.5504779580464,
+      "reference_error_percent": -49.34641037017706
+    },
+    "output_tps": {
+      "baseline": 2451.044354590532,
+      "current": 1833.426641379504,
+      "reference": 3599.262674552757,
+      "baseline_change_percent": -25.198145111258352,
+      "reference_error_percent": -49.06104924372253
+    },
+    "ttft_p90_s": {
+      "baseline": 41.83127665134225,
+      "current": 65.01832716222043,
+      "reference": 16.206517135000002,
+      "baseline_change_percent": 55.429937518137336,
+      "reference_error_percent": 301.186304377547
+    },
+    "itl_p90_s": {
+      "baseline": 0.09065597240069775,
+      "current": 0.12557502054995678,
+      "reference": 0.05024579619035286,
+      "baseline_change_percent": 38.51819932493523,
+      "reference_error_percent": 149.9214463120938
+    },
+    "e2e_mean_s": {
+      "baseline": 71.90289990107915,
+      "current": 96.16063971707241,
+      "reference": 43.36484218156744,
+      "baseline_change_percent": 33.73680317395542,
+      "reference_error_percent": 121.74792961185092
+    },
+    "gpu_hit_fraction": {
+      "baseline": 0.36264231624910637,
+      "current": 0.3139931548773348,
+      "reference": 0.68223,
+      "baseline_change_percent": -13.415191551543437,
+      "reference_error_percent": -53.975469434452485,
+      "reference_difference_percentage_points": -36.82368451226652
+    },
+    "cpu_hit_fraction": {
+      "baseline": 0.5908049521041387,
+      "current": 0.6360449639771648,
+      "reference": 0.23726,
+      "baseline_change_percent": 7.657351501862797,
+      "reference_error_percent": 168.0793070796446,
+      "reference_difference_percentage_points": 39.878496397716475
+    }
+  },
+  "preemptions": {
+    "baseline": 59,
+    "current": 64
+  },
+  "work": {
+    "padding_percent": 3.357779199605458,
+    "layer_weighted_padding_percent": 1.972504217528941,
+    "zero_routed_passes": 376,
+    "routed_cost_change_from_current_uniform_anchors_percent": 69.750775685698,
+    "owned_full_rows": 123768710,
+    "owned_valid_rows": 119612830
+  },
+  "component_normalization": {
+    "gemm": {
+      "baseline_seconds_per_million_output_tokens": 89.60238916298982,
+      "current_seconds_per_million_output_tokens": 85.23084314577234,
+      "change_percent": -4.8788275157099825
+    },
+    "attention": {
+      "baseline_seconds_per_million_output_tokens": 664.0789678847767,
+      "current_seconds_per_million_output_tokens": 682.5068509696312,
+      "change_percent": 2.774953578721351
+    },
+    "moe": {
+      "baseline_seconds_per_million_output_tokens": 1264.1459251889196,
+      "current_seconds_per_million_output_tokens": 2247.6671717142613,
+      "change_percent": 77.80124326852219
+    },
+    "elementwise": {
+      "baseline_seconds_per_million_output_tokens": 104.68466250927422,
+      "current_seconds_per_million_output_tokens": 105.04316148698496,
+      "change_percent": 0.3424560667413701
+    },
+    "lm_head": {
+      "baseline_seconds_per_million_output_tokens": 29.449058372053006,
+      "current_seconds_per_million_output_tokens": 28.24565960786055,
+      "change_percent": -4.08637433832002
+    },
+    "comm": {
+      "baseline_seconds_per_million_output_tokens": 0.0,
+      "current_seconds_per_million_output_tokens": 0.0,
+      "change_percent": null
+    },
+    "overhead": {
+      "baseline_seconds_per_million_output_tokens": 0.0,
+      "current_seconds_per_million_output_tokens": 0.0,
+      "change_percent": null
+    }
+  },
+  "normalization_is_analysis_only": true,
+  "synchronization_wait_fraction": {
+    "baseline": 0.3407418204319772,
+    "current": 0.2785177669083288
+  },
+  "per_rank": [
+    {
+      "rank": 0,
+      "successful": 842,
+      "cancelled": 16,
+      "input_tokens": 92717248,
+      "gpu_hit_tokens": 27735552,
+      "cpu_hit_tokens": 61141760,
+      "max_used_gpu_slots": 20870,
+      "full_input_gate": 4617,
+      "gpu_hit_percent": 29.91412342178232,
+      "cpu_hit_percent": 65.94432138451737
+    },
+    {
+      "rank": 1,
+      "successful": 1118,
+      "cancelled": 18,
+      "input_tokens": 122551296,
+      "gpu_hit_tokens": 62781184,
+      "cpu_hit_tokens": 54782464,
+      "max_used_gpu_slots": 20272,
+      "full_input_gate": 1557,
+      "gpu_hit_percent": 51.22849455627136,
+      "cpu_hit_percent": 44.7016602745678
+    },
+    {
+      "rank": 2,
+      "successful": 828,
+      "cancelled": 13,
+      "input_tokens": 106115200,
+      "gpu_hit_tokens": 25936384,
+      "cpu_hit_tokens": 75373056,
+      "max_used_gpu_slots": 20858,
+      "full_input_gate": 8238,
+      "gpu_hit_percent": 24.441723711588914,
+      "cpu_hit_percent": 71.0294623201954
+    },
+    {
+      "rank": 3,
+      "successful": 1066,
+      "cancelled": 16,
+      "input_tokens": 122567488,
+      "gpu_hit_tokens": 20974592,
+      "cpu_hit_tokens": 94240000,
+      "max_used_gpu_slots": 20995,
+      "full_input_gate": 6142,
+      "gpu_hit_percent": 17.112688154300756,
+      "cpu_hit_percent": 76.88825278037844
+    },
+    {
+      "rank": 4,
+      "successful": 809,
+      "cancelled": 21,
+      "input_tokens": 99957824,
+      "gpu_hit_tokens": 3462912,
+      "cpu_hit_tokens": 91459328,
+      "max_used_gpu_slots": 20963,
+      "full_input_gate": 14667,
+      "gpu_hit_percent": 3.4643731340130013,
+      "cpu_hit_percent": 91.497918161964
+    },
+    {
+      "rank": 5,
+      "successful": 1008,
+      "cancelled": 18,
+      "input_tokens": 102968320,
+      "gpu_hit_tokens": 49268992,
+      "cpu_hit_tokens": 48733952,
+      "max_used_gpu_slots": 17913,
+      "full_input_gate": 1395,
+      "gpu_hit_percent": 47.84868977176669,
+      "cpu_hit_percent": 47.32907364129083
+    },
+    {
+      "rank": 6,
+      "successful": 1132,
+      "cancelled": 12,
+      "input_tokens": 96681600,
+      "gpu_hit_tokens": 70133760,
+      "cpu_hit_tokens": 20509440,
+      "max_used_gpu_slots": 17463,
+      "full_input_gate": 460,
+      "gpu_hit_percent": 72.54095918975275,
+      "cpu_hit_percent": 21.21338496673617
+    },
+    {
+      "rank": 7,
+      "successful": 1043,
+      "cancelled": 30,
+      "input_tokens": 121776576,
+      "gpu_hit_tokens": 11416064,
+      "cpu_hit_tokens": 104152320,
+      "max_used_gpu_slots": 20899,
+      "full_input_gate": 10641,
+      "gpu_hit_percent": 9.37459762376633,
+      "cpu_hit_percent": 85.52738418265267
+    }
+  ],
+  "interpretation": [
+    "logical full/valid identities pass but B200 absolute accuracy worsens; do not treat source alignment as accuracy acceptance",
+    "partial padding is a small fraction of owned and layer-weighted rows; nonuniform full-input block choices and unmeasured tile-cache traffic dominate the modeled cost concern",
+    "work composition is grade D; no parameters or original table values adjusted to force reference throughput",
+    "rank4 has the largest full-input gate count; rank7 the most cancellations; pools and budget remain unchanged"
+  ]
+}

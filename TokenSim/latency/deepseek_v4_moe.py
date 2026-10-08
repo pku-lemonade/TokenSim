@@ -1,16 +1,25 @@
 """Native DSV4 MegaMoE geometry, measured routed scope and shared MLP cost.
 
 The collector's phase is a buffer/token-grid regime, not a kernel argument.
-The common EP pass is bounded by the slowest measured rank-local estimate.
-This is a conservative unequal-rank approximation to the uniform benchmark.
+Unequal/partially padded passes normalize source-derived physical work to a
+matching uniform module sample. The composition remains an explicit estimate.
 """
 
 from collections import Counter
 from dataclasses import dataclass, field
 import math
+from functools import lru_cache
+from pathlib import Path
 
 from TokenSim.errors import ConfigurationError
 from TokenSim.operator_data.lookup import LookupPolicy, OperatorLookup
+from TokenSim.hardware.links import LinkCatalog
+from TokenSim.latency.deepseek_v4_moe_work import MegaMoEWorkModel
+
+
+@lru_cache(maxsize=1)
+def _default_links():
+    return LinkCatalog.load(Path(__file__).resolve().parents[2] / "data/topologies/links.yaml")
 
 
 @dataclass(frozen=True)
@@ -19,6 +28,20 @@ class RankShape:
     query_width: int | None
     context_build: bool
     requests: int | None = None
+    valid_tokens: int | None = None
+    valid_requests: int | None = None
+
+    @property
+    def routed_tokens(self):
+        return self.tokens if self.valid_tokens is None else self.valid_tokens
+
+    def __post_init__(self):
+        if self.tokens < 0 or not 0 <= self.routed_tokens <= self.tokens:
+            raise ConfigurationError("MoE valid rows must fit the full input tensor")
+        if self.valid_requests is not None and (
+            self.valid_requests < 0 or self.requests is not None and self.valid_requests > self.requests
+        ):
+            raise ConfigurationError("MoE valid requests must fit the forward request batch")
 
 
 @dataclass
@@ -27,6 +50,21 @@ class MoEPass:
     # group pricing so multiple leaders do not repeat the same table walk.
     ranks: dict[int, RankShape]
     cache: dict = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class GroupRows:
+    inputs: dict[int, int]
+    routed: dict[int, int]
+    own_rank: int
+    graph: bool
+    step: MoEPass
+
+
+def sp_valid_rows(valid, full, tp, rank):
+    """Pinned sp_padding_mask: contiguous ceil(full/TP) chunks."""
+    chunk = math.ceil(full / tp)
+    return max(0, min(chunk, valid - rank * chunk))
 
 
 def uniform_decode_rows(step, query_width, max_num_seqs):
@@ -123,12 +161,20 @@ class MegaMoEEstimator:
         self.cache = {}
         self.step = None
         self.topology_checked = False
+        collective = getattr(backend.communicator, "collective_model", None)
+        links = getattr(collective, "links", None)
+        if not isinstance(links, LinkCatalog):
+            links = _default_links()
+        link = links.get(backend.device.scale_up_link)
+        self.work_model = MegaMoEWorkModel(self.model, backend.device, backend.moe_ep,
+                                         nvlink_bytes_per_s=link.bandwidth_per_direction_bytes_per_s)
         self.reset_stats()
 
     def reset_stats(self):
         self.counts = Counter()
         self.routed_seconds = self.shared_seconds = 0.0
         self.max_rank_rows = 0
+        self.composition = Counter()
 
     def set_step(self, step):
         self.step = step
@@ -178,7 +224,7 @@ class MegaMoEEstimator:
         self.cache[tokens] = result
         return result
 
-    def rows_for_group(self, local_tokens):
+    def group_rows(self, local_tokens):
         tp, dp = self.parallel.tensor_parallel_size, self.backend.rank_info.dp_rank
         if self.step is None:
             if self.parallel.data_parallel_size > 1:
@@ -193,7 +239,7 @@ class MegaMoEEstimator:
         padded = uniform_decode_rows(step, self.expected_query_width, self.max_num_seqs)
         graph = padded is not None
         group = self.parallel.expert_parallel_group(dp, self.backend.rank_info.tp_rank)
-        rows = {}
+        rows, valid_rows = {}, {}
         for other_dp, shape in step.ranks.items():
             count = padded if graph else shape.tokens
             for other_tp in range(tp):
@@ -203,12 +249,20 @@ class MegaMoEEstimator:
                 value = math.ceil(count / tp) if self.sequence_parallel else count
                 ep_rank = self.parallel.expert_parallel_rank(other_dp, other_tp)
                 rows[ep_rank] = value
+                valid_rows[ep_rank] = (
+                    sp_valid_rows(shape.routed_tokens, count, tp, other_tp)
+                    if self.sequence_parallel else shape.routed_tokens
+                )
         if len(rows) != self.backend.moe_ep:
             raise ConfigurationError(
                 "DP snapshot does not cover the entire MegaMoE EP group"
             )
         rank = self.parallel.expert_parallel_rank(dp, self.backend.rank_info.tp_rank)
-        return rows, rows[rank], graph, step
+        return GroupRows(rows, valid_rows, rank, graph, step)
+
+    def rows_for_group(self, local_tokens):
+        group = self.group_rows(local_tokens)
+        return group.inputs, group.inputs[group.own_rank], group.graph, group.step
 
     def shared_fused_delta(self, rows):
         # Dedicated native shared MMA uses FP8 weights and packed 1x32
@@ -252,19 +306,27 @@ class MegaMoEEstimator:
                     "borrowed MegaMoE curves require a complete single-node EP group"
                 )
             self.topology_checked = True
-        rows, own_rows, graph, step = self.rows_for_group(local_tokens)
+        group = self.group_rows(local_tokens)
+        rows, own_rows, graph, step = group.inputs, group.inputs[group.own_rank], group.graph, group.step
         identity = (
             id(self.backend.package),
             tuple(sorted(rows.items())),
+            tuple(sorted(group.routed.items())),
             self.config.latency_scale,
         )
         if identity not in step.cache:
-            estimates = [self._query(n) for n in sorted(set(rows.values()))]
+            anchor_rows = max(1, max(rows.values()))
+            estimate = self._query(anchor_rows)
+            uniform = {rank: anchor_rows for rank in rows}
+            source_work = self.work_model.estimate(uniform, uniform)
+            target_work = self.work_model.estimate(rows, group.routed)
+            anchor = estimate.latency_us * self.config.latency_scale
+            exact_uniform = rows == uniform and group.routed == uniform
+            routed = anchor if exact_uniform else anchor * target_work.latency_us / source_work.latency_us
             step.cache[identity] = (
-                max(e.latency_us for e in estimates) * self.config.latency_scale,
-                estimates,
+                routed, [estimate], anchor, source_work, target_work, exact_uniform,
             )
-        routed, estimates = step.cache[identity]
+        routed, estimates, anchor, source_work, target_work, exact_uniform = step.cache[identity]
         for estimate in estimates:
             self.backend.stats.record("dsv4_megamoe", estimate.match)
             self.counts[f"query_regime:{estimate.regime}"] += 1
@@ -292,6 +354,22 @@ class MegaMoEEstimator:
         self.shared_seconds += shared * layers * 1e-6
         self.counts["rank_estimates"] += 1
         self.counts["graph_pass" if graph else "eager_pass"] += 1
+        self.counts["full_input_rows"] += own_rows
+        self.counts["routed_valid_rows"] += group.routed[group.own_rank]
+        self.counts["padding_rows"] += own_rows - group.routed[group.own_rank]
+        self.counts["routed_valid_layer_rows"] += group.routed[group.own_rank] * layers
+        self.counts["full_input_layer_rows"] += own_rows * layers
+        self.counts["zero_routed_rank_passes"] += int(group.routed[group.own_rank] == 0)
+        self.counts["uniform_measured_passes" if exact_uniform else "composed_passes"] += 1
+        self.composition["uniform_anchor_seconds"] += anchor * layers * 1e-6
+        self.composition["composed_routed_seconds"] += routed * layers * 1e-6
+        self.composition["anchor_difference_seconds"] += (anchor - routed) * layers * 1e-6
+        self.composition["source_work_us"] += source_work.latency_us
+        self.composition["target_work_us"] += target_work.latency_us
+        self.composition["input_work_us"] += target_work.input_us
+        self.composition["expert_work_us"] += target_work.expert_us
+        self.composition["dispatch_work_us"] += target_work.dispatch_us
+        self.composition["combine_work_us"] += target_work.combine_us
         self.max_rank_rows = max(self.max_rank_rows, max(rows.values()))
         return (routed + shared) * layers, routed, shared
 
@@ -300,6 +378,7 @@ class MegaMoEEstimator:
             "native_megamoe_routed_seconds": self.routed_seconds,
             "native_megamoe_shared_seconds": self.shared_seconds,
             "native_megamoe_counts": dict(self.counts),
+            "native_megamoe_composition": dict(self.composition),
             "native_megamoe_max_rank_rows": self.max_rank_rows,
         }
 
@@ -316,7 +395,9 @@ class MegaMoEEstimator:
             ),
             "sequence_parallel": self.sequence_parallel,
             "num_tokens_scope": "rank-local after TP/SP and eligible graph padding",
-            "unequal_ranks": "common maximum measured estimate; conservative uniform-rank surrogate",
+            "unequal_ranks": "full-input uniform measured anchor normalized by physical expert, dispatch/scan/combine work; no mean-row substitution",
+            "valid_rows": "padding top-k=-1; contiguous SP masks; idle/dummy and MTP valid requests separate from full captured rows",
+            "work_composition": self.work_model.describe(),
             "collector_regime": "generation for small tokens, context for large, explicit interpolation in the gap",
             "routed_scope": "borrowed routed pre-dispatch/dispatch/compute/combine; gate/top-k excluded",
             "buffer_capacity": "collector capacities retained; serving capacity differs",

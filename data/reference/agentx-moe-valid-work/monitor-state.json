@@ -1,0 +1,23 @@
+{
+  "observed_unix_s": 1791429874.9454012,
+  "checkpoints": {
+    "b200": {
+      "status": "complete",
+      "terminal": {
+        "exit_code": 0,
+        "started_unix_s": 1791425240.4710476,
+        "elapsed_wall_s": 1759.181509256363
+      }
+    },
+    "b300": {
+      "status": "complete",
+      "terminal": {
+        "exit_code": 0,
+        "started_unix_s": 1791425240.471056,
+        "elapsed_wall_s": 4600.429277896881
+      }
+    }
+  },
+  "runtime_hashes_verified": true,
+  "rerun_performed": false
+}

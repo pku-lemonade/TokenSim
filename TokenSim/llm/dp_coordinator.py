@@ -179,6 +179,8 @@ class DPStepCoordinator:
                         ),
                         context,
                         len(batch) if batch else 1,
+                        token_counts[worker.dp_rank],
+                        len(batch),
                     )
                 moe_step = MoEPass(shapes)
                 for worker in self.workers:

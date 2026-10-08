@@ -1,0 +1,105 @@
+{
+  "scope": "full versus valid MegaMoE/SP/dummy/MTP rows and measured-anchor physical work composition",
+  "parent_commit": "c019302997806f64ba26b7f9cb719730fa117967",
+  "runtime_sources": [
+    {
+      "path": "TokenSim/latency/deepseek_v4_moe.py",
+      "sha256": "5c5ed2aecc82056016d8518fae5ce7150eaae65837de8594211515d237c289b9"
+    },
+    {
+      "path": "TokenSim/latency/deepseek_v4_moe_work.py",
+      "sha256": "0d5a7f4c29b70eb6f8feeb979863d356e4bf66b1569922481721b89679343667"
+    },
+    {
+      "path": "TokenSim/latency/deepseek_v4_mtp.py",
+      "sha256": "a171d2146c251ed165176b876f25f096183d60ab6a498c04512a4cd774b32585"
+    },
+    {
+      "path": "TokenSim/llm/dp_coordinator.py",
+      "sha256": "cb91ef904574253caab3b2783b4bf4ba8f88aef0e1385a25588279fefa23c6f2"
+    },
+    {
+      "path": "TokenSim/config/psla_config.py",
+      "sha256": "60d34ca8c2bd5d6030a52a7c6ab7414e430162945132bb19ceb065a3bb58ab86"
+    },
+    {
+      "path": "util/results.py",
+      "sha256": "ed562235ec0de4075b3ff992e74fd3a5b0ec0d2e1cc2e9a247909828c2ba575e"
+    }
+  ],
+  "source_checks": [
+    {
+      "path": "/home/zhuohang/Serving/vllm-note/vllm/envs.py",
+      "sha256": "83878082da17ff128fc780ace20ac0fc0278d1324441f2c3c8d9953510eb82e0"
+    },
+    {
+      "path": "/home/zhuohang/Serving/vllm-note/vllm/models/deepseek_v4/nvidia/ops/prepare_megamoe.py",
+      "sha256": "9d3710446bdf691db459583f9880e49dcb4e0ac81462b73ad74e1149654e4cd8"
+    },
+    {
+      "path": "/home/zhuohang/Serving/vllm-note/vllm/models/common/ops/sequence_parallel.py",
+      "sha256": "699fde98360fc8d604055e2987d93108ee489e87cc5563949d2a3dcd838eb8bd"
+    },
+    {
+      "path": "/tmp/tokensim-deepgemm-nonuniform-audit/heuristics.hpp",
+      "sha256": "14377e043ca46900662cbc9ece5c14f78bd2fa89624bf39a69845ecca799bb82"
+    },
+    {
+      "path": "/tmp/tokensim-deepgemm-nonuniform-audit/fp8-fp4-kernel.cuh",
+      "sha256": "2e725484419819a1e87bfe76ed5c90799b980701fb8f9f2816910a4d2082ca9b"
+    },
+    {
+      "path": "/tmp/aiconfigurator/collector/helper.py",
+      "sha256": "6c3d32d6cb1003ad7869293cda4c6379b4944c497a640c2cc8a634492687b84d"
+    }
+  ],
+  "verification": {
+    "full_suite": {
+      "passed": 553,
+      "subtests_passed": 78,
+      "warnings": 32,
+      "elapsed_seconds": 184.42,
+      "log": "data/reference/agentx-moe-valid-work/full-tests.txt",
+      "sha256": "fec8ddc902efb6c15bb394d389fba7b0f5d0fba578204dcb69e63f03f81b1a2b"
+    },
+    "full_windows": {
+      "status": "both original full windows complete and individually/combined strictly validated",
+      "root": "results/agentx-dsv4-full/native-moe-valid-work/20261008-full-valid-rows",
+      "rule": "freeze runtime until both complete; full validation before commit",
+      "accepted_checkpoints": {
+        "b200": {
+          "validation": "data/reference/agentx-moe-valid-work/b200-validation.json",
+          "result_sha256": "da81a68d46fae23a47aa5285bbdf4a9695e2b879648c3981b44ddcd2dbe6b674",
+          "output_tps": 1833.426641379504
+        },
+        "b300": {
+          "validation": "data/reference/agentx-moe-valid-work/b300-validation.json",
+          "result_sha256": "e7f74980e18cdb8ab1e22c9f0eaeed2dd069e2f23dc750f40ce040767130183a",
+          "output_tps": 5200.193405341137
+        }
+      },
+      "pending_hardware": [],
+      "combined_validation": "data/reference/agentx-moe-valid-work/pipeline-validation.json",
+      "combined_validation_sha256": "72b58fa313143f54c62e4001f666adca7af96e7d210fb6b5eae92e199fe2a7fd"
+    }
+  },
+  "approximation": [
+    "expected within-rank power_law_1.01 midpoint spectrum replaces unrecorded expert histogram; source measured skew retained only through whole-module anchor",
+    "full-input-selected block geometry, per-M-tile weight traffic without unmeasured L2 credit, critical source dispatch/combine and startup/scan remain separate",
+    "work bounds normalized to full-input uniform measured module, no serving-throughput fit or mean-row table substitution",
+    "historical kernel revision and phase fusion/overlap uncertainty explicit"
+  ],
+  "formal_model_accuracy_accepted": false,
+  "followup_evidence": [
+    "capture-ownership-followup.json",
+    "buffer-sm-sensitivity-followup.json",
+    "b200-analysis.json",
+    "work-growth-followup.json",
+    "mma-ownership-followup.json"
+  ],
+  "next_required_cost_corrections": [
+    "dynamic16-aligned MMA tails",
+    "mixed-input compute pipe verification",
+    "directed8x work normalization and traffic ownership"
+  ]
+}

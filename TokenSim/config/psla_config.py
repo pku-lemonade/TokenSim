@@ -113,6 +113,7 @@ class LLMResult:
     native_megamoe_shared_seconds: float | None = None
     native_megamoe_max_rank_rows: int | None = None
     native_megamoe_counts: dict[str, int] | None = None
+    native_megamoe_composition: dict[str, float] | None = None
     operator_missing_shape_count: int = 0
     operator_missing_shape_groups: int = 0
     operator_missing_per_table: dict[str, Any] | None = None

@@ -186,6 +186,7 @@ def get_latency_stats(engine: LLMEngine) -> dict[str, Any]:
         "native_megamoe_max_rank_rows": 0,
     }
     native_counts = {}
+    native_moe_composition = {}
     native_attention_total = 0.0
     native_attention_counts = {}
     native_attention_decode_batches = {}
@@ -245,6 +246,8 @@ def get_latency_stats(engine: LLMEngine) -> dict[str, Any]:
             )
             for key, count in extra["native_megamoe_counts"].items():
                 native_counts[key] = native_counts.get(key, 0) + count
+            for key, value in extra["native_megamoe_composition"].items():
+                native_moe_composition[key] = native_moe_composition.get(key, 0) + value
         native_attention = getattr(backend, "native_attention", None)
         if native_attention is not None:
             extra = native_attention.stats_dict()
@@ -283,7 +286,8 @@ def get_latency_stats(engine: LLMEngine) -> dict[str, Any]:
         "latency_backends": descriptions,
         **aggregate.as_dict(),
         **(
-            {**native_totals, "native_megamoe_counts": native_counts}
+            {**native_totals, "native_megamoe_counts": native_counts,
+             "native_megamoe_composition": native_moe_composition}
             if native_counts
             else {}
         ),
