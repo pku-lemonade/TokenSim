@@ -1,0 +1,39 @@
+{
+  "scope": "read-only pinned contiguous MQA scheduler/causal physical ownership audit",
+  "runtime_change": false,
+  "sources": [
+    {
+      "url": "https://raw.githubusercontent.com/deepseek-ai/DeepGEMM/e1f418c2a4f20818221f6b0e578b4c2f634d4c3f/deep_gemm/include/deep_gemm/scheduler/sm100_mqa_logits.cuh",
+      "commit": "e1f418c2a4f20818221f6b0e578b4c2f634d4c3f",
+      "path": "deep_gemm/include/deep_gemm/scheduler/sm100_mqa_logits.cuh",
+      "git_blob_sha1": "bafd0b289a668ed0d85080bb287441f87259cfb6",
+      "sha256": "60258e5cefb23384c0be5a61c2a75b9ec839a14dd849e682e5ef23f5913133cf",
+      "local": "data/reference/agentx-moe-phase-efficiency/deepgemm-sm100_mqa_logits.cuh"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/deepseek-ai/DeepGEMM/e1f418c2a4f20818221f6b0e578b4c2f634d4c3f/deep_gemm/include/deep_gemm/scheduler/sm100_mqa_logits_metadata.cuh",
+      "commit": "e1f418c2a4f20818221f6b0e578b4c2f634d4c3f",
+      "path": "deep_gemm/include/deep_gemm/scheduler/sm100_mqa_logits_metadata.cuh",
+      "git_blob_sha1": "a3b7c6ff18ead0d988440d52d6b2a193b39abfee",
+      "sha256": "ac76298b76931a740403afbccd734c1ea47eedeb21dee154680e3b936a7f0f7c",
+      "local": "data/reference/agentx-moe-phase-efficiency/deepgemm-sm100_mqa_logits_metadata.cuh"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/deepseek-ai/DeepGEMM/e1f418c2a4f20818221f6b0e578b4c2f634d4c3f/csrc/apis/attention.hpp",
+      "commit": "e1f418c2a4f20818221f6b0e578b4c2f634d4c3f",
+      "path": "csrc/apis/attention.hpp",
+      "git_blob_sha1": "1d0903f12600c1c8a1b3855080063f3ae78381b1",
+      "sha256": "4e548ae41e7dc48206694322c265c5939a7c5e34bb6565c22b7d19aa2cf27638",
+      "local": "data/reference/agentx-moe-phase-efficiency/deepgemm-attention.hpp"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/deepseek-ai/DeepGEMM/e1f418c2a4f20818221f6b0e578b4c2f634d4c3f/csrc/jit_kernels/heuristics/sm100.hpp",
+      "commit": "e1f418c2a4f20818221f6b0e578b4c2f634d4c3f",
+      "path": "csrc/jit_kernels/heuristics/sm100.hpp",
+      "git_blob_sha1": "3011c18ab0a434a615aeb913f11b01e33321ab18",
+      "sha256": "0d658df9eacacbc3648bde7c3ab895ca64eac2618ce8e98791926cee246da6eb",
+      "local": "data/reference/agentx-moe-phase-efficiency/deepgemm-sm100.hpp"
+    }
+  ],
+  "formal_model_accuracy_accepted": false
+}

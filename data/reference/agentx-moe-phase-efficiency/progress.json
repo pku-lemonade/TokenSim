@@ -1,0 +1,118 @@
+{
+  "stage": "expert-phase measured shape efficiency",
+  "parent_commit": "02f81a40fe9c7775065b060839fe4fc1615ad409",
+  "runtime_frozen": true,
+  "full_suite": {
+    "status": "passed",
+    "passed": 601,
+    "subtests_passed": 339,
+    "warnings": 32,
+    "elapsed_seconds": 213.76,
+    "log": "data/reference/agentx-moe-phase-efficiency/full-tests.txt",
+    "sha256": "cd33dea2c3436d348eebe1be41ff5be1f39f6fe3341661f6332cc83f81a53ac4"
+  },
+  "checkpoints": {
+    "b200": {
+      "status": "strictly accepted and analyzed",
+      "terminal": {
+        "exit_code": 0,
+        "started_unix_s": 1791470634.0029788,
+        "elapsed_wall_s": 2131.3869547843933
+      },
+      "validation": "/home/zhuohang/TokenSim/TokenSim-Open/data/reference/agentx-moe-phase-efficiency/b200-validation.json",
+      "analysis": "/home/zhuohang/TokenSim/TokenSim-Open/data/reference/agentx-moe-phase-efficiency/b200-analysis.json"
+    },
+    "b300": {
+      "status": "strictly accepted and analyzed",
+      "terminal": {
+        "exit_code": 0,
+        "started_unix_s": 1791470633.7666867,
+        "elapsed_wall_s": 5021.466589927673
+      },
+      "validation": "/home/zhuohang/TokenSim/TokenSim-Open/data/reference/agentx-moe-phase-efficiency/b300-validation.json",
+      "analysis": "/home/zhuohang/TokenSim/TokenSim-Open/data/reference/agentx-moe-phase-efficiency/b300-analysis.json"
+    }
+  },
+  "observer_pid": 3653547,
+  "observed_unix_s": 1791477187.9779515,
+  "rerun_performed": false,
+  "overall_goal_status": "active;full original scope and25% accuracy gate unachieved",
+  "previous_goal_turn_classification": "progress:both original MoE windows accepted and paired analysis complete;user requested current-stage commit and gitignore cleanup;no next-stage runtime integration;overall accuracy and final matrix remain open",
+  "next_isolated_preparation": {
+    "scope": "isolated next-stage causal descriptor work/source generation coordinates/non-grid source floors;MoE original window runtime preserved",
+    "worktree": "/tmp/tokensim-agentx-attention-causal-20261008",
+    "base_commit": "02f81a4",
+    "overlay_moe_files": [
+      {
+        "path": "TokenSim/latency/deepseek_v4_moe.py",
+        "sha256": "2f735f23c53e25c3fb5f6bbd3ff7c49e539617b5d692ef6bbcd6f21e548b277d"
+      },
+      {
+        "path": "TokenSim/latency/deepseek_v4_moe_efficiency.py",
+        "sha256": "da8c062327baf9cfb7be6333a69b335c76cb75c4852ea2578ca45391a41d9917"
+      },
+      {
+        "path": "tests/test_moe_phase_efficiency.py",
+        "sha256": "6d63a329efba9fb5115d4f3b0d1083d544963b053719459f7b031eb10edfb021"
+      }
+    ],
+    "next_stage_files": [
+      {
+        "path": "TokenSim/latency/deepseek_v4_attention.py",
+        "sha256": "b6d69e8fa91374f162c89a92ffcaa6172c6f44480a3e8f177e67e2cd449ced44"
+      },
+      {
+        "path": "TokenSim/latency/deepseek_v4_attention_sol.py",
+        "sha256": "ce081f7931dc3122867159996052a08c273da61749afe4b130a597dda585e7e5"
+      },
+      {
+        "path": "tests/test_attention_causal_work.py",
+        "sha256": "c5101ae12d51602d93baf51557ac42de265c29226e2c819f08a1be0b9f6ab1e9"
+      },
+      {
+        "path": "tests/test_native_attention.py",
+        "sha256": "6ab7427e8f5865bb5585d687c0e2c816c3b4656fa4e20758baec02487a28a109"
+      },
+      {
+        "path": "tests/test_attention_context_grid.py",
+        "sha256": "8344596458f280d68407c9190b339f7439ca14d19a54bb7d39056eaa986e90af"
+      },
+      {
+        "path": "data/reference/agentx-attention-causal/indexer-descriptor-oracle.json",
+        "sha256": "e586a423dff87cbec62213a727de96521ebeabe222f3d0da3fb6b9667f96cd59"
+      },
+      {
+        "path": "docs/agentx-attention-causal-report.md",
+        "sha256": "2ed9181134f5f404e3d7e16d3e5323c799a9586fc9d4402862ebc0bb12c37560"
+      }
+    ],
+    "merge_allowed_after": "both original MoE efficiency windows strict acceptance/paired analysis/independent commit",
+    "main_runtime_unchanged": true,
+    "integrated": false,
+    "full_windows_started": false,
+    "source_descriptor_oracle_cases": 352,
+    "full_suite": {
+      "status": "passed",
+      "passed": 607,
+      "subtests_passed": 2640,
+      "warnings": 32,
+      "elapsed_seconds": 225.62,
+      "log": "data/reference/agentx-moe-phase-efficiency/attention-isolated-full-tests.txt",
+      "sha256": "23721b5dfaba3ea603228769005b1b1401e297328050f847fe6f1188a71470e8"
+    },
+    "holdout": {
+      "b200": {
+        "points": 1296,
+        "over25": 356,
+        "max_error_percent": 135.8558035011359
+      },
+      "b300": {
+        "points": 1248,
+        "over25": 356,
+        "max_error_percent": 136.6531458314133
+      }
+    },
+    "formal_model_accuracy_accepted": false
+  },
+  "stage_closeout": "all required implementation/suite/original-window/paired-analysis checks complete;independent commit prepared"
+}

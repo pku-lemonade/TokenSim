@@ -1,0 +1,9 @@
+{
+  "pid": 3653547,
+  "command": [
+    "/home/zhuohang/miniconda3/bin/python",
+    "/home/zhuohang/TokenSim/TokenSim-Open/data/reference/agentx-moe-phase-efficiency/monitor.py"
+  ],
+  "launched_unix_s": 1791470672.9272034,
+  "rerun_performed": false
+}

@@ -168,6 +168,9 @@ class MegaMoEEstimator:
         link = links.get(backend.device.scale_up_link)
         self.work_model = MegaMoEWorkModel(self.model, backend.device, backend.moe_ep,
                                          nvlink_bytes_per_s=link.bandwidth_per_direction_bytes_per_s)
+        from TokenSim.latency.deepseek_v4_moe_efficiency import ExpertEfficiencyTransfer
+
+        self.efficiency_transfer = ExpertEfficiencyTransfer(self.work_model, rows)
         self.reset_stats()
 
     def reset_stats(self):
@@ -322,11 +325,14 @@ class MegaMoEEstimator:
             target_work = self.work_model.estimate(rows, group.routed)
             anchor = estimate.latency_us * self.config.latency_scale
             exact_uniform = rows == uniform and group.routed == uniform
-            routed = anchor if exact_uniform else anchor * target_work.latency_us / source_work.latency_us
-            step.cache[identity] = (
-                routed, [estimate], anchor, source_work, target_work, exact_uniform,
+            transfer = self.efficiency_transfer.price(
+                anchor, source_work, target_work, anchor_rows=anchor_rows, phase=estimate.regime
             )
-        routed, estimates, anchor, source_work, target_work, exact_uniform = step.cache[identity]
+            routed = anchor if exact_uniform else transfer.latency_us
+            step.cache[identity] = (
+                routed, [estimate], anchor, source_work, target_work, exact_uniform, transfer,
+            )
+        routed, estimates, anchor, source_work, target_work, exact_uniform, transfer = step.cache[identity]
         for estimate in estimates:
             self.backend.stats.record("dsv4_megamoe", estimate.match)
             self.counts[f"query_regime:{estimate.regime}"] += 1
@@ -370,6 +376,9 @@ class MegaMoEEstimator:
         self.composition["expert_work_us"] += target_work.expert_us
         self.composition["dispatch_work_us"] += target_work.dispatch_us
         self.composition["combine_work_us"] += target_work.combine_us
+        self.composition["transferred_common_seconds"] += transfer.common_us * layers * 1e-6
+        self.composition["transferred_expert_seconds"] += transfer.expert_us * layers * 1e-6
+        self.counts[f"efficiency:{transfer.match}"] += 1
         self.composition["source_mma_layer_rows"] += source_work.expert_mma_rows * layers
         self.composition["target_mma_layer_rows"] += target_work.expert_mma_rows * layers
         self.composition["source_expert_flops"] += source_work.expert_flops * layers
@@ -404,6 +413,7 @@ class MegaMoEEstimator:
             "unequal_ranks": "full-input uniform measured anchor normalized by physical expert, dispatch/scan/combine work; no mean-row substitution",
             "valid_rows": "padding top-k=-1; contiguous SP masks; idle/dummy and MTP valid requests separate from full captured rows",
             "work_composition": self.work_model.describe(),
+            "expert_phase_efficiency": self.efficiency_transfer.describe(),
             "collector_regime": "generation for small tokens, context for large, explicit interpolation in the gap",
             "routed_scope": "borrowed routed pre-dispatch/dispatch/compute/combine; gate/top-k excluded",
             "buffer_capacity": "collector capacities retained; serving capacity differs",

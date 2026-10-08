@@ -16,3 +16,13 @@ dataset/agentx/
 
 # generated experiment artifacts
 *.egg-info
+
+# Local run logs and generated test output; validation summaries stay tracked.
+*.log
+/data/reference/agentx-*/full-tests*.txt
+/data/reference/agentx-*/*-tests*.txt
+
+# Detailed generated diagnostics; commit summaries and hashes instead.
+/data/reference/agentx-moe-phase-efficiency/attention-current-holdout-followup.json
+/data/reference/agentx-moe-phase-efficiency/attention-frontier-prototype-followup.json
+/data/reference/agentx-moe-phase-efficiency/attention-isolated-holdout-followup.json

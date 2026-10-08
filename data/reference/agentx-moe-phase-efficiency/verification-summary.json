@@ -1,0 +1,64 @@
+{
+  "stage": "same-capacity expert-phase efficiency transfer",
+  "parent_commit": "02f81a40fe9c7775065b060839fe4fc1615ad409",
+  "full_suite": {
+    "status": "passed",
+    "passed": 601,
+    "subtests_passed": 339,
+    "warnings": 32,
+    "elapsed_seconds": 213.76,
+    "log": "data/reference/agentx-moe-phase-efficiency/full-tests.txt",
+    "sha256": "cd33dea2c3436d348eebe1be41ff5be1f39f6fe3341661f6332cc83f81a53ac4",
+    "log_storage": "local ignored raw output;summary and immutable hash retained"
+  },
+  "original_windows": {
+    "b200": {
+      "terminal": {
+        "exit_code": 0,
+        "started_unix_s": 1791470634.0029788,
+        "elapsed_wall_s": 2131.3869547843933
+      },
+      "result_sha256": "0bf3c9915fd0b43b909bb9a9d8152a0a80028c57b3e6514155a4e0590393bc9f",
+      "output_tps": {
+        "baseline": 2186.6387159078845,
+        "current": 2132.4621787962496,
+        "reference": 3599.262674552757,
+        "baseline_change_percent": -2.477617208434957,
+        "reference_error_percent": -40.75280490437591
+      },
+      "preemptions": {
+        "baseline": 49,
+        "current": 36
+      }
+    },
+    "b300": {
+      "terminal": {
+        "exit_code": 0,
+        "started_unix_s": 1791470633.7666867,
+        "elapsed_wall_s": 5021.466589927673
+      },
+      "result_sha256": "51849f3326fa5ce4b8f17c486bd65b90be2aa68cfe1d9b3c1c108aea33927f2b",
+      "output_tps": {
+        "baseline": 5443.542729056805,
+        "current": 5358.027003863804,
+        "reference": 6360.26408456516,
+        "baseline_change_percent": -1.5709571771436948,
+        "reference_error_percent": -15.75779035863537
+      },
+      "preemptions": {
+        "baseline": 0,
+        "current": 0
+      }
+    }
+  },
+  "checks": {
+    "frozen_source_and_execution_inputs_verified": true,
+    "full_suite_log_and_hash_verified": true,
+    "both_original_windows_exit_zero_and_strictly_accepted": true,
+    "result_request_log_terminal_identity_verified": true,
+    "paired_analysis_validation_hash_verified": true,
+    "rerun_performed": false
+  },
+  "formal_model_accuracy_accepted": false,
+  "cache_reference_scope": "legacy successful-request rates;server prompt-source emission/scrape scope alignment still pending"
+}
