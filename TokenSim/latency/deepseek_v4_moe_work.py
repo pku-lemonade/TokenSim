@@ -6,11 +6,13 @@ anchor. Expected power-law expert counts, tile traffic and phase overlap are
 explicit analytical assumptions, never fitted to serving throughput.
 """
 
-from collections import OrderedDict
 from dataclasses import dataclass
 import math
 
+import numpy as np
+
 from TokenSim.errors import ConfigurationError
+from TokenSim.latency.deepseek_v4_moe_spectrum import BLOCK_MS, SEEDS, integer_spectra, spectrum_geometry
 
 
 def block_m_for_input(rows, ep, experts, topk):
@@ -43,12 +45,14 @@ class MegaMoEWork:
     expert_mma_rows: float = 0.0
     expert_flops: float = 0.0
     issued_weight_bytes: float = 0.0
+    fused_expert_dispatch_us: float | None = None
 
     @property
     def latency_us(self):
         # Dispatch and expert work overlap in the fused persistent kernel.
         # Pre-dispatch and the final source-side reduction remain separate.
-        return self.startup_us + self.input_us + max(self.expert_us, self.dispatch_us) + self.combine_us
+        fused = self.fused_expert_dispatch_us
+        return self.startup_us + self.input_us + (max(self.expert_us, self.dispatch_us) if fused is None else fused) + self.combine_us
 
 
 class MegaMoEWorkModel:
@@ -66,49 +70,12 @@ class MegaMoEWorkModel:
         self.link = nvlink_bytes_per_s
         if not self.link or self.link <= 0:
             raise ConfigurationError("MegaMoE work growth requires a positive local NVLink bandwidth")
-        self.count_cache = OrderedDict()
 
-    def expected_counts(self, global_rows):
-        """Expected local spectrum from the collector's inverse-CDF family.
+    def integer_spectra(self, global_rows):
+        return integer_spectra(global_rows, self.experts, self.topk, self.ep)
 
-        Midpoint quantiles replace its unrecorded random expert weights. Each
-        rank uses the same expected spectrum; the measured anchor retains its
-        empirical rank skew. Fractional sub-token occupancy is not rounded up
-        to an entire active expert. These are growth weights, not route stats.
-        """
-        cached = self.count_cache.get(global_rows)
-        if cached is not None:
-            self.count_cache.move_to_end(global_rows)
-            return cached
-        if global_rows == 0:
-            return (0.0,) * self.local_experts
-        alpha = 1.01
-        low, high = (1.0, global_rows * 0.8) if global_rows * self.topk > self.experts else (0.01, 2.0)
-        weights = [((high ** (1 - alpha) - low ** (1 - alpha)) * ((index + 0.5) / self.local_experts)
-                    + low ** (1 - alpha)) ** (1 / (1 - alpha)) for index in range(self.local_experts)]
-        total = sum(weights)
-        selections = global_rows * self.topk / self.ep
-        result = tuple(min(global_rows, selections * weight / total) for weight in weights)
-        # The source's per-token unique-top-k bound redistributes overflow.
-        remaining = selections - sum(result)
-        if remaining > 0:
-            available = [index for index, value in enumerate(result) if value < global_rows]
-            values = list(result)
-            while remaining > 1e-9 and available:
-                delta = remaining / len(available)
-                next_available = []
-                for index in available:
-                    addition = min(delta, global_rows - values[index])
-                    values[index] += addition
-                    remaining -= addition
-                    if values[index] < global_rows:
-                        next_available.append(index)
-                available = next_available
-            result = tuple(values)
-        if len(self.count_cache) >= 4096:
-            self.count_cache.popitem(last=False)
-        self.count_cache[global_rows] = result
-        return result
+    def geometry(self, global_rows):
+        return spectrum_geometry(global_rows, self.experts, self.topk, self.ep)
 
     def estimate(self, inputs, valid):
         if len(inputs) != self.ep or len(valid) != self.ep or inputs.keys() != valid.keys():
@@ -116,23 +83,31 @@ class MegaMoEWorkModel:
         if any(n < 0 or not 0 <= valid[rank] <= n for rank, n in inputs.items()):
             raise ConfigurationError("MegaMoE routed rows must fit full inputs")
         global_rows = sum(valid.values())
-        counts = self.expected_counts(global_rows)
+        geometry = self.geometry(global_rows)
         blocks = tuple(block_m_for_input(n, self.ep, self.experts, self.topk) for _, n in sorted(inputs.items()))
         # Pinned TaskInfo aligns valid_m to16 and the kernel updates its
         # swapped MMA N descriptor per task. Every candidate BLOCK_M is a
         # multiple of16, so total MMA rows are independent of M partitioning.
-        mma_rows = sum(min(1.0, n) * 16 * math.ceil(n / 16) for n in counts if n > 0)
+        mma_rows = float(geometry.mma_rows.max(axis=1).mean())
         flops = mma_rows * 6 * self.hidden * self.inter
-        activations = sum(counts) * (self.hidden * (1 + 1 / 32 + 2) + self.inter * (2 + 2 / 32))
-        expert_us = max_tiles = weight_bytes = 0.0
-        for block in set(blocks):
-            tiles = sum(min(1.0, n) * math.ceil(n / block) for n in counts if n > 0)
-            max_tiles = max(max_tiles, tiles)
-            # Dynamic MMA tails do not shrink per-M-task weight/scale TMA.
-            # Keep the existing no-L2-credit streaming traffic estimate.
-            weights = tiles * 3 * self.hidden * self.inter * (0.5 + 1 / 32)
-            weight_bytes = max(weight_bytes, weights)
-            expert_us = max(expert_us, max(flops / self.compute, (weights + activations) / self.bandwidth) * 1e6)
+        activation_bytes = geometry.selections * (self.hidden * (1 + 1 / 32 + 2) + self.inter * (2 + 2 / 32))
+        weights_per_tile = 3 * self.hidden * self.inter * (0.5 + 1 / 32)
+        math_us = geometry.mma_rows * (6 * self.hidden * self.inter / self.compute * 1e6)
+        block_indices = [BLOCK_MS.index(block) for block in blocks]
+        critical_experts, critical_tiles = [], []
+        # Unknown serving hot-rank identity must not inherit the collector's
+        # deliberate swap to rank0. Every placement retains its slowest rank;
+        # only those critical work costs are averaged, never full input rows.
+        for rotation in range(self.ep):
+            ranks = (np.arange(self.ep) + rotation) % self.ep
+            tiles = geometry.m_tiles[:, ranks, block_indices]
+            memory_us = (tiles * weights_per_tile + activation_bytes[:, ranks]) / self.bandwidth * 1e6
+            critical_experts.append(np.maximum(math_us[:, ranks], memory_us).max(axis=1))
+            critical_tiles.append(tiles.max(axis=1))
+        critical = np.concatenate(critical_experts)
+        expert_us = float(critical.mean())
+        max_tiles = float(np.concatenate(critical_tiles).mean())
+        weight_bytes = max_tiles * weights_per_tile
         full_max, valid_max = max(inputs.values()), max(valid.values())
         # BF16 X -> FP8 X/scales, routing staging and two top-k scans.
         input_bytes = full_max * (self.hidden * (2 + 1 + 1 / 32) + self.topk * (12 + 16))
@@ -146,14 +121,18 @@ class MegaMoEWorkModel:
             (combine_bytes / self.link + local_combine_bytes / self.bandwidth) * 1e6,
             blocks, global_rows, global_rows * self.topk, max_tiles,
             mma_rows, flops, weight_bytes,
+            float(np.maximum(critical, dispatch_bytes / self.link * 1e6).mean()),
         )
 
     def describe(self):
         return {
             "basis": "pinned DeepGEMM input-selected BLOCK_M, valid expert tasks, pre-dispatch/scan and source-side combine",
             "normalization": "target physical phase work / matching full-input uniform phase work; whole measured module anchor retained",
-            "expert_spectrum": "inverse-CDF power_law_1.01 midpoint quantiles; expected local spectrum, empirical source skew retained in anchor",
-            "mma_rows": "valid expert task tails aligned to16; per-expert16*ceil(received/16), fractional occupancy remains expected work",
+            "expert_spectrum": "global power_law_1.01 integer spectra; fixed MT19937 float32 draws0/1/2, rounding/clipping/round-robin conservation; synthetic, not recovered historical routes",
+            "spectrum_samples": list(SEEDS),
+            "spectrum_placement": "mean critical costs over all cyclic hot-rank placements; each retains max-rank work and full-input BLOCK_M; no mean-row module substitution",
+            "spectrum_rounding": "float32 inverse-CDF; NumPy/Torch reduction differences may move boundary counts, exact integer selection bounds retained",
+            "mma_rows": "valid expert task tails aligned to16; per-expert16*ceil(received/16); mean critical-rank arithmetic over synthetic samples",
             "mma_opcode": "tcgen05.mma.cta_group::2.kind::mxf8f6f4.block_scale; FP8 activation/FP4 weight, UMMA_K32",
             "compute_pipe": "catalog FP8 theoretical peak for the mixed MXF8F6F4 path; not pure FP4 storage-dtype peak",
             "compute_flops_per_s": self.compute,

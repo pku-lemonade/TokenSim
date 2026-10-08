@@ -18,9 +18,10 @@ SOURCE_CHANGES = {"TokenSim/latency/deepseek_v4_moe.py",
                   "TokenSim/latency/deepseek_v4_moe_work.py"}
 
 
-def audit(root, *, hardware=("b200", "b300")):
-    report = audit_valid_work(root, hardware=hardware, baseline_root=BASELINE,
-                              baseline_evidence=EVIDENCE, source_changes=SOURCE_CHANGES)
+def audit(root, *, hardware=("b200", "b300"), baseline_root=BASELINE,
+          baseline_evidence=EVIDENCE, source_changes=SOURCE_CHANGES):
+    report = audit_valid_work(root, hardware=hardware, baseline_root=baseline_root,
+                              baseline_evidence=baseline_evidence, source_changes=source_changes)
     context = HardwareContext.load("data")
     model = context.model("DeepSeek-V4-Pro")
     flops_per_row = 6 * model.hidden_size * model.moe_intermediate_size

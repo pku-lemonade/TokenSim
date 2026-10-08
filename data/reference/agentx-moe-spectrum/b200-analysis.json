@@ -1,0 +1,213 @@
+{
+  "scope": "completed B200 integer-critical checkpoint; B300 pending",
+  "formal_model_accuracy_accepted": false,
+  "validation_sha256": "5720b265f7b093829557e12ebf854008d7b92051dac1a6cd18b70ac20d65a05f",
+  "result_sha256": "429cbad1e05601227069e6e537beb68a8ac262184b582490aee15fab974d370d",
+  "paired_metrics": {
+    "input_tps": {
+      "baseline": 239855.50172998093,
+      "current": 258429.28805434072,
+      "reference": 470700.8790310961,
+      "baseline_change_percent": 7.743739956096296,
+      "reference_error_percent": -45.09691832607179
+    },
+    "output_tps": {
+      "baseline": 1846.1495244198782,
+      "current": 2009.0131370451131,
+      "reference": 3599.262674552757,
+      "baseline_change_percent": 8.821799668497166,
+      "reference_error_percent": -44.182647428066566
+    },
+    "ttft_p90_s": {
+      "baseline": 60.202233705859726,
+      "current": 59.939587358267545,
+      "reference": 16.206517135000002,
+      "baseline_change_percent": -0.43627342612474473,
+      "reference_error_percent": 269.84866556442597
+    },
+    "itl_p90_s": {
+      "baseline": 0.12472508567907281,
+      "current": 0.11388496356698258,
+      "reference": 0.05024579619035286,
+      "baseline_change_percent": -8.69121239971139,
+      "reference_error_percent": 126.655704957957
+    },
+    "e2e_mean_s": {
+      "baseline": 97.01190145085285,
+      "current": 88.44335992213023,
+      "reference": 43.36484218156744,
+      "baseline_change_percent": -8.832464265287621,
+      "reference_error_percent": 103.95176247112863
+    },
+    "gpu_hit_fraction": {
+      "baseline": 0.31160654291490536,
+      "current": 0.3365518732221498,
+      "reference": 0.68223,
+      "baseline_change_percent": 8.005393620395385,
+      "reference_error_percent": -50.66885460590274,
+      "reference_difference_percentage_points": -34.56781267778502
+    },
+    "cpu_hit_fraction": {
+      "baseline": 0.637760705752619,
+      "current": 0.6144403110776815,
+      "reference": 0.23726,
+      "baseline_change_percent": -3.656605755824549,
+      "reference_error_percent": 158.97340937270567,
+      "reference_difference_percentage_points": 37.71803110776815
+    }
+  },
+  "phase_counts": {
+    "warmup": {
+      "sent": 2171,
+      "successful": 2171
+    },
+    "profiling": {
+      "sent": 8492,
+      "successful": 8346,
+      "cancelled": 146
+    }
+  },
+  "preemptions": {
+    "baseline": 73,
+    "current": 67
+  },
+  "moe_ledger": {
+    "uniform_anchor_seconds": 9339.46319882572,
+    "composed_routed_seconds": 13639.455706859935,
+    "anchor_difference_seconds": -4299.9925080343055,
+    "source_work_us": 264308266.96568447,
+    "target_work_us": 345169393.54931015,
+    "input_work_us": 1097071.9517090286,
+    "expert_work_us": 300535558.9610246,
+    "dispatch_work_us": 16635651.155200131,
+    "combine_work_us": 37293498.63657807,
+    "source_mma_layer_rows": 114069715711.99849,
+    "target_mma_layer_rows": 38729055232.0006,
+    "source_expert_flops": 1.507095654402569e+19,
+    "target_expert_flops": 5.116905085187654e+18,
+    "source_issued_weight_bytes": 3.452188319337677e+16,
+    "target_issued_weight_bytes": 5.784418349324698e+16
+  },
+  "normalized_components": {
+    "gemm": {
+      "baseline_seconds_per_million_output": 84.8920040635053,
+      "current_seconds_per_million_output": 87.7677318148202,
+      "change_percent": 3.3875130915317353
+    },
+    "attention": {
+      "baseline_seconds_per_million_output": 682.7291343790444,
+      "current_seconds_per_million_output": 678.3078596845303,
+      "change_percent": -0.6475884024687684
+    },
+    "moe": {
+      "baseline_seconds_per_million_output": 2229.155871227547,
+      "current_seconds_per_million_output": 1902.795528593042,
+      "change_percent": -14.640534870035149
+    },
+    "elementwise": {
+      "baseline_seconds_per_million_output": 104.2234315565452,
+      "current_seconds_per_million_output": 105.58471587711841,
+      "change_percent": 1.3061211862273714
+    },
+    "lm_head": {
+      "baseline_seconds_per_million_output": 28.04895079308234,
+      "current_seconds_per_million_output": 28.998222816282908,
+      "change_percent": 3.3843405773120283
+    },
+    "comm": {
+      "baseline_seconds_per_million_output": 0.0,
+      "current_seconds_per_million_output": 0.0,
+      "change_percent": null
+    },
+    "overhead": {
+      "baseline_seconds_per_million_output": 0.0,
+      "current_seconds_per_million_output": 0.0,
+      "change_percent": null
+    }
+  },
+  "normalization_is_analysis_only": true,
+  "per_rank": [
+    {
+      "rank": 0,
+      "successful": 962,
+      "cancelled": 11,
+      "input_tokens": 108038400,
+      "gpu_hit_tokens": 27815424,
+      "cpu_hit_tokens": 75817728,
+      "max_used_gpu_slots": 20901,
+      "full_input_gate": 5220
+    },
+    {
+      "rank": 1,
+      "successful": 1102,
+      "cancelled": 18,
+      "input_tokens": 128161920,
+      "gpu_hit_tokens": 73096448,
+      "cpu_hit_tokens": 50015488,
+      "max_used_gpu_slots": 18719,
+      "full_input_gate": 964
+    },
+    {
+      "rank": 2,
+      "successful": 1000,
+      "cancelled": 16,
+      "input_tokens": 118630272,
+      "gpu_hit_tokens": 19799296,
+      "cpu_hit_tokens": 93375232,
+      "max_used_gpu_slots": 20944,
+      "full_input_gate": 9510
+    },
+    {
+      "rank": 3,
+      "successful": 969,
+      "cancelled": 13,
+      "input_tokens": 114151040,
+      "gpu_hit_tokens": 38426624,
+      "cpu_hit_tokens": 68888064,
+      "max_used_gpu_slots": 19826,
+      "full_input_gate": 5102
+    },
+    {
+      "rank": 4,
+      "successful": 955,
+      "cancelled": 28,
+      "input_tokens": 118539072,
+      "gpu_hit_tokens": 3840768,
+      "cpu_hit_tokens": 108553728,
+      "max_used_gpu_slots": 20971,
+      "full_input_gate": 16181
+    },
+    {
+      "rank": 5,
+      "successful": 1103,
+      "cancelled": 16,
+      "input_tokens": 109247872,
+      "gpu_hit_tokens": 59972352,
+      "cpu_hit_tokens": 44529152,
+      "max_used_gpu_slots": 17538,
+      "full_input_gate": 1020
+    },
+    {
+      "rank": 6,
+      "successful": 1202,
+      "cancelled": 14,
+      "input_tokens": 106492032,
+      "gpu_hit_tokens": 75434240,
+      "cpu_hit_tokens": 24528640,
+      "max_used_gpu_slots": 16526,
+      "full_input_gate": 267
+    },
+    {
+      "rank": 7,
+      "successful": 1053,
+      "cancelled": 30,
+      "input_tokens": 134658688,
+      "gpu_hit_tokens": 17273344,
+      "cpu_hit_tokens": 110587392,
+      "max_used_gpu_slots": 20936,
+      "full_input_gate": 10376
+    }
+  ],
+  "sync_wait_fraction": 0.2961403788896501,
+  "checks": "counts/output/input decomposition/cancellation/pool/DP conservation passed"
+}

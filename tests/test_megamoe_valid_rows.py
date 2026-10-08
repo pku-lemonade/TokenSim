@@ -4,9 +4,12 @@ from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import patch
 
+import numpy as np
+
 from TokenSim.errors import ConfigurationError
 from TokenSim.latency.deepseek_v4_moe import MoEPass, RankShape, sp_valid_rows
 from TokenSim.latency.deepseek_v4_moe_work import MegaMoEWorkModel, block_m_for_input
+from TokenSim.latency.deepseek_v4_moe_spectrum import SpectrumGeometry
 from util.results import get_latency_stats
 import tests.test_native_megamoe as native_moe
 import tests.test_full_mtp as full_mtp
@@ -120,17 +123,21 @@ class MegaMoEValidRowsTest(TestCase):
         backend = self.backend()
         for rows in (0, 1, 8, 64, 512, 4544, 32768):
             with self.subTest(rows=rows):
-                counts = backend.native_moe.work_model.expected_counts(rows)
-                self.assertAlmostEqual(sum(counts) * 8, rows * 6, places=6)
-                self.assertTrue(all(0 <= value <= rows for value in counts))
+                counts = backend.native_moe.work_model.integer_spectra(rows)
+                self.assertTrue(np.all(counts.sum(axis=(1, 2)) == rows * 6))
+                self.assertTrue(np.all((counts >= 0) & (counts <= rows)))
+
+    @staticmethod
+    def tail_geometry():
+        return SpectrumGeometry(np.full((3, 8), 176), np.full((3, 8), 96),
+                                np.tile([11, 6, 6, 6, 6, 6], (3, 8, 1)))
 
     def test_dynamic_mma_tails_keep_math_rows_when_block_partition_changes(self):
         model = self.backend().native_moe.work_model
         # Five17-row experts issue32 MMA rows each; the11-row expert issues16.
         # Each EP rank receives96 selections, matching128 valid rows *6 /8.
-        received = (17.0,) * 5 + (11.0,) + (0.0,) * 42
         cases = []
-        with patch.object(model, "expected_counts", return_value=received):
+        with patch.object(model, "geometry", return_value=self.tail_geometry()):
             for full in (64, 256, 4096):
                 work = model.estimate({rank: full for rank in range(8)},
                                       {rank: 16 for rank in range(8)})
@@ -147,23 +154,43 @@ class MegaMoEValidRowsTest(TestCase):
         model = self.backend().native_moe.work_model
         # Remove the bandwidth bound to expose arithmetic independently.
         model.bandwidth = float("inf")
-        received = (17.0,) * 5 + (11.0,) + (0.0,) * 42
-        with patch.object(model, "expected_counts", return_value=received):
+        with patch.object(model, "geometry", return_value=self.tail_geometry()):
             work = model.estimate({rank: 4096 for rank in range(8)},
                                   {rank: 16 for rank in range(8)})
         expected = 176 * 6 * 7168 * 3072 / model.compute * 1e6
         self.assertAlmostEqual(work.expert_us, expected)
         self.assertLess(work.expert_mma_rows, work.max_expert_tiles * 192)
 
-    def test_subtoken_expected_occupancy_keeps_fractional_mma_work(self):
+    def test_small_valid_spectrum_uses_integer_tasks_and_critical_rank(self):
         model = self.backend().native_moe.work_model
-        received = (0.25,) * 24 + (0.0,) * 24
-        with patch.object(model, "expected_counts", return_value=received):
-            work = model.estimate({rank: 256 for rank in range(8)},
-                                  {rank: 1 for rank in range(8)})
-        self.assertEqual(work.expert_mma_rows, 96)
-        self.assertEqual(work.max_expert_tiles, 6)
+        work = model.estimate({rank: 256 for rank in range(8)},
+                              {rank: 1 for rank in range(8)})
+        counts = model.integer_spectra(8)
+        self.assertTrue(np.all(counts.sum(axis=(1, 2)) == 48))
+        self.assertEqual(work.expert_mma_rows, 128)
+        self.assertEqual(work.max_expert_tiles, 8)
         self.assertEqual(work.expert_selections, 48)
+
+    def test_critical_rank_does_not_become_average_expert_work(self):
+        model = self.backend().native_moe.work_model
+        mma, selections = np.zeros((3, 8)), np.zeros((3, 8))
+        tiles = np.zeros((3, 8, 6))
+        mma[:, 0] = selections[:, 0] = 768
+        tiles[:, 0, :] = [48, 24, 12, 6, 6, 6]
+        with patch.object(model, "geometry", return_value=SpectrumGeometry(mma, selections, tiles)):
+            work = model.estimate({rank: 128 for rank in range(8)},
+                                  {rank: 16 for rank in range(8)})
+        self.assertEqual(work.expert_mma_rows, 768)
+        self.assertEqual(work.max_expert_tiles, 24)
+
+    def test_unknown_hot_rank_placement_is_cyclically_invariant(self):
+        model = self.backend().native_moe.work_model
+        rows = [4096] + [64] * 7
+        first = model.estimate(dict(enumerate(rows)), dict(enumerate(rows)))
+        rotated = rows[3:] + rows[:3]
+        second = model.estimate(dict(enumerate(rotated)), dict(enumerate(rotated)))
+        self.assertAlmostEqual(first.latency_us, second.latency_us)
+        self.assertAlmostEqual(first.issued_weight_bytes, second.issued_weight_bytes)
 
     def test_native_mixed_input_peak_is_independent_of_fp4_storage_peak(self):
         for sku in ("b200", "b300"):
