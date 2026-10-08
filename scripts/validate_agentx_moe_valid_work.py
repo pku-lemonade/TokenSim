@@ -17,21 +17,22 @@ SOURCE_CHANGES = {
 }
 
 
-def audit(root, *, hardware=("b200", "b300")):
+def audit(root, *, hardware=("b200", "b300"), baseline_root=BASELINE,
+          baseline_evidence=EVIDENCE, source_changes=SOURCE_CHANGES):
     result = audit_batches(root, hardware=hardware)
-    previous = json.loads(EVIDENCE.read_text())["checkpoints"]
+    previous = json.loads(Path(baseline_evidence).read_text())["checkpoints"]
     for sku, concurrency in (("b200", 196), ("b300", 384)):
         if sku not in hardware:
             continue
         relative = Path("seed0") / f"{sku}-c{concurrency}-dep8-simplecpu" / sku
-        old, new = BASELINE / relative, Path(root) / relative
+        old, new = Path(baseline_root) / relative, Path(root) / relative
         before = json.loads((old / "run_manifest.json").read_text())
         after = json.loads((new / "run_manifest.json").read_text())
         for key in ("point", "defaults", "backend", "simulation_seed", "dataset_sha256", "transfer_utilization_assumption"):
             assert before[key] == after[key], key
         a, b = before["source_sha256"], after["source_sha256"]
         changed = {key for key in a.keys() | b.keys() if a.get(key) != b.get(key)}
-        assert changed == SOURCE_CHANGES, changed
+        assert changed == source_changes, changed
         old_path = old / f"agentx_c{concurrency}.json"
         assert hashlib.sha256(old_path.read_bytes()).hexdigest() == previous[sku]["result_sha256"]
         baseline = json.loads(old_path.read_text())

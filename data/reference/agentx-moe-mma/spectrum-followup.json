@@ -1,0 +1,1218 @@
+{
+  "scope": "new synthetic source-family histogram and critical-rank occupancy diagnostics",
+  "runtime_change": false,
+  "fitted_parameters": false,
+  "formal_accuracy_evidence": false,
+  "matches_original_table_histograms": false,
+  "helper_path": "/tmp/aiconfigurator/collector/helper.py",
+  "helper_sha256": "6c3d32d6cb1003ad7869293cda4c6379b4944c497a640c2cc8a634492687b84d",
+  "method": "execute only four original CPU helper functions with explicit new seeds0/1/2; compare integer per-rank tasks to current midpoint local proxy",
+  "cases": [
+    {
+      "global_valid_rows": 8,
+      "local_uniform_rows": 1,
+      "block_m": 16,
+      "proxy_m_tiles": 6.0,
+      "proxy_mma_rows": 96.0,
+      "samples": [
+        {
+          "diagnostic_seed": 0,
+          "rank_selections": [
+            8,
+            5,
+            8,
+            5,
+            5,
+            4,
+            5,
+            8
+          ],
+          "rank_m_tiles": [
+            8,
+            5,
+            8,
+            5,
+            5,
+            4,
+            5,
+            8
+          ],
+          "rank_mma_rows": [
+            128,
+            80,
+            128,
+            80,
+            80,
+            64,
+            80,
+            128
+          ],
+          "max_m_tiles": 8,
+          "max_mma_rows": 128,
+          "max_tiles_over_proxy": 1.3333333333333333,
+          "max_mma_over_proxy": 1.3333333333333333
+        },
+        {
+          "diagnostic_seed": 1,
+          "rank_selections": [
+            8,
+            5,
+            6,
+            7,
+            7,
+            6,
+            3,
+            6
+          ],
+          "rank_m_tiles": [
+            8,
+            5,
+            6,
+            7,
+            7,
+            6,
+            3,
+            6
+          ],
+          "rank_mma_rows": [
+            128,
+            80,
+            96,
+            112,
+            112,
+            96,
+            48,
+            96
+          ],
+          "max_m_tiles": 8,
+          "max_mma_rows": 128,
+          "max_tiles_over_proxy": 1.3333333333333333,
+          "max_mma_over_proxy": 1.3333333333333333
+        },
+        {
+          "diagnostic_seed": 2,
+          "rank_selections": [
+            8,
+            4,
+            6,
+            6,
+            6,
+            5,
+            7,
+            6
+          ],
+          "rank_m_tiles": [
+            8,
+            4,
+            6,
+            6,
+            6,
+            5,
+            7,
+            6
+          ],
+          "rank_mma_rows": [
+            128,
+            64,
+            96,
+            96,
+            96,
+            80,
+            112,
+            96
+          ],
+          "max_m_tiles": 8,
+          "max_mma_rows": 128,
+          "max_tiles_over_proxy": 1.3333333333333333,
+          "max_mma_over_proxy": 1.3333333333333333
+        }
+      ]
+    },
+    {
+      "global_valid_rows": 16,
+      "local_uniform_rows": 2,
+      "block_m": 16,
+      "proxy_m_tiles": 11.556473854282194,
+      "proxy_mma_rows": 184.9035816685151,
+      "samples": [
+        {
+          "diagnostic_seed": 0,
+          "rank_selections": [
+            19,
+            14,
+            12,
+            12,
+            10,
+            11,
+            8,
+            10
+          ],
+          "rank_m_tiles": [
+            19,
+            14,
+            12,
+            12,
+            10,
+            11,
+            8,
+            10
+          ],
+          "rank_mma_rows": [
+            304,
+            224,
+            192,
+            192,
+            160,
+            176,
+            128,
+            160
+          ],
+          "max_m_tiles": 19,
+          "max_mma_rows": 304,
+          "max_tiles_over_proxy": 1.64410011562131,
+          "max_mma_over_proxy": 1.64410011562131
+        },
+        {
+          "diagnostic_seed": 1,
+          "rank_selections": [
+            19,
+            9,
+            16,
+            13,
+            10,
+            13,
+            7,
+            9
+          ],
+          "rank_m_tiles": [
+            19,
+            9,
+            16,
+            13,
+            10,
+            13,
+            7,
+            9
+          ],
+          "rank_mma_rows": [
+            304,
+            144,
+            256,
+            208,
+            160,
+            208,
+            112,
+            144
+          ],
+          "max_m_tiles": 19,
+          "max_mma_rows": 304,
+          "max_tiles_over_proxy": 1.64410011562131,
+          "max_mma_over_proxy": 1.64410011562131
+        },
+        {
+          "diagnostic_seed": 2,
+          "rank_selections": [
+            14,
+            13,
+            8,
+            14,
+            11,
+            9,
+            13,
+            14
+          ],
+          "rank_m_tiles": [
+            14,
+            13,
+            8,
+            13,
+            11,
+            9,
+            12,
+            14
+          ],
+          "rank_mma_rows": [
+            224,
+            208,
+            128,
+            208,
+            176,
+            144,
+            192,
+            224
+          ],
+          "max_m_tiles": 14,
+          "max_mma_rows": 224,
+          "max_tiles_over_proxy": 1.2114421904578072,
+          "max_mma_over_proxy": 1.2114421904578072
+        }
+      ]
+    },
+    {
+      "global_valid_rows": 32,
+      "local_uniform_rows": 4,
+      "block_m": 16,
+      "proxy_m_tiles": 17.705374184123222,
+      "proxy_mma_rows": 283.28598694597156,
+      "samples": [
+        {
+          "diagnostic_seed": 0,
+          "rank_selections": [
+            42,
+            30,
+            19,
+            21,
+            20,
+            20,
+            19,
+            21
+          ],
+          "rank_m_tiles": [
+            27,
+            22,
+            15,
+            17,
+            14,
+            15,
+            16,
+            16
+          ],
+          "rank_mma_rows": [
+            432,
+            352,
+            240,
+            272,
+            224,
+            240,
+            256,
+            256
+          ],
+          "max_m_tiles": 27,
+          "max_mma_rows": 432,
+          "max_tiles_over_proxy": 1.5249607107547867,
+          "max_mma_over_proxy": 1.5249607107547867
+        },
+        {
+          "diagnostic_seed": 1,
+          "rank_selections": [
+            34,
+            21,
+            29,
+            22,
+            24,
+            27,
+            16,
+            19
+          ],
+          "rank_m_tiles": [
+            23,
+            17,
+            22,
+            16,
+            19,
+            17,
+            13,
+            15
+          ],
+          "rank_mma_rows": [
+            368,
+            272,
+            352,
+            256,
+            304,
+            272,
+            208,
+            240
+          ],
+          "max_m_tiles": 23,
+          "max_mma_rows": 368,
+          "max_tiles_over_proxy": 1.2990406054577812,
+          "max_mma_over_proxy": 1.2990406054577812
+        },
+        {
+          "diagnostic_seed": 2,
+          "rank_selections": [
+            28,
+            18,
+            28,
+            24,
+            20,
+            22,
+            28,
+            24
+          ],
+          "rank_m_tiles": [
+            21,
+            15,
+            21,
+            18,
+            14,
+            19,
+            20,
+            19
+          ],
+          "rank_mma_rows": [
+            336,
+            240,
+            336,
+            288,
+            224,
+            304,
+            320,
+            304
+          ],
+          "max_m_tiles": 21,
+          "max_mma_rows": 336,
+          "max_tiles_over_proxy": 1.1860805528092786,
+          "max_mma_over_proxy": 1.1860805528092786
+        }
+      ]
+    },
+    {
+      "global_valid_rows": 64,
+      "local_uniform_rows": 8,
+      "block_m": 16,
+      "proxy_m_tiles": 23.83661606338647,
+      "proxy_mma_rows": 381.3858570141835,
+      "samples": [
+        {
+          "diagnostic_seed": 0,
+          "rank_selections": [
+            76,
+            59,
+            44,
+            40,
+            38,
+            46,
+            39,
+            42
+          ],
+          "rank_m_tiles": [
+            31,
+            30,
+            22,
+            21,
+            21,
+            24,
+            26,
+            22
+          ],
+          "rank_mma_rows": [
+            496,
+            480,
+            352,
+            336,
+            336,
+            384,
+            416,
+            352
+          ],
+          "max_m_tiles": 31,
+          "max_mma_rows": 496,
+          "max_tiles_over_proxy": 1.3005201710496415,
+          "max_mma_over_proxy": 1.3005201710496415
+        },
+        {
+          "diagnostic_seed": 1,
+          "rank_selections": [
+            67,
+            42,
+            66,
+            44,
+            45,
+            50,
+            32,
+            38
+          ],
+          "rank_m_tiles": [
+            27,
+            24,
+            30,
+            22,
+            24,
+            22,
+            18,
+            21
+          ],
+          "rank_mma_rows": [
+            432,
+            384,
+            480,
+            352,
+            384,
+            352,
+            288,
+            336
+          ],
+          "max_m_tiles": 30,
+          "max_mma_rows": 480,
+          "max_tiles_over_proxy": 1.258567907467395,
+          "max_mma_over_proxy": 1.258567907467395
+        },
+        {
+          "diagnostic_seed": 2,
+          "rank_selections": [
+            62,
+            38,
+            52,
+            45,
+            39,
+            42,
+            54,
+            52
+          ],
+          "rank_m_tiles": [
+            31,
+            26,
+            25,
+            22,
+            21,
+            25,
+            24,
+            25
+          ],
+          "rank_mma_rows": [
+            496,
+            416,
+            400,
+            352,
+            336,
+            400,
+            384,
+            400
+          ],
+          "max_m_tiles": 31,
+          "max_mma_rows": 496,
+          "max_tiles_over_proxy": 1.3005201710496415,
+          "max_mma_over_proxy": 1.3005201710496415
+        }
+      ]
+    },
+    {
+      "global_valid_rows": 128,
+      "local_uniform_rows": 16,
+      "block_m": 16,
+      "proxy_m_tiles": 32.517983400941084,
+      "proxy_mma_rows": 520.2877344150573,
+      "samples": [
+        {
+          "diagnostic_seed": 0,
+          "rank_selections": [
+            146,
+            109,
+            95,
+            86,
+            82,
+            85,
+            82,
+            83
+          ],
+          "rank_m_tiles": [
+            34,
+            35,
+            35,
+            33,
+            32,
+            29,
+            36,
+            30
+          ],
+          "rank_mma_rows": [
+            544,
+            560,
+            560,
+            528,
+            512,
+            464,
+            576,
+            480
+          ],
+          "max_m_tiles": 36,
+          "max_mma_rows": 576,
+          "max_tiles_over_proxy": 1.107079721276878,
+          "max_mma_over_proxy": 1.107079721276878
+        },
+        {
+          "diagnostic_seed": 1,
+          "rank_selections": [
+            129,
+            86,
+            118,
+            91,
+            94,
+            103,
+            68,
+            79
+          ],
+          "rank_m_tiles": [
+            34,
+            34,
+            34,
+            31,
+            35,
+            32,
+            31,
+            30
+          ],
+          "rank_mma_rows": [
+            544,
+            544,
+            544,
+            496,
+            560,
+            512,
+            496,
+            480
+          ],
+          "max_m_tiles": 35,
+          "max_mma_rows": 560,
+          "max_tiles_over_proxy": 1.0763275067969647,
+          "max_mma_over_proxy": 1.0763275067969647
+        },
+        {
+          "diagnostic_seed": 2,
+          "rank_selections": [
+            115,
+            82,
+            104,
+            92,
+            79,
+            86,
+            107,
+            103
+          ],
+          "rank_m_tiles": [
+            39,
+            36,
+            31,
+            32,
+            29,
+            33,
+            33,
+            30
+          ],
+          "rank_mma_rows": [
+            624,
+            576,
+            496,
+            512,
+            464,
+            528,
+            528,
+            480
+          ],
+          "max_m_tiles": 39,
+          "max_mma_rows": 624,
+          "max_tiles_over_proxy": 1.1993363647166178,
+          "max_mma_over_proxy": 1.1993363647166178
+        }
+      ]
+    },
+    {
+      "global_valid_rows": 256,
+      "local_uniform_rows": 32,
+      "block_m": 16,
+      "proxy_m_tiles": 38.63296551221283,
+      "proxy_mma_rows": 618.1274481954052,
+      "samples": [
+        {
+          "diagnostic_seed": 0,
+          "rank_selections": [
+            309,
+            223,
+            181,
+            164,
+            163,
+            173,
+            160,
+            163
+          ],
+          "rank_m_tiles": [
+            43,
+            40,
+            42,
+            36,
+            37,
+            35,
+            40,
+            36
+          ],
+          "rank_mma_rows": [
+            688,
+            640,
+            672,
+            576,
+            592,
+            560,
+            640,
+            576
+          ],
+          "max_m_tiles": 43,
+          "max_mma_rows": 688,
+          "max_tiles_over_proxy": 1.113039069869142,
+          "max_mma_over_proxy": 1.113039069869142
+        },
+        {
+          "diagnostic_seed": 1,
+          "rank_selections": [
+            258,
+            162,
+            252,
+            184,
+            183,
+            206,
+            133,
+            158
+          ],
+          "rank_m_tiles": [
+            40,
+            37,
+            40,
+            40,
+            41,
+            37,
+            39,
+            38
+          ],
+          "rank_mma_rows": [
+            640,
+            592,
+            640,
+            640,
+            656,
+            592,
+            624,
+            608
+          ],
+          "max_m_tiles": 41,
+          "max_mma_rows": 656,
+          "max_tiles_over_proxy": 1.0612698108054608,
+          "max_mma_over_proxy": 1.0612698108054608
+        },
+        {
+          "diagnostic_seed": 2,
+          "rank_selections": [
+            227,
+            145,
+            211,
+            186,
+            165,
+            170,
+            223,
+            209
+          ],
+          "rank_m_tiles": [
+            45,
+            40,
+            39,
+            37,
+            41,
+            39,
+            40,
+            35
+          ],
+          "rank_mma_rows": [
+            720,
+            640,
+            624,
+            592,
+            656,
+            624,
+            640,
+            560
+          ],
+          "max_m_tiles": 45,
+          "max_mma_rows": 720,
+          "max_tiles_over_proxy": 1.1648083289328228,
+          "max_mma_over_proxy": 1.1648083289328228
+        }
+      ]
+    },
+    {
+      "global_valid_rows": 512,
+      "local_uniform_rows": 64,
+      "block_m": 16,
+      "proxy_m_tiles": 49.899729111078024,
+      "proxy_mma_rows": 798.3956657772484,
+      "samples": [
+        {
+          "diagnostic_seed": 0,
+          "rank_selections": [
+            633,
+            453,
+            364,
+            325,
+            322,
+            343,
+            311,
+            321
+          ],
+          "rank_m_tiles": [
+            62,
+            54,
+            52,
+            48,
+            46,
+            47,
+            50,
+            47
+          ],
+          "rank_mma_rows": [
+            992,
+            864,
+            832,
+            768,
+            736,
+            752,
+            800,
+            752
+          ],
+          "max_m_tiles": 62,
+          "max_mma_rows": 992,
+          "max_tiles_over_proxy": 1.2424917149747743,
+          "max_mma_over_proxy": 1.2424917149747743
+        },
+        {
+          "diagnostic_seed": 1,
+          "rank_selections": [
+            534,
+            318,
+            505,
+            372,
+            363,
+            424,
+            249,
+            307
+          ],
+          "rank_m_tiles": [
+            56,
+            43,
+            54,
+            50,
+            53,
+            53,
+            45,
+            45
+          ],
+          "rank_mma_rows": [
+            896,
+            688,
+            864,
+            800,
+            848,
+            848,
+            720,
+            720
+          ],
+          "max_m_tiles": 56,
+          "max_mma_rows": 896,
+          "max_tiles_over_proxy": 1.122250581267538,
+          "max_mma_over_proxy": 1.122250581267538
+        },
+        {
+          "diagnostic_seed": 2,
+          "rank_selections": [
+            464,
+            284,
+            424,
+            374,
+            326,
+            324,
+            452,
+            424
+          ],
+          "rank_m_tiles": [
+            56,
+            48,
+            49,
+            47,
+            54,
+            44,
+            51,
+            52
+          ],
+          "rank_mma_rows": [
+            896,
+            768,
+            784,
+            752,
+            864,
+            704,
+            816,
+            832
+          ],
+          "max_m_tiles": 56,
+          "max_mma_rows": 896,
+          "max_tiles_over_proxy": 1.122250581267538,
+          "max_mma_over_proxy": 1.122250581267538
+        }
+      ]
+    },
+    {
+      "global_valid_rows": 1024,
+      "local_uniform_rows": 128,
+      "block_m": 32,
+      "proxy_m_tiles": 53.62433283325128,
+      "proxy_mma_rows": 1193.9893253320204,
+      "samples": [
+        {
+          "diagnostic_seed": 0,
+          "rank_selections": [
+            1309,
+            919,
+            730,
+            638,
+            641,
+            671,
+            597,
+            639
+          ],
+          "rank_m_tiles": [
+            63,
+            58,
+            55,
+            46,
+            50,
+            49,
+            50,
+            47
+          ],
+          "rank_mma_rows": [
+            1680,
+            1312,
+            1200,
+            1024,
+            1056,
+            1088,
+            1008,
+            1040
+          ],
+          "max_m_tiles": 63,
+          "max_mma_rows": 1680,
+          "max_tiles_over_proxy": 1.174839791404082,
+          "max_mma_over_proxy": 1.407047755249262
+        },
+        {
+          "diagnostic_seed": 1,
+          "rank_selections": [
+            1091,
+            619,
+            1025,
+            748,
+            713,
+            856,
+            481,
+            611
+          ],
+          "rank_m_tiles": [
+            60,
+            46,
+            57,
+            55,
+            56,
+            56,
+            49,
+            51
+          ],
+          "rank_mma_rows": [
+            1472,
+            1024,
+            1360,
+            1184,
+            1216,
+            1264,
+            976,
+            1072
+          ],
+          "max_m_tiles": 60,
+          "max_mma_rows": 1472,
+          "max_tiles_over_proxy": 1.118895039432459,
+          "max_mma_over_proxy": 1.2328418426945915
+        },
+        {
+          "diagnostic_seed": 2,
+          "rank_selections": [
+            932,
+            545,
+            855,
+            757,
+            646,
+            629,
+            922,
+            858
+          ],
+          "rank_m_tiles": [
+            58,
+            51,
+            52,
+            53,
+            57,
+            46,
+            55,
+            56
+          ],
+          "rank_mma_rows": [
+            1376,
+            1056,
+            1248,
+            1168,
+            1184,
+            976,
+            1312,
+            1312
+          ],
+          "max_m_tiles": 58,
+          "max_mma_rows": 1376,
+          "max_tiles_over_proxy": 1.0815985381180437,
+          "max_mma_over_proxy": 1.152439113823205
+        }
+      ]
+    },
+    {
+      "global_valid_rows": 8192,
+      "local_uniform_rows": 1024,
+      "block_m": 192,
+      "proxy_m_tiles": 65.87159234203187,
+      "proxy_mma_rows": 6557.94547747251,
+      "samples": [
+        {
+          "diagnostic_seed": 0,
+          "rank_selections": [
+            11248,
+            7574,
+            5938,
+            4817,
+            5111,
+            5107,
+            4411,
+            4946
+          ],
+          "rank_m_tiles": [
+            87,
+            71,
+            67,
+            54,
+            65,
+            59,
+            58,
+            62
+          ],
+          "rank_mma_rows": [
+            11728,
+            7968,
+            6368,
+            5152,
+            5568,
+            5536,
+            4784,
+            5392
+          ],
+          "max_m_tiles": 87,
+          "max_mma_rows": 11728,
+          "max_tiles_over_proxy": 1.3207514333077135,
+          "max_mma_over_proxy": 1.7883649750195962
+        },
+        {
+          "diagnostic_seed": 1,
+          "rank_selections": [
+            9205,
+            4558,
+            8496,
+            6188,
+            5465,
+            7087,
+            3391,
+            4762
+          ],
+          "rank_m_tiles": [
+            79,
+            54,
+            77,
+            67,
+            62,
+            72,
+            54,
+            58
+          ],
+          "rank_mma_rows": [
+            9584,
+            4928,
+            8944,
+            6608,
+            5856,
+            7488,
+            3840,
+            5152
+          ],
+          "max_m_tiles": 79,
+          "max_mma_rows": 9584,
+          "max_tiles_over_proxy": 1.1993030256472341,
+          "max_mma_over_proxy": 1.4614333151933672
+        },
+        {
+          "diagnostic_seed": 2,
+          "rank_selections": [
+            7917,
+            7537,
+            6978,
+            6207,
+            5123,
+            4570,
+            3901,
+            6919
+          ],
+          "rank_m_tiles": [
+            77,
+            74,
+            68,
+            65,
+            68,
+            59,
+            56,
+            71
+          ],
+          "rank_mma_rows": [
+            8432,
+            7920,
+            7376,
+            6624,
+            5616,
+            4976,
+            4288,
+            7376
+          ],
+          "max_m_tiles": 77,
+          "max_mma_rows": 8432,
+          "max_tiles_over_proxy": 1.1689409237321142,
+          "max_mma_over_proxy": 1.2857685427494232
+        }
+      ]
+    },
+    {
+      "global_valid_rows": 32768,
+      "local_uniform_rows": 4096,
+      "block_m": 192,
+      "proxy_m_tiles": 161.15159720978392,
+      "proxy_mma_rows": 24994.42555535654,
+      "samples": [
+        {
+          "diagnostic_seed": 0,
+          "rank_selections": [
+            46361,
+            30875,
+            24235,
+            18479,
+            20564,
+            19687,
+            17078,
+            19329
+          ],
+          "rank_m_tiles": [
+            270,
+            195,
+            162,
+            128,
+            145,
+            136,
+            122,
+            136
+          ],
+          "rank_mma_rows": [
+            46800,
+            31312,
+            24672,
+            18848,
+            21008,
+            20096,
+            17472,
+            19744
+          ],
+          "max_m_tiles": 270,
+          "max_mma_rows": 46800,
+          "max_tiles_over_proxy": 1.6754410423156987,
+          "max_mma_over_proxy": 1.8724175075098022
+        },
+        {
+          "diagnostic_seed": 1,
+          "rank_selections": [
+            37547,
+            17339,
+            34413,
+            25453,
+            21455,
+            28835,
+            12647,
+            18919
+          ],
+          "rank_m_tiles": [
+            229,
+            122,
+            210,
+            166,
+            146,
+            182,
+            101,
+            130
+          ],
+          "rank_mma_rows": [
+            38000,
+            17728,
+            34928,
+            25920,
+            21840,
+            29264,
+            13040,
+            19312
+          ],
+          "max_m_tiles": 229,
+          "max_mma_rows": 38000,
+          "max_tiles_over_proxy": 1.4210222173714628,
+          "max_mma_over_proxy": 1.5203390018241985
+        },
+        {
+          "diagnostic_seed": 2,
+          "rank_selections": [
+            33213,
+            30271,
+            28022,
+            25275,
+            20446,
+            17084,
+            14757,
+            27540
+          ],
+          "rank_m_tiles": [
+            207,
+            187,
+            176,
+            164,
+            142,
+            120,
+            107,
+            180
+          ],
+          "rank_mma_rows": [
+            33632,
+            30656,
+            28400,
+            25664,
+            20896,
+            17488,
+            15136,
+            28000
+          ],
+          "max_m_tiles": 207,
+          "max_mma_rows": 33632,
+          "max_tiles_over_proxy": 1.2845047991087024,
+          "max_mma_over_proxy": 1.345580034456617
+        }
+      ]
+    }
+  ],
+  "limits": [
+    "the imported timing rows do not record their original expert histograms; these samples are not recovered historical routes",
+    "same expected local spectrum on every rank suppresses rank variance; mean local tiles do not determine the max-rank tile distribution",
+    "ceil(expected count / BLOCK_M) is not expected ceil(integer count / BLOCK_M); fractional occupancy is a proxy, not actual tasks",
+    "this audit does not measure component startup, HBM/L2 traffic, overlap or mixed issue cycles; do not fit serving throughput from it"
+  ]
+}

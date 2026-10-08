@@ -1,0 +1,77 @@
+{
+  "scope": "dynamic16-aligned MMA tails, per-M-task weight traffic and native mixed-input theoretical pipe",
+  "parent_commit": "51fa2ecf4cd6b2cf4cd282fabee824453f3136a2",
+  "runtime_sources": [
+    {
+      "path": "TokenSim/latency/deepseek_v4_moe.py",
+      "sha256": "91bf2658301b87b5c1e3647fcbe7fc592d51e88d938b8796e1e0fc0be6db94ba"
+    },
+    {
+      "path": "TokenSim/latency/deepseek_v4_moe_work.py",
+      "sha256": "b293422b94ac8e65780a5e7fead24a3e18b14b89f4ce0372ccfc77c9b1d2a798"
+    }
+  ],
+  "source_checks": [
+    {
+      "path": "/tmp/tokensim-deepgemm-nonuniform-audit/fp8-fp4-kernel.cuh",
+      "sha256": "2e725484419819a1e87bfe76ed5c90799b980701fb8f9f2816910a4d2082ca9b"
+    },
+    {
+      "path": "/tmp/tokensim-deepgemm-buffer-audit/scheduler.cuh",
+      "sha256": "f001c934026af52aac90bf162707b6f7454813f794a279aa15dd5a3d6efa490d"
+    },
+    {
+      "path": "/tmp/tokensim-deepgemm-nonuniform-audit/tcgen05.cuh",
+      "sha256": "7760eef80c6a38ee424974f6f48f8923a56465326c159c8a795e6e8f4fa76b42"
+    },
+    {
+      "path": "/tmp/tokensim-deepgemm-nonuniform-audit/heuristics.hpp",
+      "sha256": "14377e043ca46900662cbc9ece5c14f78bd2fa89624bf39a69845ecca799bb82"
+    },
+    {
+      "path": "TokenSim/hardware/device/dtypes.py",
+      "sha256": "7f60bb542dba2b9703b936eb4c6fb8768d5a928c46dcb3ac79dc6c105dab5785"
+    },
+    {
+      "path": "data/devices/b200_sxm.yaml",
+      "sha256": "6cc9dbbd8943e50e856e68a74615e8bb4a06d3455ad7af0698addb03df7b8465"
+    },
+    {
+      "path": "data/devices/b300_sxm.yaml",
+      "sha256": "e51e42b7b8badb148eb58bb1f018b7b8bbecd699fd97744da0e478711e1b16cf"
+    }
+  ],
+  "verification": {
+    "full_suite": {
+      "passed": 557,
+      "subtests_passed": 80,
+      "warnings": 32,
+      "elapsed_seconds": 185.26,
+      "log": "data/reference/agentx-moe-mma/full-tests.txt",
+      "sha256": "3706810b14156d6df5487adbb3fd800e235b37b30cb198fe593a8a2409746066"
+    },
+    "full_windows": {
+      "status": "both original windows complete and individually/combined strictly validated",
+      "root": "results/agentx-dsv4-full/native-moe-mma/20261008-dynamic-tails-pipe",
+      "accepted_hardware": [
+        "b200",
+        "b300"
+      ],
+      "pending_hardware": [],
+      "combined_validation": "data/reference/agentx-moe-mma/pipeline-validation.json",
+      "combined_validation_sha256": "dd0bfc760fd6ba1003a9e8335f1a6bd690b6d90a67f9195be307b66fa2f45c02"
+    }
+  },
+  "approximation": [
+    "FP8 theoretical catalog pipe inferred from MXF8F6F4 and FP8 operands; mixed issue cycles/efficiency not measured",
+    "expected power-law spectrum and whole-module normalization remain grade D; per-M-task issued weight bytes not measured HBM cache misses",
+    "historical kernel and buffer geometry and directed8x normalization failures remain explicit; no serving-fit or extra L2 credit"
+  ],
+  "formal_model_accuracy_accepted": false,
+  "followup_evidence": [
+    "work-growth-followup.json",
+    "growth-comparison.json",
+    "spectrum-followup.json",
+    "residual-feasibility-followup.json"
+  ]
+}

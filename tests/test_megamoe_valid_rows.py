@@ -96,6 +96,9 @@ class MegaMoEValidRowsTest(TestCase):
         work = backend.native_moe.work_model.estimate({rank: 4 for rank in range(8)}, {rank: 0 for rank in range(8)})
         self.assertEqual(work.expert_us, 0)
         self.assertEqual(work.expert_selections, 0)
+        self.assertEqual(work.expert_mma_rows, 0)
+        self.assertEqual(work.expert_flops, 0)
+        self.assertEqual(work.issued_weight_bytes, 0)
         self.assertGreater(work.input_us, 0)
         self.assertGreater(work.combine_us, 0)
 
@@ -121,6 +124,59 @@ class MegaMoEValidRowsTest(TestCase):
                 self.assertAlmostEqual(sum(counts) * 8, rows * 6, places=6)
                 self.assertTrue(all(0 <= value <= rows for value in counts))
 
+    def test_dynamic_mma_tails_keep_math_rows_when_block_partition_changes(self):
+        model = self.backend().native_moe.work_model
+        # Five17-row experts issue32 MMA rows each; the11-row expert issues16.
+        # Each EP rank receives96 selections, matching128 valid rows *6 /8.
+        received = (17.0,) * 5 + (11.0,) + (0.0,) * 42
+        cases = []
+        with patch.object(model, "expected_counts", return_value=received):
+            for full in (64, 256, 4096):
+                work = model.estimate({rank: full for rank in range(8)},
+                                      {rank: 16 for rank in range(8)})
+                self.assertEqual(work.expert_mma_rows, 176)
+                self.assertEqual(work.expert_flops, 176 * 6 * 7168 * 3072)
+                cases.append(work)
+        self.assertEqual([case.block_ms[0] for case in cases], [16, 64, 192])
+        self.assertEqual([case.max_expert_tiles for case in cases], [11, 6, 6])
+        weight_bytes = 3 * 7168 * 3072 * (0.5 + 1 / 32)
+        self.assertEqual([case.issued_weight_bytes for case in cases],
+                         [11 * weight_bytes, 6 * weight_bytes, 6 * weight_bytes])
+
+    def test_compute_bound_expert_cost_uses_dynamic_tail_math(self):
+        model = self.backend().native_moe.work_model
+        # Remove the bandwidth bound to expose arithmetic independently.
+        model.bandwidth = float("inf")
+        received = (17.0,) * 5 + (11.0,) + (0.0,) * 42
+        with patch.object(model, "expected_counts", return_value=received):
+            work = model.estimate({rank: 4096 for rank in range(8)},
+                                  {rank: 16 for rank in range(8)})
+        expected = 176 * 6 * 7168 * 3072 / model.compute * 1e6
+        self.assertAlmostEqual(work.expert_us, expected)
+        self.assertLess(work.expert_mma_rows, work.max_expert_tiles * 192)
+
+    def test_subtoken_expected_occupancy_keeps_fractional_mma_work(self):
+        model = self.backend().native_moe.work_model
+        received = (0.25,) * 24 + (0.0,) * 24
+        with patch.object(model, "expected_counts", return_value=received):
+            work = model.estimate({rank: 256 for rank in range(8)},
+                                  {rank: 1 for rank in range(8)})
+        self.assertEqual(work.expert_mma_rows, 96)
+        self.assertEqual(work.max_expert_tiles, 6)
+        self.assertEqual(work.expert_selections, 48)
+
+    def test_native_mixed_input_peak_is_independent_of_fp4_storage_peak(self):
+        for sku in ("b200", "b300"):
+            with self.subTest(sku=sku):
+                device = native_moe.NativeMegaMoETest.context.device(sku)
+                model = self.backend(device=device).native_moe.work_model
+                self.assertEqual(model.compute, device.peak_compute_for("fp8_block").value)
+                self.assertNotEqual(model.compute, device.peak_compute_for("mxfp4").value)
+                description = model.describe()
+                self.assertIn("mxf8f6f4", description["mma_opcode"])
+                self.assertIn("unmeasured", description["compute_rate_grade"])
+                self.assertFalse(description["fitted_parameters"])
+
     def test_export_time_ledger_and_profile_reset(self):
         backend = self.backend()
         backend.set_moe_step(MoEPass({rank: RankShape(64, 4, False, 16, 16, 4) for rank in range(8)}))
@@ -131,6 +187,11 @@ class MegaMoEValidRowsTest(TestCase):
         self.assertAlmostEqual(ledger["uniform_anchor_seconds"] - ledger["anchor_difference_seconds"], ledger["composed_routed_seconds"])
         self.assertEqual(result["native_megamoe_counts"]["padding_rows"], 48)
         self.assertEqual(result["native_megamoe_counts"]["routed_valid_rows"], 16)
+        flops_per_mma_row = 6 * 7168 * 3072
+        for prefix in ("source", "target"):
+            self.assertAlmostEqual(ledger[f"{prefix}_expert_flops"] / flops_per_mma_row,
+                                   ledger[f"{prefix}_mma_layer_rows"])
+            self.assertGreater(ledger[f"{prefix}_issued_weight_bytes"], 0)
         backend.native_moe.reset_stats()
         self.assertEqual(backend.native_moe.composition, {})
         self.assertEqual(backend.native_moe.counts, {})

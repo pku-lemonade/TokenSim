@@ -40,6 +40,9 @@ class MegaMoEWork:
     global_valid_rows: int
     expert_selections: int
     max_expert_tiles: float
+    expert_mma_rows: float = 0.0
+    expert_flops: float = 0.0
+    issued_weight_bytes: float = 0.0
 
     @property
     def latency_us(self):
@@ -56,7 +59,10 @@ class MegaMoEWorkModel:
         self.topk = model.moe.num_experts_per_tok
         self.hidden, self.inter = model.hidden_size, model.moe_intermediate_size
         self.bandwidth = device.memory_bandwidth_bytes_per_s.value
-        self.compute = device.peak_compute_for("mxfp4").value
+        # The routed kernel uses MXF8F6F4 with FP8 activations, not the
+        # pure FP4 MXF4/NVF4 opcode. Use the catalog FP8 theoretical pipe;
+        # mixed-input issue efficiency remains an unmeasured approximation.
+        self.compute = device.peak_compute_for("fp8_block").value
         self.link = nvlink_bytes_per_s
         if not self.link or self.link <= 0:
             raise ConfigurationError("MegaMoE work growth requires a positive local NVLink bandwidth")
@@ -112,15 +118,20 @@ class MegaMoEWorkModel:
         global_rows = sum(valid.values())
         counts = self.expected_counts(global_rows)
         blocks = tuple(block_m_for_input(n, self.ep, self.experts, self.topk) for _, n in sorted(inputs.items()))
-        expert_us = max_tiles = 0.0
+        # Pinned TaskInfo aligns valid_m to16 and the kernel updates its
+        # swapped MMA N descriptor per task. Every candidate BLOCK_M is a
+        # multiple of16, so total MMA rows are independent of M partitioning.
+        mma_rows = sum(min(1.0, n) * 16 * math.ceil(n / 16) for n in counts if n > 0)
+        flops = mma_rows * 6 * self.hidden * self.inter
+        activations = sum(counts) * (self.hidden * (1 + 1 / 32 + 2) + self.inter * (2 + 2 / 32))
+        expert_us = max_tiles = weight_bytes = 0.0
         for block in set(blocks):
             tiles = sum(min(1.0, n) * math.ceil(n / block) for n in counts if n > 0)
             max_tiles = max(max_tiles, tiles)
-            # L1 gate/up and L2 down MMA execute complete tiles. Weight/scales
-            # are reloaded per M tile; no unmeasured cross-tile L2 credit.
-            flops = tiles * block * 6 * self.hidden * self.inter
+            # Dynamic MMA tails do not shrink per-M-task weight/scale TMA.
+            # Keep the existing no-L2-credit streaming traffic estimate.
             weights = tiles * 3 * self.hidden * self.inter * (0.5 + 1 / 32)
-            activations = sum(counts) * (self.hidden * (1 + 1 / 32 + 2) + self.inter * (2 + 2 / 32))
+            weight_bytes = max(weight_bytes, weights)
             expert_us = max(expert_us, max(flops / self.compute, (weights + activations) / self.bandwidth) * 1e6)
         full_max, valid_max = max(inputs.values()), max(valid.values())
         # BF16 X -> FP8 X/scales, routing staging and two top-k scans.
@@ -134,6 +145,7 @@ class MegaMoEWorkModel:
             expert_us, dispatch_bytes / self.link * 1e6,
             (combine_bytes / self.link + local_combine_bytes / self.bandwidth) * 1e6,
             blocks, global_rows, global_rows * self.topk, max_tiles,
+            mma_rows, flops, weight_bytes,
         )
 
     def describe(self):
@@ -141,6 +153,12 @@ class MegaMoEWorkModel:
             "basis": "pinned DeepGEMM input-selected BLOCK_M, valid expert tasks, pre-dispatch/scan and source-side combine",
             "normalization": "target physical phase work / matching full-input uniform phase work; whole measured module anchor retained",
             "expert_spectrum": "inverse-CDF power_law_1.01 midpoint quantiles; expected local spectrum, empirical source skew retained in anchor",
+            "mma_rows": "valid expert task tails aligned to16; per-expert16*ceil(received/16), fractional occupancy remains expected work",
+            "mma_opcode": "tcgen05.mma.cta_group::2.kind::mxf8f6f4.block_scale; FP8 activation/FP4 weight, UMMA_K32",
+            "compute_pipe": "catalog FP8 theoretical peak for the mixed MXF8F6F4 path; not pure FP4 storage-dtype peak",
+            "compute_flops_per_s": self.compute,
+            "compute_rate_grade": "D pipe-family inference from pinned opcode/operands; mixed-input issue cycles and efficiency unmeasured",
+            "weight_traffic": "full weight/scales per M task; dynamic MMA tails do not reduce TMA loads; issued bytes are not measured HBM misses",
             "grade": "D source-derived composition",
             "fitted_parameters": False,
             "uncertainty": "no measured component timers/histograms, historical DeepGEMM revision, tile cache traffic or unequal-rank phase overlap",

@@ -370,6 +370,12 @@ class MegaMoEEstimator:
         self.composition["expert_work_us"] += target_work.expert_us
         self.composition["dispatch_work_us"] += target_work.dispatch_us
         self.composition["combine_work_us"] += target_work.combine_us
+        self.composition["source_mma_layer_rows"] += source_work.expert_mma_rows * layers
+        self.composition["target_mma_layer_rows"] += target_work.expert_mma_rows * layers
+        self.composition["source_expert_flops"] += source_work.expert_flops * layers
+        self.composition["target_expert_flops"] += target_work.expert_flops * layers
+        self.composition["source_issued_weight_bytes"] += source_work.issued_weight_bytes * layers
+        self.composition["target_issued_weight_bytes"] += target_work.issued_weight_bytes * layers
         self.max_rank_rows = max(self.max_rank_rows, max(rows.values()))
         return (routed + shared) * layers, routed, shared
 
