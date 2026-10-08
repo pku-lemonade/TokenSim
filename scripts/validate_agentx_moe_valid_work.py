@@ -18,7 +18,7 @@ SOURCE_CHANGES = {
 
 
 def audit(root, *, hardware=("b200", "b300"), baseline_root=BASELINE,
-          baseline_evidence=EVIDENCE, source_changes=SOURCE_CHANGES):
+          baseline_evidence=EVIDENCE, source_changes=SOURCE_CHANGES, cache_budget_auditor=None):
     result = audit_batches(root, hardware=hardware)
     previous = json.loads(Path(baseline_evidence).read_text())["checkpoints"]
     for sku, concurrency in (("b200", 196), ("b300", 384)):
@@ -39,9 +39,12 @@ def audit(root, *, hardware=("b200", "b300"), baseline_root=BASELINE,
         current = json.loads((new / f"agentx_c{concurrency}.json").read_text())
         assert len(baseline["worker_cache_budgets"]) == len(current["worker_cache_budgets"]) == 8
         for first, second in zip(baseline["worker_cache_budgets"], current["worker_cache_budgets"], strict=True):
-            assert {key: value for key, value in first.items() if key not in ("peak_used_slots", "evictions")} == {
-                key: value for key, value in second.items() if key not in ("peak_used_slots", "evictions")
-            }
+            if cache_budget_auditor is None:
+                assert {key: value for key, value in first.items() if key not in ("peak_used_slots", "evictions")} == {
+                    key: value for key, value in second.items() if key not in ("peak_used_slots", "evictions")
+                }
+            else:
+                cache_budget_auditor(first, second, sku)
         c, ledger = current["native_megamoe_counts"], current["native_megamoe_composition"]
         steps = current["operator_step_count"]
         assert c["rank_estimates"] == 4 * steps
@@ -90,7 +93,9 @@ def audit(root, *, hardware=("b200", "b300"), baseline_root=BASELINE,
         point["paired_baseline"] = {
             "root": str(old), "output_tps": previous[sku]["output_tps"],
             "throughput_change_percent": 100 * (point["output_tps"] / previous[sku]["output_tps"] - 1),
-            "source_changes": sorted(changed), "configuration_capacity_and_dataset_unchanged": True,
+            "source_changes": sorted(changed),
+            "configuration_capacity_and_dataset_unchanged": cache_budget_auditor is None,
+            "capacity_changes_strictly_audited": cache_budget_auditor is not None,
         }
         ref = json.loads(Path(f"data/reference/{sku}-c{concurrency}-dep8-simplecpu/key_point.json").read_text())["metrics"]
         paths = {

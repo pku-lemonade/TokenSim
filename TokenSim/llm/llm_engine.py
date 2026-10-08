@@ -235,6 +235,8 @@ class LLMWorker(Worker):
             or DEFAULT_MAX_NUM_BATCHED_TOKENS,
             max_num_seqs=max_parallem_sum or 49,
             kv_cache_capacity_tokens_per_dp_rank=kv_cache_capacity_tokens_per_dp_rank,
+            moe_execution=moe_execution if moe_execution is not None else {"backend": "generic"},
+            attention_backend=attention_backend,
         )
         self.preempted_cnt = 0
         self.pending_connector_metadata: KVConnectorMetadata | None = None

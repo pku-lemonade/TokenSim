@@ -1,0 +1,13 @@
+...............                                                            [100%]
+=============================== warnings summary ===============================
+../../home/zhuohang/.local/lib/python3.12/site-packages/simpy/__init__.py:11
+  /home/zhuohang/.local/lib/python3.12/site-packages/simpy/__init__.py:11: DeprecationWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html
+    from pkg_resources import get_distribution
+
+../../home/zhuohang/miniconda3/lib/python3.12/site-packages/pkg_resources/__init__.py:3154
+  /home/zhuohang/miniconda3/lib/python3.12/site-packages/pkg_resources/__init__.py:3154: DeprecationWarning: Deprecated call to `pkg_resources.declare_namespace('google')`.
+  Implementing implicit namespace packages (as specified in PEP 420) is preferred to `pkg_resources.declare_namespace`. See https://setuptools.pypa.io/en/latest/references/keywords.html#keyword-namespace-packages
+    declare_namespace(pkg)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+15 passed, 2 warnings, 70 subtests passed in 24.61s

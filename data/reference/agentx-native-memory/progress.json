@@ -1,0 +1,38 @@
+{
+  "stage": "native storage identities, persistent buffers and source live-phase budgets",
+  "parent_commit": "55c13d9",
+  "runtime_frozen": true,
+  "full_suite": {
+    "passed": 587,
+    "subtests_passed": 123,
+    "warnings": 32,
+    "elapsed_seconds": 191.1,
+    "log": "data/reference/agentx-native-memory/full-tests.txt",
+    "sha256": "f5bcd636ef4376befc1510c74c877de79d1e4e08b37d21b75284bd29518d8ca4"
+  },
+  "checkpoints": {
+    "b200": {
+      "status": "complete",
+      "terminal": {
+        "exit_code": 0,
+        "started_unix_s": 1791455913.150634,
+        "elapsed_wall_s": 2224.774023771286
+      }
+    },
+    "b300": {
+      "status": "complete",
+      "terminal": {
+        "exit_code": 0,
+        "started_unix_s": 1791455913.1506374,
+        "elapsed_wall_s": 5122.872349262238
+      }
+    }
+  },
+  "observed_unix_s": 1791461071.6196034,
+  "monitor_tool_session_id": 77695,
+  "previous_goal_turn_classification": "progress: both original full windows terminal/strictly accepted with frozen runtime,193 pool windows and row/FLOP/DP/counts/cleanup conserved;paired performance/pressure/capacity metrics and plots finalized;isolated MTP preparation595 tests passes but no next-stage windows launched",
+  "overall_goal_status": "active; full original scope and25% accuracy gate unachieved",
+  "rerun_performed": false,
+  "next_independent_implementation": "after current frozen windows: explicit MTP/K disabled wiring through worker/cache/weights/backend/DP dummy/runner; AL1 currently is not a complete nomtp ablation",
+  "stage_status": "complete implementation-scope validation and paired analysis; ready for isolated native-memory commit"
+}

@@ -30,6 +30,8 @@ class CacheConfig:
         max_num_seqs: int = 49,
         speculative_tokens: int = 3,
         max_concurrent_batches: int = 2,
+        moe_execution=None,
+        attention_backend: str = "native_dsv4",
     ):
         self.block_size: int = block_size
         self.device = device
@@ -114,6 +116,8 @@ class CacheConfig:
                 max_num_batched_tokens=max_num_batched_tokens,
                 max_num_seqs=max_num_seqs,
                 speculative_tokens=speculative_tokens,
+                moe_execution=moe_execution,
+                attention_backend=attention_backend,
             )
         else:
             weight_bytes = dtype_bytes(model.dtype)

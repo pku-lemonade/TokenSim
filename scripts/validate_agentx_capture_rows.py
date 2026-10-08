@@ -17,9 +17,11 @@ SOURCE_CHANGES = {"TokenSim/latency/operator_table.py", "TokenSim/latency/deepse
                   "TokenSim/config/psla_config.py", "util/results.py"}
 
 
-def audit(root, *, hardware=("b200", "b300")):
-    report = audit_spectrum(root, hardware=hardware, baseline_root=BASELINE,
-                            baseline_evidence=EVIDENCE, source_changes=SOURCE_CHANGES)
+def audit(root, *, hardware=("b200", "b300"), baseline_root=BASELINE,
+          baseline_evidence=EVIDENCE, source_changes=SOURCE_CHANGES, cache_budget_auditor=None):
+    report = audit_spectrum(root, hardware=hardware, baseline_root=baseline_root,
+                            baseline_evidence=baseline_evidence, source_changes=source_changes,
+                            cache_budget_auditor=cache_budget_auditor)
     for sku, point in report["checkpoints"].items():
         concurrency = 196 if sku == "b200" else 384
         path = Path(root) / "seed0" / f"{sku}-c{concurrency}-dep8-simplecpu" / sku / f"agentx_c{concurrency}.json"
