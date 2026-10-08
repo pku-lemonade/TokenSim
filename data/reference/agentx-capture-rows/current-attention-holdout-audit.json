@@ -1,0 +1,27 @@
+{
+  "scope": "current-source raw attention SOL holdouts, independent of main capture or KV-layout correction",
+  "runtime_change": false,
+  "formal_accuracy_accepted": false,
+  "evidence_sha256": "3c160faabbb864b65b8902dd50ac31fc48a148f893eb9123152dec313e397c97",
+  "sources": [
+    {
+      "path": "scripts/audit_agentx_attention_sol.py",
+      "sha256": "f6761c319e307170cf918cad038e53c85cb839fafed4108592308c33d0b3bfa6"
+    },
+    {
+      "path": "TokenSim/operator_data/lookup.py",
+      "sha256": "777506d6838d1b2dcae9231fc5ba274d8fe032a4e9c37627ce7ee31d5727cbdf"
+    },
+    {
+      "path": "TokenSim/latency/deepseek_v4_attention_sol.py",
+      "sha256": "72d443b796f6c75bd644c223bc7c301da049908327602d3e5e1a1f637381d976"
+    }
+  ],
+  "interpretation": "context CSA holdouts remain outside25%; unchanged diagnostics cannot be claimed as fixed by capture row ownership",
+  "historical_evidence_path": "data/reference/agentx-attention-sol/holdout.json",
+  "historical_evidence_sha256": "3c160faabbb864b65b8902dd50ac31fc48a148f893eb9123152dec313e397c97",
+  "recomputed_current_evidence_sha256": "3c160faabbb864b65b8902dd50ac31fc48a148f893eb9123152dec313e397c97",
+  "all_holdout_records_byte_identical": true,
+  "recompute_command": "python scripts/audit_agentx_attention_sol.py --output data/reference/agentx-capture-rows/current-attention-holdout.json",
+  "artifact_policy": "retain the existing full historical record and current source/hash proof; omit a byte-identical fresh duplicate"
+}

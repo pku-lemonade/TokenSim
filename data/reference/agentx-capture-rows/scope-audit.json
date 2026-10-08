@@ -1,0 +1,66 @@
+{
+  "scope": "native main full/capture/SP owners and source-floor shared projection increments",
+  "parent_commit": "8525d3683f62917989ec8444eff60cb9f5fa6701",
+  "runtime_sources": [
+    {
+      "path": "TokenSim/latency/operator_table.py",
+      "sha256": "98058d4b58775d402c71417b52248f08ae9fe8e792c61cf20a9c05816cc4bacd"
+    },
+    {
+      "path": "TokenSim/latency/deepseek_v4_attention.py",
+      "sha256": "f3fee842479911864566e82f2e7a95f6a148ccad68f2a33aad66c194f520bc88"
+    },
+    {
+      "path": "TokenSim/config/psla_config.py",
+      "sha256": "48a999d62a71f81034d92e8fd6ab39c160d0d62685ed20ff8571b6628988bd71"
+    },
+    {
+      "path": "util/results.py",
+      "sha256": "8c74cfbec08bb043937f59f810bbcf5790715c47bfc7f4602bd1b0d4fedeae21"
+    }
+  ],
+  "verification": {
+    "full_suite": {
+      "passed": 575,
+      "subtests_passed": 103,
+      "warnings": 32,
+      "elapsed_seconds": 192.9,
+      "log": "data/reference/agentx-capture-rows/full-tests.txt",
+      "sha256": "1b95ad4391ab24f68f1441e1cc3d3cfde7256174a5613ce76e8a46d5cf632958"
+    },
+    "full_windows": {
+      "status": "Both original complete windows strictly accepted individually and jointly; paired analysis/plots complete",
+      "root": "results/agentx-dsv4-full/native-capture-rows/20261008-main-capture-sp",
+      "accepted_hardware": [
+        "b200",
+        "b300"
+      ],
+      "pending_hardware": []
+    },
+    "paired_analysis": {
+      "path": "data/reference/agentx-capture-rows/paired-analysis.json",
+      "sha256": "e1b62bc16912bc2302d941c22f1dddd4038aa56a8a1d5f6fd6661ffe7f08d4c6"
+    },
+    "plots": {
+      "png": "dae7febfe64e1848670ed1d4f71fc29f13e34366758fd0aa38ed9828d3a7f68c",
+      "svg": "aead9cc555de92a7430af86004cf70833d43b8f99252e1f9c0f7276b08705b99"
+    }
+  },
+  "approximation": [
+    "shared-only capture increment allocated with normalized SOL, not measured component timing; source floors retained",
+    "main SP/descriptor ownership follows pinned source; actual sparse queries and selected logits unaffected",
+    "MoE spectral/pipe/source-kernel uncertainty unchanged; no historical fixed192 scenario adopted"
+  ],
+  "formal_model_accuracy_accepted": false,
+  "followup_evidence": [
+    "source-provenance-audit.json",
+    "capture-ownership-followup.json",
+    "memory-identity-followup.json",
+    "b200-analysis.json",
+    "memory-lifetime-probe.json",
+    "buffer-geometry-probe.json",
+    "current-attention-holdout-audit.json",
+    "b300-analysis.json",
+    "paired-analysis.json"
+  ]
+}

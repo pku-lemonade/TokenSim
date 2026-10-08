@@ -1,0 +1,462 @@
+{
+  "scope": "B300 original completed main capture/SP checkpoint",
+  "formal_model_accuracy_accepted": false,
+  "result_sha256": "a12744f16dbb691fc4823de3b01d89ad414309a22cd5fea6e3f1bc37b3ef3412",
+  "terminal": {
+    "exit_code": 0,
+    "started_unix_s": 1791448010.651273,
+    "elapsed_wall_s": 4997.563263893127
+  },
+  "metrics": {
+    "input_tps": {
+      "baseline": 711921.5460065925,
+      "current": 707643.1455759035,
+      "reference": 813831.8418069438,
+      "baseline_change_percent": -0.6009651561591278,
+      "reference_error_percent": -13.047989864253829
+    },
+    "output_tps": {
+      "baseline": 5398.92093518493,
+      "current": 5393.581684481259,
+      "reference": 6360.26408456516,
+      "baseline_change_percent": -0.09889477485909293,
+      "reference_error_percent": -15.198777711601764
+    },
+    "ttft_p90_s": {
+      "baseline": 19.369014615427712,
+      "current": 19.321935355905413,
+      "reference": 18.915775584,
+      "baseline_change_percent": -0.2430648148966763,
+      "reference_error_percent": 2.147201261200027
+    },
+    "itl_p90_s": {
+      "baseline": 0.06731946138913693,
+      "current": 0.06722227927804109,
+      "reference": 0.04948549216712784,
+      "baseline_change_percent": -0.1443596087824961,
+      "reference_error_percent": 35.84239811339174
+    },
+    "e2e_mean_s": {
+      "baseline": 57.980609517189954,
+      "current": 58.42053970018382,
+      "reference": 50.87438818767539,
+      "baseline_change_percent": 0.7587539811278354,
+      "reference_error_percent": 14.832908623236317
+    },
+    "gpu_hit_fraction": {
+      "baseline": 0.944737216483243,
+      "current": 0.9454638249194735,
+      "reference": 0.899,
+      "baseline_change_percent": 0.07691116889998462,
+      "reference_error_percent": 5.168389868684464,
+      "reference_difference_percentage_points": 4.646382491947342
+    },
+    "cpu_hit_fraction": {
+      "baseline": 0.010153720015660887,
+      "current": 0.009629270494733309,
+      "reference": 0.01639,
+      "baseline_change_percent": -5.165097325105272,
+      "reference_error_percent": -41.24911229570891,
+      "reference_difference_percentage_points": -0.6760729505266689
+    }
+  },
+  "phase_counts": {
+    "warmup": {
+      "sent": 4249,
+      "successful": 4249
+    },
+    "profiling": {
+      "sent": 22014,
+      "successful": 21780,
+      "cancelled": 234
+    }
+  },
+  "preemptions": {
+    "baseline": 0,
+    "current": 0
+  },
+  "reload_accounting": {
+    "readmission_count": {
+      "baseline": 0,
+      "current": 0
+    },
+    "reloaded_gpu_tokens": {
+      "baseline": 0,
+      "current": 0
+    },
+    "reloaded_cpu_tokens": {
+      "baseline": 0,
+      "current": 0
+    },
+    "reloaded_generated_gpu_tokens": {
+      "baseline": 0,
+      "current": 0
+    },
+    "reloaded_generated_cpu_tokens": {
+      "baseline": 0,
+      "current": 0
+    },
+    "recomputed_tokens": {
+      "baseline": 0,
+      "current": 0
+    }
+  },
+  "readmission_per_rank": {
+    "baseline": {
+      "request_log_sha256": "de0cfb0cf02f14ae9a175d84e014862e65bf35f02f2fa7a23548c2d6953d795f",
+      "ranks": [
+        {
+          "rank": 0,
+          "scope": "all profiling terminal requests, including cancelled",
+          "requests": 2601,
+          "readmitted_requests": 0,
+          "extra_admissions": 0,
+          "reloaded_cpu_tokens": 0,
+          "reloaded_gpu_tokens": 0,
+          "recomputed_tokens": 0
+        },
+        {
+          "rank": 1,
+          "scope": "all profiling terminal requests, including cancelled",
+          "requests": 2413,
+          "readmitted_requests": 0,
+          "extra_admissions": 0,
+          "reloaded_cpu_tokens": 0,
+          "reloaded_gpu_tokens": 0,
+          "recomputed_tokens": 0
+        },
+        {
+          "rank": 2,
+          "scope": "all profiling terminal requests, including cancelled",
+          "requests": 2721,
+          "readmitted_requests": 0,
+          "extra_admissions": 0,
+          "reloaded_cpu_tokens": 0,
+          "reloaded_gpu_tokens": 0,
+          "recomputed_tokens": 0
+        },
+        {
+          "rank": 3,
+          "scope": "all profiling terminal requests, including cancelled",
+          "requests": 2832,
+          "readmitted_requests": 0,
+          "extra_admissions": 0,
+          "reloaded_cpu_tokens": 0,
+          "reloaded_gpu_tokens": 0,
+          "recomputed_tokens": 0
+        },
+        {
+          "rank": 4,
+          "scope": "all profiling terminal requests, including cancelled",
+          "requests": 2755,
+          "readmitted_requests": 0,
+          "extra_admissions": 0,
+          "reloaded_cpu_tokens": 0,
+          "reloaded_gpu_tokens": 0,
+          "recomputed_tokens": 0
+        },
+        {
+          "rank": 5,
+          "scope": "all profiling terminal requests, including cancelled",
+          "requests": 2797,
+          "readmitted_requests": 0,
+          "extra_admissions": 0,
+          "reloaded_cpu_tokens": 0,
+          "reloaded_gpu_tokens": 0,
+          "recomputed_tokens": 0
+        },
+        {
+          "rank": 6,
+          "scope": "all profiling terminal requests, including cancelled",
+          "requests": 3173,
+          "readmitted_requests": 0,
+          "extra_admissions": 0,
+          "reloaded_cpu_tokens": 0,
+          "reloaded_gpu_tokens": 0,
+          "recomputed_tokens": 0
+        },
+        {
+          "rank": 7,
+          "scope": "all profiling terminal requests, including cancelled",
+          "requests": 2776,
+          "readmitted_requests": 0,
+          "extra_admissions": 0,
+          "reloaded_cpu_tokens": 0,
+          "reloaded_gpu_tokens": 0,
+          "recomputed_tokens": 0
+        }
+      ]
+    },
+    "current": {
+      "request_log_sha256": "5a8fb049d67dbd434804acbc67c18e9d8d7c808aba13ae0ec426f8c2aaa6ae55",
+      "ranks": [
+        {
+          "rank": 0,
+          "scope": "all profiling terminal requests, including cancelled",
+          "requests": 2514,
+          "readmitted_requests": 0,
+          "extra_admissions": 0,
+          "reloaded_cpu_tokens": 0,
+          "reloaded_gpu_tokens": 0,
+          "recomputed_tokens": 0
+        },
+        {
+          "rank": 1,
+          "scope": "all profiling terminal requests, including cancelled",
+          "requests": 2479,
+          "readmitted_requests": 0,
+          "extra_admissions": 0,
+          "reloaded_cpu_tokens": 0,
+          "reloaded_gpu_tokens": 0,
+          "recomputed_tokens": 0
+        },
+        {
+          "rank": 2,
+          "scope": "all profiling terminal requests, including cancelled",
+          "requests": 2762,
+          "readmitted_requests": 0,
+          "extra_admissions": 0,
+          "reloaded_cpu_tokens": 0,
+          "reloaded_gpu_tokens": 0,
+          "recomputed_tokens": 0
+        },
+        {
+          "rank": 3,
+          "scope": "all profiling terminal requests, including cancelled",
+          "requests": 2922,
+          "readmitted_requests": 0,
+          "extra_admissions": 0,
+          "reloaded_cpu_tokens": 0,
+          "reloaded_gpu_tokens": 0,
+          "recomputed_tokens": 0
+        },
+        {
+          "rank": 4,
+          "scope": "all profiling terminal requests, including cancelled",
+          "requests": 2575,
+          "readmitted_requests": 0,
+          "extra_admissions": 0,
+          "reloaded_cpu_tokens": 0,
+          "reloaded_gpu_tokens": 0,
+          "recomputed_tokens": 0
+        },
+        {
+          "rank": 5,
+          "scope": "all profiling terminal requests, including cancelled",
+          "requests": 2930,
+          "readmitted_requests": 0,
+          "extra_admissions": 0,
+          "reloaded_cpu_tokens": 0,
+          "reloaded_gpu_tokens": 0,
+          "recomputed_tokens": 0
+        },
+        {
+          "rank": 6,
+          "scope": "all profiling terminal requests, including cancelled",
+          "requests": 2872,
+          "readmitted_requests": 0,
+          "extra_admissions": 0,
+          "reloaded_cpu_tokens": 0,
+          "reloaded_gpu_tokens": 0,
+          "recomputed_tokens": 0
+        },
+        {
+          "rank": 7,
+          "scope": "all profiling terminal requests, including cancelled",
+          "requests": 2960,
+          "readmitted_requests": 0,
+          "extra_admissions": 0,
+          "reloaded_cpu_tokens": 0,
+          "reloaded_gpu_tokens": 0,
+          "recomputed_tokens": 0
+        }
+      ]
+    }
+  },
+  "sync_wait_fraction": {
+    "baseline": 0.1753990678344071,
+    "current": 0.17711049326896827
+  },
+  "main_forward_counts": {
+    "steps": 236192,
+    "logical_rows": 153649660,
+    "full_rows": 160045336,
+    "capture_padding_rows": 6395676,
+    "sp_rows": 160045336,
+    "sp_tail_rows": 0,
+    "sp_steps": 0,
+    "graph_padded_steps": 176755,
+    "attention_projection_layer_rows": 9762765496,
+    "mhc_layer_rows": 9762765496,
+    "norm_layer_rows": 19525530992,
+    "router_layer_rows": 9762765496
+  },
+  "capture_padding_percent_of_full": 3.9961651865943786,
+  "capture_projection_counts": {
+    "capture_batches": 176755.0,
+    "capture_logical_rows": 24674264.0,
+    "capture_descriptor_rows": 31069940.0,
+    "capture_padding_rows": 6395676.0,
+    "capture_source_floor_layer_rows": 1505237674.5414586,
+    "capture_projection_bound_layer_rows": 1895318880.1834831,
+    "capture_increment_layer_rows": 390081205.64202464,
+    "capture_shared_increment_seconds": 19.086135207986402
+  },
+  "target_logits_counts": {
+    "steps": 236192,
+    "decode_rows": 33963452,
+    "prefill_rows": 243012,
+    "rows": 34206464,
+    "forward_rows": 153649660,
+    "output_forward_rows": 160045336,
+    "hc_head_rows": 160045336,
+    "final_norm_rows": 160045336,
+    "context_decode_metadata_rows": 0,
+    "placeholder_rows": 0,
+    "context_graph_eligible_requests": 0
+  },
+  "normalized_components": {
+    "gemm": {
+      "baseline_seconds_per_million_output_tokens": 47.92705438641178,
+      "current_seconds_per_million_output_tokens": 48.42633946880928,
+      "change_percent": 1.041760418597848
+    },
+    "attention": {
+      "baseline_seconds_per_million_output_tokens": 588.7639922207874,
+      "current_seconds_per_million_output_tokens": 587.756993195434,
+      "change_percent": -0.17103610931691327
+    },
+    "moe": {
+      "baseline_seconds_per_million_output_tokens": 497.3468259518473,
+      "current_seconds_per_million_output_tokens": 495.6674466410544,
+      "change_percent": -0.33766764421966355
+    },
+    "elementwise": {
+      "baseline_seconds_per_million_output_tokens": 72.60243584869706,
+      "current_seconds_per_million_output_tokens": 73.53170375845778,
+      "change_percent": 1.2799404026847094
+    },
+    "lm_head": {
+      "baseline_seconds_per_million_output_tokens": 15.3459174098965,
+      "current_seconds_per_million_output_tokens": 15.300837418000926,
+      "change_percent": -0.2937588590598228
+    },
+    "comm": {
+      "baseline_seconds_per_million_output_tokens": 0.0,
+      "current_seconds_per_million_output_tokens": 0.0,
+      "change_percent": null
+    },
+    "overhead": {
+      "baseline_seconds_per_million_output_tokens": 0.0,
+      "current_seconds_per_million_output_tokens": 0.0,
+      "change_percent": null
+    }
+  },
+  "per_rank": [
+    {
+      "rank": 0,
+      "successful": 2494,
+      "cancelled": 20,
+      "input_tokens": 278471552,
+      "gpu_hit_tokens": 263978496,
+      "cpu_hit_tokens": 2082560,
+      "max_used_gpu_slots": 36949,
+      "full_input_gate": 0,
+      "gpu_hit_percent": 94.79549853623827,
+      "cpu_hit_percent": 0.7478537699965848
+    },
+    {
+      "rank": 1,
+      "successful": 2441,
+      "cancelled": 38,
+      "input_tokens": 293022336,
+      "gpu_hit_tokens": 276540416,
+      "cpu_hit_tokens": 1970432,
+      "max_used_gpu_slots": 39925,
+      "full_input_gate": 0,
+      "gpu_hit_percent": 94.3752001212631,
+      "cpu_hit_percent": 0.6724511267291241
+    },
+    {
+      "rank": 2,
+      "successful": 2732,
+      "cancelled": 30,
+      "input_tokens": 384585664,
+      "gpu_hit_tokens": 366773504,
+      "cpu_hit_tokens": 2589696,
+      "max_used_gpu_slots": 44403,
+      "full_input_gate": 0,
+      "gpu_hit_percent": 95.36848050581521,
+      "cpu_hit_percent": 0.6733729939553857
+    },
+    {
+      "rank": 3,
+      "successful": 2897,
+      "cancelled": 25,
+      "input_tokens": 303354624,
+      "gpu_hit_tokens": 281677824,
+      "cpu_hit_tokens": 5199616,
+      "max_used_gpu_slots": 41923,
+      "full_input_gate": 4,
+      "gpu_hit_percent": 92.85430374715502,
+      "cpu_hit_percent": 1.714038814189956
+    },
+    {
+      "rank": 4,
+      "successful": 2542,
+      "cancelled": 33,
+      "input_tokens": 323954112,
+      "gpu_hit_tokens": 308330240,
+      "cpu_hit_tokens": 2219520,
+      "max_used_gpu_slots": 41670,
+      "full_input_gate": 0,
+      "gpu_hit_percent": 95.1771342232569,
+      "cpu_hit_percent": 0.6851340723219467
+    },
+    {
+      "rank": 5,
+      "successful": 2908,
+      "cancelled": 22,
+      "input_tokens": 335996992,
+      "gpu_hit_tokens": 319331584,
+      "cpu_hit_tokens": 3205632,
+      "max_used_gpu_slots": 38802,
+      "full_input_gate": 0,
+      "gpu_hit_percent": 95.04001273916167,
+      "cpu_hit_percent": 0.9540656840165997
+    },
+    {
+      "rank": 6,
+      "successful": 2840,
+      "cancelled": 32,
+      "input_tokens": 275359808,
+      "gpu_hit_tokens": 258066432,
+      "cpu_hit_tokens": 2739968,
+      "max_used_gpu_slots": 31289,
+      "full_input_gate": 0,
+      "gpu_hit_percent": 93.71971671334111,
+      "cpu_hit_percent": 0.9950500837072054
+    },
+    {
+      "rank": 7,
+      "successful": 2926,
+      "cancelled": 34,
+      "input_tokens": 373929664,
+      "gpu_hit_tokens": 353890560,
+      "cpu_hit_tokens": 4727040,
+      "max_used_gpu_slots": 41756,
+      "full_input_gate": 0,
+      "gpu_hit_percent": 94.64094295551797,
+      "cpu_hit_percent": 1.264152180234623
+    }
+  ],
+  "diagnostic_metrics_within25percent": {
+    "input_tps": true,
+    "output_tps": true,
+    "ttft_p90_s": true,
+    "itl_p90_s": false,
+    "e2e_mean_s": true,
+    "gpu_hit_fraction": true,
+    "cpu_hit_fraction": false
+  }
+}

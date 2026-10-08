@@ -193,6 +193,7 @@ def get_latency_stats(engine: LLMEngine) -> dict[str, Any]:
     native_attention_mtp_kv = {}
     native_attention_composition = {}
     target_logits_counts = {}
+    main_forward_counts = {}
     hc_head_counts, hc_head_seconds = {}, {}
     mhc_seconds = {"main": 0.0, "draft": 0.0}
     mhc_counts = {"main": {}, "draft": {}}
@@ -209,6 +210,8 @@ def get_latency_stats(engine: LLMEngine) -> dict[str, Any]:
                 mtp_components[key] = mtp_components.get(key, 0) + value
         for key, value in getattr(backend, "target_logits_counts", {}).items():
             target_logits_counts[key] = target_logits_counts.get(key, 0) + value
+        for key, value in getattr(backend, "main_forward_counts", {}).items():
+            main_forward_counts[key] = main_forward_counts.get(key, 0) + value
         for role, head in (
             ("target", getattr(backend, "dsv4_hc_head", None)),
             ("draft", getattr(mtp, "hc_head", None)),
@@ -303,6 +306,7 @@ def get_latency_stats(engine: LLMEngine) -> dict[str, Any]:
             else {}
         ),
         **({"dsv4_target_logits": target_logits_counts} if target_logits_counts else {}),
+        **({"dsv4_main_forward_counts": main_forward_counts} if main_forward_counts else {}),
         **({"dsv4_hc_head_counts": hc_head_counts,
             "dsv4_hc_head_seconds": hc_head_seconds} if hc_head_counts else {}),
         **({"native_mhc_seconds": sum(mhc_seconds.values()),

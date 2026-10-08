@@ -313,7 +313,7 @@ class DeepSeekV4AttentionEstimator:
         self.seconds += total * 1e-6
         return total
 
-    def estimate_decode_batch(self, buckets):
+    def estimate_decode_batch(self, buckets, *, projection_rows=None):
         """Price one ragged decode batch, not a full module per length bucket.
 
         ``buckets`` maps (KV length, target query width) to request count.
@@ -329,16 +329,54 @@ class DeepSeekV4AttentionEstimator:
         rows = sum(rows_by_context.values())
         if not rows:
             return 0.0
-        total = sum(
-            count / rows * self._decode_us(
-                rows, context, indexer_kv_fraction=tiles_by_context[context] / count,
-                byte_weight=count / rows,
+        if projection_rows is not None and projection_rows < rows:
+            raise ConfigurationError("attention full projection rows must cover logical queries")
+        if projection_rows is not None and projection_rows > rows:
+            total = self._decode_with_capture_projection(
+                rows_by_context, tiles_by_context, projection_rows
             )
-            for context, count in sorted(rows_by_context.items())
-        )
+        else:
+            total = sum(
+                count / rows * self._decode_us(
+                    rows, context, indexer_kv_fraction=tiles_by_context[context] / count,
+                    byte_weight=count / rows,
+                )
+                for context, count in sorted(rows_by_context.items())
+            )
         self.seconds += total * 1e-6
         self._record_decode_batch(rows_by_context, requests_by_context, tiles_by_context)
         return total
+
+    def _decode_with_capture_projection(self, rows_by_context, tiles_by_context, full_rows):
+        rows = sum(rows_by_context.values())
+        base = increment = source_floor_rows = projection_rows = 0.0
+        for kind in ("csa", "hca"):
+            layers = self.layer_counts[kind]
+            for context, count in sorted(rows_by_context.items()):
+                weight = count / rows
+                fraction = tiles_by_context[context] / count
+                latency, key = self._decode_layer(kind, rows, context,
+                                                 indexer_kv_fraction=fraction, byte_weight=weight)
+                common, phase = self.sol.shared_phase_us(key, indexer_kv_fraction=fraction)
+                projected = max(full_rows, key["batch_size"])
+                new_common = self.sol.shared_phase_us({**key, "batch_size": projected},
+                                                     indexer_kv_fraction=fraction)[0]
+                efficiency = latency * self.generation_latency_scale / (common + phase)
+                base += layers * weight * latency * self.generation_latency_scale
+                increment += layers * weight * max(0.0, new_common - common) * efficiency
+                source_floor_rows += layers * weight * key["batch_size"]
+                projection_rows += layers * weight * projected
+        stats = self.composition_stats
+        stats["capture_batches"] += 1
+        stats["capture_logical_rows"] += rows
+        stats["capture_descriptor_rows"] += full_rows
+        stats["capture_padding_rows"] += full_rows - rows
+        # These are weighted source-bound budgets, not physical tensor rows.
+        stats["capture_source_floor_layer_rows"] += source_floor_rows
+        stats["capture_projection_bound_layer_rows"] += projection_rows
+        stats["capture_increment_layer_rows"] += projection_rows - source_floor_rows
+        stats["capture_shared_increment_seconds"] += increment * 1e-6
+        return base + increment
 
     def _decode_geometry(self, buckets):
         rows_by_context = Counter()
@@ -362,7 +400,7 @@ class DeepSeekV4AttentionEstimator:
         if rows > sum(requests_by_context.values()):
             self.mtp_kv_stats["batches"] += 1
 
-    def estimate_batch(self, context_groups, decode_buckets):
+    def estimate_batch(self, context_groups, decode_buckets, *, projection_rows=None):
         """Own common projections once across context groups and decode.
 
         Whole-module samples cannot identify individual kernel times. Allocate
@@ -376,13 +414,15 @@ class DeepSeekV4AttentionEstimator:
         groups = {shape: count for shape, count in context_groups.items() if count > 0}
         rows_by_context, requests_by_context, tiles_by_context = self._decode_geometry(decode_buckets)
         decode_rows = sum(rows_by_context.values())
+        context_rows = sum(queries * count for (queries, _), count in groups.items())
+        rows = context_rows + decode_rows
+        if groups and projection_rows is not None and projection_rows != rows:
+            raise ConfigurationError("context/mixed attention uses its eager logical tensor rows")
         if not groups:
-            return self.estimate_decode_batch(decode_buckets)
+            return self.estimate_decode_batch(decode_buckets, projection_rows=projection_rows)
         if len(groups) == 1 and not decode_rows:
             (queries, context), count = next(iter(groups.items()))
             return self.estimate_prefill(count, queries, context)
-        context_rows = sum(queries * count for (queries, _), count in groups.items())
-        rows = context_rows + decode_rows
         total = shared_total = phase_total = standalone_total = 0.0
         for kind in ("csa", "hca"):
             parts = []
@@ -457,6 +497,7 @@ class DeepSeekV4AttentionEstimator:
             "context_latency_scale": self.context_latency_scale,
             "generation_latency_scale": self.generation_latency_scale,
             "decode_batch_composition": "query-row-weighted uniform full-batch module estimates; common projections counted once",
+            "capture_projection_rows": "positive shared SOL increment beyond actual-query source floors at eligible descriptor rows; sparse/indexer query ownership unchanged",
             "mixed_batch_composition": {
                 "shared_scope": "full-tensor input/output, compressor-input and index-query/weight projections, weights and activation preparation",
                 "phase_scope": "sparse attention, index scoring/KV reads and compressor pointwise work; context and decode kept separate",

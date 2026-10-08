@@ -1,0 +1,56 @@
+{
+  "scope": "raw timing provenance limits and implementation work ordering",
+  "runtime_change": false,
+  "formal_model_accuracy_accepted": false,
+  "selected_original_kernel_revision": null,
+  "raw_sources": [
+    {
+      "source_hardware": "gb200",
+      "original_path": "data/reference/agentx-native-megamoe/originals/gb200-dsv4_megamoe_module_perf.parquet",
+      "sha256": "18f0eceba35e72549b86f3330fff06bbc684b0fe42cd37ec83db5845e2e1cc9e",
+      "rows": 256,
+      "recorded_versions": [
+        "unknown"
+      ],
+      "buffer_policy": [
+        "cached_sglang"
+      ],
+      "kernel_revision_column_present": false,
+      "extra_parquet_metadata_keys": [],
+      "collection_meta_path": "data/reference/agentx-native-megamoe/originals/gb200-collection_meta.yaml"
+    },
+    {
+      "source_hardware": "gb300",
+      "original_path": "data/reference/agentx-native-megamoe/originals/gb300-dsv4_megamoe_module_perf.parquet",
+      "sha256": "e7975d61f194ef2c054cd2d990047eccf0cacd8f643b5f1b03f9f5083c1f8ed9",
+      "rows": 456,
+      "recorded_versions": [
+        "0.5.11"
+      ],
+      "buffer_policy": [
+        "cached_sglang"
+      ],
+      "kernel_revision_column_present": false,
+      "extra_parquet_metadata_keys": [],
+      "collection_meta_path": "data/reference/agentx-native-megamoe/originals/gb300-collection_meta.yaml"
+    }
+  ],
+  "public_sglang_0_5_11_tree": {
+    "sha256": "d3cd4efd80e1d9a0ee21a394c4973ab6fc2c1218944beda04923c0c32c754eaf",
+    "truncated": false,
+    "dsv4_paths": [],
+    "url": "https://api.github.com/repos/sgl-project/sglang/git/trees/v0.5.11?recursive=1"
+  },
+  "collector_source_api": {
+    "path": "/tmp/aiconfigurator/collector/sglang/collect_dsv4_megamoe.py",
+    "sha256": "77fee6d6cd872d46db54179655f3f2559c55cc04b2fb56b715e44e70aa77cfa9",
+    "buffer_policy": "cached_sglang",
+    "get_symm_buffer_keyword": "use_fp8_dispatch=True"
+  },
+  "interpretation": [
+    "metadata runtime directory0.5.10 does not override row version0.5.11 or unknown",
+    "public tag missing expected DSV4 paths does not identify the original patched collector environment; source commit remains unverified",
+    "old fixed192 fingerprints and API-family similarities are insufficient to choose an exact historical kernel from lower timing error",
+    "continue source timing scope as pending; independently fix pinned-source main capture/SP owners; original full objective and25% gate unchanged"
+  ]
+}

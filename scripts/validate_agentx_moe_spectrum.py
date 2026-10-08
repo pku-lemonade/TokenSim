@@ -17,9 +17,10 @@ SOURCE_CHANGES = {"TokenSim/latency/deepseek_v4_moe_work.py",
                   "TokenSim/latency/deepseek_v4_moe_spectrum.py"}
 
 
-def audit(root, *, hardware=("b200", "b300")):
-    report = audit_mma(root, hardware=hardware, baseline_root=BASELINE,
-                       baseline_evidence=EVIDENCE, source_changes=SOURCE_CHANGES)
+def audit(root, *, hardware=("b200", "b300"), baseline_root=BASELINE,
+          baseline_evidence=EVIDENCE, source_changes=SOURCE_CHANGES):
+    report = audit_mma(root, hardware=hardware, baseline_root=baseline_root,
+                       baseline_evidence=baseline_evidence, source_changes=source_changes)
     for point in report["checkpoints"].values():
         description = point["moe_description"]["work_composition"]
         assert description["expert_spectrum"].startswith("global power_law_1.01 integer spectra")

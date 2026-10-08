@@ -1,0 +1,164 @@
+{
+  "scope": "actual pinned model/layer/mHC Python bodies with import resolution and numerical kernels stubbed",
+  "runtime_change": false,
+  "formal_accuracy_evidence": false,
+  "source_checks": [
+    {
+      "path": "/home/zhuohang/Serving/vllm-note/vllm/models/deepseek_v4/nvidia/model.py",
+      "sha256": "5d5a74e339cd110def9b5e37a56fa602a42cdece98811013fb69700a0274a224"
+    },
+    {
+      "path": "/home/zhuohang/Serving/vllm-note/vllm/model_executor/kernels/mhc/tilelang.py",
+      "sha256": "204e19209db5b19eb3dd25ea6ae10c84425dee02ef5bc896eca3f83da6149a8e"
+    }
+  ],
+  "resolved_imports": [
+    "from vllm.model_executor.kernels.mhc.tilelang_kernels import _HC_HEAD_FUSED_TILELANG_KERNEL",
+    "from vllm.model_executor.kernels.mhc.tilelang_kernels import _HC_PRENORM_GEMM_TILELANG_KERNEL",
+    "from vllm.model_executor.kernels.mhc.tilelang_kernels import _MHC_FUSED_TILELANG_KERNEL, _MHC_POST_TILELANG_KERNEL, _MHC_PRE_BIG_FUSE_TILELANG_KERNEL, mhc_fused_post_pre_split_config",
+    "from vllm.model_executor.kernels.mhc.tilelang_kernels import _MHC_POST_TILELANG_KERNEL",
+    "from vllm.model_executor.kernels.mhc.tilelang_kernels import compute_num_split",
+    "from vllm.utils.deep_gemm import is_deep_gemm_supported, tf32_hc_prenorm_gemm"
+  ],
+  "cases": [
+    {
+      "rows": 196,
+      "num_layers": 3,
+      "fused_kernel_stub": false,
+      "maximum_distinct_hyper_residual_storages": 3,
+      "hyper_residual_allocations": 7,
+      "reference_release_complete": true
+    },
+    {
+      "rows": 196,
+      "num_layers": 3,
+      "fused_kernel_stub": true,
+      "maximum_distinct_hyper_residual_storages": 3,
+      "hyper_residual_allocations": 7,
+      "reference_release_complete": true
+    },
+    {
+      "rows": 196,
+      "num_layers": 61,
+      "fused_kernel_stub": false,
+      "maximum_distinct_hyper_residual_storages": 3,
+      "hyper_residual_allocations": 123,
+      "reference_release_complete": true
+    },
+    {
+      "rows": 196,
+      "num_layers": 61,
+      "fused_kernel_stub": true,
+      "maximum_distinct_hyper_residual_storages": 3,
+      "hyper_residual_allocations": 123,
+      "reference_release_complete": true
+    },
+    {
+      "rows": 384,
+      "num_layers": 3,
+      "fused_kernel_stub": false,
+      "maximum_distinct_hyper_residual_storages": 3,
+      "hyper_residual_allocations": 7,
+      "reference_release_complete": true
+    },
+    {
+      "rows": 384,
+      "num_layers": 3,
+      "fused_kernel_stub": true,
+      "maximum_distinct_hyper_residual_storages": 3,
+      "hyper_residual_allocations": 7,
+      "reference_release_complete": true
+    },
+    {
+      "rows": 384,
+      "num_layers": 61,
+      "fused_kernel_stub": false,
+      "maximum_distinct_hyper_residual_storages": 3,
+      "hyper_residual_allocations": 123,
+      "reference_release_complete": true
+    },
+    {
+      "rows": 384,
+      "num_layers": 61,
+      "fused_kernel_stub": true,
+      "maximum_distinct_hyper_residual_storages": 3,
+      "hyper_residual_allocations": 123,
+      "reference_release_complete": true
+    },
+    {
+      "rows": 8192,
+      "num_layers": 3,
+      "fused_kernel_stub": false,
+      "maximum_distinct_hyper_residual_storages": 3,
+      "hyper_residual_allocations": 7,
+      "reference_release_complete": true
+    },
+    {
+      "rows": 8192,
+      "num_layers": 3,
+      "fused_kernel_stub": true,
+      "maximum_distinct_hyper_residual_storages": 3,
+      "hyper_residual_allocations": 7,
+      "reference_release_complete": true
+    },
+    {
+      "rows": 8192,
+      "num_layers": 61,
+      "fused_kernel_stub": false,
+      "maximum_distinct_hyper_residual_storages": 3,
+      "hyper_residual_allocations": 123,
+      "reference_release_complete": true
+    },
+    {
+      "rows": 8192,
+      "num_layers": 61,
+      "fused_kernel_stub": true,
+      "maximum_distinct_hyper_residual_storages": 3,
+      "hyper_residual_allocations": 123,
+      "reference_release_complete": true
+    },
+    {
+      "rows": 16384,
+      "num_layers": 3,
+      "fused_kernel_stub": false,
+      "maximum_distinct_hyper_residual_storages": 3,
+      "hyper_residual_allocations": 7,
+      "reference_release_complete": true
+    },
+    {
+      "rows": 16384,
+      "num_layers": 3,
+      "fused_kernel_stub": true,
+      "maximum_distinct_hyper_residual_storages": 3,
+      "hyper_residual_allocations": 7,
+      "reference_release_complete": true
+    },
+    {
+      "rows": 16384,
+      "num_layers": 61,
+      "fused_kernel_stub": false,
+      "maximum_distinct_hyper_residual_storages": 3,
+      "hyper_residual_allocations": 123,
+      "reference_release_complete": true
+    },
+    {
+      "rows": 16384,
+      "num_layers": 61,
+      "fused_kernel_stub": true,
+      "maximum_distinct_hyper_residual_storages": 3,
+      "hyper_residual_allocations": 123,
+      "reference_release_complete": true
+    }
+  ],
+  "findings": [
+    "outer model assignment retains prior residual while the layer RHS executes",
+    "second mHC transition can simultaneously own caller prior, attention residual and new FFN residual: three distinct storages",
+    "three/61 layers have the same maximum residual multiplicity; do not multiply this residual maximum by layer count"
+  ],
+  "limits": [
+    "this is reference-topology evidence, not an eager/capture GPU allocator measurement or additive byte peak",
+    "kernel scratch, attention, FFN, streams, sampler, metadata, SP and compiler optimizations are outside this probe",
+    "persistent MTP hidden buffer is excluded from transient probe and must be counted separately",
+    "fused branch scratch shapes are stubs; only residual identity/multiplicity is claimed"
+  ]
+}

@@ -1,0 +1,246 @@
+{
+  "scope": "B200 completed main capture/SP checkpoint; both original SKU windows now accepted and jointly analyzed",
+  "formal_model_accuracy_accepted": false,
+  "validation_sha256": "43d75213ac8a192df12a559243bbc1851bedb2293d5bd8a25bbe33f90a75edfb",
+  "result_sha256": "914c925d5a727f95c6a152df77ce0c5359afbc1ccabe4d398928df92d5f2f9c0",
+  "paired_metrics": {
+    "input_tps": {
+      "baseline": 258429.28805434072,
+      "current": 258158.95554970525,
+      "reference": 470700.8790310961,
+      "baseline_change_percent": -0.10460598590459336,
+      "reference_error_percent": -45.15435023594881
+    },
+    "output_tps": {
+      "baseline": 2009.0131370451131,
+      "current": 1951.1062611922366,
+      "reference": 3599.262674552757,
+      "baseline_change_percent": -2.882354265639442,
+      "reference_error_percent": -45.7915012708907
+    },
+    "ttft_p90_s": {
+      "baseline": 59.939587358267545,
+      "current": 54.778145135731684,
+      "reference": 16.206517135000002,
+      "baseline_change_percent": -8.611073999701023,
+      "reference_error_percent": 238.00072328576647
+    },
+    "itl_p90_s": {
+      "baseline": 0.11388496356698258,
+      "current": 0.11772875361725002,
+      "reference": 0.05024579619035286,
+      "baseline_change_percent": 3.3751514948737515,
+      "reference_error_percent": 134.30567837206212
+    },
+    "e2e_mean_s": {
+      "baseline": 88.44335992213023,
+      "current": 88.52669173996394,
+      "reference": 43.36484218156744,
+      "baseline_change_percent": 0.0942205473730029,
+      "reference_error_percent": 104.14392693810584
+    },
+    "gpu_hit_fraction": {
+      "baseline": 0.3365518732221498,
+      "current": 0.3070262410166921,
+      "reference": 0.68223,
+      "baseline_change_percent": -8.772981092863663,
+      "reference_error_percent": -54.99666666421996,
+      "reference_difference_percentage_points": -37.52037589833079
+    },
+    "cpu_hit_fraction": {
+      "baseline": 0.6144403110776815,
+      "current": 0.6435258536136206,
+      "reference": 0.23726,
+      "baseline_change_percent": 4.733664444138652,
+      "reference_error_percent": 171.2323415719551,
+      "reference_difference_percentage_points": 40.626585361362054
+    }
+  },
+  "phase_counts": {
+    "warmup": {
+      "sent": 2171,
+      "successful": 2171
+    },
+    "profiling": {
+      "sent": 8415,
+      "successful": 8303,
+      "cancelled": 112
+    }
+  },
+  "preemptions": {
+    "baseline": 67,
+    "current": 108
+  },
+  "main_forward_counts": {
+    "steps": 166064,
+    "logical_rows": 60422392,
+    "full_rows": 61440728,
+    "capture_padding_rows": 1018336,
+    "sp_rows": 61440728,
+    "sp_tail_rows": 0,
+    "sp_steps": 0,
+    "graph_padded_steps": 41305,
+    "attention_projection_layer_rows": 3747884408,
+    "mhc_layer_rows": 3747884408,
+    "norm_layer_rows": 7495768816,
+    "router_layer_rows": 3747884408
+  },
+  "capture_projection_counts": {
+    "capture_batches": 41305.0,
+    "capture_logical_rows": 2006740.0,
+    "capture_descriptor_rows": 3025076.0,
+    "capture_padding_rows": 1018336.0,
+    "capture_source_floor_layer_rows": 122411140.0,
+    "capture_projection_bound_layer_rows": 184529636.0,
+    "capture_increment_layer_rows": 62118496.0,
+    "capture_shared_increment_seconds": 2.5937771221059034
+  },
+  "normalized_components": {
+    "gemm": {
+      "baseline_seconds_per_million_output": 87.7677318148202,
+      "current_seconds_per_million_output": 86.86709215798462,
+      "change_percent": -1.026162620603921
+    },
+    "attention": {
+      "baseline_seconds_per_million_output": 678.3078596845303,
+      "current_seconds_per_million_output": 692.3183936733543,
+      "change_percent": 2.0655125528606044
+    },
+    "moe": {
+      "baseline_seconds_per_million_output": 1902.795528593042,
+      "current_seconds_per_million_output": 1937.2930493672895,
+      "change_percent": 1.8129914778471035
+    },
+    "elementwise": {
+      "baseline_seconds_per_million_output": 105.58471587711841,
+      "current_seconds_per_million_output": 106.28095454803113,
+      "change_percent": 0.659412363928702
+    },
+    "lm_head": {
+      "baseline_seconds_per_million_output": 28.998222816282908,
+      "current_seconds_per_million_output": 28.567716574230534,
+      "change_percent": -1.4845952621987513
+    },
+    "comm": {
+      "baseline_seconds_per_million_output": 0.0,
+      "current_seconds_per_million_output": 0.0,
+      "change_percent": null
+    },
+    "overhead": {
+      "baseline_seconds_per_million_output": 0.0,
+      "current_seconds_per_million_output": 0.0,
+      "change_percent": null
+    }
+  },
+  "normalization_is_analysis_only": true,
+  "per_rank": [
+    {
+      "rank": 0,
+      "successful": 1005,
+      "cancelled": 13,
+      "input_tokens": 111377728,
+      "gpu_hit_tokens": 24636416,
+      "cpu_hit_tokens": 82025216,
+      "max_used_gpu_slots": 21012,
+      "full_input_gate": 5714
+    },
+    {
+      "rank": 1,
+      "successful": 1158,
+      "cancelled": 14,
+      "input_tokens": 129350720,
+      "gpu_hit_tokens": 65679872,
+      "cpu_hit_tokens": 57900800,
+      "max_used_gpu_slots": 19718,
+      "full_input_gate": 1488
+    },
+    {
+      "rank": 2,
+      "successful": 967,
+      "cancelled": 14,
+      "input_tokens": 115344064,
+      "gpu_hit_tokens": 11263744,
+      "cpu_hit_tokens": 98078720,
+      "max_used_gpu_slots": 20858,
+      "full_input_gate": 11797
+    },
+    {
+      "rank": 3,
+      "successful": 1006,
+      "cancelled": 12,
+      "input_tokens": 116072192,
+      "gpu_hit_tokens": 32253696,
+      "cpu_hit_tokens": 76764928,
+      "max_used_gpu_slots": 20900,
+      "full_input_gate": 6148
+    },
+    {
+      "rank": 4,
+      "successful": 936,
+      "cancelled": 17,
+      "input_tokens": 124860672,
+      "gpu_hit_tokens": 3928064,
+      "cpu_hit_tokens": 115193856,
+      "max_used_gpu_slots": 20942,
+      "full_input_gate": 14351
+    },
+    {
+      "rank": 5,
+      "successful": 1115,
+      "cancelled": 14,
+      "input_tokens": 110944384,
+      "gpu_hit_tokens": 56510976,
+      "cpu_hit_tokens": 49395456,
+      "max_used_gpu_slots": 18044,
+      "full_input_gate": 1439
+    },
+    {
+      "rank": 6,
+      "successful": 1093,
+      "cancelled": 12,
+      "input_tokens": 95526592,
+      "gpu_hit_tokens": 70884608,
+      "cpu_hit_tokens": 18801152,
+      "max_used_gpu_slots": 16165,
+      "full_input_gate": 155
+    },
+    {
+      "rank": 7,
+      "successful": 1023,
+      "cancelled": 16,
+      "input_tokens": 133470272,
+      "gpu_hit_tokens": 22509824,
+      "cpu_hit_tokens": 104789248,
+      "max_used_gpu_slots": 20985,
+      "full_input_gate": 8186
+    }
+  ],
+  "sync_wait_fraction": 0.3047688223333143,
+  "checks": "counts/output/input decomposition/cancellation/pool/DP conservation passed",
+  "reload_accounting_successful_profiling_requests": {
+    "readmission_count": {
+      "baseline": 65,
+      "current": 105
+    },
+    "reloaded_gpu_tokens": {
+      "baseline": 756224,
+      "current": 1808128
+    },
+    "reloaded_cpu_tokens": {
+      "baseline": 7929600,
+      "current": 13308928
+    },
+    "reloaded_generated_gpu_tokens": {
+      "baseline": 0,
+      "current": 0
+    },
+    "reloaded_generated_cpu_tokens": {
+      "baseline": 0,
+      "current": 0
+    },
+    "recomputed_tokens": {
+      "baseline": 196716,
+      "current": 188253
+    }
+  }
+}

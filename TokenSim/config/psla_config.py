@@ -101,6 +101,7 @@ class LLMResult:
     native_dsv4_attention_mtp_kv: dict[str, float] | None = None
     native_dsv4_attention_composition: dict[str, float] | None = None
     dsv4_target_logits: dict[str, int] | None = None
+    dsv4_main_forward_counts: dict[str, int] | None = None
     dsv4_hc_head_counts: dict[str, int] | None = None
     dsv4_hc_head_seconds: dict[str, float] | None = None
     native_mhc_seconds: float | None = None
