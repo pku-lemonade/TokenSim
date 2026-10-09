@@ -1,4 +1,4 @@
-"""Explicit geometry-based memory estimates for native DSV4 configurations.
+"""Explicit geometry-based memory estimates for native compressed attention configurations.
 
 These are storage-shape estimates, not GPU profiler measurements. Keep every
 assumption visible; historical free/KV/non-torch values are comparison only.
@@ -24,9 +24,9 @@ def _legacy_memory_budget(
         raise ConfigurationError("gpu_memory_utilization must be in (0, 1]")
     if max_num_batched_tokens <= 0 or max_num_seqs <= 0 or speculative_tokens < 0:
         raise ConfigurationError(
-            "DSV4 memory budgets need positive token/sequence limits and nonnegative lookahead"
+            "compressed attention memory budgets need positive token/sequence limits and nonnegative lookahead"
         )
-    spec = model.deepseek_v4
+    spec = model.components
     tokens = max_num_batched_tokens
     query_width = (
         model.num_attention_heads * model.head_dim // parallel.tensor_parallel_size
@@ -87,7 +87,7 @@ def _legacy_memory_budget(
     remaining = hardware_budget - sum(deductions.values())
     if remaining <= 0:
         raise ConfigurationError(
-            "DSV4 weights and explicit runtime estimates exhaust the configured HBM budget"
+            "compressed attention weights and explicit runtime estimates exhaust the configured HBM budget"
         )
     return {
         "hardware_capacity_bytes": int(device.memory_capacity_bytes.value),
@@ -108,10 +108,10 @@ def _legacy_memory_budget(
     }
 
 
-def deepseek_v4_memory_budget(
+def hybrid_memory_budget(
     model, device, weight_bytes, parallel, *, utilization,
     max_num_batched_tokens, max_num_seqs, speculative_tokens=3,
-    moe_execution=None, attention_backend="native_dsv4",
+    moe_execution=None, attention_backend="module",
 ):
     """Budget named persistent allocations and a source live-phase upper bound.
 
@@ -119,26 +119,26 @@ def deepseek_v4_memory_budget(
     is independent of borrowed FlashMLA timing. Unverified generic MoE buffers,
     SM count and graph driver increments stay explicit grade-D estimates.
     """
-    from TokenSim.config.deepseek_v4_buffers import MIB, PHASES, align, live_phases, mega_moe_storage
+    from TokenSim.config.persistent_buffers import MIB, PHASES, align, live_phases, mega_moe_storage
     from TokenSim.config.moe_execution import MoEExecutionConfig
 
     for value in (max_num_batched_tokens, max_num_seqs, speculative_tokens):
         if isinstance(value, bool) or not isinstance(value, int):
-            raise ConfigurationError("DSV4 token, sequence and speculative limits must be integers")
+            raise ConfigurationError("compressed attention token, sequence and speculative limits must be integers")
     if (not 0 < utilization <= 1 or max_num_batched_tokens <= 0
             or max_num_seqs <= 0 or speculative_tokens < 0):
-        raise ConfigurationError("DSV4 memory budget requires valid utilization and token/sequence limits")
-    if attention_backend != "native_dsv4":
+        raise ConfigurationError("compressed attention memory budget requires valid utilization and token/sequence limits")
+    if attention_backend != "module":
         return _legacy_memory_budget(
             model, device, weight_bytes, parallel, utilization=utilization,
             max_num_batched_tokens=max_num_batched_tokens, max_num_seqs=max_num_seqs,
             speculative_tokens=speculative_tokens,
         )
     if parallel.pipeline_parallel_size != 1:
-        raise ConfigurationError("native DSV4 memory geometry currently requires PP1")
-    spec, tokens, tp = model.deepseek_v4, max_num_batched_tokens, parallel.tensor_parallel_size
+        raise ConfigurationError("native compressed attention memory geometry currently requires PP1")
+    spec, tokens, tp = model.components, max_num_batched_tokens, parallel.tensor_parallel_size
     if spec is None or spec.o_groups % tp or model.num_attention_heads % tp:
-        raise ConfigurationError("native DSV4 memory geometry requires complete local attention groups")
+        raise ConfigurationError("native compressed attention memory geometry requires complete local attention groups")
     if moe_execution is None:
         execution = MoEExecutionConfig(backend="deep_gemm_amxf4_mega_moe" if parallel.enable_expert_parallel else "generic")
     else:
@@ -224,7 +224,7 @@ def deepseek_v4_memory_budget(
     }
     remaining = hardware_budget - sum(deductions.values())
     if remaining <= 0:
-        raise ConfigurationError("DSV4 native storage and runtime estimates exhaust the configured HBM budget")
+        raise ConfigurationError("compressed attention native storage and runtime estimates exhaust the configured HBM budget")
     peak_index = PHASES.index(eager_peak["peak_phase"])
     return {
         "hardware_capacity_bytes": int(device.memory_capacity_bytes.value),

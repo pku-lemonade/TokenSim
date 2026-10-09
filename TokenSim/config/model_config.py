@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 from TokenSim.errors import ConfigurationError
-from TokenSim.config.deepseek_v4 import DeepSeekV4Spec, ModelLayerSpec
+from TokenSim.config.components import TransformerComponents, ModelLayerSpec
 from TokenSim.hardware._yaml import load_yaml_mapping, require
 from TokenSim.hardware.device import normalize_dtype
 from TokenSim.moe.config import MoEModelConfig
@@ -44,8 +44,9 @@ class ModelSpec:
     sources: Mapping[str, Mapping[str, Any]] = field(default_factory=dict)
     display_name: str = ""
     architecture: str = "transformer"
-    deepseek_v4: DeepSeekV4Spec | None = None
+    components: TransformerComponents | None = None
     operator_dtypes: Mapping[str, str] = field(default_factory=dict)
+    operator_modules: Mapping[str, Mapping[str, Any]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         for name in (
@@ -81,52 +82,22 @@ class ModelSpec:
             "operator_dtypes",
             {str(k): normalize_dtype(v) for k, v in self.operator_dtypes.items()},
         )
-        if self.architecture not in ("transformer", "deepseek_v4"):
-            raise ConfigurationError(
-                f"unsupported model architecture {self.architecture!r}"
-            )
-        if (self.architecture == "deepseek_v4") != (self.deepseek_v4 is not None):
-            raise ConfigurationError(
-                "DeepSeek V4 architecture and structural metadata must be supplied together"
-            )
-        if self.deepseek_v4 is not None:
+        if self.components is not None:
             if self.activation != "swiglu" or self.num_key_value_heads != 1:
                 raise ConfigurationError(
-                    "DeepSeek V4 requires SwiGLU and one latent KV head"
+                    "compressed transformer requires SwiGLU and one latent KV head"
                 )
             if self.kv_cache_dim not in (None, self.head_dim):
                 raise ConfigurationError(
-                    "DeepSeek V4 latent KV width must equal head_dim"
+                    "compressed transformer latent KV width must equal head_dim"
                 )
-            required_dtypes = {
-                "attention_gemm",
-                "routed_expert",
-                "shared_expert",
-                "router",
-                "indexer_gemm",
-                "indexer_weights_proj",
-                "compressor",
-                "embedding",
-                "lm_head",
-                "norm",
-                "mhc",
-                "mhc_residual",
-            }
-            if required_dtypes - self.operator_dtypes.keys():
-                raise ConfigurationError(
-                    f"DeepSeek V4 operator dtype map is incomplete: {sorted(required_dtypes - self.operator_dtypes.keys())}"
-                )
-            self.deepseek_v4.validate_model(
+            self.components.validate_model(
                 num_layers=self.num_layers,
                 num_attention_heads=self.num_attention_heads,
                 head_dim=self.head_dim,
                 sliding_window=self.sliding_window,
                 num_experts=self.moe.num_experts,
             )
-            if len(self.moe_layer_indices()) != self.num_layers:
-                raise ConfigurationError(
-                    "DeepSeek V4 main layers must all be MoE, including hash layers"
-                )
         if self.kv_cache_dim is not None and int(self.kv_cache_dim) <= 0:
             raise ConfigurationError(
                 f"model {self.model_id!r}: kv_cache_dim must be positive"
@@ -168,8 +139,8 @@ class ModelSpec:
         return self.num_layers - len(self.moe_layer_indices())
 
     def layer_specs(self, *, include_mtp: bool = True) -> tuple[ModelLayerSpec, ...]:
-        if self.deepseek_v4 is not None:
-            layers = self.deepseek_v4.layers(self.num_layers)
+        if self.components is not None:
+            layers = self.components.layers(self.num_layers)
             return layers if include_mtp else layers[: self.num_layers]
         moe_layers = set(self.moe_layer_indices())
         return tuple(
@@ -191,8 +162,8 @@ class ModelSpec:
     # -- parameter accounting --------------------------------------------
 
     def attention_params_per_layer(self) -> int:
-        if self.deepseek_v4 is not None:
-            spec = self.deepseek_v4
+        if self.components is not None:
+            spec = self.components
             return (
                 self.hidden_size * (spec.q_lora_rank + self.head_dim)
                 + spec.q_lora_rank * self.q_dim
@@ -223,10 +194,10 @@ class ModelSpec:
         )
 
     def total_params(self) -> int:
-        if self.deepseek_v4 is not None:
-            from TokenSim.config.weight_memory import deepseek_v4_weight_memory
+        if self.components is not None:
+            from TokenSim.config.weight_memory import packed_weight_memory
 
-            return deepseek_v4_weight_memory(self)["parameter_elements"]
+            return packed_weight_memory(self)["parameter_elements"]
         moe_layers = len(self.moe_layer_indices())
         dense_layers = self.num_layers - moe_layers
         params = self.num_layers * self.attention_params_per_layer()
@@ -308,19 +279,20 @@ class ModelSpec:
             sources={str(k): dict(v) for k, v in (raw.get("sources") or {}).items()},
             display_name=str(raw.get("display_name", model_id)),
             architecture=str(raw.get("architecture", "transformer")),
-            deepseek_v4=(
-                DeepSeekV4Spec.from_mapping(raw["deepseek_v4"])
-                if raw.get("deepseek_v4")
+            components=(
+                TransformerComponents.from_mapping(raw["components"])
+                if raw.get("components")
                 else None
             ),
             operator_dtypes=dict(raw.get("operator_dtypes") or {}),
+            operator_modules={str(k): dict(v) for k, v in (raw.get("operator_modules") or {}).items()},
         )
 
     def with_moe_override(self, moe_config: MoEModelConfig | None) -> "ModelSpec":
         """Apply MoE metadata supplied by a PSLA file on top of the catalog entry."""
         if moe_config is None or not moe_config.enabled:
             return self
-        if self.deepseek_v4 is not None:
+        if self.components is not None:
             # The catalog defines the native architecture. Legacy PSLA MoE
             # fields must not silently change expert counts or replace hash
             # layers with dense layers. Workload routing remains overridable.
@@ -336,7 +308,7 @@ class ModelSpec:
             for name in fields:
                 if getattr(moe_config, name) != getattr(self.moe, name):
                     raise ConfigurationError(
-                        f"PSLA {name} conflicts with complete DeepSeek V4 catalog"
+                        f"PSLA {name} conflicts with complete compressed transformer catalog"
                     )
             for name in (
                 "hidden_size",
@@ -347,7 +319,7 @@ class ModelSpec:
                 value = getattr(moe_config, name)
                 if value is not None and value != getattr(self, name):
                     raise ConfigurationError(
-                        f"PSLA {name} conflicts with complete DeepSeek V4 catalog"
+                        f"PSLA {name} conflicts with complete compressed transformer catalog"
                     )
             return replace(self, moe=moe_config)
         updates: dict[str, Any] = {"moe": moe_config}
@@ -396,7 +368,8 @@ class ModelSpec:
             "total_params": self.total_params(),
             "architecture": self.architecture,
             "operator_dtypes": dict(self.operator_dtypes),
-            "deepseek_v4": self.deepseek_v4.to_dict() if self.deepseek_v4 else None,
+            "components": self.components.to_dict() if self.components else None,
+            "operator_modules": dict(self.operator_modules),
             "layers": [vars(layer) for layer in self.layer_specs()],
         }
 

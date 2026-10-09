@@ -110,7 +110,7 @@ TABLE_SPECS: Mapping[str, TableSpec] = {
         ),
         axes=(AxisSpec("num_tokens"),),
         dtype_fields=(),
-        description="Measured DSV4 mHC pre/post TileLang module; residual BF16 with FP32 parameters.",
+        description="Measured compressed attention mHC pre/post TileLang module; residual BF16 with FP32 parameters.",
         metadata_fields=("source_hardware", "source_version", "source_framework"),
     ),
     "dsv4_attention": TableSpec(
@@ -138,7 +138,7 @@ TABLE_SPECS: Mapping[str, TableSpec] = {
         ),
         dtype_fields=("mla_dtype", "kv_cache_dtype", "kernel_dtype"),
         description=(
-            "Complete DSV4 CSA/HCA attention module including input projections, "
+            "Complete compressed attention CSA/HCA attention module including input projections, "
             "compressor/indexer, sparse attention and output projection."
         ),
         metadata_fields=("source_hardware", "source_version", "source_model"),
@@ -164,7 +164,7 @@ TABLE_SPECS: Mapping[str, TableSpec] = {
         ),
         axes=(AxisSpec("num_tokens", "linear"),),
         dtype_fields=("dtype",),
-        description="DSV4 routed MegaMoE incl pre-dispatch/dispatch/combine; rank-local tokens, gate/top-k and shared MLP excluded.",
+        description="compressed attention routed MegaMoE incl pre-dispatch/dispatch/combine; rank-local tokens, gate/top-k and shared MLP excluded.",
         metadata_fields=(
             "num_max_tokens_per_rank",
             "effective_num_max_tokens_per_rank",

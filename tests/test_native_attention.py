@@ -8,7 +8,7 @@ from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.context import HardwareContext
 from TokenSim.latency.operator_table import OperatorTableLatencyBackend
 from TokenSim.operator_data.package import OperatorDataPackage
-from TokenSim.latency.deepseek_v4_attention import AttentionEstimate
+from TokenSim.latency.attention import AttentionEstimate
 from TokenSim.llm.llm_request import Request
 
 
@@ -31,7 +31,7 @@ class NativeAttentionTest(TestCase):
             parallel_config=parallel,
             rank_info=ParallelRankInfo.from_global_rank(0, parallel),
             package=self.context.operator_package(device.device_id, "vllm"),
-            attention_backend="native_dsv4" if native else "generic",
+            attention_backend="module" if native else "generic",
             moe_execution={
                 "backend": "deep_gemm_amxf4_mega_moe" if native_moe else "generic"
             },
@@ -229,7 +229,7 @@ class NativeAttentionTest(TestCase):
                 model=self.model,
                 parallel_config=ParallelConfig(),
                 package=package,
-                attention_backend="native_dsv4",
+                attention_backend="module",
             )
 
     def test_native_mhc_uses_pre_and_post_without_site_multiplier(self):
@@ -240,7 +240,7 @@ class NativeAttentionTest(TestCase):
             parallel_config=backend.parallel_config,
             rank_info=backend.rank_info,
             package=backend.package,
-            mhc_backend="native_dsv4",
+            mhc_backend="module",
         )
         value = backend.native_mhc.estimate(64)
         self.assertGreater(value, 0)
@@ -251,11 +251,11 @@ class NativeAttentionTest(TestCase):
         template = self.backend(native=False, native_moe=False)
         backend = OperatorTableLatencyBackend(
             device=template.device, model=self.model, parallel_config=template.parallel_config,
-            rank_info=template.rank_info, package=template.package, mhc_backend="native_dsv4",
+            rank_info=template.rank_info, package=template.package, mhc_backend="module",
         )
         operations = []
-        with patch.object(backend, "_elementwise", side_effect=lambda name, *args: operations.append(name) or 1), patch.object(
-            backend, "_gemm", return_value=0
+        with patch.object(backend, "elementwise", side_effect=lambda name, *args: operations.append(name) or 1), patch.object(
+            backend, "gemm", return_value=0
         ), patch.object(backend, "_moe_layers", return_value=0):
             backend._compose(tokens=64, requests=16, attention_us=0, requests_list=[])
         self.assertNotIn("residual_add", operations)
@@ -268,12 +268,12 @@ class NativeAttentionTest(TestCase):
                                   enable_expert_parallel=True)
         backend = OperatorTableLatencyBackend(
             device=template.device, model=self.model, parallel_config=parallel,
-            package=template.package, mhc_backend="native_dsv4",
+            package=template.package, mhc_backend="module",
         )
         calls = []
         with patch.object(backend.native_mhc, "estimate", return_value=1) as mhc, patch.object(
-            backend, "_elementwise", side_effect=lambda name, rows, hidden: calls.append((name, rows)) or 1
-        ), patch.object(backend, "_gemm", return_value=0), patch.object(backend, "_moe_layers", return_value=0):
+            backend, "elementwise", side_effect=lambda name, rows, hidden: calls.append((name, rows)) or 1
+        ), patch.object(backend, "gemm", return_value=0), patch.object(backend, "_moe_layers", return_value=0):
             backend._compose(tokens=66, requests=8, attention_us=0, requests_list=[])
         mhc.assert_called_once_with(17)
         self.assertEqual([rows for name, rows in calls if name == "rmsnorm"], [17, 17, 66])

@@ -9,7 +9,7 @@ import json
 from TokenSim.config.config import ClusterConfig, ParallelConfig, ParallelRankInfo
 from TokenSim.hardware.context import HardwareContext
 from TokenSim.latency.operator_table import OperatorTableLatencyBackend
-from TokenSim.latency.deepseek_v4_moe import MoEPass, RankShape
+from TokenSim.llm.forward import ForwardPass, RankShape
 from TokenSim.llm.llm_request import Request
 from util.results import get_latency_stats
 from TokenSim.config.psla_config import LLMResult, MetricData
@@ -29,7 +29,7 @@ class FullMTPTest(TestCase):
             device=device, model=self.model, parallel_config=parallel,
             rank_info=ParallelRankInfo.from_global_rank(0, parallel),
             package=self.context.operator_package(device.device_id, "vllm"),
-            attention_backend="native_dsv4", mhc_backend="native_dsv4",
+            attention_backend="module", mhc_backend="module",
             moe_execution={"backend": "deep_gemm_amxf4_mega_moe"},
             expected_decode_query_len=4 if enabled else 1, communicator=communicator,
         )
@@ -46,7 +46,7 @@ class FullMTPTest(TestCase):
         return result
 
     def set_uniform_step(self, backend, *, tokens=64, count=16, context=False):
-        step = MoEPass({rank: RankShape(tokens, None if context else 4, context, count)
+        step = ForwardPass({rank: RankShape(tokens, None if context else 4, context, count)
                        for rank in range(backend.parallel_config.data_parallel_size)})
         backend.set_moe_step(step)
 
@@ -85,16 +85,16 @@ class FullMTPTest(TestCase):
         req.scheduled_tokens = req.scheduled_query_tokens = 512
         self.set_uniform_step(backend, tokens=512, count=1, context=True)
         head_gemm_rows = []
-        original = backend._gemm
+        original = backend.gemm
 
         def record_gemm(rows, n, k, **kwargs):
             if n == backend.vocab_local:
                 head_gemm_rows.append(rows)
             return original(rows, n, k, **kwargs)
 
-        with patch.object(backend, "_gemm", side_effect=record_gemm):
+        with patch.object(backend, "gemm", side_effect=record_gemm):
             backend.estimate_step_latency([req])
-        self.assertEqual(backend.dsv4_hc_head.rows, 512)
+        self.assertEqual(backend.residual_output.rows, 512)
         self.assertEqual(backend.target_logits_counts["final_norm_rows"], 512)
         self.assertEqual(backend.target_logits_counts["rows"], 1)
         self.assertEqual(backend.native_mtp.hc_head.rows, 3)
@@ -102,21 +102,21 @@ class FullMTPTest(TestCase):
 
     def test_target_output_uses_dp_capture_rows_after_sequence_gather(self):
         backend = self.backend(tp=4, dp=2)
-        backend.set_moe_step(MoEPass({0: RankShape(16, 4, False, 4),
+        backend.set_moe_step(ForwardPass({0: RankShape(16, 4, False, 4),
                                      1: RankShape(32, 4, False, 8)}))
         backend.estimate_step_latency(self.decode_requests(4))
         self.assertEqual(backend.target_logits_counts["forward_rows"], 16)
-        self.assertEqual(backend.dsv4_hc_head.rows, 32)
+        self.assertEqual(backend.residual_output.rows, 32)
         self.assertEqual(backend.target_logits_counts["final_norm_rows"], 32)
         self.assertEqual(backend.target_logits_counts["rows"], 16)
         self.assertEqual(backend.native_mtp.hc_head.rows, 24)
 
     def test_remote_context_rank_keeps_target_output_at_local_eager_rows(self):
         backend = self.backend()
-        backend.set_moe_step(MoEPass({rank: RankShape(512, None, True, 1) if rank == 1
+        backend.set_moe_step(ForwardPass({rank: RankShape(512, None, True, 1) if rank == 1
                                      else RankShape(16, 4, False, 4) for rank in range(8)}))
         backend.estimate_step_latency(self.decode_requests(4))
-        self.assertEqual(backend.dsv4_hc_head.rows, 16)
+        self.assertEqual(backend.residual_output.rows, 16)
         self.assertEqual(backend.target_logits_counts["final_norm_rows"], 16)
 
     def test_tp_sp_padding_and_draft_collectives_are_explicit(self):
@@ -124,7 +124,7 @@ class FullMTPTest(TestCase):
         comm.describe.return_value = {"ep_group_link": "node", "ep_group_size": 8}
         comm.estimate_tp_collective.return_value = 1e-6
         backend = self.backend(tp=4, dp=2, communicator=comm)
-        backend.set_moe_step(MoEPass({0: RankShape(16, 4, False, 4),
+        backend.set_moe_step(ForwardPass({0: RankShape(16, 4, False, 4),
                                      1: RankShape(32, 4, False, 8)}))
         costs = backend.native_mtp.estimate(self.decode_requests(4))
         c = backend.native_mtp.counts
@@ -157,7 +157,7 @@ class FullMTPTest(TestCase):
         self.assertAlmostEqual(backend.stats.component_seconds["attention"],
                                backend.native_attention.seconds + mtp.component_seconds["attention"])
         result = get_latency_stats(SimpleNamespace(workers=[SimpleNamespace(latency_backend=backend, device=backend.device)]))
-        self.assertEqual(result["native_dsv4_mtp_counts"]["passes"], 3)
+        self.assertEqual(result["speculative_counts"]["passes"], 3)
         self.assertAlmostEqual(result["native_megamoe_routed_seconds"] + result["native_megamoe_shared_seconds"],
                                backend.stats.component_seconds["moe"])
         self.assertTrue({"native_megamoe_routed_seconds", "native_megamoe_shared_seconds",
@@ -170,8 +170,8 @@ class FullMTPTest(TestCase):
         self.assertLessEqual(result["native_mhc_seconds"], backend.stats.component_seconds["elementwise"])
         self.assertEqual(sum(result["native_mhc_counts"]["main"].values()), 2)
         self.assertEqual(sum(result["native_mhc_counts"]["draft"].values()), 6)
-        self.assertEqual(result["dsv4_hc_head_counts"]["target_rows"], 64)
-        self.assertEqual(result["dsv4_hc_head_counts"]["draft_rows"], 48)
+        self.assertEqual(result["residual_output_counts"]["target_rows"], 64)
+        self.assertEqual(result["residual_output_counts"]["draft_rows"], 48)
         exported = LLMResult(
             cluster=ClusterConfig.from_file("data/clusters/8_b200/dep8.json"),
             qps=1, request_count=1, prefill_lens=[8192], decode_lens=[20],
@@ -181,11 +181,11 @@ class FullMTPTest(TestCase):
         )
         saved = json.loads(json.dumps(asdict(exported)))
         self.assertEqual(saved["native_mhc_counts"], result["native_mhc_counts"])
-        self.assertEqual(saved["dsv4_hc_head_seconds"], result["dsv4_hc_head_seconds"])
+        self.assertEqual(saved["residual_output_seconds"], result["residual_output_seconds"])
         backend.reset_profile_stats()
         self.assertEqual(mtp.counts, {})
         self.assertEqual(mtp.component_seconds, {})
-        self.assertEqual(backend.dsv4_hc_head.rows, 0)
+        self.assertEqual(backend.residual_output.rows, 0)
         self.assertEqual(mtp.hc_head.rows, 0)
         self.assertEqual(backend.native_mhc.seconds, 0)
         self.assertEqual(mtp.mhc.seconds, 0)

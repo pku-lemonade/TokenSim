@@ -28,9 +28,9 @@ def backend_prefill_len(prefill_len: int) -> int:
 
 
 def rounded_prefill_len(prefill_len: int) -> int:
-    return int(prefill_len / PREFILL_ROUNDING_ALIGNMENT) * PREFILL_ROUNDING_ALIGNMENT + (
-        PREFILL_ROUNDING_ALIGNMENT
-    )
+    return int(
+        prefill_len / PREFILL_ROUNDING_ALIGNMENT
+    ) * PREFILL_ROUNDING_ALIGNMENT + (PREFILL_ROUNDING_ALIGNMENT)
 
 
 def step_tokens(req: Request) -> int:
@@ -62,3 +62,24 @@ def is_decode_step(req: Request) -> bool:
 def is_decode_attention_step(req: Request, max_query_len: int) -> bool:
     """SM100 varlen SWA/indexer split: short extends use decode metadata."""
     return query_tokens(req) <= max_query_len
+
+
+def roofline_latency_us(
+    device,
+    bytes_: float,
+    flops: float = 0,
+    *,
+    dtype: str = "fp32",
+    compute_efficiency: float = 1.0,
+    memory_efficiency: float | None = None,
+    launches: int = 1,
+) -> float:
+    """Price streaming work from device rates and explicit launch count."""
+    efficiency = (
+        device.analytical["memory_efficiency"]
+        if memory_efficiency is None
+        else memory_efficiency
+    )
+    memory = bytes_ / (device.memory_bandwidth_bytes_per_s.value * efficiency)
+    compute = flops / (device.peak_compute_for(dtype).value * compute_efficiency)
+    return max(memory, compute) * 1e6 + launches * device.analytical["kernel_launch_us"]

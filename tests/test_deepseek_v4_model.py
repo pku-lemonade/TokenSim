@@ -14,7 +14,7 @@ from TokenSim.config.cluster_config import ClusterConfig
 from TokenSim.config.model_config import ModelCatalog, ModelSpec
 from TokenSim.config.parallel_config import ParallelConfig, ParallelRankInfo
 from TokenSim.config.psla_config import PSLAConfig
-from TokenSim.config.weight_memory import deepseek_v4_weight_memory
+from TokenSim.config.weight_memory import packed_weight_memory
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.context import HardwareContext
 from TokenSim.moe.placement import build_expert_placement
@@ -42,7 +42,7 @@ class DeepSeekV4ModelTest(unittest.TestCase):
             ("sliding_window", "sliding_window"),
         ):
             self.assertEqual(getattr(m, field), hf[key], field)
-        spec = m.deepseek_v4
+        spec = m.components
         for field in (
             "q_lora_rank",
             "o_lora_rank",
@@ -96,12 +96,12 @@ class DeepSeekV4ModelTest(unittest.TestCase):
 
     def test_incomplete_or_inconsistent_native_structure_is_rejected(self):
         for mutate in (
-            lambda r: r["deepseek_v4"]["compress_ratios"].pop(),
-            lambda r: r["deepseek_v4"]["compress_ratios"].__setitem__(-1, 4),
-            lambda r: r["deepseek_v4"].__setitem__("num_hash_layers", 62),
-            lambda r: r["operator_dtypes"].pop("mhc_residual"),
+            lambda r: r["components"]["compress_ratios"].pop(),
+            lambda r: r["components"]["compress_ratios"].__setitem__(-1, 4),
+            lambda r: r["components"].__setitem__("num_hash_layers", 62),
+            lambda r: r["components"].__setitem__("hc_mult", 0),
             lambda r: r.__setitem__("kv_cache_dim", 576),
-            lambda r: r["moe"].update(num_moe_layers=58, first_k_dense_replace=3),
+            lambda r: r["moe"].update(num_experts_per_tok=999),
             lambda r: r.__setitem__("activation", "gelu"),
         ):
             raw = copy.deepcopy(self.raw)
@@ -112,7 +112,7 @@ class DeepSeekV4ModelTest(unittest.TestCase):
     def test_psla_cannot_silently_restore_proxy_geometry(self):
         moe = PSLAConfig.from_file("data/psla/deepseek-v4-pro.json").moe_config
         self.assertEqual(
-            self.model.with_moe_override(moe).deepseek_v4, self.model.deepseek_v4
+            self.model.with_moe_override(moe).components, self.model.components
         )
         for field, value in (
             ("num_experts", 256),
@@ -129,7 +129,7 @@ class DeepSeekV4ModelTest(unittest.TestCase):
         self.assertEqual(data["architecture"], "deepseek_v4")
         self.assertEqual(len(data["layers"]), 62)
         self.assertTrue(data["layers"][-1]["is_mtp"])
-        self.assertEqual(data["deepseek_v4"]["hc_mult"], 4)
+        self.assertEqual(data["components"]["hc_mult"], 4)
         self.assertEqual(data["sliding_window"], 128)
         self.assertEqual(data["max_position_embeddings"], 1048576)
         self.assertEqual(data["operator_dtypes"]["routed_expert"], "mxfp4")
@@ -149,7 +149,7 @@ class DeepSeekV4WeightTest(unittest.TestCase):
     def test_dep8_owns_48_experts_per_rank_and_meets_weight_log_tolerance(self):
         for sku, logged in (("b200", 125.88), ("b300", 126.08)):
             for dp in range(8):
-                report = deepseek_v4_weight_memory(
+                report = packed_weight_memory(
                     self.model, self.parallel, ParallelRankInfo(dp_rank=dp)
                 )
                 self.assertEqual(report["local_experts"], 48)
@@ -159,7 +159,7 @@ class DeepSeekV4WeightTest(unittest.TestCase):
                 )
 
     def test_tensor_shapes_follow_low_rank_grouped_attention(self):
-        report = deepseek_v4_weight_memory(self.model, self.parallel)
+        report = packed_weight_memory(self.model, self.parallel)
         tensors = {t["name"]: t for t in report["tensors"]}
         self.assertEqual(tensors["layers.0.attn.fused_wqa_wkv"]["shape"], [2048, 7168])
         self.assertEqual(tensors["layers.0.attn.wq_b"]["shape"], [65536, 1536])
@@ -170,7 +170,7 @@ class DeepSeekV4WeightTest(unittest.TestCase):
         self.assertNotIn("mtp.61.attn.compressor.fused_wkv_wgate", tensors)
 
     def test_quantization_scales_and_nonquantized_tensors_are_counted(self):
-        report = deepseek_v4_weight_memory(self.model, self.parallel)
+        report = packed_weight_memory(self.model, self.parallel)
         tensors = {t["name"]: t for t in report["tensors"]}
         t = tensors["layers.0.experts.gate_up"]
         self.assertEqual(t["shape"], [48, 6144, 7168])
@@ -197,8 +197,8 @@ class DeepSeekV4WeightTest(unittest.TestCase):
         )
 
     def test_mtp_reuses_target_embeddings_and_head_and_adds_one_module(self):
-        with_mtp = deepseek_v4_weight_memory(self.model, self.parallel)
-        without_mtp = deepseek_v4_weight_memory(
+        with_mtp = packed_weight_memory(self.model, self.parallel)
+        without_mtp = packed_weight_memory(
             self.model, self.parallel, include_mtp=False
         )
         self.assertGreater(with_mtp["total_bytes"], without_mtp["total_bytes"])
@@ -223,8 +223,8 @@ class DeepSeekV4WeightTest(unittest.TestCase):
             enable_expert_parallel=True,
             expert_parallel_size=8,
         )
-        report = deepseek_v4_weight_memory(self.model, ep)
-        reference = deepseek_v4_weight_memory(self.model, self.parallel)
+        report = packed_weight_memory(self.model, ep)
+        reference = packed_weight_memory(self.model, self.parallel)
         self.assertEqual(report["local_experts"], 48)
         self.assertEqual(
             report["components"]["routed_expert"],
@@ -242,7 +242,7 @@ class DeepSeekV4WeightTest(unittest.TestCase):
 
     def test_tp_without_ep_shards_intermediate_width_instead_of_expert_ids(self):
         parallel = ParallelConfig(tensor_parallel_size=8)
-        report = deepseek_v4_weight_memory(self.model, parallel)
+        report = packed_weight_memory(self.model, parallel)
         tensors = {t["name"]: t for t in report["tensors"]}
         self.assertEqual(report["local_experts"], 384)
         self.assertEqual(report["moe_tensor_parallel_size"], 8)
@@ -254,8 +254,8 @@ class DeepSeekV4WeightTest(unittest.TestCase):
         self,
     ):
         parallel = ParallelConfig(tensor_parallel_size=8, enable_expert_parallel=True)
-        fused = deepseek_v4_weight_memory(self.model, parallel, layout_backend="fused")
-        mega = deepseek_v4_weight_memory(
+        fused = packed_weight_memory(self.model, parallel, layout_backend="fused")
+        mega = packed_weight_memory(
             self.model, parallel, layout_backend="mega_moe"
         )
         self.assertFalse(fused["shared_experts_replicated_across_tp"])
@@ -265,7 +265,7 @@ class DeepSeekV4WeightTest(unittest.TestCase):
             mega["components"]["hash_routing"]["metadata_bytes"],
         )
         with self.assertRaises(ConfigurationError):
-            deepseek_v4_weight_memory(
+            packed_weight_memory(
                 self.model, ParallelConfig(), layout_backend="mega_moe"
             )
 
@@ -278,7 +278,7 @@ class DeepSeekV4WeightTest(unittest.TestCase):
             cache = CacheConfig(
                 256, device, self.model, self.parallel, ParallelRankInfo(), placement
             )
-            report = deepseek_v4_weight_memory(self.model, self.parallel)
+            report = packed_weight_memory(self.model, self.parallel)
             self.assertEqual(cache.model_param_size, report["total_bytes"])
             self.assertNotEqual(cache.model_param_size, self.model.total_params() / 8)
             self.assertGreater(cache.num_gpu_blocks, 0)
@@ -286,12 +286,12 @@ class DeepSeekV4WeightTest(unittest.TestCase):
 
     def test_unsupported_pp_or_rank_is_rejected(self):
         with self.assertRaises(ConfigurationError):
-            deepseek_v4_weight_memory(
+            packed_weight_memory(
                 self.model, ParallelConfig(pipeline_parallel_size=2)
             )
         for dp_rank in (-1, 8):
             with self.assertRaises(ConfigurationError):
-                deepseek_v4_weight_memory(
+                packed_weight_memory(
                     self.model, self.parallel, ParallelRankInfo(dp_rank=dp_rank)
                 )
 

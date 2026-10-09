@@ -8,8 +8,8 @@ defaults:
   moe_backend: deep_gemm_amxf4_mega_moe
   moe_shared_fusion: true
   moe_latency_scale: 1.0
-  attention_backend: native_dsv4
-  mhc_backend: native_dsv4
+  attention_backend: module
+  mhc_backend: module
   workload_seed: 42
   trace_count: 393
   profiling_window_s: 3600

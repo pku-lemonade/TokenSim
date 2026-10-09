@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from TokenSim.config.config import ParallelConfig
 from TokenSim.hardware.context import HardwareContext
-from TokenSim.latency.deepseek_v4_gemm import attention_projections
+from TokenSim.latency.projection import attention_projections
 from TokenSim.latency.operator_table import (
     OperatorTableLatencyBackend,
     OperatorEstimate,

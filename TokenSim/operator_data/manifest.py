@@ -206,8 +206,8 @@ def _add_model_shapes(
 
     token_counts = sorted(set(grid.batch_sizes) | set(grid.prefill_tokens))
     for m in token_counts:
-        if model.deepseek_v4 is not None:
-            from TokenSim.latency.deepseek_v4_gemm import attention_projections
+        if model.components is not None:
+            from TokenSim.latency.projection import attention_projections
 
             for projection in attention_projections(model, tp):
                 manifest.add(
@@ -243,7 +243,7 @@ def _add_model_shapes(
                 "gemm",
                 {
                     "dtype": (
-                        model.operator_dtype("router") if model.deepseek_v4 else dtype
+                        model.operator_dtype("router") if model.components else dtype
                     ),
                     "m": m,
                     "n": model.moe.num_experts,
@@ -277,7 +277,7 @@ def _add_model_shapes(
             "gemm",
             {
                 "dtype": (
-                    model.operator_dtype("lm_head") if model.deepseek_v4 else dtype
+                    model.operator_dtype("lm_head") if model.components else dtype
                 ),
                 "m": b,
                 "n": vocab_local,
@@ -320,11 +320,11 @@ def _add_model_shapes(
                     {
                         "dtype": (
                             model.operator_dtype("routed_expert")
-                            if model.deepseek_v4
+                            if model.components
                             else dtype
                         ),
                         "distribution": (
-                            "power_law_1.01" if model.deepseek_v4 else "uniform"
+                            "power_law_1.01" if model.components else "uniform"
                         ),
                         "num_tokens": tokens,
                         "hidden_size": h,

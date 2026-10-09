@@ -316,7 +316,7 @@ class LLMWorker(Worker):
         if self.cache_config.hybrid_layout is not None:
             if batching != "paged-attn":
                 raise ConfigurationError(
-                    "native DSV4 hybrid cache requires paged-attn scheduling"
+                    "native compressed attention hybrid cache requires paged-attn scheduling"
                 )
             if self.kv_transfer_config.kv_connector not in (
                 "NoopConnector",

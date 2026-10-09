@@ -5,6 +5,7 @@ from collections import Counter
 from dataclasses import replace
 from typing import Any, Mapping
 
+from TokenSim.utils import BoundedCache
 from TokenSim.errors import WorkloadValidationError
 from TokenSim.llm.llm_request import Request
 from TokenSim.moe.config import MoEModelConfig, RoutingConfig
@@ -73,8 +74,8 @@ class ExpertRouting:
             routing_config or moe_config.routing or RoutingConfig()
         )
         self.random = random.Random(seed)
-        self._synthetic_cache: dict[tuple[int, int], dict[int, int]] = {}
-        self._normalized_cache: dict[tuple[int, str, int], dict[int, int]] = {}
+        self._synthetic_cache = BoundedCache(self._SYNTHETIC_CACHE_LIMIT)
+        self._normalized_cache = BoundedCache(self._SYNTHETIC_CACHE_LIMIT)
         count = self.moe_config.num_experts
         if rank_to_experts:
             # Distribute a partial round across EP ranks before giving a
@@ -154,8 +155,6 @@ class ExpertRouting:
                     num_experts=self.moe_config.num_experts,
                     request_id=request.id,
                 )
-                if len(self._normalized_cache) >= self._SYNTHETIC_CACHE_LIMIT:
-                    self._normalized_cache.clear()
                 self._normalized_cache[identity] = cached
             total = request.prefill_compute_len if request.is_prefill else 1
             if 0 < token_count < total:
@@ -186,8 +185,6 @@ class ExpertRouting:
                 cached = self._hot_histogram(route_count)
             else:
                 cached = self._uniform_histogram(route_count, offset)
-            if len(self._synthetic_cache) >= self._SYNTHETIC_CACHE_LIMIT:
-                self._synthetic_cache.clear()
             self._synthetic_cache[identity] = cached
         # Callers treat histograms as read-only; returning the cached dict is safe.
         return cached

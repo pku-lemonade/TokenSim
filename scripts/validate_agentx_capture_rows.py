@@ -26,7 +26,7 @@ def audit(root, *, hardware=("b200", "b300"), baseline_root=BASELINE,
         concurrency = 196 if sku == "b200" else 384
         path = Path(root) / "seed0" / f"{sku}-c{concurrency}-dep8-simplecpu" / sku / f"agentx_c{concurrency}.json"
         result = json.loads(path.read_text())
-        main, logits = result["dsv4_main_forward_counts"], result["dsv4_target_logits"]
+        main, logits = result["main_forward_counts"], result["target_logits"]
         assert main["steps"] == result["operator_step_count"]
         assert main["logical_rows"] == logits["forward_rows"]
         assert main["full_rows"] == logits["output_forward_rows"]
@@ -38,7 +38,7 @@ def audit(root, *, hardware=("b200", "b300"), baseline_root=BASELINE,
         assert main["attention_projection_layer_rows"] == 61 * main["full_rows"]
         assert main["mhc_layer_rows"] == main["router_layer_rows"] == 61 * main["full_rows"]
         assert main["norm_layer_rows"] == 122 * main["full_rows"]
-        capture = result["native_dsv4_attention_composition"]
+        capture = result["attention_module_composition"]
         assert capture["capture_batches"] == main["graph_padded_steps"] > 0
         assert capture["capture_descriptor_rows"] == capture["capture_logical_rows"] + capture["capture_padding_rows"]
         assert capture["capture_padding_rows"] == main["capture_padding_rows"]

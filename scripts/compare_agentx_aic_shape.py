@@ -13,7 +13,7 @@ sys.path.insert(0, str(ROOT))
 
 from TokenSim.config.parallel_config import ParallelConfig
 from TokenSim.hardware.context import HardwareContext
-from TokenSim.latency.deepseek_v4_attention import DeepSeekV4AttentionEstimator
+from TokenSim.latency.attention import CompressedAttentionEstimator
 
 
 def tokensim_attention(device: str) -> dict:
@@ -34,7 +34,7 @@ def tokensim_attention(device: str) -> dict:
     backend.parallel_config = parallel
     backend.package = package
     backend.stats = Stats()
-    estimator = DeepSeekV4AttentionEstimator(backend)
+    estimator = CompressedAttentionEstimator(backend)
     return {
         "device": device,
         "shape": {"batch_size": 8, "query_tokens": 1024, "context_tokens": 1024, "tp": 8},

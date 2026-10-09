@@ -175,7 +175,7 @@ def audit(
                 "ep_size": 8,
                 "num_tokens": tokens * 8,
             }
-            estimate = backend._query_moe(key)
+            estimate = backend.moe_query(key)
             samples.append(
                 {
                     "local_tokens": tokens,

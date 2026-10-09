@@ -70,7 +70,7 @@ def audit(root, *, hardware=("b200", "b300"), baseline_root=BASELINE,
         # two later passes have one routed row per real forward request.
         assert c["routed_valid_rows"] >= 2 * query_rows
         assert c["routed_valid_layer_rows"] >= 62 * query_rows
-        logits, draft = current["dsv4_target_logits"], current["native_dsv4_mtp_counts"]
+        logits, draft = current["target_logits"], current["speculative_counts"]
         # These main checkpoints use TP1: target and draft full forward
         # tensors are exactly the owned MegaMoE inputs. Only the target is
         # repeated over61 layers; all three draft passes use one layer.
@@ -79,9 +79,9 @@ def audit(root, *, hardware=("b200", "b300"), baseline_root=BASELINE,
         assert c["routed_valid_layer_rows"] == 60 * query_rows + c["routed_valid_rows"]
         assert draft["target_steps"] == draft["initial_passes"] == steps
         assert draft["decode_passes"] == 2 * steps and draft["passes"] == 3 * steps
-        assert current["dsv4_hc_head_counts"]["target_calls"] == steps
-        assert current["dsv4_hc_head_counts"]["target_rows"] == logits["final_norm_rows"]
-        assert current["dsv4_hc_head_counts"]["draft_rows"] == draft["logits_rows"]
+        assert current["residual_output_counts"]["target_calls"] == steps
+        assert current["residual_output_counts"]["target_rows"] == logits["final_norm_rows"]
+        assert current["residual_output_counts"]["draft_rows"] == draft["logits_rows"]
         assert logits["output_forward_rows"] >= logits["forward_rows"] >= logits["rows"]
         assert abs(current["native_mhc_main_seconds"] + current["native_mhc_draft_seconds"] - current["native_mhc_seconds"]) < 1e-6
         records = [json.loads(line) for line in (new / "native_replay/requests.jsonl").read_text().splitlines()]

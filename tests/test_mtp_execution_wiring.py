@@ -12,7 +12,7 @@ from TokenSim.config.psla_config import PSLAConfig
 from TokenSim.config.speculative_execution import resolve_mtp_tokens
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.context import HardwareContext
-from TokenSim.latency.deepseek_v4_moe import MoEPass, RankShape
+from TokenSim.llm.forward import ForwardPass, RankShape
 from TokenSim.llm.llm_engine import LLMEngine
 from TokenSim.llm.llm_request import Request
 from scripts.run_agentx_native import command
@@ -40,7 +40,7 @@ class MTPExecutionWiringTest(TestCase):
                     long_prefill_token_threshold=512, prefill_schedule_interval=8,
                     latency_backend_type="operator_table", latency_fallback="table_first", operator_backend="vllm",
                     moe_execution={"backend": "deep_gemm_amxf4_mega_moe"},
-                    attention_backend="native_dsv4", mhc_backend="native_dsv4",
+                    attention_backend="module", mhc_backend="module",
                     mtp_acceptance_length=acceptance, mtp_num_speculative_tokens=k,
                 )
 
@@ -116,14 +116,14 @@ class MTPExecutionWiringTest(TestCase):
         for sku in ("b200", "b300"):
             backend = self.engines[sku, 0, 1.0].workers[0].latency_backend
             backend.reset_profile_stats()
-            backend.set_moe_step(MoEPass({rank: RankShape(1, 1, False, 1) for rank in range(8)}))
+            backend.set_moe_step(ForwardPass({rank: RankShape(1, 1, False, 1) for rank in range(8)}))
             request = Request(1, 8192, 20, 256)
             request.generation_idx = 1
             request.num_computed_tokens = 8192
             request.scheduled_tokens = request.scheduled_query_tokens = 1
             self.assertGreater(backend.estimate_step_latency([request]), 0)
             self.assertEqual(backend.native_moe.counts["rank_estimates"], 1)
-            self.assertNotIn("native_dsv4_mtp_counts", backend.stats_dict())
+            self.assertNotIn("speculative_counts", backend.stats_dict())
             self.assertIsNone(backend.native_mtp)
 
     def test_runner_forwards_explicit_k0_and_default_k3(self):

@@ -40,8 +40,8 @@ def audit(root, *, hardware=("b200", "b300")):
             assert {k: v for k, v in first.items() if k not in ("peak_used_slots", "evictions")} == {
                 k: v for k, v in second.items() if k not in ("peak_used_slots", "evictions")
             }
-        logits = current["dsv4_target_logits"]
-        batches = current["native_dsv4_attention_decode_batches"]
+        logits = current["target_logits"]
+        batches = current["attention_module_decode_batches"]
         assert logits["steps"] == current["operator_step_count"]
         assert logits["decode_rows"] == batches["query_rows"] == 4 * batches["requests"]
         assert batches["indexer_query_tiles"] == 2 * batches["requests"]

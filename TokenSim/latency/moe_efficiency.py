@@ -98,7 +98,9 @@ class ExpertEfficiencyTransfer:
             raise ConfigurationError("invalid native MegaMoE phase-transfer anchor")
         factor = anchor / source.latency_us
         common = factor * (target.startup_us + target.input_us + target.combine_us)
-        target_expert, source_expert = fused_expert_work(target), fused_expert_work(source)
+        target_expert, source_expert = fused_expert_work(target), fused_expert_work(
+            source
+        )
         capacity = self.capacity_for(phase, anchor_rows)
         curve = self.curves.get((phase, capacity))
         ratio, match = 1.0, "unchanged_no_same_capacity_curve"
@@ -110,7 +112,10 @@ class ExpertEfficiencyTransfer:
             ratio = target_gamma / source_gamma
         expert = factor * target_expert * ratio
         total = common + expert
-        if not all(math.isfinite(value) and value >= 0 for value in (common, expert, total, ratio)):
+        if not all(
+            math.isfinite(value) and value >= 0
+            for value in (common, expert, total, ratio)
+        ):
             raise ConfigurationError("invalid MegaMoE transferred component cost")
         return PhaseTransfer(total, common, expert, ratio, match, capacity)
 
@@ -122,7 +127,11 @@ class ExpertEfficiencyTransfer:
             "expert_scope": "critical expert/fused-dispatch work after integer sampling and full-input BLOCK_M; normalized measured shape efficiency ratio",
             "identity": "uniform source anchor retained exactly; source-relative efficiency ratio equals1 at identical expert work",
             "fallback": "missing/singleton capacity, ambiguous work coordinate, cross-capacity or cross-buffer interpolation retain original physical normalization",
-            "capacity_curves": [{"phase": phase, "effective_capacity": capacity, "points": len(curve)}
-                                for (phase, capacity), curve in sorted(self.curves.items())],
-            "serving_fit": False, "cache_credit": False, "mean_rank_module_query": False,
+            "capacity_curves": [
+                {"phase": phase, "effective_capacity": capacity, "points": len(curve)}
+                for (phase, capacity), curve in sorted(self.curves.items())
+            ],
+            "serving_fit": False,
+            "cache_credit": False,
+            "mean_rank_module_query": False,
         }

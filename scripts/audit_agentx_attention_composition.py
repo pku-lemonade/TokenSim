@@ -26,7 +26,7 @@ def audit():
                 device=device, model=model, parallel_config=parallel,
                 rank_info=ParallelRankInfo.from_global_rank(0, parallel),
                 package=hardware.operator_package(device.device_id, "vllm"),
-                attention_backend="native_dsv4",
+                attention_backend="module",
             )
             estimator = backend.native_attention
             before = estimator.estimate_prefill(1, 512, 65536)

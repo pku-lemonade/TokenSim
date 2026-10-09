@@ -7,9 +7,9 @@ from unittest.mock import patch
 import numpy as np
 
 from TokenSim.errors import ConfigurationError
-from TokenSim.latency.deepseek_v4_moe import MoEPass, RankShape, sp_valid_rows
-from TokenSim.latency.deepseek_v4_moe_work import MegaMoEWorkModel, block_m_for_input
-from TokenSim.latency.deepseek_v4_moe_spectrum import SpectrumGeometry
+from TokenSim.llm.forward import ForwardPass, RankShape, sp_valid_rows
+from TokenSim.latency.moe_work import MegaMoEWorkModel, block_m_for_input
+from TokenSim.latency.moe_spectrum import SpectrumGeometry
 from util.results import get_latency_stats
 import tests.test_native_megamoe as native_moe
 import tests.test_full_mtp as full_mtp
@@ -26,7 +26,7 @@ class MegaMoEValidRowsTest(TestCase):
 
     def test_graph_inputs_are_full_while_valid_routes_keep_real_rows(self):
         backend = self.backend()
-        backend.set_moe_step(MoEPass({rank: RankShape(n, 4, False, n // 4)
+        backend.set_moe_step(ForwardPass({rank: RankShape(n, 4, False, n // 4)
                                      for rank, n in enumerate([64] + [16] * 7)}))
         group = backend.native_moe.group_rows(64)
         self.assertTrue(group.graph)
@@ -40,7 +40,7 @@ class MegaMoEValidRowsTest(TestCase):
         self.assertEqual([sp_valid_rows(20, 20, 4, rank) for rank in range(4)], [5, 5, 5, 5])
         self.assertEqual([sp_valid_rows(19, 19, 4, rank) for rank in range(4)], [5, 5, 5, 4])
         backend = self.backend(tp=4, dp=2)
-        backend.set_moe_step(MoEPass({0: RankShape(32, 4, False, 8), 1: RankShape(20, 4, False, 5)}))
+        backend.set_moe_step(ForwardPass({0: RankShape(32, 4, False, 8), 1: RankShape(20, 4, False, 5)}))
         group = backend.native_moe.group_rows(32)
         self.assertEqual(list(group.inputs.values()), [8] * 8)
         self.assertEqual(list(group.routed.values()), [8, 8, 8, 8, 8, 8, 4, 0])
@@ -48,7 +48,7 @@ class MegaMoEValidRowsTest(TestCase):
 
     def test_dummy_and_mtp_passes_preserve_zero_routed_requests(self):
         backend = full_mtp.FullMTPTest().backend()
-        step = MoEPass({0: RankShape(16, 4, False, 4, 16, 4),
+        step = ForwardPass({0: RankShape(16, 4, False, 4, 16, 4),
                        **{rank: RankShape(4, 4, False, 1, 0, 0) for rank in range(1, 8)}})
         backend.set_moe_step(step)
         initial, later, final = backend.native_mtp.pass_shapes(full_mtp.FullMTPTest().decode_requests(4))
@@ -70,15 +70,15 @@ class MegaMoEValidRowsTest(TestCase):
         backend = self.backend()
         for rows in (1, 64, 128, 1024):
             with self.subTest(rows=rows):
-                backend.set_moe_step(MoEPass({rank: RankShape(rows, 1, True) for rank in range(8)}))
+                backend.set_moe_step(ForwardPass({rank: RankShape(rows, 1, True) for rank in range(8)}))
                 total, routed, shared = backend.native_moe.estimate(rows, layers=1)
                 self.assertEqual(routed, 100 + rows)
                 self.assertAlmostEqual(total, routed + shared)
 
     def test_masking_changes_routed_work_and_preserves_full_shared_input(self):
         backend = self.backend()
-        full = MoEPass({rank: RankShape(128, 4, False, 32) for rank in range(8)})
-        masked = MoEPass({rank: RankShape(128, 4, False, 32, 16, 4) for rank in range(8)})
+        full = ForwardPass({rank: RankShape(128, 4, False, 32) for rank in range(8)})
+        masked = ForwardPass({rank: RankShape(128, 4, False, 32, 16, 4) for rank in range(8)})
         backend.set_moe_step(full)
         _, before, shared_before = backend.native_moe.estimate(128)
         backend.set_moe_step(masked)
@@ -91,7 +91,7 @@ class MegaMoEValidRowsTest(TestCase):
 
     def test_all_padding_retains_kernel_scans_and_collective_progress(self):
         backend = self.backend()
-        backend.set_moe_step(MoEPass({rank: RankShape(4, 4, False, 1, 0, 0) for rank in range(8)}))
+        backend.set_moe_step(ForwardPass({rank: RankShape(4, 4, False, 1, 0, 0) for rank in range(8)}))
         total, routed, shared = backend.native_moe.estimate(4, layers=1)
         self.assertGreater(total, 0)
         self.assertGreater(routed, 0)
@@ -206,7 +206,7 @@ class MegaMoEValidRowsTest(TestCase):
 
     def test_export_time_ledger_and_profile_reset(self):
         backend = self.backend()
-        backend.set_moe_step(MoEPass({rank: RankShape(64, 4, False, 16, 16, 4) for rank in range(8)}))
+        backend.set_moe_step(ForwardPass({rank: RankShape(64, 4, False, 16, 16, 4) for rank in range(8)}))
         backend.native_moe.estimate(64)
         result = get_latency_stats(SimpleNamespace(workers=[SimpleNamespace(latency_backend=backend, device=backend.device)]))
         ledger = result["native_megamoe_composition"]

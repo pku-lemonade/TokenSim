@@ -213,7 +213,7 @@ def get_latency_stats(engine: LLMEngine) -> dict[str, Any]:
         for key, value in getattr(backend, "main_forward_counts", {}).items():
             main_forward_counts[key] = main_forward_counts.get(key, 0) + value
         for role, head in (
-            ("target", getattr(backend, "dsv4_hc_head", None)),
+            ("target", getattr(backend, "residual_output", None)),
             ("draft", getattr(mtp, "hc_head", None)),
         ):
             if head is not None:
@@ -254,18 +254,18 @@ def get_latency_stats(engine: LLMEngine) -> dict[str, Any]:
         native_attention = getattr(backend, "native_attention", None)
         if native_attention is not None:
             extra = native_attention.stats_dict()
-            native_attention_total += extra["native_dsv4_attention_seconds"]
-            for key, count in extra["native_dsv4_attention_counts"].items():
+            native_attention_total += extra["attention_module_seconds"]
+            for key, count in extra["attention_module_counts"].items():
                 native_attention_counts[key] = (
                     native_attention_counts.get(key, 0) + count
                 )
-            for key, count in extra["native_dsv4_attention_decode_batches"].items():
+            for key, count in extra["attention_module_decode_batches"].items():
                 native_attention_decode_batches[key] = (
                     native_attention_decode_batches.get(key, 0) + count
                 )
-            for key, value in extra["native_dsv4_attention_mtp_kv"].items():
+            for key, value in extra["attention_module_mtp_kv"].items():
                 native_attention_mtp_kv[key] = native_attention_mtp_kv.get(key, 0) + value
-            for key, value in extra["native_dsv4_attention_composition"].items():
+            for key, value in extra["attention_module_composition"].items():
                 native_attention_composition[key] = native_attention_composition.get(key, 0) + value
         stats = getattr(backend, "stats", None)
         if isinstance(stats, OperatorStats):
@@ -296,25 +296,25 @@ def get_latency_stats(engine: LLMEngine) -> dict[str, Any]:
         ),
         **(
             {
-                "native_dsv4_attention_seconds": native_attention_total,
-                "native_dsv4_attention_counts": native_attention_counts,
-                "native_dsv4_attention_decode_batches": native_attention_decode_batches,
-                "native_dsv4_attention_mtp_kv": native_attention_mtp_kv,
-                "native_dsv4_attention_composition": native_attention_composition,
+                "attention_module_seconds": native_attention_total,
+                "attention_module_counts": native_attention_counts,
+                "attention_module_decode_batches": native_attention_decode_batches,
+                "attention_module_mtp_kv": native_attention_mtp_kv,
+                "attention_module_composition": native_attention_composition,
             }
             if native_attention_counts
             else {}
         ),
-        **({"dsv4_target_logits": target_logits_counts} if target_logits_counts else {}),
-        **({"dsv4_main_forward_counts": main_forward_counts} if main_forward_counts else {}),
-        **({"dsv4_hc_head_counts": hc_head_counts,
-            "dsv4_hc_head_seconds": hc_head_seconds} if hc_head_counts else {}),
+        **({"target_logits": target_logits_counts} if target_logits_counts else {}),
+        **({"main_forward_counts": main_forward_counts} if main_forward_counts else {}),
+        **({"residual_output_counts": hc_head_counts,
+            "residual_output_seconds": hc_head_seconds} if hc_head_counts else {}),
         **({"native_mhc_seconds": sum(mhc_seconds.values()),
             "native_mhc_main_seconds": mhc_seconds["main"],
             "native_mhc_draft_seconds": mhc_seconds["draft"],
             "native_mhc_counts": mhc_counts} if any(mhc_counts.values()) else {}),
-        **({"native_dsv4_mtp_counts": mtp_counts,
-            "native_dsv4_mtp_component_seconds": mtp_components} if mtp_counts else {}),
+        **({"speculative_counts": mtp_counts,
+            "speculative_component_seconds": mtp_components} if mtp_counts else {}),
         # Grouped by table and discrete key with the requested axis ranges;
         # the full report goes to missing_shapes_<qps>.json.
         "operator_missing_shapes": aggregate.missing_shape_records()[:200],

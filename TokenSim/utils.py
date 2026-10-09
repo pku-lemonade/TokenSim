@@ -47,3 +47,22 @@ def get_wait_time(mean_time_between_requests: float, distribution: str) -> float
         return mean_time_between_requests
     else:
         return np.random.exponential(mean_time_between_requests)
+
+
+class BoundedCache(dict):
+    """Capacity-bound memo for pure computations on immutable inputs.
+
+    Clear on capacity pressure; callers account for queries separately from
+    the cached computation, so eviction cannot change simulation statistics.
+    """
+
+    def __init__(self, max_entries: int):
+        if max_entries <= 0:
+            raise ValueError("cache capacity must be positive")
+        super().__init__()
+        self.max_entries = max_entries
+
+    def __setitem__(self, key, value):
+        if len(self) >= self.max_entries and key not in self:
+            self.clear()
+        super().__setitem__(key, value)

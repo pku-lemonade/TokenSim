@@ -9,10 +9,10 @@ import simpy
 
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.context import HardwareContext
-from TokenSim.config.kv_layout import deepseek_v4_kv_layout
+from TokenSim.config.kv_layout import hybrid_kv_layout
 from TokenSim.llm.llm_request import Request, RequestStatus
 from TokenSim.llm.llm_scheduler import LLMPagedAttnScheduler
-from TokenSim.latency.deepseek_v4_moe import MoEPass, RankShape
+from TokenSim.llm.forward import ForwardPass, RankShape
 import tests.test_full_mtp as full_mtp
 
 
@@ -24,7 +24,7 @@ class PaddingMetadataTest(TestCase):
         full_mtp.FullMTPTest.setUpClass()
 
     def scheduler(self, budget=4, *, limit=1048576):
-        layout = deepseek_v4_kv_layout(self.model)
+        layout = hybrid_kv_layout(self.model)
         layout = replace(layout, groups=(layout.full_group,), max_model_len=limit)
         cache = SimpleNamespace(block_size=256, num_gpu_blocks=128,
                                 num_cpu_blocks=0, model=self.model.model_id, hybrid_layout=layout)
@@ -175,8 +175,8 @@ class PaddingMetadataTest(TestCase):
         self.assertTrue(req.is_context_build)
         self.assertTrue(req.decode_graph_eligible)
         self.assertEqual(req.logits_tokens, 1)
-        backend.set_moe_step(MoEPass({rank: RankShape(4, 4, False, 1) for rank in range(8)}))
+        backend.set_moe_step(ForwardPass({rank: RankShape(4, 4, False, 1) for rank in range(8)}))
         backend.estimate_step_latency([req])
         self.assertEqual(backend.target_logits_counts["rows"], 1)
-        self.assertEqual(backend.dsv4_hc_head.rows, 4)
+        self.assertEqual(backend.residual_output.rows, 4)
         self.assertEqual(backend.native_mtp.counts["graph_passes"], 3)

@@ -8,8 +8,8 @@ from unittest.mock import patch
 from TokenSim.config.config import ClusterConfig
 from TokenSim.config.psla_config import LLMResult, MetricData
 from TokenSim.errors import ConfigurationError
-from TokenSim.latency.deepseek_v4_attention import AttentionEstimate
-from TokenSim.latency.deepseek_v4_moe import MoEPass, RankShape
+from TokenSim.latency.attention import AttentionEstimate
+from TokenSim.llm.forward import ForwardPass, RankShape
 from util.results import get_latency_stats
 import tests.test_attention_composition as composition
 import tests.test_full_mtp as full_mtp
@@ -25,13 +25,13 @@ class CaptureWorkTest(TestCase):
         helper = full_mtp.FullMTPTest()
         backend = helper.backend(tp=tp, dp=dp)
         requests = helper.decode_requests(20 // width, width=width)
-        backend.set_moe_step(MoEPass({rank: RankShape(
+        backend.set_moe_step(ForwardPass({rank: RankShape(
             20 if rank == 0 else (512 if eager else 64),
             width if rank == 0 else (None if eager else 4),
             eager and rank != 0, len(requests) if rank == 0 else (1 if eager else 16),
         ) for rank in range(dp)}))
         with patch.object(backend.native_mhc, "estimate", wraps=backend.native_mhc.estimate) as mhc, \
-                patch.object(backend, "_gemm", wraps=backend._gemm) as gemm, \
+                patch.object(backend, "gemm", wraps=backend._gemm) as gemm, \
                 patch.object(backend.native_attention, "estimate_batch", wraps=backend.native_attention.estimate_batch) as attention, \
                 patch.object(backend.native_mtp, "estimate", return_value={}):
             backend.estimate_step_latency(requests)
@@ -80,14 +80,14 @@ class CaptureWorkTest(TestCase):
         backend, *_ = self.backend_case(1, 8)
         exported = get_latency_stats(SimpleNamespace(workers=[SimpleNamespace(
             latency_backend=backend, device=backend.device)]))
-        ledger = exported["dsv4_main_forward_counts"]
+        ledger = exported["main_forward_counts"]
         self.assertEqual(ledger["full_rows"], 64)
         result = LLMResult(cluster=ClusterConfig.from_file("data/clusters/8_b200/dep8.json"),
                            qps=1, request_count=1, prefill_lens=[8192], decode_lens=[20],
                            batching="paged-attn", request_time=MetricData.from_list([1]),
                            prefill_time=MetricData.from_list([1]), decode_time=MetricData.from_list([1]),
                            duration=1, output_qps=1, output_token_ps=20, notdone=[], **exported)
-        self.assertEqual(asdict(result)["dsv4_main_forward_counts"], ledger)
+        self.assertEqual(asdict(result)["main_forward_counts"], ledger)
         backend.reset_profile_stats()
         self.assertEqual(backend.main_forward_counts, {})
 

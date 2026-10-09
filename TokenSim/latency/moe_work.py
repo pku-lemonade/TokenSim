@@ -11,8 +11,14 @@ import math
 
 import numpy as np
 
+from TokenSim.utils import BoundedCache
 from TokenSim.errors import ConfigurationError
-from TokenSim.latency.deepseek_v4_moe_spectrum import BLOCK_MS, SEEDS, integer_spectra, spectrum_geometry
+from TokenSim.latency.moe_spectrum import (
+    BLOCK_MS,
+    SEEDS,
+    integer_spectra,
+    spectrum_geometry,
+)
 
 
 def block_m_for_input(rows, ep, experts, topk):
@@ -52,7 +58,12 @@ class MegaMoEWork:
         # Dispatch and expert work overlap in the fused persistent kernel.
         # Pre-dispatch and the final source-side reduction remain separate.
         fused = self.fused_expert_dispatch_us
-        return self.startup_us + self.input_us + (max(self.expert_us, self.dispatch_us) if fused is None else fused) + self.combine_us
+        return (
+            self.startup_us
+            + self.input_us
+            + (max(self.expert_us, self.dispatch_us) if fused is None else fused)
+            + self.combine_us
+        )
 
 
 class MegaMoEWorkModel:
@@ -68,9 +79,11 @@ class MegaMoEWorkModel:
         # mixed-input issue efficiency remains an unmeasured approximation.
         self.compute = device.peak_compute_for("fp8_block").value
         self.link = nvlink_bytes_per_s
-        self._terms = {}
+        self._terms = BoundedCache(65536)
         if not self.link or self.link <= 0:
-            raise ConfigurationError("MegaMoE work growth requires a positive local NVLink bandwidth")
+            raise ConfigurationError(
+                "MegaMoE work growth requires a positive local NVLink bandwidth"
+            )
 
     def integer_spectra(self, global_rows):
         return integer_spectra(global_rows, self.experts, self.topk, self.ep)
@@ -86,7 +99,9 @@ class MegaMoEWorkModel:
             activation_bytes = geometry.selections * (
                 self.hidden * (1 + 1 / 32 + 2) + self.inter * (2 + 2 / 32)
             )
-            math_us = geometry.mma_rows * (6 * self.hidden * self.inter / self.compute * 1e6)
+            math_us = geometry.mma_rows * (
+                6 * self.hidden * self.inter / self.compute * 1e6
+            )
             # Pinned TaskInfo aligns valid_m to16 and the kernel updates its
             # swapped MMA N descriptor per task. Every candidate BLOCK_M is a
             # multiple of16, so total MMA rows are independent of M partitioning.
@@ -97,19 +112,28 @@ class MegaMoEWorkModel:
                 activation_bytes.tolist(),
                 geometry.m_tiles.tolist(),
             )
-            if len(self._terms) > 65536:
-                self._terms.clear()
             self._terms[global_rows] = terms
         return terms
 
     def estimate(self, inputs, valid):
-        if len(inputs) != self.ep or len(valid) != self.ep or inputs.keys() != valid.keys():
-            raise ConfigurationError("MegaMoE work needs all EP input and valid-row counts")
+        if (
+            len(inputs) != self.ep
+            or len(valid) != self.ep
+            or inputs.keys() != valid.keys()
+        ):
+            raise ConfigurationError(
+                "MegaMoE work needs all EP input and valid-row counts"
+            )
         if any(n < 0 or not 0 <= valid[rank] <= n for rank, n in inputs.items()):
             raise ConfigurationError("MegaMoE routed rows must fit full inputs")
         global_rows = sum(valid.values())
-        mma_rows, selections, math_us, activation_bytes, m_tiles = self._spectrum_terms(global_rows)
-        blocks = tuple(block_m_for_input(n, self.ep, self.experts, self.topk) for _, n in sorted(inputs.items()))
+        mma_rows, selections, math_us, activation_bytes, m_tiles = self._spectrum_terms(
+            global_rows
+        )
+        blocks = tuple(
+            block_m_for_input(n, self.ep, self.experts, self.topk)
+            for _, n in sorted(inputs.items())
+        )
         flops = mma_rows * 6 * self.hidden * self.inter
         weights_per_tile = 3 * self.hidden * self.inter * (0.5 + 1 / 32)
         block_indices = [BLOCK_MS.index(block) for block in blocks]
@@ -122,12 +146,18 @@ class MegaMoEWorkModel:
         rotations = 1 if len(set(block_indices)) == 1 else self.ep
         critical, critical_tiles = [], []
         for rotation in range(rotations):
-            for sample_math, sample_bytes, sample_tiles in zip(math_us, activation_bytes, m_tiles):
+            for sample_math, sample_bytes, sample_tiles in zip(
+                math_us, activation_bytes, m_tiles
+            ):
                 slowest, most_tiles = None, None
                 for position, block in enumerate(block_indices):
                     rank = (position + rotation) % self.ep
                     tiles = sample_tiles[rank][block]
-                    memory = (tiles * weights_per_tile + sample_bytes[rank]) / bandwidth * 1e6
+                    memory = (
+                        (tiles * weights_per_tile + sample_bytes[rank])
+                        / bandwidth
+                        * 1e6
+                    )
                     work = sample_math[rank] if sample_math[rank] >= memory else memory
                     if slowest is None or work > slowest:
                         slowest = work
@@ -144,19 +174,40 @@ class MegaMoEWorkModel:
         weight_bytes = max_tiles * weights_per_tile
         full_max, valid_max = max(inputs.values()), max(valid.values())
         # BF16 X -> FP8 X/scales, routing staging and two top-k scans.
-        input_bytes = full_max * (self.hidden * (2 + 1 + 1 / 32) + self.topk * (12 + 16))
+        input_bytes = full_max * (
+            self.hidden * (2 + 1 + 1 / 32) + self.topk * (12 + 16)
+        )
         remote_fraction = (self.ep - 1) / self.ep
-        dispatch_bytes = valid_max * self.topk * self.hidden * (1 + 1 / 32) * remote_fraction
+        dispatch_bytes = (
+            valid_max * self.topk * self.hidden * (1 + 1 / 32) * remote_fraction
+        )
         combine_bytes = valid_max * self.topk * self.hidden * 2 * remote_fraction
-        local_combine_bytes = full_max * (self.topk * 8 + self.hidden * 2) + valid_max * self.topk * self.hidden * 2
+        local_combine_bytes = (
+            full_max * (self.topk * 8 + self.hidden * 2)
+            + valid_max * self.topk * self.hidden * 2
+        )
         dispatch_us = dispatch_bytes / self.link * 1e6
         return MegaMoEWork(
-            3 * self.device.analytical["kernel_launch_us"], input_bytes / self.bandwidth * 1e6,
-            expert_us, dispatch_us,
+            3 * self.device.analytical["kernel_launch_us"],
+            input_bytes / self.bandwidth * 1e6,
+            expert_us,
+            dispatch_us,
             (combine_bytes / self.link + local_combine_bytes / self.bandwidth) * 1e6,
-            blocks, global_rows, global_rows * self.topk, max_tiles,
-            mma_rows, flops, weight_bytes,
-            float(np.mean([value if value >= dispatch_us else dispatch_us for value in critical])),
+            blocks,
+            global_rows,
+            global_rows * self.topk,
+            max_tiles,
+            mma_rows,
+            flops,
+            weight_bytes,
+            float(
+                np.mean(
+                    [
+                        value if value >= dispatch_us else dispatch_us
+                        for value in critical
+                    ]
+                )
+            ),
         )
 
     def describe(self):

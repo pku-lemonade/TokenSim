@@ -1,4 +1,4 @@
-"""Stored DeepSeek V4 tensors and their actual TP/EP sharding.
+"""Stored compressed transformer tensors and their actual TP/EP sharding.
 
 Shapes follow vLLM 30f5c01d4ebb: attention.py, compressor.py, nvidia/model.py
 and nvidia/mtp.py. This accounts for weights and quantization metadata, not KV,
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from TokenSim.config.model_config import ModelSpec
 
 
-def deepseek_v4_weight_memory(
+def packed_weight_memory(
     model: ModelSpec,
     parallel: ParallelConfig | None = None,
     rank: ParallelRankInfo | None = None,
@@ -29,10 +29,10 @@ def deepseek_v4_weight_memory(
     include_mtp: bool = True,
     layout_backend: str | None = None,
 ) -> dict[str, Any]:
-    spec = model.deepseek_v4
+    spec = model.components
     if spec is None:
         raise ConfigurationError(
-            "DeepSeek V4 tensor accounting requires its structural metadata"
+            "compressed transformer tensor accounting requires its structural metadata"
         )
     parallel = parallel or ParallelConfig.default()
     rank = rank or ParallelRankInfo()
@@ -41,16 +41,16 @@ def deepseek_v4_weight_memory(
         "mega_moe" if parallel.enable_expert_parallel else "fused"
     )
     if layout_backend not in ("mega_moe", "fused"):
-        raise ConfigurationError("DeepSeek V4 weight layout must be mega_moe or fused")
+        raise ConfigurationError("compressed transformer weight layout must be mega_moe or fused")
     if layout_backend == "mega_moe" and not parallel.enable_expert_parallel:
         raise ConfigurationError(
-            "DeepSeek V4 MegaMoE layout requires expert parallelism"
+            "compressed transformer MegaMoE layout requires expert parallelism"
         )
     if pp != 1:
         # All confirmed AgentX points use PP1. Draft embedding ownership and
         # layer placement for PP>1 must be implemented before accepting it.
         raise ConfigurationError(
-            "DeepSeek V4 weight accounting currently supports the confirmed PP1 configurations"
+            "compressed transformer weight accounting currently supports the confirmed PP1 configurations"
         )
     if (
         min(rank.tp_rank, rank.dp_rank, rank.pp_rank) < 0
@@ -59,14 +59,14 @@ def deepseek_v4_weight_memory(
         or rank.pp_rank != 0
     ):
         raise ConfigurationError(
-            "DeepSeek V4 weight rank is outside its parallel configuration"
+            "compressed transformer weight rank is outside its parallel configuration"
         )
     if model.num_attention_heads % tp or spec.o_groups % tp:
         raise ConfigurationError(
-            "DeepSeek V4 TP must divide attention heads and output groups"
+            "compressed transformer TP must divide attention heads and output groups"
         )
     if model.moe_intermediate_size % tp:
-        raise ConfigurationError("DeepSeek V4 TP must divide expert intermediate width")
+        raise ConfigurationError("compressed transformer TP must divide expert intermediate width")
     placement = placement or build_expert_placement(
         model.moe, parallel, model.num_layers
     )
@@ -147,7 +147,7 @@ def deepseek_v4_weight_memory(
         )
 
     def compressor(prefix: str, ratio: int, width: int, component: str):
-        coff = 2 if ratio == 4 else 1
+        coff = 2 if ratio == spec.indexed_compress_ratio else 1
         add(prefix + ".fused_wkv_wgate", component, (2 * coff * width, h), "compressor")
         add(prefix + ".norm", component, (width,), "norm")
         add(
@@ -167,7 +167,7 @@ def deepseek_v4_weight_memory(
     # the target embeddings and lm_head after load; it adds neither copy.
     vocab_padded = ceil(model.vocab_size / 64) * 64
     if vocab_padded % tp:
-        raise ConfigurationError("DeepSeek V4 padded vocabulary must divide TP")
+        raise ConfigurationError("compressed transformer padded vocabulary must divide TP")
     add("embedding", "embedding", (vocab_padded // tp, h), "embedding")
     if not model.tie_word_embeddings:
         add("lm_head", "lm_head", (vocab_padded // tp, h), "lm_head")

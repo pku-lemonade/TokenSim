@@ -10,6 +10,7 @@ from TokenSim.errors import ConfigurationError
 class MoEExecutionConfig:
     backend: str = "generic"
     shared_expert_fusion: bool = True
+    table: str = "dsv4_megamoe"
     latency_scale: float = 1.0
 
     def __post_init__(self):

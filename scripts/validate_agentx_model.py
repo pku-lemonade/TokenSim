@@ -19,7 +19,7 @@ from TokenSim.config.cache_config import CacheConfig
 from TokenSim.config.cluster_config import ClusterConfig
 from TokenSim.config.parallel_config import ParallelRankInfo
 from TokenSim.config.psla_config import PSLAConfig
-from TokenSim.config.weight_memory import deepseek_v4_weight_memory
+from TokenSim.config.weight_memory import packed_weight_memory
 from TokenSim.hardware.context import HardwareContext
 from util.agentx_reference import file_identity, load_experiments
 
@@ -83,7 +83,7 @@ def validate(matrix: Path, dataset: Path, output: Path) -> dict:
         psla = PSLAConfig.from_file(exp["model_config_path"])
         model = hardware.model(psla.model).with_moe_override(psla.moe_config)
         if (
-            model.deepseek_v4 is None
+            model.components is None
             or dataset_report["trace_count"] != exp["trace_count"]
         ):
             raise ValueError("full model and full dataset pool required")
@@ -104,7 +104,7 @@ def validate(matrix: Path, dataset: Path, output: Path) -> dict:
         rank_reports = []
         for dp in range(parallel.data_parallel_size):
             rank = ParallelRankInfo(dp_rank=dp)
-            weights = deepseek_v4_weight_memory(model, parallel, rank)
+            weights = packed_weight_memory(model, parallel, rank)
             logged_gib = references[exp["id"]]["server_log"]["weight_gib_per_rank"][
                 str(dp)
             ]

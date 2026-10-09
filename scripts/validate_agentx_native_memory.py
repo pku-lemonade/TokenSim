@@ -9,7 +9,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from TokenSim.config.cache_config import CacheConfig
-from TokenSim.config.deepseek_v4_buffers import MIB
+from TokenSim.config.persistent_buffers import MIB
 from TokenSim.config.parallel_config import ParallelConfig
 from TokenSim.hardware.context import HardwareContext
 from validate_agentx_capture_rows import audit as audit_capture
@@ -28,7 +28,7 @@ def capacity_auditor(context):
     for sku, tokens, seqs, utilization in (("b200", 8192, 49, .9), ("b300", 16384, 96, .92)):
         expected[sku] = CacheConfig(256, context.device(sku), model, parallel,
             usable_memory_fraction=utilization, max_num_batched_tokens=tokens, max_num_seqs=seqs,
-            moe_execution={"backend": "deep_gemm_amxf4_mega_moe"}, attention_backend="native_dsv4")
+            moe_execution={"backend": "deep_gemm_amxf4_mega_moe"}, attention_backend="module")
 
     def compare(before, after, sku):
         dynamic = {"cache", "pool_slots", "peak_used_slots", "evictions"}

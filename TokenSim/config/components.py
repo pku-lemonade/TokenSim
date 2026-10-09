@@ -1,4 +1,4 @@
-"""DeepSeek V4 architecture metadata, independent of serving frameworks."""
+"""compressed transformer architecture metadata, independent of serving frameworks."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ class ModelLayerSpec:
 
 
 @dataclass(frozen=True)
-class DeepSeekV4Spec:
+class TransformerComponents:
     # Main layers followed by the distinct MTP modules. K draft iterations
     # reuse these modules, rather than allocating K additional weight copies.
     compress_ratios: tuple[int, ...]
@@ -32,6 +32,7 @@ class DeepSeekV4Spec:
     index_head_dim: int
     index_topk: int
     hc_mult: int
+    indexed_compress_ratio: int = 4
     hc_sinkhorn_iters: int = 20
     routed_scaling_factor: float = 2.5
     scoring_func: str = "sqrtsoftplus"
@@ -55,24 +56,30 @@ class DeepSeekV4Spec:
             "expert_scale_group_size",
         ):
             if getattr(self, name) <= 0:
-                raise ConfigurationError(f"DeepSeek V4 {name} must be positive")
+                raise ConfigurationError(
+                    f"compressed transformer {name} must be positive"
+                )
         if self.num_hash_layers < 0 or self.num_nextn_predict_layers < 0:
-            raise ConfigurationError("DeepSeek V4 layer counts must be nonnegative")
+            raise ConfigurationError(
+                "compressed transformer layer counts must be nonnegative"
+            )
         if not self.compress_ratios or any(
-            r not in (1, 4, 128) for r in self.compress_ratios
+            not isinstance(r, int) or r < 1 for r in self.compress_ratios
         ):
             raise ConfigurationError(
-                "DeepSeek V4 compression ratios must be 1, 4 or 128"
+                "compressed transformer compression ratios must be positive integers"
             )
         if len(self.weight_block_size) != 2 or min(self.weight_block_size) <= 0:
             raise ConfigurationError(
-                "DeepSeek V4 weight_block_size must contain two positive dimensions"
+                "compressed transformer weight_block_size must contain two positive dimensions"
             )
         if self.indexer_cache_dtype not in ("mxfp4", "fp8"):
-            raise ConfigurationError("DeepSeek V4 indexer cache must be mxfp4 or fp8")
+            raise ConfigurationError(
+                "compressed transformer indexer cache must be mxfp4 or fp8"
+            )
 
     @classmethod
-    def from_mapping(cls, raw: Mapping[str, Any]) -> "DeepSeekV4Spec":
+    def from_mapping(cls, raw: Mapping[str, Any]) -> "TransformerComponents":
         values = dict(raw)
         values["compress_ratios"] = tuple(int(r) for r in values["compress_ratios"])
         if "weight_block_size" in values:
@@ -92,28 +99,34 @@ class DeepSeekV4Spec:
     ) -> None:
         if len(self.compress_ratios) != num_layers + self.num_nextn_predict_layers:
             raise ConfigurationError(
-                "DeepSeek V4 compression ratios must cover all main and MTP layers"
+                "compressed transformer compression ratios must cover all main and MTP layers"
             )
         if self.num_hash_layers > num_layers:
-            raise ConfigurationError("DeepSeek V4 hash layers exceed main layer count")
+            raise ConfigurationError(
+                "compressed transformer hash layers exceed main layer count"
+            )
         if any(r != 1 for r in self.compress_ratios[num_layers:]):
             raise ConfigurationError(
-                "DeepSeek V4 MTP layers must be SWA-only (ratio 1)"
+                "compressed transformer MTP layers must be SWA-only (ratio 1)"
             )
         if num_attention_heads % self.o_groups or self.qk_rope_head_dim > head_dim:
             raise ConfigurationError(
-                "invalid DeepSeek V4 grouped output or RoPE geometry"
+                "invalid compressed transformer grouped output or RoPE geometry"
             )
-        if sliding_window <= 0 or num_experts <= 0:
+        if sliding_window <= 0:
             raise ConfigurationError(
-                "DeepSeek V4 requires a sliding window and routed experts"
+                "compressed transformer requires a positive sliding window"
             )
 
     def layers(self, num_layers: int) -> tuple[ModelLayerSpec, ...]:
         return tuple(
             ModelLayerSpec(
                 layer_id=i,
-                attention_kind={1: "swa", 4: "csa", 128: "hca"}[ratio],
+                attention_kind=(
+                    "swa"
+                    if ratio == 1
+                    else "csa" if ratio == self.indexed_compress_ratio else "hca"
+                ),
                 compress_ratio=ratio,
                 moe_routing="hash" if i < self.num_hash_layers else "learned",
                 is_mtp=i >= num_layers,

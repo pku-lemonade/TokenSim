@@ -156,13 +156,15 @@ class AgentXMoEDistributionTest(unittest.TestCase):
 
     def test_generic_power_law_fallback_does_not_add_distribution_twice(self):
         backend = self.backend(
-            replace(self.model, architecture="transformer", deepseek_v4=None),
+            replace(self.model, architecture="transformer", components=None),
             distributions=("power_law_1.01",),
         )
         r = decode(0, decode_expert_histogram={0: 6})
-        self.assertAlmostEqual(backend._moe_layers(1, [r]), 800 * 61)
+        self.assertEqual(backend._moe_layers(1, [r]),
+                         backend._moe_layers(1, [decode(1)]))
         self.assertEqual(backend.moe_stats.moe_straggler_latency, 0)
-        self.assertAlmostEqual(backend._moe_layers(1, [r]), 800 * 61)
+        self.assertEqual(backend._moe_layers(1, [r]),
+                         backend._moe_layers(1, [decode(1)]))
 
     def test_unloaded_experts_are_in_mean_load_denominator(self):
         stats = MoEStats(

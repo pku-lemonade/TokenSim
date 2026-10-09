@@ -57,7 +57,7 @@ def audit(root, *, hardware=("b200", "b300")):
         for key in ("reloaded_generated_gpu_tokens", "reloaded_generated_cpu_tokens"):
             assert metrics[key] == sum(r[key] for r in successful), key
         steps = current["operator_step_count"]
-        counts = current["native_dsv4_mtp_counts"]
+        counts = current["speculative_counts"]
         assert counts["target_steps"] == counts["initial_passes"] == steps
         assert counts["decode_passes"] == 2 * steps and counts["passes"] == 3 * steps
         assert current["native_megamoe_counts"]["rank_estimates"] == 4 * steps
@@ -65,9 +65,9 @@ def audit(root, *, hardware=("b200", "b300")):
         assert abs(native_moe - current["operator_component_seconds"]["moe"]) < 1e-6
         assert abs(current["native_mhc_main_seconds"] + current["native_mhc_draft_seconds"] - current["native_mhc_seconds"]) < 1e-6
         assert current["native_mhc_seconds"] <= current["operator_component_seconds"]["elementwise"]
-        head = current["dsv4_hc_head_counts"]
+        head = current["residual_output_counts"]
         assert head["target_calls"] == steps and head["draft_calls"] == 3 * steps
-        assert head["target_rows"] == current["dsv4_target_logits"]["final_norm_rows"]
+        assert head["target_rows"] == current["target_logits"]["final_norm_rows"]
         assert head["draft_rows"] == counts["logits_rows"]
         result["checkpoints"][sku]["context_recovery"] = {
             key: metrics[key] for key in (

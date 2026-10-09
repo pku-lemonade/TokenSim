@@ -40,7 +40,7 @@ def audit(root, *, hardware=("b200", "b300")):
             assert {k: v for k, v in first.items() if k not in ("peak_used_slots", "evictions")} == {
                 k: v for k, v in second.items() if k not in ("peak_used_slots", "evictions")
             }
-        composition = current["native_dsv4_attention_composition"]
+        composition = current["attention_module_composition"]
         shared, phase, standalone = (composition[name] for name in (
             "shared_projection_seconds", "phase_seconds", "standalone_module_seconds"))
         assert shared > 0 and phase > 0 and standalone > 0
@@ -50,24 +50,24 @@ def audit(root, *, hardware=("b200", "b300")):
         assert composition["logical_projection_rows"] == 61 * composition["query_rows"]
         assert composition["source_floor_projection_rows"] >= composition["logical_projection_rows"]
         assert abs(standalone - shared - phase - composition["avoided_shared_seconds"]) < 1e-6
-        assert shared + phase <= current["native_dsv4_attention_seconds"] + 1e-6
-        description = next(iter(current["latency_backends"].values()))["native_dsv4_attention"]["mixed_batch_composition"]
+        assert shared + phase <= current["attention_module_seconds"] + 1e-6
+        description = next(iter(current["latency_backends"].values()))["attention_module"]["mixed_batch_composition"]
         assert description["fitted_multiplier"] is False
         counts = [worker["counts"] for worker in current["scheduler_stats"]]
         query_rows = sum(row["scheduled_context_query_tokens"] + row["scheduled_decode_query_tokens"] for row in counts)
         # All formal requests fit the 1M context; no output clipping is allowed.
         records = [json.loads(line) for line in (new / "native_replay/requests.jsonl").read_text().splitlines()]
         assert not any(row["length_capped"] for row in records)
-        logits = current["dsv4_target_logits"]
+        logits = current["target_logits"]
         assert composition["query_rows"] <= logits["forward_rows"]
         assert logits["forward_rows"] >= query_rows
         steps = current["operator_step_count"]
-        draft = current["native_dsv4_mtp_counts"]
+        draft = current["speculative_counts"]
         assert draft["target_steps"] == draft["initial_passes"] == steps
         assert draft["decode_passes"] == 2 * steps and draft["passes"] == 3 * steps
-        assert current["dsv4_hc_head_counts"]["target_calls"] == steps
-        assert current["dsv4_hc_head_counts"]["target_rows"] == logits["final_norm_rows"]
-        assert current["dsv4_hc_head_counts"]["draft_rows"] == draft["logits_rows"]
+        assert current["residual_output_counts"]["target_calls"] == steps
+        assert current["residual_output_counts"]["target_rows"] == logits["final_norm_rows"]
+        assert current["residual_output_counts"]["draft_rows"] == draft["logits_rows"]
         moe = current["native_megamoe_routed_seconds"] + current["native_megamoe_shared_seconds"]
         assert abs(moe - current["operator_component_seconds"]["moe"]) < 1e-6
         assert current["native_megamoe_counts"]["rank_estimates"] == 4 * steps

@@ -26,16 +26,16 @@ def audit(directory, *, hardware=("b200", "b300")):
         )
         device_id = next(iter(full["latency_backends"]))
         backend = full["latency_backends"][device_id]
-        assert backend.get("native_dsv4_attention")
-        assert backend["native_dsv4_attention"]["layer_counts"] == {"csa": 30, "hca": 31}
+        assert backend.get("attention_module")
+        assert backend["attention_module"]["layer_counts"] == {"csa": 30, "hca": 31}
         assert sum(full["operator_table_match_counts"].get("dsv4_attention", {}).values()) > 0
         assert sum(full["operator_table_match_counts"].get("dsv4_megamoe", {}).values()) > 0
         assert not full["operator_table_match_counts"].get("ep_all2all")
         attention_seconds = full.get(
-            "native_dsv4_attention_seconds", full["operator_component_seconds"]["attention"]
+            "attention_module_seconds", full["operator_component_seconds"]["attention"]
         )
         attention_counts = full.get(
-            "native_dsv4_attention_counts",
+            "attention_module_counts",
             full["operator_table_match_counts"]["dsv4_attention"],
         )
         assert attention_seconds > 0
@@ -56,7 +56,7 @@ def audit(directory, *, hardware=("b200", "b300")):
         )
         assert abs(sum(components.values()) - local_time) < 1e-6 * max(1, local_time)
         result["checkpoints"][sku]["native_attention"] = {
-            "backend": backend["native_dsv4_attention"],
+            "backend": backend["attention_module"],
             "attention_matches": full["operator_table_match_counts"]["dsv4_attention"],
             "attention_seconds": attention_seconds,
             "attention_counts": attention_counts,

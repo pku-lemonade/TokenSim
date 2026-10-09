@@ -1,4 +1,4 @@
-"""DSV4 projection geometry from vLLM attention.py / nvidia/ops/o_proj.py."""
+"""Tensor-parallel projection plans for dense and grouped low-rank attention."""
 
 from dataclasses import dataclass
 
@@ -22,9 +22,25 @@ class Projection:
 
 
 def attention_projections(model, tp):
-    spec = model.deepseek_v4
-    if spec is None or model.num_attention_heads % tp or spec.o_groups % tp:
-        raise ConfigurationError("DSV4 TP must evenly divide heads and output groups")
+    spec = model.components
+    if spec is None:
+        from TokenSim.config.cache_config import local_kv_heads
+        from math import ceil
+
+        q = ceil(model.num_attention_heads / tp) * model.head_dim
+        kv = (
+            model.kv_dim // tp
+            if model.kv_cache_dim is not None
+            else local_kv_heads(model.num_key_value_heads, tp) * model.head_dim
+        )
+        return (
+            Projection("qkv", "gemm", model.dtype, q + 2 * kv, model.hidden_size),
+            Projection("output", "gemm", model.dtype, model.hidden_size, q),
+        )
+    if model.num_attention_heads % tp or spec.o_groups % tp:
+        raise ConfigurationError(
+            "compressed attention TP must evenly divide heads and output groups"
+        )
     dtype = model.operator_dtype("attention_gemm")
     return (
         # This merged projection is replicated, even under TP.

@@ -41,7 +41,7 @@ def audit(root, *, hardware=("b200", "b300")):
             assert {key: value for key, value in first.items() if key not in ("peak_used_slots", "evictions")} == {
                 key: value for key, value in second.items() if key not in ("peak_used_slots", "evictions")
             }
-        c, t = current["native_dsv4_mtp_counts"], current["native_dsv4_mtp_component_seconds"]
+        c, t = current["speculative_counts"], current["speculative_component_seconds"]
         steps = current["operator_step_count"]
         assert c["target_steps"] == c["initial_passes"] == steps
         assert c["decode_passes"] == 2 * steps and c["passes"] == 3 * steps
@@ -60,7 +60,7 @@ def audit(root, *, hardware=("b200", "b300")):
         if native_exported:
             assert abs(current["native_megamoe_routed_seconds"] + current["native_megamoe_shared_seconds"]
                        - current["operator_component_seconds"]["moe"]) < 1e-6
-        description = next(iter(current["latency_backends"].values()))["native_dsv4_mtp"]
+        description = next(iter(current["latency_backends"].values()))["speculative"]
         assert description["K"] == 3 and description["attention"].startswith("SWA only")
         result["checkpoints"][sku]["draft_counts"] = c
         result["checkpoints"][sku]["draft_component_seconds"] = t

@@ -1,4 +1,4 @@
-"""Pinned DSV4 native storage geometry and conservative Python live phases.
+"""Pinned compressed attention native storage geometry and conservative Python live phases.
 
 Source: vLLM 30f5c01d4ebb and its DeepGEMM e1f418c2a4f allocation ABI.
 These are allocation-shape estimates. SM/allocator/graph driver costs remain
@@ -108,7 +108,7 @@ def live_phases(model, parallel, rows, max_seqs, *, kind, native_moe=True,
     join. Context indexer loop RHS may retain the previous logits allocation.
     Values are logical live storage, not measured CUDA reserved-memory peaks.
     """
-    spec, hidden, tp = model.deepseek_v4, model.hidden_size, parallel.tensor_parallel_size
+    spec, hidden, tp = model.components, model.hidden_size, parallel.tensor_parallel_size
     sp = parallel.pipeline_parallel_size == 1 and parallel.enable_expert_parallel and tp > 1 and (
         native_moe or parallel.data_parallel_size > 1
     )

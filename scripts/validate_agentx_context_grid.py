@@ -37,9 +37,9 @@ def audit(root, *, hardware=("b200", "b300")):
             assert {k: v for k, v in first.items() if k not in ("peak_used_slots", "evictions")} == {
                 k: v for k, v in second.items() if k not in ("peak_used_slots", "evictions")
             }
-        provenance = next(iter(current["latency_backends"].values()))["native_dsv4_attention"]
+        provenance = next(iter(current["latency_backends"].values()))["attention_module"]
         assert provenance["context_query_grid"].startswith("query floors across prefixes")
-        composition = current["native_dsv4_attention_composition"]
+        composition = current["attention_module_composition"]
         shared, phase, standalone = (composition[name] for name in (
             "shared_projection_seconds", "phase_seconds", "standalone_module_seconds"))
         assert shared > 0 and phase > 0 and standalone > 0
@@ -48,7 +48,7 @@ def audit(root, *, hardware=("b200", "b300")):
         assert composition["logical_projection_rows"] == 61 * composition["query_rows"]
         assert composition["source_floor_projection_rows"] >= composition["logical_projection_rows"]
         assert abs(standalone - shared - phase - composition["avoided_shared_seconds"]) < 1e-6
-        assert shared + phase <= current["native_dsv4_attention_seconds"] + 1e-6
+        assert shared + phase <= current["attention_module_seconds"] + 1e-6
         counts = [worker["counts"] for worker in current["scheduler_stats"]]
         totals = {key: sum(row[key] for row in counts) for key in (
             "scheduled_context_tokens", "scheduled_context_query_tokens", "scheduled_decode_query_tokens",
@@ -56,22 +56,22 @@ def audit(root, *, hardware=("b200", "b300")):
         )}
         assert totals["scheduled_context_query_tokens"] == totals["scheduled_context_tokens"] + totals["scheduled_placeholder_queries"]
         assert totals["scheduled_placeholder_queries"] == 3 * totals["padded_context_admissions"]
-        logits = current["dsv4_target_logits"]
+        logits = current["target_logits"]
         assert logits["placeholder_rows"] == totals["scheduled_placeholder_queries"]
         assert logits["output_forward_rows"] >= logits["forward_rows"] >= logits["rows"] >= totals["scheduled_logits_rows"]
         assert composition["query_rows"] <= logits["forward_rows"]
-        assert current["native_dsv4_attention_decode_batches"]["query_rows"] >= (
+        assert current["attention_module_decode_batches"]["query_rows"] >= (
             totals["scheduled_decode_query_tokens"] + logits["context_decode_metadata_rows"]
         )
         records = [json.loads(line) for line in (new / "native_replay/requests.jsonl").read_text().splitlines()]
         assert not any(row["length_capped"] for row in records)
         steps = current["operator_step_count"]
-        draft = current["native_dsv4_mtp_counts"]
+        draft = current["speculative_counts"]
         assert draft["target_steps"] == draft["initial_passes"] == steps
         assert draft["decode_passes"] == 2 * steps and draft["passes"] == 3 * steps
-        assert current["dsv4_hc_head_counts"]["target_calls"] == steps
-        assert current["dsv4_hc_head_counts"]["target_rows"] == logits["final_norm_rows"]
-        assert current["dsv4_hc_head_counts"]["draft_rows"] == draft["logits_rows"]
+        assert current["residual_output_counts"]["target_calls"] == steps
+        assert current["residual_output_counts"]["target_rows"] == logits["final_norm_rows"]
+        assert current["residual_output_counts"]["draft_rows"] == draft["logits_rows"]
         assert abs(current["native_megamoe_routed_seconds"] + current["native_megamoe_shared_seconds"]
                    - current["operator_component_seconds"]["moe"]) < 1e-6
         assert current["native_megamoe_counts"]["rank_estimates"] == 4 * steps
@@ -83,9 +83,9 @@ def audit(root, *, hardware=("b200", "b300")):
             "root": str(old), "output_tps": previous[sku]["output_tps"],
             "throughput_change_percent": 100 * (point["output_tps"] / previous[sku]["output_tps"] - 1),
             "source_changes": sorted(changes), "configuration_and_capacity_unchanged": True,
-            "context_clamped_queries_before": sum(v for k, v in baseline["native_dsv4_attention_counts"].items()
+            "context_clamped_queries_before": sum(v for k, v in baseline["attention_module_counts"].items()
                                                    if k.startswith("context:") and k.endswith(":clamped")),
-            "context_clamped_queries_after": sum(v for k, v in current["native_dsv4_attention_counts"].items()
+            "context_clamped_queries_after": sum(v for k, v in current["attention_module_counts"].items()
                                                   if k.startswith("context:") and k.endswith(":clamped")),
         }
         reference = json.loads(Path(f"data/reference/{sku}-c{concurrency}-dep8-simplecpu/key_point.json").read_text())["metrics"]

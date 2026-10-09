@@ -1,4 +1,4 @@
-"""Native DSV4 pages and packed groups derived from vLLM 30f5c01d4ebb.
+"""Native compressed attention pages and packed groups derived from vLLM 30f5c01d4ebb.
 
 All groups alias one physical pool. Group token widths are independent of
 the common physical stride; KV has one latent vector, not K and V copies.
@@ -155,7 +155,7 @@ def approximate_group_repeats(values, minimum):
     )
 
 
-def deepseek_v4_kv_layout(
+def hybrid_kv_layout(
     model,
     *,
     block_size=256,
@@ -165,10 +165,10 @@ def deepseek_v4_kv_layout(
     speculative_tokens=3,
     include_mtp=True,
 ):
-    spec = model.deepseek_v4
+    spec = model.components
     if spec is None:
         raise ConfigurationError(
-            "native DSV4 layout needs complete structural metadata"
+            "native compressed attention layout needs complete structural metadata"
         )
     if (
         block_size <= 0
@@ -177,14 +177,14 @@ def deepseek_v4_kv_layout(
         or max_concurrent_batches <= 0
     ):
         raise ConfigurationError(
-            "DSV4 logical blocks must be a positive multiple of 128; token budgets must be positive"
+            "compressed attention logical blocks must be a positive multiple of 128; token budgets must be positive"
         )
     if retention_interval < 0 or retention_interval % block_size:
         raise ConfigurationError(
             "retention must be zero or a multiple of the scheduler block"
         )
     if speculative_tokens < 0 or speculative_tokens > block_size:
-        raise ConfigurationError("invalid DSV4 speculative lookahead")
+        raise ConfigurationError("invalid compressed attention speculative lookahead")
     kv_state = int(model.head_dim * dtype_bytes(model.kv_cache_dtype))
     index_state = (
         spec.index_head_dim // 2
@@ -197,9 +197,9 @@ def deepseek_v4_kv_layout(
         prefix = f"{'mtp' if layer.is_mtp else 'layers'}.{layer.layer_id}"
         # Attention registration order: CSA indexer is constructed first,
         # then SWA, full compressed cache and its compressor state.
-        if layer.compress_ratio == 4:
+        if layer.compress_ratio == spec.indexed_compress_ratio:
             pages.append(
-                CacheLayerPage(prefix + ".indexer", "full", block_size, index_state, 4)
+                CacheLayerPage(prefix + ".indexer", "full", block_size, index_state, spec.indexed_compress_ratio)
             )
             pages.append(
                 CacheLayerPage(
@@ -230,7 +230,7 @@ def deepseek_v4_kv_layout(
                     layer.compress_ratio,
                 )
             )
-            coff = 2 if layer.compress_ratio == 4 else 1
+            coff = 2 if layer.compress_ratio == spec.indexed_compress_ratio else 1
             pages.append(
                 CacheLayerPage(
                     prefix + ".compressor_state",

@@ -41,14 +41,14 @@ def audit(root, *, hardware=("b200", "b300")):
         assert current["native_megamoe_shared_seconds"] > 0
         assert current["native_megamoe_counts"] and current["native_megamoe_max_rank_rows"] > 0
         steps = current["operator_step_count"]
-        counts = current["native_dsv4_mtp_counts"]
+        counts = current["speculative_counts"]
         assert counts["target_steps"] == counts["initial_passes"] == steps
         assert counts["decode_passes"] == 2 * steps and counts["passes"] == 3 * steps
         assert current["native_megamoe_counts"]["rank_estimates"] == 4 * steps
         assert current["native_megamoe_counts"]["graph_pass"] + current["native_megamoe_counts"]["eager_pass"] == 4 * steps
         total = current["native_megamoe_routed_seconds"] + current["native_megamoe_shared_seconds"]
         assert abs(total - current["operator_component_seconds"]["moe"]) < 1e-6
-        draft = current["native_dsv4_mtp_component_seconds"]["moe"]
+        draft = current["speculative_component_seconds"]["moe"]
         assert abs(current["moe_compute_latency"] + current["moe_straggler_latency"] + draft - total) < 1e-6
         # The cumulative missing-shape ledger includes every analytical op
         # requested in warmup/profile. Native post now owns both residuals.

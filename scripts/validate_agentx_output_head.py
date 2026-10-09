@@ -43,23 +43,23 @@ def audit(root, *, hardware=("b200", "b300")):
                 key: value for key, value in second.items() if key not in ("peak_used_slots", "evictions")
             }
         steps = current["operator_step_count"]
-        logits = current["dsv4_target_logits"]
-        counts = current["dsv4_hc_head_counts"]
-        seconds = current["dsv4_hc_head_seconds"]
-        draft = current["native_dsv4_mtp_counts"]
+        logits = current["target_logits"]
+        counts = current["residual_output_counts"]
+        seconds = current["residual_output_seconds"]
+        draft = current["speculative_counts"]
         assert logits["steps"] == counts["target_calls"] == draft["target_steps"] == steps
         assert logits["hc_head_rows"] == logits["final_norm_rows"] == logits["output_forward_rows"] == counts["target_rows"]
         assert logits["output_forward_rows"] >= logits["forward_rows"] >= logits["rows"] > 0
         assert counts["draft_calls"] == draft["passes"] == 3 * steps
         assert draft["initial_passes"] == steps and draft["decode_passes"] == 2 * steps
         assert counts["draft_rows"] == draft["logits_rows"] > 0
-        assert 0 < seconds["draft"] < current["native_dsv4_mtp_component_seconds"]["lm_head"]
+        assert 0 < seconds["draft"] < current["speculative_component_seconds"]["lm_head"]
         assert seconds["target"] > 0 and sum(seconds.values()) < current["operator_component_seconds"]["lm_head"]
         main, mtp = current["native_mhc_main_seconds"], current["native_mhc_draft_seconds"]
         assert main > 0 and mtp > 0 and abs(main + mtp - current["native_mhc_seconds"]) < 1e-6
         assert main + mtp <= current["operator_component_seconds"]["elementwise"]
-        assert mtp <= current["native_dsv4_mtp_component_seconds"]["elementwise"]
-        assert main <= current["operator_component_seconds"]["elementwise"] - current["native_dsv4_mtp_component_seconds"]["elementwise"]
+        assert mtp <= current["speculative_component_seconds"]["elementwise"]
+        assert main <= current["operator_component_seconds"]["elementwise"] - current["speculative_component_seconds"]["elementwise"]
         # mHC counts describe shape lookups. Main seconds, unlike its lookup
         # count, are weighted by the actual 61 transformer-layer copies.
         assert sum(current["native_mhc_counts"]["main"].values()) == 2 * steps
@@ -67,12 +67,12 @@ def audit(root, *, hardware=("b200", "b300")):
         native = current["native_megamoe_routed_seconds"] + current["native_megamoe_shared_seconds"]
         assert abs(native - current["operator_component_seconds"]["moe"]) < 1e-6
         assert abs(current["moe_compute_latency"] + current["moe_straggler_latency"]
-                   + current["native_dsv4_mtp_component_seconds"]["moe"] - native) < 1e-6
+                   + current["speculative_component_seconds"]["moe"] - native) < 1e-6
         assert current["native_megamoe_counts"]["rank_estimates"] == 4 * steps
         assert current["operator_missing_shape_groups"] == len(current["operator_missing_shapes"])
         assert not any(row["table"] == "elementwise" and row["key"].get("op_name") == "residual_add"
                        for row in current["operator_missing_shapes"])
-        description = next(iter(current["latency_backends"].values()))["dsv4_target_output"]
+        description = next(iter(current["latency_backends"].values()))["target_output"]
         assert description["hc_head"]["source_grade"] == "D"
         result["checkpoints"][sku]["output_head"] = {
             "counts": counts, "seconds": seconds, "target_logits": logits,

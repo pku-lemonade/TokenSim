@@ -6,8 +6,8 @@ from pathlib import Path
 import unittest
 
 from TokenSim.config.cache_config import CacheConfig
-from TokenSim.config.deepseek_v4_buffers import MIB, PHASES, live_phases, mega_moe_storage
-from TokenSim.config.memory_budget import deepseek_v4_memory_budget
+from TokenSim.config.persistent_buffers import MIB, PHASES, live_phases, mega_moe_storage
+from TokenSim.config.memory_budget import hybrid_memory_budget
 from TokenSim.config.moe_execution import MoEExecutionConfig
 from TokenSim.config.parallel_config import ParallelConfig
 from TokenSim.errors import ConfigurationError
@@ -23,7 +23,7 @@ class NativeMemoryBudgetTest(unittest.TestCase):
                                       enable_expert_parallel=True)
 
     def budget(self, *, tokens=8192, seqs=49, spec=3, parallel=None, sku="b200", execution=None):
-        return deepseek_v4_memory_budget(
+        return hybrid_memory_budget(
             self.model, self.hardware.device(sku), 133615585400, parallel or self.parallel,
             utilization=.9, max_num_batched_tokens=tokens, max_num_seqs=seqs,
             speculative_tokens=spec, moe_execution=execution,
@@ -156,5 +156,5 @@ class NativeMemoryBudgetTest(unittest.TestCase):
             with self.subTest(tokens=tokens, seqs=seqs), self.assertRaises(ConfigurationError):
                 self.budget(tokens=tokens, seqs=seqs, spec=speculative)
         with self.assertRaises(ConfigurationError):
-            deepseek_v4_memory_budget(self.model, self.hardware.device("b200"), 200 * 2**30,
+            hybrid_memory_budget(self.model, self.hardware.device("b200"), 200 * 2**30,
                 self.parallel, utilization=.9, max_num_batched_tokens=8192, max_num_seqs=49)

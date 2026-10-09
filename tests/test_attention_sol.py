@@ -6,9 +6,9 @@ from unittest import TestCase
 
 from TokenSim.hardware.context import HardwareContext
 from TokenSim.hardware.device import SourcedValue
-from TokenSim.latency.deepseek_v4_attention_sol import (
-    AttentionSOLConfig,
-    DeepSeekV4AttentionSOL,
+from TokenSim.latency.attention_work import (
+    AttentionWorkConfig,
+    CompressedAttentionWork,
     causal_limited_pairs,
     compressed_context_pairs,
 )
@@ -24,7 +24,7 @@ class AttentionSOLTest(TestCase):
         cls.model = cls.context.model("DeepSeek-V4-Pro")
         cls.device = cls.context.device("b200")
         cls.package = cls.context.operator_package(cls.device.device_id, "vllm")
-        cls.sol = DeepSeekV4AttentionSOL(cls.model, cls.device)
+        cls.sol = CompressedAttentionWork(cls.model, cls.device)
         cls.row = next(
             row for row in cls.package.tables["dsv4_attention"]
             if row["layer_kind"] == "csa" and row["phase"] == "generation"
@@ -74,8 +74,8 @@ class AttentionSOLTest(TestCase):
 
     def test_layout_parameters_change_reads_without_changing_flops(self):
         original = self.sol.work(self.key(context_len=1048576))
-        serving = DeepSeekV4AttentionSOL(
-            self.model, self.device, AttentionSOLConfig(kv_state_bytes=512, indexer_state_bytes=68)
+        serving = CompressedAttentionWork(
+            self.model, self.device, AttentionWorkConfig(kv_state_bytes=512, indexer_state_bytes=68)
         ).work(self.key(context_len=1048576))
         self.assertEqual(original.flops, serving.flops)
         self.assertLess(serving.bytes["attention_kv"], original.bytes["attention_kv"])
@@ -93,7 +93,7 @@ class AttentionSOLTest(TestCase):
 
     def test_kv_reuse_is_neutral_when_query_math_is_the_bound(self):
         device = replace(self.device, memory_bandwidth_bytes_per_s=SourcedValue(1e20, "fixture", "D"))
-        sol = DeepSeekV4AttentionSOL(self.model, device)
+        sol = CompressedAttentionWork(self.model, device)
         key = self.key(context_len=1048576)
         self.assertEqual(sol.estimate_us(key, indexer_kv_fraction=0.25), sol.estimate_us(key))
 

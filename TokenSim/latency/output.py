@@ -1,4 +1,4 @@
-"""Explicit analytical cost for DSV4's hyper-residual output reduction.
+"""Explicit analytical cost for compressed attention's hyper-residual output reduction.
 
 The target applies this operation before selecting logits rows. The MTP
 predictor defers it to compute_logits. No paired hc_head timing table exists;
@@ -6,15 +6,18 @@ keep the FP32 gating work and BF16 traffic visible rather than omitting it.
 """
 
 from TokenSim.errors import ConfigurationError
+from TokenSim.latency.base import roofline_latency_us
 
 
-class DeepSeekV4HCHead:
+class ResidualOutputEstimator:
     def __init__(self, backend, *, scope):
-        if backend.model.deepseek_v4 is None or scope not in ("target", "draft"):
-            raise ConfigurationError("hc_head requires DSV4 and a target/draft scope")
+        if backend.model.components is None or scope not in ("target", "draft"):
+            raise ConfigurationError(
+                "hc_head requires compressed attention and a target/draft scope"
+            )
         self.backend, self.scope = backend, scope
         self.hidden = backend.model.hidden_size
-        self.hc = backend.model.deepseek_v4.hc_mult
+        self.hc = backend.model.components.hc_mult
         self.weight_bytes = 4 * (self.hc * self.hc * self.hidden + self.hc + 1)
         self.reset_stats()
 
@@ -31,11 +34,10 @@ class DeepSeekV4HCHead:
         # row RMS/gating/reweight, one BF16 residual read and dense output.
         bytes_ = self.weight_bytes + rows * self.hidden * (2 * self.hc + 2)
         flops = rows * self.hidden * (2 * self.hc * self.hc + 8 * self.hc)
-        memory = bytes_ / (device.memory_bandwidth_bytes_per_s.value
-                           * device.analytical["memory_efficiency"])
-        compute = flops / device.peak_compute_for("fp32").value
-        latency_us = max(memory, compute) * 1e6 + device.analytical["kernel_launch_us"]
-        self.backend.stats.record("target_hc_head" if self.scope == "target" else "mtp_hc_head", "analytical")
+        latency_us = roofline_latency_us(device, bytes_, flops)
+        self.backend.stats.record(
+            "target_hc_head" if self.scope == "target" else "mtp_hc_head", "analytical"
+        )
         self.calls += 1
         self.rows += rows
         self.seconds += latency_us * 1e-6

@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 from TokenSim.config.config import ParallelConfig, ParallelRankInfo
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.context import HardwareContext
-from TokenSim.latency.deepseek_v4_moe import MoEPass, RankShape
+from TokenSim.llm.forward import ForwardPass, RankShape
 from TokenSim.latency.operator_table import OperatorTableLatencyBackend
 from TokenSim.llm.llm_request import Request
 from TokenSim.operator_data.importers.dsv4_megamoe import normalize
@@ -102,7 +102,7 @@ class NativeMegaMoETest(unittest.TestCase):
         )
 
     def step(self, counts, *, query=1, context=False):
-        return MoEPass({i: RankShape(n, query, context) for i, n in enumerate(counts)})
+        return ForwardPass({i: RankShape(n, query, context) for i, n in enumerate(counts)})
 
     def test_rank_local_work_is_not_multiplied_by_dp(self):
         backend = self.backend()
@@ -163,11 +163,11 @@ class NativeMegaMoETest(unittest.TestCase):
         backend = self.backend(communicator=communicator)
         backend.set_moe_step(self.step([64] * 8))
         r = Request(0, 64, 1, 256)
-        with patch.object(backend, "_gemm", return_value=0), patch.object(
-            backend, "_elementwise", return_value=0
+        with patch.object(backend, "gemm", return_value=0), patch.object(
+            backend, "elementwise", return_value=0
         ), patch.object(backend, "_query", return_value=Mock(latency_us=0)), patch.object(
             backend.native_mtp, "estimate", return_value={}
-        ), patch.object(backend.dsv4_hc_head, "estimate", return_value=0
+        ), patch.object(backend.residual_output, "estimate", return_value=0
         ):
             latency = backend._compose(
                 tokens=64, requests=1, attention_us=0, requests_list=[r]
@@ -187,8 +187,8 @@ class NativeMegaMoETest(unittest.TestCase):
     def test_disabled_shared_fusion_prices_two_serial_fp8_matrices_and_activation(self):
         backend = self.backend(fusion=False)
         backend.set_moe_step(self.step([64] * 8))
-        with patch.object(backend, "_gemm", return_value=10) as gemm, patch.object(
-            backend, "_elementwise", return_value=2
+        with patch.object(backend, "gemm", return_value=10) as gemm, patch.object(
+            backend, "elementwise", return_value=2
         ):
             _, routed, shared = backend.native_moe.estimate(64)
         self.assertEqual(gemm.call_count, 2)

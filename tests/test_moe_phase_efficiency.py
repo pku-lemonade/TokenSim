@@ -8,9 +8,9 @@ from unittest.mock import patch
 
 from TokenSim.hardware.context import HardwareContext
 from TokenSim.hardware.links import LinkCatalog
-from TokenSim.latency.deepseek_v4_moe import MoEPass, RankShape
-from TokenSim.latency.deepseek_v4_moe_efficiency import ExpertEfficiencyTransfer
-from TokenSim.latency.deepseek_v4_moe_work import MegaMoEWorkModel
+from TokenSim.llm.forward import ForwardPass, RankShape
+from TokenSim.latency.moe_efficiency import ExpertEfficiencyTransfer
+from TokenSim.latency.moe_work import MegaMoEWorkModel
 from tests import test_full_mtp as full_mtp_tests
 
 
@@ -105,7 +105,7 @@ class MoEPhaseEfficiencyTest(TestCase):
         full_mtp_tests.FullMTPTest.setUpClass()
         backend = full_mtp_tests.FullMTPTest().backend()
         estimator = backend.native_moe
-        estimator.set_step(MoEPass({rank: RankShape(512 if rank == 0 else 16, None, True,
+        estimator.set_step(ForwardPass({rank: RankShape(512 if rank == 0 else 16, None, True,
             1, valid_tokens=32 if rank == 0 else 16) for rank in range(8)}))
         with patch.object(estimator.lookup, "lookup", wraps=estimator.lookup.lookup) as queries:
             total, routed, shared = estimator.estimate(512)

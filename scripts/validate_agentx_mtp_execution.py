@@ -77,9 +77,9 @@ def disabled_audit(root, hardware):
         after_transfer = json.loads(Path(command[command.index("--kv_transfer_config") + 1]).read_text())
         assert before_transfer == after_transfer
         steps = current["operator_step_count"]
-        assert steps > 0 and not current.get("native_dsv4_mtp_counts")
-        assert not current.get("native_dsv4_mtp_component_seconds")
-        assert not current.get("native_dsv4_mtp_seconds")
+        assert steps > 0 and not current.get("speculative_counts")
+        assert not current.get("speculative_component_seconds")
+        assert not current.get("speculative_seconds")
         counts = current["native_megamoe_counts"]
         assert counts["rank_estimates"] == steps
         assert counts["graph_pass"] + counts["eager_pass"] == steps
@@ -87,7 +87,7 @@ def disabled_audit(root, hardware):
                       + worker["counts"]["scheduled_decode_query_tokens"] for worker in current["scheduler_stats"])
         assert counts["routed_valid_rows"] == queries
         assert counts["routed_valid_layer_rows"] == 61 * queries
-        logits, main = current["dsv4_target_logits"], current["dsv4_main_forward_counts"]
+        logits, main = current["target_logits"], current["main_forward_counts"]
         assert main["steps"] == steps and main["logical_rows"] == logits["forward_rows"]
         assert main["full_rows"] == logits["output_forward_rows"]
         assert main["full_rows"] == main["logical_rows"] + main["capture_padding_rows"]
@@ -95,11 +95,11 @@ def disabled_audit(root, hardware):
         assert counts["full_input_layer_rows"] == 61 * main["full_rows"]
         assert main["norm_layer_rows"] == 122 * main["full_rows"]
         assert main["router_layer_rows"] == main["mhc_layer_rows"] == 61 * main["full_rows"]
-        assert current["dsv4_hc_head_counts"].get("draft_rows", 0) == 0
-        assert current["dsv4_hc_head_counts"]["target_rows"] == logits["final_norm_rows"] == main["full_rows"]
+        assert current["residual_output_counts"].get("draft_rows", 0) == 0
+        assert current["residual_output_counts"]["target_rows"] == logits["final_norm_rows"] == main["full_rows"]
         assert current.get("native_mhc_draft_seconds", 0) == 0
         components = current["operator_component_seconds"]
-        assert abs(current["native_dsv4_attention_seconds"] - components["attention"]) < 1e-6
+        assert abs(current["attention_module_seconds"] - components["attention"]) < 1e-6
         assert abs(current["native_megamoe_routed_seconds"] + current["native_megamoe_shared_seconds"] - components["moe"]) < 1e-6
         local = sum(current["dp_step_stats"]["local_compute_seconds_per_rank"].values())
         assert abs(sum(components.values()) - local) <= 1e-6 * max(1, local)
@@ -109,7 +109,7 @@ def disabled_audit(root, hardware):
             expected = CacheConfig(256, context.device(sku), model, parallel,
                 rank_info=ParallelRankInfo.from_global_rank(worker_id, parallel),
                 usable_memory_fraction=utilization, max_num_batched_tokens=tokens, max_num_seqs=seqs,
-                speculative_tokens=0, moe_execution={"backend": "deep_gemm_amxf4_mega_moe"}, attention_backend="native_dsv4")
+                speculative_tokens=0, moe_execution={"backend": "deep_gemm_amxf4_mega_moe"}, attention_backend="module")
             cache = row["cache"]
             assert cache == expected.to_dict()
             assert row["pool_slots"] == cache["num_gpu_blocks"]

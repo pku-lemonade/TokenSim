@@ -1,9 +1,14 @@
-"""Measured DeepSeek-V4 mHC pre/post residual mixing cost."""
+"""Measured compressed transformer mHC pre/post residual mixing cost."""
 
 from dataclasses import dataclass
 
+from TokenSim.utils import BoundedCache
 from TokenSim.errors import ConfigurationError
-from TokenSim.operator_data.lookup import LookupPolicy, MissingOperatorDataError, OperatorLookup
+from TokenSim.operator_data.lookup import (
+    LookupPolicy,
+    MissingOperatorDataError,
+    OperatorLookup,
+)
 
 
 @dataclass(frozen=True)
@@ -13,18 +18,30 @@ class MHCEstimate:
     source_id: str
 
 
-class DeepSeekV4MHC:
+class ResidualMixingEstimator:
     def __init__(self, backend):
         self.backend = backend
         model = backend.model
-        if model.deepseek_v4 is None or not backend.package or not backend.package.tables.get("mhc"):
-            raise ConfigurationError("native DSV4 mHC requires its measured table")
+        self.binding = model.operator_modules.get("mhc")
+        if not self.binding:
+            raise ConfigurationError(
+                "measured residual mixing needs an operator_modules.mhc binding"
+            )
+        self.table = self.binding["table"]
+        if (
+            model.components is None
+            or not backend.package
+            or not backend.package.tables.get(self.table)
+        ):
+            raise ConfigurationError(
+                "native compressed attention mHC requires its measured table"
+            )
         self.lookup = OperatorLookup(
             backend.package,
             LookupPolicy(extrapolate="analytical"),
             analytical_scaler=lambda _table, key: float(key["num_tokens"]),
         )
-        self.cache = {}
+        self.cache = BoundedCache(65536)
         self.counts = {}
         self.seconds = 0.0
 
@@ -37,31 +54,27 @@ class DeepSeekV4MHC:
         for op in ("pre", "post"):
             key = {
                 "op_name": op,
-                "architecture": "DeepseekV4ForCausalLM",
-                "kernel_source": (
-                    "vllm.model_executor.kernels.mhc.tilelang.mhc_"
-                    f"{op}_tilelang"
-                ),
+                **self.binding["key"],
+                "kernel_source": self.binding["kernels"][op],
                 "hidden_size": self.backend.model.hidden_size,
-                "hc_mult": self.backend.model.deepseek_v4.hc_mult,
-                "num_sites": 2,
-                "sinkhorn_iters": self.backend.model.deepseek_v4.hc_sinkhorn_iters,
+                "hc_mult": self.backend.model.components.hc_mult,
+                "sinkhorn_iters": self.backend.model.components.hc_sinkhorn_iters,
                 "num_tokens": max(1, int(tokens)),
             }
             identity = tuple(key.items())
             result = self.cache.get(identity)
             if result is None:
                 try:
-                    row = self.lookup.lookup("mhc", key)
+                    row = self.lookup.lookup(self.table, key)
                 except MissingOperatorDataError as exc:
                     self.backend.stats.record_missing(exc)
                     raise ConfigurationError(str(exc)) from exc
                 result = MHCEstimate(row.latency_us, row.match_type, row.source_id)
                 self.cache[identity] = result
-            self.backend.stats.record("mhc", result.match)
-            self.counts[f"{op}:{result.match}"] = self.counts.get(
-                f"{op}:{result.match}", 0
-            ) + 1
+            self.backend.stats.record(self.table, result.match)
+            self.counts[f"{op}:{result.match}"] = (
+                self.counts.get(f"{op}:{result.match}", 0) + 1
+            )
             total += result.latency_us
         self.seconds += total * 1e-6
         return total
@@ -77,8 +90,8 @@ class DeepSeekV4MHC:
             "backend": "vllm TileLang mhc_module",
             "scope": "pre + post, num_sites=2; one module per transformer layer",
             "hidden_size": self.backend.model.hidden_size,
-            "hc_mult": self.backend.model.deepseek_v4.hc_mult,
-            "sinkhorn_iters": self.backend.model.deepseek_v4.hc_sinkhorn_iters,
+            "hc_mult": self.backend.model.components.hc_mult,
+            "sinkhorn_iters": self.backend.model.components.hc_sinkhorn_iters,
             "residual_dtype": "bf16",
             "parameter_dtype": "fp32",
             "source_grade": "B",

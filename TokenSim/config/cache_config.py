@@ -31,7 +31,7 @@ class CacheConfig:
         speculative_tokens: int = 3,
         max_concurrent_batches: int = 2,
         moe_execution=None,
-        attention_backend: str = "native_dsv4",
+        attention_backend: str = "module",
     ):
         self.block_size: int = block_size
         self.device = device
@@ -42,11 +42,11 @@ class CacheConfig:
         self.expert_placement = expert_placement
         self.moe_config = model.moe
         if (
-            model.deepseek_v4 is not None
+            model.components is not None
             and kv_cache_capacity_tokens_per_dp_rank is not None
         ):
             raise ConfigurationError(
-                "DeepSeek V4 cache capacity must be calculated from hardware and model, not overridden"
+                "compressed transformer cache capacity must be calculated from hardware and model, not overridden"
             )
 
         self.total_num_layers = model.num_layers
@@ -87,21 +87,21 @@ class CacheConfig:
         self.weight_memory_report = None
         self.hybrid_layout = None
         self.memory_budget = None
-        if model.deepseek_v4 is not None:
-            from TokenSim.config.weight_memory import deepseek_v4_weight_memory
+        if model.components is not None:
+            from TokenSim.config.weight_memory import packed_weight_memory
 
-            self.weight_memory_report = deepseek_v4_weight_memory(
+            self.weight_memory_report = packed_weight_memory(
                 model, self.parallel_config, self.rank_info, self.expert_placement,
                 include_mtp=speculative_tokens > 0,
             )
-            self.model_param_size_unsharded = deepseek_v4_weight_memory(model, include_mtp=speculative_tokens > 0)[
+            self.model_param_size_unsharded = packed_weight_memory(model, include_mtp=speculative_tokens > 0)[
                 "total_bytes"
             ]
             self.model_param_size = self.weight_memory_report["total_bytes"]
-            from TokenSim.config.kv_layout import deepseek_v4_kv_layout
-            from TokenSim.config.memory_budget import deepseek_v4_memory_budget
+            from TokenSim.config.kv_layout import hybrid_kv_layout
+            from TokenSim.config.memory_budget import hybrid_memory_budget
 
-            self.hybrid_layout = deepseek_v4_kv_layout(
+            self.hybrid_layout = hybrid_kv_layout(
                 model,
                 block_size=block_size,
                 max_num_batched_tokens=max_num_batched_tokens,
@@ -109,7 +109,7 @@ class CacheConfig:
                 speculative_tokens=speculative_tokens,
                 include_mtp=speculative_tokens > 0,
             )
-            self.memory_budget = deepseek_v4_memory_budget(
+            self.memory_budget = hybrid_memory_budget(
                 model,
                 device,
                 self.model_param_size,
@@ -205,7 +205,7 @@ class CacheConfig:
             "weight_memory": self.weight_memory_report,
             "kv_layout": (
                 self.hybrid_layout.to_dict()
-                if self.model_spec.deepseek_v4
+                if self.model_spec.components
                 else "uniform"
             ),
             "physical_slot_bytes": self.physical_slot_bytes,

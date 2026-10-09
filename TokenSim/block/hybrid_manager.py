@@ -1,4 +1,4 @@
-"""One physical pool coordinating DSV4 full and sliding-window cache groups."""
+"""One physical pool coordinating compressed attention full and sliding-window cache groups."""
 
 from __future__ import annotations
 

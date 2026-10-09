@@ -1,4 +1,4 @@
-"""Native DSV4 MegaMoE geometry, measured routed scope and shared MLP cost.
+"""Fused MegaMoE geometry, measured routed scope and shared MLP cost.
 
 The collector's phase is a buffer/token-grid regime, not a kernel argument.
 Unequal/partially padded passes normalize source-derived physical work to a
@@ -6,50 +6,29 @@ matching uniform module sample. The composition remains an explicit estimate.
 """
 
 from collections import Counter
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import math
 from functools import lru_cache
 from pathlib import Path
 
+from TokenSim.utils import BoundedCache
 from TokenSim.errors import ConfigurationError
+from TokenSim.llm.forward import (
+    ForwardPass,
+    RankShape,
+    sp_valid_rows,
+    uniform_decode_rows,
+)
 from TokenSim.operator_data.lookup import LookupPolicy, OperatorLookup
 from TokenSim.hardware.links import LinkCatalog
-from TokenSim.latency.deepseek_v4_moe_work import MegaMoEWorkModel
+from TokenSim.latency.moe_work import MegaMoEWorkModel
 
 
 @lru_cache(maxsize=1)
 def _default_links():
-    return LinkCatalog.load(Path(__file__).resolve().parents[2] / "data/topologies/links.yaml")
-
-
-@dataclass(frozen=True)
-class RankShape:
-    tokens: int
-    query_width: int | None
-    context_build: bool
-    requests: int | None = None
-    valid_tokens: int | None = None
-    valid_requests: int | None = None
-
-    @property
-    def routed_tokens(self):
-        return self.tokens if self.valid_tokens is None else self.valid_tokens
-
-    def __post_init__(self):
-        if self.tokens < 0 or not 0 <= self.routed_tokens <= self.tokens:
-            raise ConfigurationError("MoE valid rows must fit the full input tensor")
-        if self.valid_requests is not None and (
-            self.valid_requests < 0 or self.requests is not None and self.valid_requests > self.requests
-        ):
-            raise ConfigurationError("MoE valid requests must fit the forward request batch")
-
-
-@dataclass
-class MoEPass:
-    # A new object for each synchronized iteration; also memoizes common
-    # group pricing so multiple leaders do not repeat the same table walk.
-    ranks: dict[int, RankShape]
-    cache: dict = field(default_factory=dict)
+    return LinkCatalog.load(
+        Path(__file__).resolve().parents[2] / "data/topologies/links.yaml"
+    )
 
 
 @dataclass(frozen=True)
@@ -58,26 +37,7 @@ class GroupRows:
     routed: dict[int, int]
     own_rank: int
     graph: bool
-    step: MoEPass
-
-
-def sp_valid_rows(valid, full, tp, rank):
-    """Pinned sp_padding_mask: contiguous ceil(full/TP) chunks."""
-    chunk = math.ceil(full / tp)
-    return max(0, min(chunk, valid - rank * chunk))
-
-
-def uniform_decode_rows(step, query_width, max_num_seqs):
-    """Rows in an eligible synchronized FULL_DECODE_ONLY capture, else None."""
-    if not step.ranks or not all(
-        not shape.context_build and shape.query_width == query_width
-        for shape in step.ranks.values()
-    ):
-        return None
-    upper = max(shape.tokens for shape in step.ranks.values())
-    if upper > max_num_seqs * query_width:
-        return None
-    return query_width * math.ceil(upper / query_width)
+    step: ForwardPass
 
 
 @dataclass(frozen=True)
@@ -92,20 +52,23 @@ class MegaMoEEstimator:
     def __init__(self, backend, config, *, expected_query_width=1, max_num_seqs=64):
         self.backend, self.config = backend, config
         self.model, self.parallel = backend.model, backend.parallel_config
+        self.table = config.table
         self.expected_query_width, self.max_num_seqs = (
             expected_query_width,
             max_num_seqs,
         )
-        if not self.model.deepseek_v4 or not backend.ep_enabled:
-            raise ConfigurationError("native MegaMoE requires DSV4 and expert parallel")
-        if self.parallel.pipeline_parallel_size != 1 or backend.moe_ep not in (4, 8):
+        if not self.model.moe.enabled or not backend.ep_enabled:
             raise ConfigurationError(
-                "native MegaMoE currently supports the PP1, EP4/EP8 reference configurations"
+                "MegaMoE requires routed experts and expert parallel"
+            )
+        if self.parallel.pipeline_parallel_size != 1:
+            raise ConfigurationError(
+                "MegaMoE requires a complete PP1 expert group and matching measured table"
             )
         if (
             backend.fallback == "analytical_only"
             or backend.package is None
-            or not backend.package.tables.get("dsv4_megamoe")
+            or not backend.package.tables.get(self.table)
         ):
             raise ConfigurationError(
                 "native MegaMoE needs its measured routed module table; no generic kernel substitution"
@@ -138,7 +101,7 @@ class MegaMoEEstimator:
         }
         rows = [
             r
-            for r in backend.package.tables["dsv4_megamoe"]
+            for r in backend.package.tables[self.table]
             if all(r[k] == v for k, v in self.base_key.items())
         ]
         if not rows:
@@ -158,7 +121,7 @@ class MegaMoEEstimator:
             values = sorted(r["num_tokens"] for r in rows if r["phase"] == phase)
             if values:
                 self.regimes[phase] = (values[0], values[-1])
-        self.cache = {}
+        self.cache = BoundedCache(32768)
         self.step = None
         self.topology_checked = False
         collective = getattr(backend.communicator, "collective_model", None)
@@ -166,12 +129,16 @@ class MegaMoEEstimator:
         if not isinstance(links, LinkCatalog):
             links = _default_links()
         link = links.get(backend.device.scale_up_link)
-        self.work_model = MegaMoEWorkModel(self.model, backend.device, backend.moe_ep,
-                                         nvlink_bytes_per_s=link.bandwidth_per_direction_bytes_per_s)
-        from TokenSim.latency.deepseek_v4_moe_efficiency import ExpertEfficiencyTransfer
+        self.work_model = MegaMoEWorkModel(
+            self.model,
+            backend.device,
+            backend.moe_ep,
+            nvlink_bytes_per_s=link.bandwidth_per_direction_bytes_per_s,
+        )
+        from TokenSim.latency.moe_efficiency import ExpertEfficiencyTransfer
 
         self.efficiency_transfer = ExpertEfficiencyTransfer(self.work_model, rows)
-        self.priced = {}
+        self.priced = BoundedCache(65536)
         self.reset_stats()
 
     def reset_stats(self):
@@ -200,11 +167,11 @@ class MegaMoEEstimator:
             # capacity settings; do not mislabel this as same-config data.
             lo, hi = generation[1], context[0]
             a = self.lookup.lookup(
-                "dsv4_megamoe",
+                self.table,
                 {**self.base_key, "phase": "generation", "num_tokens": lo},
             )
             b = self.lookup.lookup(
-                "dsv4_megamoe", {**self.base_key, "phase": "context", "num_tokens": hi}
+                self.table, {**self.base_key, "phase": "context", "num_tokens": hi}
             )
             fraction = (tokens - lo) / (hi - lo)
             result = ModuleEstimate(
@@ -218,13 +185,11 @@ class MegaMoEEstimator:
         else:
             phase = "generation" if generation else "context"
         query = self.lookup.lookup(
-            "dsv4_megamoe", {**self.base_key, "phase": phase, "num_tokens": tokens}
+            self.table, {**self.base_key, "phase": phase, "num_tokens": tokens}
         )
         result = ModuleEstimate(
             query.latency_us, query.match_type, query.source_id, phase
         )
-        if len(self.cache) > 32768:
-            self.cache.clear()
         self.cache[tokens] = result
         return result
 
@@ -235,7 +200,7 @@ class MegaMoEEstimator:
                 raise ConfigurationError(
                     "native MegaMoE needs the synchronized DP batch snapshot"
                 )
-            step = MoEPass({dp: RankShape(local_tokens, None, True)})
+            step = ForwardPass({dp: RankShape(local_tokens, None, True)})
         else:
             step = self.step
         # FULL_DECODE_ONLY: a context rank forces eager; a staged q=1 decode
@@ -255,7 +220,8 @@ class MegaMoEEstimator:
                 rows[ep_rank] = value
                 valid_rows[ep_rank] = (
                     sp_valid_rows(shape.routed_tokens, count, tp, other_tp)
-                    if self.sequence_parallel else shape.routed_tokens
+                    if self.sequence_parallel
+                    else shape.routed_tokens
                 )
         if len(rows) != self.backend.moe_ep:
             raise ConfigurationError(
@@ -273,10 +239,22 @@ class MegaMoEEstimator:
         anchor = estimate.latency_us * self.config.latency_scale
         exact_uniform = rows == uniform and routed_rows == uniform
         transfer = self.efficiency_transfer.price(
-            anchor, source_work, target_work, anchor_rows=anchor_rows, phase=estimate.regime
+            anchor,
+            source_work,
+            target_work,
+            anchor_rows=anchor_rows,
+            phase=estimate.regime,
         )
         routed = anchor if exact_uniform else transfer.latency_us
-        return routed, [estimate], anchor, source_work, target_work, exact_uniform, transfer
+        return (
+            routed,
+            [estimate],
+            anchor,
+            source_work,
+            target_work,
+            exact_uniform,
+            transfer,
+        )
 
     def rows_for_group(self, local_tokens):
         group = self.group_rows(local_tokens)
@@ -325,7 +303,12 @@ class MegaMoEEstimator:
                 )
             self.topology_checked = True
         group = self.group_rows(local_tokens)
-        rows, own_rows, graph, step = group.inputs, group.inputs[group.own_rank], group.graph, group.step
+        rows, own_rows, graph, step = (
+            group.inputs,
+            group.inputs[group.own_rank],
+            group.graph,
+            group.step,
+        )
         identity = (
             id(self.backend.package),
             tuple(sorted(rows.items())),
@@ -339,13 +322,13 @@ class MegaMoEEstimator:
             priced = self.priced.get(identity)
             if priced is None:
                 priced = self._price(rows, group.routed)
-                if len(self.priced) > 65536:
-                    self.priced.clear()
                 self.priced[identity] = priced
             step.cache[identity] = priced
-        routed, estimates, anchor, source_work, target_work, exact_uniform, transfer = priced
+        routed, estimates, anchor, source_work, target_work, exact_uniform, transfer = (
+            priced
+        )
         for estimate in estimates:
-            self.backend.stats.record("dsv4_megamoe", estimate.match)
+            self.backend.stats.record(self.table, estimate.match)
             self.counts[f"query_regime:{estimate.regime}"] += 1
         if self.fused_shared:
             shared = self.shared_fused_delta(own_rows)
@@ -357,9 +340,9 @@ class MegaMoEEstimator:
             )
             dtype = self.model.operator_dtype("shared_expert")
             shared = (
-                self.backend._gemm(own_rows, 2 * i, h, dtype=dtype)
-                + self.backend._elementwise("swiglu", own_rows, i)
-                + self.backend._gemm(own_rows, h, i, dtype=dtype)
+                self.backend.gemm(own_rows, 2 * i, h, dtype=dtype)
+                + self.backend.elementwise("swiglu", own_rows, i)
+                + self.backend.gemm(own_rows, h, i, dtype=dtype)
             )
             self.counts["shared:serial_measured_gemm_plus_activation"] += 1
         else:
@@ -377,25 +360,41 @@ class MegaMoEEstimator:
         self.counts["routed_valid_layer_rows"] += group.routed[group.own_rank] * layers
         self.counts["full_input_layer_rows"] += own_rows * layers
         self.counts["zero_routed_rank_passes"] += int(group.routed[group.own_rank] == 0)
-        self.counts["uniform_measured_passes" if exact_uniform else "composed_passes"] += 1
+        self.counts[
+            "uniform_measured_passes" if exact_uniform else "composed_passes"
+        ] += 1
         self.composition["uniform_anchor_seconds"] += anchor * layers * 1e-6
         self.composition["composed_routed_seconds"] += routed * layers * 1e-6
-        self.composition["anchor_difference_seconds"] += (anchor - routed) * layers * 1e-6
+        self.composition["anchor_difference_seconds"] += (
+            (anchor - routed) * layers * 1e-6
+        )
         self.composition["source_work_us"] += source_work.latency_us
         self.composition["target_work_us"] += target_work.latency_us
         self.composition["input_work_us"] += target_work.input_us
         self.composition["expert_work_us"] += target_work.expert_us
         self.composition["dispatch_work_us"] += target_work.dispatch_us
         self.composition["combine_work_us"] += target_work.combine_us
-        self.composition["transferred_common_seconds"] += transfer.common_us * layers * 1e-6
-        self.composition["transferred_expert_seconds"] += transfer.expert_us * layers * 1e-6
+        self.composition["transferred_common_seconds"] += (
+            transfer.common_us * layers * 1e-6
+        )
+        self.composition["transferred_expert_seconds"] += (
+            transfer.expert_us * layers * 1e-6
+        )
         self.counts[f"efficiency:{transfer.match}"] += 1
-        self.composition["source_mma_layer_rows"] += source_work.expert_mma_rows * layers
-        self.composition["target_mma_layer_rows"] += target_work.expert_mma_rows * layers
+        self.composition["source_mma_layer_rows"] += (
+            source_work.expert_mma_rows * layers
+        )
+        self.composition["target_mma_layer_rows"] += (
+            target_work.expert_mma_rows * layers
+        )
         self.composition["source_expert_flops"] += source_work.expert_flops * layers
         self.composition["target_expert_flops"] += target_work.expert_flops * layers
-        self.composition["source_issued_weight_bytes"] += source_work.issued_weight_bytes * layers
-        self.composition["target_issued_weight_bytes"] += target_work.issued_weight_bytes * layers
+        self.composition["source_issued_weight_bytes"] += (
+            source_work.issued_weight_bytes * layers
+        )
+        self.composition["target_issued_weight_bytes"] += (
+            target_work.issued_weight_bytes * layers
+        )
         self.max_rank_rows = max(self.max_rank_rows, max(rows.values()))
         return (routed + shared) * layers, routed, shared
 

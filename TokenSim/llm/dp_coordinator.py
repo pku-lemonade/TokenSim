@@ -13,7 +13,7 @@ import simpy
 
 from TokenSim.errors import ConfigurationError, SimulationStateError
 from TokenSim.llm.llm_request import Request
-from TokenSim.latency.deepseek_v4_moe import MoEPass, RankShape
+from TokenSim.llm.forward import ForwardPass, RankShape
 
 
 class StepBoundary(simpy.Event):
@@ -182,7 +182,7 @@ class DPStepCoordinator:
                         token_counts[worker.dp_rank],
                         len(batch),
                     )
-                moe_step = MoEPass(shapes)
+                moe_step = ForwardPass(shapes)
                 for worker in self.workers:
                     worker.dp_step_token_counts = token_counts
                     if hasattr(worker.latency_backend, "set_moe_step"):

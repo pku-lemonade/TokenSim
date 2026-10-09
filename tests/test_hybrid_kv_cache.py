@@ -11,11 +11,11 @@ import simpy
 
 from TokenSim.block.hybrid_manager import HybridKVBlockManager
 from TokenSim.block.prefix_cache import RequestLocalPrefixKey
-from TokenSim.config.kv_layout import deepseek_v4_kv_layout
+from TokenSim.config.kv_layout import hybrid_kv_layout
 from TokenSim.config.model_config import ModelCatalog
 from TokenSim.config.cache_config import CacheConfig
 from TokenSim.config.cluster_config import ClusterConfig
-from TokenSim.config.memory_budget import deepseek_v4_memory_budget
+from TokenSim.config.memory_budget import hybrid_memory_budget
 from TokenSim.hardware.context import HardwareContext
 from TokenSim.llm.llm_request import Request
 from TokenSim.llm.llm_scheduler import LLMPagedAttnScheduler
@@ -50,7 +50,7 @@ class NativeKVLayoutTest(unittest.TestCase):
         cls.model = cls.hardware.model("DeepSeek-V4-Pro")
 
     def test_pages_are_single_latent_compressed_and_aligned(self):
-        layout = deepseek_v4_kv_layout(self.model)
+        layout = hybrid_kv_layout(self.model)
         pages = {p.name: p for g in layout.groups for p in g.layers}
         self.assertEqual(pages["layers.2.compressed"].page_bytes, 32768)
         self.assertEqual(pages["layers.0.compressed"].page_bytes, 1024)
@@ -63,7 +63,7 @@ class NativeKVLayoutTest(unittest.TestCase):
         self.assertNotIn("mtp.61.compressed", pages)
 
     def test_groups_alias_one_stride_and_partition_all_layer_pages(self):
-        layout = deepseek_v4_kv_layout(self.model)
+        layout = hybrid_kv_layout(self.model)
         self.assertEqual(layout.physical_slot_bytes, 1228800)
         self.assertEqual(
             sorted(
@@ -90,10 +90,10 @@ class NativeKVLayoutTest(unittest.TestCase):
             (8192, 28194, 10778, 2742953),
             (16384, 90064, 17434, 5416940),
         ):
-            layout = deepseek_v4_kv_layout(self.model, max_num_batched_tokens=budget)
+            layout = hybrid_kv_layout(self.model, max_num_batched_tokens=budget)
             self.assertEqual(layout.max_request_slots(), upper)
             self.assertEqual(layout.equivalent_tokens(slots), equivalent)
-        layout = deepseek_v4_kv_layout(self.model, max_num_batched_tokens=16384)
+        layout = hybrid_kv_layout(self.model, max_num_batched_tokens=16384)
         self.assertEqual(layout.equivalent_tokens(90062), 5416820)
 
     def test_hbm_budget_is_calculated_and_every_deduction_is_positive_once(self):
@@ -132,7 +132,7 @@ class NativeKVLayoutTest(unittest.TestCase):
             self.assertEqual(cache.num_cpu_blocks, 0)
 
     def test_mtp_disabled_removes_draft_group_marker_and_preserves_ordinary_kv(self):
-        layout = deepseek_v4_kv_layout(
+        layout = hybrid_kv_layout(
             self.model, include_mtp=False, speculative_tokens=0
         )
         self.assertFalse(any(g.eagle for g in layout.groups))
@@ -143,7 +143,7 @@ class NativeKVPoolTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.model = ModelCatalog.load("data/models").get("DeepSeek-V4-Pro")
-        cls.layout = deepseek_v4_kv_layout(cls.model)
+        cls.layout = hybrid_kv_layout(cls.model)
 
     def manager(self, slots=20000):
         return HybridKVBlockManager(
@@ -399,7 +399,7 @@ class NativeKVPoolTest(unittest.TestCase):
         manager.validate_conservation()
 
     def test_uncached_window_recycling_preserves_cached_prefix_under_churn(self):
-        layout = deepseek_v4_kv_layout(self.model, max_num_batched_tokens=512)
+        layout = hybrid_kv_layout(self.model, max_num_batched_tokens=512)
         manager = HybridKVBlockManager(layout, 1000, self.model.model_id)
         first = request(0, 4096)
         self.assertTrue(manager.can_allocate(first))

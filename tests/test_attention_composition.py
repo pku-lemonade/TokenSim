@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 from TokenSim.config.config import ClusterConfig
 from TokenSim.config.psla_config import LLMResult, MetricData
-from TokenSim.latency.deepseek_v4_attention import AttentionEstimate
+from TokenSim.latency.attention import AttentionEstimate
 from TokenSim.llm.llm_request import Request
 from util.results import get_latency_stats
 import tests.test_native_attention as native_attention
@@ -126,7 +126,7 @@ class AttentionCompositionTest(TestCase):
         value = estimator.estimate_batch({(512, 65536): 1}, {(8192, 4): 16})
         exported = get_latency_stats(SimpleNamespace(workers=[SimpleNamespace(
             latency_backend=estimator.backend, device=estimator.backend.device)]))
-        composition = exported["native_dsv4_attention_composition"]
+        composition = exported["attention_module_composition"]
         result = LLMResult(
             cluster=ClusterConfig.from_file("data/clusters/8_b200/dep8.json"),
             qps=1, request_count=1, prefill_lens=[8192], decode_lens=[20],
@@ -134,7 +134,7 @@ class AttentionCompositionTest(TestCase):
             prefill_time=MetricData.from_list([1]), decode_time=MetricData.from_list([1]),
             duration=1, output_qps=1, output_token_ps=20, notdone=[], **exported,
         )
-        self.assertEqual(asdict(result)["native_dsv4_attention_composition"], composition)
+        self.assertEqual(asdict(result)["attention_module_composition"], composition)
         self.assertAlmostEqual(composition["shared_projection_seconds"] + composition["phase_seconds"], value * 1e-6)
         self.assertEqual(estimator.decode_batch_stats["query_rows"], 64)
         self.assertEqual(estimator.decode_batch_stats["requests"], 16)

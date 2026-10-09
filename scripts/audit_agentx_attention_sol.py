@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from TokenSim.hardware.context import HardwareContext
-from TokenSim.latency.deepseek_v4_attention_sol import DeepSeekV4AttentionSOL
+from TokenSim.latency.attention_work import CompressedAttentionWork
 from TokenSim.operator_data.lookup import LookupPolicy, OperatorLookup
 from TokenSim.operator_data.package import OperatorDataPackage
 from TokenSim.operator_data.schema import TABLE_SPECS
@@ -44,7 +44,7 @@ def audit(sku, context):
     withheld = {tuple(row[name] for name in spec.key_fields) for row in holdouts}
     training = [row for row in original if tuple(row[name] for name in spec.key_fields) not in withheld]
     reduced = OperatorDataPackage.from_rows(package.meta, {"dsv4_attention": training})
-    sol = DeepSeekV4AttentionSOL(model, device)
+    sol = CompressedAttentionWork(model, device)
     policy = LookupPolicy(extrapolate="analytical", max_extrapolation_ratio=64)
     lookup = OperatorLookup(reduced, policy, analytical_scaler=lambda _, key: sol.work(key).latency_us, bind_analytical_axes=True)
     legacy = OperatorLookup(reduced, policy, analytical_scaler=legacy_work)

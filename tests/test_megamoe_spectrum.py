@@ -7,7 +7,7 @@ from unittest import TestCase
 import numpy as np
 
 from TokenSim.errors import ConfigurationError
-from TokenSim.latency.deepseek_v4_moe_spectrum import integer_spectra, spectrum_geometry
+from TokenSim.latency.moe_spectrum import integer_spectra, spectrum_geometry
 
 
 class IntegerSpectrumTest(TestCase):

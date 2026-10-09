@@ -5,6 +5,8 @@ import hashlib
 import json
 from typing import Iterable, NamedTuple
 
+from TokenSim.utils import BoundedCache
+
 # json.dumps(..., sort_keys=True, separators=(",", ":")) quotes strings with
 # this encoder; the hot hash chain below builds the same payload directly.
 _quote = json.encoder.encode_basestring_ascii
@@ -76,7 +78,7 @@ def next_parent_hash(key: PrefixCacheKey) -> str:
 # links are hashed again and again. Links are pure functions of their inputs;
 # the memo is bounded and simply restarts when full.
 _CHAIN_MEMO_LIMIT = 1 << 20
-_chain_memo: dict[tuple[str, str, str], str] = {}
+_chain_memo = BoundedCache(_CHAIN_MEMO_LIMIT)
 
 
 def build_prefix_keys(
@@ -99,8 +101,6 @@ def build_prefix_keys(
         child = memo.get(link)
         if child is None:
             child = _chain_hash(parent_hash, signature, quoted_extra)
-            if len(memo) >= _CHAIN_MEMO_LIMIT:
-                memo.clear()
             memo[link] = child
         parent_hash = child
     return keys

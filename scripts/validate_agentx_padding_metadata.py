@@ -49,11 +49,11 @@ def audit(root, *, hardware=("b200", "b300")):
         )}
         assert totals["scheduled_context_query_tokens"] == totals["scheduled_context_tokens"] + totals["scheduled_placeholder_queries"]
         assert totals["scheduled_placeholder_queries"] == 3 * totals["padded_context_admissions"]
-        logits = current["dsv4_target_logits"]
+        logits = current["target_logits"]
         assert logits["placeholder_rows"] == totals["scheduled_placeholder_queries"]
         assert logits["rows"] >= totals["scheduled_logits_rows"]  # idle-rank dummy rows
         assert logits["output_forward_rows"] >= logits["forward_rows"] >= logits["rows"]
-        assert current["native_dsv4_attention_decode_batches"]["query_rows"] >= (
+        assert current["attention_module_decode_batches"]["query_rows"] >= (
             totals["scheduled_decode_query_tokens"] + logits["context_decode_metadata_rows"]
         )
         records = [json.loads(line) for line in (new / "native_replay/requests.jsonl").read_text().splitlines()]
@@ -61,12 +61,12 @@ def audit(root, *, hardware=("b200", "b300")):
         # in formal windows, though native boundary unit cases exercise it.
         assert not any(row["length_capped"] for row in records)
         steps = current["operator_step_count"]
-        draft = current["native_dsv4_mtp_counts"]
+        draft = current["speculative_counts"]
         assert draft["target_steps"] == draft["initial_passes"] == steps
         assert draft["decode_passes"] == 2 * steps and draft["passes"] == 3 * steps
-        assert current["dsv4_hc_head_counts"]["target_calls"] == steps
-        assert current["dsv4_hc_head_counts"]["target_rows"] == logits["final_norm_rows"]
-        assert current["dsv4_hc_head_counts"]["draft_rows"] == draft["logits_rows"]
+        assert current["residual_output_counts"]["target_calls"] == steps
+        assert current["residual_output_counts"]["target_rows"] == logits["final_norm_rows"]
+        assert current["residual_output_counts"]["draft_rows"] == draft["logits_rows"]
         moe = current["native_megamoe_routed_seconds"] + current["native_megamoe_shared_seconds"]
         assert abs(moe - current["operator_component_seconds"]["moe"]) < 1e-6
         assert current["native_megamoe_counts"]["rank_estimates"] == 4 * steps

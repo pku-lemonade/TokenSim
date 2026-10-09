@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "scripts"))
 from TokenSim.hardware.context import HardwareContext
-from TokenSim.latency.deepseek_v4_gemm import attention_projections
+from TokenSim.latency.projection import attention_projections
 from TokenSim.latency.operator_table import OperatorTableLatencyBackend
 from TokenSim.config.config import ParallelConfig
 from validate_agentx_cpu import validate
@@ -266,7 +266,7 @@ def audit(
         for tokens in (1, 49, 96, 512, 8192, 16384):
             for p in attention_projections(model, 1):
                 key = p.key(tokens)
-                estimate = b._query(p.table, key)
+                estimate = b.query(p.table, key)
                 probes.append(
                     {
                         "projection": p.name,

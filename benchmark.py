@@ -134,7 +134,7 @@ def main(
     env = simpy.Environment()
     is_agentx = args.workload_type == "agentx_weka"
     native_agentx = (
-        is_agentx and hardware.model(model_config.model).deepseek_v4 is not None
+        is_agentx and hardware.model(model_config.model).components is not None
     )
     agentx_traces = None
     if is_agentx:
@@ -672,7 +672,7 @@ if __name__ == "__main__":
     parser.add_argument("--moe_latency_scale", type=float, default=1.0)
     parser.add_argument(
         "--attention_backend",
-        choices=("generic", "native_dsv4"),
+        choices=("generic", "module"),
         default="generic",
         help="DSV4 attention cost source; native_dsv4 uses complete CSA/HCA module tables.",
     )
@@ -702,7 +702,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--mhc_backend",
-        choices=("generic", "native_dsv4"),
+        choices=("generic", "module"),
         default="generic",
         help="DSV4 mHC cost source.",
     )
