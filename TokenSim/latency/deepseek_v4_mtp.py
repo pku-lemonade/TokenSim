@@ -78,7 +78,12 @@ class DeepSeekV4MTPEstimator:
             count = self._request_count(shape, own_count=len(requests) if rank == dp else None)
             valid_count = shape.valid_requests if shape.valid_requests is not None else count
             later_shapes[rank] = RankShape(count, 1, False, count, valid_count, valid_count)
-        later = MoEPass(later_shapes)
+        # Every rank derives the same later-pass shapes from the shared step;
+        # share one pass object so its group pricing is computed once.
+        identity = ("mtp_later_pass", tuple(later_shapes.items()))
+        later = step.cache.get(identity)
+        if later is None:
+            later = step.cache[identity] = MoEPass(later_shapes)
         padded = uniform_decode_rows(step, self.k + 1, self.max_num_seqs)
         initial_graph = padded is not None
         initial_rows = padded if initial_graph else actual_rows

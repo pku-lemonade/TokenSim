@@ -70,6 +70,7 @@ class DeepSeekV4AttentionEstimator:
             bind_analytical_axes=True,
         )
         self.cache = {}
+        self.request_cache = {}
         # Runtime lengths are often unique. Caching whole-table scans by
         # length merely repeats that scan at each new context position.
         spec = TABLE_SPECS["dsv4_attention"]
@@ -120,6 +121,24 @@ class DeepSeekV4AttentionEstimator:
         return self.sol.estimate_us(key)
 
     def _query(self, layer_kind, phase, batch_size, input_seq_len, context_len):
+        # Front cache over the raw arguments; it is cleared together with the
+        # resolved-key cache, so a hit returns exactly the object that cache
+        # would return.
+        request = (layer_kind, phase, batch_size, input_seq_len, context_len)
+        cached = self.request_cache.get(request)
+        if cached is None:
+            cached = self._resolve_query(*request)
+            if len(self.request_cache) >= 65536:
+                self.request_cache.clear()
+            self.request_cache[request] = cached
+            return cached
+        self.backend.stats.record("dsv4_attention", cached.match)
+        self.counts[f"{phase}:{layer_kind}:{cached.match}"] += 1
+        if cached.ragged_grid:
+            self.decode_batch_stats["ragged_grid_lookup_queries"] += 1
+        return cached
+
+    def _resolve_query(self, layer_kind, phase, batch_size, input_seq_len, context_len):
         key = {
             "layer_kind": layer_kind,
             "phase": phase,
@@ -201,6 +220,7 @@ class DeepSeekV4AttentionEstimator:
         )
         if len(self.cache) > 65536:
             self.cache.clear()
+            self.request_cache.clear()
         self.cache[identity] = result
         self.backend.stats.record("dsv4_attention", result.match)
         self.counts[f"{phase}:{layer_kind}:{result.match}"] += 1

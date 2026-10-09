@@ -35,6 +35,11 @@ from TokenSim.workload.agentx_native.models import (
 
 EPSILON = 1e-6
 
+try:  # orjson decodes the multi-GB traces several times faster.
+    from orjson import loads as _loads
+except ImportError:  # pragma: no cover - optional dependency
+    _loads = json.loads
+
 
 def _number(value, name: str, *, nonnegative: bool = False) -> float:
     try:
@@ -52,19 +57,22 @@ def _integer(value, name: str, *, positive: bool = False) -> int:
     return value
 
 
-def _raw_request(row: dict) -> RawRequest:
-    hashes = row.get("hash_ids", [])
+def _hash_array(hashes) -> array:
     if not isinstance(hashes, list):
         raise WorkloadValidationError("AgentX hash_ids must be a list")
-    for value in hashes:
-        if (
-            isinstance(value, bool)
-            or not isinstance(value, int)
-            or not 0 <= value < 2**64
-        ):
-            raise WorkloadValidationError(
-                "AgentX hash IDs must be unsigned 64-bit integers"
-            )
+    # Exact int type excludes bool; array("Q") rejects values outside u64.
+    if not set(map(type, hashes)) <= {int}:
+        raise WorkloadValidationError("AgentX hash IDs must be unsigned 64-bit integers")
+    try:
+        return array("Q", hashes)
+    except OverflowError as exc:
+        raise WorkloadValidationError(
+            "AgentX hash IDs must be unsigned 64-bit integers"
+        ) from exc
+
+
+def _raw_request(row: dict) -> RawRequest:
+    hashes = _hash_array(row.get("hash_ids", []))
     if row.get("type") not in ("n", "s"):
         raise WorkloadValidationError(
             f"unknown AgentX request type: {row.get('type')!r}"
@@ -73,7 +81,7 @@ def _raw_request(row: dict) -> RawRequest:
         t=_number(row["t"], "timestamp", nonnegative=True),
         input_length=_integer(row["in"], "input length"),
         output_length=_integer(row["out"], "output length"),
-        hash_ids=array("Q", hashes),
+        hash_ids=hashes,
         model=str(row["model"]),
         api_time=float(row["api_time"]) if row.get("api_time") is not None else None,
         think_time=(
@@ -103,8 +111,8 @@ def _split_preamble(indexed: list[tuple[int, RawRequest]]):
     ):
         return [], indexed
     if req.output_length > 64:
-        others = set(h for _, other in rest for h in other.hash_ids)
-        if not others.isdisjoint(req.hash_ids):
+        own = set(req.hash_ids)
+        if any(not own.isdisjoint(other.hash_ids) for _, other in rest):
             return [], indexed
     return [first], sorted(rest, key=lambda item: item[0])
 
@@ -413,12 +421,12 @@ def iter_trace_graphs(path: str | Path) -> Iterable[TraceGraph]:
     paths = sorted(path.glob("*.json*")) if path.is_dir() else [path]
     seen = set()
     for file in paths:
-        with file.open() as stream:
+        with file.open("rb") as stream:
             for line_number, line in enumerate(stream, 1):
                 if not line.strip():
                     continue
                 try:
-                    raw = json.loads(line)
+                    raw = _loads(line)
                     graph = parse_trace_graph(raw)
                 except (KeyError, TypeError, ValueError) as exc:
                     raise WorkloadValidationError(

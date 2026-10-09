@@ -210,6 +210,7 @@ class OperatorTableLatencyBackend(LatencyBackend):
             ),
         )
         self._expert_to_rank: dict[int, int] | None = None
+        self._rank_load_cache: dict[int, tuple] = {}
         self._cache: dict[tuple, OperatorEstimate] = {}
         self._calibrations = {
             table: Calibration.from_mapping(values)
@@ -988,6 +989,10 @@ class OperatorTableLatencyBackend(LatencyBackend):
     def _per_rank_load(self, histogram: Mapping[int, int]) -> dict[int, int]:
         if self.expert_placement is None:
             return {}
+        # Routing reuses its cached read-only histograms across steps.
+        cached = self._rank_load_cache.get(id(histogram))
+        if cached is not None and cached[0] is histogram:
+            return cached[1]
         if self._expert_to_rank is None:
             mapping: dict[int, int] = {}
             for ep_rank, experts in self.expert_placement.rank_to_experts.items():
@@ -1000,6 +1005,10 @@ class OperatorTableLatencyBackend(LatencyBackend):
             if ep_rank is None:
                 continue
             per_rank[ep_rank] = per_rank.get(ep_rank, 0) + count
+        if len(self._rank_load_cache) >= 4096:
+            self._rank_load_cache.clear()
+        # Holding the histogram keeps its id from being reused.
+        self._rank_load_cache[id(histogram)] = (histogram, per_rank)
         return per_rank
 
 

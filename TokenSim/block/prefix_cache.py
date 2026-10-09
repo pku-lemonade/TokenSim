@@ -1,20 +1,22 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from functools import lru_cache
 import hashlib
 import json
-from typing import Iterable
+from typing import Iterable, NamedTuple
+
+# json.dumps(..., sort_keys=True, separators=(",", ":")) quotes strings with
+# this encoder; the hot hash chain below builds the same payload directly.
+_quote = json.encoder.encode_basestring_ascii
 
 
-@dataclass(frozen=True)
-class PrefixCacheKey:
+class PrefixCacheKey(NamedTuple):
     parent_hash: str
     block_signature: str
     extra_hash: str
 
 
-@dataclass(frozen=True)
-class RequestLocalPrefixKey:
+class RequestLocalPrefixKey(NamedTuple):
     """Unknown token content can only recover the same request's KV state.
 
     Request IDs are unique within an engine/replay, and native stores belong
@@ -29,6 +31,7 @@ class RequestLocalPrefixKey:
     extra_hash: str
 
 
+@lru_cache(maxsize=65536)
 def make_extra_hash(
     model: str,
     cache_salt: str | None = None,
@@ -43,6 +46,7 @@ def make_extra_hash(
     )
 
 
+@lru_cache(maxsize=65536)
 def make_root_parent_hash(extra_hash: str) -> str:
     return _stable_hash({"root": "tokensim-prefix-cache", "extra_hash": extra_hash})
 
@@ -52,21 +56,27 @@ def make_prefix_key(
     block_hash: str | int,
     extra_hash: str,
 ) -> PrefixCacheKey:
-    return PrefixCacheKey(
-        parent_hash=parent_hash,
-        block_signature=str(block_hash),
-        extra_hash=extra_hash,
+    return PrefixCacheKey(parent_hash, str(block_hash), extra_hash)
+
+
+def _chain_hash(parent_hash: str, signature: str, quoted_extra: str) -> str:
+    payload = (
+        '{"block_signature":' + _quote(signature)
+        + ',"extra_hash":' + quoted_extra
+        + ',"parent_hash":' + _quote(parent_hash) + "}"
     )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
 def next_parent_hash(key: PrefixCacheKey) -> str:
-    return _stable_hash(
-        {
-            "parent_hash": key.parent_hash,
-            "block_signature": key.block_signature,
-            "extra_hash": key.extra_hash,
-        }
-    )
+    return _chain_hash(key.parent_hash, key.block_signature, _quote(key.extra_hash))
+
+
+# Successive requests of a conversation share their prefix, so the same chain
+# links are hashed again and again. Links are pure functions of their inputs;
+# the memo is bounded and simply restarts when full.
+_CHAIN_MEMO_LIMIT = 1 << 20
+_chain_memo: dict[tuple[str, str, str], str] = {}
 
 
 def build_prefix_keys(
@@ -76,12 +86,23 @@ def build_prefix_keys(
     reuse_group: str | None = None,
 ) -> list[PrefixCacheKey]:
     extra_hash = make_extra_hash(model, cache_salt, reuse_group)
+    quoted_extra = _quote(extra_hash)
     parent_hash = make_root_parent_hash(extra_hash)
     keys: list[PrefixCacheKey] = []
+    append = keys.append
+    new_key = tuple.__new__  # skips the NamedTuple constructor frame
+    memo = _chain_memo
     for block_hash in block_hashes:
-        key = make_prefix_key(parent_hash, block_hash, extra_hash)
-        keys.append(key)
-        parent_hash = next_parent_hash(key)
+        signature = str(block_hash)
+        append(new_key(PrefixCacheKey, (parent_hash, signature, extra_hash)))
+        link = (parent_hash, signature, extra_hash)
+        child = memo.get(link)
+        if child is None:
+            child = _chain_hash(parent_hash, signature, quoted_extra)
+            if len(memo) >= _CHAIN_MEMO_LIMIT:
+                memo.clear()
+            memo[link] = child
+        parent_hash = child
     return keys
 
 

@@ -113,8 +113,12 @@ class ExpertRouting:
             synthetic = self.synthetic_histogram(
                 synthetic_tokens, offset=self._route_cursor
             )
-            for expert_id, count in synthetic.items():
-                histogram[expert_id] = histogram.get(expert_id, 0) + count
+            if histogram:
+                for expert_id, count in synthetic.items():
+                    histogram[expert_id] = histogram.get(expert_id, 0) + count
+            else:
+                # Histograms are read-only; share the cached one.
+                histogram = synthetic
             self._route_cursor = (
                 self._route_cursor
                 + synthetic_tokens * self.moe_config.num_experts_per_tok

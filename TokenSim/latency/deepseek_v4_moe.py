@@ -171,6 +171,7 @@ class MegaMoEEstimator:
         from TokenSim.latency.deepseek_v4_moe_efficiency import ExpertEfficiencyTransfer
 
         self.efficiency_transfer = ExpertEfficiencyTransfer(self.work_model, rows)
+        self.priced = {}
         self.reset_stats()
 
     def reset_stats(self):
@@ -263,6 +264,20 @@ class MegaMoEEstimator:
         rank = self.parallel.expert_parallel_rank(dp, self.backend.rank_info.tp_rank)
         return GroupRows(rows, valid_rows, rank, graph, step)
 
+    def _price(self, rows, routed_rows):
+        anchor_rows = max(1, max(rows.values()))
+        estimate = self._query(anchor_rows)
+        uniform = {rank: anchor_rows for rank in rows}
+        source_work = self.work_model.estimate(uniform, uniform)
+        target_work = self.work_model.estimate(rows, routed_rows)
+        anchor = estimate.latency_us * self.config.latency_scale
+        exact_uniform = rows == uniform and routed_rows == uniform
+        transfer = self.efficiency_transfer.price(
+            anchor, source_work, target_work, anchor_rows=anchor_rows, phase=estimate.regime
+        )
+        routed = anchor if exact_uniform else transfer.latency_us
+        return routed, [estimate], anchor, source_work, target_work, exact_uniform, transfer
+
     def rows_for_group(self, local_tokens):
         group = self.group_rows(local_tokens)
         return group.inputs, group.inputs[group.own_rank], group.graph, group.step
@@ -317,22 +332,18 @@ class MegaMoEEstimator:
             tuple(sorted(group.routed.items())),
             self.config.latency_scale,
         )
-        if identity not in step.cache:
-            anchor_rows = max(1, max(rows.values()))
-            estimate = self._query(anchor_rows)
-            uniform = {rank: anchor_rows for rank in rows}
-            source_work = self.work_model.estimate(uniform, uniform)
-            target_work = self.work_model.estimate(rows, group.routed)
-            anchor = estimate.latency_us * self.config.latency_scale
-            exact_uniform = rows == uniform and group.routed == uniform
-            transfer = self.efficiency_transfer.price(
-                anchor, source_work, target_work, anchor_rows=anchor_rows, phase=estimate.regime
-            )
-            routed = anchor if exact_uniform else transfer.latency_us
-            step.cache[identity] = (
-                routed, [estimate], anchor, source_work, target_work, exact_uniform, transfer,
-            )
-        routed, estimates, anchor, source_work, target_work, exact_uniform, transfer = step.cache[identity]
+        priced = step.cache.get(identity)
+        if priced is None:
+            # Pricing is a pure function of the group rows; reuse it across
+            # steps as well as across the ranks of one step.
+            priced = self.priced.get(identity)
+            if priced is None:
+                priced = self._price(rows, group.routed)
+                if len(self.priced) > 65536:
+                    self.priced.clear()
+                self.priced[identity] = priced
+            step.cache[identity] = priced
+        routed, estimates, anchor, source_work, target_work, exact_uniform, transfer = priced
         for estimate in estimates:
             self.backend.stats.record("dsv4_megamoe", estimate.match)
             self.counts[f"query_regime:{estimate.regime}"] += 1

@@ -6,7 +6,6 @@ from collections import OrderedDict
 from dataclasses import dataclass
 
 from TokenSim.block.block import Device, PhysicalTokenBlock
-from TokenSim.block.block_table import BlockTable
 from TokenSim.block.prefix_cache import build_prefix_keys, make_extra_hash, RequestLocalPrefixKey
 from TokenSim.config.kv_layout import HybridKVLayout, cdiv
 from TokenSim.errors import OutOfBlocksError, SimulationStateError
@@ -44,12 +43,51 @@ class HybridReusePlan:
         return max(0, self.full_input_blocks - len(self.hit_blocks)) if self.has_hash_ids else 0
 
 
+class _GroupSpec:
+    """Per-group constants read on every scheduling step."""
+
+    __slots__ = ("group", "group_id", "block_tokens", "window_tokens", "eagle", "need", "max_request_slots")
+
+    def __init__(self, group, layout):
+        self.group = group
+        self.group_id = group.group_id
+        self.block_tokens = group.block_tokens
+        self.window_tokens = group.window_tokens
+        self.eagle = int(group.eagle)
+        self.need = group.hit_tail_slots
+        self.max_request_slots = group.max_request_slots(
+            layout.max_model_len, layout.max_in_flight_tokens
+        )
+
+
+class _HybridBlockTable:
+    """Request-to-slot view derived from the group tables in layout order."""
+
+    def __init__(self, manager):
+        self._manager = manager
+
+    def get_blocks(self, request_id):
+        tables = self._manager.tables.get(request_id)
+        if not tables:
+            return []
+        return [block for table in tables.values() for block in table.values()]
+
+    def get_num_blocks(self, request_id):
+        tables = self._manager.tables.get(request_id)
+        return sum(len(table) for table in tables.values()) if tables else 0
+
+
 class HybridKVBlockManager:
     """Group-aware slot allocation with atomic prefix recovery and retention.
 
     Short-block identities use the containing known prefix hash and a subblock
     ordinal; matching remains at complete engine-block boundaries. Unknown
     generated/tail content is never published under a trace prefix hash.
+
+    The free queue follows vLLM's BlockPool order: uncached slots first, most
+    recently released first, then cached slots from least to most recently
+    released. Uncached slots are interchangeable, so they live in a stack and
+    only cached slots need an ordered map.
     """
 
     native_hybrid = True
@@ -71,7 +109,9 @@ class HybridKVBlockManager:
         ]
         self.null_block = self.blocks[0]
         self.null_block.ref_count = 1
-        self.free_slots = OrderedDict((i, None) for i in range(1, num_slots))
+        # Stack top (list end) is the front of the free queue: slot 1 first.
+        self._free_uncached = self.blocks[:0:-1]
+        self._free_cached = OrderedDict()
         self.cache = {}
         self.duplicates = {}
         self.cached_progress = {}
@@ -81,12 +121,31 @@ class HybridKVBlockManager:
         self.fine_keys = {}
         self.transfer_references = {}
         self.publish_callbacks = []
-        self.block_table = BlockTable()
+        self.block_table = _HybridBlockTable(self)
         self.kv_cache_manager = self
         self.gpu_allocator = self
         self.cpu_allocator = NoHostSwapAllocator()
         self.allocation_count = self.release_count = self.eviction_count = 0
         self.peak_used_slots = 1
+        self.groups = tuple(_GroupSpec(group, layout) for group in layout.groups)
+        self.full_spec = next(
+            spec for spec in self.groups if spec.group is layout.full_group
+        )
+        # Retained tails can be enumerated per boundary when each tail run
+        # fits in one retention segment; otherwise test every window page.
+        interval = layout.retention_interval
+        self._tails_fit_segments = not interval or all(
+            spec.need * spec.block_tokens <= interval for spec in self.groups
+        )
+        # Reuse plans are pure functions of the request and the prefix map;
+        # any change to the map bumps the version and invalidates them.
+        self._cache_version = 0
+        self._plans = {}
+        # (computed, context_len, shared boundaries) of the last publication
+        # pass per request; cleared whenever that request's tables change.
+        self._committed = {}
+
+    # -- prefix identities -----------------------------------------------------
 
     def _input_keys(self, req):
         if req.id not in self.keys:
@@ -114,80 +173,131 @@ class HybridKVBlockManager:
             cache[req.id] = keys
         return keys
 
+    def _fine_input_keys(self, req):
+        """Trace-granularity keys for groups shorter than an engine block, or None."""
+        hashes = getattr(req, "native_trace_hash_ids", None)
+        if hashes is None:
+            return None
+        trace_size = req.native_trace_block_size
+        if req.id not in self.fine_keys:
+            self.fine_keys[req.id] = tuple(
+                build_prefix_keys(
+                    hashes[: req.prefill_len // trace_size],
+                    self.model,
+                    req.cache_salt,
+                    req.reuse_group,
+                )
+            )
+        return self._extend_context_keys(req, self.fine_keys, trace_size)
+
     def _slot_key(self, group, index, keys, req=None):
         if (
             req is not None
             and group.block_tokens < self.block_size
             and getattr(req, "native_trace_hash_ids", None) is not None
         ):
-            trace_size = req.native_trace_block_size
-            if req.id not in self.fine_keys:
-                self.fine_keys[req.id] = tuple(
-                    build_prefix_keys(
-                        req.native_trace_hash_ids[: req.prefill_len // trace_size],
-                        self.model,
-                        req.cache_salt,
-                        req.reuse_group,
-                    )
-                )
-            fine = self._extend_context_keys(req, self.fine_keys, trace_size)
-            containing = ((index + 1) * group.block_tokens - 1) // trace_size
-            if containing >= len(fine):
-                return None
-            return (
-                group.group_id,
-                fine[containing],
-                index % (trace_size // group.block_tokens),
+            return self._fine_slot_key(
+                group.group_id, group.block_tokens, index,
+                self._fine_input_keys(req), req.native_trace_block_size,
             )
+        return self._coarse_slot_key(group.group_id, group.block_tokens, index, keys)
 
-        end_token = (index + 1) * group.block_tokens
-        containing = (end_token - 1) // self.block_size
+    def _coarse_slot_key(self, group_id, block_tokens, index, keys):
+        containing = ((index + 1) * block_tokens - 1) // self.block_size
         if containing >= len(keys):
             return None
-        return (
-            group.group_id,
-            keys[containing],
-            index % (self.block_size // group.block_tokens),
-        )
+        return (group_id, keys[containing], index % (self.block_size // block_tokens))
+
+    @staticmethod
+    def _fine_slot_key(group_id, block_tokens, index, fine, trace_size):
+        containing = ((index + 1) * block_tokens - 1) // trace_size
+        if containing >= len(fine):
+            return None
+        return (group_id, fine[containing], index % (trace_size // block_tokens))
+
+    def _slot_key_function(self, req):
+        """``(spec, index) -> key`` with the request's keys resolved once."""
+        keys = self._input_keys(req)
+        traced = getattr(req, "native_trace_hash_ids", None) is not None
+        fine = []
+        coarse = self._coarse_slot_key
+        fine_key = self._fine_slot_key
+
+        def key_for(spec, index):
+            if traced and spec.block_tokens < self.block_size:
+                if not fine:
+                    fine.append(self._fine_input_keys(req))
+                return fine_key(
+                    spec.group_id, spec.block_tokens, index, fine[0],
+                    req.native_trace_block_size,
+                )
+            return coarse(spec.group_id, spec.block_tokens, index, keys)
+
+        return keys, key_for
 
     def _tail_indices(self, group, boundary, *, for_hit=True):
         end = boundary // group.block_tokens + int(group.eagle)
         need = group.hit_tail_slots
         return range(max(0, end - need), end)
 
+    # -- reuse planning ---------------------------------------------------------
+
     def plan_reuse(self, req):
-        keys = self._input_keys(req)
+        state = (
+            req.context_len,
+            req.num_logical_token_blocks,
+            self._cache_version,
+            len(self.cache),
+        )
+        memo = self._plans.get(req.id)
+        if memo is not None and memo[0] == state:
+            return memo[1]
+        plan = self._plan_reuse(req)
+        self._plans[req.id] = (state, plan)
+        return plan
+
+    def _plan_reuse(self, req):
+        keys, key_for = self._slot_key_function(req)
         maximum = min(len(keys), max(0, (req.context_len - 1) // self.block_size))
-        full = self.layout.full_group
-        contiguous = 0
-        while (
-            contiguous < maximum and (full.group_id, keys[contiguous], 0) in self.cache
-        ):
-            contiguous += 1
+        cache = self.cache
+        full = self.full_spec
+        found = []
+        for key in keys[:maximum]:
+            block = cache.get((full.group_id, key, 0))
+            if block is None:
+                break
+            found.append(block)
+        contiguous = len(found)
         matched = 0
         group_hits = ()
         for blocks in range(contiguous, 0, -1):
             boundary = blocks * self.block_size
+            # Every block before ``contiguous`` is cached in the primary full
+            # group, so only the other groups can reject this boundary.
             hits = []
-            for group in self.layout.groups:
-                indices = (
-                    range(blocks)
-                    if not group.window_tokens
-                    else self._tail_indices(group, boundary)
-                )
-                pairs = [
-                    (index, self.cache.get(self._slot_key(group, index, keys, req)))
-                    for index in indices
-                ]
+            for spec in self.groups:
+                if spec is full:
+                    hits.append(None)
+                    continue
+                if spec.window_tokens:
+                    end = boundary // spec.block_tokens + spec.eagle
+                    indices = range(max(0, end - spec.need), end)
+                else:
+                    indices = range(blocks)
+                pairs = [(index, cache.get(key_for(spec, index))) for index in indices]
                 if any(block is None for _, block in pairs):
                     break
                 # The extra EAGLE block proves the resume boundary is valid,
                 # then is dropped so the next forward recomputes its hidden
                 # states in a private allocation (vLLM SWA find_longest_hit).
-                hits.append(
-                    (group.group_id, tuple(pairs[:-1] if group.eagle else pairs))
-                )
+                hits.append((spec.group_id, tuple(pairs[:-1] if spec.eagle else pairs)))
             else:
+                full_pairs = tuple(enumerate(found[:blocks]))
+                hits = [
+                    (full.group_id, full_pairs[:-1] if full.eagle else full_pairs)
+                    if hit is None else hit
+                    for hit in hits
+                ]
                 matched = boundary
                 group_hits = tuple(hits)
                 break
@@ -228,6 +338,7 @@ class HybridKVBlockManager:
             if not copies:
                 self.duplicates.pop(key, None)
             self.eviction_count += 1
+            self._cache_version += 1
         block.clear_cache_metadata()
 
     def plan_external_reuse(self, req, store, *, local_tokens=0):
@@ -236,38 +347,39 @@ class HybridKVBlockManager:
         Window pages use their absolute prefix identity. Full pages before
         local_tokens need not exist in external storage. Stored writes are
         invisible until ready; the connector must pin this plan before import.
+        Store lookups refresh LRU order, so their sequence is part of the model.
         """
-        keys = self._input_keys(req)
+        keys, key_for = self._slot_key_function(req)
         start = local_tokens // self.block_size
         maximum = min(len(keys), max(0, (req.context_len - 1) // self.block_size))
-        full = self.layout.full_group
+        full = self.full_spec
+        lookup = store.lookup
         contiguous = start
         while (
             contiguous < maximum
-            and store.lookup((full.group_id, keys[contiguous], 0)) is not None
+            and lookup((full.group_id, keys[contiguous], 0)) is not None
         ):
             contiguous += 1
         for blocks in range(contiguous, start, -1):
             boundary = blocks * self.block_size
             group_hits = []
-            for group in self.layout.groups:
-                indices = (
-                    range(start, blocks)
-                    if not group.window_tokens
-                    else self._tail_indices(group, boundary)
-                )
-                pairs = [
-                    (index, store.lookup(self._slot_key(group, index, keys, req)))
-                    for index in indices
-                ]
+            for spec in self.groups:
+                if spec.window_tokens:
+                    end = boundary // spec.block_tokens + spec.eagle
+                    indices = range(max(0, end - spec.need), end)
+                else:
+                    indices = range(start, blocks)
+                pairs = [(index, lookup(key_for(spec, index))) for index in indices]
                 if any(page is None for _, page in pairs):
                     break
                 group_hits.append(
-                    (group.group_id, tuple(pairs[:-1] if group.eagle else pairs))
+                    (spec.group_id, tuple(pairs[:-1] if spec.eagle else pairs))
                 )
             else:
                 return boundary, tuple(group_hits)
         return local_tokens, ()
+
+    # -- external imports -----------------------------------------------------
 
     def external_import_slots(self, req, external_hits):
         # Existing imported-window positions are replaced with private pages;
@@ -282,7 +394,7 @@ class HybridKVBlockManager:
     def allocate_external_destinations(self, req, external_hits):
         """Reserve private writable GPU targets before asynchronous DMA."""
         needed = self.external_import_slots(req, external_hits)
-        if needed > len(self.free_slots):
+        if needed > self.get_num_free_blocks():
             raise OutOfBlocksError("external hybrid import needs more free GPU slots")
         destinations = []
         for gid, pairs in external_hits:
@@ -296,7 +408,7 @@ class HybridKVBlockManager:
                 block = self._allocate()
                 table[index] = block
                 destinations.append((gid, index, page, block))
-        self._sync(req)
+        self._committed.pop(req.id, None)
         return destinations
 
     def finish_external_import(self, req, destinations, hit_tokens):
@@ -309,14 +421,25 @@ class HybridKVBlockManager:
             elif existing is not block:
                 self.duplicates.setdefault(key, {})[block.block_number] = block
         self.cached_progress[req.id] = hit_tokens // self.block_size
+        self._cache_version += 1
+        self._committed.pop(req.id, None)
+
+    # -- slot pool ------------------------------------------------------------
+
+    def _note_usage(self):
+        used = self.num_total_gpu_blocks - self.get_num_free_blocks()
+        if used > self.peak_used_slots:
+            self.peak_used_slots = used
 
     def _acquire(self, block):
         if block.ref_count == 0:
-            self.free_slots.pop(block.block_number, None)
+            slot = block.block_number
+            if slot in self._free_cached:
+                del self._free_cached[slot]
+            else:
+                self._free_uncached.remove(block)
         block.ref_count += 1
-        self.peak_used_slots = max(
-            self.peak_used_slots, self.num_total_gpu_blocks - len(self.free_slots)
-        )
+        self._note_usage()
 
     def pin_transfer(self, block):
         """DMA owns a reference independently of the request's lifetime."""
@@ -335,41 +458,60 @@ class HybridKVBlockManager:
             self.transfer_references[slot] = count - 1
         self._release(block)
 
-    def _allocate(self):
-        if not self.free_slots:
+    def _allocate_many(self, count):
+        """Pop ``count`` slots from the front of the free queue, in order."""
+        if count <= 0:
+            return []
+        stack = self._free_uncached
+        if count > len(stack) + len(self._free_cached):
             raise OutOfBlocksError("native hybrid shared pool exhausted")
-        slot, _ = self.free_slots.popitem(last=False)
-        block = self.blocks[slot]
-        if block.ref_count:
-            raise SimulationStateError("free hybrid slot has live references")
-        self._evict(block)
-        block.ref_count = 1
-        self.allocation_count += 1
-        self.peak_used_slots = max(
-            self.peak_used_slots, self.num_total_gpu_blocks - len(self.free_slots)
-        )
-        return block
+        take = min(count, len(stack))
+        blocks = stack[-take:][::-1] if take else []
+        if take:
+            del stack[-take:]
+        for _ in range(count - take):
+            slot, _ = self._free_cached.popitem(last=False)
+            blocks.append(self.blocks[slot])
+        for block in blocks:
+            if block.ref_count:
+                raise SimulationStateError("free hybrid slot has live references")
+            if block.block_hash is not None or block.cached:
+                self._evict(block)
+            block.ref_count = 1
+        self.allocation_count += count
+        self._note_usage()
+        return blocks
+
+    def _allocate(self):
+        return self._allocate_many(1)[0]
 
     def _release(self, block):
-        self._release_many([block])
+        self._release_many((block,))
 
     def _release_many(self, ordered_blocks):
-        uncached, cached = [], []
+        uncached = []
+        cached = self._free_cached
+        null = self.null_block
+        count = 0
         for block in ordered_blocks:
-            if block is self.null_block or block.ref_count <= 0:
+            if block is null or block.ref_count <= 0:
                 raise SimulationStateError("invalid hybrid slot release")
             block.ref_count -= 1
-            self.release_count += 1
+            count += 1
             if block.ref_count == 0:
-                (cached if block.block_hash is not None else uncached).append(block)
-        # vLLM BlockPool.free_blocks: prepend non-cached blocks for LIFO
-        # locality, append cached blocks for LRU eviction. Preserve the input
-        # priority order within both lists (prepend_n, not individual pushes).
-        for block in reversed(uncached):
-            self.free_slots[block.block_number] = None
-            self.free_slots.move_to_end(block.block_number, last=False)
-        for block in cached:
-            self.free_slots[block.block_number] = None
+                if block.block_hash is not None:
+                    # Cached slots join the LRU tail for eviction.
+                    cached[block.block_number] = None
+                else:
+                    uncached.append(block)
+        self.release_count += count
+        # vLLM BlockPool.free_blocks prepends uncached slots for LIFO locality
+        # and keeps their input order at the front of the queue.
+        if uncached:
+            uncached.reverse()
+            self._free_uncached.extend(uncached)
+
+    # -- publication ------------------------------------------------------------
 
     def _publish(self, group, index, block, keys, req):
         key = self._slot_key(group, index, keys, req)
@@ -385,61 +527,120 @@ class HybridKVBlockManager:
         block.block_hash, block.cached, block.is_full = key, True, True
         if existing is None:
             self.cache[key] = block
+            self._cache_version += 1
         for callback in self.publish_callbacks:
             callback(group, index, block, req)
 
-    def _retained(self, group, index, computed, req):
-        if not group.window_tokens:
-            return True
-        boundaries = []
+    def commit_input_cache(self, req):
+        self.cache_computed(req)
+
+    def cache_computed(self, req):
+        tables = self.tables.get(req.id)
+        if tables is None:
+            return
+        computed = req.num_computed_tokens
+        state = (computed, req.context_len, getattr(req, "shared_prefix_boundaries", None))
+        if self._committed.get(req.id) != state:
+            self._committed[req.id] = state
+            self._publish_computed(req, tables, computed)
+        req.input_cache_committed = not req.is_prefill
+
+    def _publish_computed(self, req, tables, computed):
+        keys = self._input_keys(req)
+        interval = self.layout.retention_interval
+        prefill_boundary = max(0, req.prefill_len - 1) // self.block_size * self.block_size
+        extra_boundaries = [
+            boundary
+            for boundary in (*getattr(req, "shared_prefix_boundaries", ()), prefill_boundary)
+            if boundary and boundary <= computed
+        ]
+        for spec in self.groups:
+            table = tables[spec.group_id]
+            group = spec.group
+            bt = spec.block_tokens
+            if not spec.window_tokens:
+                end = min(computed // bt, len(keys))
+                start = self.cached_progress[req.id]
+                self.cached_progress[req.id] = end
+                for index in range(start, end):
+                    block = table[index]
+                    if not block.cached:
+                        self._publish(group, index, block, keys, req)
+                continue
+            if not table:
+                continue
+            if not self._tails_fit_segments:
+                for index, block in list(table.items()):
+                    if (
+                        not block.cached
+                        and (index + 1) * bt <= computed
+                        and self._retained(spec, index, computed, extra_boundaries)
+                    ):
+                        self._publish(group, index, block, keys, req)
+                continue
+            # Window pages are retained only in the tail runs before each
+            # retention segment end, shared prefix and prompt boundary. Window
+            # tables hold ascending indices, so visiting the retained indices
+            # in order publishes in table order.
+            lowest = next(iter(table))
+            eagle, need = spec.eagle, spec.need
+            boundaries = list(extra_boundaries)
+            if interval:
+                # Smallest segment end whose tail reaches ``lowest``.
+                first = max(1, -(-(lowest - eagle + 1) * bt // interval))
+                boundaries.extend(
+                    k * interval for k in range(first, computed // interval + 1)
+                )
+            candidates = set()
+            for boundary in boundaries:
+                end = boundary // bt + eagle
+                candidates.update(range(max(lowest, end - need), end))
+            for index in sorted(candidates):
+                block = table.get(index)
+                if (
+                    block is not None
+                    and not block.cached
+                    and (index + 1) * bt <= computed
+                ):
+                    self._publish(group, index, block, keys, req)
+
+    def _retained(self, spec, index, computed, extra_boundaries):
+        """Whether window page ``index`` lies in a retained tail run."""
+        bt, eagle, need = spec.block_tokens, spec.eagle, spec.need
+        boundaries = list(extra_boundaries)
         interval = self.layout.retention_interval
         if interval:
             # EAGLE's retained run extends one block beyond the boundary.
             # Shift before locating the segment, including its first block.
-            shifted = (index - int(group.eagle)) * group.block_tokens
-            start = (shifted // interval) * interval
-            boundaries.append(start + interval)
-        boundaries.extend(getattr(req, "shared_prefix_boundaries", ()))
-        boundaries.append(
-            max(0, req.prefill_len - 1) // self.block_size * self.block_size
-        )
-        return any(
-            boundary <= computed and index in self._tail_indices(group, boundary)
-            for boundary in boundaries
-            if boundary
-        )
+            boundary = ((index - eagle) * bt // interval) * interval + interval
+            if 0 < boundary <= computed:
+                boundaries.append(boundary)
+        for boundary in boundaries:
+            end = boundary // bt + eagle
+            if max(0, end - need) <= index < end:
+                return True
+        return False
 
-    def _sync(self, req):
-        flattened = [
-            block
-            for group in self.layout.groups
-            for block in self.tables[req.id][group.group_id].values()
-        ]
-        self.block_table.pop_blocks(req.id)
-        self.block_table.add_blocks(req.id, flattened)
-        req._physical_token_blocks[:] = flattened
+    # -- admission ---------------------------------------------------------------
 
     def can_allocate(self, req, *, has_scheduled_requests=False):
         plan = self.plan_reuse(req)
         needed = 0
-        for group in self.layout.groups:
-            required = cdiv(req.context_len, group.block_tokens)
-            if group.window_tokens:
-                required = min(
-                    required,
-                    group.max_request_slots(
-                        self.layout.max_model_len, self.layout.max_in_flight_tokens
-                    ),
-                )
+        context = req.context_len
+        hit = plan.hit_tokens
+        for spec in self.groups:
+            required = cdiv(context, spec.block_tokens)
+            if spec.window_tokens:
+                required = min(required, spec.max_request_slots)
             # The source's full-input admission check uses virtual table
             # lengths (including skipped/null window positions). It checks
             # currently free slots; it does not reserve later chunks globally.
-            needed += max(0, required - plan.hit_tokens // group.block_tokens)
+            needed += max(0, required - hit // spec.block_tokens)
         zero_ref_hits = sum(
             block.ref_count == 0 for _, pairs in plan.group_hits for _, block in pairs
         )
         watermark = self.watermark_blocks if has_scheduled_requests else 0
-        return len(self.free_slots) - zero_ref_hits >= needed + watermark
+        return self.get_num_free_blocks() - zero_ref_hits >= needed + watermark
 
     def remaining_admission_slots(self, req):
         """vLLM SingleTypeKVCacheManager running-request reservation.
@@ -448,20 +649,16 @@ class HybridKVBlockManager:
         tables omit those entries, so their virtual length is the last absolute
         position plus one, not the number of physically held window pages.
         """
-        if req.id not in self.tables:
+        tables = self.tables.get(req.id)
+        if tables is None:
             return 0
         tokens = min(req.context_len, self.layout.max_model_len)
         remaining = 0
-        for group in self.layout.groups:
-            required = cdiv(tokens, group.block_tokens)
-            if group.window_tokens:
-                required = min(
-                    required,
-                    group.max_request_slots(
-                        self.layout.max_model_len, self.layout.max_in_flight_tokens
-                    ),
-                )
-            table = self.tables[req.id][group.group_id]
+        for spec in self.groups:
+            required = cdiv(tokens, spec.block_tokens)
+            if spec.window_tokens:
+                required = min(required, spec.max_request_slots)
+            table = tables[spec.group_id]
             virtual_length = max(table, default=-1) + 1
             remaining += max(0, required - virtual_length)
         return remaining
@@ -493,24 +690,14 @@ class HybridKVBlockManager:
             b.ref_count == 0 for _, pairs in local_plan.group_hits for _, b in pairs
         )
         future = 0
-        for group in self.layout.groups:
-            if group.window_tokens:
-                required = min(
-                    cdiv(req.context_len, group.block_tokens),
-                    group.max_request_slots(
-                        self.layout.max_model_len, self.layout.max_in_flight_tokens
-                    ),
-                )
-                future += max(0, required - boundary // group.block_tokens)
-            else:
-                future += max(
-                    0,
-                    cdiv(req.context_len, group.block_tokens)
-                    - boundary // group.block_tokens,
-                )
+        for spec in self.groups:
+            required = cdiv(req.context_len, spec.block_tokens)
+            if spec.window_tokens:
+                required = min(required, spec.max_request_slots)
+            future += max(0, required - boundary // spec.block_tokens)
         initial = local_free + destinations - reclaimed
         watermark = self.watermark_blocks if has_scheduled_requests else 0
-        free = len(self.free_slots)
+        free = self.get_num_free_blocks()
         # kv_cache_manager.allocate_slots: full_sequence_must_fit first checks
         # the whole input against current free capacity. reserved_blocks then
         # fences the actual async allocation, not this whole-input envelope.
@@ -523,13 +710,15 @@ class HybridKVBlockManager:
         if req.id in self.tables:
             raise SimulationStateError("duplicate native hybrid request admission")
         plan = self.plan_reuse(req)
-        self.tables[req.id] = {g.group_id: {} for g in self.layout.groups}
+        tables = self.tables[req.id] = {spec.group_id: {} for spec in self.groups}
         self.requests[req.id] = req
         self.cached_progress[req.id] = plan.hit_tokens // self.block_size
+        self._committed.pop(req.id, None)
         for gid, pairs in plan.group_hits:
+            table = tables[gid]
             for index, block in pairs:
                 self._acquire(block)
-                self.tables[req.id][gid][index] = block
+                table[index] = block
         req.cached_prefill_tokens = min(req.prefill_len, plan.hit_tokens)
         req.cached_prefill_blocks = req.cached_prefill_tokens // self.block_size
         req.gpu_cached_context_tokens = plan.hit_tokens
@@ -538,7 +727,8 @@ class HybridKVBlockManager:
         req.reuse_miss_blocks = plan.reuse_miss_blocks
         req.input_cache_keys = list(plan.input_keys)
         req.input_cache_committed = False
-        self._sync(req)
+
+    # -- per-step growth --------------------------------------------------------
 
     def _required_indices(self, group, computed, end):
         start = (
@@ -546,94 +736,86 @@ class HybridKVBlockManager:
         )
         return range(start // group.block_tokens, cdiv(end, group.block_tokens))
 
+    # Window tables hold ascending indices (allocation appends the next
+    # positions; imports and hits insert tail runs in order), so pages before
+    # the window are a prefix of the table and the window is its suffix.
+
+    @staticmethod
+    def _missing_window_slots(table, low, high):
+        """Indices in ``[low, high)`` absent from an ascending window table."""
+        present = last = 0
+        for index in reversed(table):
+            if index < low:
+                break
+            if not present:
+                last = index
+            present += 1
+        if not present:
+            return range(low, high)
+        if last - low + 1 == present:
+            # The held part of the window is contiguous from ``low``.
+            return range(max(low, last + 1), high)
+        return [index for index in range(low, high) if index not in table]
+
     def can_ensure_slots(self, req, scheduled_tokens, *, lookahead=0):
-        end = min(self.layout.max_model_len, req.num_computed_tokens + scheduled_tokens + lookahead)
-        needed = sum(
-            (
-                max(0, cdiv(end, g.block_tokens) - len(self.tables[req.id][g.group_id]))
-                if not g.window_tokens
-                else sum(
-                    index not in self.tables[req.id][g.group_id]
-                    for index in self._required_indices(g, req.num_computed_tokens, end)
-                )
-            )
-            for g in self.layout.groups
-        )
-        reclaimable = 0
-        for group in self.layout.groups:
-            if not group.window_tokens:
+        computed = req.num_computed_tokens
+        end = min(self.layout.max_model_len, computed + scheduled_tokens + lookahead)
+        tables = self.tables[req.id]
+        needed = reclaimable = 0
+        for spec in self.groups:
+            table = tables[spec.group_id]
+            bt = spec.block_tokens
+            high = (end + bt - 1) // bt
+            if not spec.window_tokens:
+                needed += max(0, high - len(table))
                 continue
-            start = max(0, req.num_computed_tokens - (group.window_tokens - 1))
-            reclaimable += sum(
-                block.ref_count == 1
-                for index, block in self.tables[req.id][group.group_id].items()
-                if (index + 1) * group.block_tokens <= start
-            )
-        return needed <= len(self.free_slots) + reclaimable
+            low = max(0, computed - (spec.window_tokens - 1)) // bt
+            needed += len(self._missing_window_slots(table, low, high))
+            # Window pages before the window are released before allocation.
+            for index, block in table.items():
+                if index >= low:
+                    break
+                reclaimable += block.ref_count == 1
+        return needed <= self.get_num_free_blocks() + reclaimable
 
     def ensure_slots(self, req, scheduled_tokens, *, lookahead=0):
-        end = min(self.layout.max_model_len, req.num_computed_tokens + scheduled_tokens + lookahead)
+        computed = req.num_computed_tokens
+        end = min(self.layout.max_model_len, computed + scheduled_tokens + lookahead)
+        tables = self.tables[req.id]
         changed = False
         # Reclaim all old windows before allocating any group's new blocks.
         # can_ensure_slots includes these reclaimable slots in its decision.
-        for group in self.layout.groups:
-            table = self.tables[req.id][group.group_id]
-            start = (
-                max(0, req.num_computed_tokens - (group.window_tokens - 1))
-                if group.window_tokens
-                else 0
-            )
-            skipped = [
-                (index, block)
-                for index, block in reversed(table.items())
-                if (index + 1) * group.block_tokens <= start
-            ]
-            self._release_many(block for _, block in skipped)
-            for index, _ in skipped:
-                del table[index]
+        for spec in self.groups:
+            if not spec.window_tokens:
+                continue
+            table = tables[spec.group_id]
+            low = max(0, computed - (spec.window_tokens - 1)) // spec.block_tokens
+            skipped = []
+            for index in table:
+                if index >= low:
+                    break
+                skipped.append(index)
+            if skipped:
+                # Release the newest page first, as vLLM frees skipped blocks.
+                skipped.reverse()
+                self._release_many([table.pop(index) for index in skipped])
                 changed = True
-        for group in self.layout.groups:
-            table = self.tables[req.id][group.group_id]
-            indices = (
-                range(len(table), cdiv(end, group.block_tokens))
-                if not group.window_tokens
-                else self._required_indices(group, req.num_computed_tokens, end)
-            )
-            for index in indices:
-                if index not in table:
-                    table[index] = self._allocate()
-                    changed = True
-        if changed:
-            self._sync(req)
-
-    def commit_input_cache(self, req):
-        self.cache_computed(req)
-
-    def cache_computed(self, req):
-        if req.id not in self.tables:
-            return
-        keys = self._input_keys(req)
-        for group in self.layout.groups:
-            table = self.tables[req.id][group.group_id]
-            if not group.window_tokens:
-                end = min(req.num_computed_tokens // group.block_tokens, len(keys))
-                items = (
-                    (index, table[index])
-                    for index in range(self.cached_progress[req.id], end)
-                )
-                self.cached_progress[req.id] = end
+        for spec in self.groups:
+            table = tables[spec.group_id]
+            bt = spec.block_tokens
+            high = (end + bt - 1) // bt
+            if spec.window_tokens:
+                low = max(0, computed - (spec.window_tokens - 1)) // bt
+                missing = self._missing_window_slots(table, low, high)
             else:
-                items = table.items()
-            for index, block in items:
-                if block.cached:
-                    continue
-                if (
-                    index + 1
-                ) * group.block_tokens <= req.num_computed_tokens and self._retained(
-                    group, index, req.num_computed_tokens, req
-                ):
-                    self._publish(group, index, block, keys, req)
-        req.input_cache_committed = not req.is_prefill
+                missing = range(len(table), high)
+            if missing:
+                table.update(zip(missing, self._allocate_many(len(missing))))
+                changed = True
+        if changed:
+            self._committed.pop(req.id, None)
+
+    # -- release ------------------------------------------------------------------
 
     def free(self, req):
         self.cache_computed(req)
@@ -645,17 +827,19 @@ class HybridKVBlockManager:
         for table in tables.values():
             # Tail first, so the earliest full-prefix blocks are evicted last.
             self._release_many(reversed(table.values()))
-        self.block_table.pop_blocks(req.id)
         if owned:
             req._physical_token_blocks.clear()
         self.requests.pop(req.id, None)
         self.cached_progress.pop(req.id, None)
         self.keys.pop(req.id, None)
         self.fine_keys.pop(req.id, None)
+        self._plans.pop(req.id, None)
+        self._committed.pop(req.id, None)
 
     def forget_request(self, request_id):
         self.keys.pop(request_id, None)
         self.fine_keys.pop(request_id, None)
+        self._plans.pop(request_id, None)
 
     def can_append_slot(self, req):
         return self.can_ensure_slots(req, 1, lookahead=self.layout.speculative_tokens)
@@ -663,15 +847,26 @@ class HybridKVBlockManager:
     def append_slot(self, req):
         self.ensure_slots(req, 1, lookahead=self.layout.speculative_tokens)
 
+    # -- accounting ---------------------------------------------------------------
+
+    @property
+    def free_slots(self):
+        """Free slots in allocation order (diagnostics; linear time)."""
+        order = OrderedDict(
+            (block.block_number, None) for block in reversed(self._free_uncached)
+        )
+        order.update(self._free_cached)
+        return order
+
     def get_num_free_blocks(self):
-        return len(self.free_slots)
+        return len(self._free_uncached) + len(self._free_cached)
 
     def get_num_allocated_blocks(self):
-        return self.num_total_gpu_blocks - len(self.free_slots)
+        return self.num_total_gpu_blocks - self.get_num_free_blocks()
 
     def get_gpu_status(self):
         return (
-            len(self.free_slots),
+            self.get_num_free_blocks(),
             self.get_num_allocated_blocks(),
             self.num_total_gpu_blocks,
         )
@@ -690,12 +885,17 @@ class HybridKVBlockManager:
                     references[block.block_number] = (
                         references.get(block.block_number, 0) + 1
                     )
+        free = [block.block_number for block in self._free_uncached]
+        free.extend(self._free_cached)
+        if len(free) != len(set(free)):
+            raise SimulationStateError("hybrid free queue holds a slot twice")
+        free = set(free)
         for block in self.blocks[1:]:
             if block.ref_count != references.get(block.block_number, 0):
                 raise SimulationStateError(
                     "hybrid pool reference-count conservation failed"
                 )
-            if (block.ref_count == 0) != (block.block_number in self.free_slots):
+            if (block.ref_count == 0) != (block.block_number in free):
                 raise SimulationStateError("hybrid free queue conservation failed")
         for key, block in self.cache.items():
             if not block.cached or block.block_hash != key:

@@ -6,3 +6,4 @@ pyarrow>=14.0
 ijson>=3.2
 tqdm
 black==24.2.0
+orjson>=3.10

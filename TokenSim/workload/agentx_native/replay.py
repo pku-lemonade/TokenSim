@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from array import array
 import hashlib
 import heapq
 import math
+import sys
 import uuid
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
@@ -36,13 +38,16 @@ def engine_hashes(
     complete = min(len(hashes) // width, input_tokens // engine_block_size)
     if width == 1:
         return list(hashes[:complete])
+    # Each engine block hashes its trace hashes as big-endian u64 values.
+    words = array("Q", hashes[: complete * width])
+    if sys.byteorder == "little":
+        words.byteswap()
+    data = words.tobytes()
+    stride = 8 * width
+    sha256 = hashlib.sha256
     return [
-        hashlib.sha256(
-            b"".join(
-                int(h).to_bytes(8, "big") for h in hashes[i * width : (i + 1) * width]
-            )
-        ).hexdigest()
-        for i in range(complete)
+        sha256(data[i : i + stride]).hexdigest()
+        for i in range(0, complete * stride, stride)
     ]
 
 
@@ -599,7 +604,14 @@ class NativeAgentXReplay:
             return False
         self._recycle()
         issued = False
+        limit = self.env.now + 1e-9
         for play in self.trees:
+            # A ready stream has a due timer and no request in flight.
+            if not any(
+                cursor.in_flight is None and cursor.due is not None and cursor.due <= limit
+                for cursor in play.active_streams.values()
+            ):
+                continue
             for cid, cursor in sorted(
                 play.active_streams.items(), key=lambda item: item[1].ordinal
             ):
@@ -635,6 +647,7 @@ class NativeAgentXReplay:
     def _idle_shifts(self):
         if self.phase != "profiling" or not self.accepting or self.issue_mode == "recorded":
             return
+        all_timers = []
         for play in self.trees:
             timers = self._future_timers(play)
             if (
@@ -654,7 +667,10 @@ class NativeAgentXReplay:
                 self.tree_idle_jumps += 1
                 self.tree_idle_seconds_skipped += shift
                 self._event("tree_idle_shift", lane=play.lane, skipped_s=shift)
-        timers = [cursor for play in self.trees for cursor in self._future_timers(play)]
+                # The shift made some timers due now.
+                timers = self._future_timers(play)
+            all_timers.extend(timers)
+        timers = all_timers
         if (
             timers
             and not self._in_flight
@@ -669,20 +685,19 @@ class NativeAgentXReplay:
             self.system_idle_seconds_skipped += shift
             self._event("system_idle_shift", skipped_s=shift)
 
-    def _wake_at(self, boundary):
+    def _wake_at(self, boundary, timers_by_play):
         if not self.accepting:
             return boundary
         if self.issue_mode == "recorded":
             next_due = self._next_recorded_timer()
             return min(boundary, next_due) if next_due is not None else boundary
         candidates = [boundary]
-        for play in self.trees:
+        for play, timers in zip(self.trees, timers_by_play):
             if (
                 self.phase == "pressure"
                 and self.pressure_sent[play.lane] >= self.warmup_quota
             ):
                 continue
-            timers = self._future_timers(play)
             candidates.extend(c.due for c in timers)
             if (
                 timers
@@ -699,7 +714,7 @@ class NativeAgentXReplay:
         if (
             self.phase == "profiling"
             and not self._in_flight
-            and any(self._future_timers(play) for play in self.trees)
+            and any(timers_by_play)
             and self.system_idle_cap is not None
             and self._global_idle_started is not None
         ):
@@ -714,10 +729,15 @@ class NativeAgentXReplay:
             if hasattr(self.engine, "raise_if_failed")
             else None
         )
+        # Timers do not change while this method decides; collect them once.
+        timers_by_play = (
+            [] if self.issue_mode == "recorded"
+            else [self._future_timers(play) for play in self.trees]
+        )
         has_future_timer = (
             self._next_recorded_timer() is not None
             if self.issue_mode == "recorded"
-            else any(self._future_timers(play) for play in self.trees)
+            else any(timers_by_play)
         )
         if (
             self.accepting
@@ -727,7 +747,7 @@ class NativeAgentXReplay:
             raise SimulationStateError(
                 "AgentX graph has no ready request, future timer, or in-flight predecessor"
             )
-        wake_at = self._wake_at(boundary)
+        wake_at = self._wake_at(boundary, timers_by_play)
         changed = self._changed
         events = [changed]
         failure_event = getattr(self.engine, "failure_event", None)
