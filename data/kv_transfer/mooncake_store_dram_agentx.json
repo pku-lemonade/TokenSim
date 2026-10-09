@@ -1,5 +1,5 @@
 {
-    "kv_connector": "MooncakeStoreConnector",
+    "kv_connector": "HybridMooncakeStoreConnector",
     "kv_connector_extra_config": {
         "mode": "standalone-store",
         "protocol": "rdma",

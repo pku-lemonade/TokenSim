@@ -69,7 +69,10 @@ def _legacy_memory_budget(
     # sharing the pool. Runtime has not measured these allocations.
     graph = (
         capture_tokens
-        * (model.num_layers + (spec.num_nextn_predict_layers if speculative_tokens else 0))
+        * (
+            model.num_layers
+            + (spec.num_nextn_predict_layers if speculative_tokens else 0)
+        )
         * (
             query_width * 2
             + spec.hc_mult * model.hidden_size * 2
@@ -109,9 +112,17 @@ def _legacy_memory_budget(
 
 
 def hybrid_memory_budget(
-    model, device, weight_bytes, parallel, *, utilization,
-    max_num_batched_tokens, max_num_seqs, speculative_tokens=3,
-    moe_execution=None, attention_backend="module",
+    model,
+    device,
+    weight_bytes,
+    parallel,
+    *,
+    utilization,
+    max_num_batched_tokens,
+    max_num_seqs,
+    speculative_tokens=3,
+    moe_execution=None,
+    attention_backend="module",
 ):
     """Budget named persistent allocations and a source live-phase upper bound.
 
@@ -119,63 +130,133 @@ def hybrid_memory_budget(
     is independent of borrowed FlashMLA timing. Unverified generic MoE buffers,
     SM count and graph driver increments stay explicit grade-D estimates.
     """
-    from TokenSim.config.persistent_buffers import MIB, PHASES, align, live_phases, mega_moe_storage
+    from TokenSim.config.persistent_buffers import (
+        MIB,
+        PHASES,
+        align,
+        live_phases,
+        mega_moe_storage,
+    )
     from TokenSim.config.moe_execution import MoEExecutionConfig
 
     for value in (max_num_batched_tokens, max_num_seqs, speculative_tokens):
         if isinstance(value, bool) or not isinstance(value, int):
-            raise ConfigurationError("compressed attention token, sequence and speculative limits must be integers")
-    if (not 0 < utilization <= 1 or max_num_batched_tokens <= 0
-            or max_num_seqs <= 0 or speculative_tokens < 0):
-        raise ConfigurationError("compressed attention memory budget requires valid utilization and token/sequence limits")
+            raise ConfigurationError(
+                "compressed attention token, sequence and speculative limits must be integers"
+            )
+    if (
+        not 0 < utilization <= 1
+        or max_num_batched_tokens <= 0
+        or max_num_seqs <= 0
+        or speculative_tokens < 0
+    ):
+        raise ConfigurationError(
+            "compressed attention memory budget requires valid utilization and token/sequence limits"
+        )
     if attention_backend != "module":
         return _legacy_memory_budget(
-            model, device, weight_bytes, parallel, utilization=utilization,
-            max_num_batched_tokens=max_num_batched_tokens, max_num_seqs=max_num_seqs,
+            model,
+            device,
+            weight_bytes,
+            parallel,
+            utilization=utilization,
+            max_num_batched_tokens=max_num_batched_tokens,
+            max_num_seqs=max_num_seqs,
             speculative_tokens=speculative_tokens,
         )
     if parallel.pipeline_parallel_size != 1:
-        raise ConfigurationError("native compressed attention memory geometry currently requires PP1")
-    spec, tokens, tp = model.components, max_num_batched_tokens, parallel.tensor_parallel_size
+        raise ConfigurationError(
+            "native compressed attention memory geometry currently requires PP1"
+        )
+    spec, tokens, tp = (
+        model.components,
+        max_num_batched_tokens,
+        parallel.tensor_parallel_size,
+    )
     if spec is None or spec.o_groups % tp or model.num_attention_heads % tp:
-        raise ConfigurationError("native compressed attention memory geometry requires complete local attention groups")
+        raise ConfigurationError(
+            "native compressed attention memory geometry requires complete local attention groups"
+        )
     if moe_execution is None:
-        execution = MoEExecutionConfig(backend="deep_gemm_amxf4_mega_moe" if parallel.enable_expert_parallel else "generic")
+        execution = MoEExecutionConfig(
+            backend=(
+                "deep_gemm_amxf4_mega_moe"
+                if parallel.enable_expert_parallel
+                else "generic"
+            )
+        )
     else:
         execution = MoEExecutionConfig.from_value(moe_execution)
     mtp = bool(speculative_tokens and spec.num_nextn_predict_layers)
-    kinds = sorted({{1: "swa", 4: "csa", 128: "hca"}[ratio]
-                    for ratio in spec.compress_ratios[:model.num_layers]})
+    kinds = sorted(
+        {layer.attention_kind for layer in model.layer_specs(include_mtp=False)}
+    )
     persistent = {
         "target_topk": tokens * spec.index_topk * 4,
         "draft_topk": tokens * spec.index_topk * 4 if mtp else 0,
-        "target_mtp_hidden": tokens * spec.hc_mult * model.hidden_size * 2 if mtp else 0,
+        "target_mtp_hidden": (
+            tokens * spec.hc_mult * model.hidden_size * 2 if mtp else 0
+        ),
         "drafter_hidden": tokens * spec.hc_mult * model.hidden_size * 2 if mtp else 0,
         "flashinfer_workspace": 128 * MIB,
         # CSA/HCA share one factory key; SWA uses the other. In the saved
         # Pro config original_position65536*factor16 == maximum_position.
-        "compressed_rope_cache": model.max_position_embeddings * spec.qk_rope_head_dim * 4
-            if any(kind != "swa" for kind in kinds) else 0,
-        "swa_rope_cache": model.max_position_embeddings * spec.qk_rope_head_dim * 4
-            if mtp or "swa" in kinds else 0,
-        "first_mhc_broadcast_weight": spec.hc_mult * (spec.hc_mult + 2) * model.hidden_size * 4,
-        "runner_and_drafter_input_buffers": (tokens * 13 + (max_num_seqs + 1) * 4
-                                             + max_num_seqs * 8) * (2 if mtp else 1),
+        "compressed_rope_cache": (
+            model.max_position_embeddings * spec.qk_rope_head_dim * 4
+            if any(kind != "swa" for kind in kinds)
+            else 0
+        ),
+        "swa_rope_cache": (
+            model.max_position_embeddings * spec.qk_rope_head_dim * 4
+            if mtp or "swa" in kinds
+            else 0
+        ),
+        "first_mhc_broadcast_weight": spec.hc_mult
+        * (spec.hc_mult + 2)
+        * model.hidden_size
+        * 4,
+        "runner_and_drafter_input_buffers": (
+            tokens * 13 + (max_num_seqs + 1) * 4 + max_num_seqs * 8
+        )
+        * (2 if mtp else 1),
     }
     indexer_workspace = None
     if "csa" in kinds:
         gather_rows = model.max_position_embeddings * 40 // 4
-        values_width = spec.index_head_dim // 2 if spec.indexer_cache_dtype == "mxfp4" else spec.index_head_dim
-        scale_width = spec.index_head_dim // 32 if spec.indexer_cache_dtype == "mxfp4" else 4
+        values_width = (
+            spec.index_head_dim // 2
+            if spec.indexer_cache_dtype == "mxfp4"
+            else spec.index_head_dim
+        )
+        scale_width = (
+            spec.index_head_dim // 32 if spec.indexer_cache_dtype == "mxfp4" else 4
+        )
         # get_simultaneous reserves the gather pair and radix workspace together
         # during profiling, then retains this one lane throughout inference.
-        indexer_workspace = {"gather_rows": gather_rows,
-                             "values_bytes": align(gather_rows * values_width, 256),
-                             "scales_bytes": align(gather_rows * scale_width, 256),
-                             "radix_bytes": MIB, "workspace_lanes": 1}
-        persistent["indexer_shared_workspace"] = sum(indexer_workspace[name]
-            for name in ("values_bytes", "scales_bytes", "radix_bytes"))
-    mega = mega_moe_storage(model, parallel, tokens, shared=execution.shared_expert_fusion) if execution.native else None
+        indexer_workspace = {
+            "gather_rows": gather_rows,
+            "values_bytes": align(gather_rows * values_width, 256),
+            "scales_bytes": align(gather_rows * scale_width, 256),
+            "radix_bytes": MIB,
+            "workspace_lanes": 1,
+        }
+        persistent["indexer_shared_workspace"] = sum(
+            indexer_workspace[name]
+            for name in ("values_bytes", "scales_bytes", "radix_bytes")
+        )
+    value = device.analytical.get("multiprocessor_count")
+    if value is None or value < 2 or int(value) != value:
+        raise ConfigurationError(
+            "persistent-kernel memory estimates require a configured device multiprocessor_count"
+        )
+    sms = int(value)
+    mega = (
+        mega_moe_storage(
+            model, parallel, tokens, shared=execution.shared_expert_fusion, sms=sms
+        )
+        if execution.native
+        else None
+    )
     communication = {}
     if mega:
         persistent["mega_symmetric"] = mega["bytes"]
@@ -183,20 +264,49 @@ def hybrid_memory_budget(
     elif parallel.enable_expert_parallel:
         # The generic fused/collective path needs a separate source audit.
         # Preserve its previous communication envelope until then.
-        dispatch = tokens * parallel.expert_parallel_group_size * model.moe.num_experts_per_tok
-        persistent["generic_ep_communication_envelope"] = dispatch * (
-            model.hidden_size + model.hidden_size // 128 * 4 + 12) + tokens * model.hidden_size * 2
+        dispatch = (
+            tokens * parallel.expert_parallel_group_size * model.moe.num_experts_per_tok
+        )
+        persistent["generic_ep_communication_envelope"] = (
+            dispatch * (model.hidden_size + model.hidden_size // 128 * 4 + 12)
+            + tokens * model.hidden_size * 2
+        )
     query_width = 1 + speculative_tokens
 
     def plans(rows, graph):
-        result = [live_phases(model, parallel, rows, max_num_seqs, kind=kind,
-                             native_moe=execution.native, shared_fusion=execution.shared_expert_fusion,
-                             first_layer=first, graph=graph, query_width=query_width)
-                  for kind in kinds for first in (True, False)]
+        result = [
+            live_phases(
+                model,
+                parallel,
+                rows,
+                max_num_seqs,
+                kind=kind,
+                native_moe=execution.native,
+                shared_fusion=execution.shared_expert_fusion,
+                first_layer=first,
+                graph=graph,
+                query_width=query_width,
+                sms=sms,
+            )
+            for kind in kinds
+            for first in (True, False)
+        ]
         if mtp:
-            result.append(live_phases(model, parallel, rows, max_num_seqs, kind="swa", draft=True,
-                                     native_moe=execution.native, shared_fusion=execution.shared_expert_fusion,
-                                     graph=graph, query_width=query_width))
+            result.append(
+                live_phases(
+                    model,
+                    parallel,
+                    rows,
+                    max_num_seqs,
+                    kind="swa",
+                    draft=True,
+                    native_moe=execution.native,
+                    shared_fusion=execution.shared_expert_fusion,
+                    graph=graph,
+                    query_width=query_width,
+                    sms=sms,
+                )
+            )
         return result
 
     eager = plans(tokens, False)
@@ -208,7 +318,11 @@ def hybrid_memory_budget(
     draft_prefill_graphs = capture_seqs if mtp else 0
     # MRV2 reuses the same capture-size list for q=1 draft decode. Descriptors
     # beyond max_num_seqs are discarded rather than expanded into new graphs.
-    draft_decode_graphs = min(capture_seqs, max_num_seqs // query_width) if mtp and speculative_tokens > 1 else 0
+    draft_decode_graphs = (
+        min(capture_seqs, max_num_seqs // query_width)
+        if mtp and speculative_tokens > 1
+        else 0
+    )
     graph_count += draft_prefill_graphs + draft_decode_graphs
     graph_pool_peak = max((row["peak_bytes"] for row in graph_plans), default=0)
     graph_output = capture_rows * model.hidden_size * 2
@@ -224,26 +338,41 @@ def hybrid_memory_budget(
     }
     remaining = hardware_budget - sum(deductions.values())
     if remaining <= 0:
-        raise ConfigurationError("compressed attention native storage and runtime estimates exhaust the configured HBM budget")
+        raise ConfigurationError(
+            "compressed attention native storage and runtime estimates exhaust the configured HBM budget"
+        )
     peak_index = PHASES.index(eager_peak["peak_phase"])
     return {
         "hardware_capacity_bytes": int(device.memory_capacity_bytes.value),
-        "utilization": utilization, "hardware_budget_bytes": hardware_budget,
-        "deductions": deductions, "persistent_components": persistent,
-        "activation_components": {r["storage"]: r["bytes"] for r in eager_peak["storages"]
-                                  if r["begin_phase"] <= peak_index < r["end_phase"]},
-        "activation_live_plans": eager, "communication_components": communication,
-        "native_mega_storage": mega, "indexer_workspace": indexer_workspace,
+        "utilization": utilization,
+        "hardware_budget_bytes": hardware_budget,
+        "deductions": deductions,
+        "persistent_components": persistent,
+        "activation_components": {
+            r["storage"]: r["bytes"]
+            for r in eager_peak["storages"]
+            if r["begin_phase"] <= peak_index < r["end_phase"]
+        },
+        "activation_live_plans": eager,
+        "communication_components": communication,
+        "native_mega_storage": mega,
+        "indexer_workspace": indexer_workspace,
         "graph_storage": {
-            "capture_rows": capture_rows, "target_descriptors": capture_seqs,
-            "draft_prefill_descriptors": draft_prefill_graphs, "draft_decode_descriptors": draft_decode_graphs,
-            "total_descriptors": graph_count, "shared_pool_live_peak_bytes": graph_pool_peak,
-            "persistent_target_output_bytes": graph_output, "driver_increment_proxy_bytes": driver_proxy,
-            "bytes": graph_bytes, "plans": graph_plans,
+            "capture_rows": capture_rows,
+            "target_descriptors": capture_seqs,
+            "draft_prefill_descriptors": draft_prefill_graphs,
+            "draft_decode_descriptors": draft_decode_graphs,
+            "total_descriptors": graph_count,
+            "shared_pool_live_peak_bytes": graph_pool_peak,
+            "persistent_target_output_bytes": graph_output,
+            "driver_increment_proxy_bytes": driver_proxy,
+            "bytes": graph_bytes,
+            "plans": graph_plans,
             "scope": "one shared pool across layer sites and descriptors; target output has a separate retained owner",
             "driver_grade": "D: target profiler1MiB per-descriptor floor used for unmeasured target/draft driver increments",
         },
-        "available_kv_bytes": remaining, "estimation_grade": "D",
+        "available_kv_bytes": remaining,
+        "estimation_grade": "D",
         "storage_model": "native named persistent allocations plus source live-phase upper bounds",
         "vllm_source_revision": "30f5c01d4ebb5c493ed86195db24d0ec5b3ce3d7",
         "deepgemm_source_revision": "e1f418c2a4f20818221f6b0e578b4c2f634d4c3f",

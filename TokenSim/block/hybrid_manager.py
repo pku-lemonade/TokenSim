@@ -6,7 +6,11 @@ from collections import OrderedDict
 from dataclasses import dataclass
 
 from TokenSim.block.block import Device, PhysicalTokenBlock
-from TokenSim.block.prefix_cache import build_prefix_keys, make_extra_hash, RequestLocalPrefixKey
+from TokenSim.block.prefix_cache import (
+    build_prefix_keys,
+    make_extra_hash,
+    RequestLocalPrefixKey,
+)
 from TokenSim.config.kv_layout import HybridKVLayout, cdiv
 from TokenSim.errors import OutOfBlocksError, SimulationStateError
 
@@ -40,13 +44,25 @@ class HybridReusePlan:
 
     @property
     def reuse_miss_blocks(self):
-        return max(0, self.full_input_blocks - len(self.hit_blocks)) if self.has_hash_ids else 0
+        return (
+            max(0, self.full_input_blocks - len(self.hit_blocks))
+            if self.has_hash_ids
+            else 0
+        )
 
 
 class _GroupSpec:
     """Per-group constants read on every scheduling step."""
 
-    __slots__ = ("group", "group_id", "block_tokens", "window_tokens", "eagle", "need", "max_request_slots")
+    __slots__ = (
+        "group",
+        "group_id",
+        "block_tokens",
+        "window_tokens",
+        "eagle",
+        "need",
+        "max_request_slots",
+    )
 
     def __init__(self, group, layout):
         self.group = group
@@ -166,10 +182,19 @@ class HybridKVBlockManager:
             # Known prompt hashes remain shareable. Everything beyond that
             # proof uses a request-private identity, including a mixed block
             # containing the prompt's partial tail and generated outputs.
-            parent = next((key for key in reversed(keys) if not isinstance(key, RequestLocalPrefixKey)), None)
+            parent = next(
+                (
+                    key
+                    for key in reversed(keys)
+                    if not isinstance(key, RequestLocalPrefixKey)
+                ),
+                None,
+            )
             extra = make_extra_hash(self.model, req.cache_salt, req.reuse_group)
-            keys += tuple(RequestLocalPrefixKey(req.id, block_tokens, index, parent, extra)
-                          for index in range(len(keys), blocks))
+            keys += tuple(
+                RequestLocalPrefixKey(req.id, block_tokens, index, parent, extra)
+                for index in range(len(keys), blocks)
+            )
             cache[req.id] = keys
         return keys
 
@@ -197,8 +222,11 @@ class HybridKVBlockManager:
             and getattr(req, "trace_hash_ids", None) is not None
         ):
             return self._fine_slot_key(
-                group.group_id, group.block_tokens, index,
-                self._fine_input_keys(req), req.trace_block_size,
+                group.group_id,
+                group.block_tokens,
+                index,
+                self._fine_input_keys(req),
+                req.trace_block_size,
             )
         return self._coarse_slot_key(group.group_id, group.block_tokens, index, keys)
 
@@ -228,7 +256,10 @@ class HybridKVBlockManager:
                 if not fine:
                     fine.append(self._fine_input_keys(req))
                 return fine_key(
-                    spec.group_id, spec.block_tokens, index, fine[0],
+                    spec.group_id,
+                    spec.block_tokens,
+                    index,
+                    fine[0],
                     req.trace_block_size,
                 )
             return coarse(spec.group_id, spec.block_tokens, index, keys)
@@ -294,8 +325,11 @@ class HybridKVBlockManager:
             else:
                 full_pairs = tuple(enumerate(found[:blocks]))
                 hits = [
-                    (full.group_id, full_pairs[:-1] if full.eagle else full_pairs)
-                    if hit is None else hit
+                    (
+                        (full.group_id, full_pairs[:-1] if full.eagle else full_pairs)
+                        if hit is None
+                        else hit
+                    )
                     for hit in hits
                 ]
                 matched = boundary
@@ -539,7 +573,11 @@ class HybridKVBlockManager:
         if tables is None:
             return
         computed = req.num_computed_tokens
-        state = (computed, req.context_len, getattr(req, "shared_prefix_boundaries", None))
+        state = (
+            computed,
+            req.context_len,
+            getattr(req, "shared_prefix_boundaries", None),
+        )
         if self._committed.get(req.id) != state:
             self._committed[req.id] = state
             self._publish_computed(req, tables, computed)
@@ -548,10 +586,15 @@ class HybridKVBlockManager:
     def _publish_computed(self, req, tables, computed):
         keys = self._input_keys(req)
         interval = self.layout.retention_interval
-        prefill_boundary = max(0, req.prefill_len - 1) // self.block_size * self.block_size
+        prefill_boundary = (
+            max(0, req.prefill_len - 1) // self.block_size * self.block_size
+        )
         extra_boundaries = [
             boundary
-            for boundary in (*getattr(req, "shared_prefix_boundaries", ()), prefill_boundary)
+            for boundary in (
+                *getattr(req, "shared_prefix_boundaries", ()),
+                prefill_boundary,
+            )
             if boundary and boundary <= computed
         ]
         for spec in self.groups:

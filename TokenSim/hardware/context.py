@@ -13,7 +13,9 @@ from TokenSim.hardware.topology import TopologyCatalog, TopologySpec
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_DATA_ROOT = Path(__file__).resolve().parents[2] / "data"
+from TokenSim.config.paths import default_data_root
+
+DEFAULT_DATA_ROOT = default_data_root()
 
 
 @dataclass
@@ -128,20 +130,32 @@ class HardwareContext:
         key = (device_id, backend)
         if key not in self._packages:
             assert self.operator_data_root is not None
-            package = OperatorDataPackage.load(self.operator_data_root / device_id / backend)
+            package = OperatorDataPackage.load(
+                self.operator_data_root / device_id / backend
+            )
             if package.device_id != device_id:
                 raise ConfigurationError(
                     f"package at {self.operator_data_root / device_id / backend} declares device_id={package.device_id!r}"
                 )
             self._packages[key] = package
-            logger.info("loaded operator data %s/%s: %s", device_id, backend, package.summary())
+            logger.info(
+                "loaded operator data %s/%s: %s", device_id, backend, package.summary()
+            )
         return self._packages[key]
 
 
 # Preferred operator-data backend when a cluster does not name one. vLLM first
 # (project default, decided 2026-09-18), then the other serving stacks, then
 # locally measured and finally analytical packages.
-_BACKEND_PRIORITY = ("vllm", "trtllm", "sglang", "measured", "cuda", "groq", "analytical")
+_BACKEND_PRIORITY = (
+    "vllm",
+    "trtllm",
+    "sglang",
+    "measured",
+    "cuda",
+    "groq",
+    "analytical",
+)
 
 
 def _preferred_backend(backends: list[str]) -> str:

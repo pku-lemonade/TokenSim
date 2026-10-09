@@ -152,11 +152,15 @@ class ParallelConfig:
         group index equals ``dp_rank``; with ``global`` (full scope) every
         rank of the stage is in group 0.
         """
-        return (dp_rank * self.tensor_parallel_size + tp_rank) // self.expert_parallel_group_size
+        return (
+            dp_rank * self.tensor_parallel_size + tp_rank
+        ) // self.expert_parallel_group_size
 
     def expert_parallel_rank(self, dp_rank: int, tp_rank: int) -> int:
         """Position of rank ``(dp_rank, tp_rank)`` inside its expert-parallel group."""
-        return (dp_rank * self.tensor_parallel_size + tp_rank) % self.expert_parallel_group_size
+        return (
+            dp_rank * self.tensor_parallel_size + tp_rank
+        ) % self.expert_parallel_group_size
 
     # -- construction ------------------------------------------------------------
 

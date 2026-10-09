@@ -52,14 +52,18 @@ class MooncakeStore:
         self.config = config
         self.block_bytes = max(1, int(block_bytes))
         if config.memory_capacity_blocks is not None:
-            self.memory_capacity_bytes = config.memory_capacity_blocks * self.block_bytes
+            self.memory_capacity_bytes = (
+                config.memory_capacity_blocks * self.block_bytes
+            )
         else:
             self.memory_capacity_bytes = config.global_segment_size
         self.memory_used_bytes = 0
         self.objects: dict[str, StoreObject] = {}
         self.memory_lru: OrderedDict[str, None] = OrderedDict()
         self.stats = MooncakeStats()
-        self.offload = OffloadTier(config, self.block_bytes) if config.enable_offload else None
+        self.offload = (
+            OffloadTier(config, self.block_bytes) if config.enable_offload else None
+        )
         self.ssd = self.offload
         if self.offload is not None:
             self.stats.record_offload_tier(self.offload.tier)
@@ -203,13 +207,12 @@ class MooncakeStore:
             and blocks > 64
             and self.eviction_policy_allows_batch(blocks)
         ):
-            selected = keys[:blocks]
-            fresh = [
-                key.to_string()
-                for key in selected
-                if key.to_string() not in self.objects
-            ]
-            if self.memory_used_bytes + len(fresh) * self.block_bytes <= self.memory_capacity_bytes:
+            selected = list(dict.fromkeys(key.to_string() for key in keys[:blocks]))
+            fresh = [key for key in selected if key not in self.objects]
+            if (
+                self.memory_used_bytes + len(fresh) * self.block_bytes
+                <= self.memory_capacity_bytes
+            ):
                 for key_string in fresh:
                     self.objects[key_string] = StoreObject(
                         key=key_string,
@@ -219,7 +222,9 @@ class MooncakeStore:
                         segment=self.config.preferred_segment or "global",
                     )
                 self.memory_used_bytes += len(fresh) * self.block_bytes
-                self.memory_lru.update({key: None for key in fresh})
+                for key in selected:
+                    self.memory_lru.setdefault(key, None)
+                    self._touch(self.objects[key])
                 self.stats.admission_count += len(fresh)
                 return timing
         for key in keys[:blocks]:
@@ -233,7 +238,10 @@ class MooncakeStore:
 
     def eviction_policy_allows_batch(self, blocks: int) -> bool:
         """Whether a bulk write can preserve the configured LRU semantics."""
-        return self.config.eviction_policy == "lru" and blocks * self.block_bytes <= self.memory_capacity_bytes
+        return (
+            self.config.eviction_policy == "lru"
+            and blocks * self.block_bytes <= self.memory_capacity_bytes
+        )
 
     def _put_one(
         self,

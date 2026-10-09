@@ -56,26 +56,6 @@ class CompressedAttentionEstimator:
         if not backend.package.tables.get(self.table):
             raise ConfigurationError("native compressed attention table is missing")
         self.tp = self.parallel.tensor_parallel_size
-        self.context_latency_scale = float(
-            getattr(backend, "native_attention_context_scale", 1.0)
-        )
-        self.generation_latency_scale = float(
-            getattr(backend, "native_attention_generation_scale", 1.0)
-        )
-        if (
-            not math.isfinite(self.context_latency_scale)
-            or self.context_latency_scale < 0
-        ):
-            raise ConfigurationError(
-                "native attention context scale must be finite and nonnegative"
-            )
-        if (
-            not math.isfinite(self.generation_latency_scale)
-            or self.generation_latency_scale < 0
-        ):
-            raise ConfigurationError(
-                "native attention generation scale must be finite and nonnegative"
-            )
         self.sol = CompressedAttentionWork(self.model, backend.device)
         # Pinned DeepGEMM SM100 paged MQA uses BLOCK_Q = 128 / num_heads.
         # Indexer heads are replicated under TP. Pro has 64 -> two queries
@@ -103,8 +83,14 @@ class CompressedAttentionEstimator:
             for axis in spec.axis_names
         }
         index = {}
+        self.axis_lower_bounds = {}
         for row in backend.package.tables[self.table]:
             discrete = self._discrete_key(row)
+            for axis in spec.axis_names:
+                identity = (axis, discrete)
+                self.axis_lower_bounds[identity] = min(
+                    self.axis_lower_bounds.get(identity, row[axis]), row[axis]
+                )
             for axis, fields in self._axis_constraints.items():
                 identity = (axis, discrete, tuple(row[name] for name in fields))
                 index.setdefault(identity, set()).add(row[axis])
@@ -206,11 +192,11 @@ class CompressedAttentionEstimator:
                 # grid. An exact-prefix query minimum would replace a valid
                 # q512/prefix49152 lookup with q16384, for example.
                 continue
-            values = self._axis_values(key, axis)
-            if values and key[axis] < values[0]:
-                key[axis] = values[0]
+            floor = self.axis_lower_bounds.get((axis, self._discrete_key(key)))
+            if floor is not None and key[axis] < floor:
+                key[axis] = floor
                 clamped = True
-        identity = tuple(key.items())
+        identity = (clamped, tuple(key.items()))
         cached = self.cache.get(identity)
         if cached is not None:
             self.backend.stats.record(self.table, cached.match)
@@ -319,7 +305,6 @@ class CompressedAttentionEstimator:
                     kind, "context", batch_size, query_tokens, prefix_tokens
                 ).latency_us
             )
-        total *= self.context_latency_scale
         self.seconds += total * 1e-6
         return total
 
@@ -374,11 +359,7 @@ class CompressedAttentionEstimator:
                 byte_weight * layers * indexer_bytes * indexer_kv_fraction
             )
             self.mtp_kv_stats["estimated_seconds_saved"] += (
-                byte_weight
-                * layers
-                * (latency - corrected)
-                * self.generation_latency_scale
-                * 1e-6
+                byte_weight * layers * (latency - corrected) * 1e-6
             )
             self.mtp_kv_stats["csa_adjustment_queries"] += 1
             latency = corrected
@@ -398,7 +379,6 @@ class CompressedAttentionEstimator:
             )[0]
             for kind in ("csa", "hca")
         )
-        total *= self.generation_latency_scale
         return total
 
     def estimate_decode(self, batch_size, context_tokens):
@@ -474,8 +454,8 @@ class CompressedAttentionEstimator:
                 new_common = self.sol.shared_phase_us(
                     {**key, "batch_size": projected}, indexer_kv_fraction=fraction
                 )[0]
-                efficiency = latency * self.generation_latency_scale / (common + phase)
-                base += layers * weight * latency * self.generation_latency_scale
+                efficiency = latency / (common + phase)
+                base += layers * weight * latency
                 increment += (
                     layers * weight * max(0.0, new_common - common) * efficiency
                 )
@@ -555,9 +535,7 @@ class CompressedAttentionEstimator:
                 estimate = self._query(kind, "context", count, queries, context)
                 key = self._sol_key(kind, "context", count, queries, context, estimate)
                 common, phase = self.sol.shared_phase_us(key)
-                efficiency = (
-                    estimate.latency_us * self.context_latency_scale / (common + phase)
-                )
+                efficiency = estimate.latency_us / (common + phase)
                 parts.append(
                     (
                         queries * count,
@@ -581,7 +559,7 @@ class CompressedAttentionEstimator:
                 common, phase = self.sol.shared_phase_us(
                     key, indexer_kv_fraction=fraction
                 )
-                efficiency = latency * self.generation_latency_scale / (common + phase)
+                efficiency = latency / (common + phase)
                 parts.append(
                     (count, weight, efficiency, common, phase, key["batch_size"])
                 )
@@ -644,8 +622,6 @@ class CompressedAttentionEstimator:
             "extrapolation": "measured boundary with parameterized compressed attention FLOP/byte SOL growth, max 64x",
             "extrapolation_sol": self.sol.describe(),
             "extrapolation_axis_binding": "each inner-axis growth uses its measured outer-axis node",
-            "context_latency_scale": self.context_latency_scale,
-            "generation_latency_scale": self.generation_latency_scale,
             "decode_batch_composition": "query-row-weighted uniform full-batch module estimates; common projections counted once",
             "capture_projection_rows": "positive shared SOL increment beyond actual-query source floors at eligible descriptor rows; sparse/indexer query ownership unchanged",
             "mixed_batch_composition": {

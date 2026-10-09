@@ -179,7 +179,9 @@ def load_qwen_jsonl_workload(
     timestamps = [row.get("timestamp") for row in rows]
     first_timestamp = None
     if any(timestamp is not None for timestamp in timestamps):
-        first_timestamp = min(float(timestamp) for timestamp in timestamps if timestamp is not None)
+        first_timestamp = min(
+            float(timestamp) for timestamp in timestamps if timestamp is not None
+        )
 
     user_requests = UserRequestList()
     seen_request_ids: set[int] = set()

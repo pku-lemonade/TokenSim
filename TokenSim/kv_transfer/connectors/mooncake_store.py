@@ -121,8 +121,7 @@ class MooncakeStoreConnector(BaseKVConnector):
             )
             req.cached_prefill_blocks = min(
                 req.prefill_len // self.block_size,
-                req.cached_prefill_blocks
-                + num_external_tokens // self.block_size,
+                req.cached_prefill_blocks + num_external_tokens // self.block_size,
             )
             req.effective_prefill_tokens = max(
                 0,

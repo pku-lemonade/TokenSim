@@ -63,9 +63,13 @@ def make_prefix_key(
 
 def _chain_hash(parent_hash: str, signature: str, quoted_extra: str) -> str:
     payload = (
-        '{"block_signature":' + _quote(signature)
-        + ',"extra_hash":' + quoted_extra
-        + ',"parent_hash":' + _quote(parent_hash) + "}"
+        '{"block_signature":'
+        + _quote(signature)
+        + ',"extra_hash":'
+        + quoted_extra
+        + ',"parent_hash":'
+        + _quote(parent_hash)
+        + "}"
     )
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 

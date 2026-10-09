@@ -146,7 +146,7 @@ class LLMResult:
     mooncake_ssd_write_blocks: int = 0
     mooncake_ssd_write_bytes: int = 0
     mooncake_transferred_bytes: int = 0
-    mooncake_effective_transfer_bandwidth_gbps: float = 0
+    mooncake_effective_transfer_bandwidth_gib_per_s: float = 0
     mooncake_transfer_latency: float = 0
     mooncake_p2p_latency: float = 0
     mooncake_store_latency: float = 0

@@ -19,11 +19,13 @@ from TokenSim.operator_data.schema import TABLE_SPECS
 def normalize(rows, *, source_id, source_hardware, source_version):
     result = []
     for row in rows:
-        if row.get("architecture") != "DeepseekV4ForCausalLM":
-            continue
-        if row.get("hidden_size") != 7168 or row.get("hc_mult") != 4:
-            continue
-        if row.get("num_sites") != 2 or row.get("sinkhorn_iters") != 20:
+        if (
+            min(
+                int(row.get(name, 0))
+                for name in ("hidden_size", "hc_mult", "num_sites", "sinkhorn_iters")
+            )
+            <= 0
+        ):
             raise OperatorDataValidationError("unsupported mHC measurement scope")
         if row.get("op_name") not in ("pre", "post"):
             raise OperatorDataValidationError("unknown mHC operation")
@@ -50,17 +52,28 @@ def normalize(rows, *, source_id, source_hardware, source_version):
             }
         )
     if not result:
-        raise OperatorDataValidationError("no DSV4-Pro mHC rows in source")
+        raise OperatorDataValidationError("no mHC rows in source")
     return result
 
 
-def attach(target, rows, *, source_hardware, source_version, collection_version, upstream_commit, relative_source):
+def attach(
+    target,
+    rows,
+    *,
+    source_hardware,
+    source_version,
+    collection_version,
+    upstream_commit,
+    relative_source,
+):
     import yaml
 
     target = Path(target)
     meta_path = target / META_FILENAME
     meta = PackageMeta.from_mapping(load_yaml_mapping(meta_path), meta_path)
-    source_id = f"aiconfigurator-borrowed:{source_hardware}:mhc:vllm:{collection_version}"
+    source_id = (
+        f"aiconfigurator-borrowed:{source_hardware}:mhc:vllm:{collection_version}"
+    )
     normalized = normalize(
         rows,
         source_id=source_id,
@@ -79,7 +92,9 @@ def attach(target, rows, *, source_hardware, source_version, collection_version,
     updated = replace(
         meta,
         sources={**meta.sources, source_id: source},
-        dataset_version=meta.dataset_version.split("+mhc")[0] + "+mhc-" + upstream_commit[:7],
+        dataset_version=meta.dataset_version.split("+mhc")[0]
+        + "+mhc-"
+        + upstream_commit[:7],
     )
     checked = validate_rows("mhc", normalized, updated)
     spec = TABLE_SPECS["mhc"]

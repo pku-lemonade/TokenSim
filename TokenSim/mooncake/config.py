@@ -154,7 +154,9 @@ def validate_mooncake_connector_config(
             raise ConfigurationError("MultiConnector connectors must be a list")
         for child in children:
             if not isinstance(child, dict):
-                raise ConfigurationError("MultiConnector child config must be an object")
+                raise ConfigurationError(
+                    "MultiConnector child config must be an object"
+                )
             validate_mooncake_connector_config(
                 child.get("kv_connector"),
                 child.get("kv_connector_extra_config", {}),

@@ -154,8 +154,6 @@ class OperatorTableLatencyBackend(LatencyBackend):
         mhc_backend: str = "generic",
         expected_decode_query_len: int = 1,
         max_num_seqs: int = 64,
-        native_attention_context_scale: float = 1.0,
-        native_attention_generation_scale: float = 1.0,
     ) -> None:
         if fallback not in FALLBACK_POLICIES:
             raise ConfigurationError(
@@ -225,8 +223,6 @@ class OperatorTableLatencyBackend(LatencyBackend):
                 f"unsupported compressed attention backend: {attention_backend}"
             )
         self.attention_backend = attention_backend
-        self.native_attention_context_scale = native_attention_context_scale
-        self.native_attention_generation_scale = native_attention_generation_scale
         self.mtp_query_width = max(1, int(expected_decode_query_len))
         self.max_num_seqs = max_num_seqs
         self.moe_step = None
@@ -243,7 +239,9 @@ class OperatorTableLatencyBackend(LatencyBackend):
 
             self.native_attention = CompressedAttentionEstimator(self)
         if mhc_backend not in ("generic", "module"):
-            raise ConfigurationError(f"unsupported residual mixing backend: {mhc_backend}")
+            raise ConfigurationError(
+                f"unsupported residual mixing backend: {mhc_backend}"
+            )
         self.mhc_backend = mhc_backend
         self.native_mhc = None
         if mhc_backend == "module":
@@ -313,14 +311,15 @@ class OperatorTableLatencyBackend(LatencyBackend):
             self.parallel_config.expert_parallel_replicas_per_group if ep_enabled else 1
         )
         routing = model.moe.routing.distribution if model.moe.routing else "uniform"
+        distribution = (
+            model.operator_modules.get("moe", {}).get("key", {}).get("distribution")
+        )
         self.moe_distributions = (
-            ("power_law_1.01",)
-            if model.components
+            (distribution,)
+            if distribution
             else _MOE_DISTRIBUTION_CANDIDATES.get(routing, ("uniform", "balanced"))
         )
-        self.moe_dtype = (
-            model.operator_dtype("routed_expert")
-        )
+        self.moe_dtype = model.operator_dtype("routed_expert")
 
     # -- public API -------------------------------------------------------------
 
@@ -339,8 +338,11 @@ class OperatorTableLatencyBackend(LatencyBackend):
             q_len = query_tokens(req)
             kv_len = step_kv_len(req)
             tokens += q_len
-            decode_attention = (is_decode_attention_step(req, self.mtp_query_width)
-                                if self.native_attention else is_decode_step(req))
+            decode_attention = (
+                is_decode_attention_step(req, self.mtp_query_width)
+                if self.native_attention
+                else is_decode_step(req)
+            )
             if decode_attention:
                 decode_buckets[(self._bucket(kv_len), q_len)] += 1
             else:
@@ -354,9 +356,15 @@ class OperatorTableLatencyBackend(LatencyBackend):
                 sampling += rows
                 if req.is_context_build:
                     prefill_logits_rows += rows
-                    self.target_logits_counts["context_decode_metadata_rows"] += q_len if decode_attention else 0
-                    self.target_logits_counts["placeholder_rows"] += req.scheduled_placeholder_tokens
-                    self.target_logits_counts["context_graph_eligible_requests"] += int(req.decode_graph_eligible)
+                    self.target_logits_counts["context_decode_metadata_rows"] += (
+                        q_len if decode_attention else 0
+                    )
+                    self.target_logits_counts[
+                        "placeholder_rows"
+                    ] += req.scheduled_placeholder_tokens
+                    self.target_logits_counts["context_graph_eligible_requests"] += int(
+                        req.decode_graph_eligible
+                    )
                 else:
                     decode_logits_rows += rows
             elif is_decode_step(req) or kv_len >= req.context_len:
@@ -369,8 +377,11 @@ class OperatorTableLatencyBackend(LatencyBackend):
         if self.native_attention:
             forward_rows = self._target_forward_rows(tokens, requests)
             attention_us = self.native_attention.estimate_batch(
-                {(q_len, max(0, kv_len - q_len)): count
-                 for (q_len, kv_len), count in context_groups.items()}, decode_buckets,
+                {
+                    (q_len, max(0, kv_len - q_len)): count
+                    for (q_len, kv_len), count in context_groups.items()
+                },
+                decode_buckets,
                 projection_rows=forward_rows,
             )
         else:
@@ -419,7 +430,7 @@ class OperatorTableLatencyBackend(LatencyBackend):
                 "compressed attention module table includes projections, compressor/indexer, sparse attention and output projection"
                 if self.native_attention
                 else (
-                    "compressed attention low-rank projections; attention/indexer/compressor/mHC/MegaMoE/MTP pending"
+                    "projection plan and independently priced attention core"
                     if self.native_attention_projections
                     else None
                 )
@@ -428,25 +439,32 @@ class OperatorTableLatencyBackend(LatencyBackend):
                 self.native_attention.describe() if self.native_attention else None
             ),
             "main_forward": (
-                {"full_rows": "eligible DP decode descriptor, otherwise logical forward tensor",
-                 "sp_rows": "ceil(full/TP) for PP1/EP/TP>1 sequence-parallel main mHC/norm/router",
-                 "attention_rows": "full tensor after gather, sliced to positions; actual sparse/KV queries unchanged",
-                 "padding": "compute-only rows, never request progress or selected logits"}
-                if self.model.components else None
+                {
+                    "full_rows": "eligible DP decode descriptor, otherwise logical forward tensor",
+                    "sp_rows": "ceil(full/TP) for PP1/EP/TP>1 sequence-parallel main mHC/norm/router",
+                    "attention_rows": "full tensor after gather, sliced to positions; actual sparse/KV queries unchanged",
+                    "padding": "compute-only rows, never request progress or selected logits",
+                }
+                if self.model.components
+                else None
             ),
             "native_mhc": self.native_mhc.describe() if self.native_mhc else None,
             "target_output": (
-                {"hc_head": self.residual_output.describe(),
-                 "forward_rows": "full target batch, including eligible synchronized decode capture padding",
-                 "final_norm_rows": "same full forward rows, after SP gather",
-                 "lm_head_rows": "selected decode queries and one bonus row per prefill request"}
-                if self.residual_output else None
+                {
+                    "hc_head": self.residual_output.describe(),
+                    "forward_rows": "full target batch, including eligible synchronized decode capture padding",
+                    "final_norm_rows": "same full forward rows, after SP gather",
+                    "lm_head_rows": "selected decode queries and one bonus row per prefill request",
+                }
+                if self.residual_output
+                else None
             ),
             "missing_shape_scope": "cumulative collection checklist; estimate counters reset after warmup",
             "moe_cost_dtype": self.moe_dtype,
             "moe_cost_distribution_candidates": list(self.moe_distributions),
             "moe_route_statistics": "whole-step synthetic routes; EP-interleaved rotating remainder; explicit histograms retained",
-            "moe_histogram_changes_latency": self.model.components is None,
+            "moe_histogram_changes_latency": not self.native_moe
+            and not all(d.startswith("power_law") for d in self.moe_distributions),
             "moe_kernel_scope": (
                 "native borrowed MegaMoE incl dispatch/combine + separately estimated shared FP8; gate/top-k outside"
                 if self.native_moe
@@ -463,8 +481,16 @@ class OperatorTableLatencyBackend(LatencyBackend):
     def stats_dict(self) -> dict[str, Any]:
         return {
             **self.stats.as_dict(),
-            **({"target_logits": dict(self.target_logits_counts)} if self.target_logits_counts else {}),
-            **({"main_forward_counts": dict(self.main_forward_counts)} if self.main_forward_counts else {}),
+            **(
+                {"target_logits": dict(self.target_logits_counts)}
+                if self.target_logits_counts
+                else {}
+            ),
+            **(
+                {"main_forward_counts": dict(self.main_forward_counts)}
+                if self.main_forward_counts
+                else {}
+            ),
             **(self.native_mtp.stats_dict() if self.native_mtp else {}),
             **(self.native_attention.stats_dict() if self.native_attention else {}),
             **(self.native_mhc.stats_dict() if self.native_mhc else {}),
@@ -510,10 +536,20 @@ class OperatorTableLatencyBackend(LatencyBackend):
         if step is None:
             widths = {query_tokens(req) for req in requests_list}
             context = any(not req.decode_graph_eligible for req in requests_list)
-            step = ForwardPass({self.rank_info.dp_rank: RankShape(
-                tokens, next(iter(widths)) if len(widths) == 1 and not context else None,
-                context, len(requests_list),
-            )})
+            step = ForwardPass(
+                {
+                    self.rank_info.dp_rank: RankShape(
+                        tokens,
+                        (
+                            next(iter(widths))
+                            if len(widths) == 1 and not context
+                            else None
+                        ),
+                        context,
+                        len(requests_list),
+                    )
+                }
+            )
         padded = uniform_decode_rows(step, self.mtp_query_width, self.max_num_seqs)
         return padded if padded is not None else tokens
 
@@ -555,7 +591,9 @@ class OperatorTableLatencyBackend(LatencyBackend):
         # mHC runs on SP shards before the attention all-gather. Match the
         # serving predicate; TP1 DEP8 keeps its full row count.
         mhc_sp = bool(
-            model.components and self.ep_enabled and self.tp > 1
+            model.components
+            and self.ep_enabled
+            and self.tp > 1
             and self.parallel_config.pipeline_parallel_size == 1
             and (self.native_moe or self.parallel_config.data_parallel_size > 1)
         )
@@ -568,12 +606,20 @@ class OperatorTableLatencyBackend(LatencyBackend):
             counts["full_rows"] += forward_rows
             counts["capture_padding_rows"] += forward_rows - T
             counts["sp_rows"] += norm_rows
-            counts["sp_tail_rows"] += norm_rows * self.tp - forward_rows if mhc_sp else 0
+            counts["sp_tail_rows"] += (
+                norm_rows * self.tp - forward_rows if mhc_sp else 0
+            )
             counts["sp_steps"] += int(mhc_sp)
             counts["graph_padded_steps"] += int(forward_rows > T)
-            counts["attention_projection_layer_rows"] += forward_rows * self.layers_local
-            counts["mhc_layer_rows"] += norm_rows * self.layers_local if self.native_mhc else 0
-            counts["norm_layer_rows"] += norm_rows * (self.layers_local + self.moe_layers_local)
+            counts["attention_projection_layer_rows"] += (
+                forward_rows * self.layers_local
+            )
+            counts["mhc_layer_rows"] += (
+                norm_rows * self.layers_local if self.native_mhc else 0
+            )
+            counts["norm_layer_rows"] += norm_rows * (
+                self.layers_local + self.moe_layers_local
+            )
             counts["router_layer_rows"] += router_rows * self.moe_layers_local
         attn_elem_us = self.elementwise("rmsnorm", norm_rows, h)
         if not self.native_mhc:
@@ -668,9 +714,9 @@ class OperatorTableLatencyBackend(LatencyBackend):
                 draft_rows,
                 h,
                 h,
-                dtype=model.operator_dtype("attentiongemm")
-                if model.components
-                else None,
+                dtype=(
+                    model.operator_dtype("attentiongemm") if model.components else None
+                ),
             )
             lm_head_us += self.gemm(
                 draft_rows,
@@ -703,7 +749,10 @@ class OperatorTableLatencyBackend(LatencyBackend):
             + lm_head_us
             + overhead_us
         ) * 1e-6
-        comm_s = self._communication(forward_rows, moe_comm_bytes) + draft.get("comm", 0) * 1e-6
+        comm_s = (
+            self._communication(forward_rows, moe_comm_bytes)
+            + draft.get("comm", 0) * 1e-6
+        )
         stats.record_component("comm", comm_s)
         return compute_s + comm_s
 

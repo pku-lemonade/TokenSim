@@ -7,7 +7,11 @@ from typing import Any, Iterable, Mapping
 
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware._yaml import positive_number, require
-from TokenSim.hardware.device.dtypes import COMPUTE_PIPE_FALLBACKS, compute_dtype, normalize_dtype
+from TokenSim.hardware.device.dtypes import (
+    COMPUTE_PIPE_FALLBACKS,
+    compute_dtype,
+    normalize_dtype,
+)
 from TokenSim.hardware.device.sourced_value import EVIDENCE_GRADES, SourcedValue
 
 DEFAULT_ANALYTICAL_PARAMETERS: dict[str, dict[str, float]] = {
@@ -88,7 +92,9 @@ class DeviceSpec:
     analytical_grade: str = "D"
 
     @classmethod
-    def from_mapping(cls, raw: Mapping[str, Any], context: str = "device") -> "DeviceSpec":
+    def from_mapping(
+        cls, raw: Mapping[str, Any], context: str = "device"
+    ) -> "DeviceSpec":
         device_id = str(require(raw, "device_id", context))
         context = f"device {device_id!r}"
         if raw.get("schema_version", 1) != 1:
@@ -100,9 +106,13 @@ class DeviceSpec:
             )
         peak_raw = require(raw, "peak_compute", context)
         if not isinstance(peak_raw, Mapping) or not peak_raw:
-            raise ConfigurationError(f"{context}: peak_compute must be a non-empty mapping")
+            raise ConfigurationError(
+                f"{context}: peak_compute must be a non-empty mapping"
+            )
         peak = {
-            normalize_dtype(dtype): SourcedValue.parse(value, f"peak_compute.{dtype}", context)
+            normalize_dtype(dtype): SourcedValue.parse(
+                value, f"peak_compute.{dtype}", context
+            )
             for dtype, value in peak_raw.items()
         }
         memory = require(raw, "memory", context)
@@ -114,19 +124,29 @@ class DeviceSpec:
         analytical_raw = raw.get("analytical") or {}
         if not isinstance(analytical_raw, Mapping):
             raise ConfigurationError(f"{context}: analytical must be a mapping")
-        analytical_source_id = str(analytical_raw.get("source_id", DEFAULT_ANALYTICAL_SOURCE))
+        analytical_source_id = str(
+            analytical_raw.get("source_id", DEFAULT_ANALYTICAL_SOURCE)
+        )
         analytical_grade = str(analytical_raw.get("grade", "D")).upper()
         if analytical_grade not in EVIDENCE_GRADES:
-            raise ConfigurationError(f"{context}: analytical.grade must be one of {EVIDENCE_GRADES}")
+            raise ConfigurationError(
+                f"{context}: analytical.grade must be one of {EVIDENCE_GRADES}"
+            )
         for key, value in analytical_raw.items():
             if key in _ANALYTICAL_META_KEYS:
                 continue
             try:
                 analytical[str(key)] = float(value)
             except (TypeError, ValueError) as exc:
-                raise ConfigurationError(f"{context}: analytical.{key} must be numeric") from exc
+                raise ConfigurationError(
+                    f"{context}: analytical.{key} must be numeric"
+                ) from exc
         sources = {str(k): dict(v) for k, v in (raw.get("sources") or {}).items()}
-        if analytical_source_id != DEFAULT_ANALYTICAL_SOURCE and sources and analytical_source_id not in sources:
+        if (
+            analytical_source_id != DEFAULT_ANALYTICAL_SOURCE
+            and sources
+            and analytical_source_id not in sources
+        ):
             raise ConfigurationError(
                 f"{context}: analytical.source_id {analytical_source_id!r} is not declared in sources"
             )
@@ -152,7 +172,9 @@ class DeviceSpec:
             peak_compute=peak,
             memory_kind=str(memory.get("kind", "unknown")),
             memory_capacity_bytes=SourcedValue.parse(
-                require(memory, "capacity_bytes", context), "memory.capacity_bytes", context
+                require(memory, "capacity_bytes", context),
+                "memory.capacity_bytes",
+                context,
             ),
             memory_bandwidth_bytes_per_s=SourcedValue.parse(
                 require(memory, "bandwidth_bytes_per_s", context),
@@ -160,14 +182,22 @@ class DeviceSpec:
                 context,
             ),
             scale_up_link=(
-                str(interconnect["scale_up_link"]) if interconnect.get("scale_up_link") else None
+                str(interconnect["scale_up_link"])
+                if interconnect.get("scale_up_link")
+                else None
             ),
             scale_up_ports=int(interconnect.get("scale_up_ports", 1)),
-            host_link=str(interconnect["host_link"]) if interconnect.get("host_link") else None,
+            host_link=(
+                str(interconnect["host_link"])
+                if interconnect.get("host_link")
+                else None
+            ),
             step_overhead_us=step_overhead,
             analytical=analytical,
             on_chip_memory_bytes=(
-                SourcedValue.parse(on_chip["capacity_bytes"], "on_chip_memory.capacity_bytes", context)
+                SourcedValue.parse(
+                    on_chip["capacity_bytes"], "on_chip_memory.capacity_bytes", context
+                )
                 if on_chip.get("capacity_bytes")
                 else None
             ),
@@ -226,7 +256,11 @@ class DeviceSpec:
         memory_reserved_bytes: float = 0.0,
     ) -> "DeviceSpec":
         """Build an in-memory device for tests and quick experiments."""
-        params = dict(DEFAULT_ANALYTICAL_PARAMETERS.get(family, DEFAULT_ANALYTICAL_PARAMETERS["generic"]))
+        params = dict(
+            DEFAULT_ANALYTICAL_PARAMETERS.get(
+                family, DEFAULT_ANALYTICAL_PARAMETERS["generic"]
+            )
+        )
         params.update(analytical or {})
         return cls(
             device_id=device_id,
@@ -234,11 +268,14 @@ class DeviceSpec:
             display_name=device_id,
             aliases=tuple(aliases),
             peak_compute={
-                normalize_dtype(dtype): SourcedValue(peak_flops, source_id, "D") for dtype in dtypes
+                normalize_dtype(dtype): SourcedValue(peak_flops, source_id, "D")
+                for dtype in dtypes
             },
             memory_kind="test",
             memory_capacity_bytes=SourcedValue(memory_capacity_bytes, source_id, "D"),
-            memory_bandwidth_bytes_per_s=SourcedValue(memory_bandwidth_bytes_per_s, source_id, "D"),
+            memory_bandwidth_bytes_per_s=SourcedValue(
+                memory_bandwidth_bytes_per_s, source_id, "D"
+            ),
             scale_up_link=scale_up_link,
             scale_up_ports=1,
             host_link=host_link,
@@ -264,7 +301,9 @@ class DeviceSpec:
     @property
     def usable_memory_bytes(self) -> float:
         """Device memory left for weights and KV cache after runtime reserves."""
-        return max(0.0, self.memory_capacity_bytes.value - self.memory_reserved_bytes.value)
+        return max(
+            0.0, self.memory_capacity_bytes.value - self.memory_reserved_bytes.value
+        )
 
     @property
     def weights_resident_on_chip(self) -> bool:

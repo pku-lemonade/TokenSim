@@ -285,7 +285,9 @@ class ModelSpec:
                 else None
             ),
             operator_dtypes=dict(raw.get("operator_dtypes") or {}),
-            operator_modules={str(k): dict(v) for k, v in (raw.get("operator_modules") or {}).items()},
+            operator_modules={
+                str(k): dict(v) for k, v in (raw.get("operator_modules") or {}).items()
+            },
         )
 
     def with_moe_override(self, moe_config: MoEModelConfig | None) -> "ModelSpec":

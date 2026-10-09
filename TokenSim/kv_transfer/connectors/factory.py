@@ -36,16 +36,19 @@ class KVConnectorFactory:
         cache_config: CacheConfig | None = None,
     ) -> BaseKVConnector:
         connector_cls = cls.get_connector_class(config.kv_connector or "NoopConnector")
-        if config.kv_connector == "MooncakeStoreConnector" and getattr(cache_config, "hybrid_layout", None) is not None:
-            from .native_mooncake import NativeMooncakeStoreConnector
-
-            return NativeMooncakeStoreConnector(config, cache_config)
         if connector_cls is MultiConnector:
             children = []
             for child_config in config.kv_connector_extra_config.get("connectors", []):
                 child = KVTransferConfig(**child_config)
                 children.append(cls.create_connector(child, cache_config))
             return connector_cls(config, cache_config, children=children)
+        if (
+            getattr(cache_config, "hybrid_layout", None) is not None
+            and not connector_cls.supports_grouped_cache
+        ):
+            raise ConfigurationError(
+                f"{config.kv_connector} does not support grouped KV pages"
+            )
         return connector_cls(config, cache_config)
 
     @classmethod

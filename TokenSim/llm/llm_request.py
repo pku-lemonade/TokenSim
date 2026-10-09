@@ -302,10 +302,6 @@ class Request:
             self.effective_prefill_tokens = self.prefill_len
 
     @property
-    def prompt_len(self) -> int:
-        return self.prefill_len
-
-    @property
     def generation_len(self) -> int:
         return self.decode_len
 

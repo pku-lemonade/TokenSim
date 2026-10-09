@@ -31,8 +31,9 @@ def graph(rows, name="trace"):
 class AgentXTest(unittest.TestCase):
     def test_hash_validation_and_block_conversion_preserve_prefix_proof(self):
         for invalid in (-1, True, 2**64, 1.5):
-            with self.subTest(invalid=invalid), self.assertRaises(
-                WorkloadValidationError
+            with (
+                self.subTest(invalid=invalid),
+                self.assertRaises(WorkloadValidationError),
             ):
                 graph([row(0, (invalid,))])
         hashes = engine_hashes(

@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
 """AIPerf-equivalent conversation splitting without text synthesis or SDK imports.
 
 Rules are derived from AIPerf 49634d1c weka_trace.py and

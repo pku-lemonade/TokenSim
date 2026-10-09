@@ -37,7 +37,9 @@ def build_topology_placement(
                     f"for num_workers={group.num_workers}"
                 )
         for position in range(group.num_workers):
-            explicit[worker_id] = int(indices[position]) if indices is not None else cursor
+            explicit[worker_id] = (
+                int(indices[position]) if indices is not None else cursor
+            )
             cursor += 1
             worker_id += 1
 
@@ -77,14 +79,24 @@ def synthesize_topology(
         counts[network] = counts.get(network, 0) + 1
     node_size = max(counts.values()) if counts else 1
 
-    first_device = hardware.device(worker_configs[0].hardware) if worker_configs else None
+    first_device = (
+        hardware.device(worker_configs[0].hardware) if worker_configs else None
+    )
     node_link = None
     if first_device is not None:
         node_link = first_device.scale_up_link or first_device.host_link
     if node_link is None or node_link not in hardware.links:
         node_link = "pcie4_x16"
-    node_fabric = "all_to_all" if first_device is not None and first_device.family == "groq_tsp" else "switched"
-    node_links = first_device.scale_up_ports if (first_device and first_device.family == "groq_tsp") else 1
+    node_fabric = (
+        "all_to_all"
+        if first_device is not None and first_device.family == "groq_tsp"
+        else "switched"
+    )
+    node_links = (
+        first_device.scale_up_ports
+        if (first_device and first_device.family == "groq_tsp")
+        else 1
+    )
 
     nettypes = {getattr(worker, "nettype", None) for worker in worker_configs}
     nettypes.discard(None)

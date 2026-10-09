@@ -22,7 +22,9 @@ KVConnectorFactory.register_connector("P2PConnector", P2PConnector)
 KVConnectorFactory.register_connector("MooncakeConnector", MooncakeConnector)
 KVConnectorFactory.register_connector("MooncakeStoreConnector", MooncakeStoreConnector)
 KVConnectorFactory.register_connector("MultiConnector", MultiConnector)
-KVConnectorFactory.register_connector("SimpleCPUOffloadConnector", SimpleCPUOffloadConnector)
+KVConnectorFactory.register_connector(
+    "SimpleCPUOffloadConnector", SimpleCPUOffloadConnector
+)
 
 __all__ = [
     "BaseKVConnector",
@@ -40,3 +42,9 @@ __all__ = [
     "SchedulerSideConnector",
     "WorkerSideConnector",
 ]
+
+from TokenSim.kv_transfer.connectors.hybrid_mooncake import HybridMooncakeStoreConnector
+
+KVConnectorFactory.register_connector(
+    "HybridMooncakeStoreConnector", HybridMooncakeStoreConnector
+)

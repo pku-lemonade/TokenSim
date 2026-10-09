@@ -11,16 +11,11 @@ class MoEExecutionConfig:
     backend: str = "generic"
     shared_expert_fusion: bool = True
     table: str = "dsv4_megamoe"
-    latency_scale: float = 1.0
 
     def __post_init__(self):
         if self.backend not in ("generic", "deep_gemm_amxf4_mega_moe"):
             raise ConfigurationError(
                 f"unsupported MoE execution backend: {self.backend}"
-            )
-        if not math.isfinite(self.latency_scale) or self.latency_scale <= 0:
-            raise ConfigurationError(
-                "MoE measured latency scale must be finite and positive"
             )
 
     @classmethod

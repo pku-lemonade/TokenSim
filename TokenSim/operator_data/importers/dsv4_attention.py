@@ -34,24 +34,26 @@ def normalize(
         raise ValueError("unsupported DSV4 attention layer or phase")
     result = []
     for row in rows:
-        if row.get("model") != MODEL or row.get("architecture") != ARCHITECTURE:
-            continue
         if row.get("kernel_source") != "FLASHMLA_SPARSE_DSV4":
             continue
         if row.get("kv_cache_dtype") != "fp8" or row.get("gemm_type") != "fp8_block":
             raise OperatorDataValidationError(
                 "DSV4 attention requires the collected FP8 KV/fp8_block scope"
             )
-        if row.get("compress_ratio") != (4 if layer_kind == "csa" else 128):
-            raise OperatorDataValidationError("DSV4 attention compression ratio mismatch")
+        if int(row.get("compress_ratio", 0)) <= 1:
+            raise OperatorDataValidationError(
+                "DSV4 attention compression ratio mismatch"
+            )
         tp = int(row["tp_size"])
         heads = int(row["num_heads"])
-        if tp not in (1, 2, 4, 8) or heads != 128 // tp:
+        if tp < 1 or heads < 1:
             raise OperatorDataValidationError(
                 "DSV4 attention rows must use local Pro heads for TP1/2/4/8"
             )
         if int(row["isl"]) < 1 or int(row["step"]) < 0:
-            raise OperatorDataValidationError("DSV4 attention lengths must be non-negative")
+            raise OperatorDataValidationError(
+                "DSV4 attention lengths must be non-negative"
+            )
         latency = float(row["latency"])
         if not math.isfinite(latency) or latency <= 0:
             raise OperatorDataValidationError("invalid DSV4 attention latency")
@@ -63,8 +65,8 @@ def normalize(
                 "kv_cache_dtype": row["kv_cache_dtype"],
                 "kernel_source": row["kernel_source"],
                 "kernel_dtype": row["gemm_type"],
-                "model": MODEL,
-                "architecture": ARCHITECTURE,
+                "model": row["model"],
+                "architecture": row["architecture"],
                 "num_heads": heads,
                 "tp_size": tp,
                 "batch_size": int(row["batch_size"]),

@@ -12,57 +12,17 @@ from TokenSim.llm.llm_request import RequestStatus
 from .base import BaseKVConnector
 
 
-class SimpleCPUOffloadConnector(BaseKVConnector):
-    name = "SimpleCPUOffloadConnector"
+class AsyncOffloadConnector(BaseKVConnector):
+    supports_grouped_cache = True
     native_async = True
 
     def __init__(self, config, cache_config=None):
         super().__init__(config, cache_config)
         if cache_config is None or cache_config.hybrid_layout is None:
             raise ConfigurationError("SimpleCPU requires native hybrid KV layout")
-        extra = config.kv_connector_extra_config
-        if extra.get("lazy_offload", False):
-            raise ConfigurationError("native SimpleCPU currently supports eager stores")
-        if "memory_capacity_blocks" in extra:
-            raise ConfigurationError(
-                "CPU capacity must be a byte budget, not logged blocks"
-            )
-        self.extra = extra
         self.loads = {}
         self.pending_writes = []
         self.write_jobs = 0
-
-    def bind_runtime(self, worker):
-        self.worker, self.env = worker, worker.env
-        self.manager = worker.scheduler.block_manager
-        self.scheduler = worker.scheduler
-        world_size = worker.parallel_config.world_size
-        capacity = self.extra.get("cpu_bytes_to_use_per_rank")
-        if capacity is None:
-            capacity = self.extra.get("cpu_bytes_to_use", 0) // world_size
-        host_bytes = self.extra.get("host_available_bytes")
-        if host_bytes is not None and capacity * world_size > host_bytes:
-            raise ConfigurationError("CPU runtime budget exceeds available host DRAM")
-        stride = self.manager.layout.physical_slot_bytes
-        # Both source pools reserve block zero as the null page.
-        slots = int(capacity) // stride
-        if slots < 2:
-            raise ConfigurationError("SimpleCPU needs a null slot and usable CPU slots")
-        self.budget_bytes = int(capacity)
-        self.store = NativePageStore(
-            (slots - 1) * stride, allocation_unit=stride, scope=f"worker:{worker.id}"
-        )
-        link = worker.hardware_context.link(worker.device.host_link)
-        utilization = self.extra.get("transfer_utilization", 0.75)
-        args = dict(utilization=utilization, latency_us=link.latency_us)
-        self.read_link = QueuedKVLink(
-            self.env, link.bandwidth_per_direction_bytes_per_s, **args
-        )
-        self.write_link = QueuedKVLink(
-            self.env, link.bandwidth_per_direction_bytes_per_s, **args
-        )
-        self.manager.publish_callbacks.append(self._queue_write)
-        self.changed = self.env.event()
 
     def notify(self):
         if not self.changed.triggered:
@@ -100,9 +60,13 @@ class SimpleCPUOffloadConnector(BaseKVConnector):
         for _, _, _, block in targets:
             self.manager.pin_transfer(block)
         req.external_cached_context_tokens = boundary - req.gpu_cached_context_tokens
-        req.gpu_cached_prefill_tokens = min(req.prefill_len, req.gpu_cached_context_tokens)
-        req.external_cached_prefill_tokens = min(req.external_cached_context_tokens,
-                                                max(0, req.prefill_len - req.gpu_cached_prefill_tokens))
+        req.gpu_cached_prefill_tokens = min(
+            req.prefill_len, req.gpu_cached_context_tokens
+        )
+        req.external_cached_prefill_tokens = min(
+            req.external_cached_context_tokens,
+            max(0, req.prefill_len - req.gpu_cached_prefill_tokens),
+        )
         req.cached_prefill_tokens = min(req.prefill_len, boundary)
         req.cached_prefill_blocks = req.cached_prefill_tokens // req.block_size
         req.effective_prefill_tokens = max(0, req.prefill_len - boundary)
@@ -181,16 +145,6 @@ class SimpleCPUOffloadConnector(BaseKVConnector):
         self.scheduler.loading.pop(req.id, None)
         return False, None
 
-    def reset_cache(self):
-        if self.loads or self.write_jobs or self.pending_writes:
-            return False
-        self.store = NativePageStore(
-            self.store.capacity_bytes,
-            allocation_unit=self.store.allocation_unit,
-            scope=self.store.scope,
-        )
-        return True
-
     def describe(self):
         return {
             "backend": self.name,
@@ -201,3 +155,56 @@ class SimpleCPUOffloadConnector(BaseKVConnector):
             "loading_requests": len(self.loads),
             "write_jobs": self.write_jobs,
         }
+
+
+class SimpleCPUOffloadConnector(AsyncOffloadConnector):
+    name = "SimpleCPUOffloadConnector"
+
+    def __init__(self, config, cache_config=None):
+        super().__init__(config, cache_config)
+        extra = config.kv_connector_extra_config
+        allowed = {
+            "cpu_bytes_to_use_per_rank",
+            "cpu_bytes_to_use",
+            "host_available_bytes",
+            "lazy_offload",
+            "transfer_utilization",
+        }
+        unknown = set(extra) - allowed
+        if unknown:
+            raise ConfigurationError(f"unknown SimpleCPU options: {sorted(unknown)}")
+        if extra.get("lazy_offload", False):
+            raise ConfigurationError("SimpleCPU supports eager offload")
+        self.extra = extra
+
+    def bind_runtime(self, worker):
+        self.worker, self.env = worker, worker.env
+        self.manager = worker.scheduler.block_manager
+        self.scheduler = worker.scheduler
+        world_size = worker.parallel_config.world_size
+        capacity = self.extra.get("cpu_bytes_to_use_per_rank")
+        if capacity is None:
+            capacity = self.extra.get("cpu_bytes_to_use", 0) // world_size
+        host_bytes = self.extra.get("host_available_bytes")
+        if host_bytes is not None and capacity * world_size > host_bytes:
+            raise ConfigurationError("CPU runtime budget exceeds available host DRAM")
+        stride = self.manager.layout.physical_slot_bytes
+        # Both source pools reserve block zero as the null page.
+        slots = int(capacity) // stride
+        if slots < 2:
+            raise ConfigurationError("SimpleCPU needs a null slot and usable CPU slots")
+        self.budget_bytes = int(capacity)
+        self.store = NativePageStore(
+            (slots - 1) * stride, allocation_unit=stride, scope=f"worker:{worker.id}"
+        )
+        link = worker.hardware_context.link(worker.device.host_link)
+        utilization = self.extra.get("transfer_utilization", 0.75)
+        args = dict(utilization=utilization, latency_us=link.latency_us)
+        self.read_link = QueuedKVLink(
+            self.env, link.bandwidth_per_direction_bytes_per_s, **args
+        )
+        self.write_link = QueuedKVLink(
+            self.env, link.bandwidth_per_direction_bytes_per_s, **args
+        )
+        self.manager.publish_callbacks.append(self._queue_write)
+        self.changed = self.env.event()

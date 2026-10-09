@@ -22,7 +22,9 @@ def get_decode_lens(
     if distribution == "uniform":
         low = len_mean - (len_range // 2)
         high = len_mean + (len_range // 2)
-        decode_lens = list(map(lambda _: random.randint(low, high), range(request_count)))
+        decode_lens = list(
+            map(lambda _: random.randint(low, high), range(request_count))
+        )
         return decode_lens
     elif distribution == "exponential":
         return [

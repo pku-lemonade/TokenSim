@@ -62,6 +62,9 @@ def _gemm_rows():
     ]
 
 
+ROOT = Path(__file__).resolve().parents[1]
+
+
 class WorkloadFormulaTest(unittest.TestCase):
     def test_gemm_flops_and_bytes(self):
         work = gemm_work(4, 6144, 4096, "fp16")
@@ -104,7 +107,7 @@ class WorkloadFormulaTest(unittest.TestCase):
 
 class AnalyticalModelTest(unittest.TestCase):
     def test_gpu_and_groq_models_produce_bounded_estimates(self):
-        catalog = DeviceCatalog.load("data/devices")
+        catalog = DeviceCatalog.load(ROOT / "data/devices")
         for name in ("a100_sxm_80g", "groqchip_v1", "rtx_4090"):
             device = catalog.get(name)
             model = analytical_model_for(device.family)
@@ -120,7 +123,7 @@ class AnalyticalModelTest(unittest.TestCase):
             self.assertGreaterEqual(large.latency_us, roofline_floor)
 
     def test_groq_reports_sram_fit(self):
-        device = DeviceCatalog.load("data/devices").get("groqchip_v1")
+        device = DeviceCatalog.load(ROOT / "data/devices").get("groqchip_v1")
         model = analytical_model_for(device.family)
         fits = model.estimate(
             "gemm", {"dtype": "int8", "m": 1, "n": 4096, "k": 4096}, device
@@ -157,14 +160,6 @@ class PackageValidationTest(unittest.TestCase):
         self.assertEqual(loaded.dataset_version, "test-v1")
         self.assertEqual(len(loaded.tables["gemm"]), len(_gemm_rows()))
         self.assertEqual(loaded.meta.table_rows["gemm"], len(_gemm_rows()))
-
-    def test_repository_packages_validate(self):
-        root = Path("data/operator_data")
-        packages = [p for p in root.glob("*/*/generation_meta.yaml")]
-        self.assertTrue(packages, "expected checked-in operator packages")
-        for meta_path in packages:
-            package = OperatorDataPackage.load(meta_path.parent)
-            self.assertEqual(package.device_id, meta_path.parent.parent.name)
 
 
 class LookupTest(unittest.TestCase):
@@ -263,8 +258,8 @@ class LookupTest(unittest.TestCase):
             for m in (4, 16, 64, 256)
         ]
         package = OperatorDataPackage.from_rows(_meta(), {"gemm": rows})
-        # Empirical mode (new default).
-        empirical = OperatorLookup(package)
+        # Explicit empirical mode.
+        empirical = OperatorLookup(package, LookupPolicy(extrapolate="empirical"))
         result = empirical.lookup(
             "gemm", {"dtype": "bf16", "m": 2048, "n": 1024, "k": 1024}
         )

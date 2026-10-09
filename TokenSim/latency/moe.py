@@ -236,7 +236,7 @@ class MegaMoEEstimator:
         uniform = {rank: anchor_rows for rank in rows}
         source_work = self.work_model.estimate(uniform, uniform)
         target_work = self.work_model.estimate(rows, routed_rows)
-        anchor = estimate.latency_us * self.config.latency_scale
+        anchor = estimate.latency_us
         exact_uniform = rows == uniform and routed_rows == uniform
         transfer = self.efficiency_transfer.price(
             anchor,
@@ -313,7 +313,6 @@ class MegaMoEEstimator:
             id(self.backend.package),
             tuple(sorted(rows.items())),
             tuple(sorted(group.routed.items())),
-            self.config.latency_scale,
         )
         priced = step.cache.get(identity)
         if priced is None:
@@ -410,7 +409,6 @@ class MegaMoEEstimator:
     def describe(self):
         return {
             "backend": self.config.backend,
-            "latency_scale": self.config.latency_scale,
             "shared_mode": (
                 "fused_incremental_estimate" if self.fused_shared else "serial"
             ),

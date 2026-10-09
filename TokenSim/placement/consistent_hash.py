@@ -140,7 +140,9 @@ class FixedWorkerRouter:
         self.workers = {w.dp_rank: w for w in workers}
         self.mapping = {str(key): int(value) for key, value in mapping.items()}
         if any(rank not in self.workers for rank in self.mapping.values()):
-            raise ConfigurationError("fixed worker mapping references an unknown DP rank")
+            raise ConfigurationError(
+                "fixed worker mapping references an unknown DP rank"
+            )
         self.fallback = ConsistentHashRouter(workers, backend_url=backend_url)
         self.request_counts = Counter()
         self.mapped_request_counts = Counter()

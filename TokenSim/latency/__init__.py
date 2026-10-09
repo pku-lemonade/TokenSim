@@ -37,8 +37,6 @@ def build_latency_backend(
     mhc_backend: str = "generic",
     expected_decode_query_len: int = 1,
     max_num_seqs: int = 64,
-    native_attention_context_scale: float = 1.0,
-    native_attention_generation_scale: float = 1.0,
 ) -> LatencyBackend:
     """Create the latency backend for one worker.
 
@@ -75,8 +73,6 @@ def build_latency_backend(
         mhc_backend=mhc_backend,
         expected_decode_query_len=expected_decode_query_len,
         max_num_seqs=max_num_seqs,
-        native_attention_context_scale=native_attention_context_scale,
-        native_attention_generation_scale=native_attention_generation_scale,
     )
 
 

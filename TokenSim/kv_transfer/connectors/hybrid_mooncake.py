@@ -13,7 +13,7 @@ from TokenSim.mooncake.config import parse_mooncake_config
 from TokenSim.mooncake.metrics import MooncakeStats
 
 from .base import BaseKVConnector
-from .simple_cpu import SimpleCPUOffloadConnector
+from .simple_cpu import AsyncOffloadConnector
 
 
 @dataclass(frozen=True)
@@ -82,7 +82,9 @@ class _TransferPath:
 
     def describe(self):
         return {
-            "path": "shared-network then PCIe" if self.read else "PCIe then shared-network",
+            "path": (
+                "shared-network then PCIe" if self.read else "PCIe then shared-network"
+            ),
             "host": self.host.describe(),
             "shared_network": self.network.describe(),
         }
@@ -96,10 +98,17 @@ class _SharedService:
         self.staging_bytes = config.local_buffer_size * world_size
         self.budget_bytes = config.global_segment_size
         self.capacity_bytes = self.budget_bytes - self.staging_bytes
-        if config.host_available_bytes is not None and self.budget_bytes > config.host_available_bytes:
-            raise ConfigurationError("Mooncake shared budget exceeds available host DRAM")
+        if (
+            config.host_available_bytes is not None
+            and self.budget_bytes > config.host_available_bytes
+        ):
+            raise ConfigurationError(
+                "Mooncake shared budget exceeds available host DRAM"
+            )
         if self.capacity_bytes <= 0:
-            raise ConfigurationError("Mooncake shared budget must exceed worker staging buffers")
+            raise ConfigurationError(
+                "Mooncake shared budget must exceed worker staging buffers"
+            )
         self.store = NativePageStore(self.capacity_bytes, scope="mooncake:shared-dram")
         # TransferEngineSimulator's legacy bandwidth field is GiB/s per
         # path. Cap the aggregate by the configured node network injection
@@ -109,7 +118,8 @@ class _SharedService:
         transfer = TransferEngineSimulator(config)
         node_link = worker.hardware_context.link(worker.nettype)
         bandwidth = min(
-            transfer._bandwidth(config.protocol) * 2**30
+            transfer._bandwidth(config.protocol)
+            * 2**30
             * max(config.parallel_paths, config.num_nics),
             node_link.bandwidth_per_direction_bytes_per_s,
         )
@@ -121,7 +131,7 @@ class _SharedService:
         self.write = QueuedKVLink(worker.env, bandwidth, **args)
 
 
-class NativeMooncakeStoreConnector(SimpleCPUOffloadConnector):
+class HybridMooncakeStoreConnector(AsyncOffloadConnector):
     """Mooncake service selected by the factory for the native hybrid layout.
 
     Reuses the tested request-local async import and DMA release lifecycle.
@@ -129,18 +139,32 @@ class NativeMooncakeStoreConnector(SimpleCPUOffloadConnector):
     semantics, rather than SimpleCPU's packed rank-local pool semantics.
     """
 
-    name = "MooncakeStoreConnector"
+    name = "HybridMooncakeStoreConnector"
 
     def __init__(self, config, cache_config):
-        BaseKVConnector.__init__(self, config, cache_config)
+        super().__init__(config, cache_config)
         self.store_config = parse_mooncake_config(config.kv_connector_extra_config)
         c = self.store_config
-        if c.enable_offload or c.replica_num != 1 or c.memory_capacity_blocks is not None:
-            raise ConfigurationError("native Mooncake supports single-replica DRAM byte budgets")
+        if c.save_policy != "mooncake":
+            raise ConfigurationError(
+                "grouped Mooncake storage supports save_policy=mooncake"
+            )
+        if (
+            c.enable_offload
+            or c.replica_num != 1
+            or c.memory_capacity_blocks is not None
+        ):
+            raise ConfigurationError(
+                "native Mooncake supports single-replica DRAM byte budgets"
+            )
         if not (c.load_async and c.transfer_overlap) or c.eviction_policy != "lru":
-            raise ConfigurationError("native Mooncake requires asynchronous transfers and LRU")
+            raise ConfigurationError(
+                "native Mooncake requires asynchronous transfers and LRU"
+            )
         if c.protocol not in ("rdma", "tcp") or c.mode != "standalone-store":
-            raise ConfigurationError("native Mooncake currently uses a standalone RDMA/TCP store")
+            raise ConfigurationError(
+                "native Mooncake currently uses a standalone RDMA/TCP store"
+            )
         self.loads, self.pending_writes = {}, []
         self.write_jobs = 0
         self.mooncake_stats = MooncakeStats()
@@ -158,16 +182,37 @@ class NativeMooncakeStoreConnector(SimpleCPUOffloadConnector):
             service = _SharedService(worker, self.store_config)
             worker.engine.native_mooncake_service = service
         elif service.config != self.store_config:
-            raise ConfigurationError("Mooncake workers must use one consistent shared service configuration")
-        if service.connectors and service.connectors[0].worker.network != worker.network:
-            raise ConfigurationError("native Mooncake currently requires one compute node")
+            raise ConfigurationError(
+                "Mooncake workers must use one consistent shared service configuration"
+            )
+        if (
+            service.connectors
+            and service.connectors[0].worker.network != worker.network
+        ):
+            raise ConfigurationError(
+                "native Mooncake currently requires one compute node"
+            )
         self.service = service
         service.connectors.append(self)
         groups = tuple(
-            (g.group_id, g.eagle, tuple(
-                (p.name, p.kind, p.block_tokens, p.state_bytes, p.tokens_per_state,
-                 p.window_tokens, p.alignment, p.draft) for p in g.layers
-            )) for g in self.manager.layout.groups
+            (
+                g.group_id,
+                g.eagle,
+                tuple(
+                    (
+                        p.name,
+                        p.kind,
+                        p.block_tokens,
+                        p.state_bytes,
+                        p.tokens_per_state,
+                        p.window_tokens,
+                        p.alignment,
+                        p.draft,
+                    )
+                    for p in g.layers
+                ),
+            )
+            for g in self.manager.layout.groups
         )
         # DP identity is deliberately absent: compatible replicas share KV.
         # Cache salt and the complete prefix chain are already in each key.
@@ -178,16 +223,21 @@ class NativeMooncakeStoreConnector(SimpleCPUOffloadConnector):
             "utilization": self.store_config.transfer_utilization,
             "latency_us": host_link.latency_us,
         }
-        self.host_read = QueuedKVLink(self.env, host_link.bandwidth_per_direction_bytes_per_s, **host_args)
-        self.host_write = QueuedKVLink(self.env, host_link.bandwidth_per_direction_bytes_per_s, **host_args)
-        self.read_link = _TransferPath(self.env, self.host_read, service.read, read=True)
-        self.write_link = _TransferPath(self.env, self.host_write, service.write, read=False)
+        self.host_read = QueuedKVLink(
+            self.env, host_link.bandwidth_per_direction_bytes_per_s, **host_args
+        )
+        self.host_write = QueuedKVLink(
+            self.env, host_link.bandwidth_per_direction_bytes_per_s, **host_args
+        )
+        self.read_link = _TransferPath(
+            self.env, self.host_read, service.read, read=True
+        )
+        self.write_link = _TransferPath(
+            self.env, self.host_write, service.write, read=False
+        )
         self.budget_bytes = service.budget_bytes
         self.manager.publish_callbacks.append(self._queue_write)
         self.changed = self.env.event()
-
-    def _transfer_bytes(self, pages):
-        return sum(page.bytes for page in pages)
 
     def probe(self, req, local_plan):
         if self.store_config.admission_policy == "never":
@@ -221,21 +271,14 @@ class NativeMooncakeStoreConnector(SimpleCPUOffloadConnector):
         if kind == "save":
             self.mooncake_stats.put_count += 1
         self.mooncake_stats.record_transfer(
-            bytes_=values["bytes_"], latency=values["latency"],
-            kind=f"store_{kind}", blocking_latency=values.get("blocking_latency", 0.0),
+            bytes_=values["bytes_"],
+            latency=values["latency"],
+            kind=f"store_{kind}",
+            blocking_latency=values.get("blocking_latency", 0.0),
         )
 
     def _transfer_bytes(self, pages):
         return sum(page.bytes for page in pages)
-
-    def reset_cache(self):
-        if any(c.loads or c.write_jobs or c.pending_writes for c in self.service.connectors):
-            return False
-        # Clear the shared object in place so all workers retain the same view.
-        self.service.store.pages.clear()
-        self.service.store.lru.clear()
-        self.service.store.used_bytes = 0
-        return True
 
     def describe(self):
         return {
@@ -246,8 +289,10 @@ class NativeMooncakeStoreConnector(SimpleCPUOffloadConnector):
             "runtime_budget_shared_bytes": self.service.budget_bytes,
             "staging_bytes": self.service.staging_bytes,
             "storage": self.store.describe(),
-            "read": self.read_link.describe(), "write": self.write_link.describe(),
-            "loading_requests": len(self.loads), "write_jobs": self.write_jobs,
+            "read": self.read_link.describe(),
+            "write": self.write_link.describe(),
+            "loading_requests": len(self.loads),
+            "write_jobs": self.write_jobs,
             "save_scope": "newly computed complete retained group pages; duplicate writes suppressed",
             "source_scope_limit": "DRAM only; one compute node; serial PCIe/network transfer approximation",
         }

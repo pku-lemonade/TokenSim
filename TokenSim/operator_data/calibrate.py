@@ -34,7 +34,21 @@ PARAMETER_GRIDS: Mapping[str, tuple[float, ...]] = {
     "moe_mfu": tuple(x / 100 for x in range(10, 101, 5)),
     "memory_efficiency": tuple(x / 100 for x in range(30, 101, 5)),
     "elementwise_memory_efficiency": tuple(x / 100 for x in range(20, 101, 5)),
-    "kernel_launch_us": (0.5, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0, 15.0, 20.0, 30.0),
+    "kernel_launch_us": (
+        0.5,
+        1.0,
+        2.0,
+        3.0,
+        4.0,
+        5.0,
+        6.0,
+        8.0,
+        10.0,
+        12.0,
+        15.0,
+        20.0,
+        30.0,
+    ),
     "gemm_small_m_knee": (1.0, 8.0, 16.0, 32.0, 64.0, 128.0, 256.0),
 }
 
@@ -51,14 +65,29 @@ class ErrorStats:
     worst: list[dict[str, Any]] = field(default_factory=list)
 
     @classmethod
-    def from_pairs(cls, pairs: Sequence[tuple[Mapping[str, Any], float, float]]) -> "ErrorStats":
+    def from_pairs(
+        cls, pairs: Sequence[tuple[Mapping[str, Any], float, float]]
+    ) -> "ErrorStats":
         if not pairs:
             return cls(0, None, None, None, None, None, None)
         rel = [(pred - meas) / meas for _, meas, pred in pairs if meas > 0]
         abs_rel = sorted(abs(r) for r in rel)
-        logs = [abs(math.log(pred / meas)) for _, meas, pred in pairs if meas > 0 and pred > 0]
+        logs = [
+            abs(math.log(pred / meas))
+            for _, meas, pred in pairs
+            if meas > 0 and pred > 0
+        ]
         worst = sorted(
-            ({"key": dict(k), "measured_us": m, "predicted_us": p, "relative_error": (p - m) / m} for k, m, p in pairs if m > 0),
+            (
+                {
+                    "key": dict(k),
+                    "measured_us": m,
+                    "predicted_us": p,
+                    "relative_error": (p - m) / m,
+                }
+                for k, m, p in pairs
+                if m > 0
+            ),
             key=lambda item: abs(item["relative_error"]),
             reverse=True,
         )[:10]
@@ -67,7 +96,11 @@ class ErrorStats:
             mean_abs_log_error=mean(logs) if logs else None,
             mean_relative_error=mean(abs_rel) if abs_rel else None,
             median_relative_error=median(abs_rel) if abs_rel else None,
-            p90_relative_error=abs_rel[min(len(abs_rel) - 1, int(0.9 * len(abs_rel)))] if abs_rel else None,
+            p90_relative_error=(
+                abs_rel[min(len(abs_rel) - 1, int(0.9 * len(abs_rel)))]
+                if abs_rel
+                else None
+            ),
             max_relative_error=abs_rel[-1] if abs_rel else None,
             bias=mean(rel) if rel else None,
             worst=worst,
@@ -100,11 +133,15 @@ class TableCalibration:
             "parameters": self.parameters,
             "fit": self.fit.to_dict(),
             "holdout": self.holdout.to_dict(),
-            "baseline_fit": {k: v for k, v in self.baseline_fit.to_dict().items() if k != "worst"},
+            "baseline_fit": {
+                k: v for k, v in self.baseline_fit.to_dict().items() if k != "worst"
+            },
         }
 
 
-def _split(rows: Sequence[Mapping[str, Any]], holdout_fraction: float, seed: int) -> tuple[list, list]:
+def _split(
+    rows: Sequence[Mapping[str, Any]], holdout_fraction: float, seed: int
+) -> tuple[list, list]:
     fit: list = []
     holdout: list = []
     for index, row in enumerate(rows):
@@ -113,7 +150,9 @@ def _split(rows: Sequence[Mapping[str, Any]], holdout_fraction: float, seed: int
     return fit, holdout
 
 
-def _evaluate(device: DeviceSpec, table: str, rows: Iterable[Mapping[str, Any]], gated: bool) -> list[tuple[Mapping[str, Any], float, float]]:
+def _evaluate(
+    device: DeviceSpec, table: str, rows: Iterable[Mapping[str, Any]], gated: bool
+) -> list[tuple[Mapping[str, Any], float, float]]:
     model = analytical_model_for(device.family)
     spec = TABLE_SPECS[table]
     pairs = []
@@ -128,7 +167,9 @@ def _evaluate(device: DeviceSpec, table: str, rows: Iterable[Mapping[str, Any]],
 
 
 def _objective(pairs: Sequence[tuple[Mapping[str, Any], float, float]]) -> float:
-    logs = [abs(math.log(pred / meas)) for _, meas, pred in pairs if meas > 0 and pred > 0]
+    logs = [
+        abs(math.log(pred / meas)) for _, meas, pred in pairs if meas > 0 and pred > 0
+    ]
     return mean(logs) if logs else float("inf")
 
 
@@ -178,7 +219,9 @@ def calibrate_table(
     )
 
 
-def calibrate_package(device: DeviceSpec, package: OperatorDataPackage, **kwargs: Any) -> dict[str, TableCalibration]:
+def calibrate_package(
+    device: DeviceSpec, package: OperatorDataPackage, **kwargs: Any
+) -> dict[str, TableCalibration]:
     results: dict[str, TableCalibration] = {}
     for table in TABLE_PARAMETERS:
         result = calibrate_table(device, package, table, **kwargs)

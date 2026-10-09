@@ -19,15 +19,24 @@ from TokenSim.operator_data.schema import TABLE_SPECS
 def normalize(rows, source_id, *, source_hardware, collection_version):
     result = []
     for row in rows:
-        if (row["hidden_size"], row["inter_size"], row["topk"], row["num_experts"]) != (
-            7168,
-            3072,
-            6,
-            384,
+        if (
+            min(
+                int(row[name])
+                for name in (
+                    "hidden_size",
+                    "inter_size",
+                    "topk",
+                    "num_experts",
+                    "moe_ep_size",
+                )
+            )
+            <= 0
         ):
-            continue
-        if row["moe_tp_size"] != 1 or row["moe_ep_size"] not in (4, 8):
-            continue
+            raise OperatorDataValidationError("invalid expert module geometry")
+        if row["moe_tp_size"] != 1 or row["num_experts"] % row["moe_ep_size"]:
+            raise OperatorDataValidationError(
+                "expert module requires divisible EP geometry and TP1"
+            )
         required = {
             "used_cuda_graph": True,
             "includes_gate_topk": False,
@@ -104,7 +113,7 @@ def normalize(rows, source_id, *, source_hardware, collection_version):
             }
         )
     if not result:
-        raise OperatorDataValidationError("no Pro EP4/8 MegaMoE measurements in source")
+        raise OperatorDataValidationError("no supported MegaMoE measurements in source")
     return result
 
 

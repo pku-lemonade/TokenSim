@@ -110,7 +110,7 @@ class MooncakeStats:
             "mooncake_ssd_write_blocks": self.ssd_write_blocks,
             "mooncake_ssd_write_bytes": self.ssd_write_bytes,
             "mooncake_transferred_bytes": self.transferred_bytes,
-            "mooncake_effective_transfer_bandwidth_gbps": bandwidth,
+            "mooncake_effective_transfer_bandwidth_gib_per_s": bandwidth,
             "mooncake_transfer_latency": self.transfer_latency,
             "mooncake_p2p_latency": self.p2p_latency,
             "mooncake_store_latency": self.store_latency,

@@ -107,7 +107,9 @@ def roofline_estimate(
         raise ConfigurationError("peak compute and bandwidth must be positive")
     flops = work.flops if compute_flops_override is None else compute_flops_override
     compute_time_us = flops / (peak_ops_per_s * max(compute_efficiency, 1e-9)) * 1e6
-    memory_time_us = work.total_bytes / (bandwidth_bytes_per_s * max(memory_efficiency, 1e-9)) * 1e6
+    memory_time_us = (
+        work.total_bytes / (bandwidth_bytes_per_s * max(memory_efficiency, 1e-9)) * 1e6
+    )
     bottleneck = "compute" if compute_time_us >= memory_time_us else "memory"
     roofline_us = max(compute_time_us, memory_time_us) + overhead_us
     return AnalyticalEstimate(

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from TokenSim.kv_transfer.connectors.base import flatten_connectors
+
 from TokenSim.config.simulation import SimulationConfig
 
 from dataclasses import dataclass, field
@@ -54,15 +56,6 @@ from TokenSim.config.model_config import ModelSpec
 
 
 logger = logging.getLogger(__name__)
-
-
-def _flatten_connectors(connector: Any) -> list[Any]:
-    if connector is None:
-        return []
-    flattened = [connector]
-    for child in getattr(connector, "children", []):
-        flattened.extend(_flatten_connectors(child))
-    return flattened
 
 
 _message_sequence = count()
@@ -211,6 +204,13 @@ class LLMWorker(Worker):
             config.mtp_acceptance_length,
             config.mtp_num_speculative_tokens,
         )
+        if (
+            self.model_spec.components is not None
+            and config.max_num_batched_tokens is None
+        ):
+            raise ConfigurationError(
+                "hybrid KV allocation requires a finite prefill token budget"
+            )
         self.cache_config = CacheConfig(
             self.block_size,
             self.device,
@@ -231,13 +231,6 @@ class LLMWorker(Worker):
             attention_backend=config.attention_backend,
             speculative_tokens=self.mtp_num_speculative_tokens,
         )
-        if (
-            self.cache_config.hybrid_layout is not None
-            and config.max_num_batched_tokens is None
-        ):
-            raise ConfigurationError(
-                "hybrid KV allocation requires a finite prefill token budget"
-            )
         self.preempted_cnt = 0
         self.pending_connector_metadata: KVConnectorMetadata | None = None
 
@@ -295,8 +288,6 @@ class LLMWorker(Worker):
                 else 0
             ),
             max_num_seqs=config.max_num_seqs,
-            native_attention_context_scale=1.0,
-            native_attention_generation_scale=1.0,
         )
         self.owned_expert_ids = (
             self.expert_placement.experts_for_rank(self.rank_info)
@@ -313,12 +304,6 @@ class LLMWorker(Worker):
                 raise ConfigurationError(
                     "native compressed attention hybrid cache requires paged-attn scheduling"
                 )
-            if self.kv_transfer_config.kv_connector not in (
-                "NoopConnector",
-                "SimpleCPUOffloadConnector",
-                "MooncakeStoreConnector",
-            ):
-                raise ConfigurationError("unsupported native hybrid cache connector")
         self.connector = KVConnectorFactory.create_connector(
             self.kv_transfer_config,
             self.cache_config,
@@ -721,7 +706,7 @@ class LLMEngine(Worker):
                     expert_placement=previous.expert_placement,
                     effective_moe_config=previous.effective_moe_config,
                 )
-            for connector in _flatten_connectors(worker.connector):
+            for connector in flatten_connectors(worker.connector):
                 old_stats = getattr(connector, "stats", None)
                 if old_stats is not None:
                     connector.stats = ConnectorStats(

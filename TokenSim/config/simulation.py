@@ -83,6 +83,17 @@ class SimulationConfig:
         for name, values in choices.items():
             if getattr(self, name) not in values:
                 raise ConfigurationError(f"{name} must be one of {values}")
+        if (
+            self.latency_backend_type == "analytical"
+            or self.latency_fallback == "analytical_only"
+        ) and (
+            self.attention_backend == "module"
+            or self.mhc_backend == "module"
+            or MoEExecutionConfig.from_value(self.moe_execution).native
+        ):
+            raise ConfigurationError(
+                "measured operator modules require table-based latency"
+            )
         object.__setattr__(
             self, "moe_execution", MoEExecutionConfig.from_value(self.moe_execution)
         )

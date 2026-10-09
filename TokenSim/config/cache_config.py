@@ -28,7 +28,7 @@ class CacheConfig:
         kv_cache_capacity_tokens_per_dp_rank: int | None = None,
         max_num_batched_tokens: int = 8192,
         max_num_seqs: int = 64,
-        speculative_tokens: int = 3,
+        speculative_tokens: int = 0,
         max_concurrent_batches: int = 2,
         moe_execution=None,
         attention_backend: str = "generic",
@@ -91,12 +91,15 @@ class CacheConfig:
             from TokenSim.config.weight_memory import packed_weight_memory
 
             self.weight_memory_report = packed_weight_memory(
-                model, self.parallel_config, self.rank_info, self.expert_placement,
+                model,
+                self.parallel_config,
+                self.rank_info,
+                self.expert_placement,
                 include_mtp=speculative_tokens > 0,
             )
-            self.model_param_size_unsharded = packed_weight_memory(model, include_mtp=speculative_tokens > 0)[
-                "total_bytes"
-            ]
+            self.model_param_size_unsharded = packed_weight_memory(
+                model, include_mtp=speculative_tokens > 0
+            )["total_bytes"]
             self.model_param_size = self.weight_memory_report["total_bytes"]
             from TokenSim.config.kv_layout import hybrid_kv_layout
             from TokenSim.config.memory_budget import hybrid_memory_budget

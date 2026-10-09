@@ -2,6 +2,7 @@ import sys
 from time import time
 from tqdm import tqdm
 
+
 class TqdmManager:
     def __init__(self, verbose: str, program_id: int):
         self.total = 0
@@ -11,7 +12,7 @@ class TqdmManager:
         self.last_pos = 0
         self.start_time = time()
         self.tqdm_bar = None
-            
+
     def set_total(self, total: int):
         self.total = total
         if self.verbose == "tqdm":

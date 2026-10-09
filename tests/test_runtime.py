@@ -117,8 +117,9 @@ class RuntimeTest(unittest.TestCase):
                 "--cluster",
                 str(ROOT / "data/clusters/8_a100/p2d5.json"),
             )
-            with patch.object(Worker, "send_task", send), patch.object(
-                LLMWorker, "prepare_step", prepare
+            with (
+                patch.object(Worker, "send_task", send),
+                patch.object(LLMWorker, "prepare_step", prepare),
             ):
                 engine = self.run_main(args)
             self.assertGreater(sum(issued), 0)

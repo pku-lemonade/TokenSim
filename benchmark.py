@@ -16,6 +16,7 @@ from TokenSim.config.config import ClusterConfig, KVTransferConfig, ParallelConf
 from TokenSim.config.parallel_config import EXPERT_PARALLEL_SCOPES
 from TokenSim.config.psla_config import PSLAConfig
 from TokenSim.config.simulation import SimulationConfig
+from TokenSim.config.paths import default_data_root
 from TokenSim.errors import ConfigurationError, SimulationStateError
 from TokenSim.hardware import HardwareContext
 from TokenSim.latency import FALLBACK_POLICIES
@@ -27,9 +28,10 @@ from TokenSim.workload.agentx_support.parser import iter_trace_graphs
 from TokenSim.workload.agentx_support.logs import ReplayLogs
 from util.request import get_requests, LLMSource
 from util.results import export_result, print_all_stats
-from util.tqdm import TqdmManager
+from util.progress import TqdmManager
 
 ROOT = Path(__file__).resolve().parent
+DATA_ROOT = default_data_root()
 
 
 def simulation_config(args):
@@ -83,7 +85,7 @@ def main(args, preloaded_agentx_traces=None):
     args.results_path = str(
         Path(args.results_path)
         if args.results_path
-        else ROOT
+        else (ROOT if (ROOT / "data").is_dir() else Path.cwd())
         / "results"
         / model_config.name
         / Path(args.cluster).parent.name
@@ -385,13 +387,13 @@ def build_parser():
         "--model",
         dest="model_config_path",
         type=str,
-        default=str(ROOT / "data/psla/llama-7b.json"),
+        default=str(DATA_ROOT / "psla/llama-7b.json"),
         help="Model.",
     )
     parser.add_argument(
         "--cluster",
         type=str,
-        default=str(ROOT / "data/clusters/1_a100/h1.json"),
+        default=str(DATA_ROOT / "clusters/1_a100/h1.json"),
         help="Cluster.",
     )
     parser.add_argument(
@@ -679,7 +681,7 @@ def build_parser():
     parser.add_argument(
         "--data_root",
         type=str,
-        default=str(ROOT / "data"),
+        default=str(DATA_ROOT),
         help="Directory holding devices/, topologies/, models/ and operator_data/.",
     )
     parser.add_argument(

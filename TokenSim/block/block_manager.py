@@ -196,18 +196,6 @@ class BlockManager:
     def get_request_block_counts(self, requests: list[Request]) -> dict[int, int]:
         return {req.id: self._num_blocks(req) for req in requests}
 
-    def reserve_gpu_blocks(self, num_blocks: int):
-        allocated: list[PhysicalTokenBlock] = []
-        for _ in range(num_blocks):
-            try:
-                block = self.gpu_allocator.allocate()
-            except Exception:
-                for block in allocated:
-                    self.gpu_allocator.free(block)
-                raise
-            allocated.append(block)
-        self._reserved_gpu_blocks.extend(allocated)
-
     def release_reserved_blocks(self, num_blocks: int | None = None):
         if num_blocks is None:
             num_blocks = len(self._reserved_gpu_blocks)

@@ -28,7 +28,9 @@ def get_mooncake_service(
     extra_config: dict[str, Any] | None = None,
 ) -> MooncakeService:
     mooncake_config = parse_mooncake_config(
-        extra_config if extra_config is not None else kv_config.kv_connector_extra_config
+        extra_config
+        if extra_config is not None
+        else kv_config.kv_connector_extra_config
     )
     key = (
         kv_config.engine_id or "default",

@@ -73,9 +73,7 @@ class MoEModelConfig:
             "num_experts_per_tok",
         )
         if self.num_experts_per_tok > self.num_experts:
-            raise ConfigurationError(
-                "num_experts_per_tok cannot exceed num_experts"
-            )
+            raise ConfigurationError("num_experts_per_tok cannot exceed num_experts")
         self.num_moe_layers = _positive_int(self.num_moe_layers, "num_moe_layers")
         if self.moe_intermediate_size is not None:
             self.moe_intermediate_size = _positive_int(
@@ -142,7 +140,9 @@ class MoEModelConfig:
         if not self.enabled:
             return []
         start = self.first_k_dense_replace
-        limit = total_layers if total_layers is not None else start + self.num_moe_layers
+        limit = (
+            total_layers if total_layers is not None else start + self.num_moe_layers
+        )
         indices = list(range(start, limit, self.moe_layer_freq))
         return indices[: self.num_moe_layers]
 
@@ -152,15 +152,17 @@ class MoEModelConfig:
 
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
-        data["routing"] = self.routing.to_dict() if self.routing else RoutingConfig().to_dict()
+        data["routing"] = (
+            self.routing.to_dict() if self.routing else RoutingConfig().to_dict()
+        )
         return data
 
     def _validate_layer_layout(self) -> None:
         if not self.enabled:
             return
-        last_index = self.first_k_dense_replace + (
-            self.num_moe_layers - 1
-        ) * self.moe_layer_freq
+        last_index = (
+            self.first_k_dense_replace + (self.num_moe_layers - 1) * self.moe_layer_freq
+        )
         if last_index < 0:
             raise ConfigurationError("invalid MoE layer layout")
 

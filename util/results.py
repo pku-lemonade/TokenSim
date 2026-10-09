@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from TokenSim.kv_transfer.connectors.base import flatten_connectors
+
 import json
 from pathlib import Path
 from dataclasses import asdict
@@ -46,7 +48,7 @@ def get_connector_stats(engine: LLMEngine) -> dict[str, float | int]:
     if stats is None:
         return {}
     for worker in getattr(engine, "workers", []):
-        for connector in _flatten_connectors(getattr(worker, "connector", None)):
+        for connector in flatten_connectors(getattr(worker, "connector", None)):
             stats = stats.aggregate(connector.stats)
     for pool_name in ("prefill_workers", "decode_workers"):
         pool = getattr(engine, pool_name, None)
@@ -389,7 +391,7 @@ def get_mooncake_stats(engine: LLMEngine) -> dict[str, Any]:
     aggregate = MooncakeStats()
     seen_stats: set[int] = set()
     for worker in getattr(engine, "workers", []):
-        for connector in _flatten_connectors(getattr(worker, "connector", None)):
+        for connector in flatten_connectors(getattr(worker, "connector", None)):
             stats = getattr(connector, "mooncake_stats", None)
             if stats is None:
                 continue
@@ -399,15 +401,6 @@ def get_mooncake_stats(engine: LLMEngine) -> dict[str, Any]:
             seen_stats.add(stats_id)
             aggregate = aggregate.aggregate(stats)
     return aggregate.as_dict()
-
-
-def _flatten_connectors(connector: Any) -> list[Any]:
-    if connector is None:
-        return []
-    result = [connector]
-    for child in getattr(connector, "children", []):
-        result.extend(_flatten_connectors(child))
-    return result
 
 
 def _is_root_stream(stream_id: str | None) -> bool:
@@ -619,15 +612,6 @@ def _percentile_summary(values: list[float]) -> dict[str, float | int]:
         "p99": float(np.percentile(values, 99)),
         "max": float(max(values)),
     }
-
-
-def _flatten_connectors(connector: Any) -> list[Any]:
-    if connector is None:
-        return []
-    result = [connector]
-    for child in getattr(connector, "children", []):
-        result.extend(_flatten_connectors(child))
-    return result
 
 
 def print_all_stats(

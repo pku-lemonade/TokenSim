@@ -20,14 +20,14 @@ class P2PConnector(BaseKVConnector):
         request_block_counts: dict[int, int] | None = None,
     ) -> ConnectorTransferPlan:
         if request_block_counts is None:
-            request_block_counts = {req.id: req.num_physical_token_blocks for req in requests}
+            request_block_counts = {
+                req.id: req.num_physical_token_blocks for req in requests
+            }
         blocks = sum(request_block_counts.values())
         bytes_ = 0
         if self.cache_config is not None:
             bytes_ = int(
-                blocks
-                * self.cache_config.block_size
-                * self.cache_config.size_per_token
+                blocks * self.cache_config.block_size * self.cache_config.size_per_token
             )
         return ConnectorTransferPlan(
             request_ids=[req.id for req in requests],

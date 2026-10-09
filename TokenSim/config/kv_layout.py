@@ -199,7 +199,13 @@ def hybrid_kv_layout(
         # then SWA, full compressed cache and its compressor state.
         if layer.compress_ratio == spec.indexed_compress_ratio:
             pages.append(
-                CacheLayerPage(prefix + ".indexer", "full", block_size, index_state, spec.indexed_compress_ratio)
+                CacheLayerPage(
+                    prefix + ".indexer",
+                    "full",
+                    block_size,
+                    index_state,
+                    spec.indexed_compress_ratio,
+                )
             )
             pages.append(
                 CacheLayerPage(

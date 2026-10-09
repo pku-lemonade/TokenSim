@@ -10,7 +10,7 @@ sources:
     grade: A
     reference: https://huggingface.co/deepseek-ai/DeepSeek-V4-Pro/blob/main/config.json
     notes: Transcribed from the saved HF config; content hash and pinned AIC mirror
-      are recorded in data/reference/agentx-model/manifest.json.
+      are recorded in the pinned upstream source configuration.
   vllm-dsv4-layout:
     grade: B
     reference: https://github.com/vllm-project/vllm/blob/30f5c01d4ebb5c493ed86195db24d0ec5b3ce3d7/vllm/models/deepseek_v4/nvidia/model.py
@@ -159,3 +159,7 @@ operator_modules:
     kernels:
       pre: vllm.model_executor.kernels.mhc.tilelang.mhc_pre_tilelang
       post: vllm.model_executor.kernels.mhc.tilelang.mhc_post_tilelang
+  moe:
+    table: dsv4_megamoe
+    key:
+      distribution: power_law_1.01

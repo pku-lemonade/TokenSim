@@ -18,12 +18,12 @@ EXTRAPOLATION_MODES = ("none", "hold", "scale", "analytical", "empirical")
 FALLBACK_POLICIES = ("table_first", "table_only", "analytical_only")
 # Why a lookup failed; the missing-shape report groups by these.
 MISSING_KINDS = (
-    "table_absent",          # the package ships no rows for this table
-    "discrete_key",          # rows exist, none for this dtype/heads/... combination
-    "out_of_range",          # an axis value lies beyond the extrapolation bound
+    "table_absent",  # the package ships no rows for this table
+    "discrete_key",  # rows exist, none for this dtype/heads/... combination
+    "out_of_range",  # an axis value lies beyond the extrapolation bound
     "extrapolation_disabled",
     "interpolation_disabled",
-    "no_measured_mode",      # the configured algorithm/mode is analytical by design
+    "no_measured_mode",  # the configured algorithm/mode is analytical by design
     "malformed_key",
     "unknown_table",
 )
@@ -35,7 +35,11 @@ AnalyticalScaler = Callable[[str, Mapping[str, Any]], "float | None"]
 
 class MissingOperatorDataError(LookupError):
     def __init__(
-        self, table_name: str, key: Mapping[str, Any], reason: str, kind: str = "discrete_key"
+        self,
+        table_name: str,
+        key: Mapping[str, Any],
+        reason: str,
+        kind: str = "discrete_key",
     ) -> None:
         if kind not in MISSING_KINDS:
             raise ValueError(f"unknown missing-data kind {kind!r}")
@@ -71,7 +75,7 @@ class LookupPolicy:
       ``latency = measured(boundary) * analytical(target) / analytical(boundary)``.
       This is the strategy AIConfigurator uses past its collected range. It
       needs an :data:`AnalyticalScaler`; without one it behaves like ``scale``.
-    * ``empirical`` (default): fit a power-law exponent from the measured data along
+    * ``empirical``: fit a power-law exponent from the measured data along
       the extrapolated axis, then scale as ``(target / boundary) ** alpha``.
       Captures sub-linear kernel scaling (e.g. FlashAttention) that the
       roofline model overestimates. Falls back to ``analytical`` when fewer
@@ -86,7 +90,7 @@ class LookupPolicy:
     """
 
     interpolate: bool = True
-    extrapolate: str = "empirical"
+    extrapolate: str = "analytical"
     max_extrapolation_ratio: float = 16.0
 
     def __post_init__(self) -> None:
@@ -144,13 +148,18 @@ class OperatorLookup:
     ) -> LookupResult:
         """Resolve ``key``; ``scaler`` overrides the instance-level analytical scaler."""
         if table_name not in TABLE_SPECS:
-            raise MissingOperatorDataError(table_name, key, "unknown table", kind="unknown_table")
+            raise MissingOperatorDataError(
+                table_name, key, "unknown table", kind="unknown_table"
+            )
         spec = TABLE_SPECS[table_name]
         normalized = self._normalize_key(spec, key)
         exact = self._exact.get(table_name)
         if not exact:
             raise MissingOperatorDataError(
-                table_name, normalized, "table has no rows in this package", kind="table_absent"
+                table_name,
+                normalized,
+                "table has no rows in this package",
+                kind="table_absent",
             )
         row = exact.get(tuple(normalized[f] for f in spec.key_fields))
         if row is not None:
@@ -180,10 +189,17 @@ class OperatorLookup:
                 kind="discrete_key",
             )
         latency, sources, flags = self._resolve(
-            spec, list(spec.axes), grid, normalized, table_name, scaler or self.analytical_scaler
+            spec,
+            list(spec.axes),
+            grid,
+            normalized,
+            table_name,
+            scaler or self.analytical_scaler,
         )
         match_type = "extrapolated" if "extrapolated" in flags else "interpolated"
-        source_id = "+".join(sorted(sources)) if len(sources) > 1 else next(iter(sources))
+        source_id = (
+            "+".join(sorted(sources)) if len(sources) > 1 else next(iter(sources))
+        )
         return LookupResult(
             latency_us=latency,
             match_type=match_type,
@@ -193,7 +209,9 @@ class OperatorLookup:
             detail={"flags": sorted(flags)},
         )
 
-    def axis_values(self, table_name: str, key: Mapping[str, Any], axis: str) -> list[Any]:
+    def axis_values(
+        self, table_name: str, key: Mapping[str, Any], axis: str
+    ) -> list[Any]:
         """Measured values of ``axis`` for the discrete part of ``key`` (diagnostics)."""
         spec = TABLE_SPECS[table_name]
         normalized = self._normalize_key(spec, {**key, axis: key.get(axis, 0)})
@@ -225,7 +243,9 @@ class OperatorLookup:
             normalized[f] = value
         return normalized
 
-    def _describe_discrete(self, table_name: str, spec: TableSpec) -> list[dict[str, Any]]:
+    def _describe_discrete(
+        self, table_name: str, spec: TableSpec
+    ) -> list[dict[str, Any]]:
         keys = list(self._grids[table_name])[:8]
         return [dict(zip(spec.discrete_fields, key)) for key in keys]
 
@@ -252,8 +272,12 @@ class OperatorLookup:
             lo, hi = lower[-1], upper[0]
             key_lo = {**key, axis.name: lo} if self.bind_analytical_axes else key
             key_hi = {**key, axis.name: hi} if self.bind_analytical_axes else key
-            lat_lo, src_lo, flag_lo = self._resolve(spec, rest, node[lo], key_lo, table_name, scaler)
-            lat_hi, src_hi, flag_hi = self._resolve(spec, rest, node[hi], key_hi, table_name, scaler)
+            lat_lo, src_lo, flag_lo = self._resolve(
+                spec, rest, node[lo], key_lo, table_name, scaler
+            )
+            lat_hi, src_hi, flag_hi = self._resolve(
+                spec, rest, node[hi], key_hi, table_name, scaler
+            )
             weight = _blend_weight(axis, lo, hi, target)
             latency = lat_lo + weight * (lat_hi - lat_lo)
             return latency, src_lo | src_hi, flag_lo | flag_hi | {"interpolated"}
@@ -278,20 +302,28 @@ class OperatorLookup:
                 f"exceeds max_extrapolation_ratio={max_ratio}",
                 kind="out_of_range",
             )
-        boundary_key = {**key, axis.name: boundary} if self.bind_analytical_axes else key
-        latency, sources, flags = self._resolve(spec, rest, node[boundary], boundary_key, table_name, scaler)
+        boundary_key = (
+            {**key, axis.name: boundary} if self.bind_analytical_axes else key
+        )
+        latency, sources, flags = self._resolve(
+            spec, rest, node[boundary], boundary_key, table_name, scaler
+        )
         flags = flags | {"extrapolated"}
         if mode == "hold":
             return latency, sources, flags | {"held"}
         if mode == "empirical":
-            alpha = self._fit_scaling_exponent(spec, rest, node, key, axis.name, table_name, scaler)
+            alpha = self._fit_scaling_exponent(
+                spec, rest, node, key, axis.name, table_name, scaler
+            )
             if alpha is not None and ratio > 1.0:
-                latency *= ratio ** alpha
+                latency *= ratio**alpha
                 return latency, sources, flags | {"empirical_scaled"}
             # Fall through to analytical when fitting fails.
             mode = "analytical"
         if mode == "analytical" and scaler is not None:
-            growth = self._analytical_growth(table_name, key, axis.name, boundary, scaler)
+            growth = self._analytical_growth(
+                table_name, key, axis.name, boundary, scaler
+            )
             if growth is not None:
                 return latency * growth, sources, flags | {"analytical_scaled"}
         # ``scale`` (or ``analytical`` without a usable model): work grows with
@@ -318,10 +350,13 @@ class OperatorLookup:
             return None
         if at_target is None or at_boundary is None:
             return None
-        if not (math.isfinite(at_target) and math.isfinite(at_boundary)) or at_boundary <= 0 or at_target <= 0:
+        if (
+            not (math.isfinite(at_target) and math.isfinite(at_boundary))
+            or at_boundary <= 0
+            or at_target <= 0
+        ):
             return None
         return at_target / at_boundary
-
 
     def _fit_scaling_exponent(
         self,
@@ -352,7 +387,9 @@ class OperatorLookup:
             if v <= 0:
                 continue
             try:
-                lat, _, _ = self._resolve(spec, rest_axes, node[v], key, table_name, scaler)
+                lat, _, _ = self._resolve(
+                    spec, rest_axes, node[v], key, table_name, scaler
+                )
             except (MissingOperatorDataError, Exception):
                 continue
             if lat <= 0 or not math.isfinite(lat):
@@ -373,7 +410,7 @@ class OperatorLookup:
         alpha = (n * sxy - sx * sy) / denom
         # Clamp: negative alpha is nonsensical for work-growing axes, and
         # alpha > 1.0 should use the roofline model instead.
-        return max(0.0, min(alpha, 1.0))
+        return None if alpha > 1.0 else max(0.0, alpha)
 
 
 def _blend_weight(axis: AxisSpec, lo: Any, hi: Any, target: Any) -> float:

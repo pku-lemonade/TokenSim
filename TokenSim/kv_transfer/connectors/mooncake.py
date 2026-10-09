@@ -130,7 +130,9 @@ class MooncakeConnector(BaseKVConnector):
     def _bytes_for_blocks(self, blocks: int) -> int:
         if self.cache_config is None:
             return 0
-        return int(blocks * self.cache_config.block_size * self.cache_config.size_per_token)
+        return int(
+            blocks * self.cache_config.block_size * self.cache_config.size_per_token
+        )
 
     def _keys_for_requests(
         self,
@@ -158,7 +160,9 @@ class MooncakeConnector(BaseKVConnector):
                 keys.append(f"req:{req.id}:block:{block_number}")
         return keys
 
-    def _own_plans(self, plans: list[ConnectorTransferPlan]) -> list[ConnectorTransferPlan]:
+    def _own_plans(
+        self, plans: list[ConnectorTransferPlan]
+    ) -> list[ConnectorTransferPlan]:
         return [
             plan
             for plan in plans

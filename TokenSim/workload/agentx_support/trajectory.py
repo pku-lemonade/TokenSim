@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
 """Deterministic snapshot selection and shared trace-pool sampling.
 
 This implements the metadata-only part of AIPerf 49634d1c trajectory_source.py

@@ -1,57 +1,58 @@
-"""Load conservation when repeated routing histograms are accumulated lazily."""
-
 import unittest
+import simpy
+from TokenSim.kv_transfer.native_storage import NativePageStore, QueuedKVLink
 
-from TokenSim.moe.stats import MoEStats
 
+class ExternalStorageTest(unittest.TestCase):
+    def test_incomplete_write_is_invisible_and_pinned_read_survives_eviction(self):
+        store = NativePageStore(200)
+        a = store.reserve_write(("a",), 100)
+        self.assertIsNone(store.lookup(("a",)))
+        store.finish_write(a)
+        store.acquire(a)
+        b = store.reserve_write(("b",), 100)
+        store.finish_write(b)
+        c = store.reserve_write(("c",), 100)
+        self.assertIsNotNone(c)
+        self.assertIs(store.lookup(("a",)), a)
+        self.assertIsNone(store.lookup(("b",)))
+        store.release(a)
+        store.finish_write(c)
+        store.validate()
 
-class MoEStatsTest(unittest.TestCase):
-    @staticmethod
-    def record(stats, histogram, ranks):
-        stats.record_step(
-            histogram=histogram,
-            per_rank_load=ranks,
-            compute_latency=0.25,
-            all2all_latency=0.125,
-            straggler_latency=0,
-            all2all_event_count=1,
-        )
+    def test_simple_cpu_counts_packed_stride_while_objects_use_actual_group_bytes(self):
+        cpu = NativePageStore(356125000000, allocation_unit=1228800, scope="worker0")
+        self.assertEqual(cpu.capacity_bytes // cpu.allocation_unit, 289815)
+        page = cpu.reserve_write(("state",), 32768)
+        self.assertEqual(page.bytes, 1228800)
+        shared = NativePageStore(100000)
+        p = shared.reserve_write(("model", 0, "hash"), 32768)
+        self.assertEqual(p.bytes, 32768)
+        shared.finish_write(p)
+        self.assertIs(shared.lookup(("model", 0, "hash")), p)
 
-    def test_repeated_and_distinct_histograms_conserve_loads(self):
-        stats = MoEStats(effective_moe_config={"num_experts": 4})
-        histogram, ranks = {0: 2, 3: 6}, {0: 2, 1: 6}
-        for _ in range(100):
-            self.record(stats, histogram, ranks)
-        self.record(stats, {0: 1, 2: 3}, {0: 4})
-        self.assertEqual(stats.per_expert_load, {0: 201, 2: 3, 3: 600})
-        self.assertEqual(stats.per_rank_expert_load, {0: 204, 1: 600})
-        self.assertEqual(stats.routed_token_count, 804)
-        self.assertEqual(stats.mean_expert_load, 201)
-        self.assertEqual(stats.moe_all2all_event_count, 101)
-        self.assertEqual(histogram, {0: 2, 3: 6})
-        self.assertEqual(ranks, {0: 2, 1: 6})
+    def test_all_pinned_storage_refuses_new_write_without_exceeding_budget(self):
+        store = NativePageStore(100)
+        page = store.reserve_write(("a",), 100)
+        self.assertIsNone(store.reserve_write(("b",), 100))
+        self.assertFalse(page.ready)
+        store.validate()
 
-    def test_reads_and_aggregation_include_pending_steps_once(self):
-        left = MoEStats(per_expert_load={0: 5}, per_rank_expert_load={0: 5})
-        right = MoEStats()
-        histogram, ranks = {1: 3}, {1: 3}
-        self.record(left, histogram, ranks)
-        self.assertEqual(left.per_expert_load, {0: 5, 1: 3})
-        self.record(left, histogram, ranks)
-        self.record(right, histogram, ranks)
-        combined = left.aggregate(right)
-        self.assertEqual(combined.per_expert_load, {0: 5, 1: 9})
-        self.assertEqual(combined.per_rank_expert_load, {0: 5, 1: 9})
-        self.assertEqual(combined.routed_token_count, 9)
-        first = combined.as_dict()
-        self.assertEqual(combined.as_dict(), first)
-        self.record(left, histogram, ranks)
-        self.assertEqual(left.per_expert_load, {0: 5, 1: 9})
+    def test_directional_link_serializes_competing_callers_and_counts_wait(self):
+        env = simpy.Environment()
+        link = QueuedKVLink(env, 100, utilization=0.5)
+        a = env.process(link.transfer(100))
+        b = env.process(link.transfer(100))
+        env.run(until=simpy.AllOf(env, [a, b]))
+        self.assertEqual(env.now, 4)
+        self.assertEqual(link.queue_wait_seconds, 2)
+        self.assertEqual(link.bytes, 200)
 
-    def test_bounded_pending_histograms_preserve_all_steps(self):
-        stats = MoEStats()
-        for expert in range(4100):
-            self.record(stats, {expert: 1}, {0: 1})
-        self.assertEqual(stats.routed_token_count, 4100)
-        self.assertEqual(stats.per_rank_expert_load, {0: 4100})
-        self.assertEqual(stats.per_expert_load, dict.fromkeys(range(4100), 1))
+    def test_utilization_changes_service_without_multiplying_independent_bandwidth(
+        self,
+    ):
+        for utilization, expected in ((0.5, 2), (0.75, 4 / 3), (1, 1)):
+            env = simpy.Environment()
+            link = QueuedKVLink(env, 100, utilization=utilization)
+            env.run(until=env.process(link.transfer(100)))
+            self.assertAlmostEqual(env.now, expected)

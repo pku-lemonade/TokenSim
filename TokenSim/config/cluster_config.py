@@ -42,7 +42,10 @@ class WorkerGroupConfig:
                 f"worker group {self.role!r} references unknown network {self.network!r}; "
                 + f"known networks: {sorted(networks)}"
             )
-        if self.device_indices is not None and len(self.device_indices) != self.num_workers:
+        if (
+            self.device_indices is not None
+            and len(self.device_indices) != self.num_workers
+        ):
             raise ConfigurationError(
                 f"worker group {self.role!r}: device_indices must have num_workers entries"
             )
@@ -53,7 +56,9 @@ class WorkerGroupConfig:
                 self.network,
                 networks[self.network],
                 device_index=(
-                    self.device_indices[index] if self.device_indices is not None else None
+                    self.device_indices[index]
+                    if self.device_indices is not None
+                    else None
                 ),
                 operator_backend=self.operator_backend,
             )
@@ -136,7 +141,9 @@ class ClusterConfig:
             for worker_group in self.worker_groups
             for worker in worker_group.workers(self.networks)
         ]
-        effective_config = parallel_config or self.parallel_config or ParallelConfig.default()
+        effective_config = (
+            parallel_config or self.parallel_config or ParallelConfig.default()
+        )
         validate_worker_count(len(workers), effective_config)
         for global_rank, worker in enumerate(workers):
             worker.rank_info = ParallelRankInfo.from_global_rank(

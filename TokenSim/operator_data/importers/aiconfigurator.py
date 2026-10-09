@@ -34,7 +34,11 @@ from typing import Any, Iterable, Mapping
 
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.device import normalize_dtype
-from TokenSim.operator_data.package import OperatorDataPackage, PackageMeta, SourceRecord
+from TokenSim.operator_data.package import (
+    OperatorDataPackage,
+    PackageMeta,
+    SourceRecord,
+)
 
 _DTYPE_MAP = {
     "float16": "fp16",
@@ -99,7 +103,9 @@ def _map_dtype(value: Any) -> str | None:
 
 def _read_parquet(path: Path) -> list[dict[str, Any]]:
     """Read a perf table: ``*.parquet``, or the collector's ``*.txt`` CSV staging file."""
-    if path.suffix == ".txt" or (not path.is_file() and path.with_suffix(".txt").is_file()):
+    if path.suffix == ".txt" or (
+        not path.is_file() and path.with_suffix(".txt").is_file()
+    ):
         import csv
 
         csv_path = path if path.suffix == ".txt" else path.with_suffix(".txt")
@@ -108,7 +114,9 @@ def _read_parquet(path: Path) -> list[dict[str, Any]]:
     try:
         import pyarrow.parquet as pq
     except ImportError as exc:  # pragma: no cover
-        raise ConfigurationError("importing AIConfigurator data requires pyarrow") from exc
+        raise ConfigurationError(
+            "importing AIConfigurator data requires pyarrow"
+        ) from exc
     return pq.read_table(path).to_pylist()
 
 
@@ -124,7 +132,9 @@ def _version_key(path: Path) -> tuple:
     return tuple(parts)
 
 
-def _latest_version(directory: Path, required_files: tuple[str, ...] = ()) -> Path | None:
+def _latest_version(
+    directory: Path, required_files: tuple[str, ...] = ()
+) -> Path | None:
     """Newest version directory that actually contains ``required_files``.
 
     AIConfigurator sometimes ships a newer version directory holding only a
@@ -134,19 +144,31 @@ def _latest_version(directory: Path, required_files: tuple[str, ...] = ()) -> Pa
         return None
     versions = [p for p in directory.iterdir() if p.is_dir()]
     if required_files:
-        versions = [p for p in versions if any(_has_table(p, f) for f in required_files)]
+        versions = [
+            p for p in versions if any(_has_table(p, f) for f in required_files)
+        ]
     if not versions:
         return None
     return sorted(versions, key=_version_key)[-1]
 
 
-def _select(directory: Path, backend: str, version: str | None, required_files: tuple[str, ...] = ()) -> Path | None:
+def _select(
+    directory: Path,
+    backend: str,
+    version: str | None,
+    required_files: tuple[str, ...] = (),
+) -> Path | None:
     """Locate the newest directory holding ``required_files`` (see :func:`_candidates`)."""
     candidates = _candidates(directory, backend, version, required_files)
     return candidates[0] if candidates else None
 
 
-def _candidates(directory: Path, backend: str, version: str | None, required_files: tuple[str, ...] = ()) -> list[Path]:
+def _candidates(
+    directory: Path,
+    backend: str,
+    version: str | None,
+    required_files: tuple[str, ...] = (),
+) -> list[Path]:
     """Directories holding ``required_files``, newest version first.
 
     ``directory`` is ``<system>/<family>`` in the upstream layout. In a flat
@@ -170,7 +192,9 @@ def _candidates(directory: Path, backend: str, version: str | None, required_fil
         return []
     versions = [p for p in backend_dir.iterdir() if p.is_dir()]
     if required_files:
-        versions = [p for p in versions if any(_has_table(p, f) for f in required_files)]
+        versions = [
+            p for p in versions if any(_has_table(p, f) for f in required_files)
+        ]
     return sorted(versions, key=_version_key, reverse=True)
 
 
@@ -197,6 +221,7 @@ def import_aiconfigurator_system(
     kernel_filter: Iterable[str] | None = None,
     upstream_commit: str = "unknown",
     gpus_per_node: int = 8,
+    module_sources: Mapping[str, str | Path] | None = None,
 ) -> OperatorDataPackage:
     """Build an :class:`OperatorDataPackage` from one AIConfigurator system directory.
 
@@ -206,7 +231,9 @@ def import_aiconfigurator_system(
     """
     system_path = Path(system_dir)
     if not system_path.is_dir():
-        raise ConfigurationError(f"AIConfigurator system directory not found: {system_path}")
+        raise ConfigurationError(
+            f"AIConfigurator system directory not found: {system_path}"
+        )
     system_name = system_path.name
     tables: dict[str, list[dict[str, Any]]] = {}
     sources: dict[str, SourceRecord] = {}
@@ -215,9 +242,17 @@ def import_aiconfigurator_system(
     resolved_versions: dict[str, str] = {}
     kernels = {k.lower() for k in kernel_filter} if kernel_filter else None
 
-    flat_layout = not any((system_path / family).is_dir() for family in ("gemm", "attention", "moe", "comm"))
+    flat_layout = not any(
+        (system_path / family).is_dir()
+        for family in ("gemm", "attention", "moe", "comm")
+    )
 
-    def source_for(family: str, resolved: Path, version_label: str, backend_label: str | None = None) -> str:
+    def source_for(
+        family: str,
+        resolved: Path,
+        version_label: str,
+        backend_label: str | None = None,
+    ) -> str:
         backend_label = backend_label or backend
         if flat_layout:
             source_id = f"aiconfigurator-collector:{device_id}:{family}:{backend_label}:{version_label}"
@@ -227,7 +262,9 @@ def import_aiconfigurator_system(
                 f"(commit {upstream_commit}); converted ms -> us."
             )
         else:
-            source_id = f"aiconfigurator:{system_name}:{family}:{backend_label}:{version_label}"
+            source_id = (
+                f"aiconfigurator:{system_name}:{family}:{backend_label}:{version_label}"
+            )
             reference = (
                 "https://github.com/ai-dynamo/aiconfigurator/tree/"
                 f"{upstream_commit}/aic-core/src/aiconfigurator_core/systems/data/{system_name}/{family}/{backend_label}/{version_label}"
@@ -253,7 +290,9 @@ def import_aiconfigurator_system(
 
     # GEMM -------------------------------------------------------------------
     rows: dict[tuple, dict[str, Any]] = {}
-    for resolved in _candidates(system_path / "gemm", backend, version, ("gemm_perf.parquet",)):
+    for resolved in _candidates(
+        system_path / "gemm", backend, version, ("gemm_perf.parquet",)
+    ):
         if not _has_table(resolved, "gemm_perf.parquet"):
             continue
         raw_rows = _read_parquet(resolved / "gemm_perf.parquet")
@@ -290,7 +329,10 @@ def import_aiconfigurator_system(
 
     # Attention ----------------------------------------------------------------
     attention_candidates = _candidates(
-        system_path / "attention", backend, version, ("context_attention_perf.parquet", "generation_attention_perf.parquet")
+        system_path / "attention",
+        backend,
+        version,
+        ("context_attention_perf.parquet", "generation_attention_perf.parquet"),
     )
     for filename, table, length_field in (
         ("context_attention_perf.parquet", "context_attention", "input_seq_len"),
@@ -355,7 +397,9 @@ def import_aiconfigurator_system(
 
     # MoE ------------------------------------------------------------------------
     rows = {}
-    for resolved in _candidates(system_path / "moe", backend, version, ("moe_perf.parquet",)):
+    for resolved in _candidates(
+        system_path / "moe", backend, version, ("moe_perf.parquet",)
+    ):
         if not _has_table(resolved, "moe_perf.parquet"):
             continue
         raw_rows = _read_parquet(resolved / "moe_perf.parquet")
@@ -404,14 +448,22 @@ def import_aiconfigurator_system(
     # Wide-EP expert kernels share the moe schema (plus extra columns); they only
     # backfill keys the standard table does not have. Generation rows are
     # preferred over context rows because the runtime queries MoE per step.
-    for wide_file in ("wideep_moe_perf.parquet", "wideep_generation_moe_perf.parquet", "wideep_context_moe_perf.parquet"):
-        for resolved in _candidates(system_path / "moe", backend, version, (wide_file,)):
+    for wide_file in (
+        "wideep_moe_perf.parquet",
+        "wideep_generation_moe_perf.parquet",
+        "wideep_context_moe_perf.parquet",
+    ):
+        for resolved in _candidates(
+            system_path / "moe", backend, version, (wide_file,)
+        ):
             if not _has_table(resolved, wide_file):
                 continue
             raw_rows = _read_parquet(resolved / wide_file)
             label = _version_label(resolved, raw_rows, version or "unknown")
             source_id = source_for("moe", resolved, label)
-            resolved_versions.setdefault("moe_wideep", []).append(f"{wide_file}:{label}")
+            resolved_versions.setdefault("moe_wideep", []).append(
+                f"{wide_file}:{label}"
+            )
             for row in raw_rows:
                 dtype = _map_dtype(row.get("moe_dtype"))
                 if dtype is None or not keep_kernel(row):
@@ -470,7 +522,9 @@ def import_aiconfigurator_system(
                 "kernel": kernel,
             }
 
-    for resolved in _candidates(system_path / "comm", backend, version, ("moe_a2a_perf.parquet",)):
+    for resolved in _candidates(
+        system_path / "comm", backend, version, ("moe_a2a_perf.parquet",)
+    ):
         if not _has_table(resolved, "moe_a2a_perf.parquet"):
             continue
         raw_rows = _read_parquet(resolved / "moe_a2a_perf.parquet")
@@ -501,16 +555,28 @@ def import_aiconfigurator_system(
             seen_here.add(key)
             # Unlike the other AIConfigurator tables this one is already in microseconds
             # (``latency == transmit_us + notify_us``).
-            add_a2a(key, float(row["latency"]), source_id, f"moe_a2a:{row.get('kernel_source', '')}:{row.get('comm_backend', '')}")
+            add_a2a(
+                key,
+                float(row["latency"]),
+                source_id,
+                f"moe_a2a:{row.get('kernel_source', '')}:{row.get('comm_backend', '')}",
+            )
 
-    for wide_file, mode in (("wideep_deepep_ll_perf.parquet", "deepep_low_latency"), ("wideep_deepep_normal_perf.parquet", "deepep_high_throughput")):
-        for resolved in _candidates(system_path / "comm", backend, version, (wide_file,)):
+    for wide_file, mode in (
+        ("wideep_deepep_ll_perf.parquet", "deepep_low_latency"),
+        ("wideep_deepep_normal_perf.parquet", "deepep_high_throughput"),
+    ):
+        for resolved in _candidates(
+            system_path / "comm", backend, version, (wide_file,)
+        ):
             if not _has_table(resolved, wide_file):
                 continue
             raw_rows = _read_parquet(resolved / wide_file)
             label = _version_label(resolved, raw_rows, version or "unknown")
             source_id = source_for("comm", resolved, label)
-            resolved_versions.setdefault("ep_all2all", []).append(f"{wide_file.replace('_perf.parquet', '')}:{label}")
+            resolved_versions.setdefault("ep_all2all", []).append(
+                f"{wide_file.replace('_perf.parquet', '')}:{label}"
+            )
             seen_here = set()
             for row in raw_rows:
                 nodes = int(row.get("node_num", 1) or 1)
@@ -529,18 +595,27 @@ def import_aiconfigurator_system(
                     if "dispatch_avg_t_us" in row:
                         latency_us = float(row[f"{phase}_avg_t_us"])
                     else:
-                        latency_us = float(row.get(f"{phase}_transmit_us", 0) or 0) + float(row.get(f"{phase}_notify_us", 0) or 0)
+                        latency_us = float(
+                            row.get(f"{phase}_transmit_us", 0) or 0
+                        ) + float(row.get(f"{phase}_notify_us", 0) or 0)
                     key = base[:1] + (phase,) + base[2:]
                     if key in a2a_rows and key not in seen_here:
                         continue
                     seen_here.add(key)
-                    add_a2a(key, latency_us, source_id, f"{wide_file.replace('_perf.parquet', '')}:{row.get('kernel_source', '')}")
+                    add_a2a(
+                        key,
+                        latency_us,
+                        source_id,
+                        f"{wide_file.replace('_perf.parquet', '')}:{row.get('kernel_source', '')}",
+                    )
     if a2a_rows:
         tables["ep_all2all"] = list(a2a_rows.values())
 
     # Collectives -----------------------------------------------------------------
     collective_rows: dict[tuple, dict[str, Any]] = {}
-    for resolved in _candidates(system_path / "comm", "nccl", nccl_version, ("nccl_perf.parquet",)):
+    for resolved in _candidates(
+        system_path / "comm", "nccl", nccl_version, ("nccl_perf.parquet",)
+    ):
         if not _has_table(resolved, "nccl_perf.parquet"):
             continue
         raw_rows = _read_parquet(resolved / "nccl_perf.parquet")
@@ -566,7 +641,9 @@ def import_aiconfigurator_system(
                 "source_id": source_id,
                 "kernel": "nccl",
             }
-    for resolved in _candidates(system_path / "comm", "oneccl", nccl_version, ("oneccl_perf.parquet",)):
+    for resolved in _candidates(
+        system_path / "comm", "oneccl", nccl_version, ("oneccl_perf.parquet",)
+    ):
         # Intel XPU systems ship oneCCL curves with the NCCL column layout.
         if not _has_table(resolved, "oneccl_perf.parquet"):
             continue
@@ -594,8 +671,12 @@ def import_aiconfigurator_system(
                 "kernel": "oneccl",
             }
     if include_custom_allreduce:
-        resolved = _select(system_path / "comm", backend, version, ("custom_allreduce_perf.parquet",))
-        if resolved is not None and _has_table(resolved, "custom_allreduce_perf.parquet"):
+        resolved = _select(
+            system_path / "comm", backend, version, ("custom_allreduce_perf.parquet",)
+        )
+        if resolved is not None and _has_table(
+            resolved, "custom_allreduce_perf.parquet"
+        ):
             raw_rows = _read_parquet(resolved / "custom_allreduce_perf.parquet")
             label = _version_label(resolved, raw_rows, version or "unknown")
             source_id = source_for("comm", resolved, label)
@@ -605,7 +686,13 @@ def import_aiconfigurator_system(
                 if dtype is None or "_eager" in str(row.get("kernel_source", "")):
                     dropped["collective"] = dropped.get("collective", 0) + 1
                     continue
-                key = (dtype, "all_reduce", int(row["num_gpus"]), 1, int(row["message_size"]))
+                key = (
+                    dtype,
+                    "all_reduce",
+                    int(row["num_gpus"]),
+                    1,
+                    int(row["message_size"]),
+                )
                 latency_us = float(row["latency"]) * 1000.0
                 current = collective_rows.get(key)
                 if current is None or latency_us < current["latency_us"]:
@@ -622,18 +709,34 @@ def import_aiconfigurator_system(
     if collective_rows:
         tables["collective"] = list(collective_rows.values())
 
+    from .modules import import_modules
+
+    import_modules(
+        system_path,
+        backend,
+        version,
+        upstream_commit,
+        tables,
+        sources,
+        overrides=module_sources,
+    )
     if not tables:
         raise ConfigurationError(
             f"no AIConfigurator tables found under {system_path} for backend={backend!r} version={version!r}"
         )
     meta = PackageMeta(
-        dataset_version=dataset_version or f"aiconfigurator-{system_name}-{backend}-{version or 'latest'}",
+        dataset_version=dataset_version
+        or f"aiconfigurator-{system_name}-{backend}-{version or 'latest'}",
         device_id=device_id,
         backend=backend,
         framework_version=version or (resolved_versions.get("gemm") or [""])[0],
         sources=sources,
         notes=(
-            ("Collected on this device with the AIConfigurator collector. " if flat_layout else "Imported from NVIDIA AIConfigurator measured kernel database. ")
+            (
+                "Collected on this device with the AIConfigurator collector. "
+                if flat_layout
+                else "Imported from NVIDIA AIConfigurator measured kernel database. "
+            )
             + f"Resolved versions: {resolved_versions}. Rows dropped (unsupported dtype/kernel): {dropped}."
         ),
         extra={

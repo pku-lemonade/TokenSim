@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import unittest
 
 from TokenSim.comm.collectives import (
@@ -21,6 +23,9 @@ from TokenSim.hardware.topology import TopologyLevel, TopologySpec
 from tests.support.hardware import make_device, make_links, make_model, make_topology
 
 
+ROOT = Path(__file__).resolve().parents[1]
+
+
 class DtypeTest(unittest.TestCase):
     def test_aliases_normalize_and_bytes(self):
         self.assertEqual(normalize_dtype("bfloat16"), "bf16")
@@ -36,7 +41,7 @@ class DtypeTest(unittest.TestCase):
             normalize_dtype("fp12")
 
     def test_four_bit_pipes_fall_back_to_fp8_then_fp16(self):
-        catalog = DeviceCatalog.load("data/devices")
+        catalog = DeviceCatalog.load(ROOT / "data/devices")
         gb300 = catalog.get("gb300")
         self.assertEqual(
             gb300.peak_compute_for("mxfp4").value, gb300.peak_compute["nvfp4"].value
@@ -58,7 +63,7 @@ class DtypeTest(unittest.TestCase):
 
 class DeviceCatalogTest(unittest.TestCase):
     def test_repository_catalog_loads_and_resolves_aliases(self):
-        catalog = DeviceCatalog.load("data/devices")
+        catalog = DeviceCatalog.load(ROOT / "data/devices")
         a100 = catalog.get("A100-40G")
         self.assertEqual(a100.device_id, "a100_sxm_40g")
         self.assertEqual(catalog.get("NVIDIA H100 80GB HBM3").device_id, "h100_sxm")
@@ -78,7 +83,7 @@ class DeviceCatalogTest(unittest.TestCase):
     def test_plain_product_numbers_resolve_to_the_sxm_part_not_the_superchip(self):
         # A cluster that names "B300" must simulate HGX B300, not GB300 NVL72:
         # the two differ in operator data, collective tables and topology.
-        catalog = DeviceCatalog.load("data/devices")
+        catalog = DeviceCatalog.load(ROOT / "data/devices")
         self.assertEqual(catalog.get("B200").device_id, "b200_sxm")
         self.assertEqual(catalog.get("B300").device_id, "b300_sxm")
         self.assertEqual(catalog.get("GB200").device_id, "gb200")
@@ -91,7 +96,7 @@ class DeviceCatalogTest(unittest.TestCase):
                     )
 
     def test_aiconfigurator_corrections_are_grade_c_on_nvidia_gpus(self):
-        catalog = DeviceCatalog.load("data/devices")
+        catalog = DeviceCatalog.load(ROOT / "data/devices")
         for name in ("a100_sxm_80g", "h100_sxm", "b200_sxm", "rtx_4090"):
             device = catalog.get(name)
             self.assertEqual(device.analytical_grade, "C", name)
@@ -149,7 +154,7 @@ class DeviceCatalogTest(unittest.TestCase):
 
 class ModelCatalogTest(unittest.TestCase):
     def test_repository_models_load_with_plausible_parameter_counts(self):
-        catalog = ModelCatalog.load("data/models")
+        catalog = ModelCatalog.load(ROOT / "data/models")
         llama7b = catalog.get("LLaMa-7B")
         self.assertAlmostEqual(llama7b.total_params() / 1e9, 6.74, places=1)
         llama70b = catalog.get("llama-2-70b")

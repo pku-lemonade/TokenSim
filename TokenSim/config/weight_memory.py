@@ -41,7 +41,9 @@ def packed_weight_memory(
         "mega_moe" if parallel.enable_expert_parallel else "fused"
     )
     if layout_backend not in ("mega_moe", "fused"):
-        raise ConfigurationError("compressed transformer weight layout must be mega_moe or fused")
+        raise ConfigurationError(
+            "compressed transformer weight layout must be mega_moe or fused"
+        )
     if layout_backend == "mega_moe" and not parallel.enable_expert_parallel:
         raise ConfigurationError(
             "compressed transformer MegaMoE layout requires expert parallelism"
@@ -66,7 +68,9 @@ def packed_weight_memory(
             "compressed transformer TP must divide attention heads and output groups"
         )
     if model.moe_intermediate_size % tp:
-        raise ConfigurationError("compressed transformer TP must divide expert intermediate width")
+        raise ConfigurationError(
+            "compressed transformer TP must divide expert intermediate width"
+        )
     placement = placement or build_expert_placement(
         model.moe, parallel, model.num_layers
     )
@@ -167,7 +171,9 @@ def packed_weight_memory(
     # the target embeddings and lm_head after load; it adds neither copy.
     vocab_padded = ceil(model.vocab_size / 64) * 64
     if vocab_padded % tp:
-        raise ConfigurationError("compressed transformer padded vocabulary must divide TP")
+        raise ConfigurationError(
+            "compressed transformer padded vocabulary must divide TP"
+        )
     add("embedding", "embedding", (vocab_padded // tp, h), "embedding")
     if not model.tie_word_embeddings:
         add("lm_head", "lm_head", (vocab_padded // tp, h), "lm_head")

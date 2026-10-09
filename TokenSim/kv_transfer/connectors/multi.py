@@ -14,6 +14,7 @@ from .metadata import (
 
 class MultiConnector(BaseKVConnector):
     name = "MultiConnector"
+    supports_grouped_cache = True
 
     def __init__(
         self,
@@ -50,7 +51,9 @@ class MultiConnector(BaseKVConnector):
             builder = getattr(child, "build_transfer_plan", None)
             if builder is not None:
                 return builder(**kwargs)
-        raise AttributeError("MultiConnector has no child that can build a transfer plan")
+        raise AttributeError(
+            "MultiConnector has no child that can build a transfer plan"
+        )
 
     def on_new_request(self, req) -> None:
         for child in self.children:
