@@ -222,7 +222,7 @@ class TopologyTest(unittest.TestCase):
         self.assertEqual(layout.lowest_common_level, 2)
 
     def test_default_operator_backend_is_vllm(self):
-        hardware = HardwareContext.load("data")
+        hardware = HardwareContext.load(ROOT / "data")
         self.assertEqual(hardware.operator_package("h100_sxm").backend, "vllm")
         self.assertEqual(
             hardware.operator_package("h100_sxm", "trtllm").backend, "trtllm"
@@ -234,7 +234,7 @@ class TopologyTest(unittest.TestCase):
         )
 
     def test_repository_topologies_reference_known_links(self):
-        hardware = HardwareContext.load("data")
+        hardware = HardwareContext.load(ROOT / "data")
         for topology in hardware.topologies:
             topology.validate_links(hardware.links)
         self.assertIn("groq_node8_rack72", {t.topology_id for t in hardware.topologies})
