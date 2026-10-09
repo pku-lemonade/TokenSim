@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from TokenSim.config.simulation import SimulationConfig
+
 import argparse
 import json
 import math
@@ -16,7 +18,7 @@ from TokenSim.hardware.links import LinkCatalog
 from TokenSim.latency.base import LatencyBackend
 from TokenSim.llm.llm_engine import LLMEngine, Task
 from TokenSim.llm.llm_request import Request, RequestStatus, g_time, reset_g_time
-from tests.hardware_fixtures import test_device, test_hardware, test_links, test_model
+from tests.support.hardware import make_device, make_hardware, make_links, make_model
 from util.request import LLMSource
 from util.results import export_result, get_connector_stats
 
@@ -25,8 +27,15 @@ DECODE_LATENCY = 0.0023
 
 # Tiny model so that a 32-token request spans exactly two 16-token blocks and
 # the KV bytes are easy to reason about: 1 head x head_dim 1 x (K,V) x fp16 x 1 layer = 4 B/token.
-_MODEL = test_model("TestModel", hidden_size=1, intermediate_size=2, num_layers=1, num_attention_heads=1, vocab_size=4)
-_DEVICE = test_device("TestGPU", memory_gib=0.0002)
+_MODEL = make_model(
+    "TestModel",
+    hidden_size=1,
+    intermediate_size=2,
+    num_layers=1,
+    num_attention_heads=1,
+    vocab_size=4,
+)
+_DEVICE = make_device("TestGPU", memory_gib=0.0002)
 
 
 class _DeterministicBackend(LatencyBackend):
@@ -64,8 +73,12 @@ def _pd_cluster() -> ClusterConfig:
         num_workers=2,
         networks={"net1": "ethernet-test"},
         worker_groups=[
-            WorkerGroupConfig(role="prefill", hardware="TestGPU", num_workers=1, network="net1"),
-            WorkerGroupConfig(role="decode", hardware="TestGPU", num_workers=1, network="net1"),
+            WorkerGroupConfig(
+                role="prefill", hardware="TestGPU", num_workers=1, network="net1"
+            ),
+            WorkerGroupConfig(
+                role="decode", hardware="TestGPU", num_workers=1, network="net1"
+            ),
         ],
         kv_transfer=KVTransferConfig(kv_connector="P2PConnector", kv_parallel_size=2),
     )
@@ -74,11 +87,13 @@ def _pd_cluster() -> ClusterConfig:
 def _expected_transfer_latency(bytes_: int) -> float:
     # Both workers share network net1, so the synthesized topology puts them in
     # one node connected by the device's scale-up link.
-    link = LinkCatalog(test_links()).get("nvlink-test")
+    link = LinkCatalog(make_links()).get("nvlink-test")
     return link.transfer_us(bytes_) * 1e-6
 
 
-def _run_single_request_p2p() -> tuple[LLMEngine, Request, _DeterministicBackend, float]:
+def _run_single_request_p2p() -> (
+    tuple[LLMEngine, Request, _DeterministicBackend, float]
+):
     reset_g_time()
     env = simpy.Environment()
     cluster = _pd_cluster()
@@ -86,20 +101,26 @@ def _run_single_request_p2p() -> tuple[LLMEngine, Request, _DeterministicBackend
     with patch("TokenSim.llm.llm_engine.build_latency_backend", return_value=backend):
         engine = LLMEngine(
             env=env,
-            block_size=16,
-            batching="paged-attn",
             kv_transfer_config=cluster.effective_kv_transfer(),
             psla_config=_psla_config(),
             cluster_config=cluster,
-            hardware=test_hardware(_DEVICE, models=[_MODEL]),
-            prefill_worker_pool_type="round_robin",
-            decode_worker_pool_type="round_robin",
-            max_parallem_sum=8,
-            max_occupy_ratio=1,
+            hardware=make_hardware(_DEVICE, models=[_MODEL]),
+            config=SimulationConfig(
+                block_size=16,
+                batching="paged-attn",
+                prefill_worker_pool_type="round_robin",
+                decode_worker_pool_type="round_robin",
+                max_num_seqs=8,
+                max_occupy_ratio=1,
+            ),
         )
     request = Request(id=0, prefill_len=32, decode_len=2, block_size=16)
 
-    env.process(LLMSource(env=env, engine=engine, requests=[request], qps=1, distribution="burst"))
+    env.process(
+        LLMSource(
+            env=env, engine=engine, requests=[request], qps=1, distribution="burst"
+        )
+    )
 
     def stop_when_done():
         deadline = 0.1
@@ -131,29 +152,57 @@ class KVTransferIntegrationTest(unittest.TestCase):
 
         self.assertTrue(request.is_done)
         self.assertEqual(request.status, RequestStatus.FINISHED_STOPPED)
-        self.assertEqual(len(g_time.time), 1)
-        self.assertEqual(g_time.time[0].id, request.id)
+        self.assertEqual(len(engine.timing_recorder.timing.time), 1)
+        self.assertEqual(engine.timing_recorder.timing.time[0].id, request.id)
         self.assertEqual(backend.calls, [("prefill", 1), ("decode", 1)])
         self.assertEqual(stats["connector_transfer_count"], 2)
         self.assertEqual(stats["connector_transfer_blocks"], expected_blocks * 2)
         self.assertEqual(stats["connector_transfer_bytes"], expected_bytes * 2)
         self.assertTrue(
-            math.isclose(stats["connector_transfer_latency"], expected_transfer_latency * 2, rel_tol=0, abs_tol=1e-15)
+            math.isclose(
+                stats["connector_transfer_latency"],
+                expected_transfer_latency * 2,
+                rel_tol=0,
+                abs_tol=1e-15,
+            )
         )
         self.assertTrue(
-            math.isclose(stats["connector_load_wait_time"], expected_transfer_latency, rel_tol=0, abs_tol=1e-15)
+            math.isclose(
+                stats["connector_load_wait_time"],
+                expected_transfer_latency,
+                rel_tol=0,
+                abs_tol=1e-15,
+            )
         )
         self.assertTrue(
-            math.isclose(stats["connector_save_wait_time"], expected_transfer_latency, rel_tol=0, abs_tol=1e-15)
+            math.isclose(
+                stats["connector_save_wait_time"],
+                expected_transfer_latency,
+                rel_tol=0,
+                abs_tol=1e-15,
+            )
         )
         self.assertEqual(stats["connector_producer_count"], 1)
         self.assertEqual(stats["connector_consumer_count"], 1)
         self.assertEqual(stats["connector_placement_decision_count"], 2)
         self.assertEqual(request.prefill_batch_size, 1)
         self.assertEqual(request.decode_batch_sum, 1)
-        self.assertTrue(math.isclose(request.prefill_service_time, PREFILL_LATENCY, rel_tol=0, abs_tol=1e-15))
-        self.assertTrue(math.isclose(request.decode_service_time_sum, DECODE_LATENCY, rel_tol=0, abs_tol=1e-15))
-        self.assertTrue(duration > request.prefill_service_time + request.decode_service_time_sum)
+        self.assertTrue(
+            math.isclose(
+                request.prefill_service_time, PREFILL_LATENCY, rel_tol=0, abs_tol=1e-15
+            )
+        )
+        self.assertTrue(
+            math.isclose(
+                request.decode_service_time_sum,
+                DECODE_LATENCY,
+                rel_tol=0,
+                abs_tol=1e-15,
+            )
+        )
+        self.assertTrue(
+            duration > request.prefill_service_time + request.decode_service_time_sum
+        )
         self.assertTrue(
             math.isclose(
                 request.decode_time_sum,
@@ -167,10 +216,12 @@ class KVTransferIntegrationTest(unittest.TestCase):
         engine, request, _, duration = _run_single_request_p2p()
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            args = argparse.Namespace(qps=1, batching="paged-attn", results_path=tmpdir, cluster="unused.json")
+            args = argparse.Namespace(
+                qps=1, batching="paged-attn", results_path=tmpdir, cluster="unused.json"
+            )
             export_result(
                 args=args,
-                g_time=g_time,
+                g_time=engine.timing_recorder.timing,
                 engine=engine,
                 model_config=_psla_config(),
                 cluster=_pd_cluster(),

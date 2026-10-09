@@ -175,10 +175,10 @@ class HybridKVBlockManager:
 
     def _fine_input_keys(self, req):
         """Trace-granularity keys for groups shorter than an engine block, or None."""
-        hashes = getattr(req, "native_trace_hash_ids", None)
+        hashes = getattr(req, "trace_hash_ids", None)
         if hashes is None:
             return None
-        trace_size = req.native_trace_block_size
+        trace_size = req.trace_block_size
         if req.id not in self.fine_keys:
             self.fine_keys[req.id] = tuple(
                 build_prefix_keys(
@@ -194,11 +194,11 @@ class HybridKVBlockManager:
         if (
             req is not None
             and group.block_tokens < self.block_size
-            and getattr(req, "native_trace_hash_ids", None) is not None
+            and getattr(req, "trace_hash_ids", None) is not None
         ):
             return self._fine_slot_key(
                 group.group_id, group.block_tokens, index,
-                self._fine_input_keys(req), req.native_trace_block_size,
+                self._fine_input_keys(req), req.trace_block_size,
             )
         return self._coarse_slot_key(group.group_id, group.block_tokens, index, keys)
 
@@ -218,7 +218,7 @@ class HybridKVBlockManager:
     def _slot_key_function(self, req):
         """``(spec, index) -> key`` with the request's keys resolved once."""
         keys = self._input_keys(req)
-        traced = getattr(req, "native_trace_hash_ids", None) is not None
+        traced = getattr(req, "trace_hash_ids", None) is not None
         fine = []
         coarse = self._coarse_slot_key
         fine_key = self._fine_slot_key
@@ -229,7 +229,7 @@ class HybridKVBlockManager:
                     fine.append(self._fine_input_keys(req))
                 return fine_key(
                     spec.group_id, spec.block_tokens, index, fine[0],
-                    req.native_trace_block_size,
+                    req.trace_block_size,
                 )
             return coarse(spec.group_id, spec.block_tokens, index, keys)
 

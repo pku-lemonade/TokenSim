@@ -1,924 +1,926 @@
+"""Closed-loop AgentX replay, warmup handoff, idle clocks and cancellation."""
+
 from __future__ import annotations
 
-import json
-import math
-import random
 from array import array
+import hashlib
+import heapq
+import math
+import sys
+import uuid
+from collections import Counter, defaultdict
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any, Iterable, Sequence, TYPE_CHECKING
 
 import simpy
 
-from TokenSim.errors import WorkloadValidationError
+from TokenSim.errors import SimulationStateError, WorkloadValidationError
 from TokenSim.llm.llm_request import Request
+from TokenSim.workload.agentx_support.models import Conversation, TraceGraph, TurnKey
+from TokenSim.workload.agentx_support.trajectory import (
+    SequentialTracePool,
+    Snapshot,
+    cache_scope,
+    initial_snapshots,
+    primer_schedule,
+)
 
-if TYPE_CHECKING:
-    from TokenSim.llm.llm_engine import LLMEngine
+REPLAY_PROTOCOL = "aiperf-49634d1c-native"
 
 
-_REQUEST_TYPES = {"n", "s"}
-_EPSILON = 1e-6
+def engine_hashes(
+    hashes, *, trace_block_size: int, engine_block_size: int, input_tokens: int
+) -> list[str | int]:
+    if engine_block_size % trace_block_size:
+        raise WorkloadValidationError(
+            "engine block size must be a multiple of trace hash block size"
+        )
+    width = engine_block_size // trace_block_size
+    complete = min(len(hashes) // width, input_tokens // engine_block_size)
+    if width == 1:
+        return list(hashes[:complete])
+    # Each engine block hashes its trace hashes as big-endian u64 values.
+    words = array("Q", hashes[: complete * width])
+    if sys.byteorder == "little":
+        words.byteswap()
+    data = words.tobytes()
+    stride = 8 * width
+    sha256 = hashlib.sha256
+    return [
+        sha256(data[i : i + stride]).hexdigest()
+        for i in range(0, complete * stride, stride)
+    ]
 
 
 @dataclass
-class AgentXRequestSpec:
-    t: float
-    prefill_len: int
-    decode_len: int
-    hash_ids: Sequence[int]
-    model: str
-    api_time: float | None = None
+class StreamCursor:
+    conversation: Conversation
+    index: int
+    active: bool
+    due: float | None
+    in_flight: Request | None = None
+    terminal: bool = False
+    ordinal: int = 0
 
 
 @dataclass
-class AgentXSubagentPlan:
-    agent_id: str
-    spawn_t: float
-    end_t: float
-    spawn_after: int
-    join_before: int
-    streams: list[list[AgentXRequestSpec]] = field(default_factory=list)
+class TreePlay:
+    graph: TraceGraph
+    lane: int
+    pass_index: int
+    origin_s: float
+    streams: dict[str, StreamCursor]
+    completed: set[TurnKey]
+    opened_branches: set[str]
+    scope: str
+    in_flight: int = 0
+    clock_origin_s: float = 0.0
+    idle_started_at: float | None = None
+    idle_cap_expired: bool = False
+    active_streams: dict[str, StreamCursor] = field(default_factory=dict)
+    unfinished_streams: int = 0
+
+    def __post_init__(self):
+        self.active_streams = {
+            cid: c for cid, c in self.streams.items() if c.active and not c.terminal
+        }
+        self.unfinished_streams = sum(not c.terminal for c in self.streams.values())
+
+    def set_terminal(self, cursor: StreamCursor) -> None:
+        if not cursor.terminal:
+            cursor.terminal = True
+            self.unfinished_streams -= 1
+        self.active_streams.pop(cursor.conversation.conversation_id, None)
+
+    def finished(self) -> bool:
+        return self.in_flight == 0 and self.unfinished_streams == 0
 
 
-@dataclass
-class AgentXTrace:
-    trace_id: str
-    block_size: int
-    roots: list[AgentXRequestSpec]
-    subagents: list[AgentXSubagentPlan]
-    # Top-level root requests split into parallel streams by hash-id chain
-    # affinity.  Each stream is a sequential chain of requests that share a
-    # common prefix progression; distinct streams can run concurrently.
-    root_streams: list[list[AgentXRequestSpec]] = field(default_factory=list)
+class AgentXReplay:
+    def __init__(
+        self,
+        env,
+        engine,
+        graphs: list[TraceGraph],
+        *,
+        block_size=256,
+        concurrency=196,
+        profile_duration=3600.0,
+        grace_period=30.0,
+        cancellation_timeout=10.0,
+        workload_seed=42,
+        warmup=True,
+        warmup_requests_per_lane=10,
+        warmup_grace_period=1800.0,
+        tree_idle_cap=300.0,
+        system_idle_cap=10.0,
+        issue_mode="closed_loop",
+        benchmark_id="agentx",
+        event_sink=None,
+        request_sink=None,
+    ):
+        for name, value in (
+            ("profile_duration", profile_duration),
+            ("grace_period", grace_period),
+            ("cancellation_timeout", cancellation_timeout),
+            ("warmup_grace_period", warmup_grace_period),
+        ):
+            if not math.isfinite(value) or value < 0:
+                raise WorkloadValidationError(f"{name} must be finite and nonnegative")
+        if profile_duration <= 0 or concurrency <= 0 or warmup_requests_per_lane < 0:
+            raise WorkloadValidationError(
+                "positive profile duration/concurrency and nonnegative warmup quota required"
+            )
+        for cap in (tree_idle_cap, system_idle_cap):
+            if cap is not None and (not math.isfinite(cap) or cap <= 0):
+                raise WorkloadValidationError("idle caps must be positive or None")
+        if not hasattr(engine, "cancel_requests"):
+            raise WorkloadValidationError(
+                "native replay requires engine cancellation support"
+            )
+        self.env, self.engine = env, engine
+        self.graphs = graphs
+        self.pool = SequentialTracePool(graphs)
+        self.block_size, self.concurrency = block_size, concurrency
+        self.profile_duration, self.grace_period = profile_duration, grace_period
+        self.cancellation_timeout = cancellation_timeout
+        self.workload_seed = self.random_seed = workload_seed
+        self.warmup, self.warmup_quota = warmup, warmup_requests_per_lane
+        self.warmup_grace_period = warmup_grace_period
+        self.tree_idle_cap, self.system_idle_cap = tree_idle_cap, system_idle_cap
+        if issue_mode not in ("closed_loop", "recorded"):
+            raise WorkloadValidationError("issue_mode must be closed_loop or recorded")
+        self.issue_mode = issue_mode
+        self.benchmark_id = benchmark_id
+        self.event_sink, self.request_sink = event_sink, request_sink
+        self.snapshots = (
+            initial_snapshots(self.pool, concurrency, workload_seed=workload_seed)
+            if warmup
+            else []
+        )
+        self.initial_graphs = (
+            [s.graph for s in self.snapshots]
+            if warmup
+            else [self.pool.next_graph() for _ in range(concurrency)]
+        )
+        self.initial_trace_ids = [g.trace_id for g in self.initial_graphs]
+        self.recycle_trace_ids = [[] for _ in range(concurrency)]
+        self.pass_counts = defaultdict(int)
+        self.trees: list[TreePlay] = []
+        self.requests, self.warmup_requests = [], []
+        self.records = []
+        self.phase_counts = {phase: Counter() for phase in ("warmup", "profiling")}
+        self.pressure_sent = [0] * concurrency
+        self.profile_started_at = self.profile_finished_at = None
+        self.issue_window_end_at = None
+        self.phase = "initial"
+        self.accepting = True
+        self.play_count = 0
+        self._next_id = 0
+        self._in_flight: dict[
+            int, tuple[Request, TreePlay | None, str | None, bool]
+        ] = {}
+        self._changed = env.event()
+        self._global_idle_started = env.now
+        self._epoch = 0
+        self.tree_idle_jumps = self.system_idle_jumps = 0
+        self.tree_idle_seconds_skipped = self.system_idle_seconds_skipped = 0.0
+        self.trace_ids_used = {"warmup": set(), "profiling": set()}
+        self.source_ids_used = {"warmup": set(), "profiling": set()}
+        self.in_flight_at_window_end = 0
+        self.cancel_unreturned = 0
+        self._cached_wake = None
+        self._recorded_timer_heap = []
+        self._recorded_timer_sequence = 0
 
     @property
-    def request_count(self) -> int:
-        return len(self.roots) + sum(
-            len(stream) for plan in self.subagents for stream in plan.streams
+    def profile_elapsed(self):
+        if self.profile_started_at is None:
+            return 0.0
+        end = (
+            self.env.now
+            if self.profile_finished_at is None
+            else self.profile_finished_at
+        )
+        return max(0.0, end - self.profile_started_at)
+
+    @property
+    def metric_observation_duration(self):
+        completed = [r for r in self.requests if r.completed_at is not None]
+        if not completed:
+            return 0.0
+        return max(r.completed_at for r in completed) - min(
+            r.arrival_at for r in completed
         )
 
-    def all_requests(self) -> Iterable[AgentXRequestSpec]:
-        yield from self.roots
-        for plan in self.subagents:
-            for stream in plan.streams:
-                yield from stream
+    def runtime_metadata(self):
+        return {
+            "replay_protocol": REPLAY_PROTOCOL,
+            "trace_count": len(self.graphs),
+            "dataset_request_count": sum(g.request_count for g in self.graphs),
+            "play_count": self.play_count,
+            "warmup_request_count": len(self.warmup_requests),
+            "warmup_duration_s": self.profile_started_at or 0,
+            "workload_seed": self.workload_seed,
+            "initial_trace_ids": self.initial_trace_ids,
+            "recycle_trace_ids": self.recycle_trace_ids,
+            "phase_request_counts": {p: dict(c) for p, c in self.phase_counts.items()},
+            "phase_trace_counts": {
+                p: len(ids) for p, ids in self.trace_ids_used.items()
+            },
+            "phase_unique_original_requests": {
+                p: len(ids) for p, ids in self.source_ids_used.items()
+            },
+            "issue_window_s": self.profile_duration,
+            "grace_period_s": self.grace_period,
+            "cancellation_timeout_s": self.cancellation_timeout,
+            "profile_elapsed_s": self.profile_elapsed,
+            "metric_observation_duration_s": self.metric_observation_duration,
+            "in_flight_at_cutoff": self.in_flight_at_window_end,
+            "cancel_unreturned": self.cancel_unreturned,
+            "tree_idle_jumps": self.tree_idle_jumps,
+            "system_idle_jumps": self.system_idle_jumps,
+            "tree_idle_seconds_skipped": self.tree_idle_seconds_skipped,
+            "system_idle_seconds_skipped": self.system_idle_seconds_skipped,
+            "issue_mode": self.issue_mode,
+        }
 
+    def _recorded_due(self, origin_s, request_s, clock_origin_s=None):
+        # A recycled tree starts its own source clock at the recycle time.
+        anchor = self.env.now if clock_origin_s is None else clock_origin_s
+        return anchor + max(0.0, request_s - origin_s)
 
-def load_agentx_traces(
-    dataset_path: str,
-    *,
-    trace_count: int | None = None,
-    trace_skip_count: int = 0,
-) -> list[AgentXTrace]:
-    """Load SemiAnalysis WEKA JSONL traces without materializing the whole file."""
-    path = Path(dataset_path)
-    if not path.exists():
-        raise WorkloadValidationError(f"AgentX dataset path not found: {dataset_path}")
-    if trace_count is not None and trace_count <= 0:
-        raise WorkloadValidationError("agentx_trace_count must be positive")
-    if trace_skip_count < 0:
-        raise WorkloadValidationError("dataset_skip_count cannot be negative")
-    traces: list[AgentXTrace] = []
-    for record_index, record in enumerate(_iter_trace_records(path)):
-        if record_index < trace_skip_count:
-            continue
-        trace = _parse_trace(record, record_index)
-        traces.append(trace)
-        if trace_count is not None and len(traces) >= trace_count:
-            break
-    if not traces:
-        raise WorkloadValidationError(f"no AgentX traces loaded from {dataset_path}")
-    return traces
+    def _set_due(self, cursor, due):
+        cursor.due = due
+        if self.issue_mode == "recorded" and due is not None:
+            self._recorded_timer_sequence += 1
+            heapq.heappush(
+                self._recorded_timer_heap,
+                (due, self._recorded_timer_sequence, cursor),
+            )
 
+    def _register_play_timers(self, play):
+        if self.issue_mode != "recorded":
+            return
+        for cursor in play.active_streams.values():
+            if cursor.due is not None:
+                self._set_due(cursor, cursor.due)
 
-def _iter_trace_records(path: Path) -> Iterable[dict[str, Any]]:
-    files = sorted(path.glob("*.json*")) if path.is_dir() else [path]
-    if not files:
-        raise WorkloadValidationError(f"no JSON trace files found in {path}")
-    for file_path in files:
-        with file_path.open("r") as file:
-            first = file.read(1)
-            file.seek(0)
-            if first in {"[", "{"} and file_path.suffix == ".json":
-                try:
-                    payload = json.load(file)
-                except json.JSONDecodeError as exc:
-                    raise WorkloadValidationError(
-                        f"invalid AgentX JSON in {file_path}: {exc}"
-                    ) from exc
-                records = payload if isinstance(payload, list) else [payload]
-                for record in records:
-                    if not isinstance(record, dict):
-                        raise WorkloadValidationError(
-                            f"AgentX records in {file_path} must be objects"
-                        )
-                    yield record
+    def _next_recorded_timer(self):
+        while self._recorded_timer_heap:
+            due, _, cursor = self._recorded_timer_heap[0]
+            if (
+                cursor.terminal
+                or not cursor.active
+                or cursor.in_flight is not None
+                or cursor.due != due
+                or due <= self.env.now + 1e-9
+            ):
+                heapq.heappop(self._recorded_timer_heap)
                 continue
-            for line_number, line in enumerate(file, start=1):
-                if not line.strip():
-                    continue
-                try:
-                    record = json.loads(line)
-                except json.JSONDecodeError as exc:
-                    raise WorkloadValidationError(
-                        f"invalid AgentX JSONL at {file_path}:{line_number}: {exc}"
-                    ) from exc
-                if not isinstance(record, dict):
-                    raise WorkloadValidationError(
-                        f"AgentX record at {file_path}:{line_number} must be an object"
-                    )
-                yield record
+            return due
+        return None
 
-
-def _parse_trace(record: dict[str, Any], record_index: int) -> AgentXTrace:
-    trace_id = str(record.get("id", f"trace-{record_index}"))
-    block_size = _positive_int(record.get("block_size"), "block_size", trace_id)
-    if record.get("hash_id_scope", "local") != "local":
-        raise WorkloadValidationError(
-            f"AgentX trace {trace_id} uses unsupported non-local hash IDs"
-        )
-    entries = record.get("requests")
-    if not isinstance(entries, list):
-        raise WorkloadValidationError(
-            f"AgentX trace {trace_id} requests must be a list"
-        )
-
-    roots: list[AgentXRequestSpec] = []
-    pending_subagents: list[tuple[dict[str, Any], int]] = []
-    for entry_index, entry in enumerate(entries):
-        if not isinstance(entry, dict):
-            raise WorkloadValidationError(
-                f"AgentX trace {trace_id} request {entry_index} must be an object"
+    def _next_due(self, play, cursor, turn):
+        if self.issue_mode == "recorded":
+            return self._recorded_due(
+                play.origin_s, turn.request.t, play.clock_origin_s
             )
-        request_type = entry.get("type")
-        if request_type in _REQUEST_TYPES:
-            roots.append(_parse_request(entry, trace_id, entry_index))
-        elif request_type == "subagent":
-            if not roots:
-                raise WorkloadValidationError(
-                    f"AgentX trace {trace_id} has a subagent before its first root"
-                )
-            pending_subagents.append((entry, len(roots) - 1))
-        else:
-            raise WorkloadValidationError(
-                f"AgentX trace {trace_id} request {entry_index} has unknown type {request_type!r}"
-            )
-    if not roots:
-        raise WorkloadValidationError(f"AgentX trace {trace_id} has no root requests")
+        return self.env.now + turn.wait_after_previous_s
 
-    subagents: list[AgentXSubagentPlan] = []
-    for subagent_index, (entry, spawn_after) in enumerate(pending_subagents):
-        spawn_t = _finite_nonnegative(entry.get("t", 0), "subagent t", trace_id)
-        inner_rows = entry.get("requests", [])
-        if not isinstance(inner_rows, list):
-            raise WorkloadValidationError(
-                f"AgentX trace {trace_id} subagent requests must be a list"
-            )
-        inner: list[AgentXRequestSpec] = []
-        for inner_index, row in enumerate(inner_rows):
-            spec = _parse_request(
-                row, trace_id, f"subagent-{subagent_index}-{inner_index}"
-            )
-            if spec.t + _EPSILON < spawn_t:
-                spec.t += spawn_t
-            inner.append(spec)
-        inner.sort(key=lambda spec: spec.t)
-        duration_ms = entry.get("duration_ms")
-        try:
-            duration_value = float(duration_ms) if duration_ms is not None else None
-        except (TypeError, ValueError):
-            duration_value = None
-        if duration_value is not None and math.isfinite(duration_value):
-            end_t = spawn_t + max(0.0, duration_value / 1000.0)
-        elif inner:
-            end_t = max(spec.t + _api_duration(spec.api_time) for spec in inner)
-        else:
-            end_t = spawn_t
-        join_before = next(
-            (
-                idx
-                for idx, root in enumerate(roots)
-                if idx > spawn_after and root.t >= end_t
-            ),
-            len(roots),
+    def capacity_request(self):
+        turns = [turn for graph in self.graphs for turn in graph.all_turns()]
+        maximum_input = max(t.request.input_length for t in turns)
+        maximum_context = max(
+            t.request.input_length + t.requested_output_tokens for t in turns
         )
-        subagents.append(
-            AgentXSubagentPlan(
-                agent_id=str(entry.get("agent_id", f"subagent-{subagent_index}")),
-                spawn_t=spawn_t,
-                end_t=end_t,
-                spawn_after=spawn_after,
-                join_before=join_before,
-                streams=_partition_streams(inner),
-            )
+        return Request(
+            -1, maximum_input, max(1, maximum_context - maximum_input), self.block_size
         )
-    root_streams = _partition_streams(roots)
-    return AgentXTrace(trace_id, block_size, roots, subagents, root_streams)
 
-
-def _parse_request(
-    row: Any,
-    trace_id: str,
-    request_index: int | str,
-) -> AgentXRequestSpec:
-    if not isinstance(row, dict) or row.get("type") not in _REQUEST_TYPES:
-        raise WorkloadValidationError(
-            f"AgentX trace {trace_id} request {request_index} must have type 'n' or 's'"
-        )
-    hashes = row.get("hash_ids", [])
-    if not isinstance(hashes, list):
-        raise WorkloadValidationError(
-            f"AgentX trace {trace_id} request {request_index} hash_ids must be a list"
-        )
-    try:
-        hash_type = "q" if any(int(value) < 0 for value in hashes) else "Q"
-        compact_hashes: Sequence[int] = array(
-            hash_type, (int(value) for value in hashes)
-        )
-    except (OverflowError, TypeError, ValueError) as exc:
-        raise WorkloadValidationError(
-            f"AgentX trace {trace_id} request {request_index} has invalid hash_ids"
-        ) from exc
-    api_time = row.get("api_time")
-    try:
-        api_time = float(api_time) if api_time is not None else None
-    except (TypeError, ValueError):
-        api_time = None
-    if api_time is not None and (not math.isfinite(api_time) or api_time < 0):
-        api_time = None
-    try:
-        decode_len = max(1, int(row.get("out", 1)))
-    except (TypeError, ValueError) as exc:
-        raise WorkloadValidationError(
-            f"AgentX trace {trace_id} request {request_index} has invalid out"
-        ) from exc
-    return AgentXRequestSpec(
-        t=_finite_nonnegative(row.get("t"), "request t", trace_id),
-        prefill_len=_positive_int(row.get("in"), "in", trace_id),
-        decode_len=decode_len,
-        hash_ids=compact_hashes,
-        model=str(row.get("model", "unknown")),
-        api_time=api_time,
-    )
-
-
-def _partition_streams(
-    requests: list[AgentXRequestSpec],
-) -> list[list[AgentXRequestSpec]]:
-    """Recover overlapping subagent streams with hash-LCP affinity."""
-    streams: list[list[AgentXRequestSpec]] = []
-    for request in requests:
-        best_stream: list[AgentXRequestSpec] | None = None
-        best_lcp = -1
-        for stream in streams:
-            previous = stream[-1]
-            previous_end = previous.t + _api_duration(previous.api_time)
-            if previous_end > request.t + _EPSILON:
-                continue
-            lcp = _hash_lcp(previous.hash_ids, request.hash_ids)
-            if lcp > best_lcp:
-                best_lcp = lcp
-                best_stream = stream
-        if best_stream is None:
-            streams.append([request])
-        else:
-            best_stream.append(request)
-    return streams
-
-
-class _SystemIdleCoordinator:
-    """Shift pending replay timers together only while the whole engine is idle."""
-
-    def __init__(self, env: simpy.Environment, idle_gap_cap: float | None) -> None:
-        self.env = env
-        self.idle_gap_cap = idle_gap_cap
-        self.in_flight = 0
-        self.idle_started_at: float | None = env.now
-        self.pending: dict[int, tuple[float, simpy.Event]] = {}
-        self._next_id = 0
-        self._changed = env.event()
-        env.process(self._run())
-
-    def delay(self, seconds: float) -> simpy.Event:
-        event = self.env.event()
-        timer_id = self._next_id
-        self._next_id += 1
-        self.pending[timer_id] = (self.env.now + max(0.0, seconds), event)
-        self._notify()
-        return event
-
-    def request_started(self) -> None:
-        self.in_flight += 1
-        self.idle_started_at = None
-        self._notify()
-
-    def request_finished(self) -> None:
-        self.in_flight = max(0, self.in_flight - 1)
-        if self.in_flight == 0:
-            self.idle_started_at = self.env.now
-        self._notify()
-
-    def reset_idle_window(self) -> None:
-        if self.in_flight == 0:
-            self.idle_started_at = self.env.now
-        self._notify()
-
-    def _notify(self) -> None:
+    def _notify(self):
         if not self._changed.triggered:
             self._changed.succeed()
         self._changed = self.env.event()
 
-    def _run(self):
-        while True:
-            if not self.pending:
-                changed = self._changed
-                yield changed
-                continue
-
-            earliest = min(target for target, _ in self.pending.values())
-            wake_at = earliest
-            if (
-                self.idle_gap_cap is not None
-                and self.in_flight == 0
-                and self.idle_started_at is not None
-            ):
-                wake_at = min(wake_at, self.idle_started_at + self.idle_gap_cap)
-
-            changed = self._changed
-            timeout = self.env.timeout(max(0.0, wake_at - self.env.now))
-            outcome = yield simpy.events.AnyOf(self.env, [timeout, changed])
-            if changed in outcome:
-                continue
-
-            if (
-                self.idle_gap_cap is not None
-                and self.in_flight == 0
-                and self.idle_started_at is not None
-                and earliest > self.idle_started_at + self.idle_gap_cap + _EPSILON
-            ):
-                shift = earliest - (self.idle_started_at + self.idle_gap_cap)
-                self.pending = {
-                    timer_id: (target - shift, event)
-                    for timer_id, (target, event) in self.pending.items()
-                }
-
-            ready = [
-                timer_id
-                for timer_id, (target, _) in self.pending.items()
-                if target <= self.env.now + _EPSILON
-            ]
-            for timer_id in ready:
-                _, event = self.pending.pop(timer_id)
-                if not event.triggered:
-                    event.succeed()
-
-
-class AgentXReplay:
-    """Closed-loop AgentX session-tree replay for a TokenSim engine."""
-
-    def __init__(
-        self,
-        env: simpy.Environment,
-        engine: LLMEngine,
-        traces: list[AgentXTrace],
-        *,
-        block_size: int,
-        concurrency: int,
-        profile_duration: float | None = None,
-        max_requests: int | None = None,
-        system_idle_gap_cap: float | None = 10.0,
-        warmup: bool = True,
-        warmup_min_ratio: float = 0.0,
-        warmup_max_ratio: float = 1.0,
-        random_seed: int = 0,
-        tqdm_submit_func=None,
-    ) -> None:
-        if concurrency <= 0:
-            raise WorkloadValidationError("agentx_concurrency must be positive")
-        if profile_duration is not None and profile_duration <= 0:
-            raise WorkloadValidationError("agentx_profile_duration must be positive")
-        if max_requests is not None and max_requests <= 0:
-            raise WorkloadValidationError("agentx_max_requests must be positive")
-        if system_idle_gap_cap is not None and (
-            not math.isfinite(system_idle_gap_cap) or system_idle_gap_cap <= 0
-        ):
-            raise WorkloadValidationError("agentx_idle_gap_cap must be positive")
-        if not 0 <= warmup_min_ratio <= warmup_max_ratio <= 1:
-            raise WorkloadValidationError(
-                "AgentX warmup ratios must satisfy 0 <= min <= max <= 1"
-            )
-        mismatched = [
-            trace.trace_id for trace in traces if trace.block_size != block_size
-        ]
-        if mismatched:
-            raise WorkloadValidationError(
-                f"AgentX trace block_size must match --block_size={block_size}; "
-                f"mismatched traces: {mismatched[:3]}"
-            )
-        self.env = env
-        self.engine = engine
-        self.traces = traces
-        self.block_size = block_size
-        self.concurrency = concurrency
-        self.profile_duration = profile_duration
-        self.max_requests = max_requests
-        self.system_idle_gap_cap = system_idle_gap_cap
-        self.warmup = warmup
-        self.warmup_min_ratio = warmup_min_ratio
-        self.warmup_max_ratio = warmup_max_ratio
-        self.random_seed = random_seed
-        self.random = random.Random(random_seed)
-        self.tqdm_submit_func = tqdm_submit_func
-        self.requests: list[Request] = []
-        self.warmup_requests: list[Request] = []
-        self.profile_started_at: float | None = None
-        self.profile_finished_at: float | None = None
-        self.play_count = 0
-        self._next_request_id = 0
-        self._idle_coordinator = _SystemIdleCoordinator(env, system_idle_gap_cap)
-        # Seed-shuffled trace pool: deterministic per seed, independent of
-        # dataset file order.  The pool is shuffled once; initial lane
-        # assignment and recycle both draw round-robin from this order.
-        self._shuffled_traces = list(traces)
-        self.random.shuffle(self._shuffled_traces)
-        # Record trace assignments for reproducibility diagnostics.
-        self.initial_trace_ids: list[str] = []
-        self.recycle_trace_ids: list[list[str]] = []
-
-    @property
-    def profile_elapsed(self) -> float:
-        if self.profile_started_at is None or self.profile_finished_at is None:
-            return 0.0
-        return max(0.0, self.profile_finished_at - self.profile_started_at)
-
-    def capacity_request(self) -> Request:
-        specs = [spec for trace in self.traces for spec in trace.all_requests()]
-        max_prefill = max(spec.prefill_len for spec in specs)
-        max_context = max(spec.prefill_len + spec.decode_len for spec in specs)
-        return Request(
-            id=-1,
-            prefill_len=max_prefill,
-            decode_len=max(1, max_context - max_prefill),
-            block_size=self.block_size,
-        )
-
-    def _trace_for_lane(self, lane: int, play_id: int) -> AgentXTrace:
-        """Select a trace from the seed-shuffled pool for a given lane/play."""
-        idx = (lane + play_id * self.concurrency) % len(self._shuffled_traces)
-        return self._shuffled_traces[idx]
-
-    def run(self):
-        lane_cutoffs: list[float | None] = []
-        if self.warmup:
-            warmup_processes = []
-            for lane in range(self.concurrency):
-                trace = self._trace_for_lane(lane, 0)
-                cutoff = self._warmup_cutoff(trace)
-                lane_cutoffs.append(cutoff)
-                warmup_processes.append(
-                    self.env.process(self._warm_lane(lane, trace, cutoff))
-                )
-            if warmup_processes:
-                yield simpy.events.AllOf(self.env, warmup_processes)
-            while self._pending_async_jobs() > 0:
-                yield self.env.timeout(0.001)
-            self.engine.reset_profile_stats()
-        else:
-            lane_cutoffs = [None] * self.concurrency
-
-        self.profile_started_at = self.env.now
-        self._idle_coordinator.reset_idle_window()
-        lanes = [
-            self.env.process(self._run_lane(lane, lane_cutoffs[lane]))
-            for lane in range(self.concurrency)
-        ]
-        if lanes:
-            lanes_done = simpy.events.AllOf(self.env, lanes)
-            if self.profile_duration is not None:
-                deadline = self.profile_started_at + self.profile_duration
-                deadline_event = self.env.timeout(self.profile_duration)
-                outcome = yield simpy.events.AnyOf(
-                    self.env,
-                    [lanes_done, deadline_event],
-                )
-                if deadline_event in outcome:
-                    # Stop at the exact measurement deadline. Benchmark.main
-                    # runs until this replay process, so post-deadline engine
-                    # events cannot leak into metrics.
-                    self.profile_finished_at = deadline
-                    self.requests = [
-                        request
-                        for request in self.requests
-                        if request.completed_at is not None
-                        and request.completed_at <= deadline + _EPSILON
-                    ]
-                    return
-                else:
-                    self.profile_finished_at = self.env.now
-            else:
-                yield lanes_done
-                self.profile_finished_at = self.env.now
-        else:
-            self.profile_finished_at = self.env.now
-
-    def _run_lane(self, lane: int, initial_cutoff: float | None):
-        play_id = 0
-        while True:
-            if play_id > 0 and self.profile_duration is None:
-                break
-            if self._profile_limit_reached():
-                break
-            trace = self._trace_for_lane(lane, play_id)
-            # Record assignments for reproducibility.
-            if play_id == 0:
-                self.initial_trace_ids.append(trace.trace_id)
-            else:
-                while len(self.recycle_trace_ids) <= lane:
-                    self.recycle_trace_ids.append([])
-                self.recycle_trace_ids[lane].append(trace.trace_id)
-            self.play_count += 1
-            yield self.env.process(
-                self._run_trace(
-                    lane,
-                    play_id,
-                    trace,
-                    cutoff=initial_cutoff if play_id == 0 else None,
-                )
-            )
-            play_id += 1
-
-    def _run_trace(
-        self,
-        lane: int,
-        play_id: int,
-        trace: AgentXTrace,
-        *,
-        cutoff: float | None,
-    ):
-        root_streams = trace.root_streams
-        if not root_streams:
-            root_streams = [trace.roots]
-
-        start_root = 0
-        if cutoff is not None:
-            start_root = next(
-                (idx for idx, root in enumerate(trace.roots) if root.t > cutoff),
-                len(trace.roots),
+    def _event(self, kind, **data):
+        if self.event_sink:
+            self.event_sink(
+                {"time_s": self.env.now, "phase": self.phase, "kind": kind, **data}
             )
 
-        # Events keyed by flat root index: subagent completions that must be
-        # awaited before the root request at that index can proceed.
-        branch_events: dict[int, list[simpy.Event]] = {}
-        # Events keyed by flat root index: signalled when that root request
-        # completes, so subagent spawns can trigger.
-        root_done_events: dict[int, simpy.Event] = {}
-        for idx in range(len(trace.roots)):
-            root_done_events[idx] = self.env.event()
-
-        if cutoff is not None:
-            for plan in trace.subagents:
-                if plan.end_t <= cutoff or plan.spawn_after >= start_root:
-                    continue
-                plan_events: list[simpy.Event] = [
-                    self._delay(max(0.0, plan.end_t - cutoff))
-                ]
-                for stream_index, stream in enumerate(plan.streams):
-                    first = next(
-                        (idx for idx, spec in enumerate(stream) if spec.t > cutoff),
-                        len(stream),
+    def _tree(self, graph, lane, snapshot: Snapshot | None = None):
+        pass_index = self.pass_counts[graph.trace_id]
+        self.pass_counts[graph.trace_id] += 1
+        states = {s.conversation_id: s for s in snapshot.states} if snapshot else {}
+        boundaries = dict(snapshot.completed_boundaries) if snapshot else {}
+        streams = {}
+        completed = set()
+        for ordinal, conv in enumerate(graph.conversations):
+            index = boundaries.get(conv.conversation_id, 0)
+            completed.update(TurnKey(conv.conversation_id, i) for i in range(index))
+            state = states.get(conv.conversation_id)
+            terminal = index >= len(conv.turns) and bool(snapshot)
+            active = state is not None if snapshot else conv is graph.root
+            if state:
+                index = state.next_turn_index
+            if state:
+                due = self.env.now + state.dispatch_offset_s
+            elif active and index < len(conv.turns):
+                due = (
+                    self.env.now
+                    if self.issue_mode == "closed_loop"
+                    else self._recorded_due(
+                        snapshot.t_star_ms / 1000 if snapshot else graph.time_start_s,
+                        conv.turns[index].request.t,
                     )
-                    if first >= len(stream):
-                        continue
-                    event = self.env.process(
-                        self._run_child_stream(
-                            lane,
-                            play_id,
-                            trace,
-                            plan,
-                            stream_index,
-                            stream[first:],
-                            ready_from=cutoff,
-                        )
-                    )
-                    plan_events.append(event)
-                branch_events.setdefault(plan.join_before, []).extend(plan_events)
-
-        # Run each root stream as an independent simpy process.
-        stream_processes = []
-        for stream_idx, stream in enumerate(root_streams):
-            proc = self.env.process(
-                self._run_root_stream(
-                    lane,
-                    play_id,
-                    trace,
-                    stream_idx,
-                    stream,
-                    start_root=start_root,
-                    cutoff=cutoff,
-                    branch_events=branch_events,
-                    root_done_events=root_done_events,
                 )
+            else:
+                due = None
+            streams[conv.conversation_id] = StreamCursor(
+                conv, index, active, due, terminal=terminal, ordinal=ordinal
             )
-            stream_processes.append(proc)
-
-        if stream_processes:
-            yield simpy.events.AllOf(self.env, stream_processes)
-
-        remaining = [event for events in branch_events.values() for event in events]
-        if remaining:
-            yield simpy.events.AllOf(self.env, remaining)
-
-    def _run_root_stream(
-        self,
-        lane: int,
-        play_id: int,
-        trace: AgentXTrace,
-        stream_idx: int,
-        stream: list[AgentXRequestSpec],
-        *,
-        start_root: int,
-        cutoff: float | None,
-        branch_events: dict[int, list[simpy.Event]],
-        root_done_events: dict[int, simpy.Event],
-    ):
-        """Run one root stream: requests execute sequentially within a stream,
-        but multiple root streams run in parallel."""
-        spec_id_to_flat: dict[int, int] = {
-            id(s): idx for idx, s in enumerate(trace.roots)
+        opened = {
+            b.branch_id
+            for b in graph.branches
+            if snapshot
+            and (
+                b.spawning_turn_index < boundaries.get(graph.trace_id, 0)
+                or any(cid in states for cid in b.child_conversation_ids)
+            )
         }
-        stream_id = f"root:{stream_idx}" if len(trace.root_streams) > 1 else "root"
-        previous: AgentXRequestSpec | None = None
-        for spec in stream:
-            flat_idx = spec_id_to_flat[id(spec)]
-            if flat_idx < start_root:
-                continue
+        play = TreePlay(
+            graph,
+            lane,
+            pass_index,
+            snapshot.t_star_ms / 1000 if snapshot else graph.time_start_s,
+            streams,
+            completed,
+            opened,
+            cache_scope(self.benchmark_id, pass_index, lane, graph.trace_id),
+            clock_origin_s=self.env.now,
+            idle_started_at=self.env.now,
+        )
+        self.play_count += 1
+        self._register_play_timers(play)
+        return play
 
-            # Wait for the inter-request delay within this stream.
-            if previous is not None:
-                yield self._delay(_end_to_start_delay(previous, spec))
-            elif cutoff is not None:
-                yield self._delay(max(0.0, spec.t - cutoff))
-            else:
-                yield self._delay(max(0.0, spec.t))
-
-            # Wait for subagent join barriers targeting this root index.
-            dependencies = branch_events.get(flat_idx, [])
-            if dependencies:
-                yield simpy.events.AllOf(self.env, dependencies)
-
-            completed = yield self.env.process(
-                self._submit(lane, play_id, trace, stream_id, flat_idx, spec)
-            )
-            if not completed:
-                break
-
-            # Signal that this root request is done.
-            done_event = root_done_events.get(flat_idx)
-            if done_event is not None and not done_event.triggered:
-                done_event.succeed()
-
-            # Spawn subagents that trigger after this root request.
-            for plan in trace.subagents:
-                if plan.spawn_after != flat_idx:
-                    continue
-                if cutoff is not None and plan.spawn_t <= cutoff:
-                    continue
-                ready_from = spec.t + _api_duration(spec.api_time)
-                plan_events: list[simpy.Event] = [
-                    self._delay(max(0.0, plan.end_t - ready_from))
-                ]
-                for child_stream_index, child_stream in enumerate(plan.streams):
-                    event = self.env.process(
-                        self._run_child_stream(
-                            lane,
-                            play_id,
-                            trace,
-                            plan,
-                            child_stream_index,
-                            child_stream,
-                            ready_from=ready_from,
-                        )
-                    )
-                    plan_events.append(event)
-                branch_events.setdefault(plan.join_before, []).extend(plan_events)
-
-            previous = spec
-
-    def _run_child_stream(
-        self,
-        lane: int,
-        play_id: int,
-        trace: AgentXTrace,
-        plan: AgentXSubagentPlan,
-        stream_index: int,
-        stream: list[AgentXRequestSpec],
-        *,
-        ready_from: float,
-    ):
-        if not stream:
-            yield self._delay(max(0.0, plan.end_t - ready_from))
-            return
-        yield self._delay(max(0.0, stream[0].t - ready_from))
-        previous: AgentXRequestSpec | None = None
-        for turn_index, spec in enumerate(stream):
-            if previous is not None:
-                yield self._delay(_end_to_start_delay(previous, spec))
-            completed = yield self.env.process(
-                self._submit(
-                    lane,
-                    play_id,
-                    trace,
-                    f"{plan.agent_id}:{stream_index}",
-                    turn_index,
-                    spec,
-                )
-            )
-            if not completed:
-                return
-            previous = spec
-        last = stream[-1]
-        yield self._delay(
-            max(0.0, plan.end_t - (last.t + _api_duration(last.api_time)))
+    def _joins_ready(self, play, cursor):
+        if cursor.conversation is not play.graph.root:
+            return True
+        return all(
+            b.branch_id in play.opened_branches
+            and all(play.streams[cid].terminal for cid in b.child_conversation_ids)
+            for b in play.graph.branches
+            if b.join_turn_index == cursor.index
         )
 
-    def _submit(
-        self,
-        lane: int,
-        play_id: int,
-        trace: AgentXTrace,
-        stream_id: str,
-        turn_index: int,
-        spec: AgentXRequestSpec,
-    ):
-        if self._profile_limit_reached():
+    def _ready(self, play, cursor):
+        if (
+            not cursor.active
+            or cursor.terminal
+            or cursor.in_flight
+            or cursor.index >= len(cursor.conversation.turns)
+        ):
             return False
-        request = self._make_request(
-            lane, play_id, trace, stream_id, turn_index, spec, warmup=False
+        turn = cursor.conversation.turns[cursor.index]
+        return (
+            cursor.due is not None
+            and cursor.due <= self.env.now + 1e-9
+            and self._joins_ready(play, cursor)
+            and all(p in play.completed for p in turn.predecessors)
         )
-        self.requests.append(request)
-        request.arrive(self.env)
-        self._idle_coordinator.request_started()
-        self.engine.add_requests([request])
-        yield request.completion_event
-        self._idle_coordinator.request_finished()
-        yield self.env.timeout(0)
-        request.release_logical_blocks()
-        return True
 
-    def _warm_lane(self, lane: int, trace: AgentXTrace, cutoff: float):
-        specs: list[tuple[str, int, AgentXRequestSpec]] = []
-        root_candidates = [
-            (idx, request)
-            for idx, request in enumerate(trace.roots)
-            if request.t <= cutoff
-        ]
-        if root_candidates:
-            idx, request = root_candidates[-1]
-            specs.append(("root", idx, request))
-        for plan in trace.subagents:
-            if not (plan.spawn_t <= cutoff < plan.end_t):
-                continue
-            for stream_index, stream in enumerate(plan.streams):
-                candidates = [
-                    (idx, request)
-                    for idx, request in enumerate(stream)
-                    if request.t <= cutoff
-                ]
-                if candidates:
-                    idx, request = candidates[-1]
-                    specs.append((f"{plan.agent_id}:{stream_index}", idx, request))
-        events = []
-        for stream_id, turn_index, spec in specs:
-            request = self._make_request(
-                lane, 0, trace, stream_id, turn_index, spec, warmup=True
-            )
-            self.warmup_requests.append(request)
-            request.arrive(self.env)
-            self.engine.add_requests([request])
-            events.append(request.completion_event)
-        if events:
-            yield simpy.events.AllOf(self.env, events)
-            yield self.env.timeout(0)
-            for request in self.warmup_requests:
-                if request.chat_id == f"agentx-lane-{lane}":
-                    request.release_logical_blocks()
-
-    def _make_request(
-        self,
-        lane: int,
-        play_id: int,
-        trace: AgentXTrace,
-        stream_id: str,
-        turn_index: int,
-        spec: AgentXRequestSpec,
-        *,
-        warmup: bool,
-    ) -> Request:
-        request_id = self._next_request_id
-        self._next_request_id += 1
-        request = Request(
-            id=request_id,
-            prefill_len=spec.prefill_len,
-            decode_len=1 if warmup else spec.decode_len,
-            block_size=self.block_size,
-            chat_id=f"agentx-lane-{lane}",
-            parent_chat_id=None if stream_id == "root" else trace.trace_id,
-            turn=turn_index,
-            hash_ids=spec.hash_ids,
-            cache_salt=f"agentx-play-{lane}-{play_id}",
-            reuse_group=trace.trace_id,
+    def _make_request(self, play, turn, *, warmup):
+        req = Request(
+            self._next_id,
+            turn.request.input_length,
+            1 if warmup else turn.requested_output_tokens,
+            self.block_size,
+            chat_id=str(
+                uuid.uuid5(
+                    uuid.NAMESPACE_URL,
+                    f"agentx:{self.workload_seed}:{play.graph.trace_id}:{play.pass_index}:{play.lane}:{turn.key.conversation_id}",
+                )
+            ),
+            parent_chat_id=(
+                None if turn.source_kind == "weka_main" else play.graph.trace_id
+            ),
+            turn=turn.key.turn_index,
+            hash_ids=engine_hashes(
+                turn.request.hash_ids,
+                trace_block_size=play.graph.block_size,
+                engine_block_size=self.block_size,
+                input_tokens=turn.request.input_length,
+            ),
+            cache_salt=play.scope,
+            reuse_group=play.graph.trace_id,
             measurement_phase="warmup" if warmup else "profile",
             record_timing=not warmup,
         )
-        request.tqdm_submit_func = None if warmup else self.tqdm_submit_func
-        request.agentx_trace_id = trace.trace_id
-        request.agentx_play_id = play_id
-        request.agentx_stream_id = stream_id
-        request.agentx_recorded_model = spec.model
-        return request
+        self._next_id += 1
+        req.agentx_trace_id = play.graph.trace_id
+        req.agentx_play_id = play.pass_index
+        req.agentx_lane = play.lane
+        req.agentx_stream_id = (
+            "root" if turn.source_kind == "weka_main" else turn.key.conversation_id
+        )
+        req.agentx_conversation_id = turn.key.conversation_id
+        req.agentx_source_outer_idx = turn.source.outer_index
+        req.agentx_source_inner_idx = turn.source.inner_index
+        req.agentx_recorded_model = turn.request.model
+        req.trace_hash_ids = turn.request.hash_ids
+        req.trace_block_size = play.graph.block_size
+        return req
 
-    def _warmup_cutoff(self, trace: AgentXTrace) -> float:
-        if len(trace.roots) == 1:
-            return trace.roots[0].t - _EPSILON
-        start = trace.roots[0].t
-        end = trace.roots[-2].t
-        ratio = self.random.uniform(self.warmup_min_ratio, self.warmup_max_ratio)
-        return start + (end - start) * ratio
-
-    def _profile_limit_reached(self) -> bool:
-        if self.max_requests is not None and len(self.requests) >= self.max_requests:
-            return True
-        return bool(
-            self.profile_duration is not None
-            and self.profile_started_at is not None
-            and self.env.now - self.profile_started_at >= self.profile_duration
+    def _submit(self, req, play, cid=None, *, primer=False):
+        phase = "warmup" if req.measurement_phase == "warmup" else "profiling"
+        req.arrive(self.env)
+        self._in_flight[req.id] = (req, play, cid, primer)
+        self.phase_counts[phase]["sent"] += 1
+        self.trace_ids_used[phase].add(req.agentx_trace_id)
+        self.source_ids_used[phase].add(
+            (
+                req.agentx_trace_id,
+                req.agentx_source_outer_idx,
+                req.agentx_source_inner_idx,
+            )
+        )
+        if not primer:
+            play.in_flight += 1
+            play.idle_started_at = None
+            play.idle_cap_expired = False
+            play.streams[cid].in_flight = req
+        self._global_idle_started = None
+        req.completion_event.callbacks.append(
+            lambda event, rid=req.id: self._completed(rid, event)
+        )
+        submit = getattr(self.engine, "add_requests_burst", self.engine.add_requests)
+        submit([req])
+        (self.warmup_requests if phase == "warmup" else self.requests).append(req)
+        self._event(
+            "issued",
+            request_id=req.id,
+            lane=play.lane,
+            conversation_id=req.agentx_conversation_id,
+            primer=primer,
         )
 
-    def _pending_async_jobs(self) -> int:
-        seen: set[int] = set()
-        pending = 0
-        for worker in getattr(self.engine, "workers", []):
-            connectors = [getattr(worker, "connector", None)]
-            while connectors:
-                connector = connectors.pop()
-                if connector is None:
+    def _completed(self, request_id, event):
+        wire = self._in_flight.pop(request_id, None)
+        if wire is None:
+            return
+        req, play, cid, primer = wire
+        phase = "warmup" if req.measurement_phase == "warmup" else "profiling"
+        if not event.ok:
+            event.defused = True
+        outcome = (
+            "cancelled"
+            if req.cancel_requested
+            else "successful" if event.ok and req.is_done else "error"
+        )
+        self.phase_counts[phase][outcome] += 1
+        self._record_terminal(req, play, outcome)
+        if not primer:
+            cursor = play.streams[cid]
+            play.in_flight -= 1
+            cursor.in_flight = None
+            if outcome != "cancelled" or phase == "warmup":
+                old_turn = cursor.conversation.turns[cursor.index]
+                play.completed.add(old_turn.key)
+                cursor.index += 1
+                if cursor.index >= len(cursor.conversation.turns):
+                    play.set_terminal(cursor)
+                due = (
+                    self.env.now
+                    if self.phase == "pressure"
+                    else (
+                        self._next_due(
+                            play, cursor, cursor.conversation.turns[cursor.index]
+                        )
+                        if not cursor.terminal
+                        else None
+                    )
+                )
+                self._set_due(cursor, due)
+                if cursor.conversation is play.graph.root:
+                    self._open_branches(play, old_turn)
+            else:
+                play.set_terminal(cursor)
+                cursor.due = None
+            if play.in_flight == 0:
+                play.idle_started_at = self.env.now
+        if not self._in_flight:
+            self._global_idle_started = self.env.now
+        req.release_logical_blocks()
+        req.hash_ids = None
+        self._notify()
+
+    def _record_terminal(self, req, play, outcome):
+        phase = "warmup" if req.measurement_phase == "warmup" else "profiling"
+        source = req.first_prefill_source
+        record = {
+            "request_id": req.id,
+            "phase": phase,
+            "outcome": outcome,
+            "start_s": req.arrival_at,
+            "end_s": self.env.now,
+            "input_tokens": req.prefill_len,
+            "gpu_hit_tokens": source.gpu_hit_tokens if source else None,
+            "cpu_hit_tokens": source.cpu_hit_tokens if source else None,
+            "computed_input_tokens": source.computed_tokens if source else None,
+            "prefill_source_observed": source is not None,
+            "prefill_admission_count": req.prefill_admission_count,
+            "reloaded_gpu_tokens": req.reloaded_gpu_tokens,
+            "reloaded_cpu_tokens": req.reloaded_cpu_tokens,
+            "reloaded_generated_gpu_tokens": req.reloaded_generated_gpu_tokens,
+            "reloaded_generated_cpu_tokens": req.reloaded_generated_cpu_tokens,
+            "latest_gpu_context_hit_tokens": req.gpu_cached_context_tokens,
+            "latest_cpu_context_hit_tokens": req.external_cached_context_tokens,
+            "recomputation_count": req.recomputation_count,
+            "recomputed_tokens": req.recomputed_tokens_total,
+            "latest_gpu_hit_tokens": req.cached_prefill_tokens
+            - req.external_cached_prefill_tokens,
+            "latest_cpu_hit_tokens": req.external_cached_prefill_tokens,
+            "latest_computed_input_tokens": req.effective_prefill_tokens,
+            "requested_output_tokens": req.decode_len,
+            "output_tokens": req.generation_idx,
+            "trace_id": req.agentx_trace_id,
+            "conversation_id": req.agentx_conversation_id,
+            "outer_index": req.agentx_source_outer_idx,
+            "inner_index": req.agentx_source_inner_idx,
+            "turn_index": req.turn,
+            "lane": play.lane,
+            "dp_rank": getattr(req, "dp_rank", None),
+            "worker_id": getattr(req, "routing_worker_id", None),
+            "pass_index": play.pass_index,
+            "cancellation_acknowledged": (
+                req.cancelled_at is not None if req.cancel_requested else None
+            ),
+            "length_capped": req.max_model_len is not None
+            and req.context_len >= req.max_model_len,
+            "ttft_s": req.prefill_latency if req.generation_idx else None,
+            "latency_s": (
+                req.completed_at - req.arrival_at
+                if req.completed_at is not None
+                else None
+            ),
+        }
+        if self.request_sink:
+            self.request_sink(record)
+        else:
+            self.records.append(record)
+
+    def _open_branches(self, play, completed_turn):
+        for branch in play.graph.branches:
+            if (
+                branch.spawning_turn_index != completed_turn.key.turn_index
+                or branch.branch_id in play.opened_branches
+            ):
+                continue
+            play.opened_branches.add(branch.branch_id)
+            for cid in branch.child_conversation_ids:
+                cursor = play.streams[cid]
+                cursor.active = True
+                if not cursor.conversation.turns:
+                    play.set_terminal(cursor)
                     continue
-                connectors.extend(getattr(connector, "children", []))
-                stats = getattr(connector, "mooncake_stats", None)
-                if stats is None or id(stats) in seen:
+                if not cursor.terminal:
+                    play.active_streams[cid] = cursor
+                if self.phase == "pressure":
+                    self._set_due(cursor, self.env.now)
+                elif self.issue_mode == "recorded":
+                    self._set_due(
+                        cursor,
+                        self._next_due(
+                            play, cursor, cursor.conversation.turns[cursor.index]
+                        ),
+                    )
+                else:
+                    offset = max(
+                        0.0,
+                        cursor.conversation.turns[cursor.index].request.t
+                        - completed_turn.request.end_s,
+                    )
+                    self._set_due(cursor, self.env.now + offset)
+
+    def _recycle(self):
+        for lane, play in enumerate(self.trees):
+            if not play.finished() or not self.accepting:
+                continue
+            if (
+                self.phase == "pressure"
+                and self.pressure_sent[lane] >= self.warmup_quota
+            ):
+                continue
+            graph = self.pool.next_graph()
+            self.recycle_trace_ids[lane].append(graph.trace_id)
+            self.trees[lane] = self._tree(graph, lane)
+
+    def _issue_ready(self):
+        if not self.accepting:
+            return False
+        self._recycle()
+        issued = False
+        limit = self.env.now + 1e-9
+        for play in self.trees:
+            # A ready stream has a due timer and no request in flight.
+            if not any(
+                cursor.in_flight is None
+                and cursor.due is not None
+                and cursor.due <= limit
+                for cursor in play.active_streams.values()
+            ):
+                continue
+            for cid, cursor in sorted(
+                play.active_streams.items(), key=lambda item: item[1].ordinal
+            ):
+                if (
+                    self.phase == "pressure"
+                    and self.pressure_sent[play.lane] >= self.warmup_quota
+                ):
+                    break
+                if not self._ready(play, cursor):
                     continue
-                seen.add(id(stats))
-                pending += int(getattr(stats, "pending_async_jobs", 0))
-        return pending
+                req = self._make_request(
+                    play,
+                    cursor.conversation.turns[cursor.index],
+                    warmup=self.phase == "pressure",
+                )
+                if self.phase == "pressure":
+                    self.pressure_sent[play.lane] += 1
+                self._submit(req, play, cid)
+                issued = True
+        return issued
 
-    def _delay(self, seconds: float) -> simpy.Event:
-        return self._idle_coordinator.delay(seconds)
+    def _future_timers(self, play):
+        return [
+            cursor
+            for cursor in play.active_streams.values()
+            if cursor.active
+            and not cursor.terminal
+            and cursor.in_flight is None
+            and cursor.due is not None
+            and cursor.due > self.env.now + 1e-9
+        ]
 
+    def _idle_shifts(self):
+        if (
+            self.phase != "profiling"
+            or not self.accepting
+            or self.issue_mode == "recorded"
+        ):
+            return
+        all_timers = []
+        for play in self.trees:
+            timers = self._future_timers(play)
+            if (
+                timers
+                and play.in_flight == 0
+                and play.idle_started_at is not None
+                and self.tree_idle_cap is not None
+                and (
+                    play.idle_cap_expired
+                    or self.env.now >= play.idle_started_at + self.tree_idle_cap
+                )
+            ):
+                shift = min(c.due for c in timers) - self.env.now
+                for cursor in timers:
+                    cursor.due -= shift
+                play.idle_cap_expired = True
+                self.tree_idle_jumps += 1
+                self.tree_idle_seconds_skipped += shift
+                self._event("tree_idle_shift", lane=play.lane, skipped_s=shift)
+                # The shift made some timers due now.
+                timers = self._future_timers(play)
+            all_timers.extend(timers)
+        timers = all_timers
+        if (
+            timers
+            and not self._in_flight
+            and self._global_idle_started is not None
+            and self.system_idle_cap is not None
+            and self.env.now >= self._global_idle_started + self.system_idle_cap
+        ):
+            shift = min(c.due for c in timers) - self.env.now
+            for cursor in timers:
+                cursor.due -= shift
+            self.system_idle_jumps += 1
+            self.system_idle_seconds_skipped += shift
+            self._event("system_idle_shift", skipped_s=shift)
 
-def _end_to_start_delay(
-    previous: AgentXRequestSpec,
-    current: AgentXRequestSpec,
-) -> float:
-    return max(0.0, current.t - (previous.t + _api_duration(previous.api_time)))
+    def _wake_at(self, boundary, timers_by_play):
+        if not self.accepting:
+            return boundary
+        if self.issue_mode == "recorded":
+            next_due = self._next_recorded_timer()
+            return min(boundary, next_due) if next_due is not None else boundary
+        candidates = [boundary]
+        for play, timers in zip(self.trees, timers_by_play):
+            if (
+                self.phase == "pressure"
+                and self.pressure_sent[play.lane] >= self.warmup_quota
+            ):
+                continue
+            candidates.extend(c.due for c in timers)
+            if (
+                timers
+                and self.phase == "profiling"
+                and play.in_flight == 0
+                and self.tree_idle_cap is not None
+                and play.idle_started_at is not None
+            ):
+                candidates.append(
+                    self.env.now
+                    if play.idle_cap_expired
+                    else max(self.env.now, play.idle_started_at + self.tree_idle_cap)
+                )
+        if (
+            self.phase == "profiling"
+            and not self._in_flight
+            and any(timers_by_play)
+            and self.system_idle_cap is not None
+            and self._global_idle_started is not None
+        ):
+            candidates.append(
+                max(self.env.now, self._global_idle_started + self.system_idle_cap)
+            )
+        return min(candidates)
 
-
-def _api_duration(value: float | None) -> float:
-    return value if value is not None and math.isfinite(value) and value > 0 else 0.0
-
-
-def _hash_lcp(left: Sequence[int], right: Sequence[int]) -> int:
-    common = 0
-    for left_value, right_value in zip(left, right):
-        if left_value != right_value:
-            break
-        common += 1
-    return common
-
-
-def _positive_int(value: Any, field: str, trace_id: str) -> int:
-    try:
-        numeric = int(value)
-    except (TypeError, ValueError) as exc:
-        raise WorkloadValidationError(
-            f"AgentX trace {trace_id} field {field} must be an integer"
-        ) from exc
-    if numeric <= 0:
-        raise WorkloadValidationError(
-            f"AgentX trace {trace_id} field {field} must be positive"
+    def _wait(self, boundary):
+        (
+            self.engine.raise_if_failed()
+            if hasattr(self.engine, "raise_if_failed")
+            else None
         )
-    return numeric
-
-
-def _finite_nonnegative(value: Any, field: str, trace_id: str) -> float:
-    try:
-        numeric = float(value)
-    except (TypeError, ValueError) as exc:
-        raise WorkloadValidationError(
-            f"AgentX trace {trace_id} field {field} must be numeric"
-        ) from exc
-    if not math.isfinite(numeric) or numeric < 0:
-        raise WorkloadValidationError(
-            f"AgentX trace {trace_id} field {field} must be finite and non-negative"
+        # Timers do not change while this method decides; collect them once.
+        timers_by_play = (
+            []
+            if self.issue_mode == "recorded"
+            else [self._future_timers(play) for play in self.trees]
         )
-    return numeric
+        has_future_timer = (
+            self._next_recorded_timer() is not None
+            if self.issue_mode == "recorded"
+            else any(timers_by_play)
+        )
+        if self.accepting and not self._in_flight and not has_future_timer:
+            raise SimulationStateError(
+                "AgentX graph has no ready request, future timer, or in-flight predecessor"
+            )
+        wake_at = self._wake_at(boundary, timers_by_play)
+        changed = self._changed
+        events = [changed]
+        failure_event = getattr(self.engine, "failure_event", None)
+        if failure_event is not None:
+            events.append(failure_event)
+        if math.isfinite(wake_at):
+            if (
+                not self._cached_wake
+                or self._cached_wake[0] != wake_at
+                or self._cached_wake[1].triggered
+            ):
+                self._cached_wake = (
+                    wake_at,
+                    self.env.timeout(max(0, wake_at - self.env.now)),
+                )
+            events.append(self._cached_wake[1])
+        elif not self._in_flight:
+            raise SimulationStateError(
+                "AgentX dependency graph stalled without an in-flight request or future timer"
+            )
+        yield simpy.events.AnyOf(self.env, events)
+
+    def _primer(self, offset, play, key, epoch):
+        yield self.env.timeout(offset)
+        if epoch != self._epoch or not self.accepting:
+            return
+        turn = play.streams[key.conversation_id].conversation.turns[key.turn_index]
+        req = self._make_request(play, turn, warmup=True)
+        self._submit(req, play, primer=True)
+        failure_event = getattr(self.engine, "failure_event", None)
+        yield (
+            simpy.events.AnyOf(self.env, [req.completion_event, failure_event])
+            if failure_event is not None
+            else req.completion_event
+        )
+        if hasattr(self.engine, "raise_if_failed"):
+            self.engine.raise_if_failed()
+
+    def _drain(self, deadline):
+        while self._in_flight and self.env.now < deadline:
+            yield from self._wait(deadline)
+        if self._in_flight:
+            pending = [entry[0] for entry in self._in_flight.values()]
+            self.engine.cancel_requests(pending)
+            end = self.env.now + self.cancellation_timeout
+            while self._in_flight and self.env.now < end:
+                yield from self._wait(end)
+            self.cancel_unreturned += len(self._in_flight)
+            for req, play, cid, primer in list(self._in_flight.values()):
+                phase = "warmup" if req.measurement_phase == "warmup" else "profiling"
+                self.phase_counts[phase]["cancelled"] += 1
+                self.phase_counts[phase]["cancel_unreturned"] += 1
+                self._record_terminal(req, play, "cancelled")
+                if phase == "warmup" and not primer:
+                    cursor = play.streams[cid]
+                    if cursor.index < len(cursor.conversation.turns):
+                        old_turn = cursor.conversation.turns[cursor.index]
+                        play.completed.add(old_turn.key)
+                        cursor.index += 1
+                        cursor.in_flight = None
+                        if cursor.index >= len(cursor.conversation.turns):
+                            play.set_terminal(cursor)
+                        play.in_flight -= 1
+                        if cursor.conversation is play.graph.root:
+                            self._open_branches(play, old_turn)
+            self._in_flight.clear()
+
+    def run(self):
+        self.trees = (
+            [
+                self._tree(snapshot.graph, snapshot.lane_index, snapshot)
+                for snapshot in self.snapshots
+            ]
+            if self.warmup
+            else [
+                self._tree(graph, lane)
+                for lane, graph in enumerate(self.initial_graphs)
+            ]
+        )
+        if self.warmup:
+            self.phase = "primers"
+            jobs = [
+                self.env.process(
+                    self._primer(offset, self.trees[lane], key, self._epoch)
+                )
+                for offset, lane, key in primer_schedule(
+                    self.snapshots, system_idle_cap_s=self.system_idle_cap
+                )
+            ]
+            if jobs:
+                yield simpy.events.AllOf(self.env, jobs)
+            self.phase = "pressure"
+            for play in self.trees:
+                for cursor in play.streams.values():
+                    if cursor.active and not cursor.terminal:
+                        cursor.due = self.env.now
+            while not all(count >= self.warmup_quota for count in self.pressure_sent):
+                self._issue_ready()
+                if all(count >= self.warmup_quota for count in self.pressure_sent):
+                    break
+                yield from self._wait(math.inf)
+            self.accepting = False
+            self.phase = "warmup_drain"
+            yield from self._drain(self.env.now + self.warmup_grace_period)
+            self.engine.reset_profile_stats()
+        self.accepting = True
+        self.phase = "profiling"
+        self._epoch += 1
+        self.profile_started_at = self.env.now
+        self.issue_window_end_at = self.env.now + self.profile_duration
+        self._global_idle_started = self.env.now
+        self._recycle()
+        offsets = []
+        for play in self.trees:
+            play.clock_origin_s = self.env.now
+            for cursor in play.streams.values():
+                if (
+                    cursor.active
+                    and not cursor.terminal
+                    and cursor.index < len(cursor.conversation.turns)
+                ):
+                    turn = cursor.conversation.turns[cursor.index]
+                    due = (
+                        self._recorded_due(
+                            play.origin_s, turn.request.t, play.clock_origin_s
+                        )
+                        if self.issue_mode == "recorded"
+                        else self.env.now + max(0, turn.request.t - play.origin_s)
+                    )
+                    self._set_due(cursor, due)
+                    if self._joins_ready(play, cursor):
+                        offsets.append(max(0, turn.request.t - play.origin_s))
+        anchor = min(offsets, default=0)
+        for play in self.trees:
+            play.clock_origin_s -= anchor
+            play.idle_started_at = self.env.now
+            play.idle_cap_expired = False
+            for cursor in play.streams.values():
+                if cursor.due is not None:
+                    self._set_due(cursor, max(self.env.now, cursor.due - anchor))
+        while self.env.now < self.issue_window_end_at:
+            self._idle_shifts()
+            self._issue_ready()
+            yield from self._wait(self.issue_window_end_at)
+        self.accepting = False
+        self._epoch += 1
+        self.phase = "grace"
+        self.in_flight_at_window_end = len(self._in_flight)
+        yield from self._drain(self.env.now + self.grace_period)
+        self.phase = "complete"
+        self.profile_finished_at = self.env.now
+        # Successful metrics include grace completions. Error/cancelled
+        # requests remain in the state accounting, not in latency averages.
+        self.requests = [
+            r for r in self.requests if r.is_done and not r.cancel_requested
+        ]

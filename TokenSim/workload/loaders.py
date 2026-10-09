@@ -194,6 +194,8 @@ def load_qwen_jsonl_workload(
             unique_request_id = int(trace_request_id)
             if unique_request_id in seen_request_ids:
                 unique_request_id = request_id
+        while unique_request_id in seen_request_ids:
+            unique_request_id += 1
         seen_request_ids.add(unique_request_id)
         try:
             prefill_len = row["input_length"]

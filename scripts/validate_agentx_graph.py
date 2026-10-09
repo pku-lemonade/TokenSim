@@ -13,8 +13,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from TokenSim.workload.agentx_native.parser import iter_trace_graphs
-from TokenSim.workload.agentx_native.trajectory import (
+from TokenSim.workload.agentx_support.parser import iter_trace_graphs
+from TokenSim.workload.agentx_support.trajectory import (
     SequentialTracePool,
     initial_snapshots,
     primer_schedule,

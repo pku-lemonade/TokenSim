@@ -17,14 +17,30 @@ from TokenSim.moe.config import MoEModelConfig
 GIB = 1 << 30
 
 
-def test_links() -> list[LinkClass]:
+def make_links() -> list[LinkClass]:
     return [
-        LinkClass("nvlink-test", "test NVLink", 100.0e9, 1.0, source_id="test-fixture", grade="D", half_bandwidth_bytes=1 << 16),
-        LinkClass("ethernet-test", "test Ethernet", 10.0e9, 20.0, source_id="test-fixture", grade="D", half_bandwidth_bytes=1 << 16),
+        LinkClass(
+            "nvlink-test",
+            "test NVLink",
+            100.0e9,
+            1.0,
+            source_id="test-fixture",
+            grade="D",
+            half_bandwidth_bytes=1 << 16,
+        ),
+        LinkClass(
+            "ethernet-test",
+            "test Ethernet",
+            10.0e9,
+            20.0,
+            source_id="test-fixture",
+            grade="D",
+            half_bandwidth_bytes=1 << 16,
+        ),
     ]
 
 
-def test_topology(node_size: int = 8) -> TopologySpec:
+def make_topology(node_size: int = 8) -> TopologySpec:
     return TopologySpec(
         topology_id="test-topology",
         levels=(
@@ -35,7 +51,7 @@ def test_topology(node_size: int = 8) -> TopologySpec:
     )
 
 
-def test_device(
+def make_device(
     device_id: str = "TestGPU",
     *,
     memory_gib: float = 80.0,
@@ -56,7 +72,7 @@ def test_device(
     )
 
 
-def test_model(
+def make_model(
     model_id: str = "TestModel",
     *,
     hidden_size: int = 128,
@@ -86,7 +102,7 @@ def test_model(
 
 
 def moe_test_model() -> ModelSpec:
-    return test_model(
+    return make_model(
         "MoEModel",
         moe=MoEModelConfig(
             is_moe_model=True,
@@ -105,7 +121,9 @@ def moe_test_model() -> ModelSpec:
     )
 
 
-def test_hardware(*devices: DeviceSpec, models: list[ModelSpec] | None = None) -> HardwareContext:
-    devices = devices or (test_device(),)
-    models = models or [test_model(), moe_test_model()]
-    return HardwareContext.in_memory(devices, models, test_links(), [test_topology()])
+def make_hardware(
+    *devices: DeviceSpec, models: list[ModelSpec] | None = None
+) -> HardwareContext:
+    devices = devices or (make_device(),)
+    models = models or [make_model(), moe_test_model()]
+    return HardwareContext.in_memory(devices, models, make_links(), [make_topology()])

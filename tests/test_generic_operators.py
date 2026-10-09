@@ -10,7 +10,7 @@ from TokenSim.hardware import HardwareContext
 from TokenSim.latency.operator_table import OperatorTableLatencyBackend
 from TokenSim.latency.projection import attention_projections
 from TokenSim.llm.forward import ForwardPass, RankShape, sp_valid_rows
-from tests.hardware_fixtures import test_model as make_model
+from tests.support.hardware import make_model as make_model
 
 
 class GenericOperatorTest(unittest.TestCase):

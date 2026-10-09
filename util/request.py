@@ -30,13 +30,19 @@ def LLMSource(
     requests: list[Request],
     qps: float,
     distribution: str,
+    random_seed: int = 0,
 ):
+    import numpy as np
+
+    rng = np.random.default_rng(random_seed)
     if any(req.arrival_timestamp is not None for req in requests):
         requests = sorted(
             requests,
-            key=lambda req: req.arrival_timestamp
-            if req.arrival_timestamp is not None
-            else float("inf"),
+            key=lambda req: (
+                req.arrival_timestamp
+                if req.arrival_timestamp is not None
+                else float("inf")
+            ),
         )
 
     for req in requests:
@@ -50,4 +56,10 @@ def LLMSource(
             if req.inter_arrival_time is not None:
                 yield env.timeout(req.inter_arrival_time)
             elif req.arrival_timestamp is None:
-                yield env.timeout(get_wait_time(1.0 / qps, distribution))
+                yield env.timeout(
+                    (
+                        1.0 / qps
+                        if distribution == "uniform"
+                        else float(rng.exponential(1.0 / qps))
+                    )
+                )

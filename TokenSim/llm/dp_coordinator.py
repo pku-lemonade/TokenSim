@@ -94,14 +94,20 @@ class DPStepCoordinator:
 
     def consume_messages(self, worker):
         # Local import avoids the engine/coordinator type-definition cycle.
-        from TokenSim.llm.llm_engine import Task, WorkerStatus
+        from TokenSim.llm.llm_engine import (
+            Task,
+            WorkerStatus,
+            _merge_connector_metadata,
+        )
 
         while True:
             msg = yield worker.msg_queue.get()
             try:
                 if msg.task == Task.ADD:
                     if msg.metadata is not None:
-                        worker.pending_connector_metadata = msg.metadata
+                        worker.pending_connector_metadata = _merge_connector_metadata(
+                            msg.metadata, worker.pending_connector_metadata
+                        )
                     worker.scheduler.add_requests(msg.requests or [])
                     worker.status = (
                         WorkerStatus.RUNNING

@@ -27,11 +27,11 @@ class CacheConfig:
         usable_memory_fraction: float = 1.0,
         kv_cache_capacity_tokens_per_dp_rank: int | None = None,
         max_num_batched_tokens: int = 8192,
-        max_num_seqs: int = 49,
+        max_num_seqs: int = 64,
         speculative_tokens: int = 3,
         max_concurrent_batches: int = 2,
         moe_execution=None,
-        attention_backend: str = "module",
+        attention_backend: str = "generic",
     ):
         self.block_size: int = block_size
         self.device = device

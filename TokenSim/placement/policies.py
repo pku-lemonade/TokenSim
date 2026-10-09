@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Generic, Protocol, TypeVar
 
 from TokenSim.errors import ConfigurationError
+from TokenSim.utils import BoundedCache
 
 
 WorkerT = TypeVar("WorkerT")
@@ -49,6 +50,7 @@ class DataParallelWorkerPool(WorkerPool[WorkerT]):
         self,
         workers: list[WorkerT],
         pool_cls: type[WorkerPool[WorkerT]],
+        *, sticky_sessions: bool = False,
     ):
         super().__init__(workers)
         grouped: dict[int, list[WorkerT]] = {}
@@ -61,7 +63,8 @@ class DataParallelWorkerPool(WorkerPool[WorkerT]):
         self.dp_ranks = sorted(self.group_pools)
         self.cur_dp_idx = 0
         self.dp_placement_counts = {rank: 0 for rank in self.dp_ranks}
-        self.affinity_to_rank: dict[str, int] = {}
+        self.sticky_sessions = sticky_sessions
+        self.affinity_to_rank = BoundedCache(65536)
 
     def schedule(self) -> WorkerT:
         return self._select()
@@ -89,7 +92,7 @@ class DataParallelWorkerPool(WorkerPool[WorkerT]):
 
     def _select_for_request(self, request=None, assign_new: bool = False) -> WorkerT:
         dp_rank = getattr(request, "dp_rank", None)
-        affinity_key = getattr(request, "chat_id", None)
+        affinity_key = getattr(request, "chat_id", None) if self.sticky_sessions else None
         if dp_rank not in self.group_pools and affinity_key:
             dp_rank = self.affinity_to_rank.get(str(affinity_key))
         if dp_rank in self.group_pools:

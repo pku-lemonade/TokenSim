@@ -42,8 +42,12 @@ def block_ids(manager: BlockManager, req: Request) -> list[int]:
 class PrefixCacheKeyTest(unittest.TestCase):
     def test_extra_hash_scopes_raw_hashes(self):
         base = build_prefix_keys(["a", "b"], model="m", reuse_group="tenant-a")
-        different_group = build_prefix_keys(["a", "b"], model="m", reuse_group="tenant-b")
-        different_model = build_prefix_keys(["a", "b"], model="n", reuse_group="tenant-a")
+        different_group = build_prefix_keys(
+            ["a", "b"], model="m", reuse_group="tenant-b"
+        )
+        different_model = build_prefix_keys(
+            ["a", "b"], model="n", reuse_group="tenant-a"
+        )
 
         self.assertNotEqual(base, different_group)
         self.assertNotEqual(base, different_model)
@@ -154,13 +158,20 @@ class AdaptedVllmPrefixCacheTest(unittest.TestCase):
         cached_blocks = list(manager.block_table.get_blocks(req0.id))
         manager.free(req0)
 
-        self.assertTrue(all(block in manager.gpu_allocator.free_blocks for block in cached_blocks))
+        self.assertTrue(
+            all(block in manager.gpu_allocator.free_blocks for block in cached_blocks)
+        )
         req1 = make_request(1, prefill_len=32, hash_ids=["a", "b"])
         manager.allocate(req1)
 
         self.assertEqual(req1.reuse_hit_blocks, 2)
         self.assertTrue(all(block.ref_count == 1 for block in cached_blocks))
-        self.assertTrue(all(block not in manager.gpu_allocator.free_blocks for block in cached_blocks))
+        self.assertTrue(
+            all(
+                block not in manager.gpu_allocator.free_blocks
+                for block in cached_blocks
+            )
+        )
 
     def test_different_salt_group_or_model_prevents_hit(self):
         manager = BlockManager(
@@ -299,7 +310,9 @@ class AdaptedVllmPrefixCacheTest(unittest.TestCase):
 
 
 class StrongTreePrefixCacheTest(unittest.TestCase):
-    def test_sglang_style_long_branching_prefix_only_hits_after_branch_point_cached(self):
+    def test_sglang_style_long_branching_prefix_only_hits_after_branch_point_cached(
+        self,
+    ):
         # Adapted from SGLang PrefixCacheBranchingMixin. TokenSim registers
         # committed full input blocks immediately, so later branches hit the
         # shared trunk while allocating independent suffix branches.
@@ -403,7 +416,9 @@ class StrongTreePrefixCacheTest(unittest.TestCase):
         expected_left_hit = len(root) + len(left)
         self.assertEqual(req_left_b.reuse_hit_blocks, expected_left_hit)
         self.assertEqual(ids_left_b[:expected_left_hit], ids_left_a[:expected_left_hit])
-        self.assertNotEqual(ids_left_b[expected_left_hit], ids_left_a[expected_left_hit])
+        self.assertNotEqual(
+            ids_left_b[expected_left_hit], ids_left_a[expected_left_hit]
+        )
 
         req_right_again = make_request(
             3,

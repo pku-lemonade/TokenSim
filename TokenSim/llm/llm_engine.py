@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from TokenSim.config.simulation import SimulationConfig
+
+from dataclasses import dataclass, field
+from itertools import count
 from enum import Enum, auto
 from typing import Any, Optional
 import logging
@@ -51,7 +54,6 @@ from TokenSim.config.model_config import ModelSpec
 
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 
 def _flatten_connectors(connector: Any) -> list[Any]:
@@ -61,6 +63,9 @@ def _flatten_connectors(connector: Any) -> list[Any]:
     for child in getattr(connector, "children", []):
         flattened.extend(_flatten_connectors(child))
     return flattened
+
+
+_message_sequence = count()
 
 
 class Task(Enum):
@@ -76,9 +81,12 @@ class Message:
     sender_id: int = 0
     requests: list[Request] | None = None
     metadata: Any | None = None
+    sequence: int = field(
+        default_factory=lambda: next(_message_sequence), init=False, repr=False
+    )
 
     def __lt__(self, other: Message):
-        return self.task.value < other.task.value
+        return (self.task.value, self.sequence) < (other.task.value, other.sequence)
 
 
 class WorkerStatus(Enum):
@@ -125,14 +133,6 @@ class Worker:
                 request.owner_worker_ids.add(worker.id)
         worker.msg_queue.put(Message(task, self.id, requests, metadata))
 
-    def check(self, requests: list[Request]):
-        logger.debug(
-            "worker %s check at time=%s requests=%s",
-            self.id,
-            self.env.now,
-            _request_ids(requests),
-        )
-
 
 def _request_ids(requests: list[Request] | None) -> list[int]:
     if not requests:
@@ -165,49 +165,29 @@ class LLMWorker(Worker):
         engine: LLMEngine,
         psla_config: PSLAConfig,
         worker_config: WorkerConfig,
-        block_size: int,
-        batching: str,
         kv_transfer_config: KVTransferConfig,
         hardware: HardwareContext,
         model_spec: ModelSpec,
         placement: TopologyPlacement,
-        max_parallem_sum: int,
-        max_occupy_ratio: float = 1,
         parallel_config: ParallelConfig | None = None,
         moe_config: MoEModelConfig | None = None,
         expert_placement: ExpertPlacement | None = None,
-        latency_backend_type: str = "operator_table",
-        latency_fallback: str = "table_first",
-        operator_backend: str | None = None,
-        decode_context_bucket: int = 128,
-        random_seed: int = 0,
         kv_cache_capacity_tokens_per_dp_rank: int | None = None,
-        max_num_batched_tokens: int | None = DEFAULT_MAX_NUM_BATCHED_TOKENS,
-        gpu_memory_utilization: float = 1.0,
-        long_prefill_token_threshold: int = 0,
-        prefill_schedule_interval: int = 1,
-        adaptive_long_prefill_threshold: bool = False,
-        moe_execution=None,
-        attention_backend: str = "generic",
-        mhc_backend: str = "generic",
-        mtp_acceptance_length: float = 1.0,
-        mtp_num_speculative_tokens: int | None = None,
-        mtp_seed: int = 0,
-        native_attention_context_scale: float = 1.0,
-        native_attention_generation_scale: float = 1.0,
     ):
+        config = engine.config
         super().__init__(env, id)
         self.hardware_context = hardware
         self.engine = engine
-        if prefill_schedule_interval < 1:
+        if config.prefill_schedule_interval < 1:
             raise ConfigurationError("prefill_schedule_interval must be positive")
-        self.prefill_schedule_interval = prefill_schedule_interval
+        self.prefill_schedule_interval = config.prefill_schedule_interval
 
         self.role = worker_config.role
         self.hardware = worker_config.hardware
         self.device = hardware.device(worker_config.hardware)
         self.network = worker_config.network
         self.nettype = worker_config.nettype
+        self.psla_config = psla_config
         self.model = psla_config.model
         self.model_spec = model_spec
         self.parallel_config = parallel_config or ParallelConfig.default()
@@ -223,11 +203,13 @@ class LLMWorker(Worker):
         self.placement = placement
         self.device_index = placement.device_index(self.id)
 
-        self.block_size = block_size
+        self.block_size = config.block_size
         from TokenSim.config.speculative_execution import resolve_mtp_tokens
 
         self.mtp_num_speculative_tokens = resolve_mtp_tokens(
-            self.model_spec, mtp_acceptance_length, mtp_num_speculative_tokens
+            self.model_spec,
+            config.mtp_acceptance_length,
+            config.mtp_num_speculative_tokens,
         )
         self.cache_config = CacheConfig(
             self.block_size,
@@ -236,20 +218,33 @@ class LLMWorker(Worker):
             parallel_config=self.parallel_config,
             rank_info=self.rank_info,
             expert_placement=self.expert_placement,
-            usable_memory_fraction=gpu_memory_utilization,
-            max_num_batched_tokens=max_num_batched_tokens
+            usable_memory_fraction=config.gpu_memory_utilization,
+            max_num_batched_tokens=config.max_num_batched_tokens
             or DEFAULT_MAX_NUM_BATCHED_TOKENS,
-            max_num_seqs=max_parallem_sum or 49,
+            max_num_seqs=config.max_num_seqs,
             kv_cache_capacity_tokens_per_dp_rank=kv_cache_capacity_tokens_per_dp_rank,
-            moe_execution=moe_execution if moe_execution is not None else {"backend": "generic"},
-            attention_backend=attention_backend,
+            moe_execution=(
+                config.moe_execution
+                if config.moe_execution is not None
+                else {"backend": "generic"}
+            ),
+            attention_backend=config.attention_backend,
             speculative_tokens=self.mtp_num_speculative_tokens,
         )
+        if (
+            self.cache_config.hybrid_layout is not None
+            and config.max_num_batched_tokens is None
+        ):
+            raise ConfigurationError(
+                "hybrid KV allocation requires a finite prefill token budget"
+            )
         self.preempted_cnt = 0
         self.pending_connector_metadata: KVConnectorMetadata | None = None
 
-        backend_name = worker_config.operator_backend or operator_backend
-        fallback = effective_fallback(latency_backend_type, latency_fallback)
+        backend_name = worker_config.operator_backend or config.operator_backend
+        fallback = effective_fallback(
+            config.latency_backend_type, config.latency_fallback
+        )
         self.operator_package = (
             hardware.operator_package(self.device.device_id, backend_name)
             if fallback != "analytical_only"
@@ -278,7 +273,7 @@ class LLMWorker(Worker):
         )
 
         self.latency_backend = build_latency_backend(
-            backend_type=latency_backend_type,
+            backend_type=config.latency_backend_type,
             device=self.device,
             model=self.model_spec,
             package=self.operator_package,
@@ -287,21 +282,21 @@ class LLMWorker(Worker):
             communicator=self.parallel_communicator,
             expert_placement=self.expert_placement,
             fallback=fallback,
-            decode_context_bucket=decode_context_bucket,
-            random_seed=random_seed + id,
+            decode_context_bucket=config.decode_context_bucket,
+            random_seed=config.random_seed + id,
             missing_report=self.missing_report,
-            moe_execution=moe_execution,
-            attention_backend=attention_backend,
-            mhc_backend=mhc_backend,
+            moe_execution=config.moe_execution,
+            attention_backend=config.attention_backend,
+            mhc_backend=config.mhc_backend,
             expected_decode_query_len=1
             + (
                 self.cache_config.hybrid_layout.speculative_tokens
                 if self.cache_config.hybrid_layout
                 else 0
             ),
-            max_num_seqs=max_parallem_sum or 64,
-            native_attention_context_scale=native_attention_context_scale,
-            native_attention_generation_scale=native_attention_generation_scale,
+            max_num_seqs=config.max_num_seqs,
+            native_attention_context_scale=1.0,
+            native_attention_generation_scale=1.0,
         )
         self.owned_expert_ids = (
             self.expert_placement.experts_for_rank(self.rank_info)
@@ -314,7 +309,7 @@ class LLMWorker(Worker):
             kv_rank=id,
         )
         if self.cache_config.hybrid_layout is not None:
-            if batching != "paged-attn":
+            if config.batching != "paged-attn":
                 raise ConfigurationError(
                     "native compressed attention hybrid cache requires paged-attn scheduling"
                 )
@@ -329,28 +324,30 @@ class LLMWorker(Worker):
             self.cache_config,
         )
 
-        if batching == "paged-attn":
+        if config.batching == "paged-attn":
             self.scheduler = LLMPagedAttnScheduler(
                 self.id,
                 cache_config=self.cache_config,
-                max_parallem_sum=max_parallem_sum,
-                max_occupy_ratio=max_occupy_ratio if self.role != "prefill" else 1,
+                max_num_seqs=config.max_num_seqs,
+                max_occupy_ratio=(
+                    config.max_occupy_ratio if self.role != "prefill" else 1
+                ),
                 connector=self.connector,
-                max_num_batched_tokens=max_num_batched_tokens,
-                long_prefill_token_threshold=long_prefill_token_threshold,
-                adaptive_long_prefill_threshold=adaptive_long_prefill_threshold,
-                mtp_acceptance_length=mtp_acceptance_length,
+                max_num_batched_tokens=config.max_num_batched_tokens,
+                long_prefill_token_threshold=config.long_prefill_token_threshold,
+                adaptive_long_prefill_threshold=config.adaptive_long_prefill_threshold,
+                mtp_acceptance_length=config.mtp_acceptance_length,
                 mtp_enabled=self.mtp_num_speculative_tokens > 0,
-                mtp_seed=mtp_seed + id,
+                mtp_seed=config.mtp_seed + id,
             )
-        elif batching == "static":
+        elif config.batching == "static":
             self.scheduler = LLMStaticScheduler(
-                max_parallem_sum=max_parallem_sum,
+                max_num_seqs=config.max_num_seqs,
                 connector=self.connector,
             )
         else:
             self.scheduler = LLMDynamicScheduler(
-                max_parallem_sum=max_parallem_sum,
+                max_num_seqs=config.max_num_seqs,
                 connector=self.connector,
             )
 
@@ -370,7 +367,14 @@ class LLMWorker(Worker):
             if request.cancel_requested:
                 continue
             was_prefill = request.is_prefill
-            request.advance(self.env, latency, len(requests))
+            if was_prefill and request.first_prefill_source is None:
+                request.record_prefill_admission(
+                    request.gpu_cached_prefill_tokens,
+                    request.external_cached_prefill_tokens,
+                )
+            request.advance(
+                self.env, latency, len(requests), self.engine.timing_recorder
+            )
             manager = getattr(getattr(self, "scheduler", None), "block_manager", None)
             if getattr(manager, "native_hybrid", False):
                 manager.cache_computed(request)
@@ -402,7 +406,9 @@ class LLMWorker(Worker):
                 match msg.task:
                     case Task.ADD:
                         if msg.metadata is not None:
-                            self.pending_connector_metadata = msg.metadata
+                            self.pending_connector_metadata = _merge_connector_metadata(
+                                msg.metadata, self.pending_connector_metadata
+                            )
                         self.scheduler.add_requests(msg.requests or [])
                         self.status = WorkerStatus.RUNNING
 
@@ -542,46 +548,22 @@ class LLMEngine(Worker):
     def __init__(
         self,
         env: simpy.Environment,
-        block_size: int,
-        batching: str,
         kv_transfer_config: KVTransferConfig,
         psla_config: PSLAConfig,
         cluster_config: ClusterConfig,
         hardware: HardwareContext,
-        prefill_worker_pool_type: str,
-        decode_worker_pool_type: str,
-        max_parallem_sum: int,
-        max_occupy_ratio: float = 1,
         parallel_config: ParallelConfig | None = None,
-        latency_backend_type: str = "operator_table",
-        latency_fallback: str = "table_first",
-        operator_backend: str | None = None,
-        decode_context_bucket: int = 128,
-        random_seed: int = 0,
-        debug_print: bool = False,
-        max_num_batched_tokens: int | None = DEFAULT_MAX_NUM_BATCHED_TOKENS,
-        gpu_memory_utilization: float = 1.0,
-        router_policy: str = "none",
-        router_backend_url: str = "http://localhost:8889",
-        router_mapping: dict | None = None,
-        dp_lockstep: bool = False,
-        dp_sync_interval: int = 16,
-        moe_execution=None,
-        attention_backend: str = "generic",
-        mhc_backend: str = "generic",
-        mtp_acceptance_length: float = 1.0,
-        mtp_num_speculative_tokens: int | None = None,
-        mtp_seed: int = 0,
-        native_attention_context_scale: float = 1.0,
-        native_attention_generation_scale: float = 1.0,
-        long_prefill_token_threshold: int = 0,
-        prefill_schedule_interval: int = 1,
-        adaptive_long_prefill_threshold: bool = False,
+        config: SimulationConfig | None = None,
     ):
+        config = config or SimulationConfig()
+        self.config = config
+        from TokenSim.timing import TimingRecorder
+
+        self.timing_recorder = TimingRecorder()
         super().__init__(env, -1)
 
-        prefill_worker_pool_type = prefill_worker_pool_type.lower()
-        decode_worker_pool_type = decode_worker_pool_type.lower()
+        prefill_worker_pool_type = config.prefill_worker_pool_type.lower()
+        decode_worker_pool_type = config.decode_worker_pool_type.lower()
 
         pool_type_map = {
             "round_robin": RoundRobinWorkerPool,
@@ -590,7 +572,7 @@ class LLMEngine(Worker):
         }
         self.hardware = hardware
         self.parallel_config = parallel_config or ParallelConfig.default()
-        self.debug_printer = RequestCompletionDebugPrinter(debug_print)
+        self.debug_printer = RequestCompletionDebugPrinter(config.debug_print)
         self.model_spec = hardware.model(psla_config.model).with_moe_override(
             psla_config.moe_config
         )
@@ -600,9 +582,9 @@ class LLMEngine(Worker):
             self.parallel_config,
             total_layers=self.model_spec.num_layers,
         )
-        self.latency_backend_type = latency_backend_type
-        self.latency_fallback = latency_fallback
-        self.max_num_batched_tokens = max_num_batched_tokens
+        self.latency_backend_type = config.latency_backend_type
+        self.latency_fallback = config.latency_fallback
+        self.max_num_batched_tokens = config.max_num_batched_tokens
 
         worker_configs = cluster_config.workers(self.parallel_config)
         self.placement = build_topology_placement(
@@ -616,40 +598,16 @@ class LLMEngine(Worker):
                 engine=self,
                 psla_config=psla_config,
                 worker_config=worker_config,
-                block_size=block_size,
-                batching=batching,
                 kv_transfer_config=kv_transfer_config,
                 hardware=hardware,
                 model_spec=self.model_spec,
                 placement=self.placement,
-                max_parallem_sum=max_parallem_sum,
-                max_occupy_ratio=max_occupy_ratio,
-                gpu_memory_utilization=gpu_memory_utilization,
-                long_prefill_token_threshold=long_prefill_token_threshold,
-                prefill_schedule_interval=prefill_schedule_interval,
-                adaptive_long_prefill_threshold=adaptive_long_prefill_threshold,
                 parallel_config=self.parallel_config,
                 moe_config=self.moe_config,
                 expert_placement=self.expert_placement,
-                kv_cache_capacity_tokens_per_dp_rank=(
-                    cluster_config.effective_kv_cache_capacity_per_dp_rank(
-                        self.parallel_config
-                    )
+                kv_cache_capacity_tokens_per_dp_rank=cluster_config.effective_kv_cache_capacity_per_dp_rank(
+                    self.parallel_config
                 ),
-                latency_backend_type=latency_backend_type,
-                moe_execution=moe_execution,
-                attention_backend=attention_backend,
-                mhc_backend=mhc_backend,
-                mtp_acceptance_length=mtp_acceptance_length,
-                mtp_num_speculative_tokens=mtp_num_speculative_tokens,
-                mtp_seed=mtp_seed,
-                native_attention_context_scale=native_attention_context_scale,
-                native_attention_generation_scale=native_attention_generation_scale,
-                latency_fallback=latency_fallback,
-                operator_backend=operator_backend,
-                decode_context_bucket=decode_context_bucket,
-                random_seed=random_seed,
-                max_num_batched_tokens=max_num_batched_tokens,
             )
             for id, worker_config in enumerate(worker_configs)
         ]
@@ -663,7 +621,7 @@ class LLMEngine(Worker):
                 if worker.role == "hybrid" or worker.role == "prefill"
                 if self._is_schedulable_worker(worker)
             ],
-            pool_type_map[prefill_worker_pool_type],
+            pool_type_map[config.prefill_worker_pool_type],
         )
         self.decode_workers = self._build_worker_pool(
             [
@@ -672,7 +630,7 @@ class LLMEngine(Worker):
                 if worker.role == "hybrid" or worker.role == "decode"
                 if self._is_schedulable_worker(worker)
             ],
-            pool_type_map[decode_worker_pool_type],
+            pool_type_map[config.decode_worker_pool_type],
         )
 
         self.connector_stats = ConnectorStats()
@@ -681,24 +639,26 @@ class LLMEngine(Worker):
         self.failure: tuple[int, Exception] | None = None
         self.failure_event = self.env.event()
         self.router = None
-        if router_policy == "consistent_hash":
+        if config.router_policy == "consistent_hash":
             from TokenSim.placement.consistent_hash import ConsistentHashRouter
 
             self.router = ConsistentHashRouter(
-                self.prefill_workers.workers, backend_url=router_backend_url
+                self.prefill_workers.workers, backend_url=config.router_backend_url
             )
-        elif router_policy == "fixed_mapping":
+        elif config.router_policy == "fixed_mapping":
             from TokenSim.placement.consistent_hash import FixedWorkerRouter
 
             self.router = FixedWorkerRouter(
                 self.prefill_workers.workers,
-                router_mapping or {},
-                backend_url=router_backend_url,
+                config.router_mapping or {},
+                backend_url=config.router_backend_url,
             )
-        elif router_policy != "none":
-            raise ConfigurationError(f"unsupported router policy: {router_policy}")
+        elif config.router_policy != "none":
+            raise ConfigurationError(
+                f"unsupported router policy: {config.router_policy}"
+            )
         self.dp_coordinator = None
-        if dp_lockstep and self.parallel_config.data_parallel_size > 1:
+        if config.dp_lockstep and self.parallel_config.data_parallel_size > 1:
             if self.parallel_config.pipeline_parallel_size != 1:
                 raise ConfigurationError(
                     "DP lockstep pipeline stages are not yet supported"
@@ -706,7 +666,10 @@ class LLMEngine(Worker):
             from TokenSim.llm.dp_coordinator import DPStepCoordinator
 
             self.dp_coordinator = DPStepCoordinator(
-                env, self, self.prefill_workers.workers, sync_interval=dp_sync_interval
+                env,
+                self,
+                self.prefill_workers.workers,
+                sync_interval=config.dp_sync_interval,
             )
         self.action = self.env.process(self.run())
 
@@ -735,6 +698,7 @@ class LLMEngine(Worker):
         from TokenSim.mooncake.metrics import MooncakeStats
         from TokenSim.parallel import ParallelStats
 
+        self.timing_recorder.reset()
         self.connector_stats = ConnectorStats()
         if self.router is not None:
             self.router.reset_stats()
@@ -841,7 +805,9 @@ class LLMEngine(Worker):
 
     def _build_worker_pool(self, workers, pool_cls):
         if self.parallel_config.data_parallel_size > 1:
-            return DataParallelWorkerPool(workers, pool_cls)
+            return DataParallelWorkerPool(
+                workers, pool_cls, sticky_sessions=self.config.sticky_sessions
+            )
         return pool_cls(workers)
 
     def _is_schedulable_worker(self, worker: LLMWorker) -> bool:
@@ -915,8 +881,14 @@ class LLMEngine(Worker):
         for i in range(0, num_requests, num_per_worker):
             batch = requests[i : i + num_per_worker]
             worker = self.decode_workers.select_transfer_target(batch)
+            manager = getattr(sender.scheduler, "block_manager", None)
             request_block_counts = (
-                sender.scheduler.block_manager.get_request_block_counts(batch)
+                manager.get_request_block_counts(batch)
+                if manager is not None
+                else {
+                    req.id: math.ceil(req.num_computed_tokens / sender.block_size)
+                    for req in batch
+                }
             )
             num_blocks = sum(request_block_counts.values())
             connector = sender.connector
@@ -947,7 +919,8 @@ class LLMEngine(Worker):
             sender.connector.bind_connector_metadata(sender_metadata)
             sender.connector.wait_for_save()
             for req in batch:
-                sender.scheduler.block_manager.release_request_blocks(req)
+                if manager is not None:
+                    manager.release_request_blocks(req)
                 sender.connector.on_request_released(req)
                 req.status = RequestStatus.WAITING_FOR_KV
             self.send_task(worker, Task.ADD, batch, receiver_metadata)

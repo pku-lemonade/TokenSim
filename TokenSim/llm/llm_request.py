@@ -1,5 +1,6 @@
 import simpy
 from dataclasses import dataclass, field
+from typing import Sequence
 from pydantic import BaseModel
 from enum import Enum, auto
 
@@ -235,6 +236,9 @@ class Request:
     gpu_cached_context_tokens: int = 0
     external_cached_context_tokens: int = 0
     first_prefill_source: PrefillSourceStats | None = field(default=None, repr=False)
+    trace_hash_ids: Sequence[int] | None = field(default=None, repr=False)
+    trace_block_size: int | None = field(default=None, repr=False)
+    shared_prefix_boundaries: tuple[int, ...] = ()
     prefill_admission_count: int = 0
     reloaded_gpu_tokens: int = 0
     reloaded_cpu_tokens: int = 0
@@ -331,7 +335,10 @@ class Request:
     def is_done(self) -> bool:
         return not self.cancel_requested and (
             self.generation_idx >= self.decode_len
-            or (self.max_model_len is not None and self.context_len >= self.max_model_len)
+            or (
+                self.max_model_len is not None
+                and self.context_len >= self.max_model_len
+            )
         )
 
     def request_cancel(self, env: simpy.Environment) -> simpy.Event:
@@ -391,7 +398,11 @@ class Request:
     @property
     def logits_tokens(self) -> int:
         # Invalid placeholder drafts still require logits but yield one output.
-        return 1 + self.scheduled_placeholder_tokens if self.is_context_build else self.query_tokens
+        return (
+            1 + self.scheduled_placeholder_tokens
+            if self.is_context_build
+            else self.query_tokens
+        )
 
     @property
     def step_tokens(self) -> int:
@@ -438,7 +449,10 @@ class Request:
 
     def record_context_admission(self, gpu_tokens, cpu_tokens):
         """Record a whole-context hit without expanding the input denominator."""
-        if min(gpu_tokens, cpu_tokens) < 0 or gpu_tokens + cpu_tokens >= self.context_len:
+        if (
+            min(gpu_tokens, cpu_tokens) < 0
+            or gpu_tokens + cpu_tokens >= self.context_len
+        ):
             raise SimulationStateError("context-source tokens must leave a real query")
         self.gpu_cached_context_tokens = gpu_tokens
         self.external_cached_context_tokens = cpu_tokens
@@ -551,9 +565,13 @@ class Request:
         """Sample one token: bookkeeping for wall time, service time and batch size."""
         if self.cancel_requested:
             return None
-        output_tokens = max(1, min(output_tokens, self.decode_len - self.generation_idx))
+        output_tokens = max(
+            1, min(output_tokens, self.decode_len - self.generation_idx)
+        )
         if self.max_model_len is not None:
-            output_tokens = min(output_tokens, max(0, self.max_model_len - self.context_len))
+            output_tokens = min(
+                output_tokens, max(0, self.max_model_len - self.context_len)
+            )
         self.generation_idx += output_tokens
         self._append_tokens(output_tokens)
         step_time = env.now - self._last_event_at
@@ -570,7 +588,10 @@ class Request:
             self.decode_service_time_sum += latency
             self.decode_batch_sum += batch
         if self.is_done:
-            if self.max_model_len is not None and self.context_len >= self.max_model_len:
+            if (
+                self.max_model_len is not None
+                and self.context_len >= self.max_model_len
+            ):
                 self.status = RequestStatus.FINISHED_LENGTH_CAPPED
             self.completed_at = env.now
             request_time = self.complete_timing()

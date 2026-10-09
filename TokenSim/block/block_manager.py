@@ -143,6 +143,12 @@ class BlockManager:
         self._sync_request_blocks(req, blocks)
         self._mark_input_blocks_pending(req, blocks, plan)
 
+    def get_num_free_blocks(self):
+        return self.gpu_allocator.get_num_free_blocks()
+
+    def get_num_allocated_blocks(self):
+        return self.gpu_allocator.get_num_allocated_blocks()
+
     def get_gpu_status(self) -> Tuple[int, int, int]:
         return self.gpu_allocator.get_status()
 

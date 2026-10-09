@@ -13,7 +13,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from TokenSim.errors import WorkloadValidationError
-from TokenSim.workload.agentx_native.models import TraceGraph, TurnKey
+from TokenSim.workload.agentx_support.models import TraceGraph, TurnKey
 
 
 @dataclass(frozen=True, slots=True)

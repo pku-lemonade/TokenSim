@@ -99,9 +99,11 @@ class LLMScheduler(ABC):
         self.connector.update_connector_output(worker_output)
 
     def free(self, req: Request):
-        req.status = (RequestStatus.FINISHED_LENGTH_CAPPED
-                      if req.max_model_len is not None and req.context_len >= req.max_model_len
-                      else RequestStatus.FINISHED_STOPPED)
+        req.status = (
+            RequestStatus.FINISHED_LENGTH_CAPPED
+            if req.max_model_len is not None and req.context_len >= req.max_model_len
+            else RequestStatus.FINISHED_STOPPED
+        )
 
     def cancel_request(self, req: Request) -> bool:
         """Release at a worker boundary, after its current kernel/load finishes."""
@@ -116,75 +118,28 @@ class LLMScheduler(ABC):
 
 
 class LLMDynamicScheduler(LLMScheduler):
-    def __init__(self, max_parallem_sum=200, connector=None):
+    def __init__(self, max_num_seqs=64, connector=None):
         super().__init__(connector=connector)
-        self.max_parallem_sum = max_parallem_sum
+        if max_num_seqs <= 0:
+            raise ConfigurationError("max_num_seqs must be positive")
+        self.max_num_seqs = max_num_seqs
 
-    def schedule(self) -> tuple[list[Request], list[Request]]:
-        running = []
-        while self.waiting:
-            request = self.waiting.pop()
-            running.append(request)
-            if sum([req.prefill_len for req in running]) == self.max_parallem_sum:
-                break
-        if running:
-            self.running.extend(running)
-            return self.running, []
-
-        self.running = sorted(self.running, key=lambda r: r.arrival_time)
-        while self.running:
-            running.append(self.running.pop())
-        self.running.extend(running)
+    def schedule(self):
+        available = max(0, self.max_num_seqs - len(self.running))
+        self.running.extend(self.waiting[:available])
+        del self.waiting[:available]
         return self.running, []
 
     def cpu_workload(self):
         return 0
 
 
-class LLMStaticScheduler(LLMScheduler):
-    def __init__(self, max_parallem_sum=0, connector=None):
-        super().__init__(connector=connector)
-        self.max_parallem_sum = max_parallem_sum
-
-    def schedule(self) -> tuple[list[Request], list[Request]]:
-        running = []
-        while self.running:
-            running.append(self.running.pop())
-            if sum([req.prefill_len for req in running]) == self.max_parallem_sum:
-                break
-        if running:
-            self.running.extend(running)
-            return running, []
-        while self.waiting:
-            running.append(self.waiting.pop())
-            if sum([req.prefill_len for req in running]) == self.max_parallem_sum:
-                break
-        self.running.extend(running)
-        return running, []
-
-    def cpu_workload(self):
-        return 0
-
-
-class LLMPrefillScheduler(LLMScheduler):
-    def __init__(self, max_parallem_sum=0, connector=None):
-        super().__init__(connector=connector)
-        self.max_parallem_sum = max_parallem_sum
-
-    def schedule(self) -> tuple[list[Request], list[Request]]:
-        running = []
-        if len(self.waiting) >= self.max_parallem_sum:
-            while self.waiting:
-                running.append(self.waiting.pop())
-        else:
-            if self.running:
-                while self.running:
-                    running.append(self.running.pop())
-            else:
-                while self.waiting:
-                    running.append(self.waiting.pop())
-        self.running.extend(running)
-        return running, []
+class LLMStaticScheduler(LLMDynamicScheduler):
+    def schedule(self):
+        if not self.running:
+            self.running.extend(self.waiting[: self.max_num_seqs])
+            del self.waiting[: self.max_num_seqs]
+        return self.running, []
 
 
 class LLMPagedAttnScheduler(LLMScheduler):
@@ -203,7 +158,7 @@ class LLMPagedAttnScheduler(LLMScheduler):
         self,
         id: int,
         cache_config: CacheConfig,
-        max_parallem_sum=None,
+        max_num_seqs=None,
         max_occupy_ratio: float = 1,
         connector=None,
         max_num_batched_tokens: int | None = DEFAULT_MAX_NUM_BATCHED_TOKENS,
@@ -217,7 +172,7 @@ class LLMPagedAttnScheduler(LLMScheduler):
 
         self.id = id
         self.cache_config = cache_config
-        self.max_parallem_sum = max_parallem_sum
+        self.max_num_seqs = max_num_seqs
         if max_num_batched_tokens is not None and max_num_batched_tokens < 1:
             raise ConfigurationError("max_num_batched_tokens must be at least 1")
         self.max_num_batched_tokens = max_num_batched_tokens
@@ -229,11 +184,21 @@ class LLMPagedAttnScheduler(LLMScheduler):
             raise ConfigurationError("mtp_acceptance_length must be finite and >= 1")
         self.mtp_acceptance_length = float(mtp_acceptance_length)
         self.mtp_seed = int(mtp_seed)
-        self.mtp_enabled = bool(
-            getattr(getattr(self.cache_config, "hybrid_layout", None), "speculative_tokens", 0)
-            and self.mtp_acceptance_length > 1
-        ) if mtp_enabled is None else bool(mtp_enabled)
-        if self.mtp_enabled and not getattr(getattr(self.cache_config, "hybrid_layout", None), "speculative_tokens", 0):
+        self.mtp_enabled = (
+            bool(
+                getattr(
+                    getattr(self.cache_config, "hybrid_layout", None),
+                    "speculative_tokens",
+                    0,
+                )
+                and self.mtp_acceptance_length > 1
+            )
+            if mtp_enabled is None
+            else bool(mtp_enabled)
+        )
+        if self.mtp_enabled and not getattr(
+            getattr(self.cache_config, "hybrid_layout", None), "speculative_tokens", 0
+        ):
             raise ConfigurationError("enabled MTP scheduler requires positive cache K")
         self.prefill_capacity_bound = False
         self.defer_prefills = False
@@ -285,14 +250,18 @@ class LLMPagedAttnScheduler(LLMScheduler):
             set_releaser(self._release_delayed_blocks)
 
     def _model_limit(self):
-        return getattr(getattr(self.cache_config, "hybrid_layout", None), "max_model_len", None)
+        return getattr(
+            getattr(self.cache_config, "hybrid_layout", None), "max_model_len", None
+        )
 
     def add_requests(self, requests):
         limit = self._model_limit()
         if limit is not None:
             for req in requests:
                 if req.prefill_len >= limit:
-                    raise ConfigurationError("prompt must leave room for an output token within max_model_len")
+                    raise ConfigurationError(
+                        "prompt must leave room for an output token within max_model_len"
+                    )
                 req.max_model_len = limit
         super().add_requests(requests)
 
@@ -329,10 +298,7 @@ class LLMPagedAttnScheduler(LLMScheduler):
             )
 
         # 1. Running requests, oldest first: decode tokens and context chunks.
-        # [TODO: xuechao] sort self.running according to some priority policy.
-        # vLLM FCFS preserves running insertion order, including resumed
-        # requests appended after existing running requests.
-        queue = list(self.running)
+        queue = sorted(self.running, key=lambda req: req.arrival_time)
         self.running = []
         prefill_scheduled = False
         while queue:
@@ -359,7 +325,9 @@ class LLMPagedAttnScheduler(LLMScheduler):
             req.scheduled_tokens = tokens
             req.scheduled_query_tokens = query_tokens
             prefill_scheduled |= req.prefill_chunk_pending
-            req.prefill_chunk_pending = req.num_computed_tokens + query_tokens < req.context_len
+            req.prefill_chunk_pending = (
+                req.num_computed_tokens + query_tokens < req.context_len
+            )
             budget = None if budget is None else budget - self._budget_cost(req, tokens)
             scheduled.append(req)
             self.running.append(req)
@@ -377,8 +345,8 @@ class LLMPagedAttnScheduler(LLMScheduler):
                 if not resuming_loaded and not self._is_occupy_below_usage():
                     break
                 if (
-                    self.max_parallem_sum is not None
-                    and len(self.running) >= self.max_parallem_sum
+                    self.max_num_seqs is not None
+                    and len(self.running) >= self.max_num_seqs
                 ):
                     self.stats["max_num_seqs_gate"] += 1
                     break
@@ -394,8 +362,14 @@ class LLMPagedAttnScheduler(LLMScheduler):
                     tokens = self._step_tokens(req, budget)
                     manager = self.block_manager
                     query_tokens = self._query_tokens(req, tokens)
-                    query_tokens = self._waiting_query_tokens(req, tokens, query_tokens, budget, scheduled_running,
-                                                              prefill_scheduled=prefill_scheduled)
+                    query_tokens = self._waiting_query_tokens(
+                        req,
+                        tokens,
+                        query_tokens,
+                        budget,
+                        scheduled_running,
+                        prefill_scheduled=prefill_scheduled,
+                    )
                     if query_tokens == 0:
                         break
                     lookahead = self._decode_lookahead(req)
@@ -413,8 +387,12 @@ class LLMPagedAttnScheduler(LLMScheduler):
                     req.status = RequestStatus.RUNNING
                     req.scheduled_tokens = tokens
                     req.scheduled_query_tokens = query_tokens
-                    req.scheduled_placeholder_tokens = max(0, query_tokens - tokens) if req.is_context_build else 0
-                    req.prefill_chunk_pending = req.num_computed_tokens + query_tokens < req.context_len
+                    req.scheduled_placeholder_tokens = (
+                        max(0, query_tokens - tokens) if req.is_context_build else 0
+                    )
+                    req.prefill_chunk_pending = (
+                        req.num_computed_tokens + query_tokens < req.context_len
+                    )
                     budget = None if budget is None else budget - query_tokens
                     self.running.append(req)
                     scheduled.append(req)
@@ -434,12 +412,28 @@ class LLMPagedAttnScheduler(LLMScheduler):
                         self.stats["deferred_waiting_prefills"] += 1
                         break
                 # Check padded compute budget before acquiring GPU prefix pages.
-                if getattr(self.block_manager, "native_hybrid", False) and not (external and external[1]):
-                    prefix = local_plan.hit_tokens if native_async else self.block_manager.plan_reuse(req).hit_tokens
+                if getattr(self.block_manager, "native_hybrid", False) and not (
+                    external and external[1]
+                ):
+                    prefix = (
+                        local_plan.hit_tokens
+                        if native_async
+                        else self.block_manager.plan_reuse(req).hit_tokens
+                    )
                     remaining = req.context_len - prefix
-                    if remaining == 1 and self._waiting_query_tokens(
-                        req, 1, 1, budget, scheduled_running, computed=prefix, prefill_scheduled=prefill_scheduled
-                    ) == 0:
+                    if (
+                        remaining == 1
+                        and self._waiting_query_tokens(
+                            req,
+                            1,
+                            1,
+                            budget,
+                            scheduled_running,
+                            computed=prefix,
+                            prefill_scheduled=prefill_scheduled,
+                        )
+                        == 0
+                    ):
                         break
                 can_allocate = (
                     self._can_admit_external(req, local_plan, external)
@@ -464,16 +458,32 @@ class LLMPagedAttnScheduler(LLMScheduler):
                     continue
                 tokens = self._step_tokens(req, budget)
                 query_tokens = self._query_tokens(req, tokens)
-                query_tokens = self._waiting_query_tokens(req, tokens, query_tokens, budget, scheduled_running,
-                                                          prefill_scheduled=prefill_scheduled)
+                query_tokens = self._waiting_query_tokens(
+                    req,
+                    tokens,
+                    query_tokens,
+                    budget,
+                    scheduled_running,
+                    prefill_scheduled=prefill_scheduled,
+                )
                 if query_tokens == 0:
-                    raise ConfigurationError("waiting query budget changed after native admission")
+                    raise ConfigurationError(
+                        "waiting query budget changed after native admission"
+                    )
                 if getattr(self.block_manager, "native_hybrid", False):
                     if not self.block_manager.can_ensure_slots(
                         req, query_tokens, lookahead=self._decode_lookahead(req)
                     ):
-                        self._preempt(req)
-                        preempted.append(req)
+                        # Admission has not executed a kernel. Release its
+                        # tentative references and stop admitting this step.
+                        self.block_manager.release_request_blocks(req)
+                        self.inflight_prefills.pop(req.id, None)
+                        if req.generation_idx == 0 and req.prefill_chunks == 0:
+                            req.first_prefill_source = None
+                            req.num_computed_tokens = 0
+                        req.status = RequestStatus.WAITING
+                        self.waiting.insert(0, req)
+                        self.stats["full_input_gate"] += 1
                         break
                     self.block_manager.ensure_slots(
                         req, query_tokens, lookahead=self._decode_lookahead(req)
@@ -485,8 +495,12 @@ class LLMPagedAttnScheduler(LLMScheduler):
                     self.inflight_prefills[req.id] = req
                 req.scheduled_tokens = tokens
                 req.scheduled_query_tokens = query_tokens
-                req.scheduled_placeholder_tokens = max(0, query_tokens - tokens) if req.is_context_build else 0
-                req.prefill_chunk_pending = req.num_computed_tokens + query_tokens < req.context_len
+                req.scheduled_placeholder_tokens = (
+                    max(0, query_tokens - tokens) if req.is_context_build else 0
+                )
+                req.prefill_chunk_pending = (
+                    req.num_computed_tokens + query_tokens < req.context_len
+                )
                 budget = None if budget is None else budget - query_tokens
                 scheduled.append(req)
                 self.running.append(req)
@@ -507,8 +521,12 @@ class LLMPagedAttnScheduler(LLMScheduler):
                 self.stats["scheduled_decode_query_tokens"] += req.query_tokens
             else:
                 self.stats["scheduled_context_query_tokens"] += req.query_tokens
-            self.stats["scheduled_placeholder_queries"] += req.scheduled_placeholder_tokens
-            self.stats["padded_context_admissions"] += int(req.scheduled_placeholder_tokens > 0)
+            self.stats[
+                "scheduled_placeholder_queries"
+            ] += req.scheduled_placeholder_tokens
+            self.stats["padded_context_admissions"] += int(
+                req.scheduled_placeholder_tokens > 0
+            )
             self.stats["scheduled_logits_rows"] += req.logits_tokens
         return scheduled, preempted
 
@@ -612,7 +630,9 @@ class LLMPagedAttnScheduler(LLMScheduler):
                 remaining = min(remaining, max(0, limit - req.context_len))
             if remaining == 0:
                 return 0
-            accepted = min(self._decode_output_tokens(req, remaining), self._query_room(req))
+            accepted = min(
+                self._decode_output_tokens(req, remaining), self._query_room(req)
+            )
             cost = self._query_tokens(req, accepted)
             return accepted if budget is None or budget >= cost else 0
         if self.effective_long_prefill_threshold:
@@ -649,20 +669,39 @@ class LLMPagedAttnScheduler(LLMScheduler):
         # even when only one output token remains. Output progress is clipped
         # separately in _decode_output_tokens; partial queries would also
         # defeat the serving runner's uniform decode graph.
-        return min(1 + self.cache_config.hybrid_layout.speculative_tokens, self._query_room(req))
+        return min(
+            1 + self.cache_config.hybrid_layout.speculative_tokens,
+            self._query_room(req),
+        )
 
     def _query_room(self, req):
         limit = self._model_limit()
-        return max(0, limit - req.num_computed_tokens - 1) if limit is not None else float("inf")
+        return (
+            max(0, limit - req.num_computed_tokens - 1)
+            if limit is not None
+            else float("inf")
+        )
 
-    def _waiting_query_tokens(self, req, real_tokens, queries, budget, scheduled, *, computed=None, prefill_scheduled=False):
+    def _waiting_query_tokens(
+        self,
+        req,
+        real_tokens,
+        queries,
+        budget,
+        scheduled,
+        *,
+        computed=None,
+        prefill_scheduled=False,
+    ):
         if not self.mtp_enabled or not req.is_context_build or real_tokens != 1:
             return queries
         prefix = req.num_computed_tokens if computed is None else computed
         width = 1 + self.cache_config.hybrid_layout.speculative_tokens
-        if (req.context_len - prefix != 1
+        if (
+            req.context_len - prefix != 1
             or prefill_scheduled
-            or not (scheduled or prefix > 0)):
+            or not (scheduled or prefix > 0)
+        ):
             return queries
         limit = self._model_limit()
         if limit is not None and prefix + width + 1 > limit:
@@ -670,7 +709,9 @@ class LLMPagedAttnScheduler(LLMScheduler):
         return width if budget is None or budget >= width else 0
 
     def _budget_cost(self, req: Request, accepted: int) -> int:
-        return self._query_tokens(req, accepted) if not req.is_context_build else accepted
+        return (
+            self._query_tokens(req, accepted) if not req.is_context_build else accepted
+        )
 
     def _decode_lookahead(self, req: Request) -> int:
         # The initial draft pass also runs over prefill chunks. Only async
@@ -678,7 +719,11 @@ class LLMPagedAttnScheduler(LLMScheduler):
         if not self.mtp_enabled:
             return 0
         return int(
-            getattr(getattr(self.cache_config, "hybrid_layout", None), "speculative_tokens", 0)
+            getattr(
+                getattr(self.cache_config, "hybrid_layout", None),
+                "speculative_tokens",
+                0,
+            )
         )
 
     def _reserve_context_slots(self, req, tokens, queue, preempted):
@@ -722,9 +767,7 @@ class LLMPagedAttnScheduler(LLMScheduler):
                     self._preempt(req)
                     preempted.append(req)
                     return False
-            self.block_manager.ensure_slots(
-                req, query_tokens, lookahead=lookahead
-            )
+            self.block_manager.ensure_slots(req, query_tokens, lookahead=lookahead)
             return True
         while True:
             if self.block_manager.can_append_slot(req):
@@ -812,9 +855,11 @@ class LLMPagedAttnScheduler(LLMScheduler):
             req.status = RequestStatus.WAITING_FOR_CONNECTOR_FREE
             return
         self.block_manager.free(req)
-        req.status = (RequestStatus.FINISHED_LENGTH_CAPPED
-                      if req.max_model_len is not None and req.context_len >= req.max_model_len
-                      else RequestStatus.FINISHED_STOPPED)
+        req.status = (
+            RequestStatus.FINISHED_LENGTH_CAPPED
+            if req.max_model_len is not None and req.context_len >= req.max_model_len
+            else RequestStatus.FINISHED_STOPPED
+        )
 
     def cancel_request(self, req: Request) -> bool:
         self.running = [r for r in self.running if r.id != req.id]

@@ -17,13 +17,13 @@ from pathlib import Path
 from typing import Iterable
 
 from TokenSim.errors import WorkloadValidationError
-from TokenSim.workload.agentx_native.chains import (
+from TokenSim.workload.agentx_support.chains import (
     detect_agent_chains,
     is_aux_chain,
     is_reduction_chain,
     worker_group_assignment,
 )
-from TokenSim.workload.agentx_native.models import (
+from TokenSim.workload.agentx_support.models import (
     Branch,
     Conversation,
     GraphTurn,
@@ -62,7 +62,9 @@ def _hash_array(hashes) -> array:
         raise WorkloadValidationError("AgentX hash_ids must be a list")
     # Exact int type excludes bool; array("Q") rejects values outside u64.
     if not set(map(type, hashes)) <= {int}:
-        raise WorkloadValidationError("AgentX hash IDs must be unsigned 64-bit integers")
+        raise WorkloadValidationError(
+            "AgentX hash IDs must be unsigned 64-bit integers"
+        )
     try:
         return array("Q", hashes)
     except OverflowError as exc:

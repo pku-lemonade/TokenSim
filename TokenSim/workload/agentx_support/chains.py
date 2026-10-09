@@ -38,7 +38,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from TokenSim.workload.agentx_native.models import RawRequest
+from TokenSim.workload.agentx_support.models import RawRequest
 
 # TokenSim uses one compact record type for normal and streaming requests.
 WekaNormalRequest = WekaStreamingRequest = RawRequest

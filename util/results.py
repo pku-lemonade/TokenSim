@@ -7,7 +7,8 @@ from typing import TYPE_CHECKING, List, Any
 
 import numpy as np
 
-from TokenSim.config.psla_config import PSLAConfig, LLMResult, MetricData
+from TokenSim.config.psla_config import PSLAConfig
+from TokenSim.results import LLMResult, MetricData
 from TokenSim.config.config import ClusterConfig
 from TokenSim.llm.llm_request import LLMTime, Request
 from TokenSim.moe.stats import MoEStats
@@ -222,7 +223,11 @@ def get_latency_stats(engine: LLMEngine) -> dict[str, Any]:
                     hc_head_counts[name] = hc_head_counts.get(name, 0) + value
                 hc_head_seconds[role] = hc_head_seconds.get(role, 0.0) + head.seconds
         for role, estimator, layers in (
-            ("main", getattr(backend, "native_mhc", None), getattr(backend, "layers_local", 0)),
+            (
+                "main",
+                getattr(backend, "native_mhc", None),
+                getattr(backend, "layers_local", 0),
+            ),
             ("draft", getattr(mtp, "mhc", None), 1),
         ):
             if estimator is not None:
@@ -264,9 +269,13 @@ def get_latency_stats(engine: LLMEngine) -> dict[str, Any]:
                     native_attention_decode_batches.get(key, 0) + count
                 )
             for key, value in extra["attention_module_mtp_kv"].items():
-                native_attention_mtp_kv[key] = native_attention_mtp_kv.get(key, 0) + value
+                native_attention_mtp_kv[key] = (
+                    native_attention_mtp_kv.get(key, 0) + value
+                )
             for key, value in extra["attention_module_composition"].items():
-                native_attention_composition[key] = native_attention_composition.get(key, 0) + value
+                native_attention_composition[key] = (
+                    native_attention_composition.get(key, 0) + value
+                )
         stats = getattr(backend, "stats", None)
         if isinstance(stats, OperatorStats):
             aggregate = aggregate.aggregate(stats)
@@ -289,8 +298,11 @@ def get_latency_stats(engine: LLMEngine) -> dict[str, Any]:
         "latency_backends": descriptions,
         **aggregate.as_dict(),
         **(
-            {**native_totals, "native_megamoe_counts": native_counts,
-             "native_megamoe_composition": native_moe_composition}
+            {
+                **native_totals,
+                "native_megamoe_counts": native_counts,
+                "native_megamoe_composition": native_moe_composition,
+            }
             if native_counts
             else {}
         ),
@@ -307,14 +319,32 @@ def get_latency_stats(engine: LLMEngine) -> dict[str, Any]:
         ),
         **({"target_logits": target_logits_counts} if target_logits_counts else {}),
         **({"main_forward_counts": main_forward_counts} if main_forward_counts else {}),
-        **({"residual_output_counts": hc_head_counts,
-            "residual_output_seconds": hc_head_seconds} if hc_head_counts else {}),
-        **({"native_mhc_seconds": sum(mhc_seconds.values()),
-            "native_mhc_main_seconds": mhc_seconds["main"],
-            "native_mhc_draft_seconds": mhc_seconds["draft"],
-            "native_mhc_counts": mhc_counts} if any(mhc_counts.values()) else {}),
-        **({"speculative_counts": mtp_counts,
-            "speculative_component_seconds": mtp_components} if mtp_counts else {}),
+        **(
+            {
+                "residual_output_counts": hc_head_counts,
+                "residual_output_seconds": hc_head_seconds,
+            }
+            if hc_head_counts
+            else {}
+        ),
+        **(
+            {
+                "native_mhc_seconds": sum(mhc_seconds.values()),
+                "native_mhc_main_seconds": mhc_seconds["main"],
+                "native_mhc_draft_seconds": mhc_seconds["draft"],
+                "native_mhc_counts": mhc_counts,
+            }
+            if any(mhc_counts.values())
+            else {}
+        ),
+        **(
+            {
+                "speculative_counts": mtp_counts,
+                "speculative_component_seconds": mtp_components,
+            }
+            if mtp_counts
+            else {}
+        ),
         # Grouped by table and discrete key with the requested axis ranges;
         # the full report goes to missing_shapes_<qps>.json.
         "operator_missing_shapes": aggregate.missing_shape_records()[:200],
@@ -396,6 +426,7 @@ def get_agentx_metrics(
     if getattr(args, "workload_type", None) != "agentx_weka":
         return None
 
+    requests = [r for r in requests if r.is_done and not r.cancel_requested]
     root_requests = [
         r for r in requests if _is_root_stream(getattr(r, "agentx_stream_id", None))
     ]
@@ -407,19 +438,19 @@ def get_agentx_metrics(
     e2e = [request.total_time for request in requests]
     # TPOT/ITL: mean inter-token latency excluding first token (matches vLLM).
     tpot = [
-        request.decode_time_sum / (request.decode_len - 1)
+        request.decode_time_sum / (request.generation_idx - 1)
         for request in requests
-        if request.decode_len > 1
+        if request.generation_idx > 1
     ]
     interactivity = [1.0 / value for value in tpot if value > 0]
     normalized_interactivity = [
-        request.decode_len / request.total_time
+        request.generation_idx / request.total_time
         for request in requests
         if request.total_time > 0
     ]
 
     input_tokens = sum(request.prefill_len for request in requests)
-    output_tokens = sum(request.decode_len for request in requests)
+    output_tokens = sum(request.generation_idx for request in requests)
     cached_input_tokens = sum(request.cached_prefill_tokens for request in requests)
     external_input_tokens = sum(
         request.external_cached_prefill_tokens for request in requests
@@ -536,8 +567,12 @@ def get_agentx_metrics(
             ),
             reloaded_gpu_tokens=sum(r.reloaded_gpu_tokens for r in requests),
             reloaded_cpu_tokens=sum(r.reloaded_cpu_tokens for r in requests),
-            reloaded_generated_gpu_tokens=sum(r.reloaded_generated_gpu_tokens for r in requests),
-            reloaded_generated_cpu_tokens=sum(r.reloaded_generated_cpu_tokens for r in requests),
+            reloaded_generated_gpu_tokens=sum(
+                r.reloaded_generated_gpu_tokens for r in requests
+            ),
+            reloaded_generated_cpu_tokens=sum(
+                r.reloaded_generated_cpu_tokens for r in requests
+            ),
             recomputed_tokens=sum(r.recomputed_tokens_total for r in requests),
             latest_gpu_hit_tokens=sum(
                 r.cached_prefill_tokens - r.external_cached_prefill_tokens
@@ -626,7 +661,9 @@ def print_all_stats(
     # Print latency statistics.
     print_latency_stats(prefill_latency, decode_latency)
     # Print throughput statistics.
-    print_throughput_stats(duration, request_count, prefill_lens)
+    print_throughput_stats(
+        duration, request_count, [r.generation_idx for r in requests]
+    )
     print(f"Total preemptions: {sum([wkr.preempted_cnt for wkr in engine.workers])}")
     print_prefix_reuse_stats(requests)
     print_connector_stats(engine)
@@ -635,7 +672,27 @@ def print_all_stats(
     print_moe_stats(engine)
     print_operator_latency_stats(engine)
     # Print SLO statistics.
-    print_slo_stats(duration, g_time)
+    config = (
+        engine.workers[0].psla_config
+        if hasattr(engine.workers[0], "psla_config")
+        else None
+    )
+    prefill_slo = getattr(config, "first_token_latency", None)
+    decode_slo = getattr(config, "decode_token_latency", None)
+    print_slo_stats(
+        duration,
+        g_time,
+        prefill_slo=(
+            prefill_slo.max
+            if prefill_slo and prefill_slo.max and prefill_slo.max > 0
+            else 15
+        ),
+        decode_slo=(
+            decode_slo.max
+            if decode_slo and decode_slo.max and decode_slo.max > 0
+            else 0.15
+        ),
+    )
 
 
 def print_metrics(
@@ -673,9 +730,11 @@ def print_latency_stats(prefill_latency: List[float], decode_latency: List[float
     print(f"Min decode latency: {min(decode_latency)}")
 
 
-def print_throughput_stats(dur: float, request_count: int, prefill_lens: List[int]):
+def print_throughput_stats(dur: float, request_count: int, output_tokens: List[int]):
     print(f"total time: {dur}")
-    print(f"Thoughput: {request_count / dur} r/s, {sum(prefill_lens) / dur} token/s")
+    print(
+        f"Throughput: {request_count / dur} r/s, {sum(output_tokens) / dur} output token/s"
+    )
 
 
 def print_prefix_reuse_stats(requests: list[Request]):
@@ -886,9 +945,13 @@ def export_result(
         duration=duration,
         simulator_wall_time=simulator_wall_time,
         simulated_time=duration,
-        output_qps=request_count / duration,
-        output_token_ps=(sum(prefill_lens) + sum(decode_lens)) / duration,
+        output_qps=sum(r.is_done for r in requests) / duration if duration else 0,
+        output_token_ps=(
+            sum(r.generation_idx for r in requests) / duration if duration else 0
+        ),
         notdone=notdone,
+        termination_reason=getattr(args, "termination_reason", "completed"),
+        failure=getattr(args, "simulation_failure", None),
         preemption_count=sum(worker.preempted_cnt for worker in engine.workers),
         recomputation_count=sum(req.recomputation_count for req in requests),
         recomputed_tokens=sum(req.recomputed_tokens_total for req in requests),
@@ -944,7 +1007,9 @@ def export_result(
 
     results_path.mkdir(parents=True, exist_ok=True)
 
-    result_dict = asdict(result)
+    result_dict = {
+        key: value for key, value in asdict(result).items() if value is not None
+    }
     result_dict["cluster"] = asdict(result.cluster)
     result_dict["request_time"] = asdict(result.request_time)
     result_dict["prefill_time"] = asdict(result.prefill_time)
