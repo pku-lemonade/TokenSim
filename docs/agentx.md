@@ -9,7 +9,7 @@ There is no model-name switch in the benchmark entry point. A model's YAML
 geometry and operator bindings select its projections, compressed attention,
 residual mixing and draft layers. Serving configuration selects batching,
 parallel synchronization, routing, operator backends and storage. The supplied
-presets use the complete DeepSeek-V4-Pro model; proxy configurations and
+examples use the complete DeepSeek-V4-Pro model; proxy configurations and
 research artifacts have been removed.
 
 ## Install and obtain traces
@@ -37,32 +37,68 @@ multiple of the trace block size, which is 64 tokens for this dataset. Complete
 trace blocks are combined into engine-block identities; partial tails cannot
 claim a cross-request cache hit.
 
-## Run explicit full-model presets
+## Run with the simulator CLI
 
-`data/experiments/agentx.yaml` contains two examples. Its settings are explicit
-inputs, rather than simulator defaults or enforced protocol constraints.
+All workloads use `tokensim` (or `python benchmark.py`). Model, topology,
+serving and storage settings are ordinary simulator inputs; AgentX arguments
+select the traces and replay behavior.
 
-```bash
-python scripts/run_agentx.py --case b200-c196 \
-  --backend simple_cpu --seed 0 --results_path results/agentx/b200
-python scripts/run_agentx.py --case b300-c384 \
-  --backend simple_cpu --seed 0 --results_path results/agentx/b300
+For per-rank CPU offload, save the following object as `kv_transfer.json`.
+These example host capacities are in bytes; adjust them for your hardware.
+
+```json
+{
+  "kv_connector": "SimpleCPUOffloadConnector",
+  "kv_role": "kv_both",
+  "kv_connector_extra_config": {
+    "cpu_bytes_to_use_per_rank": 356125000000,
+    "host_available_bytes": 3246161657856,
+    "lazy_offload": false,
+    "transfer_utilization": 0.75
+  }
+}
 ```
 
-Both use eight GPU ranks in DEP8, engine blocks of 256 tokens, DP lockstep,
-consistent-hash routing, a warmup and a 3600-second issue window. B200 uses
-196 concurrent trees, 49 sequences per worker and an 8192-token step budget;
-B300 uses 384 trees, 96 sequences and a 16384-token budget. The profile allows
-30 seconds of grace and 10 seconds for cancellation and transfer cleanup.
-These durations are configurable.
+An example using the complete model on eight B200 ranks in DEP8:
 
-The backend argument overrides the preset. `hbm` disables external storage;
-`simple_cpu` uses per-rank host pools; `mooncake` uses the explicitly selected
-`HybridMooncakeStoreConnector` with a shared DRAM service. The ordinary
+```bash
+tokensim --workload_type agentx_weka \
+  --dataset_path dataset/agentx/traces.jsonl \
+  --model data/psla/deepseek-v4-pro.json --cluster data/clusters/8_b200/dep8.json \
+  --batching paged-attn --block_size 256 --max_num_seqs 49 \
+  --max_num_batched_tokens 8192 --gpu_memory_utilization 0.9 \
+  --router_policy consistent_hash --dp_lockstep --dp_sync_interval 16 \
+  --long_prefill_token_threshold 512 --prefill_schedule_interval 8 \
+  --latency_backend operator_table --latency_fallback table_first \
+  --operator_backend vllm --attention_backend module --mhc_backend module \
+  --moe_backend deep_gemm_amxf4_mega_moe \
+  --mtp_num_speculative_tokens 3 --mtp_acceptance_length 2.49 \
+  --agentx_concurrency 196 --agentx_profile_duration 3600 --agentx_warmup \
+  --agentx_issue_mode closed_loop --agentx_idle_gap_cap 10 \
+  --agentx_grace_period 30 --agentx_cancellation_timeout 10 \
+  --random_seed 0 --agentx_workload_seed 42 \
+  --kv_transfer_config kv_transfer.json \
+  --verbose none --results_path results/agentx/b200
+```
+
+For eight B300 ranks, change these arguments and choose another result directory:
+
+| Argument | B200 example | B300 example |
+| --- | --- | --- |
+| `--cluster` | `data/clusters/8_b200/dep8.json` | `data/clusters/8_b300/dep8.json` |
+| `--agentx_concurrency` | 196 | 384 |
+| `--max_num_seqs` | 49 | 96 |
+| `--max_num_batched_tokens` | 8192 | 16384 |
+| `--gpu_memory_utilization` | 0.9 | 0.92 |
+
+Omit `--kv_transfer_config` to use the cluster's storage configuration (these
+two clusters default to GPU-only storage). For a shared DRAM store, pass
+`--kv_transfer_config data/kv_transfer/mooncake_store_dram_agentx.json`, which
+explicitly selects `HybridMooncakeStoreConnector`. The ordinary
 `MooncakeStoreConnector` supports homogeneous cache pages. The factory checks
 layout support and never substitutes one connector for another.
 
-For another model, topology or subset, use the ordinary CLI:
+For another model, topology or subset, change the same CLI inputs:
 
 ```bash
 tokensim --workload_type agentx_weka \
@@ -74,13 +110,13 @@ tokensim --workload_type agentx_weka \
 ```
 
 Select a model and cache budget that can accommodate the chosen prompts. The
-full dataset includes very long contexts; the full-model presets are the
+full dataset includes very long contexts; the full-model examples are the
 appropriate examples for those traces. Grouped physical caches require
 chunked prefill with a finite token budget.
 
 `random_seed` controls simulation randomness, including MTP progress.
 `agentx_workload_seed` controls sampled warmup frontiers; it defaults to the
-simulation seed, while the supplied presets explicitly use 42. Both are
+simulation seed, while the full-model example explicitly uses 42. Both are
 reported. Synthetic and dataset arrival generators use a local seeded stream.
 
 ## Replay and stopping
@@ -105,9 +141,9 @@ the result and diagnostic files before returning an error.
 
 ## Results and interpretation
 
-The result directory contains `agentx_c<concurrency>.json`, `run_config.json`,
-`kv_transfer_config.json` and the `replay/` logs: `events.jsonl`,
-`requests.jsonl`, `cache_windows.jsonl` and `cache_configuration.json`.
+The result directory contains `agentx_c<concurrency>.json` and the `replay/`
+logs: `events.jsonl`, `requests.jsonl`, `cache_windows.jsonl` and
+`cache_configuration.json`.
 Failures also produce `failure.json` and `failed.txt` in that directory.
 Repeated cache descriptions are shared in the configuration log.
 
