@@ -1,0 +1,25 @@
+TokenSim is distributed under the Apache License, Version 2.0.
+
+AIPerf
+Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+The AgentX conversation parser, chain classifier and trajectory planning adapt
+NVIDIA AIPerf revision 49634d1c. Source attribution and modification details are
+in TokenSim/workload/agentx_support/source_manifest.json. License:
+third_party/licenses/AIPerf-Apache-2.0.txt.
+
+vLLM Router and mcrouter
+The consistent-hash implementation adapts vllm-project/router v0.1.14 under
+Apache-2.0. Its MurmurHash64A and FurcHash algorithms derive from Facebook
+mcrouter under the MIT license. Applicable notices and license texts are in
+third_party/licenses/vllm-router-Apache-2.0.txt and mcrouter-MIT.txt.
+
+AIConfigurator
+Measured operator data derives from NVIDIA AIConfigurator revision
+f254959eb89e2f206b8f9a77051644d7c1cbdb89 under Apache-2.0. Every retained package
+records source IDs, upstream references, versions and timing scope in its
+generation_meta.yaml. License: third_party/licenses/AIConfigurator-Apache-2.0.txt.
+
+DeepGEMM
+The fused-expert work and storage estimates follow the published DeepGEMM
+kernel geometry. Retained attribution is in code and the operator-data source
+records. Upstream license: third_party/licenses/DeepGEMM-MIT.txt.

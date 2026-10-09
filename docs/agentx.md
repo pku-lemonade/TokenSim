@@ -1,103 +1,154 @@
-# AgentX / InferenceX native simulation
+# AgentX workloads
 
-TokenSim's AgentX path replays the SemiAnalysis coding traces against the full
-DeepSeek-V4-Pro model. It models request trees, MTP, native CSA/HCA attention,
-MegaMoE, mHC, DP lockstep, hybrid KV caching, SimpleCPU and Mooncake transfer
-lifecycles. The simulated LLM does not generate text or require a model server.
+AgentX selects a trace dataset and a dependency-aware request generator. It
+uses the same engine, scheduler and latency backend as other workloads. The
+implementation is `TokenSim/workload/agentx.py`; parsing and trajectory helpers
+are in `TokenSim/workload/agentx_support`.
 
-The reference audit and decisions are recorded in
-[the research plan](agentx-research-plan.md). Stage reports cover the native
-[MegaMoE](agentx-native-megamoe-report.md),
-[attention/MTP](agentx-native-attention-report.md), [mHC](agentx-native-mhc-report.md),
-[Mooncake](agentx-mooncake-report.md), and [curve](agentx-native-curve-report.md)
-work. Older proxy results remain in their original directories for historical
-comparison and are not valid native measurements.
+There is no model-name switch in the benchmark entry point. A model's YAML
+geometry and operator bindings select its projections, compressed attention,
+residual mixing and draft layers. Serving configuration selects batching,
+parallel synchronization, routing, operator backends and storage. The supplied
+presets use the complete DeepSeek-V4-Pro model; proxy configurations and
+research artifacts have been removed.
 
-## Native matrix
+## Install and obtain traces
 
-The versioned matrix is `data/experiments/agentx.yaml`. It requires the full
-393-trace pool, a warmup, a 3,600-second profile, a 30-second grace period and
-the reference cancellation window. A one-hour run is simulated time; it does
-not require every request in the trace pool to finish.
-
-Check and inspect the matrix before running it:
+Python 3.12 is recommended. Python 3.11 is supported; a named conda environment
+is not required.
 
 ```bash
-python scripts/run_agentx_experiments.py --action check
-python scripts/run_agentx_experiments.py --action list
-python scripts/run_agentx_experiments.py \
-  --action expand --output /tmp/agentx-expanded.json
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e '.[agentx,dev]'
+bash scripts/download_agentx.sh
 ```
 
-Run the two native checkpoints and retain each simulation seed separately:
+The dataset is [SemiAnalysis's WEKA trace pool](https://huggingface.co/datasets/semianalysisai/cc-traces-weka-062126/tree/23f152f6f0f9399a85901b89a6458def0ef16729),
+pinned to revision `23f152f6f0f9399a85901b89a6458def0ef16729`. The download
+contains 393 trace trees and is 1,847,151,435 bytes. Its SHA-256 is
+`29b6a19e751ff5230771519aab755f80a0f43a4ba9cf96b72d3a6a437ec99276`.
+The script verifies the checksum, reuses an already verified file and accepts
+an optional destination directory. The dataset stays outside version control.
+The simulator accepts smaller pools and different profile windows.
+
+Trace hashes must be unsigned 64-bit integers. The engine block size must be a
+multiple of the trace block size, which is 64 tokens for this dataset. Complete
+trace blocks are combined into engine-block identities; partial tails cannot
+claim a cross-request cache hit.
+
+## Run explicit full-model presets
+
+`data/experiments/agentx.yaml` contains two examples. Its settings are explicit
+inputs, rather than simulator defaults or enforced protocol constraints.
 
 ```bash
-python scripts/run_agentx_experiments.py \
-  --action run --group checkpoints --seeds 0,1,2 \
-  --result-root results/agentx-matrix/native-checkpoints
-python scripts/run_agentx_experiments.py \
-  --action plot --result-root results/agentx-matrix/native-checkpoints \
-  --output results/agentx-matrix/native-checkpoints/summary.png
+python scripts/run_agentx.py --case b200-c196 \
+  --backend simple_cpu --seed 0 --results_path results/agentx/b200
+python scripts/run_agentx.py --case b300-c384 \
+  --backend simple_cpu --seed 0 --results_path results/agentx/b300
 ```
 
-Run the configured TP8, TP4/EP4 and DEP8 curve points with three MTP seeds:
+Both use eight GPU ranks in DEP8, engine blocks of 256 tokens, DP lockstep,
+consistent-hash routing, a warmup and a 3600-second issue window. B200 uses
+196 concurrent trees, 49 sequences per worker and an 8192-token step budget;
+B300 uses 384 trees, 96 sequences and a 16384-token budget. The profile allows
+30 seconds of grace and 10 seconds for cancellation and transfer cleanup.
+These durations are configurable.
+
+The backend argument overrides the preset. `hbm` disables external storage;
+`simple_cpu` uses per-rank host pools; `mooncake` uses the explicitly selected
+`HybridMooncakeStoreConnector` with a shared DRAM service. The ordinary
+`MooncakeStoreConnector` supports homogeneous cache pages. The factory checks
+layout support and never substitutes one connector for another.
+
+For another model, topology or subset, use the ordinary CLI:
 
 ```bash
-python scripts/run_agentx_experiments.py \
-  --action run --group curve --seeds 0,1,2 --max-parallel 2 \
-  --result-root results/agentx-matrix/native-curve
-python scripts/run_agentx_experiments.py \
-  --action plot --group curve \
-  --result-root results/agentx-matrix/native-curve \
-  --output results/agentx-matrix/native-curve/summary.png
+tokensim --workload_type agentx_weka \
+  --dataset_path dataset/agentx/traces.jsonl \
+  --model data/psla/llama-7b.json --cluster data/clusters/1_a100/h1.json \
+  --batching paged-attn --block_size 64 --max_num_seqs 32 \
+  --agentx_trace_count 1 --agentx_profile_duration 60 --no-agentx_warmup \
+  --results_path results/agentx/subset
 ```
 
-`summary.csv` keeps seed rows and adds a mean/min/max/standard-deviation row
-when at least two seeds are present. It records total and per-GPU throughput,
-p90 TTFT/ITL/E2E, GPU and CPU hit rates, topology, cache backend and any
-checked-in reference error. Points without an independently verified reference
-artifact remain explicitly uncomparable.
+Select a model and cache budget that can accommodate the chosen prompts. The
+full dataset includes very long contexts; the full-model presets are the
+appropriate examples for those traces. Grouped physical caches require
+chunked prefill with a finite token budget.
 
-Use `scripts/run_agentx_native.py` only when a single matrix point and backend
-must be inspected. The `simple_cpu`, `hbm` and `mooncake` choices are written
-to the run manifest. Mooncake uses the native shared-page adapter and records
-its shared pool, DMA pinning, queue contention, asynchronous load/save and
-cancellation counters.
+`random_seed` controls simulation randomness, including MTP progress.
+`agentx_workload_seed` controls sampled warmup frontiers; it defaults to the
+simulation seed, while the supplied presets explicitly use 42. Both are
+reported. Synthetic and dataset arrival generators use a local seeded stream.
 
-## Data and scope
+## Replay and stopping
 
-The workload is read directly from `dataset/agentx/traces.jsonl`; TokenSim
-implements the AIPerf trace parser and dependency replay internally. Recorded
-prefix hashes, nested streams, SPAWN/JOIN dependencies, session routing and
-input/output lengths are preserved. The dataset is intentionally gitignored.
+Closed-loop mode releases requests when their predecessors finish and the
+recorded think-time gap has elapsed. Captured API duration helps reconstruct
+relationships; it is not added to simulated compute time. SPAWN/JOIN relations,
+root streams, independent subagents and cache scope are retained. Completed
+trees are replaced from the trace pool.
 
-Operator data is imported from the checked-in AIConfigurator sources with the
-original metadata and licenses. The native attention tables are FlashMLA
-measurements while the historical serving reference uses FlashInfer and an
-MXFP4 indexer cache; this backend/layout mismatch is retained in provenance.
-MegaMoE uses the matched GB200/GB300 table as a documented cross-hardware
-estimate, and shared-expert fusion is an explicit approximation. These limits
-are reported with every native result and are not silently folded into a
-reference value.
+`--agentx_issue_mode recorded` schedules against each tree's source clock,
+including when a tree is recycled. Dependency completion can delay a request.
+Idle caps apply to closed-loop replay; they compress long periods without
+ready work and are recorded as counters.
 
-## Validation
+`--sim_time` is a hard simulated-time cutoff, including during warmup. It does
+not continue draining transfers past that cutoff. Partial results carry
+`termination_reason=sim_time_limit` and partial metadata. Normal completion
+stops admissions, permits grace completions, cancels the remaining requests
+and checks cache references. Failed cleanup or conservation checks preserve
+the result and diagnostic files before returning an error.
 
-Run the full logical suite with:
+## Results and interpretation
+
+The result directory contains `agentx_c<concurrency>.json`, `run_config.json`,
+`kv_transfer_config.json` and the `replay/` logs: `events.jsonl`,
+`requests.jsonl`, `cache_windows.jsonl` and `cache_configuration.json`.
+Failures also produce `failure.json` and `failed.txt` in that directory.
+Repeated cache descriptions are shared in the configuration log.
+
+AgentX metrics include output tokens per second, request latency percentiles,
+TTFT, ITL, prefix-source counts, cache hit rates and replay state. Completed
+requests contribute actual generated output tokens; warmup, cancelled and
+unfinished requests are excluded from profile latency summaries. Engine
+statistics include recomputation, transfer waits and operator provenance.
+Model-specific result fields are omitted when unused. Unknown result fields
+are rejected rather than silently discarded.
+
+The examples are estimates with documented limits:
+
+- Fused MegaMoE data for B200/B300 uses GB200/GB300 SGLang measurements. The
+  source hardware, framework, capacity and timed scope remain visible.
+- Complete sparse-attention measurements use FlashMLA; the serving reference
+  used FlashInfer. Source-layout KV entries may include scale/RoPE metadata,
+  unlike the plain serving KV layout. These sizes are explicit in the model's
+  operator binding and are not an implicit model-name rule.
+- Unequal-rank work, shared-expert fusion, phase overlap, draft attention and
+  residual output reduction include analytical approximations. Their source
+  grade and contribution are retained in metadata.
+- The synthetic expert-work spectra use fixed draws 0/1/2 to approximate the
+  collector's distribution. They are not recovered historical expert routes
+  and are independent of the simulation seed.
+- Persistent-buffer SM counts are configurable per hardware entry. The
+  current values remain an explicitly unmeasured estimate.
+
+The engineering optimization reduced the measured full-window wall time from
+35.5 to 11.2 minutes on B200 and from 83.7 to 25.3 minutes on B300, with the
+same simulation results and logs. Those timings depend on the host CPU and
+load. Subsequent correctness fixes can change simulation metrics; historical
+throughput is not a unit-test target.
+
+## Core validation
 
 ```bash
-pytest -q
+python -m unittest discover -s tests -t .
 ```
 
-The curve validator checks every completed point's request count, final cache
-state, cancellation cleanup and DP time conservation:
-
-```bash
-python scripts/validate_agentx_curve.py \
-  results/agentx-matrix/native-curve \
-  --output results/agentx-matrix/native-curve/validation.json
-```
-
-The results are a simulator reproduction, not an official InferenceX
-submission. Absolute throughput remains subject to the documented operator
-table and FlashMLA/FlashInfer differences; use the per-stage reports and
-component time breakdown when interpreting the remaining reference error.
+Tests cover dependency clocks and recycling, cancellation without fake output,
+FIFO scheduling, PD transfer-time conservation, grouped-cache recovery,
+reference lifetimes, deadlines and durable result export. The suite uses
+small deterministic cases and no throughput-alignment or smoke checks.

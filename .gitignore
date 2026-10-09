@@ -1,28 +1,16 @@
-.DS_Store
-.vscode
-
+/.DS_Store
+/.vscode/
+/.codex/
+/.claude/
 __pycache__/
 *.py[cod]
 .pytest_cache/
-
-results
-img
-log
-tmp
-dataset/agentx/
-
-.codex
-.claude
-
-# generated experiment artifacts
-*.egg-info
-
-# Local run logs and generated test output; validation summaries stay tracked.
+*.egg-info/
+/build/
+/dist/
+/results/
+/img/
+/log/
+/tmp/
+/dataset/agentx/
 *.log
-/data/reference/agentx-*/full-tests*.txt
-/data/reference/agentx-*/*-tests*.txt
-
-# Detailed generated diagnostics; commit summaries and hashes instead.
-/data/reference/agentx-moe-phase-efficiency/attention-current-holdout-followup.json
-/data/reference/agentx-moe-phase-efficiency/attention-frontier-prototype-followup.json
-/data/reference/agentx-moe-phase-efficiency/attention-isolated-holdout-followup.json

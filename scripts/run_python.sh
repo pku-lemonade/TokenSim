@@ -5,21 +5,12 @@ if [[ -n "${TOKENSIM_PYTHON:-}" ]]; then
     exec "${TOKENSIM_PYTHON}" "$@"
 fi
 
-if python3 -c 'import sys; raise SystemExit(sys.version_info[:2] != (3, 11))' 2>/dev/null \
-    && python3 -c 'import simpy; from TokenSim.hardware import HardwareContext' 2>/dev/null; then
-    exec python3 "$@"
-fi
+for candidate in python3.12 python3; do
+    if command -v "${candidate}" >/dev/null 2>&1 \
+        && "${candidate}" -c 'import sys; raise SystemExit(sys.version_info < (3, 11)); import simpy, pydantic, numpy' 2>/dev/null; then
+        exec "${candidate}" "$@"
+    fi
+done
 
-if command -v conda >/dev/null 2>&1 \
-    && conda run -n tokensim11 python -c 'import simpy; from TokenSim.hardware import HardwareContext' >/dev/null 2>&1; then
-    exec conda run --no-capture-output -n tokensim11 python "$@"
-fi
-
-if command -v python3.11 >/dev/null 2>&1 \
-    && python3.11 -c 'import simpy; from TokenSim.hardware import HardwareContext' 2>/dev/null; then
-    exec python3.11 "$@"
-fi
-
-echo "TokenSim requires Python 3.11 with requirements.txt installed." >&2
-echo "Activate that environment or set TOKENSIM_PYTHON=/path/to/python." >&2
+echo "Install the TokenSim dependencies with Python 3.12, or set TOKENSIM_PYTHON to a compatible interpreter." >&2
 exit 1
