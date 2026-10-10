@@ -95,9 +95,7 @@ class _SharedService:
     def __init__(self, worker, config):
         self.config = config
         self.connectors = []
-        self.contributors = {
-            id(worker.engine): (worker.engine, len(worker.engine.workers))
-        }
+        self.contributors = {}
         world_size = len(worker.engine.workers)
         self.staging_bytes = config.local_buffer_size * world_size
         contributions = world_size if config.mode == "embedded" else 1
@@ -133,16 +131,23 @@ class _SharedService:
         self.read = QueuedKVLink(worker.env, bandwidth, **args)
         self.write = QueuedKVLink(worker.env, bandwidth, **args)
 
-    def register(self, worker):
+    def register(self, worker, config=None):
+        config = config or self.config
         proposed = {
             **self.contributors,
-            id(worker.engine): (worker.engine, len(worker.engine.workers)),
+            id(worker.engine): (worker.engine, len(worker.engine.workers), config),
         }
-        ranks = sum(item[1] for item in proposed.values())
-        capacity = self.config.global_segment_size * (
-            ranks if self.config.mode == "embedded" else 1
+        capacity = (
+            sum(
+                count * options.global_segment_size
+                for _, count, options in proposed.values()
+            )
+            if self.config.mode == "embedded"
+            else self.config.global_segment_size
         )
-        staging = self.config.local_buffer_size * ranks
+        staging = sum(
+            count * options.local_buffer_size for _, count, options in proposed.values()
+        )
         if (
             self.config.host_available_bytes is not None
             and capacity + staging > self.config.host_available_bytes
@@ -206,7 +211,7 @@ class PageStore(AsyncOffloadConnector):
             ("grouped",),
             lambda: _SharedService(worker, self.store_config),
         )
-        service.register(worker)
+        service.register(worker, self.store_config)
         if (
             service.connectors
             and service.connectors[0].worker.network != worker.network

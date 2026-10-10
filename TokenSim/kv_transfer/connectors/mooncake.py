@@ -3,7 +3,9 @@ from __future__ import annotations
 from TokenSim.config.config import CacheConfig, KVTransferConfig
 from TokenSim.llm.llm_request import Request
 from TokenSim.mooncake import Segment
-from TokenSim.mooncake.service import get_mooncake_service
+from TokenSim.mooncake.config import parse_mooncake_config
+from TokenSim.mooncake.transfer_engine import TransferEngineSimulator
+from TokenSim.mooncake.metrics import MooncakeStats
 
 from .base import BaseKVConnector
 from .metadata import ConnectorTransferPlan
@@ -18,23 +20,15 @@ class MooncakeConnector(BaseKVConnector):
         cache_config: CacheConfig | None = None,
     ) -> None:
         super().__init__(config, cache_config)
-        block_bytes = 1
-        if cache_config is not None:
-            block_bytes = int(cache_config.block_size * cache_config.size_per_token)
         if config.kv_connector_extra_config.get("transfer_overlap", False):
             from TokenSim.errors import ConfigurationError
 
             raise ConfigurationError(
                 "point-to-point metadata timing does not support transfer_overlap"
             )
-        self.service = get_mooncake_service(config, block_bytes=block_bytes)
-        self.mooncake_stats = self.service.store.stats
-
-    def bind_runtime(self, worker):
-        self.service = get_mooncake_service(
-            self.config, block_bytes=self.service.block_bytes, owner=worker.engine
-        )
-        self.mooncake_stats = self.service.store.stats
+        self.options = parse_mooncake_config(config.kv_connector_extra_config)
+        self.transfer_engine = TransferEngineSimulator(self.options)
+        self.mooncake_stats = MooncakeStats()
 
     def build_transfer_plan(
         self,
@@ -53,7 +47,7 @@ class MooncakeConnector(BaseKVConnector):
         blocks = sum(request_block_counts.values())
         bytes_ = self._bytes_for_blocks(blocks)
         topology = "local" if source_worker_id == target_worker_id else "cross_node"
-        transfer = self.service.transfer_engine.create_transfer(
+        transfer = self.transfer_engine.create_transfer(
             source_segment=Segment(
                 name=f"worker-{source_worker_id}",
                 tier="vram",
@@ -83,7 +77,7 @@ class MooncakeConnector(BaseKVConnector):
             kind=kind,
             keys=keys,
             tier="p2p",
-            async_transfer=self.service.config.load_async,
+            async_transfer=self.options.load_async,
             extra={
                 "protocol": transfer.protocol,
                 "topology": transfer.topology,
@@ -107,12 +101,10 @@ class MooncakeConnector(BaseKVConnector):
                 kind="p2p",
                 blocking_latency=(
                     0.0
-                    if plan.async_transfer and self.service.config.transfer_overlap
+                    if plan.async_transfer and self.options.transfer_overlap
                     else plan.latency
                 ),
             )
-        if self.service.config.load_async and self.service.config.transfer_overlap:
-            return 0.0
         return latency
 
     def wait_for_save(self) -> float:
@@ -131,12 +123,10 @@ class MooncakeConnector(BaseKVConnector):
                 kind="p2p",
                 blocking_latency=(
                     0.0
-                    if plan.async_transfer and self.service.config.transfer_overlap
+                    if plan.async_transfer and self.options.transfer_overlap
                     else plan.latency
                 ),
             )
-        if self.service.config.load_async and self.service.config.transfer_overlap:
-            return 0.0
         return latency
 
     def _bytes_for_blocks(self, blocks: int) -> int:

@@ -10,6 +10,7 @@ from TokenSim.mooncake import PoolKey, Segment, pool_keys_for_request
 from TokenSim.mooncake.service import get_mooncake_service
 from TokenSim.mooncake.config import parse_mooncake_config
 from TokenSim.mooncake.metrics import MooncakeStats
+from TokenSim.mooncake.transfer_engine import TransferEngineSimulator
 from TokenSim.errors import ConfigurationError
 
 from .base import BaseKVConnector
@@ -41,6 +42,11 @@ class BlockStore(BaseKVConnector):
             self.model_name = cache_config.model
             self.rank_info = getattr(cache_config, "rank_info", None)
         self.options = parse_mooncake_config(config.kv_connector_extra_config)
+        self.transfer_engine = TransferEngineSimulator(self.options)
+        if self.options.replica_num != 1:
+            raise ConfigurationError(
+                "uniform Mooncake storage supports a single replica"
+            )
         if self.options.transfer_overlap:
             raise ConfigurationError(
                 "uniform metadata timing does not support transfer_overlap; it waits for I/O completion"
@@ -278,6 +284,7 @@ class BlockStore(BaseKVConnector):
                 now=self.simulation_time,
                 initial_delay=latency + plan.latency,
                 stats=self.mooncake_stats,
+                admission_policy=self.options.admission_policy,
             )
             total_latency = plan.latency + store_timing.accounting_latency
             blocking_latency = plan.latency + store_timing.blocking_latency
@@ -387,7 +394,7 @@ class BlockStore(BaseKVConnector):
         blocks = int(load_info["blocks"])
         bytes_ = blocks * self.block_bytes
         tier = load_info.get("tier") or "memory"
-        transfer = self.service.transfer_engine.create_transfer(
+        transfer = self.transfer_engine.create_transfer(
             source_segment=Segment(
                 name=f"store-{tier}", tier="ssd" if tier == "ssd" else "dram"
             ),
@@ -441,7 +448,7 @@ class BlockStore(BaseKVConnector):
         self._request_keys[req.id] = pool_keys
         blocks = len(pool_keys)
         bytes_ = blocks * self.block_bytes
-        transfer = self.service.transfer_engine.create_transfer(
+        transfer = self.transfer_engine.create_transfer(
             source_segment=Segment(name=f"worker-{self.config.kv_rank}", tier="vram"),
             target_segment=Segment(name="store-memory", tier="dram"),
             blocks=blocks,

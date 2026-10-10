@@ -172,9 +172,10 @@ class MooncakeStore:
         now: float = 0.0,
         initial_delay: float = 0.0,
         stats=None,
+        admission_policy=None,
     ) -> StoreWriteTiming:
         stats = self.stats if stats is None else stats
-        if self.config.admission_policy == "never" or not keys:
+        if (admission_policy or self.config.admission_policy) == "never" or not keys:
             stats.admission_rejection_count += len(keys)
             return StoreWriteTiming()
         stats.put_count += 1

@@ -199,6 +199,24 @@ class ExternalStorageTest(unittest.TestCase):
             service = _SharedService(worker, config)
             self.assertEqual(service.store.capacity_bytes, capacity)
             self.assertEqual(service.staging_bytes, 40)
+            other = SimpleNamespace(
+                **{**vars(worker), "engine": SimpleNamespace(workers=[None])}
+            )
+            variant = MooncakeConfig(
+                mode=mode,
+                global_segment_size=500 if mode == "embedded" else 1000,
+                local_buffer_size=10,
+                host_available_bytes=10000,
+            )
+            config.host_available_bytes = 10000
+            service.register(worker, config)
+            service.register(other, variant)
+            service.register(other, variant)
+            self.assertEqual(
+                service.capacity_bytes, capacity + (500 if mode == "embedded" else 0)
+            )
+            self.assertEqual(service.staging_bytes, 50)
+            config.host_available_bytes = capacity + 40
             config.host_available_bytes -= 1
             with self.assertRaisesRegex(ConfigurationError, "available host"):
                 _SharedService(worker, config)

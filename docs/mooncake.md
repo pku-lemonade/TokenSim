@@ -91,8 +91,11 @@ newly computed retained pages through its block-manager callbacks.
 Services belong to the SimPy simulation environment. Engines connected to the
 same `master_server_address` share the store, including engines with different
 `engine_id` or DP identity. Embedded engines contribute their rank-local memory
-segments once; standalone capacity is shared once, with additional staging for
-each client. Separate environments start with fresh stores. Store membership
+segments once; contributions and staging are summed from each client's own
+byte settings. Standalone capacity is shared once, with additional staging for
+each client. Admission/save/async policies and uniform client transfer settings
+can differ without creating separate pools. Physical eviction, SSD and host
+budget settings must agree. Separate environments start with fresh stores. Store membership
 does not imply a cache hit: model/layout, shard, tenant/prefix and hash identities
 must match. The uniform simulator currently requires equal page-byte formats
 within one store; incompatible formats/settings are rejected rather than
@@ -151,7 +154,7 @@ Core fields in `kv_connector_extra_config` are:
 | `admission_policy` | `always` admits, `never` rejects writes |
 | `eviction_policy` | `lru` or `none` |
 | `save_policy` | `mooncake`, `once`, or legacy `every_step` |
-| `replica_num` | Replica count recorded on stored objects |
+| `replica_num` | Storage currently models one replica; other counts are rejected |
 | `load_async` | Marks current load and save transfer plans asynchronous |
 | `transfer_overlap` | Queued grouped storage overlaps transfers; uniform/P2P metadata timing rejects this option |
 | `num_nics`, `parallel_paths` | Effective path count is their maximum |

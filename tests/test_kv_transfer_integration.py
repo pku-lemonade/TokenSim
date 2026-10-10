@@ -147,7 +147,7 @@ class KVTransferIntegrationTest(unittest.TestCase):
         )
         hardware = make_hardware(_DEVICE, models=[_MODEL])
 
-        def make_engine(identity, role, prefix=""):
+        def make_engine(identity, role, prefix="", options=None):
             return LLMEngine(
                 env=env,
                 model_spec=_MODEL,
@@ -163,6 +163,7 @@ class KVTransferIntegrationTest(unittest.TestCase):
                         "global_segment_size": 4096,
                         "local_buffer_size": 64,
                         "host_available_bytes": 65536,
+                        **(options or {}),
                     },
                 ),
                 config=SimulationConfig(
@@ -174,10 +175,20 @@ class KVTransferIntegrationTest(unittest.TestCase):
             )
 
         producer = make_engine("producer", "kv_producer")
-        consumer = make_engine("consumer", "kv_consumer")
+        consumer = make_engine(
+            "consumer",
+            "kv_consumer",
+            options={
+                "global_segment_size": 2048,
+                "local_buffer_size": 32,
+                "admission_policy": "never",
+                "load_async": True,
+                "save_policy": "once",
+            },
+        )
         left, right = producer.workers[0].connector, consumer.workers[0].connector
         self.assertIs(left.service, right.service)
-        self.assertEqual(left.service.store.memory_capacity_bytes, 8192)
+        self.assertEqual(left.service.store.memory_capacity_bytes, 6144)
 
         def run(engine, identity, hashes=(11, 22)):
             request = Request(identity, 32, 2, 16, hash_ids=list(hashes))
