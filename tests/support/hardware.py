@@ -1,8 +1,7 @@
 """In-memory hardware/model catalogs shared by the test suite.
 
-Tests used to fake the legacy roofline object with ad-hoc namespaces; the
-new catalog is built from real dataclasses so that CacheConfig, the operator
-backend and the communication model exercise the production code paths.
+The catalog uses real dataclasses so cache accounting, operator pricing and
+communication exercise the production interfaces with small inputs.
 """
 
 from __future__ import annotations

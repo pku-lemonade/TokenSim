@@ -20,6 +20,8 @@ from TokenSim.hardware.device import (
 )
 from TokenSim.hardware.links import LinkCatalog, LinkClass
 from TokenSim.hardware.topology import TopologyLevel, TopologySpec
+from TokenSim.hardware.placement import build_topology_placement
+from TokenSim.config.cluster_config import ClusterConfig, WorkerGroupConfig
 from tests.support.hardware import make_device, make_links, make_model, make_topology
 
 
@@ -219,6 +221,13 @@ class TopologyTest(unittest.TestCase):
         for topology in hardware.topologies:
             topology.validate_links(hardware.links)
         self.assertIn("groq_node8_rack72", {t.topology_id for t in hardware.topologies})
+        bad = ClusterConfig(
+            num_workers=1,
+            networks={"node": "misspelled-link"},
+            worker_groups=[WorkerGroupConfig("hybrid", "a100_sxm_80g", 1, "node")],
+        )
+        with self.assertRaisesRegex(ConfigurationError, "misspelled-link"):
+            build_topology_placement(bad, bad.workers(), hardware)
 
     def test_invalid_level_definitions_fail(self):
         with self.assertRaises(ConfigurationError):

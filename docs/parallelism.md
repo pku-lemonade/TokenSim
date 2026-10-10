@@ -118,6 +118,10 @@ cluster names one with `"topology": "hgx_h100_8x_ndr"` and may pin workers with
 (workers sharing a network form a node joined by the device's scale-up link,
 nodes are joined by the network's link class).
 
+Network names must reference catalog link classes. Unknown links are rejected;
+they are not replaced by a default bandwidth. Mixed device or network link
+types require an explicit topology instead of selecting the first type.
+
 Collectives are priced by `TokenSim/comm/collectives.py`: the TP/EP group is
 mapped onto the topology levels it spans and a hierarchical alpha-beta model
 (ring / tree / direct per level, NCCL-style) adds latency and bandwidth terms

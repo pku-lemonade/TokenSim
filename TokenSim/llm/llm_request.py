@@ -193,9 +193,6 @@ class LLMTime(BaseModel):
         return [t.decode_batch for t in self.time]
 
 
-g_time = LLMTime()
-
-
 @dataclass(frozen=True)
 class PrefillSourceStats:
     """Original prompt sources, independent of post-preemption KV recovery."""
@@ -591,11 +588,7 @@ class Request:
                 self.status = RequestStatus.FINISHED_LENGTH_CAPPED
             self.completed_at = env.now
             request_time = self.complete_timing()
-            if self.record_timing:
-                if timing_recorder is None:
-                    from TokenSim.timing import DEFAULT_TIMING_RECORDER
-
-                    timing_recorder = DEFAULT_TIMING_RECORDER
+            if self.record_timing and timing_recorder is not None:
                 timing_recorder.record_request(request_time)
             if (
                 self.completion_event is not None
@@ -641,9 +634,3 @@ class Request:
             first_step_batch=self.prefill_batch_size,
             decode_batch_sum=self.decode_batch_sum,
         )
-
-
-def reset_g_time() -> LLMTime:
-    from TokenSim.timing import reset_timing
-
-    return reset_timing()

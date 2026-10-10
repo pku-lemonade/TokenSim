@@ -18,7 +18,7 @@ from TokenSim.results import MetricData
 from TokenSim.hardware.links import LinkCatalog
 from TokenSim.latency.base import LatencyBackend
 from TokenSim.llm.llm_engine import LLMEngine, Task
-from TokenSim.llm.llm_request import Request, RequestStatus, g_time, reset_g_time
+from TokenSim.llm.llm_request import Request, RequestStatus
 from tests.support.hardware import make_device, make_hardware, make_links, make_model
 from util.request import LLMSource
 from util.results import export_result, get_connector_stats
@@ -93,7 +93,6 @@ def _expected_transfer_latency(bytes_: int) -> float:
 def _run_single_request_p2p() -> (
     tuple[LLMEngine, Request, _DeterministicBackend, float]
 ):
-    reset_g_time()
     env = simpy.Environment()
     cluster = _pd_cluster()
     backend = _DeterministicBackend()

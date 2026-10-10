@@ -119,13 +119,13 @@ class ExternalStorageTest(unittest.TestCase):
         store.validate()
 
     def test_simple_cpu_counts_packed_stride_while_objects_use_actual_group_bytes(self):
-        cpu = NativePageStore(356125000000, allocation_unit=1228800, scope="worker0")
-        self.assertEqual(cpu.capacity_bytes // cpu.allocation_unit, 289815)
-        page = cpu.reserve_write(("state",), 32768)
-        self.assertEqual(page.bytes, 1228800)
-        shared = NativePageStore(100000)
-        p = shared.reserve_write(("model", 0, "hash"), 32768)
-        self.assertEqual(p.bytes, 32768)
+        cpu = NativePageStore(1000, allocation_unit=128, scope="worker0")
+        self.assertEqual(cpu.capacity_bytes // cpu.allocation_unit, 7)
+        page = cpu.reserve_write(("state",), 32)
+        self.assertEqual(page.bytes, 128)
+        shared = NativePageStore(1000)
+        p = shared.reserve_write(("model", 0, "hash"), 32)
+        self.assertEqual(p.bytes, 32)
         shared.finish_write(p)
         self.assertIs(shared.lookup(("model", 0, "hash")), p)
 
