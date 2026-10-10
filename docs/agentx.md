@@ -21,16 +21,20 @@ is not required.
 python3.12 -m venv .venv
 source .venv/bin/activate
 python -m pip install -e '.[agentx,dev]'
-bash scripts/download_agentx.sh
+hf download semianalysisai/cc-traces-weka-062126 traces.jsonl \
+  --repo-type dataset --revision 23f152f6f0f9399a85901b89a6458def0ef16729 \
+  --local-dir dataset/agentx
+echo '29b6a19e751ff5230771519aab755f80a0f43a4ba9cf96b72d3a6a437ec99276  dataset/agentx/traces.jsonl' | sha256sum --check
 ```
 
 The dataset is [SemiAnalysis's WEKA trace pool](https://huggingface.co/datasets/semianalysisai/cc-traces-weka-062126/tree/23f152f6f0f9399a85901b89a6458def0ef16729),
 pinned to revision `23f152f6f0f9399a85901b89a6458def0ef16729`. The download
 contains 393 trace trees and is 1,847,151,435 bytes. Its SHA-256 is
 `29b6a19e751ff5230771519aab755f80a0f43a4ba9cf96b72d3a6a437ec99276`.
-The script verifies the checksum, reuses an already verified file and accepts
-an optional destination directory. The dataset stays outside version control.
-The simulator accepts smaller pools and different profile windows.
+The commands download the pinned file and verify its checksum. Change
+`--local-dir` and the checksum path to use another destination. The dataset
+stays outside version control. The simulator accepts smaller pools and
+different profile windows.
 
 Trace hashes must be unsigned 64-bit integers. The engine block size must be a
 multiple of the trace block size, which is 64 tokens for this dataset. Complete
@@ -97,6 +101,10 @@ two clusters default to GPU-only storage). For a shared DRAM store, pass
 explicitly selects `HybridMooncakeStoreConnector`. The ordinary
 `MooncakeStoreConnector` supports homogeneous cache pages. The factory checks
 layout support and never substitutes one connector for another.
+The shared-store capacities are example assumptions, not measured hardware
+limits. See [Mooncake storage](mooncake.md) for the simulator-specific connector
+and capacity semantics; `enable_offload: false` leaves DRAM caching enabled and
+disables only the SSD tier.
 
 For another model, topology or subset, change the same CLI inputs:
 

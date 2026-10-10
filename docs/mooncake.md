@@ -1,15 +1,28 @@
 # Mooncake KV Transfer and Storage
 
-TokenSim provides three Mooncake-compatible connector configurations:
+TokenSim provides these Mooncake-related simulator connectors:
 
 | Connector | Use case |
 | --- | --- |
 | `MooncakeConnector` | Direct KV transfer from a prefill worker to a decode worker |
 | `MooncakeStoreConnector` | Prefix-addressed shared store with memory and optional SSD offload |
+| `HybridMooncakeStoreConnector` | Shared DRAM storage for grouped KV pages, with queued asynchronous transfers |
 | `MultiConnector` | Composition of multiple connectors, such as direct transfer plus a store |
 
 These are simulator models. They do not start or communicate with an external
 Mooncake deployment.
+
+`HybridMooncakeStoreConnector` is a TokenSim extension; upstream
+[vLLM](https://docs.vllm.ai/en/latest/features/mooncake_store_connector_usage/)
+uses `MooncakeStoreConnector`. The grouped implementation currently supports one
+compute node, PP1, a single DRAM replica, LRU and asynchronous RDMA/TCP
+transfers. Its `global_segment_size_gb` is the total simulated store budget,
+including `local_buffer_size_gb` staging space per rank. This differs from
+vLLM's per-rank contribution in embedded mode and external owner configuration
+in standalone mode. The included 3072 GiB total and 16 GiB staging values are
+experiment assumptions, not measured defaults. For eight ranks the usable
+store is `3072 - 8 * 16 = 2944` GiB. `enable_offload` controls the SSD tier;
+setting it to false preserves GPU-to-DRAM storage and prefix reuse.
 
 ## Selecting a Connector
 
