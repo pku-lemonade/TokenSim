@@ -53,6 +53,10 @@ other packages available on disk. A custom collector run directory
 can also be imported with `--system-dir`; its source records identify the
 local collection rather than an upstream database directory.
 
+Writing a package replaces its recognized tables and removes stale table files.
+Use `merge_packages` before writing when updating only a subset. Loading rejects
+undeclared performance tables as well as missing or truncated ones.
+
 ## Consume data and select a cost scope
 
 ```bash

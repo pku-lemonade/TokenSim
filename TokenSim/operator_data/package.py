@@ -316,6 +316,11 @@ class OperatorDataPackage:
                 raise OperatorDataValidationError(
                     f"{root_path}: {name} manifest declares {expected} rows but table has {actual if name in tables else 'no file'}"
                 )
+        undeclared = set(tables) - set(meta.table_rows)
+        if undeclared:
+            raise OperatorDataValidationError(
+                f"{root_path}: undeclared tables: {sorted(undeclared)}"
+            )
         return cls(root=root_path, meta=meta, tables=tables, analysis=analysis)
 
     @classmethod
@@ -343,8 +348,14 @@ class OperatorDataPackage:
     # -- writing -----------------------------------------------------------
 
     def write(self, root: str | Path) -> Path:
+        """Replace known package tables; merge explicitly before updating a subset."""
         root_path = Path(root)
         root_path.mkdir(parents=True, exist_ok=True)
+        for name, spec in TABLE_SPECS.items():
+            if name not in self.tables:
+                (root_path / spec.perf_filename).unlink(missing_ok=True)
+            if not self.analysis.get(name):
+                (root_path / spec.analysis_filename).unlink(missing_ok=True)
         table_rows = {}
         for table_name, rows in self.tables.items():
             spec = TABLE_SPECS[table_name]

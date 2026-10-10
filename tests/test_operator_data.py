@@ -161,8 +161,26 @@ class PackageValidationTest(unittest.TestCase):
     def test_round_trip_through_parquet(self):
         package = OperatorDataPackage.from_rows(_meta(), {"gemm": _gemm_rows()})
         with tempfile.TemporaryDirectory() as tmpdir:
+            old = OperatorDataPackage.from_rows(
+                _meta(),
+                {
+                    "gemm": _gemm_rows(),
+                    "elementwise": [
+                        {
+                            "op_name": "rmsnorm",
+                            "dtype": "bf16",
+                            "num_tokens": 1,
+                            "hidden_size": 16,
+                            "latency_us": 1,
+                            "source_id": SOURCE.source_id,
+                        }
+                    ],
+                },
+            )
+            old.write(tmpdir)
             package.write(tmpdir)
             loaded = OperatorDataPackage.load(tmpdir)
+            self.assertEqual(set(loaded.tables), {"gemm"})
             meta_path = Path(tmpdir) / "generation_meta.yaml"
             meta = yaml.safe_load(meta_path.read_text())
             meta["tables"]["gemm"]["rows"] += 1
