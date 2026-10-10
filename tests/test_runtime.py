@@ -17,7 +17,12 @@ import simpy
 from benchmark import build_parser, main
 from TokenSim.config.simulation import SimulationConfig
 from TokenSim.config.workload_config import WorkloadConfig
-from TokenSim.errors import ConfigurationError, SimulationStateError
+from TokenSim.errors import (
+    ConfigurationError,
+    SimulationStateError,
+    WorkloadValidationError,
+)
+from TokenSim.workload.user_request import UserRequest
 from TokenSim.llm.llm_engine import Message, Task, Worker, LLMWorker
 from TokenSim.llm.llm_scheduler import LLMDynamicScheduler, LLMStaticScheduler
 from TokenSim.llm.llm_request import Request
@@ -351,3 +356,16 @@ class RuntimeTest(unittest.TestCase):
                 requests = load_qwen_jsonl_workload(str(path), 5)
             ids = [r.request_id for r in requests]
             self.assertEqual(len(set(ids)), 5)
+        for fields in (
+            {"prefill_len": 1.5},
+            {"decode_len": True},
+            {"arrival_time": float("nan")},
+            {"inter_arrival_time": -1},
+        ):
+            with (
+                self.subTest(fields=fields),
+                self.assertRaises(WorkloadValidationError),
+            ):
+                UserRequest(
+                    **{"request_id": 0, "prefill_len": 8, "decode_len": 2, **fields}
+                )

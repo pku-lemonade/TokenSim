@@ -18,7 +18,8 @@ from TokenSim.config.workload_config import WorkloadConfig
 from TokenSim.config.model_config import ModelSpec
 from TokenSim.config.simulation import SimulationConfig
 from TokenSim.config.paths import default_data_root
-from TokenSim.errors import ConfigurationError, SimulationStateError
+from TokenSim.config.validation import number
+from TokenSim.errors import ConfigurationError, SimulationStateError, TokenSimError
 from TokenSim.hardware import HardwareContext
 from TokenSim.latency import FALLBACK_POLICIES
 from TokenSim.llm.llm_engine import LLMEngine
@@ -76,6 +77,8 @@ def write_failure(args, env, engine, unfinished, error):
 
 
 def main(args, preloaded_agentx_traces=None):
+    if args.sim_time is not None:
+        number(args.sim_time, "sim_time", positive=True)
     config = simulation_config(args)
     hardware = HardwareContext.load(args.data_root)
     cluster = ClusterConfig.from_file(args.cluster)
@@ -229,8 +232,6 @@ def main(args, preloaded_agentx_traces=None):
     args.termination_reason = "completed"
     try:
         if args.sim_time is not None:
-            if args.sim_time <= 0:
-                raise ConfigurationError("sim_time must be positive")
             if replay is not None:
                 horizon = env.timeout(args.sim_time)
                 env.run(until=env.any_of([source, horizon]))
@@ -746,7 +747,7 @@ def cli(argv=None):
     args = build_parser().parse_args(argv)
     try:
         main(args)
-    except (ConfigurationError, SimulationStateError) as error:
+    except TokenSimError as error:
         print(str(error), file=sys.stderr)
         return 1
     return 0
