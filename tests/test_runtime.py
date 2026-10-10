@@ -4,6 +4,9 @@ from contextlib import redirect_stdout
 import heapq
 import io
 import json
+import random
+import numpy as np
+from types import SimpleNamespace
 from pathlib import Path
 import tempfile
 import unittest
@@ -18,12 +21,30 @@ from TokenSim.errors import ConfigurationError, SimulationStateError
 from TokenSim.llm.llm_engine import Message, Task, Worker, LLMWorker
 from TokenSim.llm.llm_scheduler import LLMDynamicScheduler, LLMStaticScheduler
 from TokenSim.llm.llm_request import Request
-from TokenSim.workload.loaders import load_qwen_jsonl_workload
+from TokenSim.workload.loaders import load_qwen_jsonl_workload, load_synthetic_workload
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 class RuntimeTest(unittest.TestCase):
+    def test_synthetic_generation_is_repeatable_without_modifying_global_rngs(self):
+        args = SimpleNamespace(random_seed=7, request_count=100)
+        config = WorkloadConfig(
+            prefill_mean_len=4,
+            prefill_range_len=4,
+            decode_mean_len=1,
+            decode_range_len=4,
+            decode_len_distribution="exponential",
+        )
+        py_state, np_state = random.getstate(), np.random.get_state()
+        first = load_synthetic_workload(args, config)
+        self.assertEqual(random.getstate(), py_state)
+        np.testing.assert_equal(np.random.get_state(), np_state)
+        second = load_synthetic_workload(args, config)
+        self.assertEqual(first.prefill_lens(), second.prefill_lens())
+        self.assertEqual(first.decode_lens(), second.decode_lens())
+        self.assertTrue(all(1 <= n <= 4 for n in first.decode_lens()))
+
     def test_mooncake_cache_is_shared_within_engine_and_isolated_between_runs(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory)

@@ -3,7 +3,6 @@ import argparse
 
 from TokenSim.llm.llm_request import Request
 from TokenSim.llm.llm_engine import LLMEngine
-from TokenSim.utils import get_wait_time
 from TokenSim.config.workload_config import WorkloadConfig
 from TokenSim.workload import load_workload
 

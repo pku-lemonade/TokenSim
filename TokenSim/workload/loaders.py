@@ -59,19 +59,19 @@ def load_workload(
 def load_synthetic_workload(
     args: Any, workload_config: WorkloadConfig
 ) -> UserRequestList:
-    random.seed(args.random_seed)
     prefill_lens = get_prefill_lens(
         len_mean=workload_config.prefill_mean_len,
         len_range=workload_config.prefill_range_len,
         request_count=args.request_count,
+        rng=random.Random(args.random_seed),
     )
-    random.seed(args.random_seed)
-    np.random.seed(args.random_seed)
     decode_lens = get_decode_lens(
         distribution=workload_config.decode_len_distribution,
         len_mean=workload_config.decode_mean_len,
         len_range=workload_config.decode_range_len,
         request_count=args.request_count,
+        rng=random.Random(args.random_seed),
+        numpy_rng=np.random.RandomState(args.random_seed % (1 << 32)),
     )
     return UserRequestList(
         UserRequest(
