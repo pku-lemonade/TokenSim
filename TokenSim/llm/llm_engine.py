@@ -444,6 +444,11 @@ class LLMWorker(Worker):
                                     ]
                                     running = self.scheduler.running
 
+                        else:
+                            # Blocking loads have completed even when every
+                            # scheduled request was cancelled before compute.
+                            self.finalize_connector_step()
+
                         if (
                             not running
                             and not self.scheduler.waiting
@@ -719,6 +724,7 @@ class LLMEngine(Worker):
                 fresh_stats = MooncakeStats(
                     offload_tiers=preserved_tiers,
                     offload_profiles=preserved_profiles,
+                    pending_async_jobs=mooncake_stats.pending_async_jobs,
                 )
                 for field_name in fresh_stats.__dataclass_fields__:
                     setattr(

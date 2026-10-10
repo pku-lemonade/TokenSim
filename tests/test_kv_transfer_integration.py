@@ -211,6 +211,20 @@ class KVTransferIntegrationTest(unittest.TestCase):
         run(producer, 4, (33, 44))
         run(consumer, 3, (33, 44))
         self.assertGreater(get_connector_stats(consumer)["connector_transfer_count"], 0)
+        run(producer, 5, (55, 66))
+        cancelled = Request(6, 32, 2, 16, hash_ids=[55, 66])
+        cancelled.arrive(env)
+        consumer.add_requests([cancelled])
+
+        def cancel_during_load():
+            yield env.timeout(10e-6)
+            yield consumer.cancel_requests([cancelled])[0]
+
+        env.run(until=env.process(cancel_during_load()))
+        consumer.raise_if_failed()
+        self.assertTrue(cancelled.cancel_requested)
+        self.assertFalse(right._pending_async_loads)
+        self.assertFalse(right._pending_async_puts)
         isolated = make_engine("isolated", "kv_consumer", "other-prefix")
         self.assertIs(isolated.workers[0].connector.service, left.service)
         self.assertEqual(run(isolated, 2).cached_prefill_tokens, 0)

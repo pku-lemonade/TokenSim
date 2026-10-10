@@ -311,9 +311,19 @@ class PageStore(AsyncOffloadConnector):
 
     def begin_load(self, req, boundary, hits):
         super().begin_load(req, boundary, hits)
+        self._refresh_pending_jobs()
+
+    def wait_for_save(self):
+        latency = super().wait_for_save()
+        self._refresh_pending_jobs()
+        return latency
+
+    def _refresh_pending_jobs(self):
+        self.mooncake_stats.pending_async_jobs = len(self.loads) + self.write_jobs
 
     def _record_transfer(self, **values):
         super()._record_transfer(**values)
+        self._refresh_pending_jobs()
         kind = values["kind"]
         if kind == "save":
             self.mooncake_stats.put_count += 1

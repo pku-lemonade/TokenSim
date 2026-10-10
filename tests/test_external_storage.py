@@ -194,6 +194,21 @@ class ExternalStorageTest(unittest.TestCase):
         producer.wait_for_save()
         self.assertEqual(producer.get_num_new_matched_tokens(request, 0), 0)
         self.assertEqual(producer.build_connector_meta(output).saves, [])
+        cancelled = Request(2, 32, 2, 16, hash_ids=[5, 6])
+        cancelled.scheduled_tokens = 32
+        metadata = producer.build_connector_meta(
+            SimpleNamespace(running=[cancelled], preempted=[])
+        )
+        self.assertTrue(metadata.saves)
+        cancelled.cancel_requested = True
+        producer.bind_connector_metadata(metadata)
+        self.assertEqual(producer.wait_for_save(), 0)
+        self.assertEqual(
+            producer.service.store.lookup(
+                producer._keys_for_request(cancelled)
+            ).hit_blocks,
+            0,
+        )
         consumer = KVConnectorFactory.create_connector(
             KVTransferConfig(
                 kv_connector="MooncakeStoreConnector",

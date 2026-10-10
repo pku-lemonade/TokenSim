@@ -277,6 +277,9 @@ class BlockStore(BaseKVConnector):
     def wait_for_save(self) -> float:
         latency = 0.0
         for plan in self._own_plans(self._metadata.saves):
+            request = plan.extra.get("request")
+            if request is not None and request.cancel_requested:
+                continue
             keys = self._pool_keys_from_plan(plan)
             store_timing = self.service.store.put_with_timing(
                 keys,
@@ -471,6 +474,7 @@ class BlockStore(BaseKVConnector):
                 "protocol": transfer.protocol,
                 "connector": self.name,
                 "pool_keys": pool_keys,
+                "request": req,
             },
         )
 
