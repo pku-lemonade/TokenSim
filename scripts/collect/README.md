@@ -114,7 +114,9 @@ python scripts/collect/collect_elementwise.py \
 
 * 从清单的 `elementwise` 表取形状（`op_name, dtype, num_tokens, hidden_size`）。
 * `--kernel eager`：PyTorch 逐算子实现（上界参考）；`--kernel vllm`：vLLM 的
-  `rms_norm` / `fused_add_rms_norm` / `rotary_embedding` / `silu_and_mul` fused kernel（生产口径）。
+  `rms_norm` / `rotary_embedding` / `silu_and_mul` kernel。
+  `residual_add` 被跳过：vLLM 的 `fused_add_rms_norm` 包含另行估算的 RMSNorm，
+  不能作为纯 residual-add 行写入，否则会重复计算归一化成本。
 * CUDA event 计时，5 次预热后取 20 次中位数。
 * 直接合并进 `--package` 指定的包：已有行按主键被新行覆盖，`sources` 增加一条
   `measured:<device>:elementwise:<kernel>`，notes 里含设备名、驱动/时钟、torch/CUDA 版本、日期与采集人。

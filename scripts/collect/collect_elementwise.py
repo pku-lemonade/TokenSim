@@ -10,7 +10,7 @@ compute table TokenSim still measures with its own script.
         --package data/operator_data/a100_sxm_80g/trtllm
 
 By default the reference implementation is plain PyTorch eager ops. Pass
-``--kernel vllm`` to time vLLM's fused ``rms_norm`` / ``fused_add_rms_norm`` /
+``--kernel vllm`` to time vLLM's fused ``rms_norm`` /
 ``rotary_embedding`` / ``silu_and_mul`` kernels instead, which is what a vLLM
 deployment actually runs. Record which one you used: the choice is stored in
 the ``kernel`` column and in the source notes.
@@ -22,17 +22,31 @@ import argparse
 import datetime as _dt
 from pathlib import Path
 
-from common import REPO_ROOT, environment_record, manifest_keys, time_kernel, torch_dtype
+from common import (
+    REPO_ROOT,
+    environment_record,
+    manifest_keys,
+    time_kernel,
+    torch_dtype,
+)
 
 from TokenSim.operator_data.generator import merge_packages  # noqa: E402
-from TokenSim.operator_data.package import OperatorDataPackage, PackageMeta, SourceRecord  # noqa: E402
+from TokenSim.operator_data.package import (
+    OperatorDataPackage,
+    PackageMeta,
+    SourceRecord,
+)  # noqa: E402
 
 
 def _eager_ops(x, y, w, cos, sin, h, dtype, op):
     import torch
 
     if op == "rmsnorm":
-        return lambda: x * torch.rsqrt(x.float().pow(2).mean(-1, keepdim=True) + 1e-6).to(dtype) * w
+        return (
+            lambda: x
+            * torch.rsqrt(x.float().pow(2).mean(-1, keepdim=True) + 1e-6).to(dtype)
+            * w
+        )
     if op == "rope":
 
         def fn():
@@ -48,15 +62,16 @@ def _eager_ops(x, y, w, cos, sin, h, dtype, op):
 
 
 def _vllm_ops(x, y, w, cos, sin, h, dtype, op):
+    if op == "residual_add":
+        # fused_add_rms_norm includes RMSNorm, which the compositor prices
+        # separately. It cannot supply the primitive residual_add table row.
+        return None
     import torch
     from vllm import _custom_ops as ops
 
     out = torch.empty_like(x)
     if op == "rmsnorm":
         return lambda: ops.rms_norm(out, x, w, 1e-6)
-    if op == "residual_add":
-        # vLLM fuses the residual add into the following RMSNorm.
-        return lambda: ops.fused_add_rms_norm(x, y, w, 1e-6)
     if op == "swiglu":
         xy = torch.cat((x, y), dim=-1)
         return lambda: ops.silu_and_mul(out, xy)
@@ -71,20 +86,38 @@ def _vllm_ops(x, y, w, cos, sin, h, dtype, op):
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--manifest", required=True, help="shape manifest YAML (operator_data.cli manifest)")
-    parser.add_argument("--device", required=True, help="TokenSim device_id, e.g. a100_sxm_80g")
-    parser.add_argument("--package", required=True, help="operator package directory to merge into (created if missing)")
-    parser.add_argument("--backend", default="trtllm", help="backend label of the package (default trtllm)")
+    parser.add_argument(
+        "--manifest",
+        required=True,
+        help="shape manifest YAML (operator_data.cli manifest)",
+    )
+    parser.add_argument(
+        "--device", required=True, help="TokenSim device_id, e.g. a100_sxm_80g"
+    )
+    parser.add_argument(
+        "--package",
+        required=True,
+        help="operator package directory to merge into (created if missing)",
+    )
+    parser.add_argument(
+        "--backend",
+        default="trtllm",
+        help="backend label of the package (default trtllm)",
+    )
     parser.add_argument("--kernel", choices=["eager", "vllm"], default="eager")
     parser.add_argument("--iters", type=int, default=20)
-    parser.add_argument("--operator", default="", help="who collected the data (stored in the source notes)")
+    parser.add_argument(
+        "--operator",
+        default="",
+        help="who collected the data (stored in the source notes)",
+    )
     args = parser.parse_args()
 
     import torch
 
     env = environment_record()
     build = _vllm_ops if args.kernel == "vllm" else _eager_ops
-    kernel_label = f"vllm-custom-ops" if args.kernel == "vllm" else "torch-eager"
+    kernel_label = "vllm-custom-ops" if args.kernel == "vllm" else "torch-eager"
     source_id = f"measured:{args.device}:elementwise:{kernel_label}"
     rows = []
     skipped = []
@@ -135,9 +168,13 @@ def main() -> int:
     new_package = OperatorDataPackage.from_rows(meta, {"elementwise": rows})
     target = Path(args.package)
     if (target / "generation_meta.yaml").is_file():
-        new_package = merge_packages(OperatorDataPackage.load(target), new_package, prefer="extra")
+        new_package = merge_packages(
+            OperatorDataPackage.load(target), new_package, prefer="extra"
+        )
     new_package.write(target)
-    print(f"wrote {len(rows)} elementwise rows into {target}; skipped {len(skipped)} unsupported keys")
+    print(
+        f"wrote {len(rows)} elementwise rows into {target}; skipped {len(skipped)} unsupported keys"
+    )
     return 0
 
 
