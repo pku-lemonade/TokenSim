@@ -13,7 +13,8 @@ from unittest.mock import patch
 import simpy
 
 from TokenSim.config.config import ClusterConfig, KVTransferConfig, WorkerGroupConfig
-from TokenSim.config.psla_config import MetricData, PSLAConfig
+from TokenSim.config.workload_config import WorkloadConfig
+from TokenSim.results import MetricData
 from TokenSim.hardware.links import LinkCatalog
 from TokenSim.latency.base import LatencyBackend
 from TokenSim.llm.llm_engine import LLMEngine, Task
@@ -52,10 +53,8 @@ class _DeterministicBackend(LatencyBackend):
         return DECODE_LATENCY
 
 
-def _psla_config() -> PSLAConfig:
-    return PSLAConfig(
-        name="test",
-        model="TestModel",
+def _workload_config() -> WorkloadConfig:
+    return WorkloadConfig(
         distribution="burst",
         prefill_mean_len=32,
         prefill_range_len=0,
@@ -102,7 +101,8 @@ def _run_single_request_p2p() -> (
         engine = LLMEngine(
             env=env,
             kv_transfer_config=cluster.effective_kv_transfer(),
-            psla_config=_psla_config(),
+            model_spec=_MODEL,
+            workload_config=_workload_config(),
             cluster_config=cluster,
             hardware=make_hardware(_DEVICE, models=[_MODEL]),
             config=SimulationConfig(
@@ -223,7 +223,6 @@ class KVTransferIntegrationTest(unittest.TestCase):
                 args=args,
                 g_time=engine.timing_recorder.timing,
                 engine=engine,
-                model_config=_psla_config(),
                 cluster=_pd_cluster(),
                 request_count=1,
                 prefill_lens=[request.prefill_len],

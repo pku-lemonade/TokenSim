@@ -21,14 +21,31 @@ package, including when the command runs outside the repository. Set
 `--results_path` to choose where results and diagnostics are saved.
 
 ```bash
-tokensim --model data/psla/llama-7b.json \
+tokensim --model data/models/llama-7b.yaml \
   --cluster data/clusters/1_a100/h1.json \
   --batching paged-attn --max_num_seqs 64 --max_num_batched_tokens 8192 \
   --request_count 100 --results_path results/paged
 ```
 
-Model parameters live in `data/models`, workload parameters in `data/psla`,
-and placement in `data/clusters`. `SimulationConfig` validates the serving
+Model parameters live in `data/models`; `--model` accepts a catalog name or a
+model YAML path. Request generation and SLO targets are independent: set CLI
+arguments or pass `--workload_config workload.json`. Model geometry is rejected
+in workload files. Synthetic defaults are 512 input tokens, 128 output tokens
+and one request per second. For example:
+
+```json
+{
+  "qps": 10,
+  "prefill_mean_len": 256,
+  "decode_mean_len": 64,
+  "first_token_latency": {"max": 10},
+  "decode_token_latency": {"max": 0.1}
+}
+```
+
+Explicit CLI values override the corresponding workload fields. Dataset adapters use
+recorded request lengths. Hardware descriptions live in `data/devices`,
+`data/clusters` and `data/topologies`. `SimulationConfig` validates the serving
 settings once and shares them across workers. Dynamic, static and paged
 batching all interpret `max_num_seqs` as an active-sequence limit. Paged
 batching also supports a token budget and chunked prefill. Grouped KV layouts

@@ -8,4 +8,4 @@ python benchmark.py \
     --decode_mean_len 128 \
     --cluster ./data/clusters/1_a100/h1.json \
     --qps 50 \
-    --model ./data/psla/llama-7b.json
+    --model ./data/models/llama-7b.yaml

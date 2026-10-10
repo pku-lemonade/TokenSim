@@ -177,25 +177,6 @@ class ModelCatalogTest(unittest.TestCase):
                 head_dim=16,
             )
 
-    def test_moe_override_from_psla_metadata(self):
-        base = make_model("dense")
-        from TokenSim.moe.config import MoEModelConfig
-
-        moe = MoEModelConfig(
-            is_moe_model=True,
-            num_experts=8,
-            num_experts_per_tok=2,
-            num_moe_layers=4,
-            hidden_size=256,
-            intermediate_size=512,
-            num_attention_heads=8,
-            num_key_value_heads=8,
-        )
-        merged = base.with_moe_override(moe)
-        self.assertTrue(merged.is_moe)
-        self.assertEqual(merged.hidden_size, 256)
-        self.assertEqual(merged.head_dim, 32)
-
 
 class TopologyTest(unittest.TestCase):
     def test_coordinates_and_group_layout(self):

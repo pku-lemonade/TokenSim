@@ -13,6 +13,7 @@ import simpy
 
 from benchmark import build_parser, main
 from TokenSim.config.simulation import SimulationConfig
+from TokenSim.config.workload_config import WorkloadConfig
 from TokenSim.errors import ConfigurationError, SimulationStateError
 from TokenSim.llm.llm_engine import Message, Task, Worker, LLMWorker
 from TokenSim.llm.llm_scheduler import LLMDynamicScheduler, LLMStaticScheduler
@@ -23,6 +24,59 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class RuntimeTest(unittest.TestCase):
+    def test_model_geometry_and_routing_are_independent_of_workload_configuration(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            workload = path / "workload.json"
+            workload.write_text(
+                json.dumps(
+                    {
+                        "qps": 9,
+                        "prefill_mean_len": 16,
+                        "decode_mean_len": 2,
+                        "first_token_latency": {"max": 7},
+                    }
+                )
+            )
+            args = build_parser().parse_args(
+                [
+                    "--model",
+                    str(ROOT / "data/models/moe-toy.yaml"),
+                    "--cluster",
+                    str(ROOT / "data/clusters/8_a100/moe_tp2_dp4.json"),
+                    "--workload_config",
+                    str(workload),
+                    "--request_count",
+                    "2",
+                    "--distribution",
+                    "burst",
+                    "--latency_backend",
+                    "analytical",
+                    "--moe_routing_distribution",
+                    "hot",
+                    "--moe_hot_experts",
+                    "0,1",
+                    "--moe_hot_expert_fraction",
+                    "0.8",
+                    "--verbose",
+                    "none",
+                    "--results_path",
+                    str(path),
+                ]
+            )
+            engine = self.run_main(args)
+            self.assertEqual(engine.model_spec.hidden_size, 128)
+            self.assertEqual(engine.model_spec.moe.num_experts, 4)
+            self.assertEqual(engine.moe_config.routing.hot_experts, [0, 1])
+            self.assertEqual(engine.workload_config.qps, 9)
+            self.assertEqual(engine.workload_config.first_token_latency.max, 7)
+            result = json.loads((path / "result_inf.json").read_text())
+            self.assertEqual(result["prefill_lens"], [16, 16])
+            self.assertEqual(result["decode_lens"], [2, 2])
+            workload.write_text(json.dumps({"hidden_size": 256}))
+            with self.assertRaisesRegex(ConfigurationError, "hidden_size"):
+                WorkloadConfig.from_file(workload)
+
     def args(self, directory, *extra):
         return build_parser().parse_args(
             [

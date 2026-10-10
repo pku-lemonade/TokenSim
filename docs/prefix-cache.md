@@ -17,7 +17,7 @@ The included trace has three requests with partially shared prefixes:
   --workload_type qwen_jsonl \
   --dataset_path ./dataset/prefix_reuse_example.jsonl \
   --cluster ./data/clusters/1_a100/h1.json \
-  --model ./data/psla/llama-7b.json \
+  --model ./data/models/llama-7b.yaml \
   --qps 10 \
   --verbose none
 ```
@@ -94,7 +94,7 @@ Run the included example with:
   --workload_type qwen_jsonl \
   --dataset_path ./dataset/prefix_reuse_output_example.jsonl \
   --cluster ./data/clusters/1_a100/h1.json \
-  --model ./data/psla/llama-7b.json \
+  --model ./data/models/llama-7b.yaml \
   --qps 10 \
   --verbose none
 ```

@@ -115,15 +115,9 @@ class ClusterConfig:
 
     def effective_parallel_config(
         self,
-        model_parallel_config: ParallelConfig | None = None,
         override: ParallelConfig | None = None,
     ) -> ParallelConfig:
-        return (
-            override
-            or self.parallel_config
-            or model_parallel_config
-            or ParallelConfig.default()
-        )
+        return override or self.parallel_config or ParallelConfig.default()
 
     def effective_kv_cache_capacity_per_dp_rank(
         self,

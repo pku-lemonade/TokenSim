@@ -8,20 +8,22 @@ from typing import Any
 
 import numpy as np
 
-from TokenSim.config.psla_config import PSLAConfig
+from TokenSim.config.workload_config import WorkloadConfig
 from TokenSim.errors import WorkloadValidationError
 from TokenSim.moe.routing import normalize_expert_histogram
 from TokenSim.utils import get_decode_lens, get_prefill_lens
 from TokenSim.workload.user_request import UserRequest, UserRequestList
 
 
-def load_workload(args: Any, model_config: PSLAConfig) -> UserRequestList:
+def load_workload(
+    args: Any, workload_config: WorkloadConfig, *, num_experts: int = 0
+) -> UserRequestList:
     workload_type = args.workload_type
     if args.dataset_path and workload_type == "synthetic":
         workload_type = "json_pairs"
 
     if workload_type == "synthetic":
-        user_requests = load_synthetic_workload(args, model_config)
+        user_requests = load_synthetic_workload(args, workload_config)
     elif workload_type == "json_pairs":
         if not args.dataset_path:
             raise WorkloadValidationError(
@@ -31,7 +33,7 @@ def load_workload(args: Any, model_config: PSLAConfig) -> UserRequestList:
             dataset_path=args.dataset_path,
             request_count=args.request_count,
             dataset_skip_count=args.dataset_skip_count,
-            num_experts=model_config.moe_config.num_experts,
+            num_experts=num_experts,
         )
     elif workload_type == "qwen_jsonl":
         if not args.dataset_path:
@@ -42,7 +44,7 @@ def load_workload(args: Any, model_config: PSLAConfig) -> UserRequestList:
             dataset_path=args.dataset_path,
             request_count=args.request_count,
             dataset_skip_count=args.dataset_skip_count,
-            num_experts=model_config.moe_config.num_experts,
+            num_experts=num_experts,
         )
     else:
         raise WorkloadValidationError(f"unknown workload_type {workload_type!r}")
@@ -54,19 +56,21 @@ def load_workload(args: Any, model_config: PSLAConfig) -> UserRequestList:
     )
 
 
-def load_synthetic_workload(args: Any, model_config: PSLAConfig) -> UserRequestList:
+def load_synthetic_workload(
+    args: Any, workload_config: WorkloadConfig
+) -> UserRequestList:
     random.seed(args.random_seed)
     prefill_lens = get_prefill_lens(
-        len_mean=model_config.prefill_mean_len,
-        len_range=model_config.prefill_range_len,
+        len_mean=workload_config.prefill_mean_len,
+        len_range=workload_config.prefill_range_len,
         request_count=args.request_count,
     )
     random.seed(args.random_seed)
     np.random.seed(args.random_seed)
     decode_lens = get_decode_lens(
-        distribution=model_config.decode_len_distribution,
-        len_mean=model_config.decode_mean_len,
-        len_range=model_config.decode_range_len,
+        distribution=workload_config.decode_len_distribution,
+        len_mean=workload_config.decode_mean_len,
+        len_range=workload_config.decode_range_len,
         request_count=args.request_count,
     )
     return UserRequestList(

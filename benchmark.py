@@ -2,7 +2,7 @@
 """Run a workload against the configured model, hardware and serving policy."""
 
 import argparse
-from dataclasses import fields
+from dataclasses import fields, replace
 from itertools import islice
 import json
 import os
@@ -14,7 +14,8 @@ import simpy
 
 from TokenSim.config.config import ClusterConfig, KVTransferConfig, ParallelConfig
 from TokenSim.config.parallel_config import EXPERT_PARALLEL_SCOPES
-from TokenSim.config.psla_config import PSLAConfig
+from TokenSim.config.workload_config import WorkloadConfig
+from TokenSim.config.model_config import ModelSpec
 from TokenSim.config.simulation import SimulationConfig
 from TokenSim.config.paths import default_data_root
 from TokenSim.errors import ConfigurationError, SimulationStateError
@@ -78,21 +79,48 @@ def main(args, preloaded_agentx_traces=None):
     config = simulation_config(args)
     hardware = HardwareContext.load(args.data_root)
     cluster = ClusterConfig.from_file(args.cluster)
-    model_config = PSLAConfig.from_file(args.model_config_path).from_args(args)
+    workload_config = (
+        WorkloadConfig.from_file(args.workload_config)
+        if args.workload_config
+        else WorkloadConfig()
+    ).from_args(args)
+    model = hardware.models.resolve(args.model)
+    overrides = {}
+    for field, argument in (
+        ("distribution", "moe_routing_distribution"),
+        ("hot_expert_fraction", "moe_hot_expert_fraction"),
+    ):
+        value = getattr(args, argument)
+        if value is not None:
+            overrides[field] = value
+    if args.moe_hot_experts is not None:
+        try:
+            overrides["hot_experts"] = [
+                int(item) for item in args.moe_hot_experts.split(",") if item.strip()
+            ]
+        except ValueError as error:
+            raise ConfigurationError(
+                "moe_hot_experts must contain integer expert IDs"
+            ) from error
+    if overrides:
+        if not model.is_moe:
+            raise ConfigurationError("MoE routing overrides require a MoE model")
+        routing = replace(model.moe.routing, **overrides)
+        model = replace(model, moe=replace(model.moe, routing=routing))
     args.qps = (
-        float("inf") if model_config.distribution == "burst" else model_config.qps
+        float("inf") if workload_config.distribution == "burst" else workload_config.qps
     )
     args.results_path = str(
         Path(args.results_path)
         if args.results_path
         else (ROOT if (ROOT / "data").is_dir() else Path.cwd())
         / "results"
-        / model_config.name
+        / model.model_id
         / Path(args.cluster).parent.name
         / Path(args.cluster).stem
     )
-    parallel = build_parallel_config(args, cluster, model_config)
-    validate_moe_parallel_config(model_config, parallel)
+    parallel = build_parallel_config(args, cluster)
+    validate_moe_parallel_config(model, parallel)
     kv_override = (
         KVTransferConfig.from_file(args.kv_transfer_config)
         if args.kv_transfer_config
@@ -104,15 +132,14 @@ def main(args, preloaded_agentx_traces=None):
         mapping = mapping.get("mapping", mapping)
         if not isinstance(mapping, dict):
             raise ConfigurationError("router mapping must contain a JSON object")
-        from dataclasses import replace
-
         config = replace(config, router_mapping=mapping)
     env = simpy.Environment()
     engine = LLMEngine(
         env=env,
         hardware=hardware,
         cluster_config=cluster,
-        psla_config=model_config,
+        model_spec=model,
+        workload_config=workload_config,
         parallel_config=parallel,
         kv_transfer_config=kv_config,
         config=config,
@@ -178,7 +205,11 @@ def main(args, preloaded_agentx_traces=None):
         env.process(logs.monitor(env, replay))
     else:
         requests, _, _ = get_requests(
-            args, model_config, config.block_size, lambda count: progress.update(count)
+            args,
+            workload_config,
+            config.block_size,
+            lambda count: progress.update(count),
+            num_experts=model.moe.num_experts,
         )
         progress.set_total(len(requests))
         engine.validate_request_capacity(requests)
@@ -188,7 +219,7 @@ def main(args, preloaded_agentx_traces=None):
                 engine,
                 requests,
                 args.qps,
-                model_config.distribution,
+                workload_config.distribution,
                 random_seed=args.random_seed,
             )
         )
@@ -281,7 +312,6 @@ def main(args, preloaded_agentx_traces=None):
         args=args,
         g_time=engine.timing_recorder.timing,
         engine=engine,
-        model_config=model_config,
         cluster=cluster,
         duration=duration,
         request_count=len(requests),
@@ -328,11 +358,8 @@ def get_latency_backend_type(latency_backend: str) -> str:
 def build_parallel_config(
     args: argparse.Namespace,
     cluster: ClusterConfig,
-    model_config: PSLAConfig,
 ) -> ParallelConfig:
-    base = cluster.effective_parallel_config(
-        model_parallel_config=model_config.parallel_config
-    )
+    base = cluster.effective_parallel_config()
     return base.override(
         tensor_parallel_size=getattr(args, "tensor_parallel_size", None),
         pipeline_parallel_size=getattr(args, "pipeline_parallel_size", None),
@@ -348,10 +375,10 @@ def build_parallel_config(
 
 
 def validate_moe_parallel_config(
-    model_config: PSLAConfig,
+    model: ModelSpec,
     parallel_config: ParallelConfig,
 ) -> None:
-    if parallel_config.enable_expert_parallel and not model_config.moe_config.enabled:
+    if parallel_config.enable_expert_parallel and not model.is_moe:
         raise ConfigurationError("enable_expert_parallel requires a MoE model config")
 
 
@@ -385,10 +412,14 @@ def build_parser():
     parser.add_argument("--block_size", type=int, default=16, help="Block size.")
     parser.add_argument(
         "--model",
-        dest="model_config_path",
         type=str,
-        default=str(DATA_ROOT / "psla/llama-7b.json"),
-        help="Model.",
+        default="LLaMa-7B",
+        help="Model catalog name or model YAML path.",
+    )
+    parser.add_argument(
+        "--workload_config",
+        default=None,
+        help="Optional JSON request-generation and SLO configuration.",
     )
     parser.add_argument(
         "--cluster",

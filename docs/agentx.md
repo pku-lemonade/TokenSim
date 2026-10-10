@@ -68,7 +68,7 @@ An example using the complete model on eight B200 ranks in DEP8:
 ```bash
 tokensim --workload_type agentx_weka \
   --dataset_path dataset/agentx/traces.jsonl \
-  --model data/psla/deepseek-v4-pro.json --cluster data/clusters/8_b200/dep8.json \
+  --model data/models/deepseek-v4-pro.yaml --cluster data/clusters/8_b200/dep8.json \
   --batching paged-attn --block_size 256 --max_num_seqs 49 \
   --max_num_batched_tokens 8192 --gpu_memory_utilization 0.9 \
   --router_policy consistent_hash --dp_lockstep --dp_sync_interval 16 \
@@ -126,7 +126,7 @@ For another model, topology or subset, change the same CLI inputs:
 ```bash
 tokensim --workload_type agentx_weka \
   --dataset_path dataset/agentx/traces.jsonl \
-  --model data/psla/llama-7b.json --cluster data/clusters/1_a100/h1.json \
+  --model data/models/llama-7b.yaml --cluster data/clusters/1_a100/h1.json \
   --batching paged-attn --block_size 64 --max_num_seqs 32 \
   --agentx_trace_count 1 --agentx_profile_duration 60 --no-agentx_warmup \
   --results_path results/agentx/subset

@@ -38,7 +38,7 @@ Pass a standalone connector file with `--kv_transfer_config`:
   --request_count 8 \
   --cluster ./data/clusters/8_a100/p2d5.json \
   --kv_transfer_config ./data/kv_transfer/mooncake_p2p.json \
-  --model ./data/psla/llama-7b.json \
+  --model ./data/models/llama-7b.yaml \
   --qps 10 \
   --verbose none
 ```
@@ -72,7 +72,7 @@ Use `MooncakeStoreConnector` with a workload containing `hash_ids`:
   --kv_transfer_config ./data/kv_transfer/mooncake_store_standalone_ssd.json \
   --dataset_path ./dataset/mooncake_reuse.json \
   --workload_type json_pairs \
-  --model ./data/psla/llama-7b.json \
+  --model ./data/models/llama-7b.yaml \
   --qps 50 \
   --verbose none
 ```

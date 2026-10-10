@@ -5,7 +5,7 @@ aliases: [MoE-Toy, moe_toy]
 sources:
   tokensim-test-fixture:
     grade: D
-    reference: data/psla/moe-toy.json
+    reference: TokenSim synthetic MoE example
 hidden_size: 128
 intermediate_size: 256
 num_layers: 4

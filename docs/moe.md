@@ -2,8 +2,9 @@
 
 TokenSim models MoE layer placement, routed expert compute, expert load
 imbalance, and expert-parallel all-to-all communication. A MoE run needs a
-model entry in `data/models/*.yaml` (MoE fields under `moe:`) or MoE metadata in
-the PSLA file under `data/psla/`; PSLA metadata overrides the catalog entry.
+model entry in `data/models/*.yaml`, with MoE fields under `moe:`. The selected
+model is the sole source of its layer and expert geometry. Workload and SLO
+configuration contains no model metadata.
 Expert compute comes from the `moe` operator table (or the analytical model)
 queried with the layer's token count, `top_k`, expert count and the effective
 `tp_size`/`ep_size`; the routing histogram scales it by the per-rank load
@@ -25,18 +26,17 @@ parallelism across all eight ranks:
   --decode_mean_len 4 \
   --decode_range_len 0 \
   --cluster ./data/clusters/8_a100/moe_tp2_dp4.json \
-  --model ./data/psla/moe-toy.json \
+  --model ./data/models/moe-toy.yaml \
   --qps 10 \
   --verbose none
 ```
 
 ## Model Configuration
 
-Add these fields to a PSLA model configuration:
+Add these fields under `moe:` in the model YAML:
 
 | Field | Meaning |
 | --- | --- |
-| `is_moe_model` | Enables MoE validation and latency modeling |
 | `num_experts` | Number of routed experts |
 | `num_experts_per_tok` | Experts selected per token |
 | `moe_intermediate_size` | Hidden width of each routed expert |
@@ -45,10 +45,10 @@ Add these fields to a PSLA model configuration:
 | `first_k_dense_replace` | Index of the first MoE layer |
 | `moe_layer_freq` | Spacing between MoE layers |
 | `interleave_moe_layer_step` | Validated model metadata; not a separate latency control today |
-| `hidden_size` | Model hidden width used for compute and communication |
-| `intermediate_size` | Dense FFN width used outside MoE layers |
-| `num_attention_heads` | Attention head count metadata |
-| `num_key_value_heads` | KV head count metadata |
+
+Shared dimensions such as `hidden_size`, `intermediate_size` and attention head
+counts belong to the model's top level. Routing CLI arguments override only
+the routing distribution; they do not change the model's geometry.
 
 `num_experts`, `num_experts_per_tok`, `num_moe_layers`, `moe_layer_freq`, and
 `interleave_moe_layer_step` must be positive for an enabled MoE model, and

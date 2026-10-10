@@ -51,7 +51,7 @@ world_size = tensor_parallel_size * pipeline_parallel_size * data_parallel_size
   --batching paged-attn \
   --request_count 8 \
   --cluster ./data/clusters/8_a100/tp2_pp2_dp2.json \
-  --model ./data/psla/llama-7b.json \
+  --model ./data/models/llama-7b.yaml \
   --qps 10 \
   --verbose none
 ```
@@ -105,8 +105,7 @@ The effective parallel configuration is selected in this order:
 
 1. CLI values such as `--tensor_parallel_size` override individual fields.
 2. The cluster's `parallel_config` supplies the base configuration.
-3. If the cluster has none, the model PSLA's `parallel_config` is used.
-4. Missing values default to one rank with expert parallelism disabled.
+3. Missing values default to one rank with expert parallelism disabled.
 
 Changing TP/PP/DP on the CLI does not add workers. The cluster must already
 contain exactly the resulting `world_size` workers.

@@ -4,17 +4,21 @@ import argparse
 from TokenSim.llm.llm_request import Request
 from TokenSim.llm.llm_engine import LLMEngine
 from TokenSim.utils import get_wait_time
-from TokenSim.config.psla_config import PSLAConfig
+from TokenSim.config.workload_config import WorkloadConfig
 from TokenSim.workload import load_workload
 
 
 def get_requests(
     args: argparse.Namespace,
-    model_config: PSLAConfig,
+    workload_config: WorkloadConfig,
     block_size: int,
     tqdm_submit_func=None,
+    *,
+    num_experts: int = 0,
 ) -> list[Request]:
-    user_requests = load_workload(args=args, model_config=model_config)
+    user_requests = load_workload(
+        args=args, workload_config=workload_config, num_experts=num_experts
+    )
     requests = user_requests.to_requests(
         block_size=block_size,
         tqdm_submit_func=tqdm_submit_func,

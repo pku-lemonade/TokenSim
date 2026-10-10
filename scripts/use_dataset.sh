@@ -10,4 +10,4 @@ python benchmark.py \
     --qps 50 \
     --max_num_seqs 100 \
     --verbose none \
-    --model ./data/psla/llama-7b.json
+    --model ./data/models/llama-7b.yaml

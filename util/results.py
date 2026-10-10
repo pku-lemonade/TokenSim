@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING, List, Any
 
 import numpy as np
 
-from TokenSim.config.psla_config import PSLAConfig
 from TokenSim.results import LLMResult, MetricData
 from TokenSim.config.config import ClusterConfig
 from TokenSim.llm.llm_request import LLMTime, Request
@@ -656,11 +655,7 @@ def print_all_stats(
     print_moe_stats(engine)
     print_operator_latency_stats(engine)
     # Print SLO statistics.
-    config = (
-        engine.workers[0].psla_config
-        if hasattr(engine.workers[0], "psla_config")
-        else None
-    )
+    config = engine.workload_config
     prefill_slo = getattr(config, "first_token_latency", None)
     decode_slo = getattr(config, "decode_token_latency", None)
     print_slo_stats(
@@ -888,7 +883,6 @@ def export_result(
     args: Any,
     g_time: LLMTime,
     engine: LLMEngine,
-    model_config: PSLAConfig,
     cluster: ClusterConfig,
     request_count: int,
     prefill_lens: list[int],
@@ -982,7 +976,7 @@ def export_result(
         results_path = (
             Path.cwd()
             / "results"
-            / model_config.name
+            / engine.model_spec.model_id
             / Path(args.cluster).parent.name
             / Path(args.cluster).stem
         )

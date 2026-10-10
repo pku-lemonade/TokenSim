@@ -23,7 +23,7 @@ from TokenSim.config.config import (
     WorkerConfig,
     _GB,
 )
-from TokenSim.config.psla_config import PSLAConfig
+from TokenSim.config.workload_config import WorkloadConfig
 from TokenSim.errors import ConfigurationError, SimulationStateError
 from TokenSim.kv_transfer import (
     ConnectorStats,
@@ -156,7 +156,6 @@ class LLMWorker(Worker):
         env: simpy.Environment,
         id: int,
         engine: LLMEngine,
-        psla_config: PSLAConfig,
         worker_config: WorkerConfig,
         kv_transfer_config: KVTransferConfig,
         hardware: HardwareContext,
@@ -180,8 +179,7 @@ class LLMWorker(Worker):
         self.device = hardware.device(worker_config.hardware)
         self.network = worker_config.network
         self.nettype = worker_config.nettype
-        self.psla_config = psla_config
-        self.model = psla_config.model
+        self.model = model_spec.model_id
         self.model_spec = model_spec
         self.parallel_config = parallel_config or ParallelConfig.default()
         self.moe_config = moe_config or model_spec.moe
@@ -534,14 +532,16 @@ class LLMEngine(Worker):
         self,
         env: simpy.Environment,
         kv_transfer_config: KVTransferConfig,
-        psla_config: PSLAConfig,
+        model_spec: ModelSpec,
         cluster_config: ClusterConfig,
         hardware: HardwareContext,
         parallel_config: ParallelConfig | None = None,
         config: SimulationConfig | None = None,
+        workload_config: WorkloadConfig | None = None,
     ):
         config = config or SimulationConfig()
         self.config = config
+        self.workload_config = workload_config or WorkloadConfig()
         from TokenSim.timing import TimingRecorder
 
         self.timing_recorder = TimingRecorder()
@@ -558,9 +558,7 @@ class LLMEngine(Worker):
         self.hardware = hardware
         self.parallel_config = parallel_config or ParallelConfig.default()
         self.debug_printer = RequestCompletionDebugPrinter(config.debug_print)
-        self.model_spec = hardware.model(psla_config.model).with_moe_override(
-            psla_config.moe_config
-        )
+        self.model_spec = model_spec
         self.moe_config = self.model_spec.moe
         self.expert_placement = build_expert_placement(
             self.moe_config,
@@ -581,7 +579,6 @@ class LLMEngine(Worker):
                 env=env,
                 id=id,
                 engine=self,
-                psla_config=psla_config,
                 worker_config=worker_config,
                 kv_transfer_config=kv_transfer_config,
                 hardware=hardware,

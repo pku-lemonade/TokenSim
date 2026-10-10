@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
@@ -290,64 +290,6 @@ class ModelSpec:
             },
         )
 
-    def with_moe_override(self, moe_config: MoEModelConfig | None) -> "ModelSpec":
-        """Apply MoE metadata supplied by a PSLA file on top of the catalog entry."""
-        if moe_config is None or not moe_config.enabled:
-            return self
-        if self.components is not None:
-            # The catalog defines the native architecture. Legacy PSLA MoE
-            # fields must not silently change expert counts or replace hash
-            # layers with dense layers. Workload routing remains overridable.
-            fields = (
-                "num_experts",
-                "num_experts_per_tok",
-                "moe_intermediate_size",
-                "num_shared_experts",
-                "num_moe_layers",
-                "first_k_dense_replace",
-                "moe_layer_freq",
-            )
-            for name in fields:
-                if getattr(moe_config, name) != getattr(self.moe, name):
-                    raise ConfigurationError(
-                        f"PSLA {name} conflicts with complete compressed transformer catalog"
-                    )
-            for name in (
-                "hidden_size",
-                "intermediate_size",
-                "num_attention_heads",
-                "num_key_value_heads",
-            ):
-                value = getattr(moe_config, name)
-                if value is not None and value != getattr(self, name):
-                    raise ConfigurationError(
-                        f"PSLA {name} conflicts with complete compressed transformer catalog"
-                    )
-            return replace(self, moe=moe_config)
-        updates: dict[str, Any] = {"moe": moe_config}
-        # A compressed-KV catalog entry carries the authoritative latent
-        # attention geometry. Legacy PSLA files describe the MoE block but
-        # cannot represent MLA's compressed KV heads, so do not overwrite the
-        # catalog's attention dimensions in that case.
-        if self.kv_cache_dim is not None:
-            return replace(self, **updates)
-        if moe_config.hidden_size:
-            updates["hidden_size"] = moe_config.hidden_size
-        if moe_config.intermediate_size:
-            updates["intermediate_size"] = moe_config.intermediate_size
-        if moe_config.num_attention_heads:
-            updates["num_attention_heads"] = moe_config.num_attention_heads
-            heads = moe_config.num_attention_heads
-            hidden = updates.get("hidden_size", self.hidden_size)
-            if (
-                hidden % heads == 0
-                and self.head_dim * self.num_attention_heads != hidden
-            ):
-                updates["head_dim"] = hidden // heads
-        if moe_config.num_key_value_heads:
-            updates["num_key_value_heads"] = moe_config.num_key_value_heads
-        return replace(self, **updates)
-
     def to_dict(self) -> dict[str, Any]:
         return {
             "model_id": self.model_id,
@@ -409,6 +351,14 @@ class ModelCatalog:
         if not catalog:
             raise ConfigurationError(f"model catalog {directory} has no *.yaml entries")
         return catalog
+
+    def resolve(self, source: str | Path) -> ModelSpec:
+        path = Path(source).expanduser()
+        if path.is_file():
+            return ModelSpec.from_mapping(load_yaml_mapping(path), context=str(path))
+        if path.suffix.lower() in {".yaml", ".yml"}:
+            raise ConfigurationError(f"model configuration does not exist: {path}")
+        return self.get(str(source))
 
     def get(self, name: str) -> ModelSpec:
         model_id = self._index.get(_alias_key(name))

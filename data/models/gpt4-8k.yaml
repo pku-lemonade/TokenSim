@@ -6,7 +6,7 @@ sources:
   legacy-transformer-roofline-models:
     grade: D
     reference: git history of TransformerRoofline/hardware_models.json (commit 455e0ad)
-    notes: Not a public architecture. Kept only so existing PSLA files keep loading.
+    notes: Illustrative assumed geometry, not a published GPT-4 architecture.
 hidden_size: 24576
 intermediate_size: 98304
 num_layers: 192
