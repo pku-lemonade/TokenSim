@@ -1,4 +1,4 @@
-"""Shared DRAM pages and queued asynchronous transfers for native hybrid KV.
+"""Grouped DRAM pages and queued asynchronous transfers for Mooncake storage.
 
 Reference contract: vLLM Mooncake store worker/coordinator at 30f5c01d4ebb.
 This models complete retained group pages, readiness and DMA ownership;
@@ -96,8 +96,9 @@ class _SharedService:
         self.connectors = []
         world_size = worker.parallel_config.world_size
         self.staging_bytes = config.local_buffer_size * world_size
-        self.budget_bytes = config.global_segment_size
-        self.capacity_bytes = self.budget_bytes - self.staging_bytes
+        contributions = world_size if config.mode == "embedded" else 1
+        self.capacity_bytes = config.global_segment_size * contributions
+        self.budget_bytes = self.capacity_bytes + self.staging_bytes
         if (
             config.host_available_bytes is not None
             and self.budget_bytes > config.host_available_bytes
@@ -106,10 +107,10 @@ class _SharedService:
                 "Mooncake shared budget exceeds available host DRAM"
             )
         if self.capacity_bytes <= 0:
-            raise ConfigurationError(
-                "Mooncake shared budget must exceed worker staging buffers"
-            )
+            raise ConfigurationError("Mooncake store capacity must be positive")
         self.store = NativePageStore(self.capacity_bytes, scope="mooncake:shared-dram")
+        if config.mode == "embedded":
+            return
         # TransferEngineSimulator's legacy bandwidth field is GiB/s per
         # path. Cap the aggregate by the configured node network injection
         # link; parallel paths must not replicate node bandwidth per worker.
@@ -131,15 +132,15 @@ class _SharedService:
         self.write = QueuedKVLink(worker.env, bandwidth, **args)
 
 
-class HybridMooncakeStoreConnector(AsyncOffloadConnector):
-    """Mooncake service selected by the factory for the native hybrid layout.
+class PageStore(AsyncOffloadConnector):
+    """Grouped-page storage behind the ordinary Mooncake connector interface.
 
     Reuses the tested request-local async import and DMA release lifecycle.
     Storage, key namespaces, budgets and transfer paths are shared-store
     semantics, rather than SimpleCPU's packed rank-local pool semantics.
     """
 
-    name = "HybridMooncakeStoreConnector"
+    name = "MooncakeStoreConnector"
 
     def __init__(self, config, cache_config):
         super().__init__(config, cache_config)
@@ -161,12 +162,8 @@ class HybridMooncakeStoreConnector(AsyncOffloadConnector):
             raise ConfigurationError(
                 "native Mooncake requires asynchronous transfers and LRU"
             )
-        if c.protocol not in ("rdma", "tcp") or c.mode != "standalone-store":
-            raise ConfigurationError(
-                "native Mooncake currently uses a standalone RDMA/TCP store"
-            )
-        self.loads, self.pending_writes = {}, []
-        self.write_jobs = 0
+        if c.protocol not in ("rdma", "tcp"):
+            raise ConfigurationError("grouped Mooncake storage supports RDMA/TCP")
         self.mooncake_stats = MooncakeStats()
 
     def bind_runtime(self, worker):
@@ -229,12 +226,15 @@ class HybridMooncakeStoreConnector(AsyncOffloadConnector):
         self.host_write = QueuedKVLink(
             self.env, host_link.bandwidth_per_direction_bytes_per_s, **host_args
         )
-        self.read_link = _TransferPath(
-            self.env, self.host_read, service.read, read=True
-        )
-        self.write_link = _TransferPath(
-            self.env, self.host_write, service.write, read=False
-        )
+        self.read_link = self.host_read
+        self.write_link = self.host_write
+        if self.store_config.mode == "standalone-store":
+            self.read_link = _TransferPath(
+                self.env, self.host_read, service.read, read=True
+            )
+            self.write_link = _TransferPath(
+                self.env, self.host_write, service.write, read=False
+            )
         self.budget_bytes = service.budget_bytes
         self.manager.publish_callbacks.append(self._queue_write)
         self.changed = self.env.event()
@@ -294,5 +294,6 @@ class HybridMooncakeStoreConnector(AsyncOffloadConnector):
             "loading_requests": len(self.loads),
             "write_jobs": self.write_jobs,
             "save_scope": "newly computed complete retained group pages; duplicate writes suppressed",
-            "source_scope_limit": "DRAM only; one compute node; serial PCIe/network transfer approximation",
+            "deployment_mode": self.store_config.mode,
+            "source_scope_limit": "DRAM only; one compute node; embedded PCIe or standalone serial PCIe/network approximation",
         }

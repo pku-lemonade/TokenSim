@@ -23,6 +23,7 @@ _GB = 1 << 30
 
 @dataclass
 class MooncakeConfig:
+    cache_layout: str = "uniform"
     mode: str = "embedded"
     protocol: str = "rdma"
     global_segment_size: int = 8 * _GB
@@ -61,6 +62,8 @@ class MooncakeConfig:
     protocol_latency_us: dict[str, float] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
+        if self.cache_layout not in {"uniform", "grouped"}:
+            raise ConfigurationError("cache_layout must be uniform or grouped")
         if self.mode not in SUPPORTED_MODES:
             raise ConfigurationError(
                 f"unsupported Mooncake mode {self.mode!r}; expected one of "

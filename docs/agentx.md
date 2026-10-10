@@ -98,13 +98,28 @@ For eight B300 ranks, change these arguments and choose another result directory
 Omit `--kv_transfer_config` to use the cluster's storage configuration (these
 two clusters default to GPU-only storage). For a shared DRAM store, pass
 `--kv_transfer_config data/kv_transfer/mooncake_store_dram_agentx.json`, which
-explicitly selects `HybridMooncakeStoreConnector`. The ordinary
-`MooncakeStoreConnector` supports homogeneous cache pages. The factory checks
-layout support and never substitutes one connector for another.
-The shared-store capacities are example assumptions, not measured hardware
-limits. See [Mooncake storage](mooncake.md) for the simulator-specific connector
-and capacity semantics; `enable_offload: false` leaves DRAM caching enabled and
-disables only the SSD tier.
+selects `MooncakeStoreConnector` with `cache_layout: grouped`. Uniform models
+use the same connector with `cache_layout: uniform` (the default).
+
+The [pinned AgentX recipe](https://github.com/SemiAnalysisAI/InferenceX/blob/843c6254ff69b567f772f6a5fd97675af3d04431/benchmarks/single_node/agentic/dsv4_fp4_b200_vllm_mtp.sh)
+splits the CPU budget over ranks. The recorded SimpleCPU points use
+356,125,000,000 bytes per rank (2849 decimal GB over eight ranks). Its Mooncake
+branch rounds the per-rank segment to whole GB: `2849 // 8 = 356`, and uses
+a separate `4GB` staging buffer per rank. vLLM's size parser interprets these
+strings as GiB, whereas the SimpleCPU branch calculates decimal bytes. The
+included Mooncake example therefore has 2848 GiB of shared KV capacity plus
+32 GiB of staging; staging does not reduce
+the KV pool. `host_available_bytes` uses the smaller recorded B300 host limit:
+2,964,436 MiB; B200 reported 3,095,781 MiB. Both fit this budget. These host
+figures come from the archived launch records, not a runtime host probe.
+
+The recipe's embedded mode places the store on the compute node, so simulated
+transfers use the hardware catalog's PCIe link, without an extra RDMA hop.
+`transfer_utilization: 0.75` remains an unmeasured transfer-efficiency assumption;
+owner-segment imbalance and watermark eviction are not modeled. The two
+published comparison points use SimpleCPU; selecting Mooncake changes the
+storage experiment. `enable_offload: false` leaves DRAM caching enabled and
+disables only the SSD tier. See [Mooncake storage](mooncake.md) for configuration.
 
 For another model, topology or subset, change the same CLI inputs:
 

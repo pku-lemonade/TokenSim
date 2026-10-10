@@ -5,24 +5,28 @@ TokenSim provides these Mooncake-related simulator connectors:
 | Connector | Use case |
 | --- | --- |
 | `MooncakeConnector` | Direct KV transfer from a prefill worker to a decode worker |
-| `MooncakeStoreConnector` | Prefix-addressed shared store with memory and optional SSD offload |
-| `HybridMooncakeStoreConnector` | Shared DRAM storage for grouped KV pages, with queued asynchronous transfers |
+| `MooncakeStoreConnector` | Prefix-addressed shared store with configurable uniform or grouped KV pages |
 | `MultiConnector` | Composition of multiple connectors, such as direct transfer plus a store |
 
 These are simulator models. They do not start or communicate with an external
 Mooncake deployment.
 
-`HybridMooncakeStoreConnector` is a TokenSim extension; upstream
-[vLLM](https://docs.vllm.ai/en/latest/features/mooncake_store_connector_usage/)
-uses `MooncakeStoreConnector`. The grouped implementation currently supports one
-compute node, PP1, a single DRAM replica, LRU and asynchronous RDMA/TCP
-transfers. Its `global_segment_size_gb` is the total simulated store budget,
-including `local_buffer_size_gb` staging space per rank. This differs from
-vLLM's per-rank contribution in embedded mode and external owner configuration
-in standalone mode. The included 3072 GiB total and 16 GiB staging values are
-experiment assumptions, not measured defaults. For eight ranks the usable
-store is `3072 - 8 * 16 = 2944` GiB. `enable_offload` controls the SSD tier;
-setting it to false preserves GPU-to-DRAM storage and prefix reuse.
+`MooncakeStoreConnector` uses `cache_layout: uniform` by default. Set
+`cache_layout: grouped` for a model with multiple cache-page geometries; the
+setting is checked against the engine's actual KV layout. Grouped storage
+currently supports one compute node, PP1, a single DRAM replica, LRU and
+asynchronous transfers. In embedded mode, `global_segment_size` is each
+rank's contribution to the shared KV pool. In standalone mode it represents
+the external owner's total KV pool. Staging space is additional:
+`local_buffer_size * world_size`. The sum is checked against
+`host_available_bytes` when supplied. Integer size fields are bytes; the
+legacy `_gb` aliases use GiB.
+
+Embedded transfers use each GPU's catalog PCIe link. Standalone grouped
+transfers add a shared network queue to the PCIe path. `enable_offload`
+controls the SSD tier; false preserves GPU-to-DRAM storage and prefix reuse.
+The grouped path currently supports DRAM only. See [AgentX](agentx.md) for the
+budget derivation and the remaining modeling assumptions.
 
 ## Selecting a Connector
 

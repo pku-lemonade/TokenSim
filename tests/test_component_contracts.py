@@ -12,6 +12,7 @@ from TokenSim.config.config import KVTransferConfig, ParallelConfig
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware import HardwareContext
 from TokenSim.kv_transfer.connectors.factory import KVConnectorFactory
+from TokenSim.kv_transfer.connectors.mooncake_store import MooncakeStoreConnector
 from TokenSim.latency.operator_table import OperatorTableLatencyBackend
 from TokenSim.operator_data.package import (
     OperatorDataPackage,
@@ -115,3 +116,32 @@ class ComponentContractTest(unittest.TestCase):
         )
         with self.assertRaisesRegex(ConfigurationError, "unknown SimpleCPU"):
             KVConnectorFactory.create_connector(config, cache)
+
+    def test_mooncake_configuration_selects_layout_without_changing_connector(self):
+        uniform = KVConnectorFactory.create_connector(
+            KVTransferConfig(kv_connector="MooncakeStoreConnector")
+        )
+        grouped = KVConnectorFactory.create_connector(
+            KVTransferConfig(
+                kv_connector="MooncakeStoreConnector",
+                kv_connector_extra_config={
+                    "cache_layout": "grouped",
+                    "load_async": True,
+                    "transfer_overlap": True,
+                },
+            ),
+            SimpleNamespace(hybrid_layout=object()),
+        )
+        for connector in (uniform, grouped):
+            self.assertIsInstance(connector, MooncakeStoreConnector)
+            self.assertEqual(connector.name, "MooncakeStoreConnector")
+        self.assertFalse(uniform.native_async)
+        self.assertTrue(grouped.native_async)
+        self.assertNotIn(
+            "HybridMooncakeStoreConnector", KVConnectorFactory.registered_connectors()
+        )
+        with self.assertRaisesRegex(ConfigurationError, "cache_layout"):
+            KVTransferConfig(
+                kv_connector="MooncakeStoreConnector",
+                kv_connector_extra_config={"cache_layout": "gruoped"},
+            )

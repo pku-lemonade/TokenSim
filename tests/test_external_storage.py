@@ -1,9 +1,35 @@
 import unittest
 import simpy
+from types import SimpleNamespace
+from TokenSim.errors import ConfigurationError
+from TokenSim.mooncake.config import MooncakeConfig
+from TokenSim.kv_transfer.connectors.store_pages import _SharedService
 from TokenSim.kv_transfer.native_storage import NativePageStore, QueuedKVLink
+from tests.support.hardware import make_hardware
 
 
 class ExternalStorageTest(unittest.TestCase):
+    def test_mooncake_pool_and_staging_share_one_checked_host_budget(self):
+        worker = SimpleNamespace(
+            parallel_config=SimpleNamespace(world_size=2),
+            env=simpy.Environment(),
+            hardware_context=make_hardware(),
+            nettype="ethernet-test",
+        )
+        for mode, capacity in (("embedded", 2000), ("standalone-store", 1000)):
+            config = MooncakeConfig(
+                mode=mode,
+                global_segment_size=1000,
+                local_buffer_size=20,
+                host_available_bytes=capacity + 40,
+            )
+            service = _SharedService(worker, config)
+            self.assertEqual(service.store.capacity_bytes, capacity)
+            self.assertEqual(service.staging_bytes, 40)
+            config.host_available_bytes -= 1
+            with self.assertRaisesRegex(ConfigurationError, "available host"):
+                _SharedService(worker, config)
+
     def test_incomplete_write_is_invisible_and_pinned_read_survives_eviction(self):
         store = NativePageStore(200)
         a = store.reserve_write(("a",), 100)

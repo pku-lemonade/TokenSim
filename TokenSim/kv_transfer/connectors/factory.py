@@ -5,23 +5,26 @@ from TokenSim.errors import ConfigurationError
 
 from .base import BaseKVConnector
 from .multi import MultiConnector
+from .mooncake_store import MooncakeStoreConnector
 
 
 class KVConnectorFactory:
-    _registry: dict[str, type[BaseKVConnector]] = {}
+    _registry: dict[str, type[BaseKVConnector | MooncakeStoreConnector]] = {}
 
     @classmethod
     def register_connector(
         cls,
         name: str,
-        connector_cls: type[BaseKVConnector],
+        connector_cls: type[BaseKVConnector | MooncakeStoreConnector],
     ) -> None:
         if name in cls._registry:
             raise ConfigurationError(f"connector {name!r} is already registered")
         cls._registry[name] = connector_cls
 
     @classmethod
-    def get_connector_class(cls, name: str) -> type[BaseKVConnector]:
+    def get_connector_class(
+        cls, name: str
+    ) -> type[BaseKVConnector | MooncakeStoreConnector]:
         if name not in cls._registry:
             raise ConfigurationError(
                 f"unsupported kv_connector {name!r}; expected one of "
@@ -34,13 +37,18 @@ class KVConnectorFactory:
         cls,
         config: KVTransferConfig,
         cache_config: CacheConfig | None = None,
-    ) -> BaseKVConnector:
+    ) -> BaseKVConnector | MooncakeStoreConnector:
         connector_cls = cls.get_connector_class(config.kv_connector or "NoopConnector")
         if connector_cls is MultiConnector:
             children = []
             for child_config in config.kv_connector_extra_config.get("connectors", []):
                 child = KVTransferConfig(**child_config)
                 children.append(cls.create_connector(child, cache_config))
+            if any(child.native_async for child in children):
+                raise ConfigurationError(
+                    "queued storage must be configured as a direct connector; "
+                    "MultiConnector does not coordinate asynchronous page ownership"
+                )
             return connector_cls(config, cache_config, children=children)
         if (
             getattr(cache_config, "hybrid_layout", None) is not None

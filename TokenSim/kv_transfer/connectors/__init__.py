@@ -42,9 +42,3 @@ __all__ = [
     "SchedulerSideConnector",
     "WorkerSideConnector",
 ]
-
-from TokenSim.kv_transfer.connectors.hybrid_mooncake import HybridMooncakeStoreConnector
-
-KVConnectorFactory.register_connector(
-    "HybridMooncakeStoreConnector", HybridMooncakeStoreConnector
-)
