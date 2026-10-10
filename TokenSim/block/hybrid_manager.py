@@ -192,7 +192,9 @@ class HybridKVBlockManager:
             )
             extra = make_extra_hash(self.model, req.cache_salt, req.reuse_group)
             keys += tuple(
-                RequestLocalPrefixKey(req.id, block_tokens, index, parent, extra)
+                RequestLocalPrefixKey(
+                    req.cache_identity, block_tokens, index, parent, extra
+                )
                 for index in range(len(keys), blocks)
             )
             cache[req.id] = keys

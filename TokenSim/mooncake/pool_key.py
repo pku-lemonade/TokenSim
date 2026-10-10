@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from functools import cached_property
+import json
 
 from TokenSim.block.prefix_cache import build_prefix_keys, next_parent_hash
 from TokenSim.config.parallel_config import ParallelRankInfo
@@ -29,16 +30,20 @@ class PoolKey:
     @cached_property
     def string(self) -> str:
         md = self.key_metadata
-        return (
-            f"{md.tenant_id}@{md.cache_prefix}@"
-            f"{md.model_name}"
-            f"{md.store_namespace}"
-            f"@tp_rank:{md.tp_rank}"
-            f"@pcp{md.pcp_rank}"
-            f"@dcp{md.dcp_rank}"
-            f"@pp_rank:{md.pp_rank}"
-            f"@group:{md.group_id}"
-            f"@{self.chunk_hash}"
+        return json.dumps(
+            [
+                md.tenant_id,
+                md.cache_prefix,
+                md.model_name,
+                md.store_namespace,
+                md.tp_rank,
+                md.pcp_rank,
+                md.dcp_rank,
+                md.pp_rank,
+                md.group_id,
+                self.chunk_hash,
+            ],
+            separators=(",", ":"),
         )
 
     def to_string(self) -> str:

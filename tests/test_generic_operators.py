@@ -15,6 +15,22 @@ from tests.support.hardware import make_model as make_model
 
 
 class GenericOperatorTest(unittest.TestCase):
+    def test_cache_identity_tracks_geometry_independently_of_latency_bindings(self):
+        model = make_model()
+        self.assertEqual(
+            model.cache_signature(),
+            replace(
+                model, operator_modules={"attention": {"table": "other"}}
+            ).cache_signature(),
+        )
+        self.assertNotEqual(
+            model.cache_signature(), replace(model, num_layers=5).cache_signature()
+        )
+        self.assertNotEqual(
+            model.cache_signature(),
+            replace(model, kv_cache_dtype="fp8").cache_signature(),
+        )
+
     @classmethod
     def setUpClass(cls):
         cls.hardware = HardwareContext.load(

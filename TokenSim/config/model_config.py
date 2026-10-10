@@ -155,6 +155,17 @@ class ModelSpec:
     def operator_dtype(self, name: str) -> str:
         return self.operator_dtypes.get(name, self.dtype)
 
+    def cache_signature(self) -> str:
+        """Architecture/precision identity, independent of timing data bindings."""
+        import json
+
+        shape = self.to_dict()
+        for name in ("operator_modules", "total_params"):
+            shape.pop(name)
+        shape["moe"] = self.moe.to_dict()
+        shape["moe"].pop("routing")
+        return json.dumps(shape, sort_keys=True, separators=(",", ":"))
+
     @property
     def names(self) -> tuple[str, ...]:
         return (self.model_id, self.display_name, *self.aliases)

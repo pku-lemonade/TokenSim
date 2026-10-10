@@ -179,8 +179,8 @@ class KVTransferIntegrationTest(unittest.TestCase):
         self.assertIs(left.service, right.service)
         self.assertEqual(left.service.store.memory_capacity_bytes, 8192)
 
-        def run(engine, identity):
-            request = Request(identity, 32, 2, 16, hash_ids=[11, 22])
+        def run(engine, identity, hashes=(11, 22)):
+            request = Request(identity, 32, 2, 16, hash_ids=list(hashes))
             request.arrive(env)
             engine.add_requests([request])
             env.run(until=request.completion_event)
@@ -196,6 +196,10 @@ class KVTransferIntegrationTest(unittest.TestCase):
         consumer.reset_profile_stats()
         self.assertEqual(get_mooncake_stats(producer), producer_stats)
         self.assertEqual(get_mooncake_stats(consumer)["mooncake_get_count"], 0)
+        self.assertEqual(get_connector_stats(consumer)["connector_transfer_count"], 0)
+        run(producer, 4, (33, 44))
+        run(consumer, 3, (33, 44))
+        self.assertGreater(get_connector_stats(consumer)["connector_transfer_count"], 0)
         isolated = make_engine("isolated", "kv_consumer", "other-prefix")
         self.assertIs(isolated.workers[0].connector.service, left.service)
         self.assertEqual(run(isolated, 2).cached_prefill_tokens, 0)

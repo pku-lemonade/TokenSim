@@ -24,3 +24,11 @@ class MooncakeStoreConnector:
 
     def __getattr__(self, name):
         return getattr(self._storage, name)
+
+    @property
+    def stats(self):
+        return self._storage.stats
+
+    @stats.setter
+    def stats(self, value):
+        self._storage.stats = value

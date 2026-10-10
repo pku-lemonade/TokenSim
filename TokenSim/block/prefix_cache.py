@@ -21,12 +21,12 @@ class PrefixCacheKey(NamedTuple):
 class RequestLocalPrefixKey(NamedTuple):
     """Unknown token content can only recover the same request's KV state.
 
-    Request IDs are unique within an engine/replay, and native stores belong
-    to that engine. A separate key type prevents trace hashes from granting
-    cross-request reuse of synthetic generated tokens or a partial prompt.
+    An opaque request identity survives its recovery attempts and cannot
+    collide with another engine's public request ID. A separate key type
+    prevents synthetic outputs or partial prompts from acquiring trace reuse.
     """
 
-    request_id: int
+    request_identity: object
     block_tokens: int
     block_index: int
     prompt_parent: PrefixCacheKey | None

@@ -212,6 +212,11 @@ class Request:
     prefill_len: int
     decode_len: int
     block_size: int = field(repr=False)
+    # Public IDs are only unique within an engine. Unknown token content must
+    # remain private even when separate engines reuse the same request ID.
+    cache_identity: object = field(
+        default_factory=object, init=False, repr=False, compare=False
+    )
     arrival_timestamp: float | None = None
     inter_arrival_time: float | None = None
     chat_id: str | None = None

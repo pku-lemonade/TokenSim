@@ -31,6 +31,14 @@ def layout(eagle=False):
 
 
 class GroupedCacheTest(unittest.TestCase):
+    def test_same_public_id_in_separate_engines_cannot_share_unknown_tokens(self):
+        managers = [HybridKVBlockManager(layout(), 20, "any-model") for _ in range(2)]
+        requests = [Request(0, 64, 2, 16, hash_ids=[1, 2]) for _ in managers]
+        keys = [manager._input_keys(req) for manager, req in zip(managers, requests)]
+        self.assertEqual(keys[0][:2], keys[1][:2])
+        self.assertNotEqual(keys[0][2:], keys[1][2:])
+        self.assertEqual(managers[0]._input_keys(requests[0]), keys[0])
+
     def test_recovery_requires_all_groups_and_leaves_a_writable_tail(self):
         manager = HybridKVBlockManager(layout(eagle=True), 20, "any-model")
         first = Request(1, 64, 2, 16, hash_ids=[101, 202, 303, 404])

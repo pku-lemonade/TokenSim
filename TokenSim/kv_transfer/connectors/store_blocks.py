@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+from functools import cached_property
 import json
 
 from TokenSim.config.config import CacheConfig, KVTransferConfig
@@ -469,7 +470,8 @@ class BlockStore(BaseKVConnector):
     def _key_strings_for_request(self, req: Request) -> list[str]:
         return self._request_key_bundle(req)[1]
 
-    def _store_namespace(self):
+    @cached_property
+    def store_namespace(self):
         cache = self.cache_config
         model = getattr(cache, "model_spec", None)
         parallel = getattr(cache, "parallel_config", None)
@@ -480,6 +482,7 @@ class BlockStore(BaseKVConnector):
             getattr(parallel, "pipeline_parallel_size", 1),
             getattr(model, "kv_cache_dtype", None),
             getattr(model, "dtype", None),
+            model.cache_signature() if model is not None else None,
         ]
         return "@layout:" + json.dumps(shape, separators=(",", ":"))
 
@@ -490,7 +493,7 @@ class BlockStore(BaseKVConnector):
                 req,
                 model_name=self.model_name,
                 rank_info=self.rank_info,
-                store_namespace=self._store_namespace(),
+                store_namespace=self.store_namespace,
                 cache_prefix=self.options.cache_prefix,
                 tenant_id=self.options.tenant_id,
                 group_id=int(self.options.group_id),

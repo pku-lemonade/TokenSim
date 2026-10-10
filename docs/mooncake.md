@@ -99,6 +99,10 @@ within one store; incompatible formats/settings are rejected rather than
 creating hidden independent pools. A uniform object becomes visible only after
 its transfer and blocking SSD persistence finish. In-flight writes and reads
 protect their objects from eviction until their modeled completion time.
+Model geometry and precision are part of both layouts' identities; changing
+operator timing tables does not change the cached content identity. Unknown
+generated tokens and partial prompts use an opaque request identity, so equal
+public request IDs in different engines cannot grant synthetic KV reuse.
 
 See [Prefix Cache](prefix-cache.md) for workload formats and exact hash matching
 rules.

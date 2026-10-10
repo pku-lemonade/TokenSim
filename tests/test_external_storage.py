@@ -16,6 +16,13 @@ from tests.support.hardware import make_hardware
 
 
 class ExternalStorageTest(unittest.TestCase):
+    def test_store_namespaces_cannot_collide_through_string_separators(self):
+        left = KeyMetadata("test", tenant_id="a@b", cache_prefix="c")
+        right = KeyMetadata("test", tenant_id="a", cache_prefix="b@c")
+        self.assertNotEqual(
+            PoolKey(left, "hash").to_string(), PoolKey(right, "hash").to_string()
+        )
+
     def test_uniform_store_readiness_pins_and_holes_survive_shared_access(self):
         store = MooncakeStore(MooncakeConfig(memory_capacity_blocks=2), 100)
         a, b, c = [PoolKey(KeyMetadata("test"), key) for key in "abc"]

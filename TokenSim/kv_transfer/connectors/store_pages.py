@@ -241,9 +241,9 @@ class PageStore(AsyncOffloadConnector):
         namespace = (
             self.store_config.tenant_id,
             self.store_config.cache_prefix,
-            worker.model_spec.model_id,
-            worker.model_spec.dtype,
-            tuple(sorted(worker.model_spec.operator_dtypes.items())),
+            worker.model_spec.cache_signature(),
+            worker.parallel_config.tensor_parallel_size,
+            worker.parallel_config.pipeline_parallel_size,
             worker.tp_rank,
             worker.pp_rank,
             groups,
@@ -297,7 +297,12 @@ class PageStore(AsyncOffloadConnector):
 
     def _queue_write(self, group, index, block, req):
         if self.store_config.admission_policy == "always":
+            before = self.service.store.evictions
+            pending = len(self.pending_writes)
             super()._queue_write(group, index, block, req)
+            self.mooncake_stats.eviction_count += self.service.store.evictions - before
+            if len(self.pending_writes) > pending:
+                self.mooncake_stats.admission_count += 1
 
     def begin_load(self, req, boundary, hits):
         super().begin_load(req, boundary, hits)
@@ -311,7 +316,9 @@ class PageStore(AsyncOffloadConnector):
             bytes_=values["bytes_"],
             latency=values["latency"],
             kind=f"store_{kind}",
-            blocking_latency=values.get("blocking_latency", 0.0),
+            blocking_latency=values.get(
+                "blocking_latency", values["latency"] if kind == "load" else 0.0
+            ),
         )
 
     def _transfer_bytes(self, pages):
