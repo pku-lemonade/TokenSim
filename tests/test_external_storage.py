@@ -145,10 +145,31 @@ class ExternalStorageTest(unittest.TestCase):
             {"protocol_bandwidth_bytes_per_s": {"rdm": 10}},
             {"bandwidth_gbps": 10},
             {"staging_buffer_size": 100},
+            {"enable_offload": True},
         )
         for values in invalid:
             with self.subTest(values=values), self.assertRaises(ConfigurationError):
                 parse_mooncake_config(values)
+        for kwargs in (
+            {"bandwidth_bytes_per_s": float("nan")},
+            {"bandwidth_bytes_per_s": 100, "latency_us": float("nan")},
+        ):
+            with self.assertRaises(ConfigurationError):
+                QueuedKVLink(simpy.Environment(), **kwargs)
+        cache = SimpleNamespace(hybrid_layout=object())
+        for extra in (
+            {"cpu_bytes_to_use": 123.5},
+            {"lazy_offload": "false"},
+            {"cpu_bytes_to_use": 10, "cpu_bytes_to_use_per_rank": 10},
+        ):
+            with self.assertRaises(ConfigurationError):
+                KVConnectorFactory.create_connector(
+                    KVTransferConfig(
+                        kv_connector="SimpleCPUOffloadConnector",
+                        kv_connector_extra_config=extra,
+                    ),
+                    cache,
+                )
 
     def test_uniform_store_publishes_only_computed_prompt_and_respects_roles(self):
         cache = SimpleNamespace(

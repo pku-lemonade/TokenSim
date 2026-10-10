@@ -8,6 +8,7 @@ request references; cancelled loads never publish their destination pages.
 from TokenSim.errors import ConfigurationError
 from TokenSim.kv_transfer.native_storage import NativePageStore, QueuedKVLink
 from TokenSim.llm.llm_request import RequestStatus
+from TokenSim.config.validation import integer, number, boolean
 
 from .base import BaseKVConnector
 
@@ -166,7 +167,7 @@ class SimpleCPUOffloadConnector(AsyncOffloadConnector):
 
     def __init__(self, config, cache_config=None):
         super().__init__(config, cache_config)
-        extra = config.kv_connector_extra_config
+        extra = dict(config.kv_connector_extra_config)
         allowed = {
             "cpu_bytes_to_use_per_rank",
             "cpu_bytes_to_use",
@@ -177,8 +178,25 @@ class SimpleCPUOffloadConnector(AsyncOffloadConnector):
         unknown = set(extra) - allowed
         if unknown:
             raise ConfigurationError(f"unknown SimpleCPU options: {sorted(unknown)}")
-        if extra.get("lazy_offload", False):
+        if boolean(extra.get("lazy_offload", False), "lazy_offload"):
             raise ConfigurationError("SimpleCPU supports eager offload")
+        if "cpu_bytes_to_use_per_rank" in extra and "cpu_bytes_to_use" in extra:
+            raise ConfigurationError(
+                "choose either total or per-rank CPU byte capacity"
+            )
+        for name in (
+            "cpu_bytes_to_use_per_rank",
+            "cpu_bytes_to_use",
+            "host_available_bytes",
+        ):
+            if name in extra:
+                integer(extra[name], name, minimum=1)
+        number(
+            extra.get("transfer_utilization", 1.0),
+            "transfer_utilization",
+            positive=True,
+            maximum=1,
+        )
         self.extra = extra
 
     def bind_runtime(self, worker):
@@ -202,7 +220,7 @@ class SimpleCPUOffloadConnector(AsyncOffloadConnector):
             (slots - 1) * stride, allocation_unit=stride, scope=f"worker:{worker.id}"
         )
         link = worker.hardware_context.link(worker.device.host_link)
-        utilization = self.extra.get("transfer_utilization", 0.75)
+        utilization = self.extra.get("transfer_utilization", 1.0)
         args = dict(utilization=utilization, latency_us=link.latency_us)
         self.read_link = QueuedKVLink(
             self.env, link.bandwidth_per_direction_bytes_per_s, **args

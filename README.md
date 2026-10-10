@@ -46,8 +46,10 @@ and one request per second. For example:
 Explicit CLI values override the corresponding workload fields. Dataset adapters use
 recorded request lengths. Hardware descriptions live in `data/devices`,
 `data/clusters` and `data/topologies`. `SimulationConfig` validates the serving
-settings once and shares them across workers. Dynamic, static and paged
-batching all interpret `max_num_seqs` as an active-sequence limit. Paged
+settings once and shares them across workers. Configuration rejects unknown model
+fields, fractional dimensions and nonfinite budgets/rates. Explicit CPU byte
+capacities are validated without truncation. Dynamic, static and paged batching
+all interpret `max_num_seqs` as an active-sequence limit. Paged
 batching also supports a token budget and chunked prefill. Grouped KV layouts
 require a finite token budget.
 

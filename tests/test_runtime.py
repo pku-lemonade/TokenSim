@@ -200,6 +200,16 @@ class RuntimeTest(unittest.TestCase):
             self.assertEqual([r.id for r in scheduler.schedule()[0]], [2, 3])
         with self.assertRaises(ConfigurationError):
             SimulationConfig(max_num_seqs=0)
+        for invalid in (
+            {"long_prefill_token_threshold": 1.5},
+            {"dp_lockstep": "false"},
+            {"random_seed": -1},
+            {"mtp_acceptance_length": float("nan")},
+            {"mtp_acceptance_length": 2},
+            {"gpu_memory_utilization": True},
+        ):
+            with self.subTest(invalid=invalid), self.assertRaises(ConfigurationError):
+                SimulationConfig(**invalid)
 
     def test_main_batch_modes_count_output_tokens_and_keep_timing_independent(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -164,6 +164,14 @@ class MooncakeConfig:
         _finite_number(self.transfer_utilization, "transfer_utilization", positive=True)
         if self.transfer_utilization > 1:
             raise ConfigurationError("transfer_utilization must be in (0, 1]")
+        if self.enable_offload and (
+            self.ssd_capacity_blocks == 0
+            or self.ssd_capacity_blocks is None
+            and self.ssd_capacity_bytes == 0
+        ):
+            raise ConfigurationError(
+                "enabled SSD offload needs a positive SSD capacity"
+            )
 
 
 def parse_mooncake_config(value: dict[str, Any] | None = None) -> MooncakeConfig:

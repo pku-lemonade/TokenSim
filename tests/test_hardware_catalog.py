@@ -178,6 +178,23 @@ class ModelCatalogTest(unittest.TestCase):
                 num_key_value_heads=3,
                 head_dim=16,
             )
+        raw = {
+            "model_id": "custom",
+            "hidden_size": 128,
+            "intermediate_size": 256,
+            "num_layers": 2,
+            "num_attention_heads": 8,
+        }
+        for invalid in (
+            {"num_layers": 2.5},
+            {"num_layers": True},
+            {"head_dim": 0},
+            {"tie_word_embeddings": "false"},
+            {"intermedate_size": 256},
+            {"num_attention_heads": 0},
+        ):
+            with self.subTest(invalid=invalid), self.assertRaises(ConfigurationError):
+                ModelSpec.from_mapping({**raw, **invalid})
 
 
 class TopologyTest(unittest.TestCase):

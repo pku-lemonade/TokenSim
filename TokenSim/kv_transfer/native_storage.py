@@ -8,6 +8,7 @@ from dataclasses import dataclass
 import simpy
 
 from TokenSim.errors import ConfigurationError, SimulationStateError
+from TokenSim.config.validation import integer, number
 
 
 @dataclass
@@ -26,11 +27,9 @@ class NativePageStore:
     """
 
     def __init__(self, capacity_bytes, *, allocation_unit=None, scope="shared"):
-        if capacity_bytes <= 0 or (
-            allocation_unit is not None and allocation_unit <= 0
-        ):
-            raise ConfigurationError("external KV storage needs a positive byte budget")
-        self.capacity_bytes = int(capacity_bytes)
+        self.capacity_bytes = integer(capacity_bytes, "capacity_bytes", minimum=1)
+        if allocation_unit is not None:
+            integer(allocation_unit, "allocation_unit", minimum=1)
         self.allocation_unit = allocation_unit
         self.scope = scope
         self.pages = {}
@@ -48,6 +47,7 @@ class NativePageStore:
         return page
 
     def reserve_write(self, key, payload_bytes):
+        integer(payload_bytes, "payload_bytes", minimum=1)
         existing = self.pages.get(key)
         if existing is not None:
             return None
@@ -120,9 +120,10 @@ class NativePageStore:
 class QueuedKVLink:
     """One shared directional link; independent callers contend in one queue."""
 
-    def __init__(self, env, bandwidth_bytes_per_s, *, utilization=0.75, latency_us=0):
-        if bandwidth_bytes_per_s <= 0 or not 0 < utilization <= 1 or latency_us < 0:
-            raise ConfigurationError("invalid queued KV link capacity or utilization")
+    def __init__(self, env, bandwidth_bytes_per_s, *, utilization=1.0, latency_us=0):
+        number(bandwidth_bytes_per_s, "bandwidth_bytes_per_s", positive=True)
+        number(utilization, "utilization", positive=True, maximum=1)
+        number(latency_us, "latency_us")
         self.env = env
         self.bandwidth_bytes_per_s = bandwidth_bytes_per_s
         self.utilization = utilization
@@ -132,8 +133,7 @@ class QueuedKVLink:
         self.queue_wait_seconds = self.service_seconds = 0.0
 
     def transfer(self, bytes_):
-        if bytes_ < 0:
-            raise ConfigurationError("transfer bytes must be nonnegative")
+        integer(bytes_, "transfer bytes")
         issued = self.env.now
         with self.queue.request() as slot:
             yield slot

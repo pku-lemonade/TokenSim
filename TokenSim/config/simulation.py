@@ -1,10 +1,10 @@
 """Validated serving configuration shared by the engine and its workers."""
 
 from dataclasses import dataclass, field
-import math
 
 from TokenSim.config.moe_execution import MoEExecutionConfig
 from TokenSim.errors import ConfigurationError
+from TokenSim.config.validation import integer, number, boolean
 
 
 @dataclass(frozen=True)
@@ -47,21 +47,28 @@ class SimulationConfig:
             "dp_sync_interval",
             "prefill_schedule_interval",
         ):
-            value = getattr(self, name)
-            if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
-                raise ConfigurationError(f"{name} must be a positive integer")
-        if self.max_num_batched_tokens is not None and (
-            isinstance(self.max_num_batched_tokens, bool)
-            or not isinstance(self.max_num_batched_tokens, int)
-            or self.max_num_batched_tokens <= 0
+            integer(getattr(self, name), name, minimum=1)
+        if self.max_num_batched_tokens is not None:
+            integer(self.max_num_batched_tokens, "max_num_batched_tokens", minimum=1)
+        for name in ("long_prefill_token_threshold", "random_seed"):
+            integer(getattr(self, name), name)
+        for name in ("mtp_seed", "mtp_num_speculative_tokens"):
+            if getattr(self, name) is not None:
+                integer(getattr(self, name), name)
+        number(self.mtp_acceptance_length, "mtp_acceptance_length", minimum=1)
+        if self.mtp_acceptance_length > 1 + (self.mtp_num_speculative_tokens or 0):
+            raise ConfigurationError(
+                "MTP acceptance length cannot exceed 1 + draft tokens"
+            )
+        for name in (
+            "debug_print",
+            "sticky_sessions",
+            "dp_lockstep",
+            "adaptive_long_prefill_threshold",
         ):
-            raise ConfigurationError("max_num_batched_tokens must be positive or None")
-        if self.long_prefill_token_threshold < 0:
-            raise ConfigurationError("long_prefill_token_threshold must be nonnegative")
+            boolean(getattr(self, name), name)
         for name in ("max_occupy_ratio", "gpu_memory_utilization"):
-            value = getattr(self, name)
-            if not math.isfinite(value) or not 0 < value <= 1:
-                raise ConfigurationError(f"{name} must be in (0, 1]")
+            number(getattr(self, name), name, positive=True, maximum=1)
         choices = {
             "batching": ("dynamic", "static", "paged-attn"),
             "latency_backend_type": ("operator_table", "analytical"),

@@ -6,6 +6,7 @@ from dataclasses import asdict, dataclass
 from typing import Any, Mapping
 
 from TokenSim.errors import ConfigurationError
+from TokenSim.config.validation import integer, number, boolean
 
 
 @dataclass(frozen=True)
@@ -55,24 +56,24 @@ class TransformerComponents:
             "hc_sinkhorn_iters",
             "expert_scale_group_size",
         ):
-            if getattr(self, name) <= 0:
-                raise ConfigurationError(
-                    f"compressed transformer {name} must be positive"
-                )
-        if self.num_hash_layers < 0 or self.num_nextn_predict_layers < 0:
-            raise ConfigurationError(
-                "compressed transformer layer counts must be nonnegative"
-            )
-        if not self.compress_ratios or any(
-            not isinstance(r, int) or r < 1 for r in self.compress_ratios
-        ):
+            integer(getattr(self, name), name, minimum=1)
+        integer(self.num_hash_layers, "num_hash_layers")
+        integer(self.num_nextn_predict_layers, "num_nextn_predict_layers")
+        integer(self.indexed_compress_ratio, "indexed_compress_ratio", minimum=2)
+        number(self.routed_scaling_factor, "routed_scaling_factor", positive=True)
+        boolean(self.norm_topk_prob, "norm_topk_prob")
+        if not self.compress_ratios:
             raise ConfigurationError(
                 "compressed transformer compression ratios must be positive integers"
             )
-        if len(self.weight_block_size) != 2 or min(self.weight_block_size) <= 0:
+        for ratio in self.compress_ratios:
+            integer(ratio, "compress_ratio", minimum=1)
+        if len(self.weight_block_size) != 2:
             raise ConfigurationError(
                 "compressed transformer weight_block_size must contain two positive dimensions"
             )
+        for size in self.weight_block_size:
+            integer(size, "weight_block_size", minimum=1)
         if self.indexer_cache_dtype not in ("mxfp4", "fp8"):
             raise ConfigurationError(
                 "compressed transformer indexer cache must be mxfp4 or fp8"
@@ -81,12 +82,15 @@ class TransformerComponents:
     @classmethod
     def from_mapping(cls, raw: Mapping[str, Any]) -> "TransformerComponents":
         values = dict(raw)
-        values["compress_ratios"] = tuple(int(r) for r in values["compress_ratios"])
+        values["compress_ratios"] = tuple(values["compress_ratios"])
         if "weight_block_size" in values:
-            values["weight_block_size"] = tuple(
-                int(r) for r in values["weight_block_size"]
-            )
-        return cls(**values)
+            values["weight_block_size"] = tuple(values["weight_block_size"])
+        try:
+            return cls(**values)
+        except TypeError as error:
+            raise ConfigurationError(
+                f"invalid transformer components: {error}"
+            ) from error
 
     def validate_model(
         self,

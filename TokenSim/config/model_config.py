@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
@@ -9,6 +9,7 @@ from TokenSim.config.components import TransformerComponents, ModelLayerSpec
 from TokenSim.hardware._yaml import load_yaml_mapping, require
 from TokenSim.hardware.device import normalize_dtype
 from TokenSim.moe.config import MoEModelConfig
+from TokenSim.config.validation import integer, boolean
 
 GATED_ACTIVATIONS = {"swiglu", "geglu", "reglu"}
 ACTIVATIONS = GATED_ACTIVATIONS | {"gelu", "relu", "silu"}
@@ -57,11 +58,13 @@ class ModelSpec:
             "num_key_value_heads",
             "head_dim",
             "vocab_size",
+            "max_position_embeddings",
         ):
-            if int(getattr(self, name)) <= 0:
-                raise ConfigurationError(
-                    f"model {self.model_id!r}: {name} must be positive"
-                )
+            integer(getattr(self, name), f"model {self.model_id!r}: {name}", minimum=1)
+        integer(self.sliding_window, "sliding_window")
+        boolean(self.tie_word_embeddings, "tie_word_embeddings")
+        if not isinstance(self.model_id, str) or not self.model_id:
+            raise ConfigurationError("model_id must be a nonempty string")
         if self.num_attention_heads % self.num_key_value_heads != 0:
             raise ConfigurationError(
                 f"model {self.model_id!r}: num_attention_heads must be divisible by num_key_value_heads"
@@ -70,6 +73,12 @@ class ModelSpec:
             raise ConfigurationError(
                 f"model {self.model_id!r}: activation must be one of {sorted(ACTIVATIONS)}"
             )
+        if self.moe.enabled and (
+            self.moe.first_k_dense_replace
+            + (self.moe.num_moe_layers - 1) * self.moe.moe_layer_freq
+            >= self.num_layers
+        ):
+            raise ConfigurationError("MoE layers extend beyond the model's layer count")
         object.__setattr__(self, "dtype", normalize_dtype(self.dtype))
         object.__setattr__(
             self,
@@ -98,10 +107,8 @@ class ModelSpec:
                 sliding_window=self.sliding_window,
                 num_experts=self.moe.num_experts,
             )
-        if self.kv_cache_dim is not None and int(self.kv_cache_dim) <= 0:
-            raise ConfigurationError(
-                f"model {self.model_id!r}: kv_cache_dim must be positive"
-            )
+        if self.kv_cache_dim is not None:
+            integer(self.kv_cache_dim, "kv_cache_dim", minimum=1)
         if not self.display_name:
             object.__setattr__(self, "display_name", self.model_id)
 
@@ -158,13 +165,15 @@ class ModelSpec:
     def cache_signature(self) -> str:
         """Architecture/precision identity, independent of timing data bindings."""
         import json
+        import hashlib
 
         shape = self.to_dict()
         for name in ("operator_modules", "total_params"):
             shape.pop(name)
         shape["moe"] = self.moe.to_dict()
         shape["moe"].pop("routing")
-        return json.dumps(shape, sort_keys=True, separators=(",", ":"))
+        payload = json.dumps(shape, sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
     @property
     def names(self) -> tuple[str, ...]:
@@ -228,7 +237,34 @@ class ModelSpec:
     def from_mapping(
         cls, raw: Mapping[str, Any], context: str = "model"
     ) -> "ModelSpec":
-        model_id = str(require(raw, "model_id", context))
+        if not isinstance(raw, Mapping):
+            raise ConfigurationError(
+                f"{context}: model configuration must be an object"
+            )
+        unknown = set(raw) - {f.name for f in fields(cls)} - {"schema_version"}
+        if unknown:
+            raise ConfigurationError(
+                f"{context}: unknown model fields: {sorted(unknown)}"
+            )
+        raw = dict(raw)
+        for name in (
+            "hidden_size",
+            "intermediate_size",
+            "num_layers",
+            "num_attention_heads",
+            "num_key_value_heads",
+            "head_dim",
+            "kv_cache_dim",
+            "vocab_size",
+            "max_position_embeddings",
+        ):
+            if name in raw and not (name == "kv_cache_dim" and raw[name] is None):
+                integer(raw[name], f"{context}: {name}", minimum=1)
+        if "sliding_window" in raw:
+            integer(raw["sliding_window"], "sliding_window")
+        if "tie_word_embeddings" in raw:
+            boolean(raw["tie_word_embeddings"], "tie_word_embeddings")
+        model_id = require(raw, "model_id", context)
         context = f"model {model_id!r}"
         if raw.get("schema_version", 1) != 1:
             raise ConfigurationError(f"{context}: unsupported schema_version")
@@ -240,6 +276,32 @@ class ModelSpec:
         if moe_raw:
             if not isinstance(moe_raw, Mapping):
                 raise ConfigurationError(f"{context}: moe must be a mapping")
+            known = {
+                "num_experts",
+                "num_experts_per_tok",
+                "moe_intermediate_size",
+                "num_shared_experts",
+                "num_moe_layers",
+                "first_k_dense_replace",
+                "moe_layer_freq",
+                "interleave_moe_layer_step",
+                "routing",
+            }
+            if set(moe_raw) - known:
+                raise ConfigurationError(
+                    f"{context}: unknown MoE model fields: {sorted(set(moe_raw) - known)}"
+                )
+            for name, value in moe_raw.items():
+                if name != "routing" and value is not None:
+                    integer(
+                        value,
+                        f"{context}: moe.{name}",
+                        minimum=(
+                            0
+                            if name in {"num_shared_experts", "first_k_dense_replace"}
+                            else 1
+                        ),
+                    )
             moe = MoEModelConfig(
                 is_moe_model=True,
                 num_experts=int(require(moe_raw, "num_experts", context)),
