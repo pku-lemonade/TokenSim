@@ -96,7 +96,9 @@ each client. Separate environments start with fresh stores. Store membership
 does not imply a cache hit: model/layout, shard, tenant/prefix and hash identities
 must match. The uniform simulator currently requires equal page-byte formats
 within one store; incompatible formats/settings are rejected rather than
-creating hidden independent pools.
+creating hidden independent pools. A uniform object becomes visible only after
+its transfer and blocking SSD persistence finish. In-flight writes and reads
+protect their objects from eviction until their modeled completion time.
 
 See [Prefix Cache](prefix-cache.md) for workload formats and exact hash matching
 rules.
@@ -187,3 +189,8 @@ store hit/miss counts, memory/SSD hit counts, SSD reads/writes, transfer latency
 effective bandwidth, admission/rejection, eviction, pending jobs, hit tokens,
 sampled pool keys, and the effective SSD profile. Fields use the
 `mooncake_...` prefix.
+
+Operation counters belong to each connector, even when its store is shared.
+Exporting or resetting one engine's profile does not include or clear another
+engine's operations. Cache contents and outstanding object lifetimes survive
+counter resets.

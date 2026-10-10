@@ -5,6 +5,8 @@ from TokenSim.errors import ConfigurationError
 from TokenSim.mooncake.config import MooncakeConfig, parse_mooncake_config
 from TokenSim.mooncake.transfer_engine import TransferEngineSimulator, Segment
 from TokenSim.mooncake.ssd import OffloadTier
+from TokenSim.mooncake.store import MooncakeStore
+from TokenSim.mooncake.pool_key import KeyMetadata, PoolKey
 from TokenSim.config.kv_transfer_config import KVTransferConfig
 from TokenSim.kv_transfer.connectors.factory import KVConnectorFactory
 from TokenSim.llm.llm_request import Request
@@ -14,6 +16,45 @@ from tests.support.hardware import make_hardware
 
 
 class ExternalStorageTest(unittest.TestCase):
+    def test_uniform_store_readiness_pins_and_holes_survive_shared_access(self):
+        store = MooncakeStore(MooncakeConfig(memory_capacity_blocks=2), 100)
+        a, b, c = [PoolKey(KeyMetadata("test"), key) for key in "abc"]
+        store.put([a], now=0, initial_delay=1)
+        self.assertEqual(store.lookup([a], now=0.9).hit_blocks, 0)
+        self.assertEqual(store.lookup([a], now=1).hit_blocks, 1)
+        store.put([c], now=1)
+        # A suffix may have been saved by another client without its prefix.
+        self.assertEqual(store.missing_indices([a, b, c]), [1])
+        store.get([a, c], "memory", now=1, initial_delay=2)
+        store.put([b], now=2)
+        self.assertEqual(store.lookup([a], now=2).hit_blocks, 1)
+        self.assertNotIn(b.to_string(), store.objects)
+        store.put([b], now=3)
+        self.assertIn(b.to_string(), store.objects)
+        self.assertLessEqual(store.memory_used_bytes, store.memory_capacity_bytes)
+
+    def test_ssd_overwrite_and_eviction_preserve_capacity_and_live_metadata(self):
+        config = MooncakeConfig(
+            memory_capacity_blocks=0, enable_offload=True, ssd_capacity_blocks=2
+        )
+        disk = OffloadTier(config, 100)
+        disk.write("a", 1)
+        disk.write("b", 1)
+        self.assertEqual(disk.write("a", 1).evicted_keys, [])
+        self.assertTrue(disk.contains("b"))
+        disk.pin("a", 10)
+        self.assertEqual(disk.write("c", 1, now=1).evicted_keys, ["b"])
+        disk.pin("c", 10)
+        self.assertEqual(disk.write("d", 1, now=1).blocks, 0)
+        self.assertEqual(disk.used_blocks, 2)
+        store = MooncakeStore(config, 100)
+        for i in range(20):
+            key = PoolKey(KeyMetadata("test"), str(i))
+            store.put([key], now=i)
+            self.assertEqual(len(store.objects), store.offload.used_blocks)
+            self.assertLessEqual(len(store.objects), 2)
+        self.assertEqual(store.lookup([key], now=20).hit_blocks, 1)
+
     def test_transfer_units_and_invalid_configuration_cannot_hide_bad_budgets(self):
         config = MooncakeConfig(
             bandwidth_bytes_per_s=1000,

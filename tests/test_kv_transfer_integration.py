@@ -21,7 +21,7 @@ from TokenSim.llm.llm_engine import LLMEngine, Task
 from TokenSim.llm.llm_request import Request, RequestStatus
 from tests.support.hardware import make_device, make_hardware, make_links, make_model
 from util.request import LLMSource
-from util.results import export_result, get_connector_stats
+from util.results import export_result, get_connector_stats, get_mooncake_stats
 
 PREFILL_LATENCY = 0.0012
 DECODE_LATENCY = 0.0023
@@ -188,8 +188,14 @@ class KVTransferIntegrationTest(unittest.TestCase):
             return request
 
         run(producer, 0)
+        producer_stats = get_mooncake_stats(producer)
         loaded = run(consumer, 1)
         self.assertGreater(loaded.cached_prefill_tokens, 0)
+        self.assertEqual(get_mooncake_stats(producer), producer_stats)
+        self.assertEqual(get_mooncake_stats(consumer)["mooncake_put_count"], 0)
+        consumer.reset_profile_stats()
+        self.assertEqual(get_mooncake_stats(producer), producer_stats)
+        self.assertEqual(get_mooncake_stats(consumer)["mooncake_get_count"], 0)
         isolated = make_engine("isolated", "kv_consumer", "other-prefix")
         self.assertIs(isolated.workers[0].connector.service, left.service)
         self.assertEqual(run(isolated, 2).cached_prefill_tokens, 0)

@@ -8,6 +8,7 @@ from TokenSim.llm.llm_request import Request
 from TokenSim.mooncake import PoolKey, Segment, pool_keys_for_request
 from TokenSim.mooncake.service import get_mooncake_service
 from TokenSim.mooncake.config import parse_mooncake_config
+from TokenSim.mooncake.metrics import MooncakeStats
 from TokenSim.errors import ConfigurationError
 
 from .base import BaseKVConnector
@@ -69,7 +70,12 @@ class BlockStore(BaseKVConnector):
             contributor=contributor,
             ranks=world_size,
         )
-        self.mooncake_stats = self.service.store.stats
+        self.mooncake_stats = MooncakeStats()
+        if self.service.store.offload is not None:
+            self.mooncake_stats.record_offload_tier(self.service.store.offload.tier)
+            self.mooncake_stats.record_offload_profile(
+                self.service.store._offload_profile()
+            )
 
     def bind_runtime(self, worker):
         self._bind_service(len(worker.engine.workers), worker.env, worker.engine)
@@ -112,6 +118,7 @@ class BlockStore(BaseKVConnector):
         hit = self.service.store.lookup(
             keys[local_gpu_blocks:],
             now=self.simulation_time,
+            stats=self.mooncake_stats,
         )
         if hit.hit_blocks <= 0:
             return 0
@@ -231,6 +238,8 @@ class BlockStore(BaseKVConnector):
                 keys,
                 plan.tier,
                 now=self.simulation_time,
+                initial_delay=latency + plan.latency,
+                stats=self.mooncake_stats,
             )
             latency += plan.latency + disk_latency
             self.stats.record_transfer(
@@ -263,7 +272,8 @@ class BlockStore(BaseKVConnector):
                 keys,
                 blocks=plan.blocks,
                 now=self.simulation_time,
-                initial_delay=plan.latency,
+                initial_delay=latency + plan.latency,
+                stats=self.mooncake_stats,
             )
             total_latency = plan.latency + store_timing.accounting_latency
             blocking_latency = plan.latency + store_timing.blocking_latency
@@ -418,7 +428,7 @@ class BlockStore(BaseKVConnector):
             # Reference semantics: an existence prefilter runs before the put
             # (worker-side batch_is_exist) so only missing keys are written
             # and transferred.
-            missing = self.service.store.missing_prefix_indices(pool_keys)
+            missing = self.service.store.missing_indices(pool_keys)
             if not missing:
                 self._request_keys[req.id] = pool_keys
                 return None
