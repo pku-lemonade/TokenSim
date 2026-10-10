@@ -30,6 +30,10 @@ class MultiConnector(BaseKVConnector):
         for child in self.children:
             child.set_simulation_time(now)
 
+    def bind_runtime(self, worker):
+        for child in self.children:
+            child.bind_runtime(worker)
+
     def build_connector_meta(self, scheduler_output: Any) -> KVConnectorMetadata:
         loads: list[ConnectorTransferPlan] = []
         saves: list[ConnectorTransferPlan] = []

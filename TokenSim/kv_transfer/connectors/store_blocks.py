@@ -38,25 +38,15 @@ class BlockStore(BaseKVConnector):
             )
             self.model_name = cache_config.model
             self.rank_info = getattr(cache_config, "rank_info", None)
-        options = parse_mooncake_config(config.kv_connector_extra_config)
+        self.options = parse_mooncake_config(config.kv_connector_extra_config)
+        if self.options.transfer_overlap:
+            raise ConfigurationError(
+                "uniform metadata timing does not support transfer_overlap; it waits for I/O completion"
+            )
+        self.host_link = self.network_link = None
         parallel = getattr(cache_config, "parallel_config", None)
         world_size = parallel.world_size if parallel is not None else 1
-        effective = asdict(options)
-        if options.mode == "embedded":
-            effective["global_segment_size"] *= world_size
-        service_config = replace(config, kv_connector_extra_config=effective)
-        self.service = get_mooncake_service(
-            service_config, block_bytes=self.block_bytes
-        )
-        if options.host_available_bytes is not None and (
-            self.service.store.memory_capacity_bytes
-            + options.local_buffer_size * world_size
-            > options.host_available_bytes
-        ):
-            raise ConfigurationError(
-                "Mooncake pool and staging exceed available host DRAM"
-            )
-        self.mooncake_stats = self.service.store.stats
+        self._bind_service(world_size)
         # "mooncake" mirrors the reference vLLM MooncakeStoreConnector
         # (ref/vllm .../kv_connector/v1/mooncake/store/); "every_step" keeps
         # the historical TokenSim behavior.
@@ -71,12 +61,55 @@ class BlockStore(BaseKVConnector):
         self._delayed_releases: dict[int, tuple[Request, list[int]]] = {}
         self._block_releaser: Any | None = None
 
+    def _bind_service(self, world_size, owner=None):
+        effective = asdict(self.options)
+        if self.options.mode == "embedded":
+            effective["global_segment_size"] *= world_size
+        service_config = replace(self.config, kv_connector_extra_config=effective)
+        self.service = get_mooncake_service(
+            service_config, block_bytes=self.block_bytes, owner=owner
+        )
+        reserved = (
+            self.service.store.memory_capacity_bytes
+            + self.options.local_buffer_size * world_size
+        )
+        if (
+            self.options.host_available_bytes is not None
+            and reserved > self.options.host_available_bytes
+        ):
+            raise ConfigurationError(
+                "Mooncake pool and staging exceed available host DRAM"
+            )
+        self.mooncake_stats = self.service.store.stats
+
+    def bind_runtime(self, worker):
+        self._bind_service(len(worker.engine.workers), worker.engine)
+        self.host_link = worker.hardware_context.link(worker.device.host_link)
+        self.network_link = worker.hardware_context.link(worker.nettype)
+
+    def _transfer_latency(self, transfer):
+        if self.host_link is None:
+            return transfer.latency
+        host = self.host_link.latency_us / 1e6 + transfer.bytes / (
+            self.host_link.bandwidth_per_direction_bytes_per_s
+            * self.options.transfer_utilization
+        )
+        if self.options.mode == "embedded":
+            return host
+        transfer.bandwidth_bytes_per_s = min(
+            transfer.bandwidth_bytes_per_s * transfer.parallel_paths,
+            self.network_link.bandwidth_per_direction_bytes_per_s
+            * self.options.transfer_utilization,
+        )
+        transfer.parallel_paths = 1
+        return transfer.latency + host
+
     def get_num_new_matched_tokens(
         self,
         req: Request,
         num_computed_tokens: int,
     ) -> int:
-        if self.service.config.admission_policy == "never":
+        if self.config.kv_role == "kv_producer":
             return 0
         keys = self._keys_for_request(req)
         self._request_keys[req.id] = keys
@@ -157,7 +190,12 @@ class BlockStore(BaseKVConnector):
         loads: list[ConnectorTransferPlan] = []
         saves: list[ConnectorTransferPlan] = []
         can_save = self.config.kv_role in {"kv_producer", "kv_both", None}
-        for req in getattr(scheduler_output, "scheduled", []) or []:
+        # ``scheduled`` on paged outputs contains newly admitted requests;
+        # existing requests can still compute another prefill chunk this step.
+        requests = getattr(
+            scheduler_output, "running", getattr(scheduler_output, "scheduled", [])
+        )
+        for req in requests or []:
             load_info = self._pending_loads.pop(req.id, None)
             if load_info is not None:
                 load_plan = self._build_load_plan(req, load_info)
@@ -168,13 +206,14 @@ class BlockStore(BaseKVConnector):
                 continue
             if self.service.config.admission_policy == "never":
                 continue
-            if self._aligned:
+            if self.service.config.save_policy in {"mooncake", "once"}:
                 # Reference semantics: saves happen only within the prefill
                 # range (decode steps never save), each request saves at most
                 # once, and a step that loads from the store skips its save.
                 if not req.is_prefill or req.id in self._saved_request_ids:
                     continue
-                self._saved_request_ids.add(req.id)
+                if req.num_computed_tokens + req.step_tokens < req.prefill_len:
+                    continue
                 if load_info is not None:
                     continue
             save_keys = self._keys_for_request(req)
@@ -183,6 +222,7 @@ class BlockStore(BaseKVConnector):
             plan = self._build_save_plan(req, save_keys)
             if plan is None:
                 continue
+            self._saved_request_ids.add(req.id)
             saves.append(plan)
             if plan.async_transfer:
                 self._pending_async_puts.update(plan.request_ids)
@@ -351,7 +391,7 @@ class BlockStore(BaseKVConnector):
             target_segment=Segment(name=f"worker-{self.config.kv_rank}", tier="vram"),
             blocks=blocks,
             bytes_=bytes_,
-            protocol="nvmeof" if tier == "ssd" else self.service.config.protocol,
+            protocol=self.service.config.protocol,
             kind="store",
             topology="cross_node",
         )
@@ -364,7 +404,7 @@ class BlockStore(BaseKVConnector):
             target_worker_id=self.config.kv_rank,
             blocks=blocks,
             bytes=bytes_,
-            latency=transfer.latency,
+            latency=self._transfer_latency(transfer),
             kind="load",
             keys=keys,
             tier=tier,
@@ -379,7 +419,10 @@ class BlockStore(BaseKVConnector):
     def _build_save_plan(
         self, req: Request, keys: list[PoolKey]
     ) -> ConnectorTransferPlan | None:
-        full_blocks = min(len(keys), req.prefill_len // self.block_size)
+        computed = min(req.prefill_len, req.num_computed_tokens + req.step_tokens)
+        full_blocks = min(len(keys), computed // self.block_size)
+        if full_blocks == 0:
+            return None
         pool_keys = keys[:full_blocks]
         key_strings = self._key_strings_for_request(req)[:full_blocks]
         if self._aligned:
@@ -409,7 +452,7 @@ class BlockStore(BaseKVConnector):
             source_worker_id=self.config.kv_rank,
             blocks=blocks,
             bytes=bytes_,
-            latency=transfer.latency,
+            latency=self._transfer_latency(transfer),
             kind="save",
             keys=key_strings,
             tier="memory",

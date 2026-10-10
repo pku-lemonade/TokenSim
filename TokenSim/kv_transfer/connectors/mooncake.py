@@ -21,7 +21,19 @@ class MooncakeConnector(BaseKVConnector):
         block_bytes = 1
         if cache_config is not None:
             block_bytes = int(cache_config.block_size * cache_config.size_per_token)
+        if config.kv_connector_extra_config.get("transfer_overlap", False):
+            from TokenSim.errors import ConfigurationError
+
+            raise ConfigurationError(
+                "point-to-point metadata timing does not support transfer_overlap"
+            )
         self.service = get_mooncake_service(config, block_bytes=block_bytes)
+        self.mooncake_stats = self.service.store.stats
+
+    def bind_runtime(self, worker):
+        self.service = get_mooncake_service(
+            self.config, block_bytes=self.service.block_bytes, owner=worker.engine
+        )
         self.mooncake_stats = self.service.store.stats
 
     def build_transfer_plan(

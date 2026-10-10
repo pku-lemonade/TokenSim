@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any
+from numbers import Integral, Real
+import math
 
 from TokenSim.errors import ConfigurationError
 
@@ -30,9 +32,9 @@ class MooncakeConfig:
     local_buffer_size: int = 1 * _GB
     enable_offload: bool = False
     offload_tier: str = "ssd"
-    ssd_capacity_gb: float = 0.0
-    ssd_read_bw_gbps: float = 7.0
-    ssd_write_bw_gbps: float = 3.0
+    ssd_capacity_bytes: int = 0
+    ssd_read_bandwidth_bytes_per_s: float = 7 * _GB
+    ssd_write_bandwidth_bytes_per_s: float = 3 * _GB
     ssd_read_latency_us: float = 100.0
     ssd_write_latency_us: float = 200.0
     replica_num: int = 1
@@ -46,19 +48,17 @@ class MooncakeConfig:
     num_nics: int = 1
     parallel_paths: int = 1
     fixed_latency_us: float | None = None
-    bandwidth_gbps: float | None = None
+    bandwidth_bytes_per_s: float | None = None
     memory_capacity_blocks: int | None = None
     ssd_capacity_blocks: int | None = None
-    staging_buffer_size: int = 256 * 1024 * 1024
     preferred_segment: str | None = None
     group_id: int = 0
     pcp_rank: int = 0
     dcp_rank: int = 0
-    # Native hybrid stores use these byte/efficiency budgets rather than a
-    # logged number of blocks. Legacy configurations can omit them.
+    # Aggregate host memory available to the store and staging pools.
     host_available_bytes: int | None = None
-    transfer_utilization: float = 0.75
-    protocol_bandwidth_gbps: dict[str, float] = field(default_factory=dict)
+    transfer_utilization: float = 1.0
+    protocol_bandwidth_bytes_per_s: dict[str, float] = field(default_factory=dict)
     protocol_latency_us: dict[str, float] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -97,51 +97,74 @@ class MooncakeConfig:
                 + f"{self.save_policy!r}; expected one of "
                 + f"{sorted(SUPPORTED_SAVE_POLICIES)}"
             )
-        for field_name in (
+        for name in (
             "global_segment_size",
             "local_buffer_size",
-            "staging_buffer_size",
             "replica_num",
             "num_nics",
             "parallel_paths",
+            "group_id",
+            "pcp_rank",
+            "dcp_rank",
+            "ssd_capacity_bytes",
         ):
-            value = getattr(self, field_name)
-            if int(value) < 0:
-                raise ConfigurationError(f"{field_name} must be non-negative")
-            setattr(self, field_name, int(value))
-        if self.replica_num < 1:
-            raise ConfigurationError("replica_num must be at least 1")
-        if self.num_nics < 1:
-            raise ConfigurationError("num_nics must be at least 1")
-        if self.parallel_paths < 1:
-            raise ConfigurationError("parallel_paths must be at least 1")
-        for field_name in (
-            "ssd_read_bw_gbps",
-            "ssd_write_bw_gbps",
+            value = getattr(self, name)
+            minimum = 1 if name in {"replica_num", "num_nics", "parallel_paths"} else 0
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, Integral)
+                or value < minimum
+            ):
+                raise ConfigurationError(f"{name} must be an integer >= {minimum}")
+            setattr(self, name, int(value))
+        for name in ("enable_offload", "load_async", "transfer_overlap"):
+            if not isinstance(getattr(self, name), bool):
+                raise ConfigurationError(f"{name} must be a boolean")
+        if self.transfer_overlap and not self.load_async:
+            raise ConfigurationError("transfer_overlap requires load_async")
+        for name in (
+            "ssd_read_bandwidth_bytes_per_s",
+            "ssd_write_bandwidth_bytes_per_s",
             "ssd_read_latency_us",
             "ssd_write_latency_us",
         ):
-            if float(getattr(self, field_name)) < 0:
-                raise ConfigurationError(f"{field_name} must be non-negative")
-        if self.ssd_capacity_gb < 0:
-            raise ConfigurationError("ssd_capacity_gb must be non-negative")
-        if self.memory_capacity_blocks is not None and self.memory_capacity_blocks < 0:
-            raise ConfigurationError("memory_capacity_blocks must be non-negative")
-        if self.ssd_capacity_blocks is not None and self.ssd_capacity_blocks < 0:
-            raise ConfigurationError("ssd_capacity_blocks must be non-negative")
-        if self.host_available_bytes is not None and self.host_available_bytes <= 0:
-            raise ConfigurationError("host_available_bytes must be positive")
-        if not 0 < self.transfer_utilization <= 1:
+            _finite_number(getattr(self, name), name, positive="bandwidth" in name)
+        for name in (
+            "memory_capacity_blocks",
+            "ssd_capacity_blocks",
+            "host_available_bytes",
+        ):
+            value = getattr(self, name)
+            if value is not None and (
+                isinstance(value, bool)
+                or not isinstance(value, Integral)
+                or value < (1 if name == "host_available_bytes" else 0)
+            ):
+                raise ConfigurationError(
+                    f"{name} must be an integer with a valid byte/block budget"
+                )
+        for name in ("fixed_latency_us", "bandwidth_bytes_per_s"):
+            value = getattr(self, name)
+            if value is not None:
+                _finite_number(value, name, positive="bandwidth" in name)
+        for name in ("protocol_bandwidth_bytes_per_s", "protocol_latency_us"):
+            for protocol, value in getattr(self, name).items():
+                if protocol not in SUPPORTED_PROTOCOLS:
+                    raise ConfigurationError(f"unknown protocol {protocol!r} in {name}")
+                _finite_number(value, name, positive="bandwidth" in name)
+        _finite_number(self.transfer_utilization, "transfer_utilization", positive=True)
+        if self.transfer_utilization > 1:
             raise ConfigurationError("transfer_utilization must be in (0, 1]")
 
 
 def parse_mooncake_config(value: dict[str, Any] | None = None) -> MooncakeConfig:
     raw = dict(value or {})
-    raw.pop("connectors", None)
     _normalize_size(raw, "global_segment_size", "global_segment_size_gb")
     _normalize_size(raw, "local_buffer_size", "local_buffer_size_gb")
-    _normalize_size(raw, "staging_buffer_size", "staging_buffer_size_gb")
-    return MooncakeConfig(**raw)
+    try:
+        return MooncakeConfig(**raw)
+    except (TypeError, ValueError, OverflowError, AttributeError) as error:
+        raise ConfigurationError(f"invalid Mooncake configuration: {error}") from error
 
 
 def validate_mooncake_connector_config(
@@ -152,6 +175,10 @@ def validate_mooncake_connector_config(
         return
     extra_config = dict(extra_config or {})
     if connector_name == "MultiConnector":
+        if set(extra_config) - {"connectors"}:
+            raise ConfigurationError(
+                "MultiConnector options belong to its child connectors"
+            )
         children = extra_config.get("connectors", [])
         if not isinstance(children, list):
             raise ConfigurationError("MultiConnector connectors must be a list")
@@ -170,6 +197,24 @@ def validate_mooncake_connector_config(
 
 def _normalize_size(raw: dict[str, Any], bytes_key: str, gb_key: str) -> None:
     if bytes_key in raw:
+        if gb_key in raw:
+            raise ConfigurationError(f"choose either {bytes_key} or {gb_key}, not both")
         return
     if gb_key in raw:
-        raw[bytes_key] = int(float(raw.pop(gb_key)) * _GB)
+        value = raw.pop(gb_key)
+        _finite_number(value, gb_key)
+        raw[bytes_key] = int(value * _GB)
+
+
+def _finite_number(value, name, *, positive=False):
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, Real)
+        or not math.isfinite(value)
+        or value < 0
+        or positive
+        and value == 0
+    ):
+        raise ConfigurationError(
+            f"{name} must be finite and {'positive' if positive else 'nonnegative'}"
+        )

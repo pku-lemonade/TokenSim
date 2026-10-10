@@ -81,8 +81,15 @@ Store keys include the model, TP/PP/DP rank context, engine ID, cache group,
 `group_id`, `pcp_rank`, `dcp_rank`, `cache_salt`, `reuse_group`, and the chained
 block hashes. A lookup returns only the longest contiguous prefix. Local GPU
 hits are considered before the store; only additional external blocks are
-loaded. The default `save_policy: "mooncake"` saves missing full prompt blocks
-once during prefill, skips saving on a load hit, and does not save decode steps.
+loaded. Uniform `save_policy: "mooncake"` saves missing full prompt blocks once
+the prompt has finished computing, skips saving on a load hit, and does not
+save decode steps. `once` likewise waits for a complete prompt; `every_step`
+can save each step's computed full prompt blocks. Grouped storage publishes
+newly computed retained pages through its block-manager callbacks.
+
+Services belong to the simulation engine. Compatible workers in that engine
+share a store; a later simulation starts with a fresh store even when it uses
+the same explicit `engine_id`.
 
 See [Prefix Cache](prefix-cache.md) for workload formats and exact hash matching
 rules.
@@ -101,14 +108,14 @@ Enable the SSD tier with:
   "enable_offload": true,
   "offload_tier": "ssd",
   "ssd_capacity_blocks": 64,
-  "ssd_read_bw_gbps": 7.0,
-  "ssd_write_bw_gbps": 3.0,
+  "ssd_read_bandwidth_bytes_per_s": 7516192768,
+  "ssd_write_bandwidth_bytes_per_s": 3221225472,
   "ssd_read_latency_us": 100,
   "ssd_write_latency_us": 200
 }
 ```
 
-`ssd_capacity_blocks` takes precedence over `ssd_capacity_gb`. SSD read latency
+`ssd_capacity_blocks` takes precedence over `ssd_capacity_bytes`. SSD read latency
 is fixed latency plus bytes divided by bandwidth. SSD writes use the same model
 and are blocking persistence operations, even when connector network overlap is
 enabled. The memory tier uses its configured eviction policy; SSD uses LRU at
@@ -120,29 +127,42 @@ Core fields in `kv_connector_extra_config` are:
 
 | Field | Supported values or behavior |
 | --- | --- |
+| `cache_layout` | `uniform` or `grouped`, matched against the model |
 | `mode` | `embedded` or `standalone-store` |
 | `protocol` | `tcp`, `rdma`, `nvlink`, or `nvmeof` |
 | `global_segment_size` / `_gb` | Default memory-store capacity |
-| `local_buffer_size` / `_gb` | Local buffer size metadata |
+| `local_buffer_size` / `_gb` | Per-rank staging memory, additional to the KV pool |
 | `memory_capacity_blocks` | Explicit memory capacity override |
 | `admission_policy` | `always` admits, `never` rejects writes |
 | `eviction_policy` | `lru` or `none` |
 | `save_policy` | `mooncake`, `once`, or legacy `every_step` |
 | `replica_num` | Replica count recorded on stored objects |
 | `load_async` | Marks current load and save transfer plans asynchronous |
-| `transfer_overlap` | Removes connector blocking wait when combined with `load_async` |
+| `transfer_overlap` | Queued grouped storage overlaps transfers; uniform/P2P metadata timing rejects this option |
 | `num_nics`, `parallel_paths` | Effective path count is their maximum |
-| `fixed_latency_us`, `bandwidth_gbps` | Global protocol timing overrides |
-| `protocol_latency_us`, `protocol_bandwidth_gbps` | Per-protocol timing overrides |
+| `fixed_latency_us`, `bandwidth_bytes_per_s` | Global protocol timing overrides |
+| `protocol_latency_us`, `protocol_bandwidth_bytes_per_s` | Per-protocol timing overrides |
+| `transfer_utilization` | Fraction of peak transfer bandwidth, in `(0, 1]`; generic default 1, AgentX example 0.75 |
 | `preferred_segment` | Segment label stored with admitted objects |
 | `group_id`, `pcp_rank`, `dcp_rank` | Additional pool-key namespaces |
 
-Default protocol timing is defined in
-`TokenSim/mooncake/transfer_engine.py`. Cross-node transfers apply a 1.5x fixed
-latency multiplier. `local_buffer_size` and `staging_buffer_size` are retained as
-configuration metadata; the current model does not simulate separate contention
-queues for them. `mode` is likewise a validated deployment label; both supported
-values currently use the same in-process simulation service.
+Capacity fields ending in `_bytes` are byte counts; bandwidth fields ending
+in `_bytes_per_s` are bytes per second. The SSD example uses 7 and 3 GiB/s.
+Conflicting size aliases, fractional byte budgets, invalid rates and unknown
+options are rejected. Removed fields `kv_buffer_device`, `kv_parallel_size`
+and `staging_buffer_size` had no runtime effect; parallelism comes from the
+cluster/serving configuration.
+
+Embedded store transfers use the device's PCIe link. Standalone transfers add
+a network hop capped by the cluster's injection bandwidth; SSD timing is a
+separate storage operation and does not change the configured network protocol.
+Grouped storage queues contention. Uniform/P2P paths aggregate blocking
+metadata latencies and do not model shared-link contention or overlap.
+Fallback protocol timing in `TokenSim/mooncake/transfer_engine.py` is an
+unmeasured analytical assumption; cross-node fixed latency uses a 1.5 factor.
+Staging capacity is accounted for but does not impose a separate buffering
+queue. The included small uniform/SSD configurations demonstrate caching and
+eviction; their block budgets are not host-memory measurements.
 
 ## MultiConnector
 

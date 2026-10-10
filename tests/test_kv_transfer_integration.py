@@ -79,7 +79,7 @@ def _pd_cluster() -> ClusterConfig:
                 role="decode", hardware="TestGPU", num_workers=1, network="net1"
             ),
         ],
-        kv_transfer=KVTransferConfig(kv_connector="P2PConnector", kv_parallel_size=2),
+        kv_transfer=KVTransferConfig(kv_connector="P2PConnector"),
     )
 
 

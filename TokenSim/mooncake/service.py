@@ -18,14 +18,12 @@ class MooncakeService:
         self.transfer_engine = TransferEngineSimulator(config)
 
 
-_SERVICES: dict[tuple[str, str], MooncakeService] = {}
-
-
 def get_mooncake_service(
     kv_config: KVTransferConfig,
     *,
     block_bytes: int,
     extra_config: dict[str, Any] | None = None,
+    owner=None,
 ) -> MooncakeService:
     mooncake_config = parse_mooncake_config(
         extra_config
@@ -36,13 +34,14 @@ def get_mooncake_service(
         kv_config.engine_id or "default",
         _config_fingerprint(mooncake_config, block_bytes),
     )
-    if key not in _SERVICES:
-        _SERVICES[key] = MooncakeService(mooncake_config, block_bytes)
-    return _SERVICES[key]
-
-
-def reset_mooncake_services() -> None:
-    _SERVICES.clear()
+    if owner is None:
+        return MooncakeService(mooncake_config, block_bytes)
+    services = getattr(owner, "mooncake_services", None)
+    if services is None:
+        services = owner.mooncake_services = {}
+    if key not in services:
+        services[key] = MooncakeService(mooncake_config, block_bytes)
+    return services[key]
 
 
 def _config_fingerprint(config: MooncakeConfig, block_bytes: int) -> str:

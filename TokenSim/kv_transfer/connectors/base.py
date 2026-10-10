@@ -28,6 +28,9 @@ class BaseKVConnector:
     def set_simulation_time(self, now: float) -> None:
         self.simulation_time = float(now)
 
+    def bind_runtime(self, worker) -> None:
+        return
+
     def on_new_request(self, req: Request) -> None:
         return
 

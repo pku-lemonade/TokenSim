@@ -43,6 +43,8 @@ class AsyncOffloadConnector(BaseKVConnector):
                 self.worker.send_task(self.worker, Task.STEP)
 
     def probe(self, req, local_plan):
+        if self.config.kv_role == "kv_producer":
+            return local_plan.hit_tokens, ()
         return self.manager.plan_external_reuse(
             req, self.store, local_tokens=local_plan.hit_tokens
         )
@@ -105,6 +107,8 @@ class AsyncOffloadConnector(BaseKVConnector):
         self.notify()
 
     def _queue_write(self, group, index, block, req):
+        if self.config.kv_role == "kv_consumer":
+            return
         page = self.store.reserve_write(block.block_hash, group.group_bytes)
         if page is None:
             return
@@ -181,7 +185,7 @@ class SimpleCPUOffloadConnector(AsyncOffloadConnector):
         self.worker, self.env = worker, worker.env
         self.manager = worker.scheduler.block_manager
         self.scheduler = worker.scheduler
-        world_size = worker.parallel_config.world_size
+        world_size = len(worker.engine.workers)
         capacity = self.extra.get("cpu_bytes_to_use_per_rank")
         if capacity is None:
             capacity = self.extra.get("cpu_bytes_to_use", 0) // world_size

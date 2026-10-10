@@ -6,8 +6,6 @@ from dataclasses import dataclass, field
 from TokenSim.errors import ConfigurationError
 from TokenSim.mooncake.config import MooncakeConfig
 
-_GB = 1 << 30
-
 
 @dataclass
 class OffloadOperation:
@@ -35,7 +33,7 @@ class OffloadTier:
         if config.ssd_capacity_blocks is not None:
             self.capacity_blocks = int(config.ssd_capacity_blocks)
         else:
-            self.capacity_blocks = int(config.ssd_capacity_gb * _GB / self.block_bytes)
+            self.capacity_blocks = config.ssd_capacity_bytes // self.block_bytes
         self._blocks: dict[str, int] = {}
         self._lru: OrderedDict[str, None] = OrderedDict()
         self._used_blocks = 0
@@ -109,17 +107,17 @@ class OffloadTier:
     def _read_latency(self, bytes_: int) -> float:
         if bytes_ <= 0:
             return 0.0
-        return self.config.ssd_read_latency_us / 1e6 + bytes_ / _GB / max(
-            1e-9,
-            self.config.ssd_read_bw_gbps,
+        return (
+            self.config.ssd_read_latency_us / 1e6
+            + bytes_ / self.config.ssd_read_bandwidth_bytes_per_s
         )
 
     def _write_latency(self, bytes_: int) -> float:
         if bytes_ <= 0:
             return 0.0
-        return self.config.ssd_write_latency_us / 1e6 + bytes_ / _GB / max(
-            1e-9,
-            self.config.ssd_write_bw_gbps,
+        return (
+            self.config.ssd_write_latency_us / 1e6
+            + bytes_ / self.config.ssd_write_bandwidth_bytes_per_s
         )
 
 

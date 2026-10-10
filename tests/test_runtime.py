@@ -24,6 +24,80 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class RuntimeTest(unittest.TestCase):
+    def test_mooncake_cache_is_shared_within_engine_and_isolated_between_runs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            cluster = path / "cluster.json"
+            cluster.write_text(
+                json.dumps(
+                    {
+                        "num_workers": 1,
+                        "networks": {"node": "ethernet100Gb"},
+                        "worker_groups": [
+                            {
+                                "role": "hybrid",
+                                "hardware": "a100_sxm_80g",
+                                "num_workers": 1,
+                                "network": "node",
+                            }
+                        ],
+                        "kv_cache_capacity_tokens_total": 80,
+                    }
+                )
+            )
+            connector = path / "kv.json"
+            connector.write_text(
+                json.dumps(
+                    {
+                        "kv_connector": "MooncakeStoreConnector",
+                        "engine_id": "reused-id",
+                        "kv_connector_extra_config": {"memory_capacity_blocks": 128},
+                    }
+                )
+            )
+            dataset = path / "requests.json"
+            dataset.write_text(
+                json.dumps(
+                    [
+                        [64, 2, {"hash_ids": [1, 2, 3, 4]}],
+                        [64, 2, {"hash_ids": [5, 6, 7, 8]}],
+                        [64, 2, {"hash_ids": [1, 2, 3, 4]}],
+                    ]
+                )
+            )
+            services = []
+            for run in range(2):
+                target = path / str(run)
+                args = self.args(
+                    target,
+                    "--distribution",
+                    "uniform",
+                    "--qps",
+                    "1",
+                    "--batching",
+                    "paged-attn",
+                    "--request_count",
+                    "3",
+                    "--max_num_batched_tokens",
+                    "32",
+                    "--cluster",
+                    str(cluster),
+                    "--kv_transfer_config",
+                    str(connector),
+                    "--dataset_path",
+                    str(dataset),
+                    "--workload_type",
+                    "json_pairs",
+                )
+                engine = self.run_main(args)
+                result = json.loads((target / "result_1.0.json").read_text())
+                self.assertEqual(result["request_count"], 3)
+                store = engine.workers[0].connector
+                self.assertGreater(store.mooncake_stats.mooncake_memory_hit_tokens, 0)
+                self.assertEqual(store.mooncake_stats.store_hit_count, 1)
+                services.append(store.service)
+            self.assertIsNot(services[0], services[1])
+
     def test_model_geometry_and_routing_are_independent_of_workload_configuration(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory)

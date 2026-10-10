@@ -4,19 +4,18 @@ from pathlib import Path
 from typing import Any
 
 from pydantic.dataclasses import dataclass, Field
+from pydantic import ConfigDict
 
 from TokenSim.config.constants import KV_TRANSFER_ROLES, WORKER_ROLES
 from TokenSim.errors import ConfigurationError
 from TokenSim.mooncake.config import validate_mooncake_connector_config
 
 
-@dataclass
+@dataclass(config=ConfigDict(extra="forbid"))
 class KVTransferConfig:
     kv_connector: str | None = None
     kv_role: str | None = None
-    kv_buffer_device: str = "cuda"
     kv_connector_extra_config: dict[str, Any] = Field(default_factory=dict)
-    kv_parallel_size: int = 1
     kv_rank: int | None = None
     engine_id: str | None = None
 
@@ -30,8 +29,6 @@ class KVTransferConfig:
                 f"unsupported kv_role {self.kv_role!r}; expected one of "
                 + f"{sorted(KV_TRANSFER_ROLES)}"
             )
-        if self.kv_parallel_size < 1:
-            raise ConfigurationError("kv_parallel_size must be at least 1")
         validate_mooncake_connector_config(
             self.kv_connector,
             self.kv_connector_extra_config,
@@ -39,7 +36,19 @@ class KVTransferConfig:
 
     @classmethod
     def from_file(cls, filename: str | Path) -> "KVTransferConfig":
-        return cls(**json.loads(Path(filename).read_text()))
+        try:
+            return cls.from_mapping(json.loads(Path(filename).read_text()))
+        except (OSError, ValueError) as error:
+            raise ConfigurationError(
+                f"invalid KV configuration {filename}: {error}"
+            ) from error
+
+    @classmethod
+    def from_mapping(cls, raw):
+        try:
+            return cls(**raw)
+        except (ValueError, TypeError) as error:
+            raise ConfigurationError(f"invalid KV configuration: {error}") from error
 
     @classmethod
     def default(cls) -> "KVTransferConfig":
@@ -54,9 +63,7 @@ class KVTransferConfig:
         return KVTransferConfig(
             kv_connector=self.kv_connector,
             kv_role=role,
-            kv_buffer_device=self.kv_buffer_device,
             kv_connector_extra_config=dict(self.kv_connector_extra_config),
-            kv_parallel_size=self.kv_parallel_size,
             kv_rank=self.kv_rank if kv_rank is None else kv_rank,
             engine_id=self.engine_id,
         )

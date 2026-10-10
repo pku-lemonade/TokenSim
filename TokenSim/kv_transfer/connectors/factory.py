@@ -42,7 +42,7 @@ class KVConnectorFactory:
         if connector_cls is MultiConnector:
             children = []
             for child_config in config.kv_connector_extra_config.get("connectors", []):
-                child = KVTransferConfig(**child_config)
+                child = KVTransferConfig.from_mapping(child_config)
                 children.append(cls.create_connector(child, cache_config))
             if any(child.native_async for child in children):
                 raise ConfigurationError(

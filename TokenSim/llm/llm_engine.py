@@ -335,8 +335,6 @@ class LLMWorker(Worker):
             )
 
         self.status = WorkerStatus.WAITING
-        if getattr(self.connector, "native_async", False):
-            self.connector.bind_runtime(self)
         self.action = self.env.process(self.run())
 
     def workload(self):
@@ -594,6 +592,7 @@ class LLMEngine(Worker):
             for id, worker_config in enumerate(worker_configs)
         ]
         for worker in self.workers:
+            worker.connector.bind_runtime(worker)
             worker.parallel_communicator.workers = self.workers
 
         self.prefill_workers = self._build_worker_pool(

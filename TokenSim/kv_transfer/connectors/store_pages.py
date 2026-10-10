@@ -94,7 +94,7 @@ class _SharedService:
     def __init__(self, worker, config):
         self.config = config
         self.connectors = []
-        world_size = worker.parallel_config.world_size
+        world_size = len(worker.engine.workers)
         self.staging_bytes = config.local_buffer_size * world_size
         contributions = world_size if config.mode == "embedded" else 1
         self.capacity_bytes = config.global_segment_size * contributions
@@ -111,8 +111,7 @@ class _SharedService:
         self.store = NativePageStore(self.capacity_bytes, scope="mooncake:shared-dram")
         if config.mode == "embedded":
             return
-        # TransferEngineSimulator's legacy bandwidth field is GiB/s per
-        # path. Cap the aggregate by the configured node network injection
+        # Cap the aggregate by the configured node network injection
         # link; parallel paths must not replicate node bandwidth per worker.
         from TokenSim.mooncake.transfer_engine import TransferEngineSimulator
 
@@ -120,7 +119,6 @@ class _SharedService:
         node_link = worker.hardware_context.link(worker.nettype)
         bandwidth = min(
             transfer._bandwidth(config.protocol)
-            * 2**30
             * max(config.parallel_paths, config.num_nics),
             node_link.bandwidth_per_direction_bytes_per_s,
         )
@@ -164,6 +162,10 @@ class PageStore(AsyncOffloadConnector):
             )
         if c.protocol not in ("rdma", "tcp"):
             raise ConfigurationError("grouped Mooncake storage supports RDMA/TCP")
+        if c.preferred_segment is not None:
+            raise ConfigurationError(
+                "grouped storage does not model separate owner segments"
+            )
         self.mooncake_stats = MooncakeStats()
 
     def bind_runtime(self, worker):
@@ -174,10 +176,10 @@ class PageStore(AsyncOffloadConnector):
         self.scheduler = worker.scheduler
         # Engine ownership isolates simulations even when they use identical
         # engine IDs/configuration. It also avoids process-global service leaks.
-        service = getattr(worker.engine, "native_mooncake_service", None)
+        service = getattr(worker.engine, "mooncake_page_service", None)
         if service is None:
             service = _SharedService(worker, self.store_config)
-            worker.engine.native_mooncake_service = service
+            worker.engine.mooncake_page_service = service
         elif service.config != self.store_config:
             raise ConfigurationError(
                 "Mooncake workers must use one consistent shared service configuration"
@@ -213,7 +215,15 @@ class PageStore(AsyncOffloadConnector):
         )
         # DP identity is deliberately absent: compatible replicas share KV.
         # Cache salt and the complete prefix chain are already in each key.
-        namespace = (worker.model_spec.model_id, worker.tp_rank, worker.pp_rank, groups)
+        namespace = (
+            worker.model_spec.model_id,
+            worker.tp_rank,
+            worker.pp_rank,
+            groups,
+            self.store_config.group_id,
+            self.store_config.pcp_rank,
+            self.store_config.dcp_rank,
+        )
         self.store = _StoreView(service.store, namespace)
         host_link = worker.hardware_context.link(worker.device.host_link)
         host_args = {
@@ -240,7 +250,7 @@ class PageStore(AsyncOffloadConnector):
         self.changed = self.env.event()
 
     def probe(self, req, local_plan):
-        if self.store_config.admission_policy == "never":
+        if self.config.kv_role == "kv_producer":
             return local_plan.hit_tokens, ()
         boundary, hits = super().probe(req, local_plan)
         self.mooncake_stats.get_count += 1
