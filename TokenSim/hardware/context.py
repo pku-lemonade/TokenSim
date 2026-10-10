@@ -107,9 +107,8 @@ class HardwareContext:
 
     def register_package(self, package: Any) -> None:
         """Attach an in-memory :class:`OperatorDataPackage`."""
+        self.available_backends(package.device_id)
         self._packages[(package.device_id, package.backend)] = package
-        if self._package_index is None:
-            self._package_index = {}
         self._package_index.setdefault(package.device_id, [])
         if package.backend not in self._package_index[package.device_id]:
             self._package_index[package.device_id].append(package.backend)
@@ -136,6 +135,10 @@ class HardwareContext:
             if package.device_id != device_id:
                 raise ConfigurationError(
                     f"package at {self.operator_data_root / device_id / backend} declares device_id={package.device_id!r}"
+                )
+            if package.backend != backend:
+                raise ConfigurationError(
+                    f"package at {self.operator_data_root / device_id / backend} declares backend={package.backend!r}"
                 )
             self._packages[key] = package
             logger.info(

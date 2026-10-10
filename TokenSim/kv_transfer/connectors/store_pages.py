@@ -211,7 +211,6 @@ class PageStore(AsyncOffloadConnector):
             ("grouped",),
             lambda: _SharedService(worker, self.store_config),
         )
-        service.register(worker, self.store_config)
         if (
             service.connectors
             and service.connectors[0].worker.network != worker.network
@@ -219,6 +218,7 @@ class PageStore(AsyncOffloadConnector):
             raise ConfigurationError(
                 "native Mooncake currently requires one compute node"
             )
+        service.register(worker, self.store_config)
         self.service = service
         service.connectors.append(self)
         groups = tuple(

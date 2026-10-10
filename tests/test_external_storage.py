@@ -6,6 +6,7 @@ from TokenSim.mooncake.config import MooncakeConfig, parse_mooncake_config
 from TokenSim.mooncake.transfer_engine import TransferEngineSimulator, Segment
 from TokenSim.mooncake.ssd import OffloadTier
 from TokenSim.mooncake.store import MooncakeStore
+from TokenSim.mooncake.service import get_mooncake_service
 from TokenSim.mooncake.pool_key import KeyMetadata, PoolKey
 from TokenSim.config.kv_transfer_config import KVTransferConfig
 from TokenSim.kv_transfer.connectors.factory import KVConnectorFactory
@@ -203,6 +204,18 @@ class ExternalStorageTest(unittest.TestCase):
         self.assertEqual(consumer.build_connector_meta(output).saves, [])
 
     def test_mooncake_pool_and_staging_share_one_checked_host_budget(self):
+        env = simpy.Environment()
+        bad = KVTransferConfig(
+            kv_connector="MooncakeStoreConnector",
+            kv_connector_extra_config={
+                "global_segment_size": 2,
+                "local_buffer_size": 2,
+                "host_available_bytes": 3,
+            },
+        )
+        with self.assertRaises(ConfigurationError):
+            get_mooncake_service(bad, block_bytes=1, owner=env)
+        self.assertFalse(env.mooncake_stores)
         worker = SimpleNamespace(
             engine=SimpleNamespace(workers=[None, None]),
             parallel_config=SimpleNamespace(world_size=2),

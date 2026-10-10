@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+import yaml
 from pathlib import Path
 
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.device import DeviceCatalog
+from TokenSim.hardware.context import HardwareContext
 from TokenSim.operator_data.analytical import Calibration, analytical_model_for
 from TokenSim.operator_data.coverage import coverage_report
 from TokenSim.operator_data.generator import generate_analytical_package, merge_packages
@@ -161,9 +163,32 @@ class PackageValidationTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             package.write(tmpdir)
             loaded = OperatorDataPackage.load(tmpdir)
+            meta_path = Path(tmpdir) / "generation_meta.yaml"
+            meta = yaml.safe_load(meta_path.read_text())
+            meta["tables"]["gemm"]["rows"] += 1
+            meta_path.write_text(yaml.safe_dump(meta))
+            with self.assertRaisesRegex(
+                OperatorDataValidationError, "manifest declares"
+            ):
+                OperatorDataPackage.load(tmpdir)
         self.assertEqual(loaded.dataset_version, "test-v1")
         self.assertEqual(len(loaded.tables["gemm"]), len(_gemm_rows()))
         self.assertEqual(loaded.meta.table_rows["gemm"], len(_gemm_rows()))
+
+    def test_registering_a_package_preserves_disk_backends_and_checks_identity(self):
+        package = OperatorDataPackage.from_rows(_meta(), {"gemm": _gemm_rows()})
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            package.write(root / "TestGPU" / "requested")
+            hardware = HardwareContext.in_memory([make_device()], [make_model()])
+            hardware.operator_data_root = root
+            hardware.register_package(package)
+            self.assertEqual(
+                set(hardware.available_backends("TestGPU")), {"test", "requested"}
+            )
+            self.assertIs(hardware.operator_package("TestGPU", "test"), package)
+            with self.assertRaisesRegex(ConfigurationError, "declares backend"):
+                hardware.operator_package("TestGPU", "requested")
 
 
 class LookupTest(unittest.TestCase):

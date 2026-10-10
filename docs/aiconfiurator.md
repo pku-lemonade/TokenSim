@@ -45,7 +45,11 @@ python -m TokenSim.operator_data.cli validate /tmp/b200-vllm
 ```
 
 Keep the original `generation_meta.yaml` beside copied tables; parquet files
-alone do not preserve source declarations. A custom collector run directory
+alone do not preserve source declarations. Loaded TokenSim packages are checked
+against their declared table row counts; missing or truncated tables raise a
+validation error. Device and backend metadata must match the selected
+package directory. Registering an additional in-memory package preserves the
+other packages available on disk. A custom collector run directory
 can also be imported with `--system-dir`; its source records identify the
 local collection rather than an upstream database directory.
 

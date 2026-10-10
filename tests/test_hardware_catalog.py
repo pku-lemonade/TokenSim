@@ -245,6 +245,12 @@ class TopologyTest(unittest.TestCase):
         )
         with self.assertRaisesRegex(ConfigurationError, "misspelled-link"):
             build_topology_placement(bad, bad.workers(), hardware)
+        with self.assertRaisesRegex(ConfigurationError, "worker group total"):
+            ClusterConfig(
+                num_workers=2,
+                networks={"node": "ethernet-test"},
+                worker_groups=[WorkerGroupConfig("hybrid", "TestGPU", 1, "node")],
+            )
 
     def test_invalid_level_definitions_fail(self):
         with self.assertRaises(ConfigurationError):

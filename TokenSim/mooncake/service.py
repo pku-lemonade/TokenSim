@@ -78,11 +78,19 @@ def get_mooncake_service(
         if extra_config is not None
         else kv_config.kv_connector_extra_config
     )
+
+    def create():
+        service = MooncakeService(mooncake_config, block_bytes)
+        service.register(
+            contributor if contributor is not None else service, ranks, mooncake_config
+        )
+        return service
+
     service = shared_store(
         owner,
         mooncake_config,
         ("uniform", block_bytes),
-        lambda: MooncakeService(mooncake_config, block_bytes),
+        create,
     )
     service.register(
         contributor if contributor is not None else service, ranks, mooncake_config

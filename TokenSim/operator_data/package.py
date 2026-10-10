@@ -132,6 +132,23 @@ class PackageMeta:
                 )
             sources[record.source_id] = record
         tables = raw.get("tables") or {}
+        if not isinstance(tables, Mapping):
+            raise OperatorDataValidationError(
+                f"{path}: tables must be a manifest object"
+            )
+        for name, description in tables.items():
+            count = (
+                description.get("rows") if isinstance(description, Mapping) else None
+            )
+            if (
+                name not in TABLE_SPECS
+                or isinstance(count, bool)
+                or not isinstance(count, int)
+                or count < 0
+            ):
+                raise OperatorDataValidationError(
+                    f"{path}: invalid table manifest entry {name!r}"
+                )
         return cls(
             dataset_version=str(raw["dataset_version"]),
             device_id=str(raw["device_id"]),
@@ -293,6 +310,12 @@ class OperatorDataPackage:
             raise OperatorDataValidationError(
                 f"{root_path}: package has no *_perf tables"
             )
+        for name, expected in meta.table_rows.items():
+            actual = len(tables.get(name, ()))
+            if actual != expected or name not in tables:
+                raise OperatorDataValidationError(
+                    f"{root_path}: {name} manifest declares {expected} rows but table has {actual if name in tables else 'no file'}"
+                )
         return cls(root=root_path, meta=meta, tables=tables, analysis=analysis)
 
     @classmethod
