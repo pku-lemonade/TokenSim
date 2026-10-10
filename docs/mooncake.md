@@ -77,8 +77,9 @@ Use `MooncakeStoreConnector` with a workload containing `hash_ids`:
   --verbose none
 ```
 
-Store keys include the model, TP/PP/DP rank context, engine ID, cache group,
-`group_id`, `pcp_rank`, `dcp_rank`, `cache_salt`, `reuse_group`, and the chained
+Store keys include the model and compatible payload layout, TP/PP shard context,
+`tenant_id`, `cache_prefix`, `group_id`, `pcp_rank`, `dcp_rank`, `cache_salt`,
+`reuse_group`, and the chained
 block hashes. A lookup returns only the longest contiguous prefix. Local GPU
 hits are considered before the store; only additional external blocks are
 loaded. Uniform `save_policy: "mooncake"` saves missing full prompt blocks once
@@ -87,9 +88,15 @@ save decode steps. `once` likewise waits for a complete prompt; `every_step`
 can save each step's computed full prompt blocks. Grouped storage publishes
 newly computed retained pages through its block-manager callbacks.
 
-Services belong to the simulation engine. Compatible workers in that engine
-share a store; a later simulation starts with a fresh store even when it uses
-the same explicit `engine_id`.
+Services belong to the SimPy simulation environment. Engines connected to the
+same `master_server_address` share the store, including engines with different
+`engine_id` or DP identity. Embedded engines contribute their rank-local memory
+segments once; standalone capacity is shared once, with additional staging for
+each client. Separate environments start with fresh stores. Store membership
+does not imply a cache hit: model/layout, shard, tenant/prefix and hash identities
+must match. The uniform simulator currently requires equal page-byte formats
+within one store; incompatible formats/settings are rejected rather than
+creating hidden independent pools.
 
 See [Prefix Cache](prefix-cache.md) for workload formats and exact hash matching
 rules.
@@ -128,6 +135,8 @@ Core fields in `kv_connector_extra_config` are:
 | Field | Supported values or behavior |
 | --- | --- |
 | `cache_layout` | `uniform` or `grouped`, matched against the model |
+| `master_server_address` | Identity of the simulated shared store; default `default`, no real connection is made |
+| `tenant_id`, `cache_prefix` | Logical cache namespaces, independent of engine/DP identity |
 | `mode` | `embedded` or `standalone-store` |
 | `protocol` | `tcp`, `rdma`, `nvlink`, or `nvmeof` |
 | `global_segment_size` / `_gb` | Default memory-store capacity |

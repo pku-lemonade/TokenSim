@@ -11,6 +11,7 @@ from TokenSim.errors import ConfigurationError
 from TokenSim.kv_transfer.native_storage import NativePageStore, QueuedKVLink
 from TokenSim.mooncake.config import parse_mooncake_config
 from TokenSim.mooncake.metrics import MooncakeStats
+from TokenSim.mooncake.service import shared_store
 
 from .base import BaseKVConnector
 from .simple_cpu import AsyncOffloadConnector
@@ -94,6 +95,9 @@ class _SharedService:
     def __init__(self, worker, config):
         self.config = config
         self.connectors = []
+        self.contributors = {
+            id(worker.engine): (worker.engine, len(worker.engine.workers))
+        }
         world_size = len(worker.engine.workers)
         self.staging_bytes = config.local_buffer_size * world_size
         contributions = world_size if config.mode == "embedded" else 1
@@ -128,6 +132,28 @@ class _SharedService:
         }
         self.read = QueuedKVLink(worker.env, bandwidth, **args)
         self.write = QueuedKVLink(worker.env, bandwidth, **args)
+
+    def register(self, worker):
+        proposed = {
+            **self.contributors,
+            id(worker.engine): (worker.engine, len(worker.engine.workers)),
+        }
+        ranks = sum(item[1] for item in proposed.values())
+        capacity = self.config.global_segment_size * (
+            ranks if self.config.mode == "embedded" else 1
+        )
+        staging = self.config.local_buffer_size * ranks
+        if (
+            self.config.host_available_bytes is not None
+            and capacity + staging > self.config.host_available_bytes
+        ):
+            raise ConfigurationError(
+                "shared Mooncake pool and staging exceed available host DRAM"
+            )
+        self.contributors = proposed
+        self.capacity_bytes, self.staging_bytes = capacity, staging
+        self.budget_bytes = capacity + staging
+        self.store.capacity_bytes = capacity
 
 
 class PageStore(AsyncOffloadConnector):
@@ -174,16 +200,13 @@ class PageStore(AsyncOffloadConnector):
         self.worker, self.env = worker, worker.env
         self.manager = worker.scheduler.block_manager
         self.scheduler = worker.scheduler
-        # Engine ownership isolates simulations even when they use identical
-        # engine IDs/configuration. It also avoids process-global service leaks.
-        service = getattr(worker.engine, "mooncake_page_service", None)
-        if service is None:
-            service = _SharedService(worker, self.store_config)
-            worker.engine.mooncake_page_service = service
-        elif service.config != self.store_config:
-            raise ConfigurationError(
-                "Mooncake workers must use one consistent shared service configuration"
-            )
+        service = shared_store(
+            worker.env,
+            self.store_config,
+            ("grouped",),
+            lambda: _SharedService(worker, self.store_config),
+        )
+        service.register(worker)
         if (
             service.connectors
             and service.connectors[0].worker.network != worker.network
@@ -216,7 +239,11 @@ class PageStore(AsyncOffloadConnector):
         # DP identity is deliberately absent: compatible replicas share KV.
         # Cache salt and the complete prefix chain are already in each key.
         namespace = (
+            self.store_config.tenant_id,
+            self.store_config.cache_prefix,
             worker.model_spec.model_id,
+            worker.model_spec.dtype,
+            tuple(sorted(worker.model_spec.operator_dtypes.items())),
             worker.tp_rank,
             worker.pp_rank,
             groups,
@@ -294,7 +321,7 @@ class PageStore(AsyncOffloadConnector):
         return {
             "backend": self.name,
             "native_async": True,
-            "service_scope": "engine-shared DRAM; all compatible DP replicas",
+            "service_scope": "environment master-shared DRAM; compatible engines and DP replicas",
             "key_scope": "model/layout/TP/PP + group/complete salted prefix/subslot; DP excluded",
             "runtime_budget_shared_bytes": self.service.budget_bytes,
             "staging_bytes": self.service.staging_bytes,

@@ -13,9 +13,9 @@ class KeyMetadata:
     model_name: str
     tp_rank: int = 0
     pp_rank: int = 0
-    dp_rank: int = 0
-    engine_id: str = "default"
-    kv_cache_group_id: str = "dp0-pp0"
+    store_namespace: str = ""
+    cache_prefix: str = ""
+    tenant_id: str = "default"
     group_id: int = 0
     pcp_rank: int = 0
     dcp_rank: int = 0
@@ -30,14 +30,13 @@ class PoolKey:
     def string(self) -> str:
         md = self.key_metadata
         return (
+            f"{md.tenant_id}@{md.cache_prefix}@"
             f"{md.model_name}"
+            f"{md.store_namespace}"
             f"@tp_rank:{md.tp_rank}"
             f"@pcp{md.pcp_rank}"
             f"@dcp{md.dcp_rank}"
             f"@pp_rank:{md.pp_rank}"
-            f"@dp_rank:{md.dp_rank}"
-            f"@engine:{md.engine_id}"
-            f"@kv_group:{md.kv_cache_group_id}"
             f"@group:{md.group_id}"
             f"@{self.chunk_hash}"
         )
@@ -51,7 +50,9 @@ def pool_keys_for_request(
     *,
     model_name: str,
     rank_info: ParallelRankInfo | None = None,
-    engine_id: str = "default",
+    store_namespace: str = "",
+    cache_prefix: str = "",
+    tenant_id: str = "default",
     group_id: int = 0,
     pcp_rank: int = 0,
     dcp_rank: int = 0,
@@ -72,9 +73,9 @@ def pool_keys_for_request(
         model_name=model_name,
         tp_rank=rank_info.tp_rank,
         pp_rank=rank_info.pp_rank,
-        dp_rank=rank_info.dp_rank,
-        engine_id=engine_id,
-        kv_cache_group_id=rank_info.kv_cache_group_id,
+        store_namespace=store_namespace,
+        cache_prefix=cache_prefix,
+        tenant_id=tenant_id,
         group_id=group_id,
         pcp_rank=pcp_rank,
         dcp_rank=dcp_rank,

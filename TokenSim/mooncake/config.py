@@ -25,6 +25,9 @@ _GB = 1 << 30
 
 @dataclass
 class MooncakeConfig:
+    master_server_address: str = "default"
+    tenant_id: str = "default"
+    cache_prefix: str = ""
     cache_layout: str = "uniform"
     mode: str = "embedded"
     protocol: str = "rdma"
@@ -62,6 +65,12 @@ class MooncakeConfig:
     protocol_latency_us: dict[str, float] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
+        for name in ("master_server_address", "tenant_id", "cache_prefix"):
+            value = getattr(self, name)
+            if not isinstance(value, str) or (name != "cache_prefix" and not value):
+                raise ConfigurationError(
+                    f"{name} must be a valid store/namespace string"
+                )
         if self.cache_layout not in {"uniform", "grouped"}:
             raise ConfigurationError("cache_layout must be uniform or grouped")
         if self.mode not in SUPPORTED_MODES:

@@ -138,6 +138,62 @@ def _run_single_request_p2p() -> (
 
 
 class KVTransferIntegrationTest(unittest.TestCase):
+    def test_mooncake_master_shares_across_engines_but_respects_namespaces(self):
+        env = simpy.Environment()
+        cluster = ClusterConfig(
+            num_workers=1,
+            networks={"node": "ethernet-test"},
+            worker_groups=[WorkerGroupConfig("hybrid", "TestGPU", 1, "node")],
+        )
+        hardware = make_hardware(_DEVICE, models=[_MODEL])
+
+        def make_engine(identity, role, prefix=""):
+            return LLMEngine(
+                env=env,
+                model_spec=_MODEL,
+                hardware=hardware,
+                cluster_config=cluster,
+                kv_transfer_config=KVTransferConfig(
+                    kv_connector="MooncakeStoreConnector",
+                    engine_id=identity,
+                    kv_role=role,
+                    kv_connector_extra_config={
+                        "master_server_address": "shared-master",
+                        "cache_prefix": prefix,
+                        "global_segment_size": 4096,
+                        "local_buffer_size": 64,
+                        "host_available_bytes": 65536,
+                    },
+                ),
+                config=SimulationConfig(
+                    batching="paged-attn",
+                    block_size=16,
+                    latency_backend_type="analytical",
+                    max_num_batched_tokens=16,
+                ),
+            )
+
+        producer = make_engine("producer", "kv_producer")
+        consumer = make_engine("consumer", "kv_consumer")
+        left, right = producer.workers[0].connector, consumer.workers[0].connector
+        self.assertIs(left.service, right.service)
+        self.assertEqual(left.service.store.memory_capacity_bytes, 8192)
+
+        def run(engine, identity):
+            request = Request(identity, 32, 2, 16, hash_ids=[11, 22])
+            request.arrive(env)
+            engine.add_requests([request])
+            env.run(until=request.completion_event)
+            engine.raise_if_failed()
+            return request
+
+        run(producer, 0)
+        loaded = run(consumer, 1)
+        self.assertGreater(loaded.cached_prefill_tokens, 0)
+        isolated = make_engine("isolated", "kv_consumer", "other-prefix")
+        self.assertIs(isolated.workers[0].connector.service, left.service)
+        self.assertEqual(run(isolated, 2).cached_prefill_tokens, 0)
+
     def test_p2p_transfer_path_has_precise_metrics_and_request_timing(self):
         engine, request, backend, duration = _run_single_request_p2p()
 
