@@ -87,12 +87,22 @@ class ResidualMixingEstimator:
 
     def describe(self):
         return {
-            "backend": "vllm TileLang mhc_module",
-            "scope": "pre + post, num_sites=2; one module per transformer layer",
+            "table": self.table,
+            "kernels": dict(self.binding["kernels"]),
+            "scope": "measured pre + post module per transformer layer; collector site count is retained in the query",
+            "num_sites": self.binding["key"]["num_sites"],
             "hidden_size": self.backend.model.hidden_size,
             "hc_mult": self.backend.model.components.hc_mult,
             "sinkhorn_iters": self.backend.model.components.hc_sinkhorn_iters,
-            "residual_dtype": "bf16",
-            "parameter_dtype": "fp32",
-            "source_grade": "B",
+            "residual_dtype": self.backend.model.operator_dtype("mhc_residual"),
+            "parameter_dtype": self.backend.model.operator_dtype("mhc"),
+            "sources": self.backend.package.describe_sources(
+                self.table,
+                {
+                    **self.binding["key"],
+                    "hidden_size": self.backend.model.hidden_size,
+                    "hc_mult": self.backend.model.components.hc_mult,
+                    "sinkhorn_iters": self.backend.model.components.hc_sinkhorn_iters,
+                },
+            ),
         }

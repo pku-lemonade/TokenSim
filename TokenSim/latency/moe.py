@@ -21,14 +21,13 @@ from TokenSim.llm.forward import (
 )
 from TokenSim.operator_data.lookup import LookupPolicy, OperatorLookup
 from TokenSim.hardware.links import LinkCatalog
+from TokenSim.config.paths import default_data_root
 from TokenSim.latency.moe_work import MegaMoEWorkModel
 
 
-@lru_cache(maxsize=1)
-def _default_links():
-    return LinkCatalog.load(
-        Path(__file__).resolve().parents[2] / "data/topologies/links.yaml"
-    )
+@lru_cache(maxsize=4)
+def _default_links(root):
+    return LinkCatalog.load(Path(root) / "topologies/links.yaml")
 
 
 @dataclass(frozen=True)
@@ -52,7 +51,12 @@ class MegaMoEEstimator:
     def __init__(self, backend, config, *, expected_query_width=1, max_num_seqs=64):
         self.backend, self.config = backend, config
         self.model, self.parallel = backend.model, backend.parallel_config
-        self.table = config.table
+        binding = self.model.operator_modules.get("moe", {})
+        self.table = config.table or binding.get("table")
+        if not self.table:
+            raise ConfigurationError(
+                "measured MegaMoE requires an operator_modules.moe table binding"
+            )
         self.expected_query_width, self.max_num_seqs = (
             expected_query_width,
             max_num_seqs,
@@ -99,6 +103,21 @@ class MegaMoEEstimator:
             "tp_size": 1,
             "ep_size": backend.moe_ep,
         }
+        selection = binding.get("key", {})
+        selectable = {
+            "kernel_source",
+            "kernel_dtype",
+            "distribution",
+            "pre_dispatch",
+            "source_policy",
+        }
+        if set(selection) - selectable:
+            raise ConfigurationError(
+                "MegaMoE bindings select kernel scope; geometry comes from the model"
+            )
+        self.base_key.update(
+            {name: str(value).strip().lower() for name, value in selection.items()}
+        )
         rows = [
             r
             for r in backend.package.tables[self.table]
@@ -127,7 +146,7 @@ class MegaMoEEstimator:
         collective = getattr(backend.communicator, "collective_model", None)
         links = getattr(collective, "links", None)
         if not isinstance(links, LinkCatalog):
-            links = _default_links()
+            links = _default_links(default_data_root())
         link = links.get(backend.device.scale_up_link)
         self.work_model = MegaMoEWorkModel(
             self.model,
@@ -409,6 +428,9 @@ class MegaMoEEstimator:
     def describe(self):
         return {
             "backend": self.config.backend,
+            "table": self.table,
+            "query_scope": dict(self.base_key),
+            "sources": self.backend.package.describe_sources(self.table, self.base_key),
             "shared_mode": (
                 "fused_incremental_estimate" if self.fused_shared else "serial"
             ),

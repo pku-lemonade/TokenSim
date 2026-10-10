@@ -9,6 +9,7 @@ from TokenSim.config.kv_layout import hybrid_kv_layout
 from TokenSim.hardware import HardwareContext
 from TokenSim.latency.operator_table import OperatorTableLatencyBackend
 from TokenSim.latency.projection import attention_projections
+from TokenSim.operator_data.package import OperatorDataPackage
 from TokenSim.llm.forward import ForwardPass, RankShape, sp_valid_rows
 from tests.support.hardware import make_model as make_model
 
@@ -46,6 +47,13 @@ class GenericOperatorTest(unittest.TestCase):
             aliases=(),
             architecture="transformer",
             components=None,
+            operator_modules={
+                **source.operator_modules,
+                "moe": {
+                    **source.operator_modules["moe"],
+                    "key": {"distribution": "alternate_profile"},
+                },
+            },
         )
         parallel = ParallelConfig(data_parallel_size=8, enable_expert_parallel=True)
         package = self.hardware.operator_package(
@@ -53,12 +61,23 @@ class GenericOperatorTest(unittest.TestCase):
         )
         step = ForwardPass({rank: RankShape(16 + rank, 1, True) for rank in range(8)})
         estimates = []
-        for model in (source, other):
+        alternate = OperatorDataPackage.from_rows(
+            package.meta,
+            {
+                "dsv4_megamoe": [
+                    {**row, "distribution": "alternate_profile"}
+                    for row in package.tables["dsv4_megamoe"]
+                    if row["distribution"]
+                    == source.operator_modules["moe"]["key"]["distribution"]
+                ]
+            },
+        )
+        for model, data in ((source, package), (other, alternate)):
             backend = OperatorTableLatencyBackend(
                 device=self.hardware.device("b200"),
                 model=model,
                 parallel_config=parallel,
-                package=package,
+                package=data,
                 moe_execution={"backend": "deep_gemm_amxf4_mega_moe"},
             )
             backend.set_moe_step(step)

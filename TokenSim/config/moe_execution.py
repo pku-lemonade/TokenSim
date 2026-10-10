@@ -1,7 +1,6 @@
 """Serving execution choices, separate from the model's architecture."""
 
 from dataclasses import dataclass
-import math
 
 from TokenSim.errors import ConfigurationError
 
@@ -10,7 +9,7 @@ from TokenSim.errors import ConfigurationError
 class MoEExecutionConfig:
     backend: str = "generic"
     shared_expert_fusion: bool = True
-    table: str = "dsv4_megamoe"
+    table: str | None = None
 
     def __post_init__(self):
         if self.backend not in ("generic", "deep_gemm_amxf4_mega_moe"):

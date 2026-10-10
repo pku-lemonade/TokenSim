@@ -683,13 +683,13 @@ def build_parser():
         "--attention_backend",
         choices=("generic", "module"),
         default="generic",
-        help="DSV4 attention cost source; native_dsv4 uses complete CSA/HCA module tables.",
+        help="Attention cost source: generic operators or the model's measured module binding.",
     )
     parser.add_argument(
         "--mtp_acceptance_length",
         type=float,
         default=1.0,
-        help="Synthetic MTP average accepted output tokens (2.49 for the AgentX reference).",
+        help="Average accepted output tokens per speculative verification step.",
     )
     parser.add_argument(
         "--mtp_num_speculative_tokens",
@@ -701,7 +701,7 @@ def build_parser():
         "--mhc_backend",
         choices=("generic", "module"),
         default="generic",
-        help="DSV4 mHC cost source.",
+        help="Residual-mixing cost source: generic operators or the model's measured module binding.",
     )
     parser.add_argument(
         "--decode_context_bucket",

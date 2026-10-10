@@ -151,6 +151,10 @@ class PackageValidationTest(unittest.TestCase):
         unknown_source = dict(rows[0], source_id="nobody")
         with self.assertRaises(OperatorDataValidationError):
             OperatorDataPackage.from_rows(_meta(), {"gemm": [unknown_source]})
+        with self.assertRaises(OperatorDataValidationError):
+            OperatorDataPackage.from_rows(
+                PackageMeta("unregistered", "TestGPU", "test"), {"gemm": rows}
+            )
 
     def test_round_trip_through_parquet(self):
         package = OperatorDataPackage.from_rows(_meta(), {"gemm": _gemm_rows()})

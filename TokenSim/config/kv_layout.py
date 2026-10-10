@@ -114,7 +114,7 @@ class HybridKVLayout:
 
     def to_dict(self):
         return {
-            "kind": "dsv4-packed-shared-pool",
+            "kind": "grouped-packed-shared-pool",
             "logical_block_tokens": self.logical_block_tokens,
             "physical_slot_bytes": self.physical_slot_bytes,
             "retention_interval": self.retention_interval,

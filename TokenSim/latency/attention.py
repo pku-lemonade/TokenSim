@@ -115,8 +115,7 @@ class CompressedAttentionEstimator:
         self.generation_slice_lookups = {}
         self.counts = Counter()
         # ``ModelSpec.layer_specs`` includes the reusable MTP layer after the
-        # main stack; the complete attention tables here cover only the 61
-        # main CSA/HCA layers.
+        # main stack; complete attention tables describe its CSA/HCA layers.
         layers = self.model.layer_specs(include_mtp=False)
         self.layer_ratios = {
             layer.attention_kind: layer.compress_ratio for layer in layers
@@ -617,8 +616,12 @@ class CompressedAttentionEstimator:
             "backend": self.binding["key"].get("kernel_source"),
             "layer_counts": dict(self.layer_counts),
             "module_scope": "projection + compressor/indexer + sparse attention + output projection",
-            "kv_cache_source_layout": "fp8 source table; serving reference plain FP8",
-            "indexer_source_layout": "collector default; serving reference MXFP4",
+            "kv_cache_source_layout": self.binding.get("layout", {}),
+            "serving_kv_dtype": self.model.kv_cache_dtype,
+            "serving_indexer_dtype": self.model.components.indexer_cache_dtype,
+            "sources": self.backend.package.describe_sources(
+                self.table, self.binding["key"]
+            ),
             "extrapolation": "measured boundary with parameterized compressed attention FLOP/byte SOL growth, max 64x",
             "extrapolation_sol": self.sol.describe(),
             "extrapolation_axis_binding": "each inner-axis growth uses its measured outer-axis node",

@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 from TokenSim.errors import ConfigurationError
+from TokenSim.utils import BoundedCache
 from TokenSim.hardware._yaml import load_yaml_mapping
 from TokenSim.hardware.device import normalize_dtype
 from TokenSim.operator_data.schema import (
@@ -223,6 +224,39 @@ class OperatorDataPackage:
     def backend(self) -> str:
         return self.meta.backend
 
+    @cached_property
+    def _source_descriptions(self):
+        return BoundedCache(256)
+
+    def describe_sources(self, table: str, key: Mapping[str, Any] | None = None):
+        spec = TABLE_SPECS[table]
+        selection = {
+            name: (
+                normalize_dtype(str(value))
+                if name in spec.dtype_fields
+                else value if name in INTEGER_FIELDS else str(value).strip().lower()
+            )
+            for name, value in (key or {}).items()
+        }
+        identity = table, tuple(sorted(selection.items()))
+        if identity in self._source_descriptions:
+            return self._source_descriptions[identity]
+        source_ids = {
+            row["source_id"]
+            for row in self.tables.get(table, ())
+            if all(row.get(name) == value for name, value in selection.items())
+        }
+        records = [
+            (
+                self.meta.sources[source_id].to_dict()
+                if source_id in self.meta.sources
+                else {"source_id": source_id, "grade": "unknown"}
+            )
+            for source_id in sorted(source_ids)
+        ]
+        self._source_descriptions[identity] = records
+        return records
+
     # -- loading -----------------------------------------------------------
 
     @classmethod
@@ -372,7 +406,7 @@ def validate_rows(
             )
         clean["latency_us"] = latency
         source_id = str(row["source_id"])
-        if strict_sources and meta.sources and source_id not in meta.sources:
+        if strict_sources and source_id not in meta.sources:
             raise OperatorDataValidationError(
                 f"{where}: row {index} references unknown source_id {source_id!r}"
             )

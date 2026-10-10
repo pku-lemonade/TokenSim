@@ -377,7 +377,7 @@ def hybrid_memory_budget(
         "vllm_source_revision": "30f5c01d4ebb5c493ed86195db24d0ec5b3ce3d7",
         "deepgemm_source_revision": "e1f418c2a4f20818221f6b0e578b4c2f634d4c3f",
         "assumptions": [
-            "148 SM shared scenario for both SKUs; no reference hardware query or timing-version match",
+            f"{sms} SM from the device's analytical configuration; no reference hardware query or timing-version match",
             "BF16 activation and plain-FP8 FlashInfer source allocations; source-config RoPE extent equals model maximum position",
             "parallel query/quant branches conservatively co-live until join; CUDA allocator reserved-memory/fragmentation unmeasured",
             "context indexer loop may retain old logits during RHS; profiling cap512MiB and one shared gather/radix lane follow pinned defaults",
