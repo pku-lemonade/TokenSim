@@ -16,6 +16,59 @@ from tests.support.hardware import make_hardware
 
 
 class ExternalStorageTest(unittest.TestCase):
+    def test_composed_stores_choose_one_load_and_route_each_transfer_once(self):
+        cache = SimpleNamespace(
+            block_size=16, size_per_token=1, model="test", rank_info=None
+        )
+        for nested in (False, True):
+            children = [
+                {
+                    "kv_connector": "MooncakeStoreConnector",
+                    "kv_connector_extra_config": {"load_async": True},
+                }
+                for _ in range(2)
+            ]
+            raw = {
+                "kv_connector": "MultiConnector",
+                "kv_role": "kv_both",
+                "kv_rank": 7,
+                "kv_connector_extra_config": {"connectors": children},
+            }
+            if nested:
+                raw = {**raw, "kv_connector_extra_config": {"connectors": [raw]}}
+            connector = KVConnectorFactory.create_connector(
+                KVTransferConfig.from_mapping(raw), cache
+            )
+            stores = connector.children[0].children if nested else connector.children
+            original = Request(0, 64, 2, 16, hash_ids=[1, 2, 3, 4])
+            for count, child in zip((2, 3), stores):
+                self.assertEqual(child.config.kv_role, "kv_both")
+                self.assertEqual(child.config.kv_rank, 7)
+                child.service.store.put(child._keys_for_request(original)[:count])
+            request = Request(1, 64, 2, 16, hash_ids=[1, 2, 3, 4])
+            tokens = connector.get_num_new_matched_tokens(request, 0)
+            self.assertEqual(tokens, 48)
+            connector.update_state_after_alloc(request, [], tokens)
+            self.assertEqual(request.cached_prefill_tokens, 48)
+            request.num_computed_tokens = 48
+            request.scheduled_tokens = 16
+            metadata = connector.build_connector_meta(
+                SimpleNamespace(running=[request], preempted=[])
+            )
+            self.assertEqual(len(metadata.loads), 1)
+            self.assertEqual(len(metadata.saves), 1)
+            connector.bind_connector_metadata(metadata)
+            self.assertEqual(connector.start_load_kv(), metadata.loads[0].latency)
+            self.assertEqual(connector.wait_for_save(), metadata.saves[0].latency)
+            self.assertEqual([child.stats.transfer_count for child in stores], [1, 1])
+            released = []
+            connector.set_block_releaser(
+                lambda req, ids: released.append((req.id, ids))
+            )
+            self.assertTrue(connector.request_finished(request, [0, 1])[0])
+            connector.update_connector_output(connector.build_connector_worker_meta())
+            self.assertEqual(released, [(request.id, [0, 1])])
+
     def test_store_namespaces_cannot_collide_through_string_separators(self):
         left = KeyMetadata("test", tenant_id="a@b", cache_prefix="c")
         right = KeyMetadata("test", tenant_id="a", cache_prefix="b@c")

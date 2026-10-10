@@ -158,6 +158,9 @@ class BlockStore(BaseKVConnector):
     def set_block_releaser(self, releaser) -> None:
         self._block_releaser = releaser
 
+    def discard_load(self, req: Request) -> None:
+        self._pending_loads.pop(req.id, None)
+
     def update_state_after_alloc(
         self,
         req: Request,

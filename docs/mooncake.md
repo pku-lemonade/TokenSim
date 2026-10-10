@@ -184,7 +184,10 @@ eviction; their block budgets are not host-memory measurements.
 `data/kv_transfer/mooncake_multi_connector.json` combines direct transfer and a
 shared store. Each child contributes transfer plans and metrics. External prefix
 matching uses the largest hit reported by the children, while load and save
-latencies are accumulated.
+latencies are accumulated. Only the child with that largest hit loads the
+request and updates its cached-token count. Each transfer plan is routed to
+its originating child, including same-type or nested children. Children inherit
+the parent's worker role, rank and engine identity unless explicitly overridden.
 
 ## Metrics
 

@@ -49,6 +49,10 @@ class BaseKVConnector:
     ) -> None:
         return
 
+    def discard_load(self, req: Request) -> None:
+        """Discard a cache probe that was not selected for this admission."""
+        return
+
     def build_connector_meta(self, scheduler_output: Any) -> KVConnectorMetadata:
         return KVConnectorMetadata(connector_name=self.name)
 
