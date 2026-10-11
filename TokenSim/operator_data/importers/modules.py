@@ -7,8 +7,38 @@ from TokenSim.operator_data.schema import TABLE_SPECS
 from . import dsv4_attention, dsv4_megamoe, mhc
 
 
+# What each complete module times; recorded with every imported source.
+SCOPES = {
+    "mhc": (
+        "mHC (hyper-connection residual mixing) pre/post module; each row "
+        "covers the recorded sites of one layer."
+    ),
+    "dsv4_megamoe": (
+        "Fused expert-parallel MoE module (DeepGEMM MegaMoE, FP8 activations "
+        "and MXFP4 weights): routed dispatch, expert compute and combine under "
+        "CUDA graphs. Gate/top-k, buffer initialization and shared experts are "
+        "excluded. Collector buffer capacities are kept per row."
+    ),
+    "dsv4_attention": (
+        "Complete compressed sparse-attention layer: input projections, "
+        "compressor/indexer, sparse attention and output projection, measured "
+        "with the recorded kernel and FP8 KV cache. Serving stacks with another "
+        "sparse-attention kernel or cache layout use these rows as an "
+        "approximation."
+    ),
+}
+
+
 def import_modules(
-    system_path, backend, version, commit, tables, sources, *, overrides=None
+    system_path,
+    backend,
+    version,
+    commit,
+    tables,
+    sources,
+    *,
+    target_device,
+    overrides=None,
 ):
     # Families and filenames belong to the upstream data format. Model and
     # geometry selectors stay in each row, independent of the target model.
@@ -61,6 +91,12 @@ def import_modules(
                 "collection_version" if table == "dsv4_megamoe" else "source_version"
             ] = label
             rows = normalize(raw, **kwargs)
+            notes = SCOPES[table]
+            if root.name != target_device or source_backend != backend:
+                notes += (
+                    f" Measured on {root.name} with {source_backend} and used for "
+                    f"{target_device} with {backend} without a conversion factor."
+                )
             sources[source_id] = SourceRecord(
                 source_id=source_id,
                 grade="B",
@@ -68,7 +104,7 @@ def import_modules(
                 device=root.name,
                 backend=f"{source_backend}:{label}",
                 reference=f"https://github.com/ai-dynamo/aiconfigurator/tree/{commit}/aic-core/src/aiconfigurator_core/systems/data/{root.name}/{family}/{source_backend}/{label}",
-                notes="Measured complete operator module; source scope and cross-device use are retained.",
+                notes=notes,
             )
             for row in rows:
                 identity = tuple(row[name] for name in TABLE_SPECS[table].key_fields)

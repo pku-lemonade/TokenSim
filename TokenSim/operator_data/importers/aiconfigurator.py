@@ -718,6 +718,7 @@ def import_aiconfigurator_system(
         upstream_commit,
         tables,
         sources,
+        target_device=device_id,
         overrides=module_sources,
     )
     if not tables:

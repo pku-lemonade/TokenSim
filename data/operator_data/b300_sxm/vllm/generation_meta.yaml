@@ -1,6 +1,6 @@
 schema_version: 1
 latency_unit: us
-dataset_version: aiconfigurator-b300_sxm-vllm-latest+megamoe-f254959+dsv4attn-f254959+mhc-f254959
+dataset_version: aiconfigurator-b300_sxm-vllm-latest
 device_id: b300_sxm
 backend: vllm
 framework_version: 0.24.0
@@ -58,31 +58,33 @@ sources:
     converted ms -> us.
   device: b300_sxm
   backend: nccl:2.27
-- source_id: aiconfigurator-borrowed:gb300:dsv4_megamoe:sglang:0.5.10
+- source_id: aiconfigurator:b300_sxm:mhc:vllm:0.24.0
   grade: B
   method: imported
-  reference: https://github.com/ai-dynamo/aiconfigurator/blob/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/gb300/moe/sglang/0.5.10/dsv4_megamoe_module_perf.parquet
-  notes: Cross-hardware/framework borrowing at coefficient 1.0. Routed module includes
-    dispatch/combine; gate/top-k and shared FP8 expert excluded. Buffer capacity and
-    recorded versions retained per row.
-  device: gb300
-  backend: sglang:0.5.10
-- source_id: aiconfigurator-borrowed:b300_sxm:dsv4_attention:vllm:0.24.0
-  grade: B
-  method: imported
-  reference: https://github.com/ai-dynamo/aiconfigurator/blob/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/b300_sxm/sparse_attention/vllm/0.24.0/dsv4_csa_context_module_perf.parquet
-  notes: 'Complete DSV4 CSA/HCA attention module: input projections, compressor/indexer,
-    sparse attention and output projection. Collected kernel is FLASHMLA_SPARSE_DSV4
-    with FP8 KV; the AgentX reference selects FlashInfer and FP4 indexer cache, so
-    this is a measured module baseline with an explicit backend/layout mismatch.'
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/b300_sxm/mhc/vllm/0.24.0
+  notes: mHC (hyper-connection residual mixing) pre/post module; each row covers the
+    recorded sites of one layer.
   device: b300_sxm
   backend: vllm:0.24.0
-- source_id: aiconfigurator-borrowed:b300_sxm:mhc:vllm:0.24.0
+- source_id: aiconfigurator:gb300:dsv4_megamoe:sglang:0.5.10
   grade: B
   method: imported
-  reference: https://github.com/ai-dynamo/aiconfigurator/blob/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/b300_sxm/mhc/vllm/0.24.0/mhc_module_perf.parquet
-  notes: vLLM TileLang mHC pre/post modules; num_sites=2 is preserved as collector
-    scope and is not multiplied again.
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/gb300/moe/sglang/0.5.10
+  notes: 'Fused expert-parallel MoE module (DeepGEMM MegaMoE, FP8 activations and
+    MXFP4 weights): routed dispatch, expert compute and combine under CUDA graphs.
+    Gate/top-k, buffer initialization and shared experts are excluded. Collector buffer
+    capacities are kept per row. Measured on gb300 with sglang and used for b300_sxm
+    with vllm without a conversion factor.'
+  device: gb300
+  backend: sglang:0.5.10
+- source_id: aiconfigurator:b300_sxm:dsv4_attention:vllm:0.24.0
+  grade: B
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/b300_sxm/sparse_attention/vllm/0.24.0
+  notes: 'Complete compressed sparse-attention layer: input projections, compressor/indexer,
+    sparse attention and output projection, measured with the recorded kernel and
+    FP8 KV cache. Serving stacks with another sparse-attention kernel or cache layout
+    use these rows as an approximation.'
   device: b300_sxm
   backend: vllm:0.24.0
 calibration: {}
@@ -99,12 +101,12 @@ tables:
     rows: 324
   collective:
     rows: 573
-  dsv4_megamoe:
-    rows: 152
-  dsv4_attention:
-    rows: 6752
   mhc:
-    rows: 70
+    rows: 133
+  dsv4_megamoe:
+    rows: 456
+  dsv4_attention:
+    rows: 14136
 aiconfigurator_system: b300_sxm
 aiconfigurator_layout: database
 aiconfigurator_commit: f254959eb89e2f206b8f9a77051644d7c1cbdb89
@@ -128,39 +130,3 @@ dropped_rows:
   collective: 69
 dropped_dtypes: {}
 license: Apache-2.0 (NVIDIA AIConfigurator); see data/operator_data/LICENSES.md
-dsv4_megamoe_scope:
-  source_hardware: gb300
-  target_hardware: b300_sxm
-  source_framework: sglang
-  target_framework: vllm
-  dispatch_combine_included: true
-  gate_topk_included: false
-  shared_experts_included: 0
-  initial_latency_scale: 1.0
-  single_nvlink_node_ep_sizes:
-  - 4
-  - 8
-  buffer_capacity_match: approximation; collector and serving capacities differ
-dsv4_attention_scope:
-  source_hardware: b300_sxm
-  target_hardware: b300_sxm
-  source_framework: vllm
-  target_framework: vllm
-  source_version: 0.24.0
-  kernel_source: FLASHMLA_SPARSE_DSV4
-  module_scope: input projections + compressor/indexer + sparse attention + output
-    projection
-  kv_cache_dtype: fp8 (source table; reference uses plain FP8)
-  indexer_cache_dtype: source collector default (not reference MXFP4)
-  reference_backend: FLASHINFER_MLA_SPARSE_DSV4
-  initial_latency_scale: 1.0
-mhc_scope:
-  source_hardware: b300_sxm
-  target_hardware: b300_sxm
-  module_scope: mHC pre + post TileLang; num_sites=2
-  hidden_size: 7168
-  hc_mult: 4
-  sinkhorn_iters: 20
-  residual_dtype: bf16
-  parameter_dtype: fp32
-  initial_latency_scale: 1.0
