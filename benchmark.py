@@ -238,9 +238,15 @@ def main(args, preloaded_agentx_traces=None):
                 if not source.triggered:
                     args.termination_reason = "sim_time_limit"
             else:
-                env.run(until=args.sim_time)
-                if any(not r.is_done for r in requests):
-                    args.termination_reason = "sim_time_limit"
+                # Stop at the cutoff, but keep the clock at the natural end
+                # when the workload finishes first: run(until=...) would
+                # advance an idle clock to the cutoff and dilute throughput.
+                while env.peek() < args.sim_time:
+                    env.step()
+                if env.peek() != float("inf"):
+                    env.run(until=args.sim_time)
+                    if any(not r.is_done for r in requests):
+                        args.termination_reason = "sim_time_limit"
         elif replay is not None:
             env.run(until=source)
         else:

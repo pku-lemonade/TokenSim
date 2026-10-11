@@ -299,6 +299,14 @@ class RuntimeTest(unittest.TestCase):
             self.assertEqual(result["termination_reason"], "sim_time_limit")
             self.assertTrue(result["notdone"])
             self.assertEqual(result["simulated_time"], 0.000001)
+            # A cutoff after the workload ends must not stretch its duration.
+            self.run_main(self.args(path))
+            natural = json.loads((path / "result_inf.json").read_text())
+            self.run_main(self.args(path, "--sim_time", "1000000"))
+            late = json.loads((path / "result_inf.json").read_text())
+            self.assertEqual(late["termination_reason"], "completed")
+            for field in ("duration", "simulated_time", "output_qps"):
+                self.assertEqual(late[field], natural[field], field)
             args = self.args(path)
             with patch(
                 "TokenSim.llm.llm_engine.LLMEngine.raise_if_failed",

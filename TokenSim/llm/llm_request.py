@@ -193,6 +193,35 @@ class LLMTime(BaseModel):
         return [t.decode_batch for t in self.time]
 
 
+# Request fields written by a scheduler admission (cache-hit accounting,
+# context-build position and status). A rolled-back admission restores them.
+_ADMISSION_FIELDS = (
+    "status",
+    "num_computed_tokens",
+    "scheduled_tokens",
+    "scheduled_query_tokens",
+    "scheduled_placeholder_tokens",
+    "recompute_tokens",
+    "cached_prefill_blocks",
+    "cached_prefill_tokens",
+    "gpu_cached_prefill_tokens",
+    "external_cached_prefill_tokens",
+    "gpu_cached_context_tokens",
+    "external_cached_context_tokens",
+    "effective_prefill_tokens",
+    "reuse_hit_blocks",
+    "reuse_miss_blocks",
+    "input_cache_keys",
+    "input_cache_committed",
+    "first_prefill_source",
+    "prefill_admission_count",
+    "reloaded_gpu_tokens",
+    "reloaded_cpu_tokens",
+    "reloaded_generated_gpu_tokens",
+    "reloaded_generated_cpu_tokens",
+)
+
+
 @dataclass(frozen=True)
 class PrefillSourceStats:
     """Original prompt sources, independent of post-preemption KV recovery."""
@@ -465,6 +494,15 @@ class Request:
         self.reloaded_generated_gpu_tokens += gpu_tokens - prompt_gpu
         self.reloaded_generated_cpu_tokens += cpu_tokens - prompt_cpu
         self.record_prefill_admission(prompt_gpu, prompt_cpu)
+
+    def admission_state(self) -> tuple:
+        """Snapshot of the fields an admission writes."""
+        return tuple(getattr(self, name) for name in _ADMISSION_FIELDS)
+
+    def restore_admission_state(self, state: tuple) -> None:
+        """Undo an admission that never ran: restore an :meth:`admission_state`."""
+        for name, value in zip(_ADMISSION_FIELDS, state):
+            setattr(self, name, value)
 
     @property
     def num_physical_token_blocks(self):

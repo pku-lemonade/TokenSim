@@ -451,6 +451,7 @@ class LLMPagedAttnScheduler(LLMScheduler):
                     break
 
                 req = self.waiting.pop(0)
+                state = req.admission_state()
                 self._admit(req, external=external)
                 if req.status == RequestStatus.WAITING_FOR_KV:
                     self.stats.setdefault("async_load_admissions", 0)
@@ -474,14 +475,13 @@ class LLMPagedAttnScheduler(LLMScheduler):
                     if not self.block_manager.can_ensure_slots(
                         req, query_tokens, lookahead=self._decode_lookahead(req)
                     ):
-                        # Admission has not executed a kernel. Release its
-                        # tentative references and stop admitting this step.
+                        # vLLM stops admitting when allocate_slots fails. The
+                        # admission has not run a kernel: release its tentative
+                        # references, undo its accounting and keep its place.
                         self.block_manager.release_request_blocks(req)
+                        self.connector.discard_load(req)
                         self.inflight_prefills.pop(req.id, None)
-                        if req.generation_idx == 0 and req.prefill_chunks == 0:
-                            req.first_prefill_source = None
-                            req.num_computed_tokens = 0
-                        req.status = RequestStatus.WAITING
+                        req.restore_admission_state(state)
                         self.waiting.insert(0, req)
                         self.stats["full_input_gate"] += 1
                         break
