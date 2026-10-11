@@ -171,24 +171,27 @@ def build_manifest(
             for tp in grid.tp_sizes:
                 _add_model_shapes(manifest, model, dtype, tp, grid)
     if grid.include_collectives:
-        for operation in grid.collective_operations:
-            for group in grid.group_sizes:
-                for message in grid.message_bytes:
-                    manifest.add(
-                        "collective",
-                        {
-                            "dtype": models[0].dtype if models else "fp16",
-                            "operation": operation,
-                            "group_size": group,
-                            "nodes": 1,
-                            "message_bytes": message,
-                        },
-                        role=(
-                            "tp_collective"
-                            if operation == "all_reduce"
-                            else "ep_dispatch_combine"
-                        ),
-                    )
+        # Collectives carry activations.
+        activations = sorted({m.activation_dtype for m in models}) or ["fp16"]
+        for dtype in activations:
+            for operation in grid.collective_operations:
+                for group in grid.group_sizes:
+                    for message in grid.message_bytes:
+                        manifest.add(
+                            "collective",
+                            {
+                                "dtype": dtype,
+                                "operation": operation,
+                                "group_size": group,
+                                "nodes": 1,
+                                "message_bytes": message,
+                            },
+                            role=(
+                                "tp_collective"
+                                if operation == "all_reduce"
+                                else "ep_dispatch_combine"
+                            ),
+                        )
     return manifest
 
 
@@ -196,6 +199,9 @@ def _add_model_shapes(
     manifest: ShapeManifest, model: ModelSpec, dtype: str, tp: int, grid: WorkloadGrid
 ) -> None:
     h = model.hidden_size
+    # ``dtype`` is the weight dtype of GEMMs; the other operators run on
+    # activations, as the latency backend queries them.
+    activation = model.activation_dtype
     heads_local = math.ceil(model.num_attention_heads / tp)
     kv_heads_local = local_kv_heads(model.num_key_value_heads, tp)
     q_local = heads_local * model.head_dim
@@ -256,20 +262,56 @@ def _add_model_shapes(
         ):
             manifest.add(
                 "elementwise",
-                {"op_name": op, "dtype": dtype, "num_tokens": m, "hidden_size": hidden},
+                {
+                    "op_name": op,
+                    "dtype": activation,
+                    "num_tokens": m,
+                    "hidden_size": hidden,
+                },
                 f"{tag}:{op}",
             )
-        if model.gated:
+        if model.gated and (not model.is_moe or model.dense_layer_count() > 0):
             manifest.add(
                 "elementwise",
                 {
                     "op_name": "swiglu",
-                    "dtype": dtype,
+                    "dtype": activation,
                     "num_tokens": m,
                     "hidden_size": inter_local,
                 },
                 f"{tag}:swiglu",
             )
+        shared = model.moe_intermediate_size * model.moe.num_shared_experts
+        if model.is_moe and shared:
+            # TP-sharded shared experts; the TP1 entries cover replicated ones.
+            shared = math.ceil(shared / tp)
+            shared_dtype = model.operator_dtypes.get("shared_expert", dtype)
+            manifest.add(
+                "gemm",
+                {
+                    "dtype": shared_dtype,
+                    "m": m,
+                    "n": model.ffn_projection_count * shared,
+                    "k": h,
+                },
+                f"{tag}:shared_gate_up",
+            )
+            manifest.add(
+                "gemm",
+                {"dtype": shared_dtype, "m": m, "n": h, "k": shared},
+                f"{tag}:shared_down",
+            )
+            if model.gated:
+                manifest.add(
+                    "elementwise",
+                    {
+                        "op_name": "swiglu",
+                        "dtype": activation,
+                        "num_tokens": m,
+                        "hidden_size": shared,
+                    },
+                    f"{tag}:shared_swiglu",
+                )
     for b in grid.batch_sizes:
         manifest.add(
             "gemm",
@@ -283,7 +325,7 @@ def _add_model_shapes(
         )
 
     attn_common = {
-        "attn_dtype": dtype,
+        "attn_dtype": activation,
         "kv_cache_dtype": model.kv_cache_dtype,
         "num_heads": heads_local,
         "num_kv_heads": kv_heads_local,

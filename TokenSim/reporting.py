@@ -744,6 +744,7 @@ def print_moe_stats(engine: LLMEngine):
     if not config.get("is_moe_model", False):
         print("MoE: disabled")
         return
+    all2all = get_parallel_stats(engine).get("parallel_ep_all2all_latency", 0.0)
     print(
         "MoE: "
         + f"experts={config.get('num_experts')}, "
@@ -751,7 +752,7 @@ def print_moe_stats(engine: LLMEngine):
         + f"ep_ranks={stats.get('moe_ep_rank_count')}, "
         + f"imbalance={stats.get('moe_expert_load_imbalance_ratio')}, "
         + f"compute_latency={stats.get('moe_compute_latency')}, "
-        + f"all2all_latency={stats.get('moe_all2all_latency')}, "
+        + f"all2all_latency={all2all}, "
         + f"straggler_latency={stats.get('moe_straggler_latency')}"
     )
 

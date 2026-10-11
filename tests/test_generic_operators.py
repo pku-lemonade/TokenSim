@@ -4,6 +4,7 @@ from dataclasses import replace
 from pathlib import Path
 import unittest
 
+from TokenSim.config.cache_config import CacheConfig
 from TokenSim.config.parallel_config import ParallelConfig
 from TokenSim.config.kv_layout import hybrid_kv_layout
 from TokenSim.hardware import HardwareContext
@@ -11,6 +12,7 @@ from TokenSim.latency.operator_table import OperatorTableLatencyBackend
 from TokenSim.latency.projection import attention_projections
 from TokenSim.operator_data.package import OperatorDataPackage
 from TokenSim.llm.forward import ForwardPass, RankShape, sp_valid_rows
+from TokenSim.moe.placement import build_expert_placement
 from tests.support.hardware import make_model as make_model
 
 
@@ -102,6 +104,69 @@ class GenericOperatorTest(unittest.TestCase):
             backend.set_moe_step(step)
             estimates.append(backend.native_moe.estimate(16))
         self.assertEqual(estimates[0], estimates[1])
+
+    def test_expert_parallelism_moves_whole_experts_without_shrinking_weights(self):
+        model = self.hardware.model("Qwen3-235B-A22B")
+        sizes = []
+        for ep in (False, True):
+            parallel = ParallelConfig(tensor_parallel_size=8, enable_expert_parallel=ep)
+            cache = CacheConfig(
+                16,
+                self.hardware.device("b200"),
+                model,
+                parallel,
+                expert_placement=build_expert_placement(
+                    model.moe, parallel, model.num_layers
+                ),
+            )
+            sizes.append(cache.model_param_size)
+        # 128 experts as TP8 shards or as 16 whole experts per rank.
+        self.assertEqual(sizes[0], sizes[1])
+
+    def test_generic_moe_prices_shared_experts(self):
+        source = self.hardware.model("Qwen3-235B-A22B")
+        shared = replace(
+            source,
+            model_id="shared-expert-moe",
+            aliases=(),
+            moe=replace(source.moe, num_shared_experts=1),
+        )
+        package = self.hardware.operator_package(
+            self.hardware.device("b200").device_id, "vllm"
+        )
+        latencies = []
+        for model in (source, shared):
+            backend = OperatorTableLatencyBackend(
+                device=self.hardware.device("b200"),
+                model=model,
+                parallel_config=ParallelConfig(tensor_parallel_size=8),
+                package=package,
+            )
+            latencies.append(backend._moe_layers(64, []))
+        self.assertGreater(backend.shared_experts(64, tp=8), 0)
+        self.assertAlmostEqual(
+            latencies[1] - latencies[0],
+            backend.moe_layers_local * backend.shared_experts(64, tp=8),
+        )
+
+    def test_unanswered_queries_are_recorded_once_unless_analytical_only(self):
+        model = self.hardware.model("Qwen3-235B-A22B")
+        for fallback, expected in (("table_first", 2), ("analytical_only", 0)):
+            backend = OperatorTableLatencyBackend(
+                device=self.hardware.device("b200"),
+                model=model,
+                parallel_config=ParallelConfig(tensor_parallel_size=8),
+                fallback=fallback,
+            )
+            for _ in range(3):
+                backend.gemm(64, 512, 4096)
+                backend._moe_layers(64, [])
+            missing = backend.stats.missing
+            self.assertEqual(missing.query_count, expected)
+            self.assertEqual(
+                {group.table for group in missing.groups.values()},
+                {"gemm", "moe"} if expected else set(),
+            )
 
     def test_compression_and_forward_ownership_follow_configuration(self):
         source = self.hardware.model("DeepSeek-V4-Pro")

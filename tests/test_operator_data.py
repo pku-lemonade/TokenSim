@@ -3,6 +3,7 @@ from __future__ import annotations
 import tempfile
 import unittest
 import yaml
+from dataclasses import replace
 from pathlib import Path
 
 from TokenSim.errors import ConfigurationError
@@ -392,10 +393,21 @@ class ManifestGeneratorTest(unittest.TestCase):
         roles = {r for rs in manifest.roles["gemm"].values() for r in rs}
         self.assertTrue(any(r.endswith("router") for r in roles))
         self.assertTrue(any(r.endswith("lm_head") for r in roles))
+        self.assertTrue(any(r.endswith("shared_down") for r in roles))
         with tempfile.TemporaryDirectory() as tmpdir:
             path = manifest.write(Path(tmpdir) / "m.yaml")
             loaded = ShapeManifest.load(path)
         self.assertEqual(loaded.count(), counts)
+        # Weight-quantized GEMMs; norms, attention and collectives on activations.
+        quantized = replace(make_model(), dtype="fp8", activation_dtype="bf16")
+        quantized_manifest = build_manifest("unit", [quantized], grid)
+        dtypes = {
+            table: {key.get("dtype", key.get("attn_dtype")) for key in keys}
+            for table, keys in quantized_manifest.keys.items()
+        }
+        self.assertEqual(dtypes["gemm"], {"fp8"})
+        for table in ("elementwise", "context_attention", "collective"):
+            self.assertEqual(dtypes[table], {"bf16"}, table)
 
     def test_generate_analytical_package_and_coverage(self):
         device = make_device()

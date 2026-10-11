@@ -58,3 +58,5 @@ version of TokenSim.
 - PSLA workload files (`data/psla`) and proxy model configurations.
 - Research artifacts, stage reports and accuracy-alignment scripts.
 - The interpreter wrapper `scripts/run_python.sh`.
+- The `moe_all2all_latency` result field, which was always zero; expert
+  dispatch and combine time is `parallel_ep_all2all_latency`.

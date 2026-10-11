@@ -45,7 +45,7 @@ Add these fields under `moe:` in the model YAML:
 | `num_experts` | required | Number of routed experts |
 | `num_experts_per_tok` | 1 | Experts selected per token (`top_k`) |
 | `moe_intermediate_size` | `intermediate_size` | Hidden width of each routed expert |
-| `num_shared_experts` | 0 | Shared experts; counted in parameter memory |
+| `num_shared_experts` | 0 | Shared experts; a dense MLP applied to every token |
 | `num_moe_layers` | `num_layers` | Number of MoE layers |
 | `first_k_dense_replace` | 0 | Index of the first MoE layer |
 | `moe_layer_freq` | 1 | Spacing between MoE layers |
@@ -62,8 +62,13 @@ positive, `num_experts_per_tok` cannot exceed `num_experts`, and the last MoE
 layer (`first_k_dense_replace + (num_moe_layers - 1) * moe_layer_freq`) must
 lie inside the model's layers. Unknown fields are rejected.
 
-Shared experts are counted in weight memory. The generic MoE path does not
-price their compute; the fused MoE module path does.
+Shared experts are a dense MLP of width `num_shared_experts *
+moe_intermediate_size` applied to every token and priced like a dense FFN
+(`gemm` queries, plus `swiglu` for gated activations). Their weights are
+TP-sharded like a dense FFN, or replicated when expert parallelism shards MoE
+tokens over TP ranks (TP > 1 with several DP replicas or the fused MoE
+module). Routed experts are TP-sharded without expert parallelism and kept
+whole on their EP rank with it.
 
 ## Expert Parallelism
 
@@ -229,7 +234,7 @@ The result JSON includes:
 | `moe_per_expert_load`, `moe_per_rank_expert_load` | Routed token-expert pairs per expert and per EP rank |
 | `moe_routed_token_count`, `moe_max_expert_load`, `moe_mean_expert_load` | Load totals |
 | `moe_expert_load_imbalance_ratio` | Max over mean expert load |
-| `moe_compute_latency` | Expert compute time at balanced load |
+| `moe_compute_latency` | Expert compute time at balanced load, including shared experts |
 | `moe_straggler_latency` | Additional time waiting for the busiest rank |
 | `moe_all2all_event_count` | Steps with EP dispatch/combine, summed over ranks |
 | `parallel_ep_all2all_latency` | Dispatch/combine time (also part of `parallel_latency_total`) |

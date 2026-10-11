@@ -114,7 +114,6 @@ class LLMResult:
     moe_mean_expert_load: float = 0
     moe_expert_load_imbalance_ratio: float = 0
     moe_compute_latency: float = 0
-    moe_all2all_latency: float = 0
     moe_straggler_latency: float = 0
     moe_all2all_event_count: int = 0
     moe_routed_token_count: int = 0

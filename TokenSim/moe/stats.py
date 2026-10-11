@@ -7,7 +7,6 @@ class MoEStats:
     def __init__(
         self,
         moe_compute_latency: float = 0.0,
-        moe_all2all_latency: float = 0.0,
         moe_straggler_latency: float = 0.0,
         moe_all2all_event_count: int = 0,
         routed_token_count: int = 0,
@@ -17,7 +16,6 @@ class MoEStats:
         effective_moe_config: dict[str, Any] | None = None,
     ) -> None:
         self.moe_compute_latency = moe_compute_latency
-        self.moe_all2all_latency = moe_all2all_latency
         self.moe_straggler_latency = moe_straggler_latency
         self.moe_all2all_event_count = moe_all2all_event_count
         self.routed_token_count = routed_token_count
@@ -57,12 +55,10 @@ class MoEStats:
         histogram: dict[int, int],
         per_rank_load: dict[int, int],
         compute_latency: float,
-        all2all_latency: float,
         straggler_latency: float,
         all2all_event_count: int,
     ) -> None:
         self.moe_compute_latency += compute_latency
-        self.moe_all2all_latency += all2all_latency
         self.moe_straggler_latency += straggler_latency
         self.moe_all2all_event_count += all2all_event_count
         identity = (id(histogram), id(per_rank_load))
@@ -92,7 +88,6 @@ class MoEStats:
         other.flush()
         result = MoEStats(
             moe_compute_latency=self.moe_compute_latency + other.moe_compute_latency,
-            moe_all2all_latency=self.moe_all2all_latency + other.moe_all2all_latency,
             moe_straggler_latency=(
                 self.moe_straggler_latency + other.moe_straggler_latency
             ),
@@ -158,7 +153,6 @@ class MoEStats:
             "moe_mean_expert_load": self.mean_expert_load,
             "moe_expert_load_imbalance_ratio": self.expert_load_imbalance_ratio,
             "moe_compute_latency": self.moe_compute_latency,
-            "moe_all2all_latency": self.moe_all2all_latency,
             "moe_straggler_latency": self.moe_straggler_latency,
             "moe_all2all_event_count": self.moe_all2all_event_count,
             "moe_routed_token_count": self.routed_token_count,

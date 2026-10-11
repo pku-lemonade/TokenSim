@@ -406,10 +406,9 @@ Compute and communication misses share one report per worker, so the file is
 the collection checklist for the run. The run summary prints the analytical
 share per table as a warning whenever it is non-zero.
 
-When the device has no operator package at all, compute operators are priced
-analytically without per-shape miss records (MoE and communication queries
-still record `table_absent` misses); the analytical-share warning covers every
-table.
+When the device has no operator package at all, every query is priced
+analytically and recorded as a `table_absent` miss, so the report lists every
+shape the run needs. `analytical_only` records no misses.
 
 ### 3.6 Result Caching
 
@@ -571,8 +570,9 @@ an explicit modeling assumption.
 - A complete-attention module includes its projections, RoPE handling and
   attention core; a residual-mixing module includes the residual additions; a
   fused MoE module includes routed dispatch and combine (section 2.3).
-- Shared experts count toward parameter memory; the generic MoE path does not
-  price their compute (the fused MoE module path does).
+- Shared experts are priced once per MoE layer as `gemm` and `swiglu` queries
+  (or the fused incremental estimate); the `moe` table covers routed experts
+  only.
 
 ---
 
@@ -1167,8 +1167,6 @@ to the package to improve coverage.
 - **No MoE tensor parallelism inside an EP group**: experts are split
   `expert_parallel_size` ways with `moe_tp = 1`; a `per_dp` group must equal
   the replica's TP size.
-- **Shared experts**: the generic MoE path does not price shared-expert
-  compute (section 4.6).
 - **Borrowed module tables**: the fused-MoE rows of the B200 and B300 vLLM
   packages were measured on GB200/GB300 with SGLang and are used without a
   conversion factor (grade B); the measured scope and collector buffer

@@ -141,25 +141,16 @@ class SpeculativeEstimator:
                 else req.num_computed_tokens + query_tokens(req) + pass_index - 1
             )
             pairs += causal_limited_pairs(1, q, prefix, self.model.sliding_window)
-        d = self.backend.device
-        flops = 4 * self.backend.heads_local * self.model.head_dim * pairs
-        math_us = (
-            flops
-            / (
-                d.peak_compute_for(self.model.activation_dtype).value
-                * d.analytical["attention_mfu"]
-            )
-            * 1e6
-        )
-        # SWA has one plain FP8 latent vector, not separate K and V arrays.
-        memory_us = (
-            pairs
-            * self.model.head_dim
-            / (d.memory_bandwidth_bytes_per_s.value * d.analytical["memory_efficiency"])
-            * 1e6
-        )
+        device = self.backend.device
         self.backend.stats.record("mtp_swa", "analytical")
-        return max(math_us, memory_us) + d.analytical["kernel_launch_us"]
+        # SWA has one plain FP8 latent vector, not separate K and V arrays.
+        return roofline_latency_us(
+            device,
+            pairs * self.model.head_dim,
+            4 * self.backend.heads_local * self.model.head_dim * pairs,
+            dtype=self.model.activation_dtype,
+            compute_efficiency=device.analytical["attention_mfu"],
+        )
 
     def _mhc(self, rows):
         if self.mhc:
@@ -197,28 +188,9 @@ class SpeculativeEstimator:
                 "num_tokens": max(1, int(rows * b.moe_token_multiplier)),
             }
         ).latency_us
-        local = math.ceil(rows / b.tp) if self.sp else rows
-        i = self.model.moe_intermediate_size * self.model.moe.num_shared_experts
-        shared = (
-            (
-                b.gemm(
-                    local,
-                    2 * i,
-                    self.model.hidden_size,
-                    dtype=self.model.operator_dtype("shared_expert"),
-                )
-                + b.elementwise("swiglu", local, i)
-                + b.gemm(
-                    local,
-                    self.model.hidden_size,
-                    i,
-                    dtype=self.model.operator_dtype("shared_expert"),
-                )
-            )
-            if i
-            else 0
-        )
-        return routed + shared
+        if self.sp:
+            return routed + b.shared_experts(math.ceil(rows / b.tp))
+        return routed + b.shared_experts(rows, tp=b.tp)
 
     def _head(self, rows):
         h = self.model.hidden_size

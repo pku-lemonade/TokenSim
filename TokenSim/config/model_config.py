@@ -128,7 +128,7 @@ class ModelSpec:
 
     @property
     def ffn_projection_count(self) -> int:
-        """``g`` in the task document: gate+up (2) for SwiGLU, 1 otherwise."""
+        """Input projections of an FFN: gate and up (2) when gated, else 1."""
         return 2 if self.gated else 1
 
     @property

@@ -183,16 +183,27 @@ class CacheConfig:
             self.expert_placement.moe_layers_for_pp_rank(self.rank_info.pp_rank)
         )
         dense_layers = max(0, self.num_layers_per_rank - owned_moe_layers)
-        params = self.num_layers_per_rank * model.attention_params_per_layer()
-        params += dense_layers * model.dense_ffn_params_per_layer()
-        params += (
-            owned_moe_layers * model.moe.num_shared_experts * model.expert_params()
-        )
-        params += owned_moe_layers * model.hidden_size * model.moe.num_experts  # router
-        owned_experts = len(self.expert_placement.experts_for_rank(self.rank_info))
-        params += owned_moe_layers * owned_experts * model.expert_params()
-        params += model.embedding_params() / pp
-        return params / tp
+        sharded = self.num_layers_per_rank * model.attention_params_per_layer()
+        sharded += dense_layers * model.dense_ffn_params_per_layer()
+        sharded += model.embedding_params() / pp
+        # The router is replicated. Shared experts are too when MoE layers
+        # shard tokens over TP ranks (sequence parallel); otherwise they are
+        # TP-sharded like a dense FFN.
+        whole = owned_moe_layers * model.hidden_size * model.moe.num_experts
+        shared = owned_moe_layers * model.moe.num_shared_experts * model.expert_params()
+        if self.parallel_config.sequence_parallel_moe(False):
+            whole += shared
+        else:
+            sharded += shared
+        # Expert parallelism places whole experts on each rank; without it the
+        # single placement group holds every expert as TP shards.
+        experts = len(self.expert_placement.experts_for_rank(self.rank_info))
+        experts *= owned_moe_layers * model.expert_params()
+        if self.parallel_config.enable_expert_parallel:
+            whole += experts
+        else:
+            sharded += experts
+        return sharded / tp + whole
 
     def to_dict(self) -> dict[str, Any]:
         return {

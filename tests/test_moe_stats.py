@@ -12,7 +12,6 @@ class MoEStatsTest(unittest.TestCase):
             histogram=histogram,
             per_rank_load=ranks,
             compute_latency=0.25,
-            all2all_latency=0.125,
             straggler_latency=0,
             all2all_event_count=1,
         )

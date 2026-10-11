@@ -735,6 +735,21 @@ class OperatorTableLatencyBackend(LatencyBackend):
 
     # -- operator queries -------------------------------------------------------
 
+    def shared_experts(self, rows: int, *, tp: int = 1) -> float:
+        """One MoE layer's shared experts for ``rows`` tokens, TP-sharded ``tp`` ways."""
+        model = self.model
+        width = model.moe_intermediate_size * model.moe.num_shared_experts
+        if rows <= 0 or not width:
+            return 0.0
+        width = math.ceil(width / tp)
+        dtype = model.operator_dtype("shared_expert")
+        latency = self.gemm(
+            rows, model.ffn_projection_count * width, model.hidden_size, dtype=dtype
+        )
+        if model.gated:
+            latency += self.elementwise("swiglu", rows, width)
+        return latency + self.gemm(rows, model.hidden_size, width, dtype=dtype)
+
     def gemm(self, m: int, n: int, k: int, *, dtype: str | None = None) -> float:
         if m <= 0 or n <= 0 or k <= 0:
             return 0.0
@@ -830,7 +845,6 @@ class OperatorTableLatencyBackend(LatencyBackend):
                 histogram=histogram,
                 per_rank_load=per_rank_load,
                 compute_latency=total_us * 1e-6,
-                all2all_latency=0,
                 straggler_latency=0,
                 all2all_event_count=1,
             )
@@ -877,49 +891,55 @@ class OperatorTableLatencyBackend(LatencyBackend):
                 * self.moe_layers_local
                 * 1e-6
             )
-        all2all_s = 0.0  # recorded by the communicator separately
+        # Shared experts see every token: the rank's sequence-parallel shard
+        # with replicated weights, or all tokens with TP-sharded weights.
+        if self.ep_enabled and self.parallel_config.sequence_parallel_moe(False):
+            shared_us = self.shared_experts(math.ceil(tokens / self.tp))
+        else:
+            shared_us = self.shared_experts(tokens, tp=self.tp)
+        compute_s += shared_us * self.moe_layers_local * 1e-6
+        # Dispatch/combine time is recorded by the communicator.
         self.moe_stats.record_step(
             histogram=histogram,
             per_rank_load=per_rank_load,
             compute_latency=compute_s,
-            all2all_latency=all2all_s,
             straggler_latency=straggler_s,
             all2all_event_count=1 if (self.ep_enabled and self.moe_layers_local) else 0,
         )
         return (compute_s + straggler_s) * 1e6
 
     def moe_query(self, base_key: Mapping[str, Any]) -> OperatorEstimate:
-        last_error: MissingOperatorDataError | None = None
-        if self.lookup is not None and self.fallback != "analytical_only":
-            for distribution in self.moe_distributions:
-                key = {**base_key, "distribution": distribution}
-                cached = self._cache.get(("moe", tuple(sorted(key.items()))))
-                if cached is not None:
-                    self.stats.record("moe", cached.match_type)
-                    return cached
+        """Rows of the first routing distribution the table has, else analytical."""
+        keys = [{**base_key, "distribution": d} for d in self.moe_distributions]
+        for key in keys:
+            cached = self._cache.get(("moe", tuple(sorted(key.items()))))
+            if cached is not None:
+                self.stats.record("moe", cached.match_type)
+                return cached
+        if self.fallback != "analytical_only":
+            error = self._no_package("moe", keys[0])
+            for key in keys if error is None else ():
                 try:
                     result = self.lookup.lookup("moe", key)
                 except MissingOperatorDataError as exc:
-                    last_error = exc
+                    error = exc
                     continue
                 estimate = OperatorEstimate(
                     result.latency_us,
                     result.match_type,
                     result.source_id,
-                    workload_distribution=distribution,
+                    workload_distribution=key["distribution"],
                 )
                 self._remember(("moe", tuple(sorted(key.items()))), estimate)
                 self.stats.record("moe", estimate.match_type)
                 return estimate
-        key = {**base_key, "distribution": self.moe_distributions[0]}
-        if last_error is None:
-            last_error = MissingOperatorDataError(
-                "moe", key, "no moe table", kind="table_absent"
-            )
-        if self.fallback == "table_only":
-            raise last_error
-        self.stats.record_missing(last_error)
-        return self._analytical("moe", key, gated=self.model.gated)
+            if self.fallback == "table_only":
+                raise error
+            self.stats.record_missing(error)
+        estimate = self._analytical("moe", keys[0], gated=self.model.gated)
+        self._remember(("moe", tuple(sorted(keys[0].items()))), estimate)
+        self.stats.record("moe", estimate.match_type)
+        return estimate
 
     def query(self, table: str, key: Mapping[str, Any]) -> OperatorEstimate:
         identity = (table, tuple(sorted(key.items())))
@@ -928,8 +948,11 @@ class OperatorTableLatencyBackend(LatencyBackend):
             self.stats.record(table, cached.match_type)
             return cached
         estimate: OperatorEstimate | None = None
-        if self.lookup is not None and self.fallback != "analytical_only":
+        if self.fallback != "analytical_only":
             try:
+                error = self._no_package(table, key)
+                if error is not None:
+                    raise error
                 result = self.lookup.lookup(table, key)
                 estimate = OperatorEstimate(
                     result.latency_us, result.match_type, result.source_id
@@ -943,6 +966,16 @@ class OperatorTableLatencyBackend(LatencyBackend):
         self._remember(identity, estimate)
         self.stats.record(table, estimate.match_type)
         return estimate
+
+    def _no_package(
+        self, table: str, key: Mapping[str, Any]
+    ) -> MissingOperatorDataError | None:
+        """The miss every query records when the device has no operator package."""
+        if self.lookup is not None:
+            return None
+        return MissingOperatorDataError(
+            table, key, "no operator package for this device", kind="table_absent"
+        )
 
     def _analytical(
         self, table: str, key: Mapping[str, Any], **context: Any

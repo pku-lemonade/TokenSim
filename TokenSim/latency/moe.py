@@ -344,16 +344,8 @@ class MegaMoEEstimator:
             shared = self.shared_fused_delta(own_rows)
             self.counts["shared:fused_incremental_estimate"] += 1
         elif self.model.moe.num_shared_experts:
-            h, i = (
-                self.model.hidden_size,
-                self.model.moe_intermediate_size * self.model.moe.num_shared_experts,
-            )
-            dtype = self.model.operator_dtype("shared_expert")
-            shared = (
-                self.backend.gemm(own_rows, 2 * i, h, dtype=dtype)
-                + self.backend.elementwise("swiglu", own_rows, i)
-                + self.backend.gemm(own_rows, h, i, dtype=dtype)
-            )
+            # Rank-local rows with replicated weights (sequence parallel or TP1).
+            shared = self.backend.shared_experts(own_rows)
             self.counts["shared:serial_measured_gemm_plus_activation"] += 1
         else:
             shared = 0.0
