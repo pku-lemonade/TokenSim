@@ -393,7 +393,20 @@ class RuntimeTest(unittest.TestCase):
                 requests = load_qwen_jsonl_workload(str(path), 5)
             ids = [r.request_id for r in requests]
             self.assertEqual(len(set(ids)), 5)
+            path.write_text(
+                json.dumps({"request_id": "a7", "input_length": 8, "output_length": 2})
+            )
+            with (
+                redirect_stdout(io.StringIO()),
+                self.assertRaisesRegex(WorkloadValidationError, "record 0"),
+            ):
+                load_qwen_jsonl_workload(str(path), 1)
+        self.assertEqual(
+            UserRequest(request_id="7", prefill_len=8, decode_len=2).request_id, 7
+        )
         for fields in (
+            {"request_id": 1.5},
+            {"turn": "first"},
             {"prefill_len": 1.5},
             {"decode_len": True},
             {"arrival_time": float("nan")},

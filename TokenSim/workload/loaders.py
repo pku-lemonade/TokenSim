@@ -13,7 +13,11 @@ from TokenSim.config.workload_config import WorkloadConfig
 from TokenSim.errors import WorkloadValidationError
 from TokenSim.moe.routing import normalize_expert_histogram
 from TokenSim.utils import get_decode_lens, get_prefill_lens
-from TokenSim.workload.user_request import UserRequest, UserRequestList
+from TokenSim.workload.user_request import (
+    UserRequest,
+    UserRequestList,
+    nonnegative_int,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -200,7 +204,9 @@ def load_qwen_jsonl_workload(
         trace_request_id = row.get("request_id")
         unique_request_id = request_id
         if trace_request_id is not None:
-            unique_request_id = int(trace_request_id)
+            unique_request_id = nonnegative_int(
+                trace_request_id, f"request_id of record {request_id} in {path}"
+            )
             if unique_request_id in seen_request_ids:
                 unique_request_id = request_id
         while unique_request_id in seen_request_ids:
