@@ -209,14 +209,18 @@ class CompressedAttentionEstimator:
         try:
             row = self.lookup.lookup(self.table, key)
         except MissingOperatorDataError as exc:
-            if phase == "generation" and exc.kind == "out_of_range":
+            row = None
+            if exc.kind == "out_of_range":
                 try:
-                    row = self._query_supported_generation_slices(key)
-                    ragged_grid = True
+                    if phase == "generation":
+                        row = self._query_supported_generation_slices(key)
+                        ragged_grid = True
+                    else:
+                        row = self._query_first_prefix(key, exc)
+                        clamped = row is not None
                 except MissingOperatorDataError:
-                    self.backend.stats.record_missing(exc)
-                    raise ConfigurationError(str(exc)) from exc
-            else:
+                    row = None
+            if row is None:
                 # Expose missing discrete geometry instead of silently
                 # substituting a dense GQA module or another model.
                 self.backend.stats.record_missing(exc)
@@ -278,6 +282,28 @@ class CompressedAttentionEstimator:
                 bind_analytical_axes=True,
             )
         return lookup.lookup(self.table, key)
+
+    def _query_first_prefix(self, key, error):
+        """Raise a short prefix to the first one the failing slice measured.
+
+        A prefix can lie further below a neighboring (batch, query) slice's
+        first measured prefix than extrapolation allows (B300 CSA measures q=4
+        only from prefix 128). Like the batch and query floors, hold that row.
+        ``None`` when the failure is not such a prefix.
+        """
+        # At most one retry per neighboring (batch, query) slice.
+        for _ in range(4):
+            values = self._axis_values(error.key, "context_len")
+            if not values or key["context_len"] >= values[0]:
+                return None
+            key["context_len"] = values[0]
+            try:
+                return self.lookup.lookup(self.table, key)
+            except MissingOperatorDataError as exc:
+                if exc.kind != "out_of_range":
+                    raise
+                error = exc
+        return None
 
     def _axis_values(self, key, axis, *, extra=None):
         """Axis values for the same discrete key and exact other-axis values."""

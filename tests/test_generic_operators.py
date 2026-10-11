@@ -162,6 +162,23 @@ class GenericOperatorTest(unittest.TestCase):
                 {"gemm", "moe"} if expected else set(),
             )
 
+    def test_short_prefixes_hold_the_first_measured_prefix(self):
+        device = self.hardware.device("b300")
+        backend = OperatorTableLatencyBackend(
+            device=device,
+            model=self.hardware.model("DeepSeek-V4-Pro"),
+            parallel_config=ParallelConfig(
+                data_parallel_size=8, enable_expert_parallel=True
+            ),
+            package=bundled_tables(device.device_id, "vllm", "dsv4_attention"),
+            attention_backend="module",
+        )
+        attention = backend.native_attention
+        # B300 CSA measures four-token queries only from prefix 128.
+        for queries in (1, 4, 5):
+            self.assertGreater(attention.estimate_prefill(1, queries, 1), 0)
+        self.assertEqual(attention.counts["context:csa:clamped"], 2)
+
     def test_compression_and_forward_ownership_follow_configuration(self):
         source = self.hardware.model("DeepSeek-V4-Pro")
         geometry = replace(
