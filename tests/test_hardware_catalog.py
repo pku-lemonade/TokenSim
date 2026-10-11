@@ -327,8 +327,9 @@ class CollectiveModelTest(unittest.TestCase):
                 }
             )
         package = OperatorDataPackage.from_rows(meta, {"collective": rows})
-        # This test verifies analytical growth with a fixed measured efficiency.
-        # Select that policy explicitly; the default now fits empirical growth.
+        # Past the measured range the boundary efficiency is kept and the
+        # alpha-beta model supplies the growth (the default policy, set here
+        # explicitly).
         model = CollectiveModel(
             self.topology,
             self.links,

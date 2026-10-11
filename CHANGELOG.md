@@ -22,8 +22,9 @@ version of TokenSim.
   multi-token-prediction speculative decoding with an average acceptance
   length. DeepSeek-V4-Pro is included as a complete model description.
 - Complete operator-module tables (`dsv4_attention`, `dsv4_megamoe`, `mhc`)
-  imported from AIConfigurator for B200 and B300. Module tables replace the
-  primitive operators they contain, so their cost is not counted twice.
+  imported from AIConfigurator for every system that has them. Module tables
+  replace the primitive operators they contain, so their cost is not counted
+  twice.
 - Data-parallel lockstep execution with dummy batches and finished-state
   consensus, session-aware consistent-hash routing, fixed routing maps and
   optional sticky sessions.

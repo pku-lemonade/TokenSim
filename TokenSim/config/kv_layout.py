@@ -26,6 +26,7 @@ class CacheLayerPage:
     state_bytes: int
     tokens_per_state: int = 1
     window_tokens: int = 0
+    # Pages are padded to whole 512-byte units.
     alignment: int = 512
     draft: bool = False
 
@@ -185,6 +186,9 @@ def hybrid_kv_layout(
         )
     if speculative_tokens < 0 or speculative_tokens > block_size:
         raise ConfigurationError("invalid compressed attention speculative lookahead")
+    # Bytes per cached entry: one latent vector, and an index key that is
+    # either MXFP4 (two values per byte plus one scale byte per group) or
+    # FP8 with one FP32 scale.
     kv_state = int(model.head_dim * dtype_bytes(model.kv_cache_dtype))
     index_state = (
         spec.index_head_dim // 2
@@ -192,6 +196,11 @@ def hybrid_kv_layout(
         if spec.indexer_cache_dtype == "mxfp4"
         else spec.index_head_dim + 4
     )
+    # A compressor buffers its two projections (``coff * dim`` wide each, in
+    # FP32) for the ``coff * ratio`` uncompressed tokens of its window;
+    # ``coff`` is 2 for the indexed ratio, whose windows overlap, else 1.
+    # State pages are 4 tokens wide for overlapping windows and 8 otherwise;
+    # sliding-window pages are 64 tokens wide.
     pages = []
     for layer in model.layer_specs(include_mtp=include_mtp):
         prefix = f"{'mtp' if layer.is_mtp else 'layers'}.{layer.layer_id}"
