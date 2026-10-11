@@ -146,6 +146,8 @@ class LLMResult:
     mooncake_offload_tiers: list[str] | None = None
     mooncake_offload_profiles: list[dict[str, Any]] | None = None
     agentx_metrics: dict[str, Any] | None = None
+    # Latency-target attainment; present when the workload sets targets.
+    slo: dict[str, Any] | None = None
     termination_reason: str = "completed"
     failure: str | None = None
 

@@ -288,6 +288,37 @@ class RuntimeTest(unittest.TestCase):
             self.assertAlmostEqual(sum(issued), sum(charged))
             self.assertEqual(len(engine.timing_recorder.timing.time), 48)
 
+    def test_latency_targets_are_reported_only_when_configured(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            engine = self.run_main(self.args(path))
+            self.assertNotIn("slo", json.loads((path / "result_inf.json").read_text()))
+            first_token = engine.timing_recorder.timing.prefill_time
+            bound = sorted(first_token)[len(first_token) // 2]
+            targets = path / "workload.json"
+            targets.write_text(
+                json.dumps(
+                    {
+                        "first_token_latency": {"max": bound, "p50": 1e9},
+                        "decode_token_latency": {"p99": 0.0},
+                    }
+                )
+            )
+            self.run_main(self.args(path, "--workload_config", str(targets)))
+            result = json.loads((path / "result_inf.json").read_text())
+            slo = result["slo"]
+            self.assertEqual(
+                slo["first_token_latency"]["observed"]["p50"],
+                result["prefill_time"]["p50"],
+            )
+            self.assertEqual(
+                slo["first_token_latency"]["met"], {"max": False, "p50": True}
+            )
+            self.assertEqual(slo["decode_token_latency"]["met"], {"p99": False})
+            self.assertEqual(
+                slo["goodput_requests"], sum(t <= bound for t in first_token)
+            )
+
     def test_cutoff_and_failure_always_preserve_partial_results(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory)

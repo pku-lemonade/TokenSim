@@ -26,7 +26,7 @@ from TokenSim.workload.agentx import AgentXReplay
 from TokenSim.workload.agentx_support.parser import iter_trace_graphs
 from TokenSim.workload.agentx_support.logs import ReplayLogs
 from TokenSim.workload.source import get_requests, LLMSource
-from TokenSim.reporting import export_result, print_all_stats
+from TokenSim.reporting import RunReport, export_result, print_all_stats
 from TokenSim.progress import TqdmManager
 
 # Source checkout root: results default to <checkout>/results there.
@@ -51,11 +51,11 @@ def simulation_config(args):
     return SimulationConfig(**values)
 
 
-def write_failure(args, env, engine, unfinished, error):
-    path = Path(args.results_path)
+def write_failure(run, env, engine, unfinished, error):
+    path = Path(run.results_path)
     path.mkdir(parents=True, exist_ok=True)
     diagnostic = {
-        "termination_reason": args.termination_reason,
+        "termination_reason": run.termination_reason,
         "simulation_time": env.now,
         "failure": str(error) if error else None,
         "unfinished_request_ids": unfinished,
@@ -108,17 +108,25 @@ def main(args, preloaded_agentx_traces=None):
             raise ConfigurationError("MoE routing overrides require a MoE model")
         routing = replace(model.moe.routing, **overrides)
         model = replace(model, moe=replace(model.moe, routing=routing))
-    args.qps = (
-        float("inf") if workload_config.distribution == "burst" else workload_config.qps
-    )
-    args.results_path = str(
-        Path(args.results_path)
-        if args.results_path
-        else (ROOT if (ROOT / "data").is_dir() else Path.cwd())
-        / "results"
-        / model.model_id
-        / Path(args.cluster).parent.name
-        / Path(args.cluster).stem
+    run = RunReport(
+        results_path=(
+            Path(args.results_path)
+            if args.results_path
+            else (ROOT if (ROOT / "data").is_dir() else Path.cwd())
+            / "results"
+            / model.model_id
+            / Path(args.cluster).parent.name
+            / Path(args.cluster).stem
+        ),
+        qps=(
+            float("inf")
+            if workload_config.distribution == "burst"
+            else workload_config.qps
+        ),
+        batching=args.batching,
+        agentx_concurrency=(
+            args.agentx_concurrency if args.workload_type == "agentx_weka" else None
+        ),
     )
     parallel = build_parallel_config(args, cluster)
     validate_moe_parallel_config(model, parallel)
@@ -173,7 +181,7 @@ def main(args, preloaded_agentx_traces=None):
             )
         if not graphs:
             raise ConfigurationError("AgentX selection contains no trace graphs")
-        logs = ReplayLogs(Path(args.results_path) / "replay", engine)
+        logs = ReplayLogs(run.results_path / "replay", engine)
         replay = AgentXReplay(
             env,
             engine,
@@ -224,7 +232,7 @@ def main(args, preloaded_agentx_traces=None):
                 env,
                 engine,
                 requests,
-                args.qps,
+                run.qps,
                 workload_config.distribution,
                 random_seed=args.random_seed,
             )
@@ -232,14 +240,13 @@ def main(args, preloaded_agentx_traces=None):
     wall_start = time.perf_counter()
     engine.start_debug_clock(wall_start)
     error = None
-    args.termination_reason = "completed"
     try:
         if args.sim_time is not None:
             if replay is not None:
                 horizon = env.timeout(args.sim_time)
                 env.run(until=env.any_of([source, horizon]))
                 if not source.triggered:
-                    args.termination_reason = "sim_time_limit"
+                    run.termination_reason = "sim_time_limit"
             else:
                 # Stop at the cutoff, but keep the clock at the natural end
                 # when the workload finishes first: run(until=...) would
@@ -249,13 +256,13 @@ def main(args, preloaded_agentx_traces=None):
                 if env.peek() != float("inf"):
                     env.run(until=args.sim_time)
                     if any(not r.is_done for r in requests):
-                        args.termination_reason = "sim_time_limit"
+                        run.termination_reason = "sim_time_limit"
         elif replay is not None:
             env.run(until=source)
         else:
             env.run()
         engine.raise_if_failed()
-        if args.termination_reason == "completed":
+        if run.termination_reason == "completed":
             connectors = [
                 w.connector for w in engine.workers if w.connector.async_offload
             ]
@@ -285,7 +292,7 @@ def main(args, preloaded_agentx_traces=None):
                     w.connector.store.validate()
     except Exception as exc:
         error = exc
-        args.termination_reason = "failed"
+        run.termination_reason = "failed"
     finally:
         if logs:
             try:
@@ -293,16 +300,16 @@ def main(args, preloaded_agentx_traces=None):
             except Exception as exc:
                 if error is None:
                     error = exc
-                    args.termination_reason = "failed"
+                    run.termination_reason = "failed"
             logs.close()
     wall_time = time.perf_counter() - wall_start
     if replay:
         requests = replay.requests
-        args.agentx_runtime_metadata = replay.runtime_metadata()
-        args.agentx_runtime_metadata.update(
+        run.agentx_metadata = replay.runtime_metadata()
+        run.agentx_metadata.update(
             random_seed=args.random_seed,
             phase=replay.phase,
-            partial=args.termination_reason != "completed",
+            partial=run.termination_reason != "completed",
         )
         duration = replay.metric_observation_duration or replay.profile_elapsed
         successful = [r for r in requests if r.is_done and not r.cancel_requested]
@@ -310,14 +317,14 @@ def main(args, preloaded_agentx_traces=None):
         duration = env.now
         successful = [r for r in requests if r.is_done and not r.cancel_requested]
     unfinished = [r.id for r in requests if not r.is_done]
-    if unfinished and args.termination_reason == "completed":
+    if unfinished and run.termination_reason == "completed":
         error = SimulationStateError("event queue exhausted with unfinished requests")
-        args.termination_reason = "event_queue_exhausted"
-    args.simulation_failure = str(error) if error else None
-    if error or args.termination_reason != "completed":
-        write_failure(args, env, engine, unfinished, error)
-    export_result(
-        args=args,
+        run.termination_reason = "event_queue_exhausted"
+    run.failure = str(error) if error else None
+    if error or run.termination_reason != "completed":
+        write_failure(run, env, engine, unfinished, error)
+    result = export_result(
+        run=run,
         g_time=engine.timing_recorder.timing,
         engine=engine,
         cluster=cluster,
@@ -337,6 +344,7 @@ def main(args, preloaded_agentx_traces=None):
             duration,
             len(successful),
             [r.prefill_len for r in successful],
+            slo=result.get("slo"),
         )
     if error:
         raise error
@@ -348,9 +356,9 @@ LATENCY_BACKEND_KEYWORDS = ("operator_table", "analytical")
 
 def max_num_batched_tokens(args: argparse.Namespace) -> int | None:
     """Per-step token budget of the paged-attention scheduler; ``None`` disables chunking."""
-    if not getattr(args, "chunked_prefill", True):
+    if not args.chunked_prefill:
         return None
-    return int(getattr(args, "max_num_batched_tokens", DEFAULT_MAX_NUM_BATCHED_TOKENS))
+    return args.max_num_batched_tokens
 
 
 def build_parallel_config(
@@ -359,16 +367,16 @@ def build_parallel_config(
 ) -> ParallelConfig:
     base = cluster.effective_parallel_config()
     return base.override(
-        tensor_parallel_size=getattr(args, "tensor_parallel_size", None),
-        pipeline_parallel_size=getattr(args, "pipeline_parallel_size", None),
-        data_parallel_size=getattr(args, "data_parallel_size", None),
-        data_parallel_rank=getattr(args, "data_parallel_rank", None),
-        data_parallel_size_local=getattr(args, "data_parallel_size_local", None),
-        enable_expert_parallel=getattr(args, "enable_expert_parallel", None),
-        expert_parallel_scope=getattr(args, "expert_parallel_scope", None),
-        expert_parallel_size=getattr(args, "expert_parallel_size", None),
-        expert_placement_strategy=getattr(args, "expert_placement_strategy", None),
-        all2all_backend=getattr(args, "all2all_backend", None),
+        tensor_parallel_size=args.tensor_parallel_size,
+        pipeline_parallel_size=args.pipeline_parallel_size,
+        data_parallel_size=args.data_parallel_size,
+        data_parallel_rank=args.data_parallel_rank,
+        data_parallel_size_local=args.data_parallel_size_local,
+        enable_expert_parallel=args.enable_expert_parallel,
+        expert_parallel_scope=args.expert_parallel_scope,
+        expert_parallel_size=args.expert_parallel_size,
+        expert_placement_strategy=args.expert_placement_strategy,
+        all2all_backend=args.all2all_backend,
     )
 
 

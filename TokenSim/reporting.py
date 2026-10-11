@@ -4,7 +4,7 @@ from TokenSim.kv_transfer.connectors.base import flatten_connectors
 
 import json
 from pathlib import Path
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from typing import TYPE_CHECKING, List, Any
 
 import numpy as np
@@ -363,13 +363,33 @@ def _is_root_stream(stream_id: str | None) -> bool:
     )
 
 
+@dataclass
+class RunReport:
+    """How a run ended and where its results go, as decided by the runner."""
+
+    results_path: Path
+    qps: float
+    batching: str
+    termination_reason: str = "completed"
+    failure: str | None = None
+    # AgentX replay: concurrency and the replay's runtime metadata.
+    agentx_concurrency: int | None = None
+    agentx_metadata: dict[str, Any] | None = None
+
+    @property
+    def result_name(self) -> str:
+        if self.agentx_concurrency is not None:
+            return f"agentx_c{self.agentx_concurrency}.json"
+        return f"result_{self.qps}.json"
+
+
 def get_agentx_metrics(
-    args: Any,
+    run: RunReport,
     requests: list[Request],
     duration: float,
     num_gpus: int = 1,
 ) -> dict[str, Any] | None:
-    if getattr(args, "workload_type", None) != "agentx_weka":
+    if run.agentx_concurrency is None:
         return None
 
     requests = [r for r in requests if r.is_done and not r.cancel_requested]
@@ -405,7 +425,7 @@ def get_agentx_metrics(
         (request.effective_prefill_tokens or request.prefill_len)
         for request in requests
     )
-    metadata = dict(getattr(args, "agentx_runtime_metadata", {}) or {})
+    metadata = dict(run.agentx_metadata or {})
     if metadata.get("replay_protocol"):
         sources = [r.first_prefill_source for r in requests]
         if any(source is None for source in sources):
@@ -431,7 +451,7 @@ def get_agentx_metrics(
     result: dict[str, Any] = {
         "methodology": "agentx-closed-loop-simulation",
         "official_submission_compatible": False,
-        "concurrency": getattr(args, "agentx_concurrency", 1),
+        "concurrency": run.agentx_concurrency,
         "trace_count": metadata.get("trace_count", 0),
         "play_count": metadata.get("play_count", 0),
         "warmup_request_count": metadata.get("warmup_request_count", 0),
@@ -575,6 +595,7 @@ def print_all_stats(
     duration: float,
     request_count: int,
     prefill_lens: list[int],
+    slo: dict[str, Any] | None = None,
 ):
     request_time = MetricData.from_list(g_time.request_time)
     prefill_time = MetricData.from_list(g_time.prefill_time)
@@ -609,24 +630,7 @@ def print_all_stats(
     print_parallel_stats(engine)
     print_moe_stats(engine)
     print_operator_latency_stats(engine)
-    # Print SLO statistics.
-    config = engine.workload_config
-    prefill_slo = getattr(config, "first_token_latency", None)
-    decode_slo = getattr(config, "decode_token_latency", None)
-    print_slo_stats(
-        duration,
-        g_time,
-        prefill_slo=(
-            prefill_slo.max
-            if prefill_slo and prefill_slo.max and prefill_slo.max > 0
-            else 15
-        ),
-        decode_slo=(
-            decode_slo.max
-            if decode_slo and decode_slo.max and decode_slo.max > 0
-            else 0.15
-        ),
-    )
+    print_slo_stats(slo)
 
 
 def print_metrics(
@@ -791,52 +795,78 @@ def print_operator_latency_stats(engine: LLMEngine):
         )
 
 
-def print_slo_stats(
-    dur: float,
-    timing: LLMTime,
-    prefill_slo: float = 15,
-    decode_slo: float = 0.15,
-):
-    prefill_slo_good_cnt = sum(
-        [1 if t <= prefill_slo else 0 for t in timing.prefill_time]
-    )
-    decode_slo_good_cnt = sum([1 if t <= decode_slo else 0 for t in timing.decode_time])
-    req_slo_good_cnt = sum(
-        [
-            1 if (p <= prefill_slo and d <= decode_slo) else 0
-            for p, d in zip(timing.prefill_time, timing.decode_time)
-        ]
-    )
+def slo_report(
+    workload_config,
+    first_token: list[float],
+    decode_token: list[float],
+    duration: float,
+) -> dict[str, Any] | None:
+    """Attainment of the workload's latency targets; ``None`` without targets.
 
-    decode_max_slo_good_cnt = sum(
-        [1 if t <= decode_slo else 0 for t in timing.decode_max_time]
-    )
-    req_max_slo_good_cnt = sum(
-        [
-            1 if (p <= prefill_slo and d <= decode_slo) else 0
-            for p, d in zip(timing.prefill_time, timing.decode_max_time)
-        ]
-    )
+    ``first_token`` and ``decode_token`` hold each request's time to first
+    token and mean inter-token latency. A ``max`` target bounds every request
+    and goodput counts the requests within all of them; ``p50`` and ``p99``
+    targets bound the run's percentiles.
+    """
+    report: dict[str, Any] = {}
+    within = [True] * len(first_token)
+    bounded = False
+    for name, values in (
+        ("first_token_latency", first_token),
+        ("decode_token_latency", decode_token),
+    ):
+        target = getattr(workload_config, name, None)
+        bounds = {
+            key: value
+            for key, value in asdict(target or MetricData(None, None, None)).items()
+            if value is not None
+        }
+        if not bounds:
+            continue
+        observed = asdict(MetricData.from_list(values))
+        report[name] = {
+            "target": bounds,
+            "observed": {key: observed[key] for key in bounds},
+            "met": {
+                key: observed[key] is not None and bool(observed[key] <= bound)
+                for key, bound in bounds.items()
+            },
+        }
+        if "max" in bounds:
+            bounded = True
+            within = [
+                ok and value <= bounds["max"] for ok, value in zip(within, values)
+            ]
+    if not report:
+        return None
+    if bounded:
+        report["goodput_requests"] = sum(within)
+        report["goodput_requests_per_s"] = sum(within) / duration if duration else 0.0
+    return report
 
-    print(
-        f"Prefill SLO Good Throughput: {prefill_slo_good_cnt} r, {prefill_slo_good_cnt / dur} r/s"
-    )
-    print(
-        f"Max-Decode SLO Good Throughput: {decode_max_slo_good_cnt} r, {decode_max_slo_good_cnt / dur} r/s"
-    )
-    print(
-        f"Prefill and Max-Decode SLO Good Throughput: {req_max_slo_good_cnt} r, {req_max_slo_good_cnt / dur} r/s"
-    )
-    print(
-        f"Decode SLO Good Throughput: {decode_slo_good_cnt} r, {decode_slo_good_cnt / dur} r/s"
-    )
-    print(
-        f"Prefill and Decode SLO Good Throughput: {req_slo_good_cnt} r, {req_slo_good_cnt / dur} r/s"
-    )
+
+def print_slo_stats(report: dict[str, Any] | None) -> None:
+    if not report:
+        return
+    for name in ("first_token_latency", "decode_token_latency"):
+        if name in report:
+            entry = report[name]
+            print(
+                f"SLO {name}: "
+                + ", ".join(
+                    f"{key} {entry['observed'][key]} <= {bound}: {entry['met'][key]}"
+                    for key, bound in entry["target"].items()
+                )
+            )
+    if "goodput_requests" in report:
+        print(
+            f"SLO goodput: {report['goodput_requests']} r, "
+            f"{report['goodput_requests_per_s']} r/s"
+        )
 
 
 def export_result(
-    args: Any,
+    run: RunReport,
     g_time: LLMTime,
     engine: LLMEngine,
     cluster: ClusterConfig,
@@ -848,16 +878,17 @@ def export_result(
     duration: float,
     simulator_wall_time: float = 0,
 ):
-    if getattr(args, "workload_type", None) == "agentx_weka":
+    if run.agentx_concurrency is not None:
         request_time = MetricData.from_list([req.total_time for req in requests])
-        prefill_time = MetricData.from_list([req.prefill_latency for req in requests])
-        decode_time = MetricData.from_list(
-            [req.decode_time_sum / max(1, req.generation_idx - 1) for req in requests]
-        )
+        first_token = [req.prefill_latency for req in requests]
+        decode_token = [
+            req.decode_time_sum / max(1, req.generation_idx - 1) for req in requests
+        ]
     else:
         request_time = MetricData.from_list(g_time.request_time)
-        prefill_time = MetricData.from_list(g_time.prefill_time)
-        decode_time = MetricData.from_list(g_time.decode_time)
+        first_token, decode_token = g_time.prefill_time, g_time.decode_time
+    prefill_time = MetricData.from_list(first_token)
+    decode_time = MetricData.from_list(decode_token)
     prefix_reuse_stats = get_prefix_reuse_stats(requests)
     connector_stats = get_connector_stats(engine)
     parallel_stats = get_parallel_stats(engine)
@@ -867,7 +898,7 @@ def export_result(
     latency_stats = get_latency_stats(engine)
 
     result = LLMResult(
-        qps=args.qps,
+        qps=run.qps,
         cluster=cluster,
         request_time=request_time,
         prefill_time=prefill_time,
@@ -875,7 +906,7 @@ def export_result(
         request_count=request_count,
         prefill_lens=prefill_lens,
         decode_lens=decode_lens,
-        batching=args.batching,
+        batching=run.batching,
         duration=duration,
         simulator_wall_time=simulator_wall_time,
         simulated_time=duration,
@@ -884,8 +915,8 @@ def export_result(
             sum(r.generation_idx for r in requests) / duration if duration else 0
         ),
         notdone=notdone,
-        termination_reason=getattr(args, "termination_reason", "completed"),
-        failure=getattr(args, "simulation_failure", None),
+        termination_reason=run.termination_reason,
+        failure=run.failure,
         preemption_count=sum(worker.preempted_cnt for worker in engine.workers),
         recomputation_count=sum(req.recomputation_count for req in requests),
         recomputed_tokens=sum(req.recomputed_tokens_total for req in requests),
@@ -921,24 +952,15 @@ def export_result(
         **mooncake_stats,
         **latency_stats,
         agentx_metrics=get_agentx_metrics(
-            args,
+            run,
             requests,
             duration,
             num_gpus=len(engine.workers),
         ),
+        slo=slo_report(engine.workload_config, first_token, decode_token, duration),
     )
 
-    if args.results_path == "":
-        results_path = (
-            Path.cwd()
-            / "results"
-            / engine.model_spec.model_id
-            / Path(args.cluster).parent.name
-            / Path(args.cluster).stem
-        )
-    else:
-        results_path = Path(args.results_path)
-
+    results_path = Path(run.results_path)
     results_path.mkdir(parents=True, exist_ok=True)
 
     result_dict = {
@@ -949,20 +971,17 @@ def export_result(
     result_dict["prefill_time"] = asdict(result.prefill_time)
     result_dict["decode_time"] = asdict(result.decode_time)
 
-    if getattr(args, "workload_type", None) == "agentx_weka":
-        result_name = f"agentx_c{args.agentx_concurrency}.json"
-    else:
-        result_name = f"result_{args.qps}.json"
-    result_file = results_path / result_name
+    result_file = results_path / run.result_name
     with open(result_file, "w") as f:
         json.dump(result_dict, f, indent=4)
     if latency_stats.get("operator_missing_shape_groups"):
         # Shapes the tables could not answer, grouped by table and discrete key
         # with the requested axis ranges: the collection checklist for the next
         # profiling run on the target device (compute and communication alike).
-        missing_file = results_path / f"missing_shapes_{args.qps}.json"
+        missing_file = results_path / f"missing_shapes_{run.qps}.json"
         with open(missing_file, "w") as f:
             json.dump(_missing_shape_report(engine), f, indent=2)
+    return result_dict
 
 
 def _missing_shape_report(engine: LLMEngine) -> dict[str, Any]:

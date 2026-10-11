@@ -49,6 +49,8 @@ version of TokenSim.
   allocation stops admission instead of preempting the new request.
 - Results reject unknown fields. Operator-module statistics are grouped under
   `module_stats`; `output_token_ps` counts generated tokens.
+- Latency targets have no built-in defaults. When the workload sets them,
+  results report each target's attainment and the goodput under `slo`.
 - Each engine owns its timing recorder; repeated runs in one process are
   independent.
 - Python 3.11 or newer is required; 3.12 is recommended.

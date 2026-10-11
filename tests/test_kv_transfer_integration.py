@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from TokenSim.config.simulation import SimulationConfig
 
-import argparse
 import json
 import math
 import tempfile
@@ -21,7 +20,12 @@ from TokenSim.llm.llm_engine import LLMEngine, Task
 from TokenSim.llm.llm_request import Request, RequestStatus
 from tests.support.hardware import make_device, make_hardware, make_links, make_model
 from TokenSim.workload.source import LLMSource
-from TokenSim.reporting import export_result, get_connector_stats, get_mooncake_stats
+from TokenSim.reporting import (
+    RunReport,
+    export_result,
+    get_connector_stats,
+    get_mooncake_stats,
+)
 
 PREFILL_LATENCY = 0.0012
 DECODE_LATENCY = 0.0023
@@ -306,11 +310,8 @@ class KVTransferIntegrationTest(unittest.TestCase):
         engine, request, _, duration = _run_single_request_p2p()
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            args = argparse.Namespace(
-                qps=1, batching="paged-attn", results_path=tmpdir, cluster="unused.json"
-            )
             export_result(
-                args=args,
+                run=RunReport(results_path=Path(tmpdir), qps=1, batching="paged-attn"),
                 g_time=engine.timing_recorder.timing,
                 engine=engine,
                 cluster=_pd_cluster(),

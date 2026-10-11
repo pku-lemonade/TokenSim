@@ -98,8 +98,9 @@ tokensim --model data/models/llama-7b.yaml \
 | KV transfer | `data/kv_transfer/*.json`, `--kv_transfer_config` | Connector and storage settings |
 | Workload | CLI options or `--workload_config` | Arrival rate and distribution, lengths, SLO targets |
 
-Request generation and SLO targets are independent of the model. A workload
-file such as the following sets them; explicit CLI values take precedence:
+Request generation and latency targets are independent of the model. A
+workload file such as the following sets them; explicit CLI values take
+precedence:
 
 ```json
 {
@@ -107,9 +108,14 @@ file such as the following sets them; explicit CLI values take precedence:
   "prefill_mean_len": 256,
   "decode_mean_len": 64,
   "first_token_latency": {"max": 10},
-  "decode_token_latency": {"max": 0.1}
+  "decode_token_latency": {"p99": 0.1}
 }
 ```
+
+Targets are optional and in seconds. `first_token_latency` applies to the time
+to first token and `decode_token_latency` to each request's mean inter-token
+latency. A `max` target bounds every request; `p50` and `p99` bound the run's
+percentiles.
 
 ## Results
 
@@ -119,7 +125,9 @@ Results are written to `--results_path` (default
 - `result_<qps>.json` (or `agentx_c<concurrency>.json` for AgentX): latency
   and throughput summaries, preemption and recomputation, prefix-cache reuse,
   KV transfers, parallel communication, MoE load and the provenance of every
-  latency estimate (measured, interpolated, extrapolated or analytical).
+  latency estimate (measured, interpolated, extrapolated or analytical). With
+  latency targets, `slo` reports whether each was met and the goodput: the
+  requests within every `max` target.
 - `missing_shapes_<qps>.json`: operator shapes no table could answer, grouped
   for the next measurement campaign.
 - `failure.json` and `failed.txt`: diagnostics when a run stops early or fails;
