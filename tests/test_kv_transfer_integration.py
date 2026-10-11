@@ -20,8 +20,8 @@ from TokenSim.latency.base import LatencyBackend
 from TokenSim.llm.llm_engine import LLMEngine, Task
 from TokenSim.llm.llm_request import Request, RequestStatus
 from tests.support.hardware import make_device, make_hardware, make_links, make_model
-from util.request import LLMSource
-from util.results import export_result, get_connector_stats, get_mooncake_stats
+from TokenSim.workload.source import LLMSource
+from TokenSim.reporting import export_result, get_connector_stats, get_mooncake_stats
 
 PREFILL_LATENCY = 0.0012
 DECODE_LATENCY = 0.0023

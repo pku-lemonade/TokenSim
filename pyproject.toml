@@ -17,18 +17,17 @@ agentx = ["huggingface_hub>=0.34", "orjson>=3.10"]
 dev = ["pytest>=8", "black==24.2.0"]
 
 [project.scripts]
-tokensim = "benchmark:cli"
+tokensim = "TokenSim.cli:cli"
 tokensim-operator-data = "TokenSim.operator_data.cli:main"
 
 [tool.setuptools]
-py-modules = ["benchmark"]
 license-files = ["LICENSE", "NOTICE", "third_party/licenses/*"]
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
 
 [tool.setuptools.packages.find]
-include = ["TokenSim*", "util*"]
+include = ["TokenSim*"]
 namespaces = true
 
 [tool.setuptools.package-data]
