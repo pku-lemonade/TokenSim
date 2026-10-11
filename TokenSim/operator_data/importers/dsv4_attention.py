@@ -72,8 +72,4 @@ def normalize(
                 "source_model": row["model"],
             }
         )
-    if not result:
-        raise OperatorDataValidationError(
-            f"no {layer_kind}/{phase} compressed attention rows in source"
-        )
     return result

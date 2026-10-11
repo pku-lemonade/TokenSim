@@ -109,6 +109,14 @@ sources:
     converted ms -> us.
   device: h100_sxm
   backend: sglang:0.5.14
+- source_id: aiconfigurator:h100_sxm:mhc:sglang:0.5.14
+  grade: B
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/h100_sxm/mhc/sglang/0.5.14
+  notes: mHC (hyper-connection residual mixing) pre/post module; each row covers the
+    recorded sites of one layer.
+  device: h100_sxm
+  backend: sglang:0.5.14
 calibration: {}
 tables:
   gemm:
@@ -123,6 +131,8 @@ tables:
     rows: 1486
   collective:
     rows: 573
+  mhc:
+    rows: 138
 aiconfigurator_system: h100_sxm
 aiconfigurator_layout: database
 aiconfigurator_commit: f254959eb89e2f206b8f9a77051644d7c1cbdb89

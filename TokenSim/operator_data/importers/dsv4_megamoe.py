@@ -106,6 +106,4 @@ def normalize(rows, source_id, *, source_hardware, collection_version):
                 "source_hardware": source_hardware,
             }
         )
-    if not result:
-        raise OperatorDataValidationError("no supported MegaMoE measurements in source")
     return result

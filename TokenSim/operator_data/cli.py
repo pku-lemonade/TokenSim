@@ -422,8 +422,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--gpus-per-node",
         dest="gpus_per_node",
         type=int,
-        default=8,
-        help="EP ranks per node assumed for SGLang wide-EP DeepEP tables",
+        help="EP ranks per node for SGLang wide-EP DeepEP tables "
+        "(default: num_gpus_per_node from the upstream system description)",
     )
     p.add_argument(
         "--out",

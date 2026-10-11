@@ -835,7 +835,7 @@ ep_size, nodes`, a non-DeepEP mode is a `no_measured_mode` miss, and under
 The EP group is the expert-parallel group of `ParallelConfig`
 (`expert_parallel_scope`, `expert_parallel_size`). With `per_dp` on an 8-GPU
 node the query is `ep_size=8, nodes=1`, which the B200, B300, H100 and H200
-packages cover (GB200 and GB300 measure 4-rank groups; GB300 SGLang also 8); a
+packages cover (GB200 and GB300 measure 4-rank groups); a
 `global` group over 8 nodes asks for `ep_size=64, nodes=8`, which only the
 SGLang H100/H200 tables answer.
 
@@ -1007,8 +1007,10 @@ python -m TokenSim.operator_data.cli import-aiconfigurator \
 Options: `--backend` (default `trtllm`), `--version` (limit the framework
 collection version), `--nccl-version`, `--dataset-version`,
 `--upstream-commit` (recorded in source references; default `main`),
-`--no-custom-allreduce`, `--gpus-per-node` (EP ranks per node assumed for
-SGLang wide-EP DeepEP tables, default 8), `--out` and `--module-source
+`--no-custom-allreduce`, `--gpus-per-node` (EP ranks per node for SGLang
+wide-EP DeepEP tables; defaults to `num_gpus_per_node` in the upstream
+`systems/<system>.yaml`, and a collector run directory without one must pass
+it), `--out` and `--module-source
 table=system_directory` (repeatable; takes an operator-module table from
 another system and records the cross-device provenance).
 
@@ -1167,10 +1169,10 @@ to the package to improve coverage.
   the replica's TP size.
 - **Shared experts**: the generic MoE path does not price shared-expert
   compute (section 4.6).
-- **Borrowed module tables**: the B200 and B300 fused-MoE rows were measured
-  on GB200/GB300 with SGLang and are used without a conversion factor
-  (grade B); the measured scope and collector buffer capacities are kept in
-  the rows and source notes.
+- **Borrowed module tables**: the fused-MoE rows of the B200 and B300 vLLM
+  packages were measured on GB200/GB300 with SGLang and are used without a
+  conversion factor (grade B); the measured scope and collector buffer
+  capacities are kept in the rows and source notes.
 - **No link contention in step time**: contention and queuing from pipelined
   micro-batches are not part of the per-step service time.
 - <a id="gb300-derivation"></a>**GB200 and GB300 per-GPU peaks** are derived

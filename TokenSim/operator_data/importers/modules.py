@@ -91,6 +91,10 @@ def import_modules(
                 "collection_version" if table == "dsv4_megamoe" else "source_version"
             ] = label
             rows = normalize(raw, **kwargs)
+            if not rows:
+                # The file holds only kernels this module type does not model
+                # (for example another framework's attention kernel).
+                continue
             notes = SCOPES[table]
             if root.name != target_device or source_backend != backend:
                 notes += (

@@ -36,10 +36,10 @@ model.
 | Device | Backends (framework versions) | Contents | Gaps |
 | --- | --- | --- | --- |
 | `a100_sxm_80g` | vllm 0.14.0, trtllm 1.0.0, sglang 0.5.10 | gemm (bf16; trtllm also int8_wo, int4_wo, int8_sq), attention (bf16), moe (bf16; sglang also int4_wo), NCCL 2.27.3 (2/4/8 GPUs) + custom all-reduce | elementwise, fp8 (not supported by the hardware), multi-node collectives, DeepEP |
-| `h100_sxm`, `h200_sxm` | vllm 0.24.0, trtllm 1.3.0rc20 (+rc23/rc10 MoE rows), sglang 0.5.14 | gemm (bf16, fp8, fp8_block), attention (bf16, fp8 KV), moe (bf16, fp8, fp8_block, int4_wo, mxfp4_wo), NCCL 2.29.2 + custom all-reduce, DeepEP dispatch/combine (EP8; SGLang also 16/32/64 ranks over 2/4/8 nodes) | elementwise, multi-node NCCL, operator modules |
+| `h100_sxm`, `h200_sxm` | vllm 0.24.0, trtllm 1.3.0rc20 (+rc23/rc10 MoE rows), sglang 0.5.14 | gemm (bf16, fp8, fp8_block), attention (bf16, fp8 KV), moe (bf16, fp8, fp8_block, int4_wo, mxfp4_wo), NCCL 2.29.2 + custom all-reduce, DeepEP dispatch/combine (EP8; SGLang also 16/32/64 ranks over 2/4/8 nodes), operator modules (see below) | elementwise, multi-node NCCL, MegaMoE |
 | `l40s`, `rtx_pro_6000_server` | vllm 0.24.0, trtllm 1.3.0rc20, sglang 0.5.14 | gemm, attention, moe, PCIe NCCL + custom all-reduce | elementwise, multi-node collectives, DeepEP |
-| `b200_sxm`, `b300_sxm` | vllm 0.24.0, trtllm 1.3.0rc20 (+rc23), sglang 0.5.14 | gemm (incl. nvfp4), attention, moe (incl. mxfp4, nvfp4), NCCL 2.29.2 + custom all-reduce, DeepEP (EP8); the vLLM packages also hold `dsv4_attention`, `mhc` and `dsv4_megamoe` (borrowed from GB200/GB300 SGLang, grade B) | elementwise, multi-node collectives, peak specs partly derived (grade C) |
-| `gb200`, `gb300` | vllm 0.24.0, trtllm 1.3.0rc20 (+rc23), sglang 0.5.14 | as B200 without operator modules; NCCL for 2/4 GPUs (GB300 custom all-reduce up to 16), DeepEP for 4-rank groups (GB300 SGLang 8) | elementwise, larger NVLink-domain collectives, operator modules, per-GPU peaks derived (grade C) |
+| `b200_sxm`, `b300_sxm` | vllm 0.24.0, trtllm 1.3.0rc20 (+rc23), sglang 0.5.14 | gemm (incl. nvfp4), attention, moe (incl. mxfp4, nvfp4), NCCL 2.29.2 + custom all-reduce, DeepEP (EP8), operator modules (see below) | elementwise, multi-node collectives, B300 MegaMoE, peak specs partly derived (grade C) |
+| `gb200`, `gb300` | vllm 0.24.0, trtllm 1.3.0rc20 (+rc23), sglang 0.5.14 | as B200; NCCL for 2/4 GPUs (GB300 custom all-reduce up to 16), DeepEP for 4-rank groups | elementwise, larger NVLink-domain collectives, per-GPU peaks derived (grade C) |
 | `intel_arc_pro_b60` | vllm 0.26.0 (+0.20.0) | gemm (bf16, fp8), attention (bf16, fp8 KV), small moe grid, oneCCL 2021.17.2 collectives (fp16, int8; no all-to-all) | elementwise, bf16 collectives, multi-node |
 | `v100_sxm2` | nccl | nccl-tests all-reduce (fp32, 2/4/8 GPUs) | all compute tables; fp16/bf16 collectives |
 | `groqchip_v1` | analytical | gemm, attention, moe, elementwise from the analytical model (grade D) | all measured data (section 4) |
@@ -54,10 +54,12 @@ Common gaps:
 - **Collective dtype**: TokenSim queries collectives with the model's
   activation dtype. The NCCL curves are fp16 and int8, so bf16 models match
   only the bf16 custom all-reduce rows.
-- **Operator modules**: bundled only for B200 and B300 (vLLM). The pinned
-  AIConfigurator commit also has residual-mixing and sparse-attention module
-  data for other systems (for example H100 and H200); re-importing with
-  `import-aiconfigurator` adds those tables.
+- **Operator modules**: `mhc` is in every H100, H200, B200, B300, GB200 and
+  GB300 package, and in L40S (TensorRT-LLM, vLLM) and RTX PRO 6000 (SGLang,
+  TensorRT-LLM). `dsv4_attention` is in the vLLM packages of those six
+  devices. `dsv4_megamoe` holds SGLang measurements in every B200, GB200 and
+  GB300 package; the B200 and B300 vLLM packages use the GB200 and GB300
+  tables, and B300 has no measurements of its own.
 
 ---
 
@@ -214,7 +216,10 @@ send_recv
   `deepep_ll` and `deepep_normal` ops, see the upstream
   `collector/wideep/README.md`). The importer reads their
   `wideep_deepep_{ll,normal}_perf` files as well as `moe_a2a_perf` tables;
-  `--gpus-per-node` sets the EP size of SGLang wide-EP rows.
+  SGLang wide-EP rows record only the node count; their EP size is the node
+  count times `--gpus-per-node`, which defaults to the upstream system
+  description's `num_gpus_per_node` and is required for a collector run
+  directory.
 
 ### 2.8 Operator-Module Tables
 

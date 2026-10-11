@@ -58,6 +58,14 @@ sources:
     converted ms -> us.
   device: rtx_pro_6000_server
   backend: trtllm:1.3.0rc20
+- source_id: aiconfigurator:rtx_pro_6000_server:mhc:trtllm:1.3.0rc20
+  grade: B
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/rtx_pro_6000_server/mhc/trtllm/1.3.0rc20
+  notes: mHC (hyper-connection residual mixing) pre/post module; each row covers the
+    recorded sites of one layer.
+  device: rtx_pro_6000_server
+  backend: trtllm:1.3.0rc20
 calibration: {}
 tables:
   gemm:
@@ -70,6 +78,8 @@ tables:
     rows: 174553
   collective:
     rows: 573
+  mhc:
+    rows: 136
 aiconfigurator_system: rtx_pro_6000_server
 aiconfigurator_layout: database
 aiconfigurator_commit: f254959eb89e2f206b8f9a77051644d7c1cbdb89

@@ -630,7 +630,7 @@ class EPAllToAllImportTest(unittest.TestCase):
         import pyarrow.parquet as pq
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            root = Path(tmpdir) / "sys"
+            root = Path(tmpdir) / "data" / "sys"
             comm_vllm = root / "comm" / "vllm" / "0.24.0"
             comm_vllm.mkdir(parents=True)
             base = {
@@ -716,8 +716,16 @@ class EPAllToAllImportTest(unittest.TestCase):
                 rows[("dispatch", "deepep_high_throughput", 16)]["dtype"], "bf16"
             )
 
+            # The node width comes from the upstream system description.
+            with self.assertRaises(ConfigurationError):
+                import_aiconfigurator_system(
+                    root, device_id="TestGPU", backend="sglang"
+                )
+            (Path(tmpdir) / "sys.yaml").write_text(
+                "data_dir: data/sys\nnode:\n  num_gpus_per_node: 4\n"
+            )
             sglang_pkg = import_aiconfigurator_system(
-                root, device_id="TestGPU", backend="sglang", gpus_per_node=4
+                root, device_id="TestGPU", backend="sglang"
             )
             rows = {
                 (r["phase"], r["ep_size"], r["nodes"]): r

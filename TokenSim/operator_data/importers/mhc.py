@@ -44,6 +44,4 @@ def normalize(rows, *, source_id, source_hardware, source_version):
                 "source_framework": row["framework"],
             }
         )
-    if not result:
-        raise OperatorDataValidationError("no mHC rows in source")
     return result

@@ -30,10 +30,22 @@ python -m TokenSim.operator_data.cli import-aiconfigurator \
 ```
 
 For B300 use `b300_sxm` and explicitly select the `gb300` MegaMoE source.
+B200's own MegaMoE rows measure another expert geometry (hidden size 3584, 896
+experts, top-16) and B300 has none, so these packages take the GB200 and GB300
+rows, which match the DeepSeek-V4-Pro example.
 Cross-device use is a recorded input, not an automatic hardware substitution.
 Omit `--module-source` to import only modules available in the selected system.
 `--version` limits the requested framework's collection version; communication
 and explicitly selected module sources retain their own collection versions.
+
+Every bundled package except `v100_sxm2/nccl` and `groqchip_v1/analytical` is
+the output of this command at the recorded commit. The system directory has the
+device's name, except `a100_sxm` for `a100_sxm_80g` and `b60` for
+`intel_arc_pro_b60`. The B200 and B300 vLLM MegaMoE sources above are the only
+non-default options. SGLang wide-EP DeepEP rows record node counts rather than
+EP sizes; the importer multiplies them by `num_gpus_per_node` from the upstream
+`systems/<system>.yaml` (4 for GB200 and GB300, 8 elsewhere). Pass
+`--gpus-per-node` for a collector run directory, which has no such file.
 
 The importer handles ordinary GEMM, attention, MoE, collectives and DeepEP
 communication, plus complete sparse-attention, residual-mixing and fused-expert

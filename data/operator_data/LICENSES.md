@@ -8,9 +8,10 @@ collection versions, hardware, framework and timed scope.
 
 The bundled data includes ordinary GEMM, context/generation attention, MoE,
 collectives and expert communication, plus complete sparse-attention, mHC and
-MegaMoE module tables. B200/B300 fused-expert measurements borrow GB200/GB300
-SGLang sources explicitly. Source grades and collection capacities remain
-attached to the rows. Module source IDs are registered by the importer.
+MegaMoE module tables. MegaMoE tables are SGLang measurements in every
+backend's package; the B200 and B300 vLLM packages explicitly use the GB200 and
+GB300 tables. Source grades and collection capacities remain attached to the
+rows. Module source IDs are registered by the importer.
 
 V100 NCCL curves derive from the project's original nccl-tests measurements.
 Groq analytical tables are generated project data. Local collector runs carry

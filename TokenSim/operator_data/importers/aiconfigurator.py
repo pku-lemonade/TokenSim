@@ -209,6 +209,26 @@ def _version_label(resolved: Path, rows: list[dict[str, Any]], fallback: str) ->
     return fallback
 
 
+def _system_gpus_per_node(system_path: Path) -> int | None:
+    """``node.num_gpus_per_node`` from the upstream ``systems/<name>.yaml``.
+
+    The description is the sibling of ``systems/data`` and names the data
+    directory it describes; collector run directories have none.
+    """
+    import yaml
+
+    path = system_path.parent.parent / f"{system_path.name}.yaml"
+    if not path.is_file():
+        return None
+    with path.open() as f:
+        config = yaml.safe_load(f) or {}
+    data_dir = config.get("data_dir")
+    if not data_dir or (path.parent / data_dir).resolve() != system_path.resolve():
+        return None
+    value = (config.get("node") or {}).get("num_gpus_per_node")
+    return int(value) if value else None
+
+
 def import_aiconfigurator_system(
     system_dir: str | Path,
     *,
@@ -220,20 +240,23 @@ def import_aiconfigurator_system(
     include_custom_allreduce: bool = True,
     kernel_filter: Iterable[str] | None = None,
     upstream_commit: str = "unknown",
-    gpus_per_node: int = 8,
+    gpus_per_node: int | None = None,
     module_sources: Mapping[str, str | Path] | None = None,
 ) -> OperatorDataPackage:
     """Build an :class:`OperatorDataPackage` from one AIConfigurator system directory.
 
     ``gpus_per_node`` is only used for SGLang's wide-EP DeepEP tables, which
     record ``node_num`` but not ``ep_size``; the EP group is assumed to span all
-    GPUs of the participating nodes.
+    GPUs of the participating nodes. It defaults to the upstream system
+    description's ``num_gpus_per_node``.
     """
     system_path = Path(system_dir)
     if not system_path.is_dir():
         raise ConfigurationError(
             f"AIConfigurator system directory not found: {system_path}"
         )
+    if gpus_per_node is None:
+        gpus_per_node = _system_gpus_per_node(system_path)
     system_name = system_path.name
     tables: dict[str, list[dict[str, Any]]] = {}
     sources: dict[str, SourceRecord] = {}
@@ -571,6 +594,11 @@ def import_aiconfigurator_system(
         ):
             if not _has_table(resolved, wide_file):
                 continue
+            if gpus_per_node is None:
+                raise ConfigurationError(
+                    f"{resolved / wide_file} records node counts, and no system "
+                    "description declares num_gpus_per_node; pass --gpus-per-node"
+                )
             raw_rows = _read_parquet(resolved / wide_file)
             label = _version_label(resolved, raw_rows, version or "unknown")
             source_id = source_for("comm", resolved, label)
@@ -584,7 +612,7 @@ def import_aiconfigurator_system(
                     "bf16",
                     None,
                     mode,
-                    nodes * int(gpus_per_node),
+                    nodes * gpus_per_node,
                     nodes,
                     int(row["hidden_size"]),
                     int(row["num_topk"]),
