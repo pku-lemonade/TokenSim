@@ -126,3 +126,31 @@ def make_hardware(
     devices = devices or (make_device(),)
     models = models or [make_model(), moe_test_model()]
     return HardwareContext.in_memory(devices, models, make_links(), [make_topology()])
+
+
+def bundled_tables(device_id: str, backend: str, *tables: str):
+    """Selected tables of a bundled operator package, without loading the rest.
+
+    The full packages hold hundreds of thousands of rows; tests that exercise
+    one module table only need that table and the package's source metadata.
+    """
+    from pathlib import Path
+
+    import pyarrow.parquet as pq
+
+    from TokenSim.hardware._yaml import load_yaml_mapping
+    from TokenSim.operator_data.package import OperatorDataPackage, PackageMeta
+    from TokenSim.operator_data.schema import TABLE_SPECS
+
+    root = (
+        Path(__file__).resolve().parents[2] / "data/operator_data" / device_id / backend
+    )
+    meta_path = root / "generation_meta.yaml"
+    meta = PackageMeta.from_mapping(load_yaml_mapping(meta_path), meta_path)
+    return OperatorDataPackage.from_rows(
+        meta,
+        {
+            name: pq.read_table(root / TABLE_SPECS[name].perf_filename).to_pylist()
+            for name in tables
+        },
+    )

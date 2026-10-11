@@ -13,7 +13,7 @@ from TokenSim.latency.projection import attention_projections
 from TokenSim.operator_data.package import OperatorDataPackage
 from TokenSim.llm.forward import ForwardPass, RankShape, sp_valid_rows
 from TokenSim.moe.placement import build_expert_placement
-from tests.support.hardware import make_model as make_model
+from tests.support.hardware import bundled_tables, make_model
 
 
 class GenericOperatorTest(unittest.TestCase):
@@ -77,9 +77,7 @@ class GenericOperatorTest(unittest.TestCase):
             },
         )
         parallel = ParallelConfig(data_parallel_size=8, enable_expert_parallel=True)
-        package = self.hardware.operator_package(
-            self.hardware.device("b200").device_id, "vllm"
-        )
+        package = bundled_tables("b200_sxm", "vllm", "dsv4_megamoe")
         step = ForwardPass({rank: RankShape(16 + rank, 1, True) for rank in range(8)})
         estimates = []
         alternate = OperatorDataPackage.from_rows(
@@ -131,16 +129,12 @@ class GenericOperatorTest(unittest.TestCase):
             aliases=(),
             moe=replace(source.moe, num_shared_experts=1),
         )
-        package = self.hardware.operator_package(
-            self.hardware.device("b200").device_id, "vllm"
-        )
         latencies = []
         for model in (source, shared):
             backend = OperatorTableLatencyBackend(
                 device=self.hardware.device("b200"),
                 model=model,
                 parallel_config=ParallelConfig(tensor_parallel_size=8),
-                package=package,
             )
             latencies.append(backend._moe_layers(64, []))
         self.assertGreater(backend.shared_experts(64, tp=8), 0)
