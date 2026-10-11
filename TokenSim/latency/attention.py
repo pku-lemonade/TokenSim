@@ -380,11 +380,6 @@ class CompressedAttentionEstimator:
         )
         return total
 
-    def estimate_decode(self, batch_size, context_tokens):
-        total = self._decode_us(batch_size, context_tokens)
-        self.seconds += total * 1e-6
-        return total
-
     def estimate_decode_batch(self, buckets, *, projection_rows=None):
         """Price one ragged decode batch, not a full module per length bucket.
 

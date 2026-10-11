@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any, Iterable, Mapping
 
 from TokenSim.errors import ConfigurationError
-from TokenSim.hardware._yaml import positive_number, require
+from TokenSim.hardware._yaml import require
 from TokenSim.hardware.device.dtypes import (
     COMPUTE_PIPE_FALLBACKS,
     compute_dtype,

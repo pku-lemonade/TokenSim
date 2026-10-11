@@ -93,6 +93,11 @@ class BlockAllocator:
 
 
 class BlockManager:
+    """Uniform paged KV blocks with prefix reuse and host swap space."""
+
+    # One block width for every layer; see HybridKVBlockManager for groups.
+    grouped_cache = False
+
     def __init__(
         self,
         block_size: int,
@@ -116,7 +121,6 @@ class BlockManager:
             kv_cache_manager=self.kv_cache_manager,
         )
         self.cpu_allocator = BlockAllocator(Device.CPU, block_size, num_cpu_blocks)
-        self._reserved_gpu_blocks: list[PhysicalTokenBlock] = []
 
     def can_allocate(self, req: Request) -> bool:
         plan = self.kv_cache_manager.plan_reuse(req)
@@ -195,21 +199,6 @@ class BlockManager:
 
     def get_request_block_counts(self, requests: list[Request]) -> dict[int, int]:
         return {req.id: self._num_blocks(req) for req in requests}
-
-    def release_reserved_blocks(self, num_blocks: int | None = None):
-        if num_blocks is None:
-            num_blocks = len(self._reserved_gpu_blocks)
-        if num_blocks < 0:
-            raise SimulationStateError(
-                f"cannot release a negative block count: {num_blocks}"
-            )
-        if num_blocks > len(self._reserved_gpu_blocks):
-            raise SimulationStateError(
-                f"cannot release {num_blocks} reserved GPU blocks; "
-                + f"only {len(self._reserved_gpu_blocks)} are reserved"
-            )
-        for _ in range(num_blocks):
-            self.gpu_allocator.free(self._reserved_gpu_blocks.pop(0))
 
     def _free_block(self, block: PhysicalTokenBlock) -> None:
         if block.device == Device.GPU:

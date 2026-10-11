@@ -334,10 +334,6 @@ class Request:
             self.effective_prefill_tokens = self.prefill_len
 
     @property
-    def generation_len(self) -> int:
-        return self.decode_len
-
-    @property
     def prefill_compute_len(self) -> int:
         if self.effective_prefill_tokens is None:
             return self.prefill_len
@@ -346,14 +342,6 @@ class Request:
     @property
     def is_prefill(self) -> bool:
         return self.generation_idx == 0
-
-    @property
-    def is_prompt(self) -> bool:
-        return self.is_prefill
-
-    @property
-    def is_decode(self) -> bool:
-        return not self.is_prefill
 
     @property
     def context_len(self) -> int:

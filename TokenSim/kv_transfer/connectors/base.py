@@ -10,7 +10,9 @@ from .metadata import ConnectorStats, KVConnectorMetadata, KVConnectorWorkerMeta
 
 class BaseKVConnector:
     name = "BaseKVConnector"
-    native_async = False
+    # Transfers run on queued links and own page references independently
+    # of requests (probe/begin_load, loads, write_jobs, store).
+    async_offload = False
     supports_grouped_cache = False
 
     def __init__(

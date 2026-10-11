@@ -8,7 +8,7 @@ import unittest
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from TokenSim.config.config import KVTransferConfig, ParallelConfig
+from TokenSim.config.config import KVTransferConfig
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware import HardwareContext
 from TokenSim.kv_transfer.connectors.factory import KVConnectorFactory
@@ -135,8 +135,8 @@ class ComponentContractTest(unittest.TestCase):
         for connector in (uniform, grouped):
             self.assertIsInstance(connector, MooncakeStoreConnector)
             self.assertEqual(connector.name, "MooncakeStoreConnector")
-        self.assertFalse(uniform.native_async)
-        self.assertTrue(grouped.native_async)
+        self.assertFalse(uniform.async_offload)
+        self.assertTrue(grouped.async_offload)
         self.assertNotIn(
             "HybridMooncakeStoreConnector", KVConnectorFactory.registered_connectors()
         )

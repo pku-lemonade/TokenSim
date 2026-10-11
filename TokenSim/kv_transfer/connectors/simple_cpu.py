@@ -15,7 +15,7 @@ from .base import BaseKVConnector
 
 class AsyncOffloadConnector(BaseKVConnector):
     supports_grouped_cache = True
-    native_async = True
+    async_offload = True
 
     def __init__(self, config, cache_config=None):
         super().__init__(config, cache_config)

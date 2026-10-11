@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any, Iterable
 
 from TokenSim.config.model_config import ModelCatalog, ModelSpec
 from TokenSim.errors import ConfigurationError

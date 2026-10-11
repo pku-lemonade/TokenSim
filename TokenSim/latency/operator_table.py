@@ -15,7 +15,7 @@ import logging
 import math
 from collections import Counter
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Mapping
+from typing import Any, Mapping
 
 from TokenSim.comm.collectives import CollectiveModel
 from TokenSim.config.cache_config import local_kv_heads, stage_layer_count
@@ -24,13 +24,12 @@ from TokenSim.config.moe_execution import MoEExecutionConfig
 from TokenSim.config.parallel_config import ParallelConfig, ParallelRankInfo
 from TokenSim.utils import BoundedCache
 from TokenSim.errors import ConfigurationError
-from TokenSim.hardware.device import DeviceSpec, dtype_bytes
+from TokenSim.hardware.device import DeviceSpec
 from TokenSim.latency.base import (
     LatencyBackend,
     is_decode_step,
     is_decode_attention_step,
     step_kv_len,
-    step_tokens,
     query_tokens,
 )
 from TokenSim.llm.llm_request import Request
@@ -815,10 +814,6 @@ class OperatorTableLatencyBackend(LatencyBackend):
 
     def _attention_prefill(self, batch: int, q_len: int, kv_len: int) -> float:
         model = self.model
-        if self.native_attention:
-            return self.native_attention.estimate_prefill(
-                batch, q_len, max(0, kv_len - q_len)
-            )
         key = {
             "attn_dtype": model.activation_dtype,
             "kv_cache_dtype": model.kv_cache_dtype,
@@ -866,10 +861,6 @@ class OperatorTableLatencyBackend(LatencyBackend):
         self, batch: int, context_len: int, query_width: int = 1
     ) -> float:
         model = self.model
-        if self.native_attention:
-            return self.native_attention.estimate_decode(
-                batch * max(1, int(query_width)), context_len
-            )
         key = {
             "attn_dtype": model.activation_dtype,
             "kv_cache_dtype": model.kv_cache_dtype,

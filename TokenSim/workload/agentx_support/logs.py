@@ -48,7 +48,7 @@ class ReplayLogs:
                     used_slots=manager.get_num_allocated_blocks(),
                     dma_pinned_slots=len(getattr(manager, "transfer_references", {})),
                 )
-            if getattr(worker.connector, "native_async", False):
+            if worker.connector.async_offload:
                 record["external_cache"] = worker.connector.describe()
             workers.append(record)
         self.write(

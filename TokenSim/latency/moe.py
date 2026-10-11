@@ -275,10 +275,6 @@ class MegaMoEEstimator:
             transfer,
         )
 
-    def rows_for_group(self, local_tokens):
-        group = self.group_rows(local_tokens)
-        return group.inputs, group.inputs[group.own_rank], group.graph, group.step
-
     def shared_fused_delta(self, rows):
         # Dedicated native shared MMA uses FP8 weights and packed 1x32
         # scales. Its intermediate is FP8; it aliases the input dispatch

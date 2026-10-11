@@ -4,7 +4,7 @@ from TokenSim.config.model_config import ModelSpec
 from TokenSim.config.parallel_config import ParallelConfig, ParallelRankInfo
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.device import DeviceSpec
-from TokenSim.latency.base import LatencyBackend, backend_prefill_len
+from TokenSim.latency.base import LatencyBackend
 from TokenSim.latency.operator_table import (
     FALLBACK_POLICIES,
     OperatorStats,
@@ -87,7 +87,6 @@ __all__ = [
     "LatencyBackend",
     "OperatorStats",
     "OperatorTableLatencyBackend",
-    "backend_prefill_len",
     "build_latency_backend",
     "effective_fallback",
 ]

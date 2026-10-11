@@ -23,7 +23,6 @@ import datetime as _dt
 from pathlib import Path
 
 from common import (
-    REPO_ROOT,
     environment_record,
     manifest_keys,
     time_kernel,

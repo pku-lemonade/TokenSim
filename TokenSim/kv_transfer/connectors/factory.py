@@ -48,7 +48,7 @@ class KVConnectorFactory:
                         effective[name] = getattr(config, name)
                 child = KVTransferConfig.from_mapping(effective)
                 children.append(cls.create_connector(child, cache_config))
-            if any(child.native_async for child in children):
+            if any(child.async_offload for child in children):
                 raise ConfigurationError(
                     "queued storage must be configured as a direct connector; "
                     "MultiConnector does not coordinate asynchronous page ownership"

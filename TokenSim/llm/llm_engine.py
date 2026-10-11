@@ -21,7 +21,6 @@ from TokenSim.config.config import (
     ParallelConfig,
     ParallelRankInfo,
     WorkerConfig,
-    _GB,
 )
 from TokenSim.config.workload_config import WorkloadConfig
 from TokenSim.errors import ConfigurationError, SimulationStateError
@@ -356,9 +355,7 @@ class LLMWorker(Worker):
             request.advance(
                 self.env, latency, len(requests), self.engine.timing_recorder
             )
-            manager = getattr(getattr(self, "scheduler", None), "block_manager", None)
-            if getattr(manager, "native_hybrid", False):
-                manager.cache_computed(request)
+            self.scheduler.on_tokens_computed(request)
             if was_prefill and not request.is_prefill:
                 self.engine.record_request_completion("prefill", request)
             if request.is_done:
@@ -407,9 +404,7 @@ class LLMWorker(Worker):
                                 f"worker {self.id} received STEP while {self.status}"
                             )
                         running, load_latency = self.prepare_step()
-                        if not running and getattr(
-                            self.connector, "native_async", False
-                        ):
+                        if not running and self.connector.async_offload:
                             # Transfers advance independently; a worker with
                             # only loading/capacity-blocked requests must yield.
                             self.status = WorkerStatus.WAITING
@@ -549,9 +544,6 @@ class LLMEngine(Worker):
 
         self.timing_recorder = TimingRecorder()
         super().__init__(env, -1)
-
-        prefill_worker_pool_type = config.prefill_worker_pool_type.lower()
-        decode_worker_pool_type = config.decode_worker_pool_type.lower()
 
         pool_type_map = {
             "round_robin": RoundRobinWorkerPool,

@@ -1,6 +1,6 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, auto
 import logging
 import math
@@ -56,6 +56,19 @@ def step_phase(requests: list[Request]) -> SchedulePhase:
     return kinds.pop() if len(kinds) == 1 else SchedulePhase.MIXED
 
 
+@dataclass
+class _Step:
+    """Mutable state of one paged-attention scheduling step."""
+
+    budget: int | None
+    scheduled: list[Request] = field(default_factory=list)
+    preempted: list[Request] = field(default_factory=list)
+    # A running request scheduled a pending prefill chunk this step.
+    prefill_scheduled: bool = False
+    # Running requests scheduled before admissions began.
+    scheduled_running: tuple[Request, ...] = ()
+
+
 class LLMScheduler(ABC):
     def __init__(self, connector=None):
         self.running: list[Request] = []
@@ -97,6 +110,9 @@ class LLMScheduler(ABC):
 
     def update_connector_output(self, worker_output: KVConnectorWorkerMetadata) -> None:
         self.connector.update_connector_output(worker_output)
+
+    def on_tokens_computed(self, req: Request) -> None:
+        """Called after a step advanced ``req``; grouped caches publish pages here."""
 
     def free(self, req: Request):
         req.status = (
@@ -184,21 +200,17 @@ class LLMPagedAttnScheduler(LLMScheduler):
             raise ConfigurationError("mtp_acceptance_length must be finite and >= 1")
         self.mtp_acceptance_length = float(mtp_acceptance_length)
         self.mtp_seed = int(mtp_seed)
+        # Grouped caches carry the speculative lookahead and the model's
+        # context limit; uniform caches have neither.
+        layout = self.cache_config.hybrid_layout
+        self.speculative_tokens = layout.speculative_tokens if layout else 0
+        self.max_model_len = layout.max_model_len if layout else None
         self.mtp_enabled = (
-            bool(
-                getattr(
-                    getattr(self.cache_config, "hybrid_layout", None),
-                    "speculative_tokens",
-                    0,
-                )
-                and self.mtp_acceptance_length > 1
-            )
+            bool(self.speculative_tokens and self.mtp_acceptance_length > 1)
             if mtp_enabled is None
             else bool(mtp_enabled)
         )
-        if self.mtp_enabled and not getattr(
-            getattr(self.cache_config, "hybrid_layout", None), "speculative_tokens", 0
-        ):
+        if self.mtp_enabled and not self.speculative_tokens:
             raise ConfigurationError("enabled MTP scheduler requires positive cache K")
         self.prefill_capacity_bound = False
         self.defer_prefills = False
@@ -225,11 +237,11 @@ class LLMPagedAttnScheduler(LLMScheduler):
         # Requests admitted by the most recent schedule() call.
         self.last_admitted: list[Request] = []
 
-        if getattr(self.cache_config, "hybrid_layout", None) is not None:
+        if layout is not None:
             from TokenSim.block.hybrid_manager import HybridKVBlockManager
 
             self.block_manager = HybridKVBlockManager(
-                self.cache_config.hybrid_layout,
+                layout,
                 self.cache_config.num_gpu_blocks,
                 self.cache_config.model,
             )
@@ -249,13 +261,8 @@ class LLMPagedAttnScheduler(LLMScheduler):
         if set_releaser is not None:
             set_releaser(self._release_delayed_blocks)
 
-    def _model_limit(self):
-        return getattr(
-            getattr(self.cache_config, "hybrid_layout", None), "max_model_len", None
-        )
-
     def add_requests(self, requests):
-        limit = self._model_limit()
+        limit = self.max_model_len
         if limit is not None:
             for req in requests:
                 if req.prefill_len >= limit:
@@ -274,11 +281,25 @@ class LLMPagedAttnScheduler(LLMScheduler):
         ``self.running`` untouched; admissions of this step are recorded in
         ``self.last_admitted``.
         """
-        budget = self.max_num_batched_tokens
-        scheduled: list[Request] = []
-        preempted: list[Request] = []
+        step = _Step(self.max_num_batched_tokens)
         self.last_admitted = []
         self.stats["steps"] += 1
+        self._begin_step(throttle_prefills, step.budget)
+        self._schedule_running(step)
+        # vLLM V1 skips admissions in a step that preempted running requests:
+        # admitting new work right after evicting would thrash the KV cache.
+        step.scheduled_running = tuple(step.scheduled)
+        if not step.preempted:
+            self._schedule_waiting(step)
+        if not step.preempted and not self.defer_prefills:
+            self.prefill_capacity_bound = bool(self.waiting or self.loaded_waiting)
+        if self.prefill_capacity_bound:
+            self.stats["capacity_bound_steps"] += 1
+        self._record_scheduled(step.scheduled)
+        return step.scheduled, step.preempted
+
+    def _begin_step(self, throttle_prefills, budget):
+        """Prefill throttling and the effective long-prefill chunk limit."""
         self.defer_prefills = bool(
             throttle_prefills
             and not self.prefill_capacity_bound
@@ -297,243 +318,223 @@ class LLMPagedAttnScheduler(LLMScheduler):
                 self.effective_long_prefill_threshold, budget // eligible
             )
 
-        # 1. Running requests, oldest first: decode tokens and context chunks.
+    def _schedule_running(self, step):
+        """Running requests, oldest first: decode tokens and context chunks."""
         queue = sorted(self.running, key=lambda req: req.arrival_time)
         self.running = []
-        prefill_scheduled = False
         while queue:
             req = queue.pop(0)
             if self.defer_prefills and req.prefill_chunk_pending:
                 self.stats["deferred_running_prefills"] += 1
                 self.running.append(req)
                 continue
-            tokens = self._step_tokens(req, budget)
+            tokens = self._step_tokens(req, step.budget)
             if tokens == 0:
                 # Out of budget: the request keeps its place for the next step.
                 self.running.append(req)
                 continue
             query_tokens = self._query_tokens(req, tokens)
             if not req.is_context_build and not self._reserve_decode_slot(
-                req, queue, preempted, tokens, query_tokens
+                req, queue, step.preempted, tokens, query_tokens
             ):
                 continue
-            if req.is_context_build and getattr(
-                self.block_manager, "native_hybrid", False
-            ):
-                if not self._reserve_context_slots(req, tokens, queue, preempted):
+            if req.is_context_build and self.block_manager.grouped_cache:
+                if not self._reserve_context_slots(req, tokens, queue, step.preempted):
                     continue
             req.scheduled_tokens = tokens
             req.scheduled_query_tokens = query_tokens
-            prefill_scheduled |= req.prefill_chunk_pending
+            step.prefill_scheduled |= req.prefill_chunk_pending
             req.prefill_chunk_pending = (
                 req.num_computed_tokens + query_tokens < req.context_len
             )
-            budget = None if budget is None else budget - self._budget_cost(req, tokens)
-            scheduled.append(req)
+            if step.budget is not None:
+                step.budget -= self._budget_cost(req, tokens)
+            step.scheduled.append(req)
             self.running.append(req)
 
-        # 2. Admissions while budget and KV blocks last (head-of-line order).
-        # vLLM V1: skip admissions when preemptions happened this step —
-        # admitting new work right after evicting running requests would
-        # thrash the KV cache.
-        scheduled_running = tuple(scheduled)
-        if not preempted:
-            while (self.loaded_waiting or self.waiting) and (
-                budget is None or budget > 0
-            ):
-                resuming_loaded = bool(self.loaded_waiting)
-                if not resuming_loaded and not self._is_occupy_below_usage():
-                    break
-                if (
-                    self.max_num_seqs is not None
-                    and len(self.running) >= self.max_num_seqs
-                ):
-                    self.stats["max_num_seqs_gate"] += 1
-                    break
-                request_queue = self.loaded_waiting if resuming_loaded else self.waiting
-                req = request_queue[0]
-                if resuming_loaded:
-                    # A KV-holding waiting request retains its imported pages
-                    # when query allocation cannot fit. Never free/reload that
-                    # prefix via the running-victim path merely to admit it.
-                    if self.defer_prefills and req.remaining_context_tokens > 1:
-                        self.stats["deferred_waiting_prefills"] += 1
-                        break
-                    tokens = self._step_tokens(req, budget)
-                    manager = self.block_manager
-                    query_tokens = self._query_tokens(req, tokens)
-                    query_tokens = self._waiting_query_tokens(
-                        req,
-                        tokens,
-                        query_tokens,
-                        budget,
-                        scheduled_running,
-                        prefill_scheduled=prefill_scheduled,
-                    )
-                    if query_tokens == 0:
-                        break
-                    lookahead = self._decode_lookahead(req)
-                    watermark = manager.watermark_blocks if self.running else 0
-                    if manager.remaining_admission_slots(
-                        req
-                    ) + watermark > manager.get_num_free_blocks() or not manager.can_ensure_slots(
-                        req, query_tokens, lookahead=lookahead
-                    ):
-                        self.stats["loaded_kv_capacity_gate"] += 1
-                        break
-                    manager.ensure_slots(req, query_tokens, lookahead=lookahead)
-                    request_queue.pop(0)
-                    self.loading.pop(req.id, None)
-                    req.status = RequestStatus.RUNNING
-                    req.scheduled_tokens = tokens
-                    req.scheduled_query_tokens = query_tokens
-                    req.scheduled_placeholder_tokens = (
-                        max(0, query_tokens - tokens) if req.is_context_build else 0
-                    )
-                    req.prefill_chunk_pending = (
-                        req.num_computed_tokens + query_tokens < req.context_len
-                    )
-                    budget = None if budget is None else budget - query_tokens
-                    self.running.append(req)
-                    scheduled.append(req)
-                    self.stats["loaded_kv_resumptions"] += 1
-                    continue
-                native_async = getattr(self.connector, "native_async", False)
-                external = None
-                if native_async:
-                    local_plan = self.block_manager.plan_reuse(req)
-                    external = self.connector.probe(req, local_plan)
-                if self.defer_prefills:
-                    plan = self.block_manager.kv_cache_manager.plan_reuse(req)
-                    # A full hit that needs only its last token may still run
-                    # on a deferred step (scheduler.py waiting gate).
-                    hit_tokens = external[0] if external else plan.hit_tokens
-                    if req.context_len - hit_tokens > 1:
-                        self.stats["deferred_waiting_prefills"] += 1
-                        break
-                # Check padded compute budget before acquiring GPU prefix pages.
-                if getattr(self.block_manager, "native_hybrid", False) and not (
-                    external and external[1]
-                ):
-                    prefix = (
-                        local_plan.hit_tokens
-                        if native_async
-                        else self.block_manager.plan_reuse(req).hit_tokens
-                    )
-                    remaining = req.context_len - prefix
-                    if (
-                        remaining == 1
-                        and self._waiting_query_tokens(
-                            req,
-                            1,
-                            1,
-                            budget,
-                            scheduled_running,
-                            computed=prefix,
-                            prefill_scheduled=prefill_scheduled,
-                        )
-                        == 0
-                    ):
-                        break
-                can_allocate = (
-                    self._can_admit_external(req, local_plan, external)
-                    if external and external[1]
-                    else (
-                        self.block_manager.can_allocate(
-                            req, has_scheduled_requests=bool(self.running)
-                        )
-                        if getattr(self.block_manager, "native_hybrid", False)
-                        else self.block_manager.can_allocate(req)
-                    )
-                )
-                if not can_allocate:
-                    self.stats["full_input_gate"] += 1
-                    break
+    def _schedule_waiting(self, step):
+        """Admissions while budget and KV blocks last (head-of-line order).
 
-                req = self.waiting.pop(0)
-                state = req.admission_state()
-                self._admit(req, external=external)
-                if req.status == RequestStatus.WAITING_FOR_KV:
-                    self.stats.setdefault("async_load_admissions", 0)
-                    self.stats["async_load_admissions"] += 1
-                    continue
-                tokens = self._step_tokens(req, budget)
-                query_tokens = self._query_tokens(req, tokens)
-                query_tokens = self._waiting_query_tokens(
-                    req,
-                    tokens,
-                    query_tokens,
-                    budget,
-                    scheduled_running,
-                    prefill_scheduled=prefill_scheduled,
-                )
-                if query_tokens == 0:
-                    raise ConfigurationError(
-                        "waiting query budget changed after native admission"
-                    )
-                if getattr(self.block_manager, "native_hybrid", False):
-                    if not self.block_manager.can_ensure_slots(
-                        req, query_tokens, lookahead=self._decode_lookahead(req)
-                    ):
-                        # vLLM stops admitting when allocate_slots fails. The
-                        # admission has not run a kernel: release its tentative
-                        # references, undo its accounting and keep its place.
-                        self.block_manager.release_request_blocks(req)
-                        self.connector.discard_load(req)
-                        self.inflight_prefills.pop(req.id, None)
-                        req.restore_admission_state(state)
-                        self.waiting.insert(0, req)
-                        self.stats["full_input_gate"] += 1
-                        break
-                    self.block_manager.ensure_slots(
-                        req, query_tokens, lookahead=self._decode_lookahead(req)
-                    )
-                if (
-                    getattr(self.block_manager, "native_hybrid", False)
-                    and req.num_computed_tokens + tokens < req.context_len
-                ):
-                    self.inflight_prefills[req.id] = req
-                req.scheduled_tokens = tokens
-                req.scheduled_query_tokens = query_tokens
-                req.scheduled_placeholder_tokens = (
-                    max(0, query_tokens - tokens) if req.is_context_build else 0
-                )
-                req.prefill_chunk_pending = (
-                    req.num_computed_tokens + query_tokens < req.context_len
-                )
-                budget = None if budget is None else budget - query_tokens
-                scheduled.append(req)
-                self.running.append(req)
-                self.last_admitted.append(req)
-
-        if not preempted and not self.defer_prefills:
-            self.prefill_capacity_bound = bool(self.waiting or self.loaded_waiting)
-        if self.prefill_capacity_bound:
-            self.stats["capacity_bound_steps"] += 1
-        for req in scheduled:
-            key = (
-                "scheduled_context_tokens"
-                if req.is_context_build
-                else "scheduled_decode_tokens"
+        Requests whose external KV finished loading resume before new ones.
+        """
+        while (self.loaded_waiting or self.waiting) and (
+            step.budget is None or step.budget > 0
+        ):
+            resuming = bool(self.loaded_waiting)
+            if not resuming and not self._is_occupy_below_usage():
+                break
+            if self.max_num_seqs is not None and len(self.running) >= self.max_num_seqs:
+                self.stats["max_num_seqs_gate"] += 1
+                break
+            admitted = (
+                self._resume_loaded(self.loaded_waiting[0], step)
+                if resuming
+                else self._admit_waiting(self.waiting[0], step)
             )
-            self.stats[key] += req.scheduled_tokens
-            if not req.is_context_build:
-                self.stats["scheduled_decode_query_tokens"] += req.query_tokens
+            if not admitted:
+                break
+
+    def _resume_loaded(self, req, step):
+        """Schedule a request whose external KV is resident; False stops admission.
+
+        A KV-holding waiting request retains its imported pages when query
+        allocation cannot fit. Never free and reload that prefix through the
+        running-victim path merely to admit it.
+        """
+        if self.defer_prefills and req.remaining_context_tokens > 1:
+            self.stats["deferred_waiting_prefills"] += 1
+            return False
+        tokens = self._step_tokens(req, step.budget)
+        query_tokens = self._waiting_query_tokens(
+            req,
+            tokens,
+            self._query_tokens(req, tokens),
+            step.budget,
+            step.scheduled_running,
+            prefill_scheduled=step.prefill_scheduled,
+        )
+        if query_tokens == 0:
+            return False
+        manager = self.block_manager
+        lookahead = self._decode_lookahead(req)
+        watermark = manager.watermark_blocks if self.running else 0
+        if manager.remaining_admission_slots(
+            req
+        ) + watermark > manager.get_num_free_blocks() or not manager.can_ensure_slots(
+            req, query_tokens, lookahead=lookahead
+        ):
+            self.stats["loaded_kv_capacity_gate"] += 1
+            return False
+        manager.ensure_slots(req, query_tokens, lookahead=lookahead)
+        self.loaded_waiting.pop(0)
+        self.loading.pop(req.id, None)
+        req.status = RequestStatus.RUNNING
+        self._assign_waiting(req, tokens, query_tokens, step)
+        self.stats["loaded_kv_resumptions"] += 1
+        return True
+
+    def _admit_waiting(self, req, step):
+        """Admit the head of the waiting queue; False stops admission this step."""
+        grouped = self.block_manager.grouped_cache
+        external = local_plan = None
+        if self.connector.async_offload:
+            local_plan = self.block_manager.plan_reuse(req)
+            external = self.connector.probe(req, local_plan)
+        if self.defer_prefills:
+            plan = self.block_manager.kv_cache_manager.plan_reuse(req)
+            # A full hit that needs only its last token may still run
+            # on a deferred step (scheduler.py waiting gate).
+            hit_tokens = external[0] if external else plan.hit_tokens
+            if req.context_len - hit_tokens > 1:
+                self.stats["deferred_waiting_prefills"] += 1
+                return False
+        loads_external = bool(external and external[1])
+        # Check padded compute budget before acquiring GPU prefix pages.
+        if grouped and not loads_external:
+            prefix = (
+                local_plan.hit_tokens
+                if local_plan is not None
+                else self.block_manager.plan_reuse(req).hit_tokens
+            )
+            if (
+                req.context_len - prefix == 1
+                and self._waiting_query_tokens(
+                    req,
+                    1,
+                    1,
+                    step.budget,
+                    step.scheduled_running,
+                    computed=prefix,
+                    prefill_scheduled=step.prefill_scheduled,
+                )
+                == 0
+            ):
+                return False
+        if loads_external:
+            can_allocate = self._can_admit_external(req, local_plan, external)
+        elif grouped:
+            can_allocate = self.block_manager.can_allocate(
+                req, has_scheduled_requests=bool(self.running)
+            )
+        else:
+            can_allocate = self.block_manager.can_allocate(req)
+        if not can_allocate:
+            self.stats["full_input_gate"] += 1
+            return False
+
+        self.waiting.pop(0)
+        state = req.admission_state()
+        self._admit(req, external=external)
+        if req.status == RequestStatus.WAITING_FOR_KV:
+            self.stats.setdefault("async_load_admissions", 0)
+            self.stats["async_load_admissions"] += 1
+            return True
+        tokens = self._step_tokens(req, step.budget)
+        query_tokens = self._waiting_query_tokens(
+            req,
+            tokens,
+            self._query_tokens(req, tokens),
+            step.budget,
+            step.scheduled_running,
+            prefill_scheduled=step.prefill_scheduled,
+        )
+        if query_tokens == 0:
+            raise ConfigurationError("waiting query budget changed after admission")
+        if grouped:
+            lookahead = self._decode_lookahead(req)
+            if not self.block_manager.can_ensure_slots(
+                req, query_tokens, lookahead=lookahead
+            ):
+                # vLLM stops admitting when allocate_slots fails. The
+                # admission has not run a kernel: release its tentative
+                # references, undo its accounting and keep its place.
+                self.block_manager.release_request_blocks(req)
+                self.connector.discard_load(req)
+                self.inflight_prefills.pop(req.id, None)
+                req.restore_admission_state(state)
+                self.waiting.insert(0, req)
+                self.stats["full_input_gate"] += 1
+                return False
+            self.block_manager.ensure_slots(req, query_tokens, lookahead=lookahead)
+            if req.num_computed_tokens + tokens < req.context_len:
+                self.inflight_prefills[req.id] = req
+        self._assign_waiting(req, tokens, query_tokens, step)
+        self.last_admitted.append(req)
+        return True
+
+    def _assign_waiting(self, req, tokens, query_tokens, step):
+        req.scheduled_tokens = tokens
+        req.scheduled_query_tokens = query_tokens
+        req.scheduled_placeholder_tokens = (
+            max(0, query_tokens - tokens) if req.is_context_build else 0
+        )
+        req.prefill_chunk_pending = (
+            req.num_computed_tokens + query_tokens < req.context_len
+        )
+        if step.budget is not None:
+            step.budget -= query_tokens
+        step.scheduled.append(req)
+        self.running.append(req)
+
+    def _record_scheduled(self, scheduled):
+        stats = self.stats
+        for req in scheduled:
+            if req.is_context_build:
+                stats["scheduled_context_tokens"] += req.scheduled_tokens
+                stats["scheduled_context_query_tokens"] += req.query_tokens
             else:
-                self.stats["scheduled_context_query_tokens"] += req.query_tokens
-            self.stats[
-                "scheduled_placeholder_queries"
-            ] += req.scheduled_placeholder_tokens
-            self.stats["padded_context_admissions"] += int(
+                stats["scheduled_decode_tokens"] += req.scheduled_tokens
+                stats["scheduled_decode_query_tokens"] += req.query_tokens
+            stats["scheduled_placeholder_queries"] += req.scheduled_placeholder_tokens
+            stats["padded_context_admissions"] += int(
                 req.scheduled_placeholder_tokens > 0
             )
-            self.stats["scheduled_logits_rows"] += req.logits_tokens
-        return scheduled, preempted
+            stats["scheduled_logits_rows"] += req.logits_tokens
 
     def _admit(self, req: Request, *, external=None) -> None:
         """Allocate KV blocks for the whole context and record what is already cached."""
         local_plan = self.block_manager.kv_cache_manager.plan_reuse(req)
-        if getattr(self.connector, "native_async", False):
+        if self.connector.async_offload:
             self.block_manager.allocate(req)
             req.gpu_cached_context_tokens = local_plan.hit_tokens
             req.gpu_cached_prefill_tokens = min(req.prefill_len, local_plan.hit_tokens)
@@ -579,15 +580,14 @@ class LLMPagedAttnScheduler(LLMScheduler):
             to_compute = 1
         req.start_context_build(req.context_len - to_compute)
         req.status = RequestStatus.RUNNING
-        if getattr(self.block_manager, "native_hybrid", False):
+        if self.block_manager.grouped_cache:
             req.record_context_admission(local_plan.hit_tokens, num_external_tokens)
 
     def _spec_decode_step_blocks(self):
-        layout = getattr(self.block_manager, "layout", None)
-        if layout is None or not layout.speculative_tokens:
+        if not self.speculative_tokens:
             return 0
         # Current source uses num_spec_tokens == num_lookahead_tokens for MTP.
-        width = 1 + 2 * layout.speculative_tokens
+        width = 1 + 2 * self.speculative_tokens
         return (
             width + self.block_manager.block_size - 1
         ) // self.block_manager.block_size
@@ -625,7 +625,7 @@ class LLMPagedAttnScheduler(LLMScheduler):
             # forward may verify up to 1+K positions, accounted separately in
             # the token budget and latency query width.
             remaining = max(1, req.decode_len - req.generation_idx)
-            limit = self._model_limit()
+            limit = self.max_model_len
             if limit is not None:
                 remaining = min(remaining, max(0, limit - req.context_len))
             if remaining == 0:
@@ -645,7 +645,7 @@ class LLMPagedAttnScheduler(LLMScheduler):
             return min(1, remaining)
         low = max(1, int(math.floor(self.mtp_acceptance_length)))
         high = max(low, int(math.ceil(self.mtp_acceptance_length)))
-        high = min(high, 1 + self.cache_config.hybrid_layout.speculative_tokens)
+        high = min(high, 1 + self.speculative_tokens)
         if high == low:
             return min(low, remaining)
         state = (
@@ -669,13 +669,10 @@ class LLMPagedAttnScheduler(LLMScheduler):
         # even when only one output token remains. Output progress is clipped
         # separately in _decode_output_tokens; partial queries would also
         # defeat the serving runner's uniform decode graph.
-        return min(
-            1 + self.cache_config.hybrid_layout.speculative_tokens,
-            self._query_room(req),
-        )
+        return min(1 + self.speculative_tokens, self._query_room(req))
 
     def _query_room(self, req):
-        limit = self._model_limit()
+        limit = self.max_model_len
         return (
             max(0, limit - req.num_computed_tokens - 1)
             if limit is not None
@@ -696,14 +693,14 @@ class LLMPagedAttnScheduler(LLMScheduler):
         if not self.mtp_enabled or not req.is_context_build or real_tokens != 1:
             return queries
         prefix = req.num_computed_tokens if computed is None else computed
-        width = 1 + self.cache_config.hybrid_layout.speculative_tokens
+        width = 1 + self.speculative_tokens
         if (
             req.context_len - prefix != 1
             or prefill_scheduled
             or not (scheduled or prefix > 0)
         ):
             return queries
-        limit = self._model_limit()
+        limit = self.max_model_len
         if limit is not None and prefix + width + 1 > limit:
             return queries
         return width if budget is None or budget >= width else 0
@@ -716,15 +713,7 @@ class LLMPagedAttnScheduler(LLMScheduler):
     def _decode_lookahead(self, req: Request) -> int:
         # The initial draft pass also runs over prefill chunks. Only async
         # KV loading skips a forward (and therefore its lookahead allocation).
-        if not self.mtp_enabled:
-            return 0
-        return int(
-            getattr(
-                getattr(self.cache_config, "hybrid_layout", None),
-                "speculative_tokens",
-                0,
-            )
-        )
+        return self.speculative_tokens if self.mtp_enabled else 0
 
     def _reserve_context_slots(self, req, tokens, queue, preempted):
         # The same FCFS youngest-victim rule applies to prefill/recompute
@@ -754,7 +743,7 @@ class LLMPagedAttnScheduler(LLMScheduler):
         is free; preempts ``req`` itself when nobody else is left. Returns
         whether ``req`` may run.
         """
-        if getattr(self.block_manager, "native_hybrid", False):
+        if self.block_manager.grouped_cache:
             lookahead = self._decode_lookahead(req)
             while not self.block_manager.can_ensure_slots(
                 req, query_tokens, lookahead=lookahead
@@ -800,6 +789,10 @@ class LLMPagedAttnScheduler(LLMScheduler):
             ]
         return output
 
+    def on_tokens_computed(self, req: Request) -> None:
+        if self.block_manager.grouped_cache:
+            self.block_manager.cache_computed(req)
+
     def update(self, requests: list[Request]):
         for req in requests:
             if not req.is_context_build:
@@ -836,14 +829,6 @@ class LLMPagedAttnScheduler(LLMScheduler):
         req.status = RequestStatus.WAITING
         self.waiting.insert(0, req)
 
-    def finish_recompute(self, requests: list[Request], latency: float) -> None:
-        for req in requests:
-            self.block_manager.commit_input_cache(req)
-            req.finish_recompute(latency)
-
-    def release_reserved_blocks(self, num_blocks: int | None = None):
-        self.block_manager.release_reserved_blocks(num_blocks)
-
     def free(self, req: Request):
         self.inflight_prefills.pop(req.id, None)
         block_ids = [
@@ -874,7 +859,7 @@ class LLMPagedAttnScheduler(LLMScheduler):
         if not delayed:
             # Cancellation must not publish uncomputed prompt/output cache
             # keys. Previously committed complete blocks keep their metadata.
-            if blocks or getattr(self.block_manager, "native_hybrid", False):
+            if blocks or self.block_manager.grouped_cache:
                 self.block_manager.release_request_blocks(req)
             self.connector.on_request_released(req)
         return not self.block_manager.block_table.get_blocks(req.id)
@@ -887,17 +872,14 @@ class LLMPagedAttnScheduler(LLMScheduler):
     def cpu_workload(self):
         """Return allocated CPU KV-cache capacity in GiB."""
         _GB = 1 << 30
-        if getattr(self.connector, "native_async", False):
+        if self.connector.async_offload:
             return self.connector.store.used_bytes / _GB
-        capacity = (
+        return (
             self.block_manager.cpu_allocator.get_num_allocated_blocks()
             * self.cache_config.block_size
             * self.cache_config.size_per_token
             / _GB
         )
-        # return self.block_manager.cpu_allocator.get_num_allocated_blocks()
-
-        return capacity
 
     def _release_delayed_blocks(self, req: Request, block_ids: list[int]) -> None:
         self.block_manager.release_request_blocks(req)

@@ -12,8 +12,6 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-import simpy
-
 from benchmark import build_parser, main
 from TokenSim.config.simulation import SimulationConfig
 from TokenSim.config.workload_config import WorkloadConfig

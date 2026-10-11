@@ -13,7 +13,6 @@ from TokenSim.mooncake.config import parse_mooncake_config
 from TokenSim.mooncake.metrics import MooncakeStats
 from TokenSim.mooncake.service import shared_store
 
-from .base import BaseKVConnector
 from .simple_cpu import AsyncOffloadConnector
 
 
@@ -342,7 +341,7 @@ class PageStore(AsyncOffloadConnector):
     def describe(self):
         return {
             "backend": self.name,
-            "native_async": True,
+            "async_offload": True,
             "service_scope": "environment master-shared DRAM; compatible engines and DP replicas",
             "key_scope": "model/layout/TP/PP + group/complete salted prefix/subslot; DP excluded",
             "runtime_budget_shared_bytes": self.service.budget_bytes,

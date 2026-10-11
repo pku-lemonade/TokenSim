@@ -18,11 +18,11 @@ from TokenSim.hardware.device import (
     dtype_bytes,
     normalize_dtype,
 )
-from TokenSim.hardware.links import LinkCatalog, LinkClass
+from TokenSim.hardware.links import LinkCatalog
 from TokenSim.hardware.topology import TopologyLevel, TopologySpec
 from TokenSim.hardware.placement import build_topology_placement
 from TokenSim.config.cluster_config import ClusterConfig, WorkerGroupConfig
-from tests.support.hardware import make_device, make_links, make_model, make_topology
+from tests.support.hardware import make_device, make_links, make_topology
 
 
 ROOT = Path(__file__).resolve().parents[1]

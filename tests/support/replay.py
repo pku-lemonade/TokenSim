@@ -1,7 +1,5 @@
 """A controlled completion clock for workload dependency tests."""
 
-import simpy
-
 from TokenSim.timing import TimingRecorder
 
 

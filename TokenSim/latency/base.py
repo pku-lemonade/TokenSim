@@ -5,8 +5,6 @@ from typing import Any
 
 from TokenSim.llm.llm_request import Request
 
-PREFILL_ROUNDING_ALIGNMENT = 128
-
 
 class LatencyBackend(ABC):
     """Estimates the wall time (seconds) of one scheduler step on one worker."""
@@ -21,21 +19,6 @@ class LatencyBackend(ABC):
 
     def stats_dict(self) -> dict[str, Any]:
         return {}
-
-
-def backend_prefill_len(prefill_len: int) -> int:
-    return max(1, prefill_len)
-
-
-def rounded_prefill_len(prefill_len: int) -> int:
-    return int(
-        prefill_len / PREFILL_ROUNDING_ALIGNMENT
-    ) * PREFILL_ROUNDING_ALIGNMENT + (PREFILL_ROUNDING_ALIGNMENT)
-
-
-def step_tokens(req: Request) -> int:
-    """Tokens ``req`` computes in the current step (see ``Request.step_tokens``)."""
-    return int(req.step_tokens)
 
 
 def query_tokens(req: Request) -> int:

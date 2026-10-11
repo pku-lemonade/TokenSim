@@ -106,7 +106,7 @@ class HybridKVBlockManager:
     only cached slots need an ordered map.
     """
 
-    native_hybrid = True
+    grouped_cache = True
 
     def __init__(
         self, layout: HybridKVLayout, num_slots: int, model: str, *, watermark=0.0

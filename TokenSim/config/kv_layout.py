@@ -6,9 +6,9 @@ the common physical stride; KV has one latent vector, not K and V copies.
 
 from __future__ import annotations
 
-from collections import Counter, defaultdict
+from collections import defaultdict
 from dataclasses import asdict, dataclass
-from math import ceil, lcm
+from math import lcm
 
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.device import dtype_bytes

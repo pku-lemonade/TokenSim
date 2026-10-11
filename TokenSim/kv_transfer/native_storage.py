@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 import simpy
 
-from TokenSim.errors import ConfigurationError, SimulationStateError
+from TokenSim.errors import SimulationStateError
 from TokenSim.config.validation import integer, number
 
 

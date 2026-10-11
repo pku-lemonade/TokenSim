@@ -18,7 +18,7 @@ from TokenSim.operator_data.analytical.base import (
     register_model,
     roofline_estimate,
 )
-from TokenSim.operator_data.workload import gemm_work, work_for_table
+from TokenSim.operator_data.workload import work_for_table
 
 
 class GroqTSPModel:

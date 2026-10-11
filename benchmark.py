@@ -5,7 +5,6 @@ import argparse
 from dataclasses import fields, replace
 from itertools import islice
 import json
-import os
 from pathlib import Path
 import sys
 import time
@@ -23,7 +22,6 @@ from TokenSim.errors import ConfigurationError, SimulationStateError, TokenSimEr
 from TokenSim.hardware import HardwareContext
 from TokenSim.latency import FALLBACK_POLICIES
 from TokenSim.llm.llm_engine import LLMEngine
-from TokenSim.llm.llm_request import Request
 from TokenSim.llm.llm_scheduler import DEFAULT_MAX_NUM_BATCHED_TOKENS
 from TokenSim.workload.agentx import AgentXReplay
 from TokenSim.workload.agentx_support.parser import iter_trace_graphs
@@ -254,9 +252,7 @@ def main(args, preloaded_agentx_traces=None):
         engine.raise_if_failed()
         if args.termination_reason == "completed":
             connectors = [
-                w.connector
-                for w in engine.workers
-                if getattr(w.connector, "native_async", False)
+                w.connector for w in engine.workers if w.connector.async_offload
             ]
             deadline = env.now + (replay.cancellation_timeout if replay else 10.0)
             if replay and replay.issue_window_end_at is not None:
@@ -280,7 +276,7 @@ def main(args, preloaded_agentx_traces=None):
                 manager = getattr(w.scheduler, "block_manager", None)
                 if manager is not None and hasattr(manager, "validate_conservation"):
                     manager.validate_conservation()
-                if getattr(w.connector, "native_async", False):
+                if w.connector.async_offload:
                     w.connector.store.validate()
     except Exception as exc:
         error = exc
@@ -352,16 +348,6 @@ def max_num_batched_tokens(args: argparse.Namespace) -> int | None:
     return int(getattr(args, "max_num_batched_tokens", DEFAULT_MAX_NUM_BATCHED_TOKENS))
 
 
-def get_latency_backend_type(latency_backend: str) -> str:
-    """Map the CLI value to a backend type."""
-    if latency_backend in LATENCY_BACKEND_KEYWORDS:
-        return latency_backend
-    raise ConfigurationError(
-        f"unsupported latency backend {latency_backend!r}; "
-        "use 'operator_table' (tables with analytical fallback) or 'analytical'"
-    )
-
-
 def build_parallel_config(
     args: argparse.Namespace,
     cluster: ClusterConfig,
@@ -391,32 +377,64 @@ def validate_moe_parallel_config(
 
 def build_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--sim_time", type=float, default=None, help="Sim time.")
-    parser.add_argument("--qps", type=float, default=None, help="Qps.")
+    parser.add_argument(
+        "--sim_time",
+        type=float,
+        default=None,
+        help="Stop at this simulated time (seconds) and export partial results.",
+    )
+    parser.add_argument(
+        "--qps",
+        type=float,
+        default=None,
+        help="Open-loop request arrival rate; overrides the workload config.",
+    )
     parser.add_argument(
         "--batching",
         choices=["static", "dynamic", "paged-attn"],
         default="dynamic",
-        help="Batching.",
+        help="static/dynamic batch whole requests; paged-attn runs continuous batching over paged KV blocks.",
     )
     parser.add_argument(
         "--distribution",
         choices=["burst", "uniform", "poisson"],
         default=None,
-        help="Distribution.",
+        help="Arrival process: uniform spacing, Poisson, or a burst at time zero.",
     )
-    parser.add_argument("--request_count", type=int, default=100, help="Request count.")
-    parser.add_argument("--prefill_mean_len", type=int, help="Prefill mean len.")
-    parser.add_argument("--prefill_range_len", type=int, help="Prefill range len.")
-    parser.add_argument("--decode_mean_len", type=int, help="Decode mean len.")
-    parser.add_argument("--decode_range_len", type=int, help="Decode range len.")
+    parser.add_argument(
+        "--request_count",
+        type=int,
+        default=100,
+        help="Number of synthetic requests, or the maximum loaded from a dataset.",
+    )
+    parser.add_argument(
+        "--prefill_mean_len", type=int, help="Mean synthetic prompt length in tokens."
+    )
+    parser.add_argument(
+        "--prefill_range_len",
+        type=int,
+        help="Width of the uniform prompt-length range around the mean.",
+    )
+    parser.add_argument(
+        "--decode_mean_len", type=int, help="Mean synthetic output length in tokens."
+    )
+    parser.add_argument(
+        "--decode_range_len",
+        type=int,
+        help="Width of the output-length range around the mean.",
+    )
     parser.add_argument(
         "--decode_len_distribution",
         choices=["uniform", "exponential", "capped_exponential", "burst"],
         default=None,
-        help="Decode len distribution.",
+        help="Distribution of synthetic output lengths.",
     )
-    parser.add_argument("--block_size", type=int, default=16, help="Block size.")
+    parser.add_argument(
+        "--block_size",
+        type=int,
+        default=16,
+        help="Tokens per KV-cache block (the logical block for grouped caches).",
+    )
     parser.add_argument(
         "--model",
         type=str,
@@ -432,79 +450,89 @@ def build_parser():
         "--cluster",
         type=str,
         default=str(DATA_ROOT / "clusters/1_a100/h1.json"),
-        help="Cluster.",
+        help="Cluster JSON: workers, hardware, topology, parallelism and storage.",
     )
     parser.add_argument(
-        "--kv_transfer_config", type=str, default=None, help="Kv transfer config."
+        "--kv_transfer_config",
+        type=str,
+        default=None,
+        help="KV connector JSON; replaces the cluster's storage configuration.",
     )
     parser.add_argument(
         "--prefill_worker_pool_type",
         choices=["round_robin", "least_gpu_memory", "balanced_load"],
         default="round_robin",
-        help="Prefill worker pool type.",
+        help="How requests are assigned to prefill (or hybrid) workers.",
     )
     parser.add_argument(
         "--decode_worker_pool_type",
         choices=["round_robin", "least_gpu_memory", "balanced_load"],
         default="least_gpu_memory",
-        help="Decode worker pool type.",
+        help="How prefilled requests are assigned to decode workers.",
     )
     parser.add_argument(
         "--max_num_seqs",
-        "--max_parallem_sum",
         type=int,
         default=64,
-        help="Max parallem sum.",
+        help="Maximum running sequences per worker; also sizes CUDA-graph capture buffers.",
     )
     parser.add_argument(
-        "--max_occupy_ratio", type=float, default=1.0, help="Max occupy ratio."
+        "--max_occupy_ratio",
+        type=float,
+        default=1.0,
+        help="Stop admitting new requests above this fraction of GPU KV blocks in use.",
     )
     parser.add_argument(
         "--gpu_memory_utilization",
         type=float,
         default=1.0,
-        help="Gpu memory utilization.",
+        help="Fraction of device memory available to weights, activations and KV cache.",
     )
     parser.add_argument(
         "--router_policy",
         choices=["none", "consistent_hash", "fixed_mapping"],
         default="none",
-        help="Router policy.",
+        help="Request routing across DP ranks: worker-pool policy, consistent session hashing or a fixed mapping.",
     )
     parser.add_argument(
         "--router_backend_url",
         default="http://localhost:8889",
-        help="Router backend url.",
+        help="Backend URL hashed into consistent-hash ring keys, as in vllm-router.",
     )
     parser.add_argument(
-        "--router_mapping_path", default=None, help="Router mapping path."
+        "--router_mapping_path",
+        default=None,
+        help="JSON mapping of session IDs to ranks for --router_policy fixed_mapping.",
     )
     parser.add_argument(
         "--dp_lockstep",
         action=argparse.BooleanOptionalAction,
         default=False,
-        help="Dp lockstep.",
+        help="Run data-parallel ranks in synchronized steps (dummy batches on idle ranks).",
     )
     parser.add_argument(
-        "--dp_sync_interval", type=int, default=16, help="Dp sync interval."
+        "--dp_sync_interval",
+        type=int,
+        default=16,
+        help="Steps between finished-state consensus checks under DP lockstep.",
     )
     parser.add_argument(
         "--long_prefill_token_threshold",
         type=int,
         default=0,
-        help="Long prefill token threshold.",
+        help="Per-step chunk limit for long prompts while other requests wait; 0 disables.",
     )
     parser.add_argument(
         "--prefill_schedule_interval",
         type=int,
         default=1,
-        help="Prefill schedule interval.",
+        help="With data parallelism, schedule prefill chunks only every N synchronized steps.",
     )
     parser.add_argument(
         "--adaptive_long_prefill_threshold",
         action=argparse.BooleanOptionalAction,
         default=False,
-        help="Adaptive long prefill threshold.",
+        help="Raise the long-prefill limit to the step budget divided by eligible requests.",
     )
     parser.add_argument(
         "--max_num_batched_tokens",
@@ -519,31 +547,40 @@ def build_parser():
         help="Disable to prefill every prompt in a single step regardless of length.",
     )
     parser.add_argument(
-        "--tensor_parallel_size", type=int, default=None, help="Tensor parallel size."
+        "--tensor_parallel_size",
+        type=int,
+        default=None,
+        help="Override the cluster's tensor-parallel size.",
     )
     parser.add_argument(
         "--pipeline_parallel_size",
         type=int,
         default=None,
-        help="Pipeline parallel size.",
+        help="Override the cluster's pipeline-parallel size.",
     )
     parser.add_argument(
-        "--data_parallel_size", type=int, default=None, help="Data parallel size."
+        "--data_parallel_size",
+        type=int,
+        default=None,
+        help="Override the cluster's data-parallel size.",
     )
     parser.add_argument(
-        "--data_parallel_rank", type=int, default=None, help="Data parallel rank."
+        "--data_parallel_rank",
+        type=int,
+        default=None,
+        help="Recorded DP rank of this deployment (validated metadata; all ranks are simulated).",
     )
     parser.add_argument(
         "--data_parallel_size_local",
         type=int,
         default=None,
-        help="Data parallel size local.",
+        help="DP ranks per node (validated and reported as topology metadata).",
     )
     parser.add_argument(
         "--enable_expert_parallel",
         action=argparse.BooleanOptionalAction,
         default=None,
-        help="Enable expert parallel.",
+        help="Shard MoE experts across ranks instead of tensor-parallel experts.",
     )
     parser.add_argument(
         "--expert_parallel_scope",
@@ -561,7 +598,7 @@ def build_parser():
         "--expert_placement_strategy",
         choices=["linear", "round_robin"],
         default=None,
-        help="Expert placement strategy.",
+        help="Expert-to-rank assignment: contiguous blocks or round-robin.",
     )
     parser.add_argument(
         "--all2all_backend",
@@ -572,42 +609,62 @@ def build_parser():
             "deepep_low_latency",
         ],
         default=None,
-        help="All2all backend.",
+        help="Expert-parallel dispatch/combine implementation used for communication cost.",
     )
     parser.add_argument(
         "--moe_routing_distribution",
         choices=["uniform", "skew", "hot", "burst"],
         default=None,
-        help="Moe routing distribution.",
+        help="Synthetic expert routing when requests carry no expert histograms.",
     )
     parser.add_argument(
-        "--moe_hot_experts", type=str, default=None, help="Moe hot experts."
+        "--moe_hot_experts",
+        type=str,
+        default=None,
+        help="Comma-separated expert IDs for skewed synthetic routing.",
     )
     parser.add_argument(
         "--moe_hot_expert_fraction",
         type=float,
         default=None,
-        help="Moe hot expert fraction.",
+        help="Fraction of routed tokens sent to the hot experts.",
     )
     parser.add_argument(
         "--verbose",
         type=str,
         choices=["none", "simple", "tqdm"],
         default="tqdm",
-        help="Verbose.",
+        help="Progress output: none, simple lines or a tqdm bar.",
     )
     parser.add_argument(
         "--debug_print",
-        "--debug-print",
         action=argparse.BooleanOptionalAction,
         default=False,
-        help="Debug-print.",
+        help="Print each request completion with simulated and wall-clock time.",
     )
-    parser.add_argument("--program_id", type=int, default=0, help="Program id.")
-    parser.add_argument("--results_path", type=str, default="", help="Results path.")
-    parser.add_argument("--dataset_path", type=str, default=None, help="Dataset path.")
     parser.add_argument(
-        "--dataset_skip_count", type=int, default=0, help="Dataset skip count."
+        "--program_id",
+        type=int,
+        default=0,
+        help="Label printed with simple progress lines when several runs share a terminal.",
+    )
+    parser.add_argument(
+        "--results_path",
+        type=str,
+        default="",
+        help="Result directory; defaults to results/<model>/<cluster directory>/<cluster>.",
+    )
+    parser.add_argument(
+        "--dataset_path",
+        type=str,
+        default=None,
+        help="Request dataset or AgentX trace file.",
+    )
+    parser.add_argument(
+        "--dataset_skip_count",
+        type=int,
+        default=0,
+        help="Skip this many leading dataset records or traces.",
     )
     parser.add_argument(
         "--trace_timestamp_scale",
@@ -625,36 +682,50 @@ def build_parser():
         "--workload_type",
         choices=["synthetic", "json_pairs", "qwen_jsonl", "agentx_weka"],
         default="synthetic",
-        help="Workload type.",
+        help="Request source: synthetic lengths, a dataset format, or AgentX trace replay.",
     )
     parser.add_argument(
-        "--agentx_concurrency", type=int, default=1, help="Agentx concurrency."
+        "--agentx_concurrency",
+        type=int,
+        default=1,
+        help="Concurrent AgentX trace trees (replay lanes).",
     )
     parser.add_argument(
-        "--agentx_trace_count", type=int, default=None, help="Agentx trace count."
+        "--agentx_trace_count",
+        type=int,
+        default=None,
+        help="Use at most this many traces from the dataset; default all.",
     )
     parser.add_argument(
         "--agentx_profile_duration",
         type=float,
         default=3600.0,
-        help="Agentx profile duration.",
+        help="Simulated seconds of the measured AgentX issue window.",
     )
     parser.add_argument(
         "--agentx_issue_mode",
         choices=("closed_loop", "recorded"),
         default="closed_loop",
-        help="Native diagnostic issue timing: closed-loop dependencies or recorded trace timestamps.",
+        help="Issue requests when their dependencies finish (closed loop) or at recorded trace times.",
     )
     parser.add_argument(
-        "--agentx_idle_gap_cap", type=float, default=10.0, help="Agentx idle gap cap."
+        "--agentx_idle_gap_cap",
+        type=float,
+        default=10.0,
+        help="Compress system-wide idle gaps longer than this many seconds; 0 disables.",
     )
     parser.add_argument(
         "--agentx_warmup",
         action=argparse.BooleanOptionalAction,
         default=True,
-        help="Agentx warmup.",
+        help="Warm caches with sampled trace frontiers before the measured window.",
     )
-    parser.add_argument("--random_seed", type=int, default=0, help="Random seed.")
+    parser.add_argument(
+        "--random_seed",
+        type=int,
+        default=0,
+        help="Seed for synthetic workloads, routing and speculative acceptance.",
+    )
     parser.add_argument(
         "--latency_backend",
         type=str,
@@ -679,12 +750,12 @@ def build_parser():
         "--moe_backend",
         choices=("generic", "deep_gemm_amxf4_mega_moe"),
         default="generic",
-        help="Moe backend.",
+        help="MoE cost source: generic operator tables or the fused DeepGEMM MegaMoE module binding.",
     )
     parser.add_argument(
         "--disable_moe_shared_fusion",
         action="store_true",
-        help="Disable moe shared fusion.",
+        help="Price shared experts separately instead of fused into the MoE module.",
     )
     parser.add_argument(
         "--attention_backend",
@@ -702,7 +773,7 @@ def build_parser():
         "--mtp_num_speculative_tokens",
         type=int,
         default=None,
-        help="MTP draft token count K;0 disables drafting, while positive K is independent of accepted length.",
+        help="Draft tokens K per speculative step; 0 disables drafting. Defaults to the model's draft layers.",
     )
     parser.add_argument(
         "--mhc_backend",
