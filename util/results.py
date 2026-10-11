@@ -182,101 +182,12 @@ def get_latency_stats(engine: LLMEngine) -> dict[str, Any]:
 
     aggregate = OperatorStats()
     descriptions: dict[str, dict[str, Any]] = {}
-    native_totals = {
-        "native_megamoe_routed_seconds": 0.0,
-        "native_megamoe_shared_seconds": 0.0,
-        "native_megamoe_max_rank_rows": 0,
-    }
-    native_counts = {}
-    native_moe_composition = {}
-    native_attention_total = 0.0
-    native_attention_counts = {}
-    native_attention_decode_batches = {}
-    native_attention_mtp_kv = {}
-    native_attention_composition = {}
-    target_logits_counts = {}
-    main_forward_counts = {}
-    hc_head_counts, hc_head_seconds = {}, {}
-    mhc_seconds = {"main": 0.0, "draft": 0.0}
-    mhc_counts = {"main": {}, "draft": {}}
-    mtp_counts, mtp_components = {}, {}
+    modules: dict[str, dict[str, Any]] = {}
     for worker in getattr(engine, "workers", []):
         backend = getattr(worker, "latency_backend", None)
         if backend is None:
             continue
-        mtp = getattr(backend, "native_mtp", None)
-        if mtp:
-            for key, value in mtp.counts.items():
-                mtp_counts[key] = mtp_counts.get(key, 0) + value
-            for key, value in mtp.component_seconds.items():
-                mtp_components[key] = mtp_components.get(key, 0) + value
-        for key, value in getattr(backend, "target_logits_counts", {}).items():
-            target_logits_counts[key] = target_logits_counts.get(key, 0) + value
-        for key, value in getattr(backend, "main_forward_counts", {}).items():
-            main_forward_counts[key] = main_forward_counts.get(key, 0) + value
-        for role, head in (
-            ("target", getattr(backend, "residual_output", None)),
-            ("draft", getattr(mtp, "hc_head", None)),
-        ):
-            if head is not None:
-                for key, value in (("calls", head.calls), ("rows", head.rows)):
-                    name = f"{role}_{key}"
-                    hc_head_counts[name] = hc_head_counts.get(name, 0) + value
-                hc_head_seconds[role] = hc_head_seconds.get(role, 0.0) + head.seconds
-        for role, estimator, layers in (
-            (
-                "main",
-                getattr(backend, "native_mhc", None),
-                getattr(backend, "layers_local", 0),
-            ),
-            ("draft", getattr(mtp, "mhc", None), 1),
-        ):
-            if estimator is not None:
-                # Main estimates resolve one layer shape, then _compose pays
-                # layers_local copies. Each draft estimate is one actual pass.
-                mhc_seconds[role] += estimator.seconds * layers
-                for key, value in estimator.counts.items():
-                    mhc_counts[role][key] = mhc_counts[role].get(key, 0) + value
-        native_estimators = [getattr(backend, "native_moe", None)]
-        if mtp:
-            native_estimators.extend([mtp.initial_moe, mtp.decode_moe])
-        for native in native_estimators:
-            if native is None:
-                continue
-            extra = native.stats_dict()
-            for key in (
-                "native_megamoe_routed_seconds",
-                "native_megamoe_shared_seconds",
-            ):
-                native_totals[key] += extra[key]
-            native_totals["native_megamoe_max_rank_rows"] = max(
-                native_totals["native_megamoe_max_rank_rows"],
-                extra["native_megamoe_max_rank_rows"],
-            )
-            for key, count in extra["native_megamoe_counts"].items():
-                native_counts[key] = native_counts.get(key, 0) + count
-            for key, value in extra["native_megamoe_composition"].items():
-                native_moe_composition[key] = native_moe_composition.get(key, 0) + value
-        native_attention = getattr(backend, "native_attention", None)
-        if native_attention is not None:
-            extra = native_attention.stats_dict()
-            native_attention_total += extra["attention_module_seconds"]
-            for key, count in extra["attention_module_counts"].items():
-                native_attention_counts[key] = (
-                    native_attention_counts.get(key, 0) + count
-                )
-            for key, count in extra["attention_module_decode_batches"].items():
-                native_attention_decode_batches[key] = (
-                    native_attention_decode_batches.get(key, 0) + count
-                )
-            for key, value in extra["attention_module_mtp_kv"].items():
-                native_attention_mtp_kv[key] = (
-                    native_attention_mtp_kv.get(key, 0) + value
-                )
-            for key, value in extra["attention_module_composition"].items():
-                native_attention_composition[key] = (
-                    native_attention_composition.get(key, 0) + value
-                )
+        _add_module_stats(modules, backend)
         stats = getattr(backend, "stats", None)
         if isinstance(stats, OperatorStats):
             aggregate = aggregate.aggregate(stats)
@@ -298,58 +209,101 @@ def get_latency_stats(engine: LLMEngine) -> dict[str, Any]:
     return {
         "latency_backends": descriptions,
         **aggregate.as_dict(),
-        **(
-            {
-                **native_totals,
-                "native_megamoe_counts": native_counts,
-                "native_megamoe_composition": native_moe_composition,
-            }
-            if native_counts
-            else {}
-        ),
-        **(
-            {
-                "attention_module_seconds": native_attention_total,
-                "attention_module_counts": native_attention_counts,
-                "attention_module_decode_batches": native_attention_decode_batches,
-                "attention_module_mtp_kv": native_attention_mtp_kv,
-                "attention_module_composition": native_attention_composition,
-            }
-            if native_attention_counts
-            else {}
-        ),
-        **({"target_logits": target_logits_counts} if target_logits_counts else {}),
-        **({"main_forward_counts": main_forward_counts} if main_forward_counts else {}),
-        **(
-            {
-                "residual_output_counts": hc_head_counts,
-                "residual_output_seconds": hc_head_seconds,
-            }
-            if hc_head_counts
-            else {}
-        ),
-        **(
-            {
-                "native_mhc_seconds": sum(mhc_seconds.values()),
-                "native_mhc_main_seconds": mhc_seconds["main"],
-                "native_mhc_draft_seconds": mhc_seconds["draft"],
-                "native_mhc_counts": mhc_counts,
-            }
-            if any(mhc_counts.values())
-            else {}
-        ),
-        **(
-            {
-                "speculative_counts": mtp_counts,
-                "speculative_component_seconds": mtp_components,
-            }
-            if mtp_counts
-            else {}
-        ),
+        **({"module_stats": modules} if _finish_module_stats(modules) else {}),
         # Grouped by table and discrete key with the requested axis ranges;
         # the full report goes to missing_shapes_<qps>.json.
         "operator_missing_shapes": aggregate.missing_shape_records()[:200],
     }
+
+
+def _merge_sum(total: dict[str, Any], part: dict[str, Any]) -> None:
+    """Add ``part`` into ``total``, recursing into nested dictionaries."""
+    for key, value in part.items():
+        if isinstance(value, dict):
+            _merge_sum(total.setdefault(key, {}), value)
+        else:
+            total[key] = total.get(key, 0) + value
+
+
+def _add_module_stats(modules: dict[str, dict[str, Any]], backend) -> None:
+    """Accumulate one worker's operator-module statistics, keyed by module."""
+    draft = getattr(backend, "native_mtp", None)
+    for name, counts in (
+        ("target_logits", getattr(backend, "target_logits_counts", None)),
+        ("main_forward", getattr(backend, "main_forward_counts", None)),
+    ):
+        if counts is not None:
+            _merge_sum(modules.setdefault(name, {}), dict(counts))
+    attention = getattr(backend, "native_attention", None)
+    if attention is not None:
+        _merge_sum(modules.setdefault("attention", {}), attention.stats_dict())
+    estimators = [getattr(backend, "native_moe", None)]
+    if draft:
+        estimators += [draft.initial_moe, draft.decode_moe]
+    for estimator in filter(None, estimators):
+        stats = estimator.stats_dict()
+        rows = stats.pop("max_rank_rows")
+        moe = modules.setdefault("moe", {})
+        _merge_sum(moe, stats)
+        moe["max_rank_rows"] = max(moe.get("max_rank_rows", 0), rows)
+    # Main estimates resolve one layer shape and are paid per local layer;
+    # each draft estimate is one actual pass.
+    for role, estimator, layers in (
+        (
+            "main",
+            getattr(backend, "native_mhc", None),
+            getattr(backend, "layers_local", 0),
+        ),
+        ("draft", getattr(draft, "mhc", None), 1),
+    ):
+        if estimator is not None:
+            mixing = modules.setdefault(
+                "residual_mixing",
+                {
+                    "main_seconds": 0.0,
+                    "draft_seconds": 0.0,
+                    "counts": {"main": {}, "draft": {}},
+                },
+            )
+            mixing[f"{role}_seconds"] += estimator.seconds * layers
+            _merge_sum(mixing["counts"][role], dict(estimator.counts))
+    for role, head in (
+        ("target", getattr(backend, "residual_output", None)),
+        ("draft", getattr(draft, "hc_head", None)),
+    ):
+        if head is not None:
+            _merge_sum(
+                modules.setdefault("residual_output", {}),
+                {
+                    "counts": {f"{role}_calls": head.calls, f"{role}_rows": head.rows},
+                    "seconds": {role: head.seconds},
+                },
+            )
+    if draft:
+        _merge_sum(
+            modules.setdefault("speculative", {}),
+            {
+                "counts": dict(draft.counts),
+                "component_seconds": dict(draft.component_seconds),
+            },
+        )
+
+
+def _finish_module_stats(modules: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    """Drop modules that never ran and add derived totals."""
+    for name in ("target_logits", "main_forward"):
+        if not modules.get(name):
+            modules.pop(name, None)
+    for name in ("attention", "moe", "speculative"):
+        if name in modules and not modules[name].get("counts"):
+            del modules[name]
+    mixing = modules.get("residual_mixing")
+    if mixing is not None:
+        if not any(mixing["counts"].values()):
+            del modules["residual_mixing"]
+        else:
+            mixing["seconds"] = mixing["main_seconds"] + mixing["draft_seconds"]
+    return modules
 
 
 def analytical_share_by_table(latency_stats: dict[str, Any]) -> dict[str, float]:
@@ -420,10 +374,10 @@ def get_agentx_metrics(
 
     requests = [r for r in requests if r.is_done and not r.cancel_requested]
     root_requests = [
-        r for r in requests if _is_root_stream(getattr(r, "agentx_stream_id", None))
+        r for r in requests if _is_root_stream(getattr(r.source, "stream_id", None))
     ]
     subagent_requests = [
-        r for r in requests if not _is_root_stream(getattr(r, "agentx_stream_id", None))
+        r for r in requests if not _is_root_stream(getattr(r.source, "stream_id", None))
     ]
 
     ttft = [request.prefill_latency for request in requests]
@@ -483,6 +437,7 @@ def get_agentx_metrics(
         "warmup_request_count": metadata.get("warmup_request_count", 0),
         "warmup_duration_s": metadata.get("warmup_duration_s", 0.0),
         "random_seed": metadata.get("random_seed"),
+        "workload_seed": metadata.get("workload_seed"),
         "initial_trace_ids": metadata.get("initial_trace_ids", []),
         "trace_sampling_strategy": (
             "shared-sequential-pool"

@@ -1,6 +1,6 @@
 import simpy
 from dataclasses import dataclass, field
-from typing import Sequence
+from typing import Any, Sequence
 from pydantic import BaseModel
 from enum import Enum, auto
 
@@ -320,6 +320,11 @@ class Request:
     cancel_pending_worker_ids: set[int] = field(default_factory=set, repr=False)
     # Context-building steps this request's prompt took (1 without chunking).
     prefill_chunks: int = 0
+    # Routing decision of session-aware routers.
+    dp_rank: int | None = field(default=None, repr=False)
+    routing_worker_id: int | None = field(default=None, repr=False)
+    # Workload-specific provenance, for example an AgentX trace turn.
+    source: Any = field(default=None, repr=False)
     tqdm_submit_func = None
 
     def __post_init__(self):

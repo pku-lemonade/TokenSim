@@ -23,13 +23,8 @@ class SpeculativeEstimator:
             )
         self.k = backend.mtp_query_width - 1
         self.max_num_seqs = max_num_seqs
-        self.sp = (
-            backend.ep_enabled
-            and backend.tp > 1
-            and (
-                backend.native_moe is not None
-                or backend.parallel_config.data_parallel_size > 1
-            )
+        self.sp = backend.ep_enabled and backend.parallel_config.sequence_parallel_moe(
+            backend.native_moe is not None
         )
         self.projections = attention_projections(self.model, backend.tp)
         self.mhc = ResidualMixingEstimator(backend) if backend.native_mhc else None
@@ -325,8 +320,8 @@ class SpeculativeEstimator:
 
     def stats_dict(self):
         return {
-            "speculative_counts": dict(self.counts),
-            "speculative_component_seconds": dict(self.component_seconds),
+            "counts": dict(self.counts),
+            "component_seconds": dict(self.component_seconds),
         }
 
     def describe(self):

@@ -51,6 +51,20 @@ def engine_hashes(
     ]
 
 
+@dataclass(frozen=True, slots=True)
+class TraceTurn:
+    """Where an AgentX request came from in the trace pool."""
+
+    trace_id: str
+    play_id: int
+    lane: int
+    stream_id: str
+    conversation_id: str
+    outer_index: int
+    inner_index: int | None
+    recorded_model: str
+
+
 @dataclass
 class StreamCursor:
     conversation: Conversation
@@ -102,12 +116,13 @@ class AgentXReplay:
         engine,
         graphs: list[TraceGraph],
         *,
-        block_size=256,
-        concurrency=196,
-        profile_duration=3600.0,
+        block_size,
+        concurrency,
+        profile_duration,
+        workload_seed=0,
+        # Protocol defaults follow AIPerf's agentic replay.
         grace_period=30.0,
         cancellation_timeout=10.0,
-        workload_seed=42,
         warmup=True,
         warmup_requests_per_lane=10,
         warmup_grace_period=1800.0,
@@ -418,16 +433,18 @@ class AgentXReplay:
             record_timing=not warmup,
         )
         self._next_id += 1
-        req.agentx_trace_id = play.graph.trace_id
-        req.agentx_play_id = play.pass_index
-        req.agentx_lane = play.lane
-        req.agentx_stream_id = (
-            "root" if turn.source_kind == "weka_main" else turn.key.conversation_id
+        req.source = TraceTurn(
+            trace_id=play.graph.trace_id,
+            play_id=play.pass_index,
+            lane=play.lane,
+            stream_id=(
+                "root" if turn.source_kind == "weka_main" else turn.key.conversation_id
+            ),
+            conversation_id=turn.key.conversation_id,
+            outer_index=turn.source.outer_index,
+            inner_index=turn.source.inner_index,
+            recorded_model=turn.request.model,
         )
-        req.agentx_conversation_id = turn.key.conversation_id
-        req.agentx_source_outer_idx = turn.source.outer_index
-        req.agentx_source_inner_idx = turn.source.inner_index
-        req.agentx_recorded_model = turn.request.model
         req.trace_hash_ids = turn.request.hash_ids
         req.trace_block_size = play.graph.block_size
         return req
@@ -437,12 +454,12 @@ class AgentXReplay:
         req.arrive(self.env)
         self._in_flight[req.id] = (req, play, cid, primer)
         self.phase_counts[phase]["sent"] += 1
-        self.trace_ids_used[phase].add(req.agentx_trace_id)
+        self.trace_ids_used[phase].add(req.source.trace_id)
         self.source_ids_used[phase].add(
             (
-                req.agentx_trace_id,
-                req.agentx_source_outer_idx,
-                req.agentx_source_inner_idx,
+                req.source.trace_id,
+                req.source.outer_index,
+                req.source.inner_index,
             )
         )
         if not primer:
@@ -461,7 +478,7 @@ class AgentXReplay:
             "issued",
             request_id=req.id,
             lane=play.lane,
-            conversation_id=req.agentx_conversation_id,
+            conversation_id=req.source.conversation_id,
             primer=primer,
         )
 
@@ -544,14 +561,14 @@ class AgentXReplay:
             "latest_computed_input_tokens": req.effective_prefill_tokens,
             "requested_output_tokens": req.decode_len,
             "output_tokens": req.generation_idx,
-            "trace_id": req.agentx_trace_id,
-            "conversation_id": req.agentx_conversation_id,
-            "outer_index": req.agentx_source_outer_idx,
-            "inner_index": req.agentx_source_inner_idx,
+            "trace_id": req.source.trace_id,
+            "conversation_id": req.source.conversation_id,
+            "outer_index": req.source.outer_index,
+            "inner_index": req.source.inner_index,
             "turn_index": req.turn,
             "lane": play.lane,
-            "dp_rank": getattr(req, "dp_rank", None),
-            "worker_id": getattr(req, "routing_worker_id", None),
+            "dp_rank": req.dp_rank,
+            "worker_id": req.routing_worker_id,
             "pass_index": play.pass_index,
             "cancellation_acknowledged": (
                 req.cancelled_at is not None if req.cancel_requested else None

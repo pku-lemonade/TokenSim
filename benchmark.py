@@ -193,6 +193,11 @@ def main(args, preloaded_agentx_traces=None):
             ),
             grace_period=args.agentx_grace_period,
             cancellation_timeout=args.agentx_cancellation_timeout,
+            warmup_requests_per_lane=args.agentx_warmup_requests_per_lane,
+            warmup_grace_period=args.agentx_warmup_grace_period,
+            tree_idle_cap=(
+                args.agentx_tree_idle_cap if args.agentx_tree_idle_cap > 0 else None
+            ),
             event_sink=lambda record: logs.write("events", record),
             request_sink=lambda record: logs.write("requests", record),
         )
@@ -804,6 +809,24 @@ def build_parser():
         type=float,
         default=30.0,
         help="Seconds to allow issued requests to finish.",
+    )
+    parser.add_argument(
+        "--agentx_warmup_requests_per_lane",
+        type=int,
+        default=10,
+        help="Warmup requests issued per replay lane before the measured window.",
+    )
+    parser.add_argument(
+        "--agentx_warmup_grace_period",
+        type=float,
+        default=1800.0,
+        help="Seconds allowed for warmup requests to finish before measurement.",
+    )
+    parser.add_argument(
+        "--agentx_tree_idle_cap",
+        type=float,
+        default=300.0,
+        help="Skip idle gaps longer than this within one trace tree; 0 disables.",
     )
     parser.add_argument(
         "--agentx_cancellation_timeout",

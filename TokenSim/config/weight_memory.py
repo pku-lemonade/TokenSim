@@ -82,11 +82,7 @@ def packed_weight_memory(
         expert_intermediate = model.moe_intermediate_size // tp
     # _use_sequence_parallel: shared experts replicate when attention tokens
     # are sequence-sharded under wide EP. Main checkpoints have TP1.
-    sequence_parallel = (
-        parallel.enable_expert_parallel
-        and tp > 1
-        and (layout_backend == "mega_moe" or parallel.data_parallel_size > 1)
-    )
+    sequence_parallel = parallel.sequence_parallel_moe(layout_backend == "mega_moe")
     shared_intermediate = model.moe_intermediate_size * model.moe.num_shared_experts
     if not sequence_parallel:
         block_m = spec.weight_block_size[0]

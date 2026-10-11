@@ -17,9 +17,6 @@ class LatencyBackend(ABC):
         """Provenance of the estimates produced by this backend (for results)."""
         return {"backend": type(self).__name__}
 
-    def stats_dict(self) -> dict[str, Any]:
-        return {}
-
 
 def query_tokens(req: Request) -> int:
     """Target forward query width (MTP verify may exceed accepted output)."""

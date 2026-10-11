@@ -97,26 +97,9 @@ class LLMResult:
     operator_match_type_counts: dict[str, int] | None = None
     operator_table_match_counts: dict[str, Any] | None = None
     operator_component_seconds: dict[str, float] | None = None
-    attention_module_seconds: float | None = None
-    attention_module_counts: dict[str, int] | None = None
-    attention_module_decode_batches: dict[str, int] | None = None
-    attention_module_mtp_kv: dict[str, float] | None = None
-    attention_module_composition: dict[str, float] | None = None
-    target_logits: dict[str, int] | None = None
-    main_forward_counts: dict[str, int] | None = None
-    residual_output_counts: dict[str, int] | None = None
-    residual_output_seconds: dict[str, float] | None = None
-    native_mhc_seconds: float | None = None
-    native_mhc_main_seconds: float | None = None
-    native_mhc_draft_seconds: float | None = None
-    native_mhc_counts: dict[str, dict[str, int]] | None = None
-    speculative_counts: dict[str, int] | None = None
-    speculative_component_seconds: dict[str, float] | None = None
-    native_megamoe_routed_seconds: float | None = None
-    native_megamoe_shared_seconds: float | None = None
-    native_megamoe_max_rank_rows: int | None = None
-    native_megamoe_counts: dict[str, int] | None = None
-    native_megamoe_composition: dict[str, float] | None = None
+    # Operator-module statistics (compressed attention, fused MoE, residual
+    # mixing, speculative drafts), keyed by module; omitted when none run.
+    module_stats: dict[str, Any] | None = None
     operator_missing_shape_count: int = 0
     operator_missing_shape_groups: int = 0
     operator_missing_per_table: dict[str, Any] | None = None

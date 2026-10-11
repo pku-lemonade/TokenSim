@@ -414,11 +414,11 @@ class MegaMoEEstimator:
 
     def stats_dict(self):
         return {
-            "native_megamoe_routed_seconds": self.routed_seconds,
-            "native_megamoe_shared_seconds": self.shared_seconds,
-            "native_megamoe_counts": dict(self.counts),
-            "native_megamoe_composition": dict(self.composition),
-            "native_megamoe_max_rank_rows": self.max_rank_rows,
+            "routed_seconds": self.routed_seconds,
+            "shared_seconds": self.shared_seconds,
+            "counts": dict(self.counts),
+            "composition": dict(self.composition),
+            "max_rank_rows": self.max_rank_rows,
         }
 
     def describe(self):

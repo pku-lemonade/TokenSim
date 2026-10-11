@@ -599,11 +599,11 @@ class CompressedAttentionEstimator:
 
     def stats_dict(self):
         return {
-            "attention_module_seconds": self.seconds,
-            "attention_module_counts": dict(self.counts),
-            "attention_module_decode_batches": dict(self.decode_batch_stats),
-            "attention_module_mtp_kv": dict(self.mtp_kv_stats),
-            "attention_module_composition": dict(self.composition_stats),
+            "seconds": self.seconds,
+            "counts": dict(self.counts),
+            "decode_batches": dict(self.decode_batch_stats),
+            "speculative_kv": dict(self.mtp_kv_stats),
+            "composition": dict(self.composition_stats),
         }
 
     def describe(self):

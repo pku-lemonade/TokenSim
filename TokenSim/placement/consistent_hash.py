@@ -150,7 +150,8 @@ class FixedWorkerRouter:
         self.session_counts = Counter()
 
     def select(self, request):
-        key = getattr(request, "agentx_conversation_id", None) or request.chat_id
+        # Trace replays map their original conversation; others their session.
+        key = getattr(request.source, "conversation_id", None) or request.chat_id
         rank = self.mapping.get(str(key))
         if rank is None:
             self.missing_keys[str(key)] += 1

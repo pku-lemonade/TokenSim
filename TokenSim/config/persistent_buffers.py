@@ -171,11 +171,8 @@ def live_phases(
         model.hidden_size,
         parallel.tensor_parallel_size,
     )
-    sp = (
-        parallel.pipeline_parallel_size == 1
-        and parallel.enable_expert_parallel
-        and tp > 1
-        and (native_moe or parallel.data_parallel_size > 1)
+    sp = parallel.pipeline_parallel_size == 1 and parallel.sequence_parallel_moe(
+        bool(native_moe)
     )
     shard = ceil_div(rows, tp) if sp else rows
     gathered = shard * tp if sp else rows

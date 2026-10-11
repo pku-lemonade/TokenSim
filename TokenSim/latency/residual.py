@@ -81,8 +81,8 @@ class ResidualMixingEstimator:
 
     def stats_dict(self):
         return {
-            "native_mhc_seconds": self.seconds,
-            "native_mhc_counts": dict(self.counts),
+            "seconds": self.seconds,
+            "counts": dict(self.counts),
         }
 
     def describe(self):
