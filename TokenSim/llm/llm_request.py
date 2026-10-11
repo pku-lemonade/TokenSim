@@ -4,7 +4,7 @@ from typing import Sequence
 from pydantic import BaseModel
 from enum import Enum, auto
 
-from TokenSim.block.block import LogicalTokenBlock, PhysicalTokenBlock
+from TokenSim.block.block import PhysicalTokenBlock
 from TokenSim.errors import SimulationStateError
 
 
@@ -295,7 +295,8 @@ class Request:
 
     def __post_init__(self):
         self._physical_token_blocks: list[PhysicalTokenBlock] = []
-        self._logical_token_blocks: list[LogicalTokenBlock] = []
+        # Tokens in the logical blocks; blocks fill left to right.
+        self._logical_tokens = 0
         self._append_tokens(self.prefill_len)
         self._last_event_at: float = 0.0
         self.completion_event: simpy.Event | None = None
@@ -471,33 +472,14 @@ class Request:
 
     @property
     def num_logical_token_blocks(self):
-        return len(self._logical_token_blocks)
+        return -(-self._logical_tokens // self.block_size)
 
     def _append_physical_block(self, block) -> None:
         self._physical_token_blocks.append(block)
 
-    def _append_logical_block(self) -> None:
-        """Create a new logical block and append it at the end of all blocks."""
-        block = LogicalTokenBlock(
-            block_id=self.num_logical_token_blocks,
-            block_size=self.block_size,
-        )
-        self._logical_token_blocks.append(block)
-
     def _append_tokens(self, num_tokens: int) -> None:
-        cursor = 0
-        while cursor < num_tokens:
-            if not self._logical_token_blocks:
-                self._append_logical_block()
-
-            last_block = self._logical_token_blocks[-1]
-            if last_block.is_full():
-                self._append_logical_block()
-                last_block = self._logical_token_blocks[-1]
-
-            num_empty_slots = last_block.get_num_empty_slots()
-            last_block.append_tokens(min(num_empty_slots, num_tokens - cursor))
-            cursor += num_empty_slots
+        if num_tokens > 0:
+            self._logical_tokens += num_tokens
 
     @property
     def arrival_time(self):
@@ -607,7 +589,7 @@ class Request:
 
     def release_logical_blocks(self) -> None:
         """Drop bulky request-local state after the scheduler has finished it."""
-        self._logical_token_blocks.clear()
+        self._logical_tokens = 0
         self.input_cache_keys.clear()
 
     def prepare_recompute(self) -> None:
