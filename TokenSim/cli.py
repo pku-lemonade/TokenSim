@@ -748,7 +748,7 @@ def build_parser():
         "--operator_backend",
         type=str,
         default=None,
-        help="Operator-data backend to load for every worker (e.g. trtllm, vllm, analytical).",
+        help="Operator-data backend for workers whose cluster group does not name one.",
         choices=["vllm", "sglang", "trtllm", "analytical"],
     )
     parser.add_argument(
@@ -778,7 +778,7 @@ def build_parser():
         "--mtp_num_speculative_tokens",
         type=int,
         default=None,
-        help="Draft tokens K per speculative step; 0 disables drafting. Defaults to the model's draft layers.",
+        help="Draft tokens K per speculative step; 0 (the default) disables drafting.",
     )
     parser.add_argument(
         "--mhc_backend",

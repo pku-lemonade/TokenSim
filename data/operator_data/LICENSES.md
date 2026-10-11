@@ -16,6 +16,6 @@ V100 NCCL curves derive from the project's original nccl-tests measurements.
 Groq analytical tables are generated project data. Local collector runs carry
 `aiconfigurator-collector:` source IDs and retain their collection provenance.
 
-See [AIConfigurator usage](../../docs/aiconfiurator.md) for pinned import,
+See [AIConfigurator usage](../../docs/aiconfigurator.md) for pinned import,
 validation and cost-scope instructions. Unsupported measurement families are
 not silently converted to another operator type.

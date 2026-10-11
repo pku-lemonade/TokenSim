@@ -88,14 +88,8 @@ into its own directory and merge it (section 4).
 ## 1. `run_aiconfigurator.sh`: Compute Operators and Single-Node Collectives
 
 ```bash
-DEVICE=rtx_4090 BACKEND=vllm AIC_DIR="$PWD/tmp/aiconfigurator" \
-    OPS="gemm attention_context attention_generation moe" \
-    ./scripts/collect/run_aiconfigurator.sh
+DEVICE=rtx_4090 BACKEND=vllm ./scripts/collect/run_aiconfigurator.sh
 ```
-
-Set `AIC_DIR` to an absolute path (the collector is started from inside
-`RUN_DIR`) and `OPS` explicitly: the script's default `OPS` contains
-`attention`, which is not a collector op name at the pinned commit.
 
 What the script does:
 
@@ -104,8 +98,7 @@ What the script does:
    the commit recorded in `data/operator_data/LICENSES.md`, so shape grids and
    column names match the bundled data).
 2. Checks that the target framework is importable and prints the clock state
-   with `nvidia-smi` (also copied to `<RUN_DIR>.env.txt` when the parent
-   directory of `RUN_DIR` exists).
+   with `nvidia-smi` (also saved as `<RUN_DIR>/env.txt`).
 3. Runs `collector/collect.py --backend <BACKEND> --resume --ops <OPS>` inside
    `RUN_DIR` (default `./tmp/collect/<DEVICE>/<BACKEND>`). The collector writes
    `gemm_perf.parquet`, `context_attention_perf.parquet`,
@@ -134,7 +127,7 @@ Variables:
 | --- | --- | --- |
 | `DEVICE` | required | TokenSim `device_id` |
 | `BACKEND` | `trtllm` | `trtllm`, `vllm` or `sglang`; the package directory is `<device>/<backend>` |
-| `OPS` | `gemm attention moe` | Collector ops, space-separated (`gemm`, `attention_context`, `attention_generation`, `moe`, module ops such as `mhc_module`; see the collector registries). The MoE grid is the largest |
+| `OPS` | `gemm attention_context attention_generation moe` | Collector ops, space-separated (`gemm`, `attention_context`, `attention_generation`, `moe`, module ops such as `mhc_module`; see the collector registries). The MoE grid is the largest |
 | `MODEL_PATH` | unset | Hugging Face model id: collect only the shapes of that model (AIConfigurator's model-centric "healing" run) |
 | `GPU_TYPE` | local SM | AIConfigurator system name (e.g. `a100_sxm`) for hardware capability floors; leave it empty for GPUs without an upstream system, such as the RTX 4090 |
 | `SKIP_COMM` | 0 | 1 skips `collect_comm.sh` (no nccl-tests or mpirun) |

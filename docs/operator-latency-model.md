@@ -897,7 +897,7 @@ Every row of an operator package carries a `source_id` that maps to a
 
 The bundled GPU tables are imported from NVIDIA AIConfigurator with
 `import-aiconfigurator` (pinned commit and rebuild steps:
-[AIConfigurator data usage](aiconfiurator.md)). Two source layouts are
+[AIConfigurator data usage](aiconfigurator.md)). Two source layouts are
 accepted: the upstream database
 (`aic-core/src/aiconfigurator_core/systems/data/<system>/<family>/<backend>/<version>/*_perf.parquet`)
 and a flat collector run directory (`*_perf.parquet` or `*_perf.txt` CSV

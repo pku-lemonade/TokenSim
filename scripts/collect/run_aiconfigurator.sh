@@ -4,7 +4,7 @@
 # into a TokenSim operator package.
 #
 #   DEVICE=a100_sxm_80g ./scripts/collect/run_aiconfigurator.sh
-#   DEVICE=rtx_4090 OPS="gemm attention" MODEL_PATH=meta-llama/Llama-3.1-8B ./scripts/collect/run_aiconfigurator.sh
+#   DEVICE=rtx_4090 OPS="gemm attention_context" MODEL_PATH=meta-llama/Llama-3.1-8B ./scripts/collect/run_aiconfigurator.sh
 #   DEVICE=a100_sxm_80g ./scripts/collect/run_aiconfigurator.sh --import-only   # reuse an earlier run directory
 #
 # Environment:
@@ -24,7 +24,7 @@ BACKEND=${BACKEND:-trtllm}
 AIC_DIR=${AIC_DIR:-./tmp/aiconfigurator}
 AIC_COMMIT=${AIC_COMMIT:-f254959eb89e2f206b8f9a77051644d7c1cbdb89}
 RUN_DIR=${RUN_DIR:-./tmp/collect/${DEVICE}/${BACKEND}}
-OPS=${OPS:-"gemm attention moe"}
+OPS=${OPS:-"gemm attention_context attention_generation moe"}
 MODEL_PATH=${MODEL_PATH:-}
 GPU_TYPE=${GPU_TYPE:-}
 SKIP_COMM=${SKIP_COMM:-0}
@@ -40,6 +40,7 @@ if [ "$IMPORT_ONLY" -eq 0 ]; then
   fi
   git -C "$AIC_DIR" fetch --quiet origin "$AIC_COMMIT" 2>/dev/null || true
   git -C "$AIC_DIR" checkout --quiet "$AIC_COMMIT"
+  AIC_DIR=$(cd "$AIC_DIR" && pwd)
 
   # 2. Sanity checks: the framework must be importable and clocks should be locked.
   python - <<PY
@@ -51,8 +52,9 @@ try:
 except Exception as exc:  # pragma: no cover
     sys.exit(f"{mod} is not importable in this environment: {exc}")
 PY
+  mkdir -p "$RUN_DIR"
   if command -v nvidia-smi >/dev/null; then
-    nvidia-smi --query-gpu=name,persistence_mode,clocks.sm,clocks.max.sm,clocks.mem --format=csv | tee "$RUN_DIR.env.txt" 2>/dev/null || true
+    nvidia-smi --query-gpu=name,persistence_mode,clocks.sm,clocks.max.sm,clocks.mem --format=csv | tee "$RUN_DIR/env.txt" || true
     echo "If clocks.sm != clocks.max.sm consider: sudo nvidia-smi -pm 1 && sudo nvidia-smi -lgc <max_sm>"
   fi
 

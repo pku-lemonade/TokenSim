@@ -56,7 +56,7 @@ These example host capacities are in bytes; adjust them for your hardware.
   "kv_role": "kv_both",
   "kv_connector_extra_config": {
     "cpu_bytes_to_use_per_rank": 356125000000,
-    "host_available_bytes": 3246161657856,
+    "host_available_bytes": 3108436443136,
     "lazy_offload": false,
     "transfer_utilization": 0.75
   }
@@ -195,11 +195,44 @@ The examples are estimates with documented limits:
 - Persistent-buffer SM counts are configurable per hardware entry. The
   current values remain an explicitly unmeasured estimate.
 
-The engineering optimization reduced the measured full-window wall time from
-35.5 to 11.2 minutes on B200 and from 83.7 to 25.3 minutes on B300, with the
-same simulation results and logs. Those timings depend on the host CPU and
-load. Subsequent correctness fixes can change simulation metrics; historical
-throughput is not a unit-test target.
+### Comparison with the InferenceX reference
+
+The two example points reproduce published InferenceX AgentX runs of
+DeepSeek-V4-Pro on vLLM with DEP8, MTP (K=3) and SimpleCPU offload: B200 at
+concurrency 196 (InferenceX run 440239) and B300 at concurrency 384 (run
+439522). The table compares the commands above (`--random_seed 0`,
+`--agentx_workload_seed 42`) with the measured values. Latency percentiles are
+over successful requests in the measurement window; inter-token latency is the
+per-request mean after the first token. Error is simulated minus measured,
+relative to measured.
+
+| Metric | B200 simulated | B200 measured | Error | B300 simulated | B300 measured | Error |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Output tokens/s (8 GPUs) | 2,166 | 3,599 | -39.8% | 5,322 | 6,360 | -16.3% |
+| Input tokens/s (8 GPUs) | 281,449 | 470,701 | -40.2% | 705,681 | 813,832 | -13.3% |
+| Successful requests | 8,932 | 13,991 | -36.2% | 21,688 | 25,696 | -15.6% |
+| TTFT p50 (s) | 7.34 | 3.36 | +118% | 4.58 | 4.27 | +7.5% |
+| TTFT p90 (s) | 42.2 | 16.2 | +160% | 19.8 | 18.9 | +4.5% |
+| Inter-token latency p50 (s) | 0.070 | 0.034 | +105% | 0.049 | 0.045 | +9.3% |
+| Inter-token latency p90 (s) | 0.110 | 0.050 | +120% | 0.068 | 0.050 | +36.6% |
+| End-to-end p50 (s) | 42.7 | 21.4 | +99% | 30.2 | 26.5 | +13.8% |
+| End-to-end p90 (s) | 182.7 | 95.4 | +92% | 129.0 | 112.1 | +15.1% |
+| GPU prefix hit rate | 0.386 | 0.682 | | 0.947 | 0.899 | |
+| CPU prefix hit rate | 0.566 | 0.237 | | 0.008 | 0.016 | |
+
+B300 is within about 16% on throughput and request latency; B200
+underestimates throughput by about 40% and overestimates latency by about a
+factor of two. On B200 the simulated GPU cache retains less of the reused
+prefix, so more of it is reloaded from CPU memory. The approximations listed
+above are the main known sources of the gap; they are not calibrated against
+these measurements.
+
+### Run time
+
+A one-hour window takes about 9 minutes for the B200 example and about 19
+minutes for the B300 example on one core of an AMD EPYC 7C13; peak memory is
+about 5.4 GB and 6.6 GB. Loading the 393 traces accounts for roughly 30 s of
+each run. Runs are deterministic for a given input and seeds.
 
 ## Core validation
 
