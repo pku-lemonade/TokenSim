@@ -242,9 +242,7 @@ def _add_model_shapes(
             manifest.add(
                 "gemm",
                 {
-                    "dtype": (
-                        model.operator_dtype("router") if model.components else dtype
-                    ),
+                    "dtype": model.operator_dtypes.get("router", dtype),
                     "m": m,
                     "n": model.moe.num_experts,
                     "k": h,
@@ -276,9 +274,7 @@ def _add_model_shapes(
         manifest.add(
             "gemm",
             {
-                "dtype": (
-                    model.operator_dtype("lm_head") if model.components else dtype
-                ),
+                "dtype": model.operator_dtypes.get("lm_head", dtype),
                 "m": b,
                 "n": vocab_local,
                 "k": h,
@@ -312,20 +308,20 @@ def _add_model_shapes(
             )
 
     if model.is_moe:
+        # A model binding may fix the measured routing distribution.
+        moe_distribution = (
+            model.operator_modules.get("moe", {})
+            .get("key", {})
+            .get("distribution", "uniform")
+        )
         for ep in grid.ep_sizes:
             moe_tp = 1 if ep > 1 else tp
             for tokens in token_counts:
                 manifest.add(
                     "moe",
                     {
-                        "dtype": (
-                            model.operator_dtype("routed_expert")
-                            if model.components
-                            else dtype
-                        ),
-                        "distribution": (
-                            "power_law_1.01" if model.components else "uniform"
-                        ),
+                        "dtype": model.operator_dtypes.get("routed_expert", dtype),
+                        "distribution": moe_distribution,
                         "num_tokens": tokens,
                         "hidden_size": h,
                         "inter_size": model.moe_intermediate_size,

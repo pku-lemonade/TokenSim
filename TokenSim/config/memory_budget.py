@@ -200,7 +200,7 @@ def hybrid_memory_budget(
         "drafter_hidden": tokens * spec.hc_mult * model.hidden_size * 2 if mtp else 0,
         "flashinfer_workspace": 128 * MIB,
         # CSA/HCA share one factory key; SWA uses the other. In the saved
-        # Pro config original_position65536*factor16 == maximum_position.
+        # Pro config original_position 65536 * factor 16 == maximum_position.
         "compressed_rope_cache": (
             model.max_position_embeddings * spec.qk_rope_head_dim * 4
             if any(kind != "swa" for kind in kinds)

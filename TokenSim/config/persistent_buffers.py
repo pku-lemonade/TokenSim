@@ -1,8 +1,8 @@
-"""Pinned compressed attention native storage geometry and conservative Python live phases.
+"""Persistent device buffers of compressed attention and fused MoE kernels.
 
-Source: vLLM 30f5c01d4ebb and its DeepGEMM e1f418c2a4f allocation ABI.
-These are allocation-shape estimates. SM/allocator/graph driver costs remain
-explicit assumptions, independent of serving throughput or reference KV size.
+Sizes follow the allocations of vLLM 30f5c01d4ebb and DeepGEMM e1f418c2a4f.
+They are allocation-shape estimates; streaming-multiprocessor counts,
+allocator rounding and CUDA-graph driver memory remain explicit assumptions.
 """
 
 from __future__ import annotations
@@ -12,9 +12,12 @@ from TokenSim.latency.moe_spectrum import BLOCK_MS
 
 
 MIB = 1024**2
+# Row tile heights (BLOCK_M) DeepGEMM MegaMoE may select for a rank's tokens.
 BLOCK_M_CANDIDATES = (8, 16, 32, 64, 96, 128, 192, 240)
+# MegaMoE pads its per-rank token capacity to a common multiple of the
+# candidate BLOCK_M values so every tiling divides the buffer.
 TOKEN_ALIGNMENT = 1920
-SIGNAL_BYTES = 21140864  # Host sizeof(alignas(128) MegaMoESignals), max ranks72.
+SIGNAL_BYTES = 21140864  # Host sizeof(alignas(128) MegaMoESignals), max ranks 72.
 
 
 def ceil_div(value, divisor):
@@ -400,6 +403,7 @@ def live_phases(
         )
     # SM100 TP1's fused epilogue outputs FP8. Other TP sizes allocate BF16
     # attention output, followed by distinct inverse-RoPE FP8 quant storage.
+    # The fused epilogue exists only for 128 local heads (all heads at TP1).
     fused_output = (
         heads == 128
         and model.kv_cache_dtype == "fp8"

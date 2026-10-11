@@ -859,8 +859,8 @@ class OperatorTableLatencyBackend(LatencyBackend):
         compute_s = balanced.latency_us * self.moe_layers_local * 1e-6
         straggler_s = 0.0
         # A power-law measurement already includes its distribution's slow
-        # ranks. compressed attention deliberately uses a fixed power_law_1.01 cost assumption;
-        # its synthetic/trace histograms must never silently change that cost.
+        # ranks. When a model binding fixes the measured distribution,
+        # synthetic or trace histograms must not change that cost.
         measured_skew = bool(
             balanced.workload_distribution
             and balanced.workload_distribution.startswith("power_law")

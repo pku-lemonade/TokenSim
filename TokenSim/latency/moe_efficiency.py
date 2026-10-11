@@ -122,10 +122,10 @@ class ExpertEfficiencyTransfer:
     def describe(self):
         return {
             "grade": "D: whole uniform module efficiency allocated to expert/fused-dispatch phase; component efficiency not measured",
-            "source": "same phase/effective-capacity raw module rows; at least3 distinct expert-work coordinates",
+            "source": "same phase/effective-capacity raw module rows; at least 3 distinct expert-work coordinates",
             "common_scope": "startup, full-input preparation/scans and final combine retain source-anchor efficiency",
             "expert_scope": "critical expert/fused-dispatch work after integer sampling and full-input BLOCK_M; normalized measured shape efficiency ratio",
-            "identity": "uniform source anchor retained exactly; source-relative efficiency ratio equals1 at identical expert work",
+            "identity": "uniform source anchor retained exactly; source-relative efficiency ratio equals 1 at identical expert work",
             "fallback": "missing/singleton capacity, ambiguous work coordinate, cross-capacity or cross-buffer interpolation retain original physical normalization",
             "capacity_curves": [
                 {"phase": phase, "effective_capacity": capacity, "points": len(curve)}

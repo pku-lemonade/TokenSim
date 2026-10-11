@@ -1,4 +1,5 @@
-"""compressed transformer architecture metadata, independent of serving frameworks."""
+"""Architecture metadata of compressed-attention transformers (for example
+DeepSeek-V4), independent of serving frameworks."""
 
 from __future__ import annotations
 
@@ -33,6 +34,9 @@ class TransformerComponents:
     index_head_dim: int
     index_topk: int
     hc_mult: int
+    # Layers with this compression ratio (CSA) select their compressed KV
+    # entries with the lightning indexer; other compressed layers (HCA) attend
+    # to every compressed entry.
     indexed_compress_ratio: int = 4
     hc_sinkhorn_iters: int = 20
     routed_scaling_factor: float = 2.5

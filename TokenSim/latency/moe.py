@@ -88,21 +88,8 @@ class MegaMoEEstimator:
             LookupPolicy(extrapolate="analytical"),
             analytical_scaler=lambda table, key: float(key["num_tokens"]),
         )
-        self.base_key = {
-            "dtype": self.model.operator_dtype("routed_expert"),
-            "kernel_source": "deepgemm_megamoe",
-            "kernel_dtype": "fp8_fp4",
-            "distribution": "power_law_1.01",
-            "pre_dispatch": "sglang_jit",
-            "source_policy": "random",
-            "hidden_size": self.model.hidden_size,
-            "inter_size": self.model.moe_intermediate_size,
-            "top_k": self.model.moe.num_experts_per_tok,
-            "num_experts": self.model.moe.num_experts,
-            "num_fused_shared_experts": 0,
-            "tp_size": 1,
-            "ep_size": backend.moe_ep,
-        }
+        # The model binding selects the measured kernel scope; geometry and
+        # parallel layout come from the model and the serving configuration.
         selection = binding.get("key", {})
         selectable = {
             "kernel_source",
@@ -111,13 +98,22 @@ class MegaMoEEstimator:
             "pre_dispatch",
             "source_policy",
         }
-        if set(selection) - selectable:
+        if set(selection) != selectable:
             raise ConfigurationError(
-                "MegaMoE bindings select kernel scope; geometry comes from the model"
+                "fused MoE bindings must select exactly "
+                f"{sorted(selectable)}; geometry comes from the model"
             )
-        self.base_key.update(
-            {name: str(value).strip().lower() for name, value in selection.items()}
-        )
+        self.base_key = {
+            "dtype": self.model.operator_dtype("routed_expert"),
+            **{name: str(value).strip().lower() for name, value in selection.items()},
+            "hidden_size": self.model.hidden_size,
+            "inter_size": self.model.moe_intermediate_size,
+            "top_k": self.model.moe.num_experts_per_tok,
+            "num_experts": self.model.moe.num_experts,
+            "num_fused_shared_experts": 0,
+            "tp_size": 1,
+            "ep_size": backend.moe_ep,
+        }
         rows = [
             r
             for r in backend.package.tables[self.table]

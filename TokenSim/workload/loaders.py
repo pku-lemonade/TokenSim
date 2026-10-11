@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import math
 import random
 from pathlib import Path
@@ -13,6 +14,8 @@ from TokenSim.errors import WorkloadValidationError
 from TokenSim.moe.routing import normalize_expert_histogram
 from TokenSim.utils import get_decode_lens, get_prefill_lens
 from TokenSim.workload.user_request import UserRequest, UserRequestList
+
+logger = logging.getLogger(__name__)
 
 
 def load_workload(
@@ -332,10 +335,12 @@ def _repeat_and_slice(
 def _print_dataset_summary(path: Path, user_requests: UserRequestList) -> None:
     prefill_lens = user_requests.prefill_lens()
     decode_lens = user_requests.decode_lens()
-    print(
-        f'[workload] Read {len(user_requests)} reqs from dataset "{path}", '
-        + f"prefill average {sum(prefill_lens) / len(prefill_lens)}, "
-        + f"decode average {sum(decode_lens) / len(decode_lens)}"
+    logger.info(
+        "read %d requests from %s; mean prompt %.1f, mean output %.1f tokens",
+        len(user_requests),
+        path,
+        sum(prefill_lens) / len(prefill_lens),
+        sum(decode_lens) / len(decode_lens),
     )
 
 

@@ -148,6 +148,10 @@ operator_modules:
       kernel_dtype: fp8_block
       model: deepseek-ai/DeepSeek-V4-Pro
       architecture: DeepseekV4ForCausalLM
+    # Cache entry sizes of the measured kernel, used to extend the table
+    # beyond its measured lengths: FlashMLA fp8_ds_mla latents (448 FP8
+    # NoPE + 64 BF16 RoPE values + 8 scale bytes) and FP8 indexer keys with
+    # a 4-byte scale. The simulated serving KV cache is sized separately.
     layout:
       kv_state_bytes: 584
       indexer_state_bytes: 132
@@ -162,4 +166,8 @@ operator_modules:
   moe:
     table: dsv4_megamoe
     key:
+      kernel_source: deepgemm_megamoe
+      kernel_dtype: fp8_fp4
       distribution: power_law_1.01
+      pre_dispatch: sglang_jit
+      source_policy: random

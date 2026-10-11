@@ -24,6 +24,6 @@ def resolve_mtp_tokens(model, acceptance_length, num_speculative_tokens=None):
         raise ConfigurationError("MTP draft execution requires a model with MTP layers")
     if acceptance_length > 1 + num_speculative_tokens:
         raise ConfigurationError(
-            "MTP acceptance length cannot exceed1+K; disabled K0 requires AL1"
+            "MTP acceptance length cannot exceed 1+K; K=0 (disabled) requires an acceptance length of 1"
         )
     return num_speculative_tokens

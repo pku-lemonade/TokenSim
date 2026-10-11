@@ -102,9 +102,9 @@ class MegaMoEWorkModel:
             math_us = geometry.mma_rows * (
                 6 * self.hidden * self.inter / self.compute * 1e6
             )
-            # Pinned TaskInfo aligns valid_m to16 and the kernel updates its
+            # Pinned TaskInfo aligns valid_m to 16 and the kernel updates its
             # swapped MMA N descriptor per task. Every candidate BLOCK_M is a
-            # multiple of16, so total MMA rows are independent of M partitioning.
+            # multiple of 16, so total MMA rows are independent of M partitioning.
             terms = (
                 float(geometry.mma_rows.max(axis=1).mean()),
                 geometry.selections,
@@ -218,7 +218,7 @@ class MegaMoEWorkModel:
             "spectrum_samples": list(SEEDS),
             "spectrum_placement": "mean critical costs over all cyclic hot-rank placements; each retains max-rank work and full-input BLOCK_M; no mean-row module substitution",
             "spectrum_rounding": "float32 inverse-CDF; NumPy/Torch reduction differences may move boundary counts, exact integer selection bounds retained",
-            "mma_rows": "valid expert task tails aligned to16; per-expert16*ceil(received/16); mean critical-rank arithmetic over synthetic samples",
+            "mma_rows": "valid expert task tails aligned to 16; per expert 16*ceil(received/16); mean critical-rank arithmetic over synthetic samples",
             "mma_opcode": "tcgen05.mma.cta_group::2.kind::mxf8f6f4.block_scale; FP8 activation/FP4 weight, UMMA_K32",
             "compute_pipe": "catalog FP8 theoretical peak for the mixed MXF8F6F4 path; not pure FP4 storage-dtype peak",
             "compute_flops_per_s": self.compute,

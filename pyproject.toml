@@ -12,8 +12,8 @@ license = {file = "LICENSE"}
 dynamic = ["dependencies"]
 
 [project.optional-dependencies]
-agentx = ["huggingface_hub>=0.34"]
-plot = ["matplotlib>=3.8"]
+# orjson speeds up parsing multi-gigabyte AgentX traces; json is the fallback.
+agentx = ["huggingface_hub>=0.34", "orjson>=3.10"]
 dev = ["pytest>=8", "black==24.2.0"]
 
 [project.scripts]
@@ -22,6 +22,7 @@ tokensim-operator-data = "TokenSim.operator_data.cli:main"
 
 [tool.setuptools]
 py-modules = ["benchmark"]
+license-files = ["LICENSE", "NOTICE", "third_party/licenses/*"]
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}

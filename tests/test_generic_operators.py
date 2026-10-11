@@ -67,7 +67,10 @@ class GenericOperatorTest(unittest.TestCase):
                 **source.operator_modules,
                 "moe": {
                     **source.operator_modules["moe"],
-                    "key": {"distribution": "alternate_profile"},
+                    "key": {
+                        **source.operator_modules["moe"]["key"],
+                        "distribution": "alternate_profile",
+                    },
                 },
             },
         )
