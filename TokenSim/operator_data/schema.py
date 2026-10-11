@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import cached_property
 from typing import Mapping
 
 SCHEMA_VERSION = 1
@@ -74,15 +75,17 @@ class TableSpec:
     description: str
     metadata_fields: tuple[str, ...] = ()
 
-    @property
+    # Specs are immutable; derived field lists are computed once.
+
+    @cached_property
     def axis_names(self) -> tuple[str, ...]:
         return tuple(axis.name for axis in self.axes)
 
-    @property
+    @cached_property
     def discrete_fields(self) -> tuple[str, ...]:
         return tuple(field for field in self.key_fields if field not in self.axis_names)
 
-    @property
+    @cached_property
     def required_fields(self) -> tuple[str, ...]:
         return self.key_fields + VALUE_FIELDS
 

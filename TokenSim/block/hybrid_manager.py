@@ -147,6 +147,18 @@ class HybridKVBlockManager:
         self.full_spec = next(
             spec for spec in self.groups if spec.group is layout.full_group
         )
+        # (position, group id, page tokens, window history) per group: window
+        # pages before ``computed - history`` fall out of the window.
+        self._full_growth = tuple(
+            (spec.group_id, spec.block_tokens)
+            for spec in self.groups
+            if not spec.window_tokens
+        )
+        self._window_growth = tuple(
+            (position, spec.group_id, spec.block_tokens, spec.window_tokens - 1)
+            for position, spec in enumerate(self.groups)
+            if spec.window_tokens
+        )
         # Retained tails can be enumerated per boundary when each tail run
         # fits in one retention segment; otherwise test every window page.
         interval = layout.retention_interval
@@ -157,9 +169,13 @@ class HybridKVBlockManager:
         # any change to the map bumps the version and invalidates them.
         self._cache_version = 0
         self._plans = {}
-        # (computed, context_len, shared boundaries) of the last publication
-        # pass per request; cleared whenever that request's tables change.
+        # Per request: ((computed, context_len, shared boundaries) of the last
+        # publication pass, computed position at which a window page can next
+        # become publishable). Cleared whenever the tables change shape.
         self._committed = {}
+        # Per request: for each window group, the held contiguous index range
+        # ``(first, top)`` of its table, or None when not known to be one.
+        self._spans = {}
 
     # -- prefix identities -----------------------------------------------------
 
@@ -267,11 +283,6 @@ class HybridKVBlockManager:
             return coarse(spec.group_id, spec.block_tokens, index, keys)
 
         return keys, key_for
-
-    def _tail_indices(self, group, boundary, *, for_hit=True):
-        end = boundary // group.block_tokens + int(group.eagle)
-        need = group.hit_tail_slots
-        return range(max(0, end - need), end)
 
     # -- reuse planning ---------------------------------------------------------
 
@@ -445,6 +456,7 @@ class HybridKVBlockManager:
                 table[index] = block
                 destinations.append((gid, index, page, block))
         self._committed.pop(req.id, None)
+        self._spans[req.id] = self._window_spans(self.tables[req.id])
         return destinations
 
     def finish_external_import(self, req, destinations, hit_tokens):
@@ -550,9 +562,10 @@ class HybridKVBlockManager:
     # -- publication ------------------------------------------------------------
 
     def _publish(self, group, index, block, keys, req):
+        """Publish one complete page; False when its slot key is not known yet."""
         key = self._slot_key(group, index, keys, req)
         if key is None:
-            return
+            return False
         if block.block_hash != key:
             self._evict(block)
         existing = self.cache.get(key)
@@ -566,6 +579,7 @@ class HybridKVBlockManager:
             self._cache_version += 1
         for callback in self.publish_callbacks:
             callback(group, index, block, req)
+        return True
 
     def commit_input_cache(self, req):
         self.cache_computed(req)
@@ -575,30 +589,46 @@ class HybridKVBlockManager:
         if tables is None:
             return
         computed = req.num_computed_tokens
-        state = (
-            computed,
-            req.context_len,
-            getattr(req, "shared_prefix_boundaries", None),
-        )
-        if self._committed.get(req.id) != state:
-            self._committed[req.id] = state
-            self._publish_computed(req, tables, computed)
+        shared = getattr(req, "shared_prefix_boundaries", None)
+        state = (computed, req.context_len, shared)
+        entry = self._committed.get(req.id)
+        if entry is None or entry[0] != state:
+            # A window page becomes publishable only once its retention
+            # boundary (or EAGLE extension) is crossed; until the recorded
+            # threshold, only full-group pages can change.
+            windows = (
+                entry is None
+                or entry[0][2] != shared
+                or entry[1] is None
+                or computed >= entry[1]
+            )
+            threshold = self._publish_computed(req, tables, computed, windows)
+            self._committed[req.id] = (state, threshold if windows else entry[1])
         req.input_cache_committed = not req.is_prefill
 
-    def _publish_computed(self, req, tables, computed):
+    def _publish_computed(self, req, tables, computed, windows=True):
+        """Publish newly complete retained pages; return the next window threshold.
+
+        The threshold is None when window pages must be checked again at the
+        next change, for example after a page lacked its slot key.
+        """
         keys = self._input_keys(req)
         interval = self.layout.retention_interval
         prefill_boundary = (
             max(0, req.prefill_len - 1) // self.block_size * self.block_size
         )
-        extra_boundaries = [
+        all_boundaries = [
             boundary
             for boundary in (
                 *getattr(req, "shared_prefix_boundaries", ()),
                 prefill_boundary,
             )
-            if boundary and boundary <= computed
+            if boundary
         ]
+        extra_boundaries = [
+            boundary for boundary in all_boundaries if boundary <= computed
+        ]
+        deferred = False
         for spec in self.groups:
             table = tables[spec.group_id]
             group = spec.group
@@ -612,7 +642,7 @@ class HybridKVBlockManager:
                     if not block.cached:
                         self._publish(group, index, block, keys, req)
                 continue
-            if not table:
+            if not windows or not table:
                 continue
             if not self._tails_fit_segments:
                 for index, block in list(table.items()):
@@ -621,7 +651,7 @@ class HybridKVBlockManager:
                         and (index + 1) * bt <= computed
                         and self._retained(spec, index, computed, extra_boundaries)
                     ):
-                        self._publish(group, index, block, keys, req)
+                        deferred |= not self._publish(group, index, block, keys, req)
                 continue
             # Window pages are retained only in the tail runs before each
             # retention segment end, shared prefix and prompt boundary. Window
@@ -647,7 +677,34 @@ class HybridKVBlockManager:
                     and not block.cached
                     and (index + 1) * bt <= computed
                 ):
-                    self._publish(group, index, block, keys, req)
+                    deferred |= not self._publish(group, index, block, keys, req)
+        if not windows:
+            return None
+        if deferred or not self._tails_fit_segments:
+            return None
+        return self._window_threshold(computed, all_boundaries)
+
+    def _window_threshold(self, computed, boundaries):
+        """Smallest position past ``computed`` that can complete a retained run.
+
+        Tails before a boundary are complete at the boundary; an EAGLE run
+        ends one page past it. Boundaries are multiples of every page width.
+        """
+        candidates = list(boundaries)
+        interval = self.layout.retention_interval
+        if interval:
+            segment = computed // interval * interval
+            candidates += [segment, segment + interval]
+        threshold = float("inf")
+        for spec in self.groups:
+            if not spec.window_tokens:
+                continue
+            extension = spec.block_tokens if spec.eagle else 0
+            for boundary in candidates:
+                for value in (boundary, boundary + extension):
+                    if computed < value < threshold:
+                        threshold = value
+        return threshold
 
     def _retained(self, spec, index, computed, extra_boundaries):
         """Whether window page ``index`` lies in a retained tail run."""
@@ -764,6 +821,7 @@ class HybridKVBlockManager:
             for index, block in pairs:
                 self._acquire(block)
                 table[index] = block
+        self._spans[req.id] = self._window_spans(tables)
         req.cached_prefill_tokens = min(req.prefill_len, plan.hit_tokens)
         req.cached_prefill_blocks = req.cached_prefill_tokens // self.block_size
         req.gpu_cached_context_tokens = plan.hit_tokens
@@ -775,90 +833,118 @@ class HybridKVBlockManager:
 
     # -- per-step growth --------------------------------------------------------
 
-    def _required_indices(self, group, computed, end):
-        start = (
-            max(0, computed - (group.window_tokens - 1)) if group.window_tokens else 0
-        )
-        return range(start // group.block_tokens, cdiv(end, group.block_tokens))
-
-    # Window tables hold ascending indices (allocation appends the next
-    # positions; imports and hits insert tail runs in order), so pages before
-    # the window are a prefix of the table and the window is its suffix.
-
     @staticmethod
-    def _missing_window_slots(table, low, high):
-        """Indices in ``[low, high)`` absent from an ascending window table."""
-        present = last = 0
-        for index in reversed(table):
-            if index < low:
-                break
-            if not present:
-                last = index
-            present += 1
-        if not present:
-            return range(low, high)
-        if last - low + 1 == present:
-            # The held part of the window is contiguous from ``low``.
-            return range(max(low, last + 1), high)
-        return [index for index in range(low, high) if index not in table]
+    def _span(table):
+        """``(first, top)`` when a table holds exactly ``range(first, top)`` in order."""
+        indices = list(table)
+        if not indices:
+            return (0, 0)
+        first = indices[0]
+        if indices == list(range(first, first + len(indices))):
+            return (first, first + len(indices))
+        return None
+
+    def _window_spans(self, tables):
+        return [
+            self._span(tables[spec.group_id]) if spec.window_tokens else None
+            for spec in self.groups
+        ]
 
     def can_ensure_slots(self, req, scheduled_tokens, *, lookahead=0):
         computed = req.num_computed_tokens
         end = min(self.layout.max_model_len, computed + scheduled_tokens + lookahead)
         tables = self.tables[req.id]
+        spans = self._spans[req.id]
         needed = reclaimable = 0
-        for spec in self.groups:
-            table = tables[spec.group_id]
-            bt = spec.block_tokens
+        for group_id, bt in self._full_growth:
+            grow = (end + bt - 1) // bt - len(tables[group_id])
+            if grow > 0:
+                needed += grow
+        for position, group_id, bt, history in self._window_growth:
+            table = tables[group_id]
             high = (end + bt - 1) // bt
-            if not spec.window_tokens:
-                needed += max(0, high - len(table))
+            low = (computed - history) // bt if computed > history else 0
+            span = spans[position]
+            if span is None:
+                needed += sum(index not in table for index in range(low, high))
+                reclaimable += sum(
+                    block.ref_count == 1
+                    for index, block in table.items()
+                    if index < low
+                )
                 continue
-            low = max(0, computed - (spec.window_tokens - 1)) // bt
-            needed += len(self._missing_window_slots(table, low, high))
+            first, top = span
+            if high > low:
+                overlap = (high if high < top else top) - (
+                    low if low > first else first
+                )
+                needed += high - low - (overlap if overlap > 0 else 0)
             # Window pages before the window are released before allocation.
-            for index, block in table.items():
-                if index >= low:
-                    break
-                reclaimable += block.ref_count == 1
-        return needed <= self.get_num_free_blocks() + reclaimable
+            for index in range(first, low if low < top else top):
+                if table[index].ref_count == 1:
+                    reclaimable += 1
+        return needed <= len(self._free_uncached) + len(self._free_cached) + reclaimable
 
     def ensure_slots(self, req, scheduled_tokens, *, lookahead=0):
         computed = req.num_computed_tokens
         end = min(self.layout.max_model_len, computed + scheduled_tokens + lookahead)
         tables = self.tables[req.id]
-        changed = False
+        spans = self._spans[req.id]
         # Reclaim all old windows before allocating any group's new blocks.
         # can_ensure_slots includes these reclaimable slots in its decision.
-        for spec in self.groups:
-            if not spec.window_tokens:
+        # vLLM frees skipped pages newest first.
+        for position, group_id, bt, history in self._window_growth:
+            table = tables[group_id]
+            low = (computed - history) // bt if computed > history else 0
+            span = spans[position]
+            if span is None:
+                skipped = [index for index in reversed(table) if index < low]
+                if skipped:
+                    self._release_many([table.pop(index) for index in skipped])
                 continue
-            table = tables[spec.group_id]
-            low = max(0, computed - (spec.window_tokens - 1)) // spec.block_tokens
-            skipped = []
-            for index in table:
-                if index >= low:
-                    break
-                skipped.append(index)
-            if skipped:
-                # Release the newest page first, as vLLM frees skipped blocks.
-                skipped.reverse()
-                self._release_many([table.pop(index) for index in skipped])
-                changed = True
-        for spec in self.groups:
+            first, top = span
+            cut = low if low < top else top
+            if cut > first:
+                self._release_many(
+                    [table.pop(index) for index in range(cut - 1, first - 1, -1)]
+                )
+                spans[position] = (cut, top)
+        # Allocation follows the layout's group order.
+        for position, spec in enumerate(self.groups):
             table = tables[spec.group_id]
             bt = spec.block_tokens
             high = (end + bt - 1) // bt
-            if spec.window_tokens:
-                low = max(0, computed - (spec.window_tokens - 1)) // bt
-                missing = self._missing_window_slots(table, low, high)
-            else:
-                missing = range(len(table), high)
+            if not spec.window_tokens:
+                if high > len(table):
+                    table.update(
+                        zip(
+                            range(len(table), high),
+                            self._allocate_many(high - len(table)),
+                        )
+                    )
+                continue
+            history = spec.window_tokens - 1
+            low = (computed - history) // bt if computed > history else 0
+            span = spans[position]
+            if span is not None and (span[0] == span[1] or span[0] == low):
+                # Contiguous from the window start (or empty): append the tail.
+                start = max(low, span[1]) if span[0] != span[1] else low
+                if high > start:
+                    table.update(
+                        zip(range(start, high), self._allocate_many(high - start))
+                    )
+                    spans[position] = (low if span[0] == span[1] else span[0], high)
+                    if start * bt < computed:
+                        # Pages behind the computed position may already be
+                        # publishable; recheck at the next publication pass.
+                        self._committed.pop(req.id, None)
+                continue
+            missing = [index for index in range(low, high) if index not in table]
             if missing:
                 table.update(zip(missing, self._allocate_many(len(missing))))
-                changed = True
-        if changed:
-            self._committed.pop(req.id, None)
+                if missing[0] * bt < computed:
+                    self._committed.pop(req.id, None)
+            spans[position] = self._span(table)
 
     # -- release ------------------------------------------------------------------
 
@@ -880,6 +966,7 @@ class HybridKVBlockManager:
         self.fine_keys.pop(req.id, None)
         self._plans.pop(req.id, None)
         self._committed.pop(req.id, None)
+        self._spans.pop(req.id, None)
 
     def forget_request(self, request_id):
         self.keys.pop(request_id, None)
@@ -942,6 +1029,12 @@ class HybridKVBlockManager:
                 )
             if (block.ref_count == 0) != (block.block_number in free):
                 raise SimulationStateError("hybrid free queue conservation failed")
+        for request_id, spans in self._spans.items():
+            for span, spec in zip(spans, self.groups):
+                if span is not None and list(
+                    self.tables[request_id][spec.group_id]
+                ) != list(range(*span)):
+                    raise SimulationStateError("hybrid window span conservation failed")
         for key, block in self.cache.items():
             if not block.cached or block.block_hash != key:
                 raise SimulationStateError(

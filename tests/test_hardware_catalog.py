@@ -223,15 +223,15 @@ class TopologyTest(unittest.TestCase):
 
     def test_default_operator_backend_is_vllm(self):
         hardware = HardwareContext.load(ROOT / "data")
-        self.assertEqual(hardware.operator_package("h100_sxm").backend, "vllm")
-        self.assertEqual(
-            hardware.operator_package("h100_sxm", "trtllm").backend, "trtllm"
-        )
-        self.assertEqual(hardware.operator_package("intel_arc_pro_b60").backend, "vllm")
+        self.assertEqual(hardware.resolve_backend("h100_sxm"), "vllm")
+        self.assertEqual(hardware.resolve_backend("h100_sxm", "trtllm"), "trtllm")
+        self.assertEqual(hardware.resolve_backend("intel_arc_pro_b60"), "vllm")
         self.assertEqual(
             sorted(hardware.available_backends("h100_sxm")),
             ["sglang", "trtllm", "vllm"],
         )
+        with self.assertRaisesRegex(ConfigurationError, "no operator data"):
+            hardware.resolve_backend("h100_sxm", "missing")
 
     def test_repository_topologies_reference_known_links(self):
         hardware = HardwareContext.load(ROOT / "data")

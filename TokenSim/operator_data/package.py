@@ -403,16 +403,24 @@ def validate_rows(
     where = str(path) if path else table_name
     checked: list[dict[str, Any]] = []
     seen: set[tuple[Any, ...]] = set()
+    required = spec.required_fields
+    required_set = frozenset(required)
+    # 0: non-negative integer, 1: dtype name, 2: lowercase string.
+    kinds = tuple(
+        (f, 0 if f in INTEGER_FIELDS else 1 if f in spec.dtype_fields else 2)
+        for f in spec.key_fields
+    )
+    dtypes: dict[str, str] = {}
     for index, row in enumerate(rows):
-        missing = [f for f in spec.required_fields if f not in row]
-        if missing:
+        if not row.keys() >= required_set:
+            missing = [f for f in required if f not in row]
             raise OperatorDataValidationError(
                 f"{where}: row {index} is missing fields {missing}"
             )
         clean: dict[str, Any] = {}
-        for f in spec.key_fields:
+        for f, kind in kinds:
             value = row[f]
-            if f in INTEGER_FIELDS:
+            if kind == 0:
                 try:
                     number = int(value)
                 except (TypeError, ValueError) as exc:
@@ -424,8 +432,12 @@ def validate_rows(
                         f"{where}: row {index} field {f} must be non-negative"
                     )
                 clean[f] = number
-            elif f in spec.dtype_fields:
-                clean[f] = normalize_dtype(str(value))
+            elif kind == 1:
+                text = str(value)
+                dtype = dtypes.get(text)
+                if dtype is None:
+                    dtype = dtypes[text] = normalize_dtype(text)
+                clean[f] = dtype
             else:
                 clean[f] = str(value).strip().lower()
         try:
@@ -451,7 +463,7 @@ def validate_rows(
         for metadata_field in spec.metadata_fields:
             if metadata_field in row:
                 clean[metadata_field] = row[metadata_field]
-        key = tuple(clean[f] for f in spec.key_fields)
+        key = tuple(map(clean.__getitem__, spec.key_fields))
         if key in seen:
             raise OperatorDataValidationError(
                 f"{where}: duplicate key {dict(zip(spec.key_fields, key))}"

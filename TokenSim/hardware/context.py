@@ -113,19 +113,24 @@ class HardwareContext:
         if package.backend not in self._package_index[package.device_id]:
             self._package_index[package.device_id].append(package.backend)
 
+    def resolve_backend(self, device_id: str, backend: str | None = None) -> str | None:
+        """Backend whose package :meth:`operator_package` loads, without loading it."""
+        backends = self.available_backends(device_id)
+        if backend is None:
+            return _preferred_backend(backends) if backends else None
+        if backend not in backends:
+            raise ConfigurationError(
+                f"device {device_id!r} has no operator data for backend {backend!r}; available: {backends}"
+            )
+        return backend
+
     def operator_package(self, device_id: str, backend: str | None = None):
         """Return the operator package for a device, or ``None`` when none exists."""
         from TokenSim.operator_data.package import OperatorDataPackage
 
-        backends = self.available_backends(device_id)
+        backend = self.resolve_backend(device_id, backend)
         if backend is None:
-            if not backends:
-                return None
-            backend = _preferred_backend(backends)
-        elif backend not in backends:
-            raise ConfigurationError(
-                f"device {device_id!r} has no operator data for backend {backend!r}; available: {backends}"
-            )
+            return None
         key = (device_id, backend)
         if key not in self._packages:
             assert self.operator_data_root is not None

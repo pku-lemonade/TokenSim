@@ -653,14 +653,14 @@ class AgentXReplay:
         return issued
 
     def _future_timers(self, play):
+        # ``active_streams`` holds only active, non-terminal cursors.
+        limit = self.env.now + 1e-9
         return [
             cursor
             for cursor in play.active_streams.values()
-            if cursor.active
-            and not cursor.terminal
-            and cursor.in_flight is None
+            if cursor.in_flight is None
             and cursor.due is not None
-            and cursor.due > self.env.now + 1e-9
+            and cursor.due > limit
         ]
 
     def _idle_shifts(self):
