@@ -1,38 +1,29 @@
 # TokenSim
 
-TokenSim is a deterministic discrete-event simulator for LLM serving. It
-estimates request latency, throughput, batching, parallel execution, KV
-caching and storage transfers from model geometry, hardware descriptions and
-operator measurements. It runs on a CPU; it needs neither the simulated
-accelerators nor model weights.
+TokenSim is a deterministic discrete-event simulator for large language model (LLM) serving.
+It estimates request latency and throughput using model dimensions, hardware descriptions and operator measurements.
+The simulation includes batching, parallel execution, attention key/value (KV) caching and storage transfers.
+It runs on a CPU without requiring the simulated accelerators or model weights.
 
-Paper: [TokenSim: Enabling Hardware and Software Exploration for Large Language
-Model Inference Systems](https://arxiv.org/abs/2503.08415)
+The project paper is [TokenSim: Enabling Hardware and Software Exploration for Large Language Model Inference Systems](https://arxiv.org/abs/2503.08415).
 
 ## Features
 
-- Static, dynamic and paged-attention batching. The paged scheduler follows
-  vLLM V1: a per-step token budget shared by decode tokens and prefill chunks,
-  chunked prefill, preemption and recomputation.
-- Prefix KV-cache reuse from recorded block hashes, including grouped caches
-  with sliding-window layer groups.
-- Tensor, pipeline, data and expert parallelism; hybrid and disaggregated
-  prefill/decode workers; data-parallel lockstep and session-aware routing.
-- Operator-level latency: measured kernel tables first, interpolation and
-  bounded extrapolation, and an analytical roofline fallback. Measured vLLM,
-  TensorRT-LLM and SGLang tables ship for A100, H100, H200, L40S, RTX PRO 6000,
-  B200, B300, GB200 and GB300, and vLLM tables for the Intel Arc Pro B60.
-- Complete operator modules selected per model: compressed sparse attention,
-  hyper-connection residual mixing and fused expert-parallel MoE.
-- Multi-token-prediction speculative decoding with an average acceptance
-  length.
-- MoE expert placement, routing distributions, all-to-all communication and
-  load statistics.
-- KV transfer and storage: P2P, CPU offload and Mooncake stores with memory
-  and SSD tiers.
-- Hierarchical interconnect topologies with an alpha-beta collective model.
-- Workloads: synthetic lengths, JSON and JSONL request traces, and
-  closed-loop replay of AgentX coding-agent traces.
+- TokenSim supports static, dynamic and paged-attention batching.
+  The paged scheduler follows vLLM V1 and shares a per-step token limit between prompt processing (prefill) and output token generation (decode).
+  It can process prompts in chunks, pause requests when memory is insufficient and recompute their context when they resume.
+- Requests can reuse cached prompt prefixes identified by recorded block hashes, including models with multiple cache groups and sliding-window layers.
+- Tensor parallelism divides work within layers, pipeline parallelism divides layers into stages, data parallelism handles separate request batches, and expert parallelism distributes expert networks across workers.
+  Workers can perform both prefill and decode or belong to separate pools, with synchronized data-parallel steps and routing that keeps conversations on a replica.
+- Operator latency estimates use measured kernel tables, interpolation between measurements and bounded extrapolation beyond the measured range.
+  The default fallback uses formulas for queries that tables cannot answer.
+  Measured vLLM, TensorRT-LLM and SGLang tables ship for A100, H100, H200, L40S, RTX PRO 6000, B200, B300, GB200 and GB300, and vLLM tables for the Intel Arc Pro B60.
+- Model configurations can select complete measured modules for compressed sparse attention, mixing residual streams through hyper-connections and fused mixture-of-experts (MoE) operations.
+- Multi-token prediction proposes draft tokens for the model to verify, with a configured average number of accepted tokens per step.
+- For MoE models, TokenSim models expert placement, token routing, communication between expert workers and the work assigned to each expert.
+- KV data can move directly between workers, be offloaded to CPU memory or use a Mooncake store with memory and SSD tiers.
+- Communication time follows the cluster's hierarchy of interconnects and combines fixed transfer latency with message size divided by effective bandwidth.
+- Workloads include generated request lengths, JSON and JSONL traces, and AgentX coding-agent traces whose requests follow their recorded dependencies.
 
 ## Installation
 
@@ -47,44 +38,50 @@ python -m pip install -e '.[dev]'
 ```
 
 The `agentx` extra adds the tools for downloading and parsing AgentX traces.
-The bundled model, hardware and operator data are found from the checkout or
-the installed package; `--data_root` or `TOKENSIM_DATA_ROOT` select another
-data directory.
+Model, hardware and operator data are loaded from the checkout or installed package.
+Select another data directory with `--data_root` or `TOKENSIM_DATA_ROOT`.
 
 ## Quick start
 
-Simulate 100 synthetic requests for Llama-7B on one A100 with the analytical
-latency model:
+The following command simulates 100 generated requests for Llama-7B on one A100 using formula-based latency estimates.
 
 ```bash
-tokensim --latency_backend analytical --request_count 100 \
+tokensim --latency_backend analytical \
+  --request_count 100 \
   --results_path results/example
 ```
 
-Run Llama-3-70B on an 8x H100 node with measured operator tables, paged
-attention and chunked prefill:
+The following command runs Llama-3-70B on eight H100 GPUs with measured operator tables, paged attention and prompt processing in chunks.
 
 ```bash
 tokensim --model data/models/llama-3-70b.yaml \
   --cluster data/clusters/8_h100/tp8.json \
-  --batching paged-attn --block_size 16 \
-  --max_num_seqs 64 --max_num_batched_tokens 8192 \
-  --request_count 64 --qps 4 --verbose none \
+  --batching paged-attn \
+  --block_size 16 \
+  --max_num_seqs 64 \
+  --max_num_batched_tokens 8192 \
+  --request_count 64 \
+  --qps 4 \
+  --verbose none \
   --results_path results/llama-3-70b
 ```
 
-Replay a request trace with recorded lengths and prefix hashes:
+The following command replays requests with recorded lengths and hashes identifying their prompt prefixes.
 
 ```bash
 tokensim --model data/models/llama-7b.yaml \
   --cluster data/clusters/1_a100/h1.json \
-  --batching paged-attn --block_size 16 \
-  --workload_type qwen_jsonl --dataset_path dataset/qwen_example.jsonl \
-  --qps 50 --verbose none --results_path results/trace
+  --batching paged-attn \
+  --block_size 16 \
+  --workload_type qwen_jsonl \
+  --dataset_path dataset/qwen_example.jsonl \
+  --qps 50 \
+  --verbose none \
+  --results_path results/trace
 ```
 
-`python benchmark.py` runs the same command line from a checkout. Run
-`tokensim --help` for every option.
+`python benchmark.py` runs the same command line from a checkout.
+Run `tokensim --help` for every option.
 
 ## Configuration
 
@@ -98,69 +95,63 @@ tokensim --model data/models/llama-7b.yaml \
 | KV transfer | `data/kv_transfer/*.json`, `--kv_transfer_config` | Connector and storage settings |
 | Workload | CLI options or `--workload_config` | Arrival rate and distribution, lengths, SLO targets |
 
-Request generation and latency targets are independent of the model. A
-workload file such as the following sets them; explicit CLI values take
-precedence:
+Request generation and latency targets are independent of the model.
+A workload file can set them as shown below, and explicit CLI values take precedence.
+Latency targets are also called service-level objectives (SLOs).
 
 ```json
 {
   "qps": 10,
   "prefill_mean_len": 256,
   "decode_mean_len": 64,
-  "first_token_latency": {"max": 10},
-  "decode_token_latency": {"p99": 0.1}
+  "first_token_latency": {
+    "max": 10
+  },
+  "decode_token_latency": {
+    "p99": 0.1
+  }
 }
 ```
 
-Targets are optional and in seconds. `first_token_latency` applies to the time
-to first token and `decode_token_latency` to each request's mean inter-token
-latency. A `max` target bounds every request; `p50` and `p99` bound the run's
-percentiles.
+Targets are optional and in seconds.
+`first_token_latency` applies to the time to first token and `decode_token_latency` to each request's mean inter-token latency.
+A `max` target sets a limit for every request.
+`p50` sets a limit for the median latency, and `p99` sets a limit for the 99th percentile.
 
 ## Results
 
-Results are written to `--results_path` (default
-`results/<model>/<cluster directory>/<cluster>`):
+Results are written to `--results_path`, which defaults to `results/<model>/<cluster directory>/<cluster>`.
 
-- `result_<qps>.json` (or `agentx_c<concurrency>.json` for AgentX): latency
-  and throughput summaries, preemption and recomputation, prefix-cache reuse,
-  KV transfers, parallel communication, MoE load and the provenance of every
-  latency estimate (measured, interpolated, extrapolated or analytical). With
-  latency targets, `slo` reports whether each was met and the goodput: the
-  requests within every `max` target.
-- `missing_shapes_<qps>.json`: operator shapes no table could answer, grouped
-  for the next measurement campaign.
-- `failure.json` and `failed.txt`: diagnostics when a run stops early or fails;
-  partial results are still exported.
+- `result_<qps>.json`, or `agentx_c<concurrency>.json` for AgentX, summarizes latency, throughput, paused requests, recomputation, prefix reuse, KV transfers, parallel communication and MoE loads.
+  It records whether latency estimates come from measurements, interpolation, extrapolation or formulas.
+  With latency targets, `slo` reports which targets were met and goodput for requests meeting every `max` target.
+- `missing_shapes_<qps>.json` groups operator dimensions that tables could not answer, identifying what to measure in another profiling run.
+- `failure.json` records diagnostics for runs stopped before normal completion or with an error, alongside saved partial results.
+  `failed.txt` records the error message when the run fails.
 
 ## Documentation
 
-- [Operator latency model](docs/operator-latency-model.md): tables, lookup,
-  extrapolation, analytical fallback, communication and the operator-data CLI.
-- [AIConfigurator data](docs/aiconfigurator.md): importing and validating
-  measured tables.
-- [Data collection checklist](docs/data-collection-checklist.md) and
-  [collection scripts](scripts/collect/README.md): measuring your own hardware.
-- [Parallelism](docs/parallelism.md), [MoE](docs/moe.md),
-  [prefix cache](docs/prefix-cache.md) and [Mooncake storage](docs/mooncake.md).
-- [AgentX workloads](docs/agentx.md): trace replay and comparison with the
-  InferenceX measurements.
-- [Hardware catalog](data/devices/README.md) and
-  [source grades](TokenSim/hardware/README.md).
+- The [operator latency model](docs/operator-latency-model.md) describes tables, lookup rules, extrapolation, formula-based fallback, communication and the operator-data CLI.
+- The [AIConfigurator guide](docs/aiconfigurator.md) explains how to import and validate measured tables.
+- The [data collection checklist](docs/data-collection-checklist.md) and [collection scripts](scripts/collect/README.md) describe how to measure your hardware.
+- Separate guides cover [parallelism](docs/parallelism.md), [MoE](docs/moe.md), [prefix caching](docs/prefix-cache.md) and [Mooncake storage](docs/mooncake.md).
+- The [AgentX guide](docs/agentx.md) describes trace replay and comparisons with InferenceX measurements.
+- The [hardware catalog](data/devices/README.md) and [source grades guide](TokenSim/hardware/README.md) explain device specifications and their evidence sources.
 
 ## Testing
 
 ```bash
-python -m unittest discover -s tests -t .
+python -m unittest discover \
+  -s tests \
+  -t .
 ```
 
-The suite uses small deterministic cases: scheduling order, transfer and cache
-conservation, request dependency clocks, deadlines, result persistence and
-operator-data validation. See [CONTRIBUTING.md](CONTRIBUTING.md).
+Tests use small deterministic cases to check scheduling order, transfer and cache allocation accounting, request dependency timing, time limits, saved results and operator-data validation.
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Citation
 
-If you use TokenSim in your research, please cite:
+If you use TokenSim in your research, cite the following paper.
 
 ```bibtex
 @misc{wu2025tokensimenablinghardwaresoftware,
@@ -176,8 +167,7 @@ If you use TokenSim in your research, please cite:
 
 ## License and acknowledgments
 
-TokenSim is licensed under [Apache-2.0](LICENSE). It builds on SimPy. Measured
-kernel tables are imported from NVIDIA AIConfigurator, the AgentX trace parser
-adapts NVIDIA AIPerf, and the scheduler and KV-cache designs follow vLLM.
-Attribution and retained licenses are in [NOTICE](NOTICE),
-`third_party/licenses` and the [operator-data notices](data/operator_data/LICENSES.md).
+TokenSim is licensed under [Apache-2.0](LICENSE).
+It builds on SimPy.
+Measured kernel tables are imported from NVIDIA AIConfigurator, the AgentX trace parser adapts NVIDIA AIPerf, and the scheduler and KV-cache designs follow vLLM.
+Attribution and retained licenses are in [NOTICE](NOTICE), `third_party/licenses` and the [operator-data notices](data/operator_data/LICENSES.md).

@@ -2,64 +2,51 @@
 
 ## 0.1.0 (unreleased)
 
-First packaged release. Changes are relative to the previous source-only
-version of TokenSim.
+This is the first packaged release of TokenSim.
+The listed changes are relative to its source-only release.
 
 ### Added
 
-- `pip install` support with the `tokensim` and `tokensim-operator-data`
-  commands, an `agentx` extra for trace downloads and fast trace parsing, and a
-  `dev` extra for tests and formatting. Bundled model, hardware and operator
-  data resolve from the installed package; `--data_root` or
-  `TOKENSIM_DATA_ROOT` select another data bundle.
-- AgentX workload adapter (`--workload_type agentx_weka`): closed-loop replay
-  of SemiAnalysis WEKA coding-agent traces with conversation dependencies,
-  subagent spawn/join, recorded prefix hashes, warmup, grace period and
-  cancellation. See `docs/agentx.md`.
-- Model features selected through model YAML geometry and operator bindings:
-  compressed sparse attention, grouped KV caches with sliding-window groups,
-  hyper-connection residual mixing, fused expert-parallel MoE modules and
-  multi-token-prediction speculative decoding with an average acceptance
-  length. DeepSeek-V4-Pro is included as a complete model description.
-- Complete operator-module tables (`dsv4_attention`, `dsv4_megamoe`, `mhc`)
-  imported from AIConfigurator for every system that has them. Module tables
-  replace the primitive operators they contain, so their cost is not counted
-  twice.
-- Data-parallel lockstep execution with dummy batches and finished-state
-  consensus, session-aware consistent-hash routing, fixed routing maps and
-  optional sticky sessions.
-- Asynchronous CPU offload (`SimpleCPUOffloadConnector`) and a grouped-page
-  Mooncake store with queued PCIe transfers and page reference ownership.
-- Memory budgets derived from model weights, persistent buffers, activations,
-  CUDA-graph capture and communication buffers.
-- `--sim_time` cutoffs with partial results, and failure diagnostics
-  (`failure.json`, `failed.txt`) in the result directory.
-- `docs/aiconfigurator.md`: importing and validating AIConfigurator data.
-- Apache-2.0 license, third-party notices and retained upstream licenses.
+- The package supports `pip install` and provides the `tokensim` and `tokensim-operator-data` commands.
+  The `agentx` extra adds trace downloading and fast parsing, and the `dev` extra adds testing and formatting tools.
+  Model, hardware and operator data load from the installed package, with `--data_root` or `TOKENSIM_DATA_ROOT` selecting another data bundle.
+- `--workload_type agentx_weka` replays SemiAnalysis WEKA coding-agent traces while preserving request dependencies and subagent start and join relationships.
+  Replay uses recorded prefix hashes and includes cache warmup, time for outstanding requests to finish and cancellation of remaining requests.
+  See `docs/agentx.md`.
+- Model YAML files define the dimensions and select measured modules for compressed sparse attention, mixing residual streams through hyper-connections and fused mixture-of-experts (MoE) operations.
+  Models also support grouped key/value (KV) caches with sliding-window groups and multi-token prediction, which proposes draft tokens with a configured average acceptance length.
+  DeepSeek-V4-Pro is included as a complete model description.
+- AIConfigurator imports include complete module tables (`dsv4_attention`, `dsv4_megamoe`, `mhc`) for each system with available measurements.
+  Module times replace the individual operations included in those measurements.
+- Data-parallel workers can advance in synchronized steps, use dummy batches on idle workers and agree on when execution has finished.
+  Routing supports consistent conversation hashing, fixed routing maps and optional sticky sessions that keep requests on the same replica.
+- `SimpleCPUOffloadConnector` supports asynchronous transfers to CPU memory.
+  The grouped Mooncake store queues PCIe transfers and tracks references that protect pages while transfers use them.
+- Memory budgets account for model weights, GPU buffers retained between kernel calls, activations, CUDA-graph capture and communication buffers.
+- `--sim_time` stops execution at a simulated-time limit and saves partial results, while failures produce `failure.json` and `failed.txt` in the result directory.
+- `docs/aiconfigurator.md` documents importing and validating AIConfigurator data.
+- The repository includes the Apache-2.0 license, third-party notices and retained upstream licenses.
 
 ### Changed
 
-- `--model` takes a model catalog name or a model YAML path; request
-  generation and SLO targets move to CLI options or `--workload_config`.
-- `--max_parallem_sum` is now `--max_num_seqs` (default 64): the active
-  sequence limit for every batching mode.
-- Extrapolation beyond measured operator data keeps the boundary row's
-  efficiency and applies analytical work growth by default.
-- The paged-attention scheduler follows vLLM V1: running requests in arrival
-  order, no admissions in a step that preempted, and a failed first-chunk
-  allocation stops admission instead of preempting the new request.
-- Results reject unknown fields. Operator-module statistics are grouped under
-  `module_stats`; `output_token_ps` counts generated tokens.
-- Latency targets have no built-in defaults. When the workload sets them,
-  results report each target's attainment and the goodput under `slo`.
-- Each engine owns its timing recorder; repeated runs in one process are
-  independent.
+- `--model` takes a model catalog name or a model YAML path.
+  Request generation and latency targets, also called service-level objectives (SLOs), are configured through CLI options or `--workload_config`.
+- `--max_parallem_sum` has been renamed to `--max_num_seqs`, which limits active sequences in every batching mode and defaults to 64.
+- Extrapolation beyond measured operator data keeps the boundary row's efficiency and applies analytical work growth by default.
+- The paged-attention scheduler follows vLLM V1 and serves running requests in arrival order.
+  A step that pauses a request to reclaim memory admits no new requests.
+  If memory allocation for a waiting request's first chunk fails, admission stops and the request remains waiting.
+- Results reject unknown fields.
+  Operator-module statistics are grouped under `module_stats`; `output_token_ps` counts generated tokens.
+- Latency targets have no built-in defaults.
+  When the workload sets targets, `slo` reports which were met and goodput for requests meeting all per-request limits.
+- Each engine owns its timing recorder; repeated runs in one process are independent.
 - Python 3.11 or newer is required; 3.12 is recommended.
 
 ### Removed
 
-- PSLA workload files (`data/psla`) and proxy model configurations.
-- Research artifacts, stage reports and accuracy-alignment scripts.
-- The interpreter wrapper `scripts/run_python.sh`.
-- The `moe_all2all_latency` result field, which was always zero; expert
-  dispatch and combine time is `parallel_ep_all2all_latency`.
+- PSLA workload files (`data/psla`) and proxy model configurations have been removed.
+- Research artifacts, stage reports and scripts that fit results to reference measurements have been removed.
+- The interpreter wrapper `scripts/run_python.sh` has been removed.
+- The unused `moe_all2all_latency` result field, which always reported zero, has been removed.
+  `parallel_ep_all2all_latency` records the time for sending tokens to experts and collecting their results.
