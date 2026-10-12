@@ -146,7 +146,7 @@ python -m unittest discover \
   -t .
 ```
 
-Tests use small deterministic cases to check scheduling order, transfer and cache allocation accounting, request dependency timing, time limits, saved results and operator-data validation.
+Tests use small deterministic cases to check scheduling order, transfer and cache allocation accounting, request dependency timing, time limits, saved results and configuration validation.
 See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Citation
