@@ -10,9 +10,18 @@
       "local_path": "chains.py",
       "changes": [
         "TokenSim RawRequest imports",
-        "uint64 storage for unsigned hash identity"
+        "uint64 storage for unsigned hash identity",
+        "Separate records, worker grouping, greedy detection and seam resolution into modules"
       ],
-      "public_source": "https://github.com/ai-dynamo/aiperf/blob/49634d1c/src/aiperf/dataset/loader/weka_agent_chains.py"
+      "public_source": "https://github.com/ai-dynamo/aiperf/blob/49634d1c/src/aiperf/dataset/loader/weka_agent_chains.py",
+      "local_paths": [
+        "chains.py",
+        "chain_detection/__init__.py",
+        "chain_detection/records.py",
+        "chain_detection/groups.py",
+        "chain_detection/detection.py",
+        "chain_detection/seams.py"
+      ]
     },
     {
       "source_path": "src/aiperf/dataset/loader/weka_trace.py",
