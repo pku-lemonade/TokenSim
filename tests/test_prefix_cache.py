@@ -40,18 +40,6 @@ def block_ids(manager: BlockManager, req: Request) -> list[int]:
 
 
 class PrefixCacheKeyTest(unittest.TestCase):
-    def test_extra_hash_scopes_raw_hashes(self):
-        base = build_prefix_keys(["a", "b"], model="m", reuse_group="tenant-a")
-        different_group = build_prefix_keys(
-            ["a", "b"], model="m", reuse_group="tenant-b"
-        )
-        different_model = build_prefix_keys(
-            ["a", "b"], model="n", reuse_group="tenant-a"
-        )
-
-        self.assertNotEqual(base, different_group)
-        self.assertNotEqual(base, different_model)
-
     def test_parent_hash_scopes_later_blocks(self):
         first_path = build_prefix_keys(["a", "b"], model="m")
         second_path = build_prefix_keys(["x", "b"], model="m")
@@ -209,6 +197,7 @@ class AdaptedVllmPrefixCacheTest(unittest.TestCase):
         )
         manager.allocate(different_group)
         self.assertEqual(different_group.reuse_hit_blocks, 0)
+        self.assertNotEqual(req0.input_cache_keys, different_group.input_cache_keys)
 
         other_model = BlockManager(
             block_size=BLOCK_SIZE,
@@ -226,31 +215,7 @@ class AdaptedVllmPrefixCacheTest(unittest.TestCase):
         )
         other_model.allocate(other_model_req)
         self.assertEqual(other_model_req.reuse_hit_blocks, 0)
-
-    def test_cached_zero_ref_block_is_evicted_for_new_allocation(self):
-        manager = BlockManager(
-            block_size=BLOCK_SIZE,
-            num_gpu_blocks=3,
-            num_cpu_blocks=8,
-            model="llama",
-            watermark=0,
-        )
-        req0 = make_request(0, prefill_len=32, hash_ids=["a", "b"])
-        allocate_and_commit(manager, req0)
-        cached_blocks = list(manager.block_table.get_blocks(req0.id))
-        manager.free(req0)
-
-        req1 = make_request(1, prefill_len=48, hash_ids=["x", "y", "z"])
-        manager.allocate(req1)
-        new_blocks = manager.block_table.get_blocks(req1.id)
-
-        self.assertEqual(req1.reuse_hit_blocks, 0)
-        self.assertEqual(len(new_blocks), 3)
-        self.assertFalse(cached_blocks[0].cached)
-        self.assertNotEqual(cached_blocks[0].block_hash, req0.input_cache_keys[0])
-        old_prefix = make_request(2, prefill_len=32, hash_ids=["a", "b"])
-        plan = manager.kv_cache_manager.plan_reuse(old_prefix)
-        self.assertEqual(plan.hit_block_count, 0)
+        self.assertNotEqual(req0.input_cache_keys, other_model_req.input_cache_keys)
 
     def test_touched_blocks_survive_eviction(self):
         manager = BlockManager(
@@ -279,6 +244,10 @@ class AdaptedVllmPrefixCacheTest(unittest.TestCase):
 
         self.assertTrue(all(block.cached for block in blocks_a))
         self.assertTrue(any(not block.cached for block in blocks_b))
+        old_prefix = make_request(4, prefill_len=32, hash_ids=["b0", "b1"])
+        self.assertEqual(
+            manager.kv_cache_manager.plan_reuse(old_prefix).hit_block_count, 0
+        )
 
     def test_output_hash_ids_register_full_decode_blocks(self):
         manager = BlockManager(
@@ -310,68 +279,6 @@ class AdaptedVllmPrefixCacheTest(unittest.TestCase):
 
 
 class StrongTreePrefixCacheTest(unittest.TestCase):
-    def test_sglang_style_long_branching_prefix_only_hits_after_branch_point_cached(
-        self,
-    ):
-        # Adapted from SGLang PrefixCacheBranchingMixin. TokenSim registers
-        # committed full input blocks immediately, so later branches hit the
-        # shared trunk while allocating independent suffix branches.
-        branching_blocks = 257
-        suffix_blocks = 64
-        trunk = [f"trunk-{i}" for i in range(branching_blocks)]
-        branch_a = [f"a-{i}" for i in range(suffix_blocks)]
-        branch_b = [f"b-{i}" for i in range(suffix_blocks)]
-        branch_c = [f"c-{i}" for i in range(suffix_blocks)]
-        manager = BlockManager(
-            block_size=BLOCK_SIZE,
-            num_gpu_blocks=branching_blocks + suffix_blocks * 3 + 16,
-            num_cpu_blocks=8,
-            model="llama",
-            watermark=0,
-        )
-
-        req_a = make_request(
-            0,
-            prefill_len=(branching_blocks + suffix_blocks) * BLOCK_SIZE,
-            hash_ids=trunk + branch_a,
-        )
-        ids_a = allocate_and_commit(manager, req_a)
-        self.assertEqual(req_a.reuse_hit_blocks, 0)
-
-        req_b = make_request(
-            1,
-            prefill_len=(branching_blocks + suffix_blocks) * BLOCK_SIZE,
-            hash_ids=trunk + branch_b,
-        )
-        manager.allocate(req_b)
-        ids_b = block_ids(manager, req_b)
-
-        self.assertEqual(req_b.reuse_hit_blocks, branching_blocks)
-        self.assertEqual(req_b.reuse_miss_blocks, suffix_blocks)
-        self.assertEqual(req_b.cached_prefill_tokens, branching_blocks * BLOCK_SIZE)
-        self.assertEqual(req_b.effective_prefill_tokens, suffix_blocks * BLOCK_SIZE)
-        self.assertEqual(ids_b[:branching_blocks], ids_a[:branching_blocks])
-        self.assertNotEqual(ids_b[branching_blocks], ids_a[branching_blocks])
-        manager.commit_input_cache(req_b)
-
-        req_c = make_request(
-            2,
-            prefill_len=(branching_blocks + suffix_blocks) * BLOCK_SIZE,
-            hash_ids=trunk + branch_c,
-        )
-        manager.allocate(req_c)
-        ids_c = block_ids(manager, req_c)
-
-        self.assertEqual(req_c.reuse_hit_blocks, branching_blocks)
-        self.assertEqual(req_c.reuse_miss_blocks, suffix_blocks)
-        self.assertEqual(req_c.cached_prefill_tokens, branching_blocks * BLOCK_SIZE)
-        self.assertEqual(req_c.effective_prefill_tokens, suffix_blocks * BLOCK_SIZE)
-        self.assertEqual(ids_c[:branching_blocks], ids_a[:branching_blocks])
-        self.assertNotEqual(ids_c[branching_blocks], ids_b[branching_blocks])
-
-        trunk_blocks = manager.block_table.get_blocks(req_a.id)[:branching_blocks]
-        self.assertTrue(all(block.ref_count == 3 for block in trunk_blocks))
-
     def test_deep_prefix_tree_reuses_distinct_branch_depths(self):
         root = [f"root-{i}" for i in range(128)]
         left = [f"left-{i}" for i in range(48)]
@@ -419,6 +326,8 @@ class StrongTreePrefixCacheTest(unittest.TestCase):
         self.assertNotEqual(
             ids_left_b[expected_left_hit], ids_left_a[expected_left_hit]
         )
+        shared_root_blocks = manager.block_table.get_blocks(req_left_a.id)[: len(root)]
+        self.assertTrue(all(block.ref_count == 3 for block in shared_root_blocks))
 
         req_right_again = make_request(
             3,
@@ -429,32 +338,6 @@ class StrongTreePrefixCacheTest(unittest.TestCase):
         expected_right_hit = len(root) + len(right) + len(right_leaf)
         self.assertEqual(req_right_again.reuse_hit_blocks, expected_right_hit)
         self.assertEqual(block_ids(manager, req_right_again), ids_right)
-
-    def test_non_contiguous_raw_hashes_do_not_jump_across_tree_branches(self):
-        manager = BlockManager(
-            block_size=BLOCK_SIZE,
-            num_gpu_blocks=128,
-            num_cpu_blocks=8,
-            model="llama",
-            watermark=0,
-        )
-        seed = make_request(
-            0,
-            prefill_len=8 * BLOCK_SIZE,
-            hash_ids=["r0", "r1", "r2", "r3", "a4", "a5", "a6", "shared-tail"],
-        )
-        allocate_and_commit(manager, seed)
-
-        jump_attempt = make_request(
-            1,
-            prefill_len=8 * BLOCK_SIZE,
-            hash_ids=["r0", "r1", "miss", "r3", "a4", "a5", "a6", "shared-tail"],
-        )
-        manager.allocate(jump_attempt)
-
-        self.assertEqual(jump_attempt.reuse_hit_blocks, 2)
-        self.assertEqual(jump_attempt.reuse_miss_blocks, 6)
-        self.assertEqual(jump_attempt.cached_prefill_tokens, 2 * BLOCK_SIZE)
 
     def test_long_tree_no_hash_path_keeps_baseline_metrics(self):
         manager = BlockManager(

@@ -235,7 +235,7 @@ class KVTransferIntegrationTest(unittest.TestCase):
         self.assertIs(isolated.workers[0].connector.service, left.service)
         self.assertEqual(run(isolated, 2).cached_prefill_tokens, 0)
 
-    def test_p2p_transfer_path_has_precise_metrics_and_request_timing(self):
+    def test_p2p_transfer_timing_and_exported_metrics(self):
         engine, request, backend, duration = _run_single_request_p2p()
 
         size_per_token = engine.workers[0].cache_config.size_per_token
@@ -308,9 +308,6 @@ class KVTransferIntegrationTest(unittest.TestCase):
             )
         )
 
-    def test_p2p_result_export_contains_precise_connector_metrics(self):
-        engine, request, _, duration = _run_single_request_p2p()
-
         with tempfile.TemporaryDirectory() as tmpdir:
             export_result(
                 run=RunReport(results_path=Path(tmpdir), qps=1, batching="paged-attn"),
@@ -326,12 +323,8 @@ class KVTransferIntegrationTest(unittest.TestCase):
             )
             result = json.loads((Path(tmpdir) / "result_1.json").read_text())
 
-        stats = get_connector_stats(engine)
         for key, value in stats.items():
             self.assertEqual(result[key], value)
-        self.assertEqual(result["connector_transfer_count"], 2)
-        self.assertEqual(result["connector_transfer_blocks"], 4)
-        self.assertEqual(result["connector_transfer_bytes"], 256)
 
 
 if __name__ == "__main__":

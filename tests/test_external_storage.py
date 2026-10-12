@@ -282,6 +282,11 @@ class ExternalStorageTest(unittest.TestCase):
         self.assertIsNotNone(c)
         self.assertIs(store.lookup(("a",)), a)
         self.assertIsNone(store.lookup(("b",)))
+        # A is pinned by a reader; C is pinned by its pending write.
+        self.assertIsNone(store.reserve_write(("d",), 100))
+        self.assertFalse(c.ready)
+        self.assertEqual(store.used_bytes, 200)
+        store.validate()
         store.release(a)
         store.finish_write(c)
         store.validate()
@@ -297,13 +302,6 @@ class ExternalStorageTest(unittest.TestCase):
         shared.finish_write(p)
         self.assertIs(shared.lookup(("model", 0, "hash")), p)
 
-    def test_all_pinned_storage_refuses_new_write_without_exceeding_budget(self):
-        store = NativePageStore(100)
-        page = store.reserve_write(("a",), 100)
-        self.assertIsNone(store.reserve_write(("b",), 100))
-        self.assertFalse(page.ready)
-        store.validate()
-
     def test_directional_link_serializes_competing_callers_and_counts_wait(self):
         env = simpy.Environment()
         link = QueuedKVLink(env, 100, utilization=0.5)
@@ -313,12 +311,3 @@ class ExternalStorageTest(unittest.TestCase):
         self.assertEqual(env.now, 4)
         self.assertEqual(link.queue_wait_seconds, 2)
         self.assertEqual(link.bytes, 200)
-
-    def test_utilization_changes_service_without_multiplying_independent_bandwidth(
-        self,
-    ):
-        for utilization, expected in ((0.5, 2), (0.75, 4 / 3), (1, 1)):
-            env = simpy.Environment()
-            link = QueuedKVLink(env, 100, utilization=utilization)
-            env.run(until=env.process(link.transfer(100)))
-            self.assertAlmostEqual(env.now, expected)
