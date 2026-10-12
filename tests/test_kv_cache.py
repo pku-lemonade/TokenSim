@@ -4,8 +4,8 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
-from TokenSim.block.hybrid_manager import HybridKVBlockManager
-from TokenSim.config.kv_layout import CacheGroup, CacheLayerPage, HybridKVLayout
+from TokenSim.block.hybrid.manager import HybridKVBlockManager
+from TokenSim.block.hybrid.kv_layout import CacheGroup, CacheLayerPage, HybridKVLayout
 from TokenSim.llm.llm_request import Request, RequestStatus
 from TokenSim.llm.llm_scheduler import LLMPagedAttnScheduler
 

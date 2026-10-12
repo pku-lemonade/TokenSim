@@ -9,7 +9,7 @@ from __future__ import annotations
 from TokenSim.errors import ConfigurationError
 
 
-def _legacy_memory_budget(
+def _generic_memory_budget(
     model,
     device,
     weight_bytes,
@@ -20,6 +20,7 @@ def _legacy_memory_budget(
     max_num_seqs,
     speculative_tokens=3,
 ):
+    """Estimate runtime envelopes for the generic attention backend."""
     if not 0 < utilization <= 1:
         raise ConfigurationError("gpu_memory_utilization must be in (0, 1]")
     if max_num_batched_tokens <= 0 or max_num_seqs <= 0 or speculative_tokens < 0:
@@ -130,11 +131,10 @@ def hybrid_memory_budget(
     is independent of borrowed FlashMLA timing. Unverified generic MoE buffers,
     SM count and graph driver increments stay explicit grade-D estimates.
     """
-    from TokenSim.config.persistent_buffers import (
+    from .live_buffers import PHASES, live_phases
+    from .persistent_buffers import (
         MIB,
-        PHASES,
         align,
-        live_phases,
         mega_moe_storage,
     )
     from TokenSim.config.moe_execution import MoEExecutionConfig
@@ -154,7 +154,7 @@ def hybrid_memory_budget(
             "compressed attention memory budget requires valid utilization and token/sequence limits"
         )
     if attention_backend != "module":
-        return _legacy_memory_budget(
+        return _generic_memory_budget(
             model,
             device,
             weight_bytes,

@@ -101,8 +101,8 @@ class CacheConfig:
                 model, include_mtp=speculative_tokens > 0
             )["total_bytes"]
             self.model_param_size = self.weight_memory_report["total_bytes"]
-            from TokenSim.config.kv_layout import hybrid_kv_layout
-            from TokenSim.config.memory_budget import hybrid_memory_budget
+            from TokenSim.block.hybrid.kv_layout import hybrid_kv_layout
+            from TokenSim.block.hybrid.memory_budget import hybrid_memory_budget
 
             self.hybrid_layout = hybrid_kv_layout(
                 model,
