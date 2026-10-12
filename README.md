@@ -27,7 +27,7 @@ The project paper is [TokenSim: Enabling Hardware and Software Exploration for L
 
 ## Installation
 
-Python 3.12 is recommended; 3.11 is also supported.
+Python 3.12 is recommended.
 
 ```bash
 git clone https://github.com/pku-lemonade/TokenSim.git
