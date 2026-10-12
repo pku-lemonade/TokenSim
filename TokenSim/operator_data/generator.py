@@ -10,7 +10,11 @@ from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.device import DeviceSpec
 from TokenSim.operator_data.analytical import Calibration, analytical_model_for
 from TokenSim.operator_data.manifest import ShapeManifest
-from TokenSim.operator_data.package import OperatorDataPackage, PackageMeta, SourceRecord
+from TokenSim.operator_data.package import (
+    OperatorDataPackage,
+    PackageMeta,
+    SourceRecord,
+)
 from TokenSim.operator_data.schema import TABLE_SPECS
 
 
@@ -47,7 +51,9 @@ def generate_analytical_package(
             # runtime; only measured tables are stored for it.
             skipped[table] = len(keys)
             continue
-        calibration = calibrations.get(table) or calibrations.get("default") or Calibration()
+        calibration = (
+            calibrations.get(table) or calibrations.get("default") or Calibration()
+        )
         for key in keys:
             try:
                 estimate = model.estimate(table, key, device, calibration, gated=gated)
@@ -73,7 +79,13 @@ def generate_analytical_package(
             row = {**key, "latency_us": estimate.latency_us, "source_id": source_id}
             tables.setdefault(table, []).append(row)
             analysis_row = {**key, **estimate.analysis_row(), "source_id": source_id}
-            analysis_row.update({f"detail_{k}": v for k, v in estimate.details.items() if isinstance(v, (int, float, str, bool))})
+            analysis_row.update(
+                {
+                    f"detail_{k}": v
+                    for k, v in estimate.details.items()
+                    if isinstance(v, (int, float, str, bool))
+                }
+            )
             analysis.setdefault(table, []).append(analysis_row)
             if estimate.details.get("fits_on_chip") is False and len(warnings) < 40:
                 warnings.append(
@@ -83,13 +95,15 @@ def generate_analytical_package(
     if not tables:
         raise ConfigurationError("manifest produced no analytical rows")
     meta = PackageMeta(
-        dataset_version=dataset_version or f"{device.device_id}-{backend}-{manifest.experiment_id}",
+        dataset_version=dataset_version
+        or f"{device.device_id}-{backend}-{manifest.experiment_id}",
         device_id=device.device_id,
         backend=backend,
         framework_version="",
         sources=sources,
         calibration={table: cal.to_dict() for table, cal in calibrations.items()},
-        notes=notes or f"Analytical package generated from manifest {manifest.experiment_id!r}.",
+        notes=notes
+        or f"Analytical package generated from manifest {manifest.experiment_id!r}.",
         extra={"manifest": manifest.experiment_id, "device_family": device.family},
     )
     package = OperatorDataPackage.from_rows(meta, tables, analysis)
@@ -101,13 +115,17 @@ def generate_analytical_package(
     )
 
 
-def write_package_with_manifest(package: OperatorDataPackage, manifest: ShapeManifest, root: str | Path) -> Path:
+def write_package_with_manifest(
+    package: OperatorDataPackage, manifest: ShapeManifest, root: str | Path
+) -> Path:
     root_path = package.write(root)
     manifest.write(root_path / "shape_manifests" / f"{manifest.experiment_id}.yaml")
     return root_path
 
 
-def merge_packages(base: OperatorDataPackage, extra: OperatorDataPackage, *, prefer: str = "extra") -> OperatorDataPackage:
+def merge_packages(
+    base: OperatorDataPackage, extra: OperatorDataPackage, *, prefer: str = "extra"
+) -> OperatorDataPackage:
     """Union of two packages for the same device; on key clashes keep ``prefer``."""
     if base.device_id != extra.device_id:
         raise ConfigurationError(
@@ -138,4 +156,6 @@ def merge_packages(base: OperatorDataPackage, extra: OperatorDataPackage, *, pre
         notes=(base.meta.notes + "\n" + extra.meta.notes).strip(),
         extra={**base.meta.extra, **extra.meta.extra},
     )
-    return OperatorDataPackage.from_rows(meta, {t: list(rows.values()) for t, rows in tables.items()}, analysis)
+    return OperatorDataPackage.from_rows(
+        meta, {t: list(rows.values()) for t, rows in tables.items()}, analysis
+    )

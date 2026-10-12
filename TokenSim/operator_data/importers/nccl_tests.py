@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from TokenSim.errors import ConfigurationError
 
@@ -48,8 +48,21 @@ def parse_nccl_tests_output(
     source_id: str,
     use_in_place: bool = False,
 ) -> list[dict[str, Any]]:
-    path = Path(text_or_path) if isinstance(text_or_path, Path) or (isinstance(text_or_path, str) and "\n" not in text_or_path and Path(text_or_path).is_file()) else None
-    text = path.read_text(encoding="utf-8", errors="replace") if path else str(text_or_path)
+    path = (
+        Path(text_or_path)
+        if isinstance(text_or_path, Path)
+        or (
+            isinstance(text_or_path, str)
+            and "\n" not in text_or_path
+            and Path(text_or_path).is_file()
+        )
+        else None
+    )
+    text = (
+        path.read_text(encoding="utf-8", errors="replace")
+        if path
+        else str(text_or_path)
+    )
     rows: list[dict[str, Any]] = []
     for line in text.splitlines():
         stripped = line.strip()

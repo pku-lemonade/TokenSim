@@ -2,14 +2,11 @@
 
 from __future__ import annotations
 
-import logging
 from typing import Any, Sequence
 
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.context import HardwareContext
 from TokenSim.hardware.topology import TopologyPlacement, TopologySpec
-
-logger = logging.getLogger(__name__)
 
 
 def build_topology_placement(
@@ -26,6 +23,8 @@ def build_topology_placement(
     device's scale-up link, and nodes are joined by the network's link class.
     """
     explicit: dict[int, int] = {}
+    for worker in worker_configs:
+        hardware.link(worker.nettype)
     cursor = 0
     worker_id = 0
     for group in cluster_config.worker_groups:
@@ -37,7 +36,9 @@ def build_topology_placement(
                     f"for num_workers={group.num_workers}"
                 )
         for position in range(group.num_workers):
-            explicit[worker_id] = int(indices[position]) if indices is not None else cursor
+            explicit[worker_id] = (
+                int(indices[position]) if indices is not None else cursor
+            )
             cursor += 1
             worker_id += 1
 
@@ -77,36 +78,44 @@ def synthesize_topology(
         counts[network] = counts.get(network, 0) + 1
     node_size = max(counts.values()) if counts else 1
 
-    first_device = hardware.device(worker_configs[0].hardware) if worker_configs else None
+    first_device = (
+        hardware.device(worker_configs[0].hardware) if worker_configs else None
+    )
     node_link = None
     if first_device is not None:
         node_link = first_device.scale_up_link or first_device.host_link
     if node_link is None or node_link not in hardware.links:
-        node_link = "pcie4_x16"
-    node_fabric = "all_to_all" if first_device is not None and first_device.family == "groq_tsp" else "switched"
-    node_links = first_device.scale_up_ports if (first_device and first_device.family == "groq_tsp") else 1
+        raise ConfigurationError(
+            "synthesized topology requires a known device scale-up or host link"
+        )
+    device_link_ids = {
+        hardware.device(worker.hardware).scale_up_link
+        or hardware.device(worker.hardware).host_link
+        for worker in worker_configs
+    }
+    if len(device_link_ids) != 1:
+        raise ConfigurationError(
+            "mixed device links require an explicit cluster topology"
+        )
+    node_fabric = (
+        "all_to_all"
+        if first_device is not None and first_device.family == "groq_tsp"
+        else "switched"
+    )
+    node_links = (
+        first_device.scale_up_ports
+        if (first_device and first_device.family == "groq_tsp")
+        else 1
+    )
 
     nettypes = {getattr(worker, "nettype", None) for worker in worker_configs}
     nettypes.discard(None)
-    cluster_link = None
-    for candidate in sorted(nettypes):
-        if candidate in hardware.links:
-            cluster_link = candidate
-            break
-    if cluster_link is None:
-        cluster_link = "ethernet100Gb"
-        if nettypes:
-            logger.warning(
-                "cluster networks %s are not link classes in the catalog; using %s",
-                sorted(nettypes),
-                cluster_link,
-            )
-    if len(nettypes) > 1:
-        logger.warning(
-            "cluster mixes network link classes %s; the synthesized topology uses %s between nodes",
-            sorted(nettypes),
-            cluster_link,
+    if len(nettypes) != 1:
+        raise ConfigurationError(
+            "mixed network links require an explicit cluster topology"
         )
+    cluster_link = next(iter(nettypes))
+    hardware.link(cluster_link)
     name = "synth_" + "_".join(sorted(counts)) if counts else "synth"
     return TopologySpec.two_level(
         name,

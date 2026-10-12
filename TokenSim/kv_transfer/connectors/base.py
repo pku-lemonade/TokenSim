@@ -10,6 +10,10 @@ from .metadata import ConnectorStats, KVConnectorMetadata, KVConnectorWorkerMeta
 
 class BaseKVConnector:
     name = "BaseKVConnector"
+    # Transfers run on queued links and own page references independently
+    # of requests (probe/begin_load, loads, write_jobs, store).
+    async_offload = False
+    supports_grouped_cache = False
 
     def __init__(
         self,
@@ -20,12 +24,14 @@ class BaseKVConnector:
         self.cache_config = cache_config
         self.stats = ConnectorStats()
         self.stats.record_role(config.kv_role)
-        self._events: list[str] = []
         self._metadata = KVConnectorMetadata(connector_name=self.name)
         self.simulation_time = 0.0
 
     def set_simulation_time(self, now: float) -> None:
         self.simulation_time = float(now)
+
+    def bind_runtime(self, worker) -> None:
+        return
 
     def on_new_request(self, req: Request) -> None:
         return
@@ -45,6 +51,10 @@ class BaseKVConnector:
     ) -> None:
         return
 
+    def discard_load(self, req: Request) -> None:
+        """Discard a cache probe that was not selected for this admission."""
+        return
+
     def build_connector_meta(self, scheduler_output: Any) -> KVConnectorMetadata:
         return KVConnectorMetadata(connector_name=self.name)
 
@@ -52,7 +62,7 @@ class BaseKVConnector:
         self,
         worker_output: KVConnectorWorkerMetadata,
     ) -> None:
-        self._events.extend(worker_output.events)
+        return
 
     def request_finished(
         self,
@@ -70,23 +80,11 @@ class BaseKVConnector:
         """
         return
 
-    def take_events(self) -> list[str]:
-        events = list(self._events)
-        self._events.clear()
-        return events
-
-    def reset_cache(self) -> bool:
-        self._events.clear()
-        return True
-
     def bind_connector_metadata(self, meta: KVConnectorMetadata) -> None:
         self._metadata = meta
 
     def handle_preemptions(self, meta: KVConnectorMetadata) -> None:
-        if meta.preempted_request_ids:
-            self._events.append(
-                f"{self.name}:preempted:{','.join(map(str, meta.preempted_request_ids))}"
-            )
+        return
 
     def start_load_kv(self) -> float:
         latency = sum(plan.latency for plan in self._metadata.loads)
@@ -123,4 +121,14 @@ class BaseKVConnector:
         return set(finished_req_ids), set(finished_req_ids)
 
     def build_connector_worker_meta(self) -> KVConnectorWorkerMetadata:
-        return KVConnectorWorkerMetadata(events=self.take_events())
+        return KVConnectorWorkerMetadata()
+
+
+def flatten_connectors(connector):
+    """Visit a composed connector and its children in declaration order."""
+    if connector is None:
+        return []
+    result = [connector]
+    for child in getattr(connector, "children", ()):
+        result.extend(flatten_connectors(child))
+    return result

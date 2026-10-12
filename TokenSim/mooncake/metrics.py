@@ -31,6 +31,7 @@ class MooncakeStats:
     admission_rejection_count: int = 0
     eviction_count: int = 0
     pending_async_jobs: int = 0
+    cache_query_tokens: int = 0
     local_gpu_hit_tokens: int = 0
     mooncake_memory_hit_tokens: int = 0
     mooncake_disk_hit_tokens: int = 0
@@ -109,7 +110,7 @@ class MooncakeStats:
             "mooncake_ssd_write_blocks": self.ssd_write_blocks,
             "mooncake_ssd_write_bytes": self.ssd_write_bytes,
             "mooncake_transferred_bytes": self.transferred_bytes,
-            "mooncake_effective_transfer_bandwidth_gbps": bandwidth,
+            "mooncake_effective_transfer_bandwidth_gib_per_s": bandwidth,
             "mooncake_transfer_latency": self.transfer_latency,
             "mooncake_p2p_latency": self.p2p_latency,
             "mooncake_store_latency": self.store_latency,
@@ -117,6 +118,7 @@ class MooncakeStats:
             "mooncake_admission_rejection_count": self.admission_rejection_count,
             "mooncake_eviction_count": self.eviction_count,
             "mooncake_pending_async_jobs": self.pending_async_jobs,
+            "mooncake_cache_query_tokens": self.cache_query_tokens,
             "mooncake_local_gpu_hit_tokens": self.local_gpu_hit_tokens,
             "mooncake_memory_hit_tokens": self.mooncake_memory_hit_tokens,
             "mooncake_disk_hit_tokens": self.mooncake_disk_hit_tokens,

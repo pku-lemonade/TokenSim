@@ -6,7 +6,7 @@ schema_version: 1
 # half_bandwidth_bytes is the message size at which streaming reaches half of
 # peak and collective_efficiency the fraction of peak a large collective
 # attains (nccl-tests busbw / peak). Both are grade-D defaults eyeballed from
-# the AIConfigurator nccl tables; re-fit them with `operator_data.cli calibrate`.
+# the AIConfigurator nccl tables; adjust them when measurements for a link exist.
 links:
   nvlink2:
     display_name: NVLink 2 via NVSwitch (V100 DGX-2) or hybrid cube mesh, aggregate per GPU

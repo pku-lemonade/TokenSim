@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any, Iterable
 
 from TokenSim.config.model_config import ModelCatalog, ModelSpec
 from TokenSim.errors import ConfigurationError
@@ -13,7 +13,9 @@ from TokenSim.hardware.topology import TopologyCatalog, TopologySpec
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_DATA_ROOT = Path(__file__).resolve().parents[2] / "data"
+from TokenSim.config.paths import default_data_root
+
+DEFAULT_DATA_ROOT = default_data_root()
 
 
 @dataclass
@@ -105,43 +107,63 @@ class HardwareContext:
 
     def register_package(self, package: Any) -> None:
         """Attach an in-memory :class:`OperatorDataPackage`."""
+        self.available_backends(package.device_id)
         self._packages[(package.device_id, package.backend)] = package
-        if self._package_index is None:
-            self._package_index = {}
         self._package_index.setdefault(package.device_id, [])
         if package.backend not in self._package_index[package.device_id]:
             self._package_index[package.device_id].append(package.backend)
+
+    def resolve_backend(self, device_id: str, backend: str | None = None) -> str | None:
+        """Backend whose package :meth:`operator_package` loads, without loading it."""
+        backends = self.available_backends(device_id)
+        if backend is None:
+            return _preferred_backend(backends) if backends else None
+        if backend not in backends:
+            raise ConfigurationError(
+                f"device {device_id!r} has no operator data for backend {backend!r}; available: {backends}"
+            )
+        return backend
 
     def operator_package(self, device_id: str, backend: str | None = None):
         """Return the operator package for a device, or ``None`` when none exists."""
         from TokenSim.operator_data.package import OperatorDataPackage
 
-        backends = self.available_backends(device_id)
+        backend = self.resolve_backend(device_id, backend)
         if backend is None:
-            if not backends:
-                return None
-            backend = _preferred_backend(backends)
-        elif backend not in backends:
-            raise ConfigurationError(
-                f"device {device_id!r} has no operator data for backend {backend!r}; available: {backends}"
-            )
+            return None
         key = (device_id, backend)
         if key not in self._packages:
             assert self.operator_data_root is not None
-            package = OperatorDataPackage.load(self.operator_data_root / device_id / backend)
+            package = OperatorDataPackage.load(
+                self.operator_data_root / device_id / backend
+            )
             if package.device_id != device_id:
                 raise ConfigurationError(
                     f"package at {self.operator_data_root / device_id / backend} declares device_id={package.device_id!r}"
                 )
+            if package.backend != backend:
+                raise ConfigurationError(
+                    f"package at {self.operator_data_root / device_id / backend} declares backend={package.backend!r}"
+                )
             self._packages[key] = package
-            logger.info("loaded operator data %s/%s: %s", device_id, backend, package.summary())
+            logger.info(
+                "loaded operator data %s/%s: %s", device_id, backend, package.summary()
+            )
         return self._packages[key]
 
 
 # Preferred operator-data backend when a cluster does not name one. vLLM first
 # (project default, decided 2026-09-18), then the other serving stacks, then
 # locally measured and finally analytical packages.
-_BACKEND_PRIORITY = ("vllm", "trtllm", "sglang", "measured", "cuda", "groq", "analytical")
+_BACKEND_PRIORITY = (
+    "vllm",
+    "trtllm",
+    "sglang",
+    "measured",
+    "cuda",
+    "groq",
+    "analytical",
+)
 
 
 def _preferred_backend(backends: list[str]) -> str:

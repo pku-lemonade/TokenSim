@@ -83,6 +83,25 @@ sources:
     converted ms -> us.
   device: gb300
   backend: trtllm:1.3.0rc20
+- source_id: aiconfigurator:gb300:mhc:trtllm:1.3.0rc20
+  grade: B
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/gb300/mhc/trtllm/1.3.0rc20
+  notes: mHC (hyper-connection residual mixing) pre/post module; each row covers the
+    recorded sites of one layer.
+  device: gb300
+  backend: trtllm:1.3.0rc20
+- source_id: aiconfigurator:gb300:dsv4_megamoe:sglang:0.5.10
+  grade: B
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/gb300/moe/sglang/0.5.10
+  notes: 'Fused expert-parallel MoE module (DeepGEMM MegaMoE, FP8 activations and
+    MXFP4 weights): routed dispatch, expert compute and combine under CUDA graphs.
+    Gate/top-k, buffer initialization and shared experts are excluded. Collector buffer
+    capacities are kept per row. Measured on gb300 with sglang and used for gb300
+    with trtllm without a conversion factor.'
+  device: gb300
+  backend: sglang:0.5.10
 calibration: {}
 tables:
   gemm:
@@ -97,6 +116,10 @@ tables:
     rows: 704
   collective:
     rows: 428
+  mhc:
+    rows: 140
+  dsv4_megamoe:
+    rows: 456
 aiconfigurator_system: gb300
 aiconfigurator_layout: database
 aiconfigurator_commit: f254959eb89e2f206b8f9a77051644d7c1cbdb89

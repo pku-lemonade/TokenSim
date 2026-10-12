@@ -60,7 +60,11 @@ def environment_record() -> dict[str, str]:
         import subprocess
 
         record["driver"] = subprocess.check_output(
-            ["nvidia-smi", "--query-gpu=driver_version,clocks.sm,clocks.mem", "--format=csv,noheader"],
+            [
+                "nvidia-smi",
+                "--query-gpu=driver_version,clocks.sm,clocks.mem",
+                "--format=csv,noheader",
+            ],
             text=True,
         ).strip()
     except Exception:

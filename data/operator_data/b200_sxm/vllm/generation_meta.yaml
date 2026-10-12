@@ -99,6 +99,35 @@ sources:
     converted ms -> us.
   device: b200_sxm
   backend: nccl:2.27.3
+- source_id: aiconfigurator:b200_sxm:mhc:vllm:0.24.0
+  grade: B
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/b200_sxm/mhc/vllm/0.24.0
+  notes: mHC (hyper-connection residual mixing) pre/post module; each row covers the
+    recorded sites of one layer.
+  device: b200_sxm
+  backend: vllm:0.24.0
+- source_id: aiconfigurator:gb200:dsv4_megamoe:sglang:0.5.10
+  grade: B
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/gb200/moe/sglang/0.5.10
+  notes: 'Fused expert-parallel MoE module (DeepGEMM MegaMoE, FP8 activations and
+    MXFP4 weights): routed dispatch, expert compute and combine under CUDA graphs.
+    Gate/top-k, buffer initialization and shared experts are excluded. Collector buffer
+    capacities are kept per row. Measured on gb200 with sglang and used for b200_sxm
+    with vllm without a conversion factor.'
+  device: gb200
+  backend: sglang:0.5.10
+- source_id: aiconfigurator:b200_sxm:dsv4_attention:vllm:0.24.0
+  grade: B
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/b200_sxm/sparse_attention/vllm/0.24.0
+  notes: 'Complete compressed sparse-attention layer: input projections, compressor/indexer,
+    sparse attention and output projection, measured with the recorded kernel and
+    FP8 KV cache. Serving stacks with another sparse-attention kernel or cache layout
+    use these rows as an approximation.'
+  device: b200_sxm
+  backend: vllm:0.24.0
 calibration: {}
 tables:
   gemm:
@@ -113,6 +142,12 @@ tables:
     rows: 324
   collective:
     rows: 573
+  mhc:
+    rows: 134
+  dsv4_megamoe:
+    rows: 256
+  dsv4_attention:
+    rows: 14768
 aiconfigurator_system: b200_sxm
 aiconfigurator_layout: database
 aiconfigurator_commit: f254959eb89e2f206b8f9a77051644d7c1cbdb89

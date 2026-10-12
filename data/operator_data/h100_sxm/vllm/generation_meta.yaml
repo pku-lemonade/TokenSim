@@ -66,6 +66,24 @@ sources:
     converted ms -> us.
   device: h100_sxm
   backend: nccl:2.23
+- source_id: aiconfigurator:h100_sxm:mhc:vllm:0.24.0
+  grade: B
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/h100_sxm/mhc/vllm/0.24.0
+  notes: mHC (hyper-connection residual mixing) pre/post module; each row covers the
+    recorded sites of one layer.
+  device: h100_sxm
+  backend: vllm:0.24.0
+- source_id: aiconfigurator:h100_sxm:dsv4_attention:vllm:0.24.0
+  grade: B
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/h100_sxm/sparse_attention/vllm/0.24.0
+  notes: 'Complete compressed sparse-attention layer: input projections, compressor/indexer,
+    sparse attention and output projection, measured with the recorded kernel and
+    FP8 KV cache. Serving stacks with another sparse-attention kernel or cache layout
+    use these rows as an approximation.'
+  device: h100_sxm
+  backend: vllm:0.24.0
 calibration: {}
 tables:
   gemm:
@@ -80,6 +98,10 @@ tables:
     rows: 648
   collective:
     rows: 573
+  mhc:
+    rows: 139
+  dsv4_attention:
+    rows: 14657
 aiconfigurator_system: h100_sxm
 aiconfigurator_layout: database
 aiconfigurator_commit: f254959eb89e2f206b8f9a77051644d7c1cbdb89

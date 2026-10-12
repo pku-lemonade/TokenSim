@@ -1,26 +1,37 @@
-# 算子延迟数据采集（`scripts/collect/`）
+# Operator Latency Collection (`scripts/collect/`)
 
-本目录的脚本在**目标 GPU 节点**上采集 `operator_table` 后端所需的 A 级实测数据，并直接写成
-`data/operator_data/<device_id>/<backend>/` 下的算子包。它取代了原来的 `scripts/profiling/`：
-GEMM、attention、MoE 与单机集合通信改由 NVIDIA AIConfigurator 的 collector 采集（它跑的是
-TensorRT-LLM / vLLM / SGLang 真实 serving kernel，而不是 PyTorch eager 算子），TokenSim 只保留
-collector 不覆盖的两块：逐元素算子和跨节点集合通信。
+These scripts measure operator latencies on the target GPU node and save data packages under `data/operator_data/<device_id>/<backend>/` for the `operator_table` backend.
+Grade A identifies measurements on the target hardware and software stack.
+NVIDIA AIConfigurator measures the inference framework's kernels for matrix multiplication (GEMM), attention, mixture-of-experts (MoE) computation and communication within one node.
+TokenSim's additional scripts measure elementwise kernels and communication between nodes.
+A collective is a communication operation involving a group of GPU workers.
 
-| 脚本 | 产出的表 | 依赖 |
+| Script | Tables produced | Requirements |
 | --- | --- | --- |
-| `run_aiconfigurator.sh` | `gemm`、`context_attention`、`generation_attention`、`moe`，以及单机 `collective`（NCCL 四种操作 + 框架自定义 all-reduce） | 目标框架（默认 TensorRT-LLM）、AIConfigurator 源码、nccl-tests、mpirun |
-| `collect_elementwise.py` | `elementwise`（rmsnorm / rope / residual_add / swiglu） | torch；`--kernel vllm` 时需要 vLLM |
-| `run_nccl_tests.sh` | 多节点或指定 fabric 的 `collective` | nccl-tests，多机时需 mpirun/srun |
-| `common.py` | 计时与环境记录的公共函数 | torch |
+| `run_aiconfigurator.sh` | `gemm`, `context_attention`, `generation_attention`, `moe`, single-node `collective` (NCCL plus the framework's custom all-reduce), and any other table of the requested collector ops | target framework, AIConfigurator source (cloned by the script), nccl-tests, mpirun |
+| `collect_elementwise.py` | `elementwise` (rmsnorm / rope / residual_add / swiglu) | PyTorch with CUDA; vLLM for `--kernel vllm` |
+| `run_nccl_tests.sh` | multi-node or fabric-specific `collective` | nccl-tests; mpirun or srun for several nodes |
+| `common.py` | shared timing and environment helpers | PyTorch |
 
-三者的输出都进入同一个包目录，`OperatorDataPackage.write()` 会按主键合并（新行覆盖同键旧行），
-`generation_meta.yaml` 记录每个 `source_id` 的设备、驱动、框架版本、时钟状态、采集日期与采集人。
+Install TokenSim in the inference framework's environment with `python -m pip install -e .` from the repository root.
+Run the collection scripts from that directory.
+
+The scripts write data packages in the following ways.
+
+- `run_aiconfigurator.sh` imports with `import-aiconfigurator` and replaces the target package's tables.
+  `OperatorDataPackage.write()` removes table files absent from the new package.
+- `collect_elementwise.py` and `run_nccl_tests.sh` merge rows into the existing package with `merge_packages`.
+  Newly collected rows replace existing rows with the same key.
+
+Run `run_aiconfigurator.sh` first and the other two afterwards.
+To preserve an existing package, import the profiling run into a separate directory and merge it as described in section 4.
 
 ---
 
-## 0. 采集前
+## 0. Before Collecting
 
-1. **独占节点，锁频，开持久模式。** 未锁频的数据会在 boost 与降频之间漂移 10% 以上。
+1. Use a node reserved for this profiling run, lock GPU clocks and enable persistence mode.
+   Unlocked clocks can vary by 10% or more between boost and throttled states.
 
    ```bash
    sudo nvidia-smi -pm 1
@@ -29,149 +40,212 @@ collector 不覆盖的两块：逐元素算子和跨节点集合通信。
    sudo nvidia-smi -ac "$mem,$sm"
    ```
 
-   若没有 root，把 `nvidia-smi --query-gpu=clocks.sm,clocks.max.sm --format=csv` 的输出记入
-   来源说明（`run_aiconfigurator.sh` 会自动保存到 `<RUN_DIR>.env.txt`）。
+   Without root access, record the current and maximum GPU compute clocks in the source notes using this command.
 
-2. **确认设备在目录中。** `data/devices/<device_id>.yaml` 必须存在，例如 `a100_sxm_80g`、
-   `rtx_4090`。新设备先照 `data/devices/README.md` 补一份 YAML。
+   ```bash
+   nvidia-smi \
+       --query-gpu=clocks.sm,clocks.max.sm \
+       --format=csv
+   ```
 
-3. **准备框架环境。** collector 的每个采集模块声明了兼容版本（`__compat__`）。推荐直接用上游
-   `collector/framework_manifest.yaml` 里 digest 固定的容器镜像；本仓库默认后端是 TensorRT-LLM：
+2. Check that `data/devices/<device_id>.yaml` exists for the target device.
+   For example, `rtx_4090` and `a100_sxm_40g` have catalog entries and no bundled operator measurements.
+   For a new device, add a YAML file as described in `data/devices/README.md`.
 
-   | 后端 | 版本（AIConfigurator `f254959` 使用） | 镜像 |
+3. Prepare an environment with a supported inference framework.
+   Collector modules declare supported framework versions in `__compat__`, and upstream `collector/framework_manifest.yaml` specifies container images verified by their digests.
+   The bundled data uses the framework versions below.
+
+   | Backend | Version (AIConfigurator `f254959`) | Image |
    | --- | --- | --- |
-   | trtllm | 1.3.0rc20（A100 数据用 1.0.0） | `nvcr.io/nvidia/tensorrt-llm/release:1.3.0rc20` |
+   | trtllm | 1.3.0rc20 (the A100 data uses 1.0.0) | `nvcr.io/nvidia/tensorrt-llm/release:1.3.0rc20` |
    | vllm | 0.24.0 | `vllm/vllm-openai:v0.24.0` |
    | sglang | 0.5.14 | `lmsysorg/sglang:v0.5.14` |
 
-   仿真时的默认后端是 `vllm`（集群未写 `operator_backend` 时按 vllm → trtllm → sglang 顺序选择），
-   采集脚本的 `BACKEND` 默认仍为 `trtllm`，请按目标部署栈显式指定。
+   When the cluster does not specify `operator_backend`, the simulator prefers `vllm`, followed by `trtllm` and `sglang`.
+   Collection scripts default to `BACKEND=trtllm`, so set `BACKEND` to the framework you intend to simulate.
 
-   容器里还要有：本仓库（挂载到 `/workspace/TokenSim`）、`pyarrow`、`PyYAML`，以及编译好的
-   [nccl-tests](https://github.com/NVIDIA/nccl-tests)（`make MPI=1`，二进制目录加入 `PATH`）。
+   The container also needs this repository, TokenSim's requirements, and compiled [nccl-tests](https://github.com/NVIDIA/nccl-tests) (`make MPI=1`, with the binary directory on `PATH`).
 
-4. **生成形状清单**（给 `collect_elementwise.py` 用，也用来事后检查覆盖率）：
+4. Generate a manifest listing the operator dimensions required by your models and parallel configurations.
+   Use it as input to `collect_elementwise.py` and to check measurement coverage after collection.
 
    ```bash
-   python -m TokenSim.operator_data.cli manifest --models llama-3-8b,llama-3-70b,mixtral-8x7b \
-       --tp 1,2,4,8 --out tmp/manifests/a100-llama3.yaml
+   python -m TokenSim.operator_data.cli manifest \
+       --models llama-3-8b,llama-3-70b,mixtral-8x7b \
+       --tp 1,2,4,8 \
+       --out tmp/manifests/llama3-mixtral.yaml
    ```
 
 ---
 
-## 1. `run_aiconfigurator.sh`：计算算子与单机集合通信
+## 1. `run_aiconfigurator.sh`: Compute Operators and Single-Node Collectives
 
 ```bash
-DEVICE=a100_sxm_80g ./scripts/collect/run_aiconfigurator.sh
+DEVICE=rtx_4090 \
+BACKEND=vllm \
+    ./scripts/collect/run_aiconfigurator.sh
 ```
 
-脚本做的事：
+The script performs the following operations.
 
-1. 把 AIConfigurator 克隆到 `AIC_DIR`（默认 `./tmp/aiconfigurator`）并检出 `AIC_COMMIT`
-   （默认与 `data/operator_data/LICENSES.md` 记录的导入提交一致，保证形状网格和列名与已有数据相同）。
-2. 检查目标框架可导入，打印时钟状态。
-3. 在 `RUN_DIR`（默认 `./tmp/collect/<DEVICE>/<BACKEND>`）里运行
-   `collector/collect.py --backend <BACKEND> --ops <OPS> --resume`。collector 把
-   `gemm_perf.parquet`、`context_attention_perf.parquet`、`generation_attention_perf.parquet`、
-   `moe_perf.parquet` 写到当前目录；`--resume` 让中断后重跑只补缺失用例。
-4. 运行 `collector/network/collect_comm.sh --all_reduce_backend <BACKEND>`：对本机 2/4/8 卡跑
-   nccl-tests 的 all_gather / alltoall / reduce_scatter / all_reduce（half 与 int8，512 B 到 512 MB）
-   和框架自定义 all-reduce，产出 `nccl_perf.txt`、`custom_allreduce_perf.txt`。
-5. 调用 `python -m TokenSim.operator_data.cli import-aiconfigurator --system-dir <RUN_DIR>`。
-   导入器识别这种"平铺"目录（也能直接读 `*_perf.txt` CSV），把毫秒换成微秒、精度名规范化、
-   同一形状取最快 kernel，`source_id` 形如 `aiconfigurator-collector:<device>:<family>:<backend>:<version>`，
-   等级 A、方法 `measured`。然后 `validate` 校验包。
+1. The script clones AIConfigurator into `AIC_DIR`, default `./tmp/aiconfigurator`, and checks out `AIC_COMMIT`, default `f254959eb89e2f206b8f9a77051644d7c1cbdb89`.
+   This is the revision recorded in `data/operator_data/LICENSES.md`, so collection dimensions and column names match the bundled data.
+2. It checks that the target framework can be imported and records GPU clocks with `nvidia-smi` in `<RUN_DIR>/env.txt`.
+3. It runs `collector/collect.py` with `--backend` set by `BACKEND`, `--ops` set by `OPS` and `--resume` enabled.
+   Measurements are written inside `RUN_DIR`, which defaults to `./tmp/collect/<DEVICE>/<BACKEND>`.
+   The files are `gemm_perf.parquet`, `context_attention_perf.parquet`, `generation_attention_perf.parquet` and `moe_perf.parquet`.
+   `--resume` allows an interrupted run to collect only the missing cases.
+4. Unless `SKIP_COMM=1`, it runs `collector/network/collect_comm.sh` with `--all_reduce_backend` set by `BACKEND`.
+   This measures nccl-tests all_gather, alltoall, reduce_scatter and all_reduce on 2, 4 and 8 local GPUs, limited by the available device count.
+   It uses half and int8 data types with message sizes from 512 B to 512 MB and also measures the framework's custom all-reduce.
+   Results are saved in `nccl_perf.txt` and `custom_allreduce_perf.txt`.
+   A failure here is reported and the compute tables are still imported.
+5. It imports `RUN_DIR` into `PACKAGE` with `python -m TokenSim.operator_data.cli import-aiconfigurator`.
+   Import arguments map `RUN_DIR` to `--system-dir`, `DEVICE` to `--device`, `BACKEND` to `--backend`, `AIC_COMMIT` to `--upstream-commit` and `PACKAGE` to `--out`.
+   The importer reads the run directory, including `*_perf.txt` CSV files, converts milliseconds to microseconds and converts data type names to TokenSim's standard names.
+   It keeps the fastest kernel for each set of dimensions and records individual operator sources as `aiconfigurator-collector:<device>:<family>:<backend>:<version>` with grade A and method `measured`.
+   It validates the imported package.
 
-常用变量：
+The following environment variables configure the script.
 
-| 变量 | 作用 |
-| --- | --- |
-| `OPS="gemm attention"` | 只采部分算子（可选 `gemm attention moe`，MoE 网格最大，A100 上约需数小时） |
-| `MODEL_PATH=meta-llama/Llama-3.1-8B` | 模型中心模式：只采该模型结构需要的形状，对应上游的 "healing run" |
-| `GPU_TYPE=a100_sxm` | 用上游系统名解析精度能力下限；4090 这类上游没有的卡留空，collector 会按本机 SM 版本判断（4090 是 sm_89：bf16 + fp8 + fp8_block） |
-| `SKIP_COMM=1` | 跳过集合通信采集（没有 nccl-tests 或 mpirun 时） |
-| `BACKEND=vllm` | 换框架；包目录随之变为 `<device>/vllm/`，仿真时用 `--operator_backend vllm` 选择 |
-| `--import-only` | 不重新测量，只把已有 `RUN_DIR` 转成包 |
+| Variable | Default | Effect |
+| --- | --- | --- |
+| `DEVICE` | required | TokenSim `device_id` |
+| `BACKEND` | `trtllm` | `trtllm`, `vllm` or `sglang`; the package directory is `<device>/<backend>` |
+| `OPS` | `gemm attention_context attention_generation moe` | Collector ops, space-separated (`gemm`, `attention_context`, `attention_generation`, `moe`, module ops such as `mhc_module`; see the collector registries). The MoE grid is the largest |
+| `MODEL_PATH` | unset | Hugging Face model id: collect only the shapes of that model (AIConfigurator's model-centric "healing" run) |
+| `GPU_TYPE` | local SM | AIConfigurator system name (e.g. `a100_sxm`) for hardware capability floors; leave it empty for GPUs without an upstream system, such as the RTX 4090 |
+| `SKIP_COMM` | 0 | 1 skips `collect_comm.sh` (no nccl-tests or mpirun) |
+| `AIC_DIR`, `AIC_COMMIT` | see above | AIConfigurator checkout and commit |
+| `RUN_DIR` | `./tmp/collect/<DEVICE>/<BACKEND>` | Collector output directory |
+| `PACKAGE` | `./data/operator_data/<DEVICE>/<BACKEND>` | Import target (replaced) |
 
-网格覆盖范围（上游 `collector/cases/base_ops/*.yaml`）：GEMM 的 token 数 1–17 逐个、之后
-32/33、48/49 … 3328/3329 成对采样以捕捉 tile 边界，`n`、`k` 覆盖 32–65536 共 22 个值；
-decode attention 的 batch 1–2048、上下文 2–131072、head 数 1–128；MoE 的 token 数 1–65536。
-注意 collector 的每次测量是 CUDA graph 中多次 kernel 的均值，与 TokenSim 的"单次 kernel"口径一致。
+Pass `--import-only` as the first argument to skip measuring and only import an existing `RUN_DIR`.
 
-**4090 的注意事项**：TensorRT-LLM 对消费级 Ada 支持有限，若模块报 `unsupported`，改用
-`BACKEND=vllm`。多卡 4090 间没有 NVLink，`collect_comm.sh` 采到的就是 PCIe 曲线，正是
-`pcie_8x_4090` 拓扑所需的数据。
+The recorded collector defines its base measurement values in `collector/cases/base_ops/*.yaml`.
+GEMM measurements cover every token count from 1-17, pairs such as 32/33 and 48/49 through 4352/4353, and 8192, 16384 and 32768.
+Closely spaced token counts capture latency changes when a kernel needs another tile.
+The `n` and `k` dimensions use 22 feature sizes from 32 to 65536.
+Decode attention covers batch sizes 1-2048 and context lengths 2-131072, and MoE covers token counts 1-16384.
+The collector times most kernels inside a CUDA graph and reports the mean per call.
+
+If TensorRT-LLM reports an RTX 4090 or another consumer GPU as unsupported, use `BACKEND=vllm`.
+Multi-GPU 4090 servers have no NVLink, so `collect_comm.sh` measures PCIe curves, which is what the `pcie_8x_4090` topology needs.
 
 ---
 
-## 2. `collect_elementwise.py`：逐元素算子
+## 2. `collect_elementwise.py`: Elementwise Operators
 
 ```bash
 python scripts/collect/collect_elementwise.py \
-    --manifest tmp/manifests/a100-llama3.yaml --device a100_sxm_80g \
-    --package data/operator_data/a100_sxm_80g/trtllm --kernel eager --operator zhang
+    --manifest tmp/manifests/llama3-mixtral.yaml \
+    --device rtx_4090 \
+    --package data/operator_data/rtx_4090/vllm \
+    --backend vllm \
+    --kernel vllm \
+    --operator "$USER"
 ```
 
-* 从清单的 `elementwise` 表取形状（`op_name, dtype, num_tokens, hidden_size`）。
-* `--kernel eager`：PyTorch 逐算子实现（上界参考）；`--kernel vllm`：vLLM 的
-  `rms_norm` / `fused_add_rms_norm` / `rotary_embedding` / `silu_and_mul` fused kernel（生产口径）。
-* CUDA event 计时，5 次预热后取 20 次中位数。
-* 直接合并进 `--package` 指定的包：已有行按主键被新行覆盖，`sources` 增加一条
-  `measured:<device>:elementwise:<kernel>`，notes 里含设备名、驱动/时钟、torch/CUDA 版本、日期与采集人。
+* The script reads `op_name, dtype, num_tokens, hidden_size` from the manifest's `elementwise` entries.
+  The simulator uses activation precision for these queries, and the manifest uses model precision, so check that they agree for quantized checkpoints.
+* `--kernel eager` times PyTorch implementations as an upper-bound reference.
+  `--kernel vllm` times vLLM's `rms_norm`, `rotary_embedding` and `silu_and_mul` kernels.
+  This mode skips `residual_add` because vLLM's `fused_add_rms_norm` also includes normalization, whose latency is estimated separately.
+* It warms each kernel with 5 calls and reports the median CUDA event time over `--iters` calls, default 20.
+* It merges rows into the `--package` directory, creates the directory if absent and replaces existing rows with matching keys.
+  It adds the source `measured:<device>:elementwise:<torch-eager|vllm-custom-ops>`.
+  Its notes record the device name, driver and clocks, torch and CUDA versions, the iteration count, the date and `--operator`.
+  `--backend` (default `trtllm`) labels a newly created package and must match the directory name.
 
 ---
 
-## 3. `run_nccl_tests.sh`：多节点集合通信
+## 3. `run_nccl_tests.sh`: Multi-Node Collectives
 
 ```bash
-# 单机 8 卡（与 collector 重复，用于对照）
-DEVICE=a100_sxm_80g NCCL_TESTS=/opt/nccl-tests/build ./scripts/collect/run_nccl_tests.sh 8 1
-# 两节点 16 卡，每卡一个进程
-DEVICE=a100_sxm_80g NODES=2 LAUNCHER="mpirun -np 16 -H nodeA:8,nodeB:8 -x NCCL_DEBUG=INFO" \
+# One node, 8 GPUs (overlaps with collect_comm.sh; useful as a cross-check)
+DEVICE=rtx_4090 \
+BACKEND=vllm \
+DTYPE=bfloat16 \
+NCCL_TESTS=/opt/nccl-tests/build \
+    ./scripts/collect/run_nccl_tests.sh 8 1
+# Two nodes, 16 GPUs, one process per GPU
+DEVICE=h100_sxm \
+BACKEND=vllm \
+DTYPE=bfloat16 \
+NCCL_TESTS=/opt/nccl-tests/build \
+    LAUNCHER="mpirun -np 16 -H nodeA:8,nodeB:8 -x NCCL_DEBUG=INFO" \
     ./scripts/collect/run_nccl_tests.sh 8 2
 ```
 
-对 all_reduce / all_gather / reduce_scatter / all_to_all 各跑一次 1 KiB–1 GiB（2 倍步长）的扫描，
-`operator_data.cli import-nccl` 把每条曲线写入 `collective` 表，主键为
-`(dtype, operation, group_size, nodes, message_bytes)`。多机时请保留 `NCCL_DEBUG=INFO` 输出中
-选中的算法/协议（ring/tree、LL/Simple），用于校准拓扑 YAML 的 `collective_algorithm`。
+The positional arguments are `<gpus per node> <nodes>`.
+The script measures all_reduce, all_gather, reduce_scatter and alltoall for message sizes from 1 KiB to 1 GiB, doubling the size at each point.
+Each point uses 20 warmup iterations and 50 timed iterations.
+A single-node run passes `-g <gpus>` to the binaries, and a run using `LAUNCHER` assigns one GPU per process.
+Logs are saved under `OUT`, default `./tmp/nccl/<DEVICE>`, and imported into `PACKAGE` with `operator_data.cli import-nccl`.
+`PACKAGE` defaults to `./data/operator_data/<DEVICE>/<BACKEND>`, and `BACKEND` defaults to `trtllm`.
+Rows are keyed by `(dtype, operation, group_size, nodes, message_bytes)`.
+
+TokenSim queries collectives with the model's activation dtype, so set `DTYPE` accordingly (`bfloat16` for bf16 models; the default `half` produces fp16 rows).
+For runs across nodes, record the algorithm and protocol reported by `NCCL_DEBUG=INFO`, such as ring/tree and LL/Simple.
+Use these records to calibrate `collective_algorithm` in the topology YAML.
 
 ---
 
-## 4. 采集后
+## 4. After Collecting
 
 ```bash
 python -m TokenSim.operator_data.cli validate data/operator_data/a100_sxm_80g/trtllm
-python -m TokenSim.operator_data.cli coverage --device a100_sxm_80g --backend trtllm \
-    --models llama-3-8b --tp 1,2,4,8 --out tmp/coverage-a100.yaml
-python -m TokenSim.operator_data.cli calibrate --device a100_sxm_80g --backend trtllm --out tmp/calib-a100.yaml
+python -m TokenSim.operator_data.cli coverage \
+    --device a100_sxm_80g \
+    --backend trtllm \
+    --models llama-3-8b \
+    --tp 1,2,4,8 \
+    --out tmp/coverage-a100.yaml
+python -m TokenSim.operator_data.cli calibrate \
+    --device a100_sxm_80g \
+    --backend trtllm \
+    --out tmp/calib-a100.yaml
 ```
 
-* `coverage` 报告清单中每个查询是精确命中、插值、外推还是缺失，缺失项就是下一轮要补的形状。
-* `calibrate` 用实测表拟合设备 YAML `analytical:` 段的效率参数并给出 holdout 误差；把结果
-  写回 YAML 时把 `grade` 标为 `C`。
-* `step_overhead_us`（调度与 launch 的固定项）不在任何表里：在真实框架跑 batch=1、seq=1 的
-  decode，用实测 step 时间减去按表组合的算子时间得到，填入设备 YAML。
+* `coverage` reports whether each manifest key has an exact match, can be interpolated or extrapolated, or is missing.
+  Missing keys identify the operator dimensions to measure in another run.
+* `calibrate` fits the efficiency parameters of the device YAML's `analytical:` block against the measured tables and reports holdout errors.
+  When copying the values into the YAML, mark them `grade: C`.
+* `step_overhead_us` (fixed scheduling and launch cost) is not part of any table: run decode steps at batch 1 in the real framework, subtract the operator times composed from the tables, and enter the result in the device YAML.
+
+To add measurements to an existing package, use `PACKAGE=tmp/operator_data/<DEVICE>/<BACKEND>` with `run_aiconfigurator.sh` to import into a separate directory.
+Merge the packages with the following commands.
+
+```bash
+python - <<'EOF'
+from TokenSim.operator_data.generator import merge_packages
+from TokenSim.operator_data.package import OperatorDataPackage
+
+target = "data/operator_data/h100_sxm/vllm"
+local = OperatorDataPackage.load("tmp/operator_data/h100_sxm/vllm")
+merge_packages(OperatorDataPackage.load(target), local, prefer="extra").write(target)
+EOF
+python -m TokenSim.operator_data.cli validate data/operator_data/h100_sxm/vllm
+```
+
+`prefer="extra"` lets the new rows win on key clashes; `prefer="base"` keeps the existing ones.
 
 ---
 
-## 5. 记录规范
+## 5. Recording Requirements
 
-每个包的 `generation_meta.yaml` 中，每条 `sources` 必须能回答：设备型号（`nvidia-smi` 名称）、
-驱动与 CUDA、框架及版本、是否锁频、测量方法与迭代次数、日期、采集人。三个脚本都会自动写入这些字段；
-手工导入的数据请补全 `--notes`。
+Every source in `generation_meta.yaml` should record the device model reported by `nvidia-smi`, driver and CUDA versions, framework version, clock lock state, measurement method, iteration count, date and the person who collected the data.
+The scripts automatically record the information listed below.
 
-上游 collector 的 parquet 还带 `framework`、`version`、`device`、`kernel_source` 列，导入时保留在
-`kernel` 列中，用于区分同一形状下不同 kernel 的结果。
-
----
-
-## 6. 与旧 `scripts/profiling/` 的对应关系
-
-| 旧脚本 | 现在 |
+| Script | Recorded in the source entry |
 | --- | --- |
-| `profile_gemm.py`（torch cuBLAS） | `run_aiconfigurator.sh --ops gemm`（框架真实 GEMM kernel，含量化） |
-| `profile_attention.py`（FlashAttention / SDPA） | `run_aiconfigurator.sh --ops attention`（框架的 prefill/decode attention kernel，含 fp8 KV） |
-| `profile_elementwise.py` | `collect_elementwise.py`（新增 vLLM fused kernel 选项，直接写包） |
-| `run_nccl_tests.sh` | `run_nccl_tests.sh`（新增多机 launcher、直接写包） |
-| README 中未实现的 `profile_moe.py` | `run_aiconfigurator.sh --ops moe` |
+| `run_aiconfigurator.sh` | Run directory, AIConfigurator commit, framework and collection version per family |
+| `collect_elementwise.py` | Device name, driver and clocks, torch and CUDA versions, iterations, date, operator |
+| `run_nccl_tests.sh` | nccl-tests command, group and node count, NCCL version, `NCCL_DEBUG`, launcher |
+
+Add missing details to each source's `notes`, including the driver, clock state and person collecting the data for AIConfigurator runs.
+Run `validate` after completing these records.
+
+Upstream tables include `framework`, `version`, `device` and `kernel_source` columns.
+The importer preserves `kernel_source` in `kernel` to identify which implementation was measured for each set of dimensions.

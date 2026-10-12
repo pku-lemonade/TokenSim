@@ -1,0 +1,27 @@
+{
+  "num_workers": 8,
+  "topology": "hgx_b200_8x_xdr",
+  "networks": {
+    "node0": "ethernet800Gb"
+  },
+  "parallel_config": {
+    "tensor_parallel_size": 1,
+    "pipeline_parallel_size": 1,
+    "data_parallel_size": 8,
+    "data_parallel_size_local": 8,
+    "enable_expert_parallel": true,
+    "expert_parallel_scope": "global",
+    "expert_parallel_size": 8,
+    "expert_placement_strategy": "linear",
+    "all2all_backend": "allgather_reducescatter"
+  },
+  "worker_groups": [
+    {
+      "role": "hybrid",
+      "hardware": "b200_sxm",
+      "num_workers": 8,
+      "network": "node0",
+      "operator_backend": "vllm"
+    }
+  ]
+}

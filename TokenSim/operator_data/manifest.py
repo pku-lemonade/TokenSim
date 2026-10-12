@@ -53,7 +53,9 @@ class WorkloadGrid:
             if name in raw:
                 values[name] = tuple(int(v) for v in raw[name])
         if "collective_operations" in raw:
-            values["collective_operations"] = tuple(str(v) for v in raw["collective_operations"])
+            values["collective_operations"] = tuple(
+                str(v) for v in raw["collective_operations"]
+            )
         if "include_collectives" in raw:
             values["include_collectives"] = bool(raw["include_collectives"])
         return cls(**values)
@@ -126,7 +128,9 @@ class ShapeManifest:
 
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(yaml.safe_dump(self.to_dict(), sort_keys=False), encoding="utf-8")
+        path.write_text(
+            yaml.safe_dump(self.to_dict(), sort_keys=False), encoding="utf-8"
+        )
         return path
 
     @classmethod
@@ -135,7 +139,11 @@ class ShapeManifest:
         manifest = cls(
             experiment_id=str(document.get("experiment_id", Path(path).stem)),
             models=[str(m) for m in document.get("models", [])],
-            grid=WorkloadGrid.from_mapping(document["grid"]) if document.get("grid") else None,
+            grid=(
+                WorkloadGrid.from_mapping(document["grid"])
+                if document.get("grid")
+                else None
+            ),
             notes=str(document.get("notes", "")),
         )
         for table, rows in (document.get("tables") or {}).items():
@@ -154,32 +162,46 @@ def build_manifest(
     dtypes: Iterable[str] | None = None,
 ) -> ShapeManifest:
     grid = grid or WorkloadGrid()
-    manifest = ShapeManifest(experiment_id=experiment_id, grid=grid, models=[m.model_id for m in models])
+    manifest = ShapeManifest(
+        experiment_id=experiment_id, grid=grid, models=[m.model_id for m in models]
+    )
     for model in models:
         model_dtypes = tuple(dtypes) if dtypes else (model.dtype,)
         for dtype in model_dtypes:
             for tp in grid.tp_sizes:
                 _add_model_shapes(manifest, model, dtype, tp, grid)
     if grid.include_collectives:
-        for operation in grid.collective_operations:
-            for group in grid.group_sizes:
-                for message in grid.message_bytes:
-                    manifest.add(
-                        "collective",
-                        {
-                            "dtype": models[0].dtype if models else "fp16",
-                            "operation": operation,
-                            "group_size": group,
-                            "nodes": 1,
-                            "message_bytes": message,
-                        },
-                        role="tp_collective" if operation == "all_reduce" else "ep_dispatch_combine",
-                    )
+        # Collectives carry activations.
+        activations = sorted({m.activation_dtype for m in models}) or ["fp16"]
+        for dtype in activations:
+            for operation in grid.collective_operations:
+                for group in grid.group_sizes:
+                    for message in grid.message_bytes:
+                        manifest.add(
+                            "collective",
+                            {
+                                "dtype": dtype,
+                                "operation": operation,
+                                "group_size": group,
+                                "nodes": 1,
+                                "message_bytes": message,
+                            },
+                            role=(
+                                "tp_collective"
+                                if operation == "all_reduce"
+                                else "ep_dispatch_combine"
+                            ),
+                        )
     return manifest
 
 
-def _add_model_shapes(manifest: ShapeManifest, model: ModelSpec, dtype: str, tp: int, grid: WorkloadGrid) -> None:
+def _add_model_shapes(
+    manifest: ShapeManifest, model: ModelSpec, dtype: str, tp: int, grid: WorkloadGrid
+) -> None:
     h = model.hidden_size
+    # ``dtype`` is the weight dtype of GEMMs; the other operators run on
+    # activations, as the latency backend queries them.
+    activation = model.activation_dtype
     heads_local = math.ceil(model.num_attention_heads / tp)
     kv_heads_local = local_kv_heads(model.num_key_value_heads, tp)
     q_local = heads_local * model.head_dim
@@ -190,26 +212,120 @@ def _add_model_shapes(manifest: ShapeManifest, model: ModelSpec, dtype: str, tp:
 
     token_counts = sorted(set(grid.batch_sizes) | set(grid.prefill_tokens))
     for m in token_counts:
-        manifest.add("gemm", {"dtype": dtype, "m": m, "n": q_local + 2 * kv_local, "k": h}, f"{tag}:qkv_proj")
-        manifest.add("gemm", {"dtype": dtype, "m": m, "n": h, "k": q_local}, f"{tag}:o_proj")
+        if model.components is not None:
+            from TokenSim.latency.projection import attention_projections
+
+            for projection in attention_projections(model, tp):
+                manifest.add(
+                    projection.table, projection.key(m), f"{tag}:{projection.name}"
+                )
+        else:
+            manifest.add(
+                "gemm",
+                {"dtype": dtype, "m": m, "n": q_local + 2 * kv_local, "k": h},
+                f"{tag}:qkv_proj",
+            )
+            manifest.add(
+                "gemm", {"dtype": dtype, "m": m, "n": h, "k": q_local}, f"{tag}:o_proj"
+            )
         if not model.is_moe or model.dense_layer_count() > 0:
-            manifest.add("gemm", {"dtype": dtype, "m": m, "n": model.ffn_projection_count * inter_local, "k": h}, f"{tag}:ffn_gate_up")
-            manifest.add("gemm", {"dtype": dtype, "m": m, "n": h, "k": inter_local}, f"{tag}:ffn_down")
+            manifest.add(
+                "gemm",
+                {
+                    "dtype": dtype,
+                    "m": m,
+                    "n": model.ffn_projection_count * inter_local,
+                    "k": h,
+                },
+                f"{tag}:ffn_gate_up",
+            )
+            manifest.add(
+                "gemm",
+                {"dtype": dtype, "m": m, "n": h, "k": inter_local},
+                f"{tag}:ffn_down",
+            )
         if model.is_moe:
-            manifest.add("gemm", {"dtype": dtype, "m": m, "n": model.moe.num_experts, "k": h}, f"{tag}:router")
+            manifest.add(
+                "gemm",
+                {
+                    "dtype": model.operator_dtypes.get("router", dtype),
+                    "m": m,
+                    "n": model.moe.num_experts,
+                    "k": h,
+                },
+                f"{tag}:router",
+            )
         for op, hidden in (
             ("rmsnorm", h),
             ("rope", q_local + kv_local),
             ("residual_add", h),
         ):
-            manifest.add("elementwise", {"op_name": op, "dtype": dtype, "num_tokens": m, "hidden_size": hidden}, f"{tag}:{op}")
-        if model.gated:
-            manifest.add("elementwise", {"op_name": "swiglu", "dtype": dtype, "num_tokens": m, "hidden_size": inter_local}, f"{tag}:swiglu")
+            manifest.add(
+                "elementwise",
+                {
+                    "op_name": op,
+                    "dtype": activation,
+                    "num_tokens": m,
+                    "hidden_size": hidden,
+                },
+                f"{tag}:{op}",
+            )
+        if model.gated and (not model.is_moe or model.dense_layer_count() > 0):
+            manifest.add(
+                "elementwise",
+                {
+                    "op_name": "swiglu",
+                    "dtype": activation,
+                    "num_tokens": m,
+                    "hidden_size": inter_local,
+                },
+                f"{tag}:swiglu",
+            )
+        shared = model.moe_intermediate_size * model.moe.num_shared_experts
+        if model.is_moe and shared:
+            # TP-sharded shared experts; the TP1 entries cover replicated ones.
+            shared = math.ceil(shared / tp)
+            shared_dtype = model.operator_dtypes.get("shared_expert", dtype)
+            manifest.add(
+                "gemm",
+                {
+                    "dtype": shared_dtype,
+                    "m": m,
+                    "n": model.ffn_projection_count * shared,
+                    "k": h,
+                },
+                f"{tag}:shared_gate_up",
+            )
+            manifest.add(
+                "gemm",
+                {"dtype": shared_dtype, "m": m, "n": h, "k": shared},
+                f"{tag}:shared_down",
+            )
+            if model.gated:
+                manifest.add(
+                    "elementwise",
+                    {
+                        "op_name": "swiglu",
+                        "dtype": activation,
+                        "num_tokens": m,
+                        "hidden_size": shared,
+                    },
+                    f"{tag}:shared_swiglu",
+                )
     for b in grid.batch_sizes:
-        manifest.add("gemm", {"dtype": dtype, "m": b, "n": vocab_local, "k": h}, f"{tag}:lm_head")
+        manifest.add(
+            "gemm",
+            {
+                "dtype": model.operator_dtypes.get("lm_head", dtype),
+                "m": b,
+                "n": vocab_local,
+                "k": h,
+            },
+            f"{tag}:lm_head",
+        )
 
     attn_common = {
-        "attn_dtype": dtype,
+        "attn_dtype": activation,
         "kv_cache_dtype": model.kv_cache_dtype,
         "num_heads": heads_local,
         "num_kv_heads": kv_heads_local,
@@ -220,20 +336,34 @@ def _add_model_shapes(manifest: ShapeManifest, model: ModelSpec, dtype: str, tp:
         for batch in (1, 2, 4, 8):
             if batch * seq > max(grid.prefill_tokens) * 4:
                 continue
-            manifest.add("context_attention", {**attn_common, "batch_size": batch, "input_seq_len": seq}, f"{tag}:prefill_attention")
+            manifest.add(
+                "context_attention",
+                {**attn_common, "batch_size": batch, "input_seq_len": seq},
+                f"{tag}:prefill_attention",
+            )
     for context in grid.context_lens:
         for batch in grid.batch_sizes:
-            manifest.add("generation_attention", {**attn_common, "batch_size": batch, "context_len": context}, f"{tag}:decode_attention")
+            manifest.add(
+                "generation_attention",
+                {**attn_common, "batch_size": batch, "context_len": context},
+                f"{tag}:decode_attention",
+            )
 
     if model.is_moe:
+        # A model binding may fix the measured routing distribution.
+        moe_distribution = (
+            model.operator_modules.get("moe", {})
+            .get("key", {})
+            .get("distribution", "uniform")
+        )
         for ep in grid.ep_sizes:
             moe_tp = 1 if ep > 1 else tp
             for tokens in token_counts:
                 manifest.add(
                     "moe",
                     {
-                        "dtype": dtype,
-                        "distribution": "uniform",
+                        "dtype": model.operator_dtypes.get("routed_expert", dtype),
+                        "distribution": moe_distribution,
                         "num_tokens": tokens,
                         "hidden_size": h,
                         "inter_size": model.moe_intermediate_size,

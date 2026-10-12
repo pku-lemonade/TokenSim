@@ -91,6 +91,14 @@ sources:
     converted ms -> us.
   device: h200_sxm
   backend: trtllm:1.3.0rc20
+- source_id: aiconfigurator:h200_sxm:mhc:trtllm:1.3.0rc20
+  grade: B
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/h200_sxm/mhc/trtllm/1.3.0rc20
+  notes: mHC (hyper-connection residual mixing) pre/post module; each row covers the
+    recorded sites of one layer.
+  device: h200_sxm
+  backend: trtllm:1.3.0rc20
 calibration: {}
 tables:
   gemm:
@@ -105,6 +113,8 @@ tables:
     rows: 564
   collective:
     rows: 573
+  mhc:
+    rows: 139
 aiconfigurator_system: h200_sxm
 aiconfigurator_layout: database
 aiconfigurator_commit: f254959eb89e2f206b8f9a77051644d7c1cbdb89

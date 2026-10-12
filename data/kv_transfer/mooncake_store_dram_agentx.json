@@ -1,0 +1,19 @@
+{
+    "kv_connector": "MooncakeStoreConnector",
+    "kv_connector_extra_config": {
+        "cache_layout": "grouped",
+        "mode": "embedded",
+        "protocol": "rdma",
+        "global_segment_size_gb": 356,
+        "local_buffer_size_gb": 4,
+        "host_available_bytes": 3108436443136,
+        "enable_offload": false,
+        "replica_num": 1,
+        "admission_policy": "always",
+        "eviction_policy": "lru",
+        "save_policy": "mooncake",
+        "load_async": true,
+        "transfer_overlap": true,
+        "transfer_utilization": 0.75
+    }
+}

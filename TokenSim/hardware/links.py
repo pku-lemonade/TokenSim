@@ -37,11 +37,17 @@ class LinkClass:
 
     def __post_init__(self) -> None:
         if self.duplex not in {"full", "half"}:
-            raise ConfigurationError(f"link {self.link_id!r}: duplex must be full or half")
+            raise ConfigurationError(
+                f"link {self.link_id!r}: duplex must be full or half"
+            )
         if self.bandwidth_per_direction_bytes_per_s <= 0:
-            raise ConfigurationError(f"link {self.link_id!r}: bandwidth must be positive")
+            raise ConfigurationError(
+                f"link {self.link_id!r}: bandwidth must be positive"
+            )
         if self.latency_us < 0:
-            raise ConfigurationError(f"link {self.link_id!r}: latency must be non-negative")
+            raise ConfigurationError(
+                f"link {self.link_id!r}: latency must be non-negative"
+            )
         if not 0 < self.collective_efficiency <= 1:
             raise ConfigurationError(
                 f"link {self.link_id!r}: collective_efficiency must be in (0, 1]"
@@ -58,7 +64,10 @@ class LinkClass:
         if message_bytes <= 0:
             return 0.0
         bandwidth = self.bandwidth_per_direction_bytes_per_s * max(1, streams)
-        return self.latency_us + message_bytes / (bandwidth * self.efficiency(message_bytes)) * 1e6
+        return (
+            self.latency_us
+            + message_bytes / (bandwidth * self.efficiency(message_bytes)) * 1e6
+        )
 
     @classmethod
     def from_mapping(cls, link_id: str, raw: Mapping[str, Any]) -> "LinkClass":
@@ -98,7 +107,9 @@ class LinkCatalog:
         links = document.get("links")
         if not isinstance(links, Mapping) or not links:
             raise ConfigurationError(f"{path}: links must be a non-empty mapping")
-        return cls(LinkClass.from_mapping(str(link_id), raw) for link_id, raw in links.items())
+        return cls(
+            LinkClass.from_mapping(str(link_id), raw) for link_id, raw in links.items()
+        )
 
     def get(self, link_id: str) -> LinkClass:
         try:
