@@ -17,6 +17,7 @@ class AFResourceRegistryTest(unittest.TestCase):
         cluster = ClusterConfig.from_file(
             root / "data" / "clusters" / "af" / "decode_tp2_dp2_ep4_rank_reuse.json"
         )
+        cluster.af.transfer_topology_mode = "flat_link"
         return cluster, AFResourceRegistry(
             simpy.Environment(), cluster, cluster.workers()
         )

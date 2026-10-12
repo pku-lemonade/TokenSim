@@ -21,6 +21,7 @@ from TokenSim.config.kv_transfer_config import KVTransferConfig
 from TokenSim.config.parallel_config import ParallelConfig, ParallelRankInfo
 from TokenSim.dtypes import canonicalize_dtype, dtype_size_bytes
 from TokenSim.errors import ConfigurationError
+from TokenSim.hardware.domains import CommunicationDomainConfig
 
 
 _AF_CONFIG_DTYPE_FIELDS = frozenset(
@@ -941,6 +942,7 @@ class AFConfig:
         default_factory=AFCommunicationTimingConfig
     )
     transfer_topology_mode: str = "physical"
+    communication_domains: CommunicationDomainConfig | None = None
     service_estimate_cache: bool = True
     dag_template_cache: bool = True
 

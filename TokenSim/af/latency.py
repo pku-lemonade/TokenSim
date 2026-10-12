@@ -249,6 +249,10 @@ class AFTransferQuery:
     logical_input_bytes_per_rank: tuple[tuple[int, int], ...] = ()
     logical_output_bytes_per_rank: tuple[tuple[int, int], ...] = ()
     routing_edges: tuple[AFRoutingEdge, ...] = ()
+    local_fraction: float | None = None
+    remote_fraction: float | None = None
+    load_imbalance: float = 1.0
+    destination_redistribution: bool = False
 
 
 @dataclass(frozen=True)

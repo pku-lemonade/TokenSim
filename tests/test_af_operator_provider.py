@@ -266,14 +266,12 @@ class TopologyTransferProviderTest(unittest.TestCase):
             self.hardware, self.cluster, self.workers, self.placement, dtype="fp16"
         )
 
-    def test_cross_domain_transfer_uses_the_link_class(self):
-        link = self.hardware.link("profile")
+    def test_cross_domain_transfer_uses_node_aggregate_budget(self):
         estimate = self.provider.estimate(_transfer_query("af_a_to_f", payload_bytes=4096))
-        self.assertAlmostEqual(estimate.service_duration, link.transfer_us(4096) / 1e6)
+        self.assertAlmostEqual(estimate.service_duration, 4096 / 300e9)
         self.assertEqual(estimate.payload_bytes, 4096)
         self.assertEqual(estimate.match_type, "analytical")
-        self.assertEqual(estimate.details["link"], "nvlink-test")
-        self.assertEqual(estimate.dataset_version, "topology:synth_af-net")
+        self.assertEqual(estimate.details["model_version"], "node-domain-fifo-v1")
         back = self.provider.estimate(_transfer_query("af_f_to_a", payload_bytes=4096))
         self.assertEqual(back.service_duration, estimate.service_duration)
         self.assertEqual(self.provider.estimate(_transfer_query(payload_bytes=0)).service_duration, 0.0)
@@ -281,7 +279,7 @@ class TopologyTransferProviderTest(unittest.TestCase):
     def test_tp_collective_uses_the_collective_model_or_a_ring_fallback(self):
         query = _transfer_query("tp_collective", payload_bytes=8192, endpoints=("a-pool:0", "a-pool:1"))
         placed = self.provider.estimate(query)
-        self.assertEqual(placed.details["provider"], "collective_model")
+        self.assertEqual(placed.details["model_version"], "node-domain-fifo-v1")
         self.assertGreater(placed.service_duration, 0)
         self.assertIn(placed.match_type, AF_MATCH_TYPES)
         with self.assertRaisesRegex(ConfigurationError, "requires placement"):
@@ -298,25 +296,25 @@ class TopologyTransferProviderTest(unittest.TestCase):
 
     def test_unknown_endpoint_cannot_silently_use_flat_link(self):
         for payload in (0, 8192):
-            with self.subTest(payload=payload), self.assertRaisesRegex(ConfigurationError, "known physical endpoints"):
+            with self.subTest(payload=payload), self.assertRaisesRegex(ConfigurationError, "participants must be nonempty, distinct and mapped"):
                 self.provider.estimate(_transfer_query(payload_bytes=payload, endpoints=("a-pool:0", "missing:0")))
 
-    def test_physical_endpoint_paths_distinguish_node_rack_and_cluster(self):
+    def test_physical_endpoints_use_node_domains_not_rack_hops(self):
         from TokenSim.hardware.topology import TopologyLevel, TopologyPlacement, TopologySpec
         topology = TopologySpec("three-level-af", (
-            TopologyLevel("node", 4, "nvlink-test", links_per_endpoint=2),
+            TopologyLevel("node", 8, "nvlink-test", links_per_endpoint=2),
             TopologyLevel("rack", 2, "ethernet-test"),
             TopologyLevel("cluster", None, "ethernet-test", oversubscription=2),
         ))
         times = []
-        for index, level in ((1, 0), (4, 1), (8, 2)):
-            placement = TopologyPlacement(topology, {0: 0, 1: 2, 2: index, 3: 16})
+        for index in (1, 8, 16):
+            placement = TopologyPlacement(topology, {0:0, 1:2, 2:index, 3:24})
             provider = TopologyAFTransferProvider(self.hardware, self.cluster, self.workers, placement)
-            estimate = provider.estimate(_transfer_query(payload_bytes=1 << 20))
-            self.assertEqual(estimate.details["lowest_common_level"], level)
-            times.append(estimate.service_duration)
+            plan = provider.communication_plan(_transfer_query(payload_bytes=1 << 20))
+            self.assertEqual(len(plan.phases[0].resource_ids), 1 if index == 1 else 2)
+            times.append(provider.estimate(_transfer_query(payload_bytes=1 << 20)).service_duration)
         self.assertLess(times[0], times[1])
-        self.assertLess(times[1], times[2])
+        self.assertEqual(times[1], times[2])
 
     def test_separated_collective_removes_software_launch_cost(self):
         from TokenSim.config.cluster_config import AFCommunicationTimingConfig
@@ -328,25 +326,19 @@ class TopologyTransferProviderTest(unittest.TestCase):
         separated = TopologyAFTransferProvider(
             self.hardware, self.cluster, self.workers, self.placement, dtype="fp16"
         ).estimate(query)
-        self.assertEqual(separated.details["launch_us"], 0)
+        self.assertEqual(separated.details["model_version"], "node-domain-fifo-v1")
         self.assertEqual(separated.details["timing_scope"], "transport_service")
-        self.assertAlmostEqual(legacy.service_duration - separated.service_duration,
-                               legacy.details["launch_us"] / 1e6)
+        self.assertEqual(legacy.service_duration, separated.service_duration)
 
-    def test_measured_collective_retains_declared_or_unspecified_scope(self):
-        from unittest.mock import patch
-        from TokenSim.comm.collectives import CollectiveEstimate
-        model = self.provider._collective_model_for("a-pool:0")
+    def test_whole_collective_measurement_is_not_split_into_phases(self):
         query = _transfer_query("tp_collective", payload_bytes=8192, endpoints=("a-pool:0", "a-pool:1"))
-        measured = CollectiveEstimate(10, "all_reduce", 2, 8192, "measured", "fixture:measured")
-        self.provider.cache_enabled = False
-        with patch.object(model, "estimate", return_value=measured):
-            for scope in ("legacy_unspecified", "eager_interval", "transport_service"):
-                model.timing_scope = scope
-                model.dataset_version = "measured-fixture-v1"
-                estimate = self.provider.estimate(query)
-                self.assertEqual(estimate.details["timing_scope"], scope)
-                self.assertEqual(estimate.dataset_version, "measured-fixture-v1")
+        estimate = self.provider.estimate(query)
+        self.assertEqual(estimate.details["timing_scope"], "transport_service")
+        self.assertEqual(estimate.match_type, "analytical")
+        measured_only = TopologyAFTransferProvider(self.hardware, self.cluster, self.workers,
+                                                   self.placement, fallback="table_only")
+        with self.assertRaisesRegex(ConfigurationError, "phase transport_service"):
+            measured_only.estimate(query)
 
     def test_unknown_network_or_operation_fail(self):
         values = _cluster_dict()

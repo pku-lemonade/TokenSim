@@ -567,7 +567,7 @@ class LLMEngine(Worker):
             {}
         )
         self.af_resources = (
-            AFResourceRegistry(env, cluster_config, worker_configs)
+            AFResourceRegistry(env, cluster_config, worker_configs, self.placement)
             if cluster_config.af.enabled
             else None
         )

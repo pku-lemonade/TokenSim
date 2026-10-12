@@ -296,6 +296,11 @@ class AFPhysicalRuntimeState:
     components: tuple[AFModelComponent, ...]
     model_bytes: int
     kv_bytes_per_block: int
+    protocol_buffers: tuple[tuple[str, int], ...] = ()
+
+    @property
+    def protocol_buffer_bytes(self) -> int:
+        return sum(size for _, size in self.protocol_buffers)
 
     def component_bytes(self) -> dict[str, int]:
         totals: dict[str, int] = {}
@@ -315,6 +320,8 @@ class AFPhysicalRuntimeState:
             "components": [component.as_dict() for component in self.components],
             "model_bytes": self.model_bytes,
             "kv_bytes_per_block": self.kv_bytes_per_block,
+            "protocol_buffers": dict(self.protocol_buffers),
+            "protocol_buffer_bytes": self.protocol_buffer_bytes,
         }
 
 
@@ -966,7 +973,9 @@ class AFRuntimePlan:
                     f"AF runtime physical state {state.physical_identity!r} model byte "
                     "total does not match its components"
                 )
-            if state.model_bytes >= state.capacity_bytes:
+            if any(type(size) is not int or size < 0 for _, size in state.protocol_buffers):
+                raise ConfigurationError('invalid communication buffer reservation')
+            if state.model_bytes + state.protocol_buffer_bytes >= state.capacity_bytes:
                 raise ConfigurationError(
                     f"AF runtime physical state {state.physical_identity!r} exceeds "
                     f"capacity: model_bytes={state.model_bytes}, "
@@ -1778,7 +1787,17 @@ def compile_af_runtime_plan(
             for component_id in sorted(physical_components[physical])
         )
         model_bytes = sum(component.bytes for component in components)
-        if model_bytes >= capacity_bytes:
+        buffers = ()
+        if cluster_config.af.transfer_topology_mode == 'physical':
+            # Explicit conservative workspace assumption: one input and one
+            # output buffer for the largest activation/logit boundary in a
+            # configured AF block. Reused across layers, not silently zero.
+            routing_expansion = max(1, moe_config.num_experts_per_tok) if moe_config is not None else 1
+            workspace = (2 * cluster_config.af.af_block_size * max(hidden * routing_expansion, model.vocab_size)
+                         * dtype_size_bytes(effective_dtypes.activation_dtype, role='activation_dtype'))
+            buffers += (('communication_workspace', workspace),)
+        required_bytes = model_bytes + sum(size for _, size in buffers)
+        if required_bytes >= capacity_bytes:
             domains_and_ranks = ",".join(
                 f"{domain}:{rank}" for domain, rank in rank_keys
             )
@@ -1791,7 +1810,7 @@ def compile_af_runtime_plan(
                 f"AF model does not fit before execution: domain/rank={domains_and_ranks}, "
                 f"physical_worker={physical}, hardware={worker.hardware}, "
                 f"component_bytes={component_bytes}, model_bytes={model_bytes}, "
-                f"capacity_bytes={capacity_bytes}, required_bytes={model_bytes}, "
+                f"capacity_bytes={capacity_bytes}, required_bytes={required_bytes}, "
                 f"available_bytes={capacity_bytes}"
             )
         physical_states.append(
@@ -1803,6 +1822,7 @@ def compile_af_runtime_plan(
                 components=components,
                 model_bytes=model_bytes,
                 kv_bytes_per_block=max(physical_kv_bytes.get(physical, [0])),
+                protocol_buffers=buffers,
             )
         )
     state_by_physical = {state.physical_identity: state for state in physical_states}
@@ -1857,7 +1877,7 @@ def compile_af_runtime_plan(
                 else:
                     state = state_by_physical[binding.physical_identity]
                     raw_gpu_blocks = (
-                        state.capacity_bytes - state.model_bytes
+                        state.capacity_bytes - state.model_bytes - state.protocol_buffer_bytes
                     ) // binding.kv_partition.bytes_per_block
                     gpu_blocks = max(
                         0, raw_gpu_blocks - int(watermark * raw_gpu_blocks)

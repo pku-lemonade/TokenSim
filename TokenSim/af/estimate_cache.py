@@ -4,6 +4,7 @@ from collections import OrderedDict
 from dataclasses import MISSING, fields, is_dataclass, replace
 from functools import lru_cache, wraps
 from collections.abc import Mapping
+import hashlib
 
 
 class FrozenDict(dict):
@@ -43,6 +44,21 @@ def identity(value):
     if isinstance(value, (tuple, list)):
         return tuple(identity(item) for item in value)
     return value
+
+
+def traffic_feature_fingerprint(values):
+    """Compact complete routing/layout features without retaining whole graphs.
+
+    FingerprintMemo deliberately retains immutable inputs. Applying it to a
+    large per-token graph would keep thousands of old graphs alive. Hash each
+    record separately so temporary normalized data is bounded by one record.
+    """
+    digest = hashlib.sha256()
+    for value in values:
+        encoded = repr(identity(value)).encode('utf-8')
+        digest.update(len(encoded).to_bytes(8,'big'))
+        digest.update(encoded)
+    return digest.hexdigest()
 
 
 class FingerprintMemo:
@@ -192,6 +208,8 @@ def initialize_cache(provider, enabled=True, capacity=4096):
     provider.cache_enabled = enabled
     provider.estimate_cache_capacity = capacity
     provider._estimate_cache = OrderedDict()
+    provider._plan_cache = OrderedDict()
+    provider.plan_cache_hits = 0
     provider.estimate_requests = 0
     provider.estimate_cache_hits = 0
     provider.query_constructions = 0
@@ -201,4 +219,43 @@ def initialize_cache(provider, enabled=True, capacity=4096):
     provider._estimate_namespace = (
         provider.fallback, identity(getattr(provider, "lookup_policy", None)),
         (cluster.af.transfer_topology_mode, cluster.af.communication_timing.enabled) if cluster else None,
+        identity(getattr(cluster.af, "communication_domains", None)) if cluster else None,
     )
+
+
+def cached_plan(provider, key, factory):
+    """Full static-plan key supplied by its owner, never _EXECUTION_FIELDS."""
+    if not provider.cache_enabled:
+        return factory()
+    key = (provider._estimate_namespace, provider._fingerprints(key))
+    result = provider._plan_cache.get(key)
+    if result is not None:
+        provider.plan_cache_hits += 1
+        provider._plan_cache.move_to_end(key)
+        return result
+    result = factory()
+    provider._plan_cache[key] = result
+    if len(provider._plan_cache) > provider.estimate_cache_capacity:
+        provider._plan_cache.popitem(last=False)
+    return result
+
+
+def cached_phase_estimate(method):
+    """Share the service LRU without counting phases as external query builds."""
+    @wraps(method)
+    def estimate(self, phase):
+        if not self.cache_enabled:
+            result = method(self, phase)
+            return replace(result, details=freeze(result.details))
+        key = ("phase-service", self._estimate_namespace, self._fingerprints(phase))
+        result = self._estimate_cache.get(key)
+        if result is None:
+            result = method(self, phase)
+            result = replace(result, details=freeze(result.details))
+            self._estimate_cache[key] = result
+            if len(self._estimate_cache) > self.estimate_cache_capacity:
+                self._estimate_cache.popitem(last=False)
+        else:
+            self._estimate_cache.move_to_end(key)
+        return result
+    return estimate

@@ -60,6 +60,15 @@ class LinkClass:
         bandwidth = self.bandwidth_per_direction_bytes_per_s * max(1, streams)
         return self.latency_us + message_bytes / (bandwidth * self.efficiency(message_bytes)) * 1e6
 
+    def analytical_transfer_us(self, message_bytes: float, *, oversubscription: float = 1.0) -> float:
+        """AF v1 pure alpha-beta service; legacy efficiency consumers stay intact."""
+        import math
+        if not math.isfinite(oversubscription) or oversubscription < 1:
+            raise ConfigurationError("oversubscription must be finite and at least one")
+        if message_bytes <= 0:
+            return 0.0
+        return self.latency_us + message_bytes * oversubscription / self.bandwidth_per_direction_bytes_per_s * 1e6
+
     @classmethod
     def from_mapping(cls, link_id: str, raw: Mapping[str, Any]) -> "LinkClass":
         context = f"link {link_id!r}"

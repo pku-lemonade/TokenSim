@@ -64,6 +64,7 @@ class ModelExecutorTest(unittest.TestCase):
 
     def test_boundaries_use_declared_lanes_and_separated_timing(self):
         config = configuration(a_tp=2, f_tp=2, af_batch_size=1)
+        config.doc["af"]["transfer_topology_mode"] = "flat_link"
         config.doc["af"]["communication_timing"] = dict(
             enabled=True, host_submit_us=5, host_completion_us=2
         )
@@ -230,6 +231,7 @@ class ModelExecutorTest(unittest.TestCase):
         reset_g_time()
         hardware = HardwareContext.load("data")
         doc = json.loads(Path("data/clusters/deepseek_v3/1a32f.json").read_text())
+        doc["af"]["communication_domains"] = {"node_size": 8, "node_count": 5, "placement_strategy": "dedicated"}
         config = build_model_runtime(
             doc, hardware=hardware, model=hardware.model("deepseek-v3-671b-mla")
         )

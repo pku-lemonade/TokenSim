@@ -91,6 +91,11 @@ def configuration(*, full_model: bool = False, a_tp: int = 1, f_tp: int | None =
             enabled=True, phases=phases, af_block_size=af_batch_size,
             latency_provider="operator_table",
             trace_enabled=True, router_location="a", weight_dtype="bf16",
+            # Explicit eight-card inventory: legacy virtual same-domain layouts
+            # must not silently become node-domain physical experiments.
+            communication_domains=dict(node_size=8,
+                node_count=(a_tp + 7)//8 + (f_tp + 7)//8,
+                placement_strategy="dedicated"),
             activation_dtype="bf16", kv_cache_dtype="bf16",
             execution_domains=domains,
             links=[dict(name="af-link", phases=phases,

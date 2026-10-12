@@ -1140,6 +1140,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
         makespans = {}
         for shared in (True, False):
             cluster = _two_link_cluster(shared_resource=shared)
+            cluster.af.transfer_topology_mode = "flat_link"
             env = simpy.Environment()
             executor = _executor(
                 env,
@@ -1218,6 +1219,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
         traces = {}
         for duplex in ("full", "half"):
             cluster = _load_cluster(duplex=duplex)
+            cluster.af.transfer_topology_mode = "flat_link"
             env = simpy.Environment()
             executor = _executor(
                 env,

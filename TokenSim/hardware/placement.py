@@ -8,6 +8,7 @@ from typing import Any, Sequence
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.context import HardwareContext
 from TokenSim.hardware.topology import TopologyPlacement, TopologySpec
+from TokenSim.hardware.domains import CommunicationDomainConfig
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,9 @@ def build_topology_placement(
     section: workers sharing a named network form one node connected by the
     device's scale-up link, and nodes are joined by the network's link class.
     """
+    domains = getattr(getattr(cluster_config, "af", None), "communication_domains", None)
+    if domains is not None and cluster_config.af.transfer_topology_mode == "physical":
+        return build_domain_placement(cluster_config, worker_configs, hardware, domains)
     explicit: dict[int, int] = {}
     cursor = 0
     worker_id = 0
@@ -64,6 +68,68 @@ def build_topology_placement(
         placement[index] = node_index * node_size + per_network[network]
         per_network[network] += 1
     return TopologyPlacement(topology=topology, device_index_by_worker=placement)
+
+
+def build_domain_placement(cluster_config, worker_configs, hardware, config):
+    """Reserve explicit slots first; never expand a declared inventory."""
+    node_count = config.node_count or max(1, -(-len(worker_configs) // config.node_size))
+    identities = {worker.physical_worker_ref.identity: index for index, worker in enumerate(worker_configs)}
+    overrides = dict(config.device_indices)
+    for group in cluster_config.worker_groups:
+        if group.device_indices is not None:
+            for index, slot in enumerate(group.device_indices):
+                identity = f"{group.name}:{index}"
+                if identity in overrides and overrides[identity] != slot:
+                    raise ConfigurationError(f"conflicting device index aliases for {identity}")
+                overrides[identity] = slot
+    if set(overrides) - set(identities):
+        raise ConfigurationError("domain placement override references an unknown worker")
+    if len(set(overrides.values())) != len(overrides):
+        raise ConfigurationError("domain placement duplicates a GPU slot")
+    attention = {index for index, worker in enumerate(worker_configs) if "af_attention" in worker.capabilities}
+    roles = {index: ("a" if index in attention else "f") for index in range(len(worker_configs))}
+    dedicated_nodes = {}
+    if config.placement_strategy == "dedicated":
+        for identity, slot in overrides.items():
+            node = slot // config.node_size
+            role = roles[identities[identity]]
+            if node in dedicated_nodes and dedicated_nodes[node] != role:
+                raise ConfigurationError("dedicated placement override mixes A/F in one node")
+            dedicated_nodes[node] = role
+
+    def permitted(worker_id, slot):
+        node, local = divmod(slot, config.node_size)
+        if node >= node_count or slot < 0:
+            return False
+        role = roles[worker_id]
+        if config.placement_strategy == "mixed":
+            return (local < config.mixed_a_slots) == (role == "a")
+        if config.placement_strategy == "dedicated":
+            return dedicated_nodes.get(node, role) == role
+        return True
+
+    placed = {}
+    occupied = set(overrides.values())
+    for identity, slot in overrides.items():
+        worker_id = identities[identity]
+        if not permitted(worker_id, slot):
+            raise ConfigurationError(f"placement override violates inventory or role policy: {identity}")
+        placed[worker_id] = slot
+    for worker_id in range(len(worker_configs)):
+        if worker_id in placed:
+            continue
+        slot = next((slot for slot in range(node_count * config.node_size)
+                     if slot not in occupied and permitted(worker_id, slot)), None)
+        if slot is None:
+            raise ConfigurationError("domain placement exceeds declared inventory or role slots")
+        placed[worker_id] = slot
+        occupied.add(slot)
+        if config.placement_strategy == "dedicated":
+            dedicated_nodes[slot // config.node_size] = roles[worker_id]
+    legacy = synthesize_topology(cluster_config, worker_configs, hardware)
+    topology = TopologySpec.two_level("domain_" + legacy.topology_id, node_size=config.node_size,
+                                     node_link=legacy.levels[0].link, cluster_link=legacy.levels[-1].link)
+    return TopologyPlacement(topology, placed)
 
 
 def synthesize_topology(

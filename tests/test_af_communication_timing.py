@@ -28,6 +28,7 @@ def run_case(submit_us=5., complete_us=0., wire_us=3., scope='per_worker', enabl
     cluster = _cluster(a_tp=1, a_dp=1, f_tp=1, f_dp=1)
     cluster.af.communication_timing = AFCommunicationTimingConfig(enabled=enabled,
         host_submit_us=submit_us, host_completion_us=complete_us, host_resource_scope=scope)
+    cluster.af.transfer_topology_mode = 'flat_link'
     # Construct from normalized JSON to recompute the actual fabric configuration.
     if duplex == 'half':
         from pydantic import TypeAdapter

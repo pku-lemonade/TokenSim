@@ -57,7 +57,12 @@ DEFAULT_LAUNCH_US = {"nvidia_gpu": 8.0, "groq_tsp": 0.5, "generic": 10.0}
 
 
 def ring_traffic_factor(operation: str, n: int) -> float:
-    """Bytes moved per rank relative to the buffer size (nccl-tests busbw factors)."""
+    """Compatibility busbw factor relative to a complete collective buffer.
+
+    AllGather takes the *aggregated output* buffer here; new per-rank input
+    contracts use ``traffic.ring_volume`` instead. This helper is not a node
+    aggregate traffic plan and cannot determine hierarchical resource loads.
+    """
     if n <= 1:
         return 0.0
     if operation == "all_reduce":
