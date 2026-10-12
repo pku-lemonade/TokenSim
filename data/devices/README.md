@@ -98,5 +98,5 @@ analytical values with device-specific fits.
 3. Declare every `source_id` in `sources:` with a grade and a reference.
 4. Import or collect operator data into `data/operator_data/<device_id>/<backend>/`
    (see `scripts/collect/README.md`), or leave it to the analytical fallback.
-5. Run `python -m unittest tests.test_hardware_catalog` — the catalog test loads
-   every file and checks aliases and link references.
+5. Run `python -m unittest discover -s tests -t .` to check the change against
+   the remaining core tests.
