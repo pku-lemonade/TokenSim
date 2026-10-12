@@ -9,3 +9,4 @@ from TokenSim.llm.engine import (
     WorkerStatus,
     RequestCompletionDebugPrinter,
 )
+from TokenSim.llm.engine.messages import _merge_connector_metadata, _request_ids
