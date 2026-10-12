@@ -4,6 +4,9 @@ from dataclasses import dataclass
 from functools import cached_property
 from typing import Mapping
 
+from TokenSim.config.validation import number
+from TokenSim.errors import ConfigurationError
+
 SCHEMA_VERSION = 1
 LATENCY_UNIT = "us"
 VALUE_FIELDS = ("latency_us", "source_id")
@@ -56,13 +59,12 @@ class AxisSpec:
 
     def __post_init__(self) -> None:
         if self.scale not in {"log", "linear"}:
-            raise ValueError(f"axis {self.name!r}: scale must be log or linear")
-        if (
-            self.max_extrapolation_ratio is not None
-            and self.max_extrapolation_ratio < 1.0
-        ):
-            raise ValueError(
-                f"axis {self.name!r}: max_extrapolation_ratio must be >= 1"
+            raise ConfigurationError(f"axis {self.name!r}: scale must be log or linear")
+        if self.max_extrapolation_ratio is not None:
+            number(
+                self.max_extrapolation_ratio,
+                f"axis {self.name!r}: max_extrapolation_ratio",
+                minimum=1,
             )
 
 

@@ -9,6 +9,7 @@ from bisect import bisect_left
 from collections import Counter
 
 from TokenSim.errors import ConfigurationError
+from TokenSim.config.router_config import validate_router_mapping
 
 MASK = (1 << 64) - 1
 M = 0xC6A4A7935BD1E995
@@ -138,7 +139,7 @@ class FixedWorkerRouter:
 
     def __init__(self, workers, mapping, *, backend_url="http://localhost:8889"):
         self.workers = {w.dp_rank: w for w in workers}
-        self.mapping = {str(key): int(value) for key, value in mapping.items()}
+        self.mapping = validate_router_mapping(mapping)
         if any(rank not in self.workers for rank in self.mapping.values()):
             raise ConfigurationError(
                 "fixed worker mapping references an unknown DP rank"

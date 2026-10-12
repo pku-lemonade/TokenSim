@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 
 from TokenSim.config.moe_execution import MoEExecutionConfig
+from TokenSim.config.router_config import validate_router_mapping
 from TokenSim.errors import ConfigurationError
 from TokenSim.config.validation import integer, number, boolean
 
@@ -40,6 +41,10 @@ class SimulationConfig:
     adaptive_long_prefill_threshold: bool = False
 
     def __post_init__(self):
+        if self.router_mapping is not None:
+            object.__setattr__(
+                self, "router_mapping", validate_router_mapping(self.router_mapping)
+            )
         for name in (
             "block_size",
             "max_num_seqs",

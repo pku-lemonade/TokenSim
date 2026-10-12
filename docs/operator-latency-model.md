@@ -308,6 +308,8 @@ Using the analytical ratio preserves those fixed costs and uses the measurement 
 AIConfigurator applies the same boundary-efficiency rule.
 
 `max_extrapolation_ratio` (default **16**) caps how far a query may go past the boundary on any axis, in either direction.
+Policy and axis bounds must be finite numbers greater than or equal to one.
+Invalid bounds and policy choices cause a configuration error when the configuration is constructed.
 Axes may override it: `context_attention.input_seq_len`, `generation_attention.context_len` and the `dsv4_attention` sequence axes allow 64x (the complete-attention module also raises its policy bound to 64x on every axis), `ep_all2all.num_experts` allows 1024x and `ep_all2all.top_k` 8x.
 Beyond the bound the lookup raises `MissingOperatorDataError` (`out_of_range`) and the query falls through to Stage 4.
 

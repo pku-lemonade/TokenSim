@@ -17,6 +17,7 @@ from TokenSim.config.model_config import ModelSpec
 from TokenSim.config.simulation import SimulationConfig
 from TokenSim.config.paths import default_data_root
 from TokenSim.config.validation import number
+from TokenSim.config.router_config import load_router_mapping
 from TokenSim.errors import ConfigurationError, SimulationStateError, TokenSimError
 from TokenSim.hardware import HardwareContext
 from TokenSim.latency import FALLBACK_POLICIES
@@ -137,11 +138,9 @@ def main(args, preloaded_agentx_traces=None):
     )
     kv_config = cluster.effective_kv_transfer(kv_override)
     if args.router_mapping_path:
-        mapping = json.loads(Path(args.router_mapping_path).read_text())
-        mapping = mapping.get("mapping", mapping)
-        if not isinstance(mapping, dict):
-            raise ConfigurationError("router mapping must contain a JSON object")
-        config = replace(config, router_mapping=mapping)
+        config = replace(
+            config, router_mapping=load_router_mapping(args.router_mapping_path)
+        )
     env = simpy.Environment()
     engine = LLMEngine(
         env=env,

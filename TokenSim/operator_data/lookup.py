@@ -6,6 +6,8 @@ from typing import Any, Mapping
 
 from typing import Callable
 
+from TokenSim.config.validation import boolean, number
+from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.device import normalize_dtype
 from TokenSim.operator_data.package import OperatorDataPackage
 from TokenSim.operator_data.schema import TABLE_SPECS, AxisSpec, TableSpec
@@ -94,8 +96,12 @@ class LookupPolicy:
     max_extrapolation_ratio: float = 16.0
 
     def __post_init__(self) -> None:
+        boolean(self.interpolate, "interpolate")
+        number(self.max_extrapolation_ratio, "max_extrapolation_ratio", minimum=1)
         if self.extrapolate not in EXTRAPOLATION_MODES:
-            raise ValueError(f"extrapolate must be one of {EXTRAPOLATION_MODES}")
+            raise ConfigurationError(
+                f"extrapolate must be one of {EXTRAPOLATION_MODES}"
+            )
 
 
 class OperatorLookup:

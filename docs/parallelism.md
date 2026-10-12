@@ -104,6 +104,9 @@ DP creates replica groups.
 New requests are assigned to replica groups in round-robin order and keep their `dp_rank` when moving from prefill to decode.
 The selected worker policy chooses a worker within that DP group.
 `--sticky_sessions` keeps requests of one conversation (`chat_id`) on the same replica, and `--router_policy consistent_hash` (session hashing as in vllm-router) or `fixed_mapping` (`--router_mapping_path`) replace the round-robin placement.
+The routing mapping file contains a JSON object mapping conversation IDs to nonnegative integer ranks, optionally nested under `mapping`.
+Integer strings are accepted for compatibility; fractional numbers, booleans, null values and ranks absent from the worker pool cause a configuration error.
+Unreadable files and malformed JSON also cause a configuration error.
 The simulator validates `data_parallel_size_local` and `data_parallel_rank` and records them in the result's topology metadata.
 It represents every rank in `world_size` within one simulation process.
 
