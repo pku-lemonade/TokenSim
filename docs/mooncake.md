@@ -1,6 +1,8 @@
 # Mooncake KV Transfer and Storage
 
-TokenSim provides these Mooncake-related simulator connectors:
+TokenSim uses connectors to specify how simulated workers transfer and store attention key/value (KV) cache blocks.
+Prompt processing is called prefill, and output token generation is called decode.
+The following connectors model Mooncake transfer and storage behavior.
 
 | Connector | Use case |
 | --- | --- |
@@ -8,15 +10,14 @@ TokenSim provides these Mooncake-related simulator connectors:
 | `MooncakeStoreConnector` | Prefix-addressed shared store with uniform or grouped KV pages |
 | `MultiConnector` | Composition of several connectors, such as direct transfer plus a store |
 
-These are simulator models. They do not start or communicate with an external
-Mooncake deployment. The other registered connectors are `NoopConnector` (the
-default), `P2PConnector` (topology-priced direct transfer) and
-`SimpleCPUOffloadConnector` (per-rank CPU offload, see the
-[AgentX guide](agentx.md)).
+These are simulator models.
+They do not start or communicate with an external Mooncake deployment.
+Other available connectors are `NoopConnector`, the default, and `P2PConnector`, which calculates direct transfer time from the cluster topology.
+`SimpleCPUOffloadConnector` gives each GPU worker, or rank, its own CPU memory allocation for KV data, as described in the [AgentX guide](agentx.md).
 
 ## Selecting a Connector
 
-Pass a connector JSON file with `--kv_transfer_config`:
+Pass a connector JSON file with `--kv_transfer_config`, as in the following example.
 
 ```bash
 ./benchmark.py \
@@ -29,8 +30,9 @@ Pass a connector JSON file with `--kv_transfer_config`:
   --verbose none
 ```
 
-Alternatively, put the same object under `kv_transfer` in a cluster JSON. A
-command-line file replaces the cluster's connector. The top-level fields are:
+You can also put the same configuration under `kv_transfer` in a cluster JSON file.
+A command-line file replaces the cluster's connector.
+The following table describes the top-level fields.
 
 | Field | Default | Meaning |
 | --- | --- | --- |
@@ -44,21 +46,17 @@ Unknown top-level fields and unknown Mooncake connector options are rejected.
 
 ## Direct Prefill-to-Decode Transfer
 
-Use `MooncakeConnector` with a disaggregated cluster containing `prefill` and
-`decode` worker groups. The connector computes bytes from the actual
-transferred KV blocks and models a VRAM-to-VRAM transfer with the protocol
-timing described under [Transfer Timing](#transfer-timing). Transfers within
-one worker are local; transfers between workers use cross-node timing.
+Use `MooncakeConnector` with a cluster that assigns prefill and decode to separate worker groups.
+The connector calculates the bytes in the transferred KV blocks and estimates the GPU-to-GPU transfer time using the rules in [Transfer Timing](#transfer-timing).
+Transfers within one worker are local; transfers between workers use cross-node timing.
 
-The included `data/kv_transfer/mooncake_p2p.json` selects RDMA. This connector
-does not require `hash_ids` because it transfers the live request's blocks
-between the selected workers. Without any connector, a disaggregated cluster
-moves the blocks over the point-to-point link of the lowest topology level the
-two workers share (see [Parallelism](parallelism.md)).
+The included `data/kv_transfer/mooncake_p2p.json` selects RDMA.
+This connector does not require `hash_ids` because it transfers the live request's blocks between the selected workers.
+Without a connector, the cluster transfers blocks over the link at the smallest topology level containing both workers, as described in [Parallelism](parallelism.md).
 
 ## Shared Store and Prefix Reuse
 
-Use `MooncakeStoreConnector` with a workload containing `hash_ids`:
+Use `MooncakeStoreConnector` with a workload that supplies `hash_ids` to identify reusable prompt blocks.
 
 ```bash
 ./benchmark.py \
@@ -74,101 +72,83 @@ Use `MooncakeStoreConnector` with a workload containing `hash_ids`:
   --verbose none
 ```
 
-The standalone example keeps one block in memory and up to 64 on SSD;
-`data/kv_transfer/mooncake_store_embedded.json` is an embedded-mode store with
-128 memory blocks and no SSD tier. On this single-worker cluster the repeated
-prefixes are served by the worker's own GPU prefix cache; the store answers
-requests whose blocks are no longer on the GPU, or that run on another worker
-(see the MultiConnector example below).
+An embedded store uses memory on the compute node, and a standalone store is modeled as a separate store reached over the network.
+The standalone example keeps one block in memory and up to 64 on SSD.
+`data/kv_transfer/mooncake_store_embedded.json` configures an embedded store with 128 memory blocks and no SSD tier.
+In this single-worker cluster, the worker's GPU cache serves repeated prefixes that are still in GPU memory.
+The store serves blocks that have left GPU memory or requests running on another worker, as shown in the MultiConnector example below.
 
-Store keys include the model and compatible payload layout, TP/PP shard
-context, `tenant_id`, `cache_prefix`, `group_id`, `pcp_rank`, `dcp_rank`,
-`cache_salt`, `reuse_group`, and the chained block hashes. A lookup returns
-only the longest contiguous prefix. Local GPU hits are considered before the
-store; only additional external blocks are loaded. A full-prompt hit still
-computes at least the last prompt token; with `save_policy: mooncake` the last
-block is not loaded from the store.
+Store keys identify the model, the byte layout of cached data and its tensor-parallel (TP) and pipeline-parallel (PP) partitions.
+They also include `tenant_id`, `cache_prefix`, `group_id`, `pcp_rank`, `dcp_rank`, `cache_salt`, `reuse_group` and hashes that encode each block's preceding prefix.
+A lookup returns only the longest contiguous prefix.
+The worker checks its GPU cache before the store and loads only the additional blocks it needs.
+Even when the whole prompt is cached, the worker computes at least the last prompt token to produce an output token.
+With `save_policy: mooncake`, the last prompt block is excluded from store loads.
 
-Saving depends on `save_policy`:
+`save_policy` controls which computed blocks are saved.
 
-- `mooncake` (default): once the prompt has finished computing, save the full
-  prompt blocks that are not already in the store; skip the save in a step
-  that loaded from the store; never save decode steps.
-- `once`: like `mooncake`, but without the existence check, so all full prompt
-  blocks are transferred.
-- `every_step`: save the computed full prompt blocks on every scheduled step,
-  decode steps included.
+- `mooncake`, the default, saves full prompt blocks missing from the store after prompt processing finishes.
+  It skips saving in a step that loaded blocks from the store and in all decode steps.
+- `once` follows the same timing as `mooncake` and transfers all full prompt blocks without checking whether they are already stored.
+- `every_step` saves computed full prompt blocks on every scheduled step, including decode steps.
 
-Grouped storage (`cache_layout: grouped`) supports only `mooncake`; it
-publishes newly computed retained pages through its block-manager callbacks.
+Grouped storage (`cache_layout: grouped`) supports only `mooncake`.
+The block manager makes newly computed pages available to the store when they are retained in the cache.
 
 ### Store Sharing
 
-Stores belong to the SimPy simulation environment. Engines connected to the
-same `master_server_address` share the store, including engines with
-different `engine_id` or DP identity. Embedded engines contribute their
-rank-local memory segments once; contributions and staging are summed from
-each client's own byte settings. Standalone capacity is shared once, with
-additional staging for each client. Admission, save and async policies,
-namespaces and staging sizes may differ between clients without creating
-separate pools; so may the transfer settings, except for standalone grouped
-stores, whose shared network queue they define. The store's mode and layout,
-eviction policy, `memory_capacity_blocks`, standalone pool size, replica, SSD
-and host-budget settings must agree. Separate environments start with fresh
-stores.
+Stores belong to the SimPy simulation environment.
+Engines using the same `master_server_address` share a store, even if their `engine_id` or data-parallel (DP) rank differs.
+Each embedded engine contributes its ranks' memory segments once.
+The store sums these contributions and the clients' transfer buffers using each client's configured byte limits.
+A standalone store has one shared capacity limit and an additional transfer buffer for each client.
+Clients can use different write admission rules, save policies, asynchronous settings, cache namespaces and buffer sizes within the same store.
+Transfer settings can also differ, except for standalone grouped stores, where those settings define one shared network queue.
+Clients sharing a store must agree on its mode, cache layout, eviction policy, `memory_capacity_blocks`, standalone capacity, replica count, SSD settings and host memory limit.
+Separate environments start with fresh stores.
 
-Store membership does not imply a cache hit: model/layout, shard,
-tenant/prefix and hash identities must match. A uniform store requires one
-page-byte format; incompatible formats or settings are rejected rather than
-creating hidden independent pools. A uniform object becomes visible only after
-its transfer and blocking SSD persistence finish. In-flight writes and reads
-protect their objects from eviction until their modeled completion time.
-Model geometry and precision are part of both layouts' identities; changing
-operator timing tables does not change the cached content identity. Unknown
-generated tokens and partial prompts use an opaque request identity, so equal
-public request IDs in different engines cannot grant synthetic KV reuse.
+A cache hit requires matching model dimensions, data layout, model partition, tenant, prefix and block hashes.
+Uniform stores require one byte layout for all pages and reject incompatible layouts or settings.
+A uniform cache object becomes available for reuse after its transfer and any required SSD write finish.
+Reads and writes protect the objects they are using from eviction until the modeled transfer completes.
+Both layouts include model dimensions and precision in cache identifiers.
+Changing operator timing tables leaves those identifiers unchanged.
+Generated tokens with no known content identifiers and partial prompts use internal request identifiers.
+Matching public request IDs from different engines therefore cannot make those blocks reusable.
 
-See [Prefix Cache](prefix-cache.md) for workload formats and exact hash
-matching rules.
+See [Prefix Cache](prefix-cache.md) for workload formats and exact hash matching rules.
 
 ## Cache Layouts and Capacity
 
-`cache_layout: uniform` (default) stores one object per KV block of a uniform
-cache. Set `cache_layout: grouped` for a model with several cache-page
-geometries (for example compressed attention with sliding-window and
-compressed caches); the setting is checked against the engine's actual KV
-layout. `data/kv_transfer/mooncake_store_dram_agentx.json` is a grouped
-example; the [AgentX guide](agentx.md) explains its budget. Grouped storage
-currently supports:
+`cache_layout: uniform`, the default, stores one object per KV block and uses the same page layout for every block.
+Set `cache_layout: grouped` for models with multiple page types, such as sliding-window and compressed attention caches.
+TokenSim checks this setting against the engine's actual KV layout.
+`data/kv_transfer/mooncake_store_dram_agentx.json` is a grouped example whose memory budget is explained in the [AgentX guide](agentx.md).
+Grouped storage requires all of the following settings.
 
-- one compute node and PP1,
-- a single DRAM replica (`replica_num: 1`, `enable_offload: false`) with byte
-  budgets (no `memory_capacity_blocks`),
-- `eviction_policy: lru` with `load_async: true` and `transfer_overlap: true`,
-- `protocol` `rdma` or `tcp`, no `preferred_segment`,
-- a direct connector only (not a `MultiConnector` child).
+- Use one compute node and one pipeline stage (PP1).
+- Keep one replica in CPU memory with `replica_num: 1` and `enable_offload: false`, and specify capacity in bytes without `memory_capacity_blocks`.
+- Set `eviction_policy: lru`, `load_async: true` and `transfer_overlap: true`.
+- Use `protocol: rdma` or `protocol: tcp` and leave `preferred_segment` unset.
+- Select the connector directly, outside a `MultiConnector`.
 
-In embedded mode, `global_segment_size` is each rank's contribution to the
-shared KV pool; in standalone mode it is the external owner's total pool. A
-uniform store uses `memory_capacity_blocks` instead when it is set. Staging
-space is additional: `local_buffer_size` per rank. When `host_available_bytes`
-is supplied, the pool plus staging of all clients must fit in it. Integer size
-fields are bytes; the `global_segment_size_gb` and `local_buffer_size_gb`
-aliases are in GiB.
+In embedded mode, `global_segment_size` is each rank's contribution to the shared KV store.
+In standalone mode, it is the separate store's total capacity.
+A uniform store uses `memory_capacity_blocks` instead when it is set.
+Each rank also reserves `local_buffer_size` bytes for transfers, in addition to the KV store's capacity.
+When `host_available_bytes` is supplied, the store and all clients' transfer buffers must fit within that limit.
+Integer size fields count bytes, and the `global_segment_size_gb` and `local_buffer_size_gb` aliases count gibibytes (GiB), where 1 GiB = 2^30 bytes.
 
 ## Memory and SSD Tiers
 
-With `eviction_policy: "lru"`, memory pressure evicts the least recently used
-object that no transfer is using. With the SSD tier enabled, every admitted
-object is also written to SSD as a blocking persistence operation, and an
-object evicted from memory stays readable from SSD (an object not yet on SSD
-is written there on eviction); without the tier, an evicted object is
-removed. With `eviction_policy: "none"`, a write that does not fit in memory
-is rejected, or goes directly to SSD when the tier is enabled.
-`enable_offload: false` disables only the SSD tier; DRAM storage and prefix
-reuse remain.
+With `eviction_policy: "lru"`, memory pressure evicts the least recently used object that no transfer is using.
+With the SSD tier enabled, every accepted object is also written to SSD, and that persistence write must finish before the operation completes.
+An object evicted from memory stays readable from SSD, with any missing SSD copy written during eviction.
+With the SSD tier disabled, eviction removes the object from the store.
+With `eviction_policy: "none"`, a write that does not fit in memory is rejected, or goes directly to SSD when the tier is enabled.
+`enable_offload: false` disables the SSD tier and keeps CPU memory storage and prefix reuse enabled.
 
-Enable the SSD tier (uniform storage only) with:
+For uniform storage, enable the SSD tier with the following configuration.
 
 ```json
 {
@@ -182,11 +162,10 @@ Enable the SSD tier (uniform storage only) with:
 }
 ```
 
-`ssd_capacity_blocks` takes precedence over `ssd_capacity_bytes`; an enabled
-tier needs a positive capacity. An SSD read takes the fixed latency plus bytes
-divided by the read bandwidth; writes use the same model and are blocking
-persistence operations. SSD eviction is LRU at object (block-key)
-granularity.
+`ssd_capacity_blocks` takes precedence over `ssd_capacity_bytes`, and an enabled SSD tier requires positive capacity.
+An SSD read takes its fixed latency plus the transferred bytes divided by read bandwidth.
+Writes use the same formula with write bandwidth and must finish before persistence completes.
+SSD eviction removes the least recently used cache object, identified by its block key.
 
 ## Transfer Timing
 
@@ -198,10 +177,8 @@ granularity.
 | Grouped store, embedded | Queued per-worker host-link transfers (separate read and write queues) |
 | Grouped store, standalone | Serial host-link and shared network queues; the network queue is capped by the node's network link and shared by all workers |
 
-Unless `fixed_latency_us` / `bandwidth_bytes_per_s` or the per-protocol
-`protocol_latency_us` / `protocol_bandwidth_bytes_per_s` override them, the
-protocol defaults in `TokenSim/mooncake/transfer_engine.py` are unmeasured
-assumptions:
+The protocol defaults in `TokenSim/mooncake/transfer_engine.py` are unmeasured assumptions, listed below.
+Override all protocols with `fixed_latency_us` and `bandwidth_bytes_per_s`, or individual protocols with `protocol_latency_us` and `protocol_bandwidth_bytes_per_s`.
 
 | Protocol | Fixed latency | Bandwidth |
 | --- | --- | --- |
@@ -210,17 +187,16 @@ assumptions:
 | `nvlink` | 2 us | 300 GiB/s |
 | `nvmeof` | 80 us | 7 GiB/s |
 
-Grouped storage models contention on its queues and overlaps transfers with
-compute. Uniform and direct paths add blocking transfer latencies and do not
-model shared-link contention or overlap. SSD timing is a separate storage
-operation and does not change the configured network protocol. Staging
-capacity is accounted for but does not impose a separate buffering queue. The
-included small uniform and SSD configurations demonstrate caching and
-eviction; their block budgets are not host-memory measurements.
+Grouped storage models contention on its queues and overlaps transfers with compute.
+Uniform and direct paths add blocking transfer latencies and do not model shared-link contention or overlap.
+SSD timing is a separate storage operation and does not change the configured network protocol.
+Transfer buffers count toward memory usage and add no separate queue to the timing model.
+The small uniform and SSD examples use illustrative block limits to demonstrate caching and eviction.
+Those limits have not been measured on a host.
 
 ## Configuration Reference
 
-Fields of `kv_connector_extra_config`:
+The following table describes the fields of `kv_connector_extra_config`.
 
 | Field | Default | Supported values or behavior |
 | --- | --- | --- |
@@ -250,15 +226,13 @@ Fields of `kv_connector_extra_config`:
 | `ssd_read_bandwidth_bytes_per_s`, `ssd_write_bandwidth_bytes_per_s` | 7 GiB/s, 3 GiB/s | SSD bandwidth |
 | `ssd_read_latency_us`, `ssd_write_latency_us` | 100, 200 | SSD fixed latency |
 
-Capacity fields ending in `_bytes` are byte counts; bandwidth fields ending in
-`_bytes_per_s` are bytes per second. Conflicting size aliases, fractional byte
-budgets and invalid rates are rejected. Parallelism comes from the cluster and
-serving configuration, not from connector options.
+Capacity fields ending in `_bytes` are byte counts; bandwidth fields ending in `_bytes_per_s` are bytes per second.
+Conflicting size aliases, fractional byte budgets and invalid rates are rejected.
+The cluster and serving configuration determine parallelism.
 
 ## MultiConnector
 
-`data/kv_transfer/mooncake_multi_connector.json` combines direct transfer and
-an embedded store on a disaggregated cluster:
+`data/kv_transfer/mooncake_multi_connector.json` combines direct transfer and an embedded store on a cluster with separate prefill and decode workers.
 
 ```bash
 ./benchmark.py \
@@ -274,25 +248,20 @@ an embedded store on a disaggregated cluster:
   --verbose none
 ```
 
-Each child contributes transfer plans and metrics; the only option of the
-`MultiConnector` itself is its `connectors` list. External prefix matching
-uses the largest hit reported by the children, while load and save latencies
-are accumulated. Only the child with that largest hit loads the request and
-updates its cached-token count. Each transfer plan is routed to its
-originating child, including same-type or nested children. Children inherit
-the parent's worker role, rank and engine identity unless explicitly
-overridden. Grouped storage cannot be a child.
+Each connector listed in `connectors` contributes its own transfer plans and metrics.
+The `connectors` list is the only option on `MultiConnector` itself.
+Prefix matching uses the longest prefix reported by those connectors, and transfer timing adds their load and save costs.
+Only the connector reporting that longest prefix loads the request and updates its cached token count.
+Each transfer plan returns to the connector that created it, including when connectors have the same type or are nested.
+Child connectors inherit the parent's worker role, rank and engine identifier unless explicitly overridden.
+Grouped storage is unsupported inside `MultiConnector`.
 
 ## Metrics
 
-Results include connector-wide transfer counts, blocks, bytes and waits
-(`connector_...`), and Mooncake-specific fields with the `mooncake_...`
-prefix: store gets, puts, hits and misses, memory/SSD tier hit counts, SSD
-reads/writes, transfer and store latency, effective bandwidth,
-admission/rejection, eviction, pending asynchronous jobs, local GPU, memory
-and disk hit tokens, sampled pool keys, and the effective SSD profile.
+Fields beginning with `connector_` report transfer counts, blocks, bytes and time spent waiting.
+Fields beginning with `mooncake_` report store reads and writes, hits and misses, memory and SSD hit counts, SSD operations, transfer and store latency, and effective bandwidth.
+They also record accepted and rejected writes, evictions, pending asynchronous jobs, hit tokens from GPU, memory and disk, sampled cache keys and the effective SSD configuration.
 
 Operation counters belong to each connector, even when its store is shared.
-Exporting or resetting one engine's profile does not include or clear another
-engine's operations. Cache contents and outstanding object lifetimes survive
-counter resets.
+Exporting or resetting one engine's profile does not include or clear another engine's operations.
+Resetting counters preserves cached data and the references protecting objects used by pending transfers.

@@ -1,20 +1,24 @@
 # Operator Latency Model (operator_table backend)
 
-The `operator_table` latency backend (`TokenSim/latency/operator_table.py`)
-estimates the duration of every scheduler step. It splits the layers a rank
-owns into operators (GEMMs, attention, MoE experts, pointwise kernels,
-collectives), looks each operator up in measured tables for the rank's device
-and serving stack, and falls back to an analytical model of the device family
-when no table answers. `--latency_backend analytical` skips the tables
-entirely. Every estimate records where it came from, so a result shows how
-much of the simulated time rests on measurements and how much on formulas.
+The `operator_table` latency backend (`TokenSim/latency/operator_table.py`) estimates the duration of every scheduler step.
+It breaks each worker's model layers into matrix multiplications (GEMMs), attention, mixture-of-experts (MoE) operations, elementwise kernels and communication between groups of workers (collectives).
+For each operator, it looks up measurements for that worker's device, inference framework, data type and dimensions.
+If measurements cannot answer a query, the configured fallback policy can use a formula-based model of the device family.
+`--latency_backend analytical` skips the tables entirely.
+Every estimate records its source, so results separate time estimated from measurements and time estimated from formulas.
+
+An operator's shape is its set of dimensions, such as matrix sizes, batch size and context length.
+Its data type is recorded as `dtype`.
+Prompt processing is called prefill, and output token generation is called decode.
+The attention key/value (KV) cache stores context data for later tokens.
+Tensor parallelism (TP) divides work within layers, pipeline parallelism (PP) assigns layers to stages, data parallelism (DP) runs separate request batches, and expert parallelism (EP) distributes MoE experts across workers.
+A rank identifies a worker's position in this parallel configuration.
 
 ---
 
 ## 1. Overview
 
-The system has three layers: static data, the lookup engine and the latency
-compositor.
+The system contains data files, a lookup engine that estimates individual operator times and code that adds those times for each scheduler step.
 
 ```text
 data/devices/*.yaml        Device specs: peak compute per dtype, memory, on-chip storage,
@@ -39,22 +43,14 @@ TokenSim/latency           OperatorTableLatencyBackend and the operator-module e
                            (complete attention, residual mixing, fused MoE, MTP draft passes)
 ```
 
-Every query is resolved in a fixed order:
+The lookup tries an exact match, interpolation between compatible measurements, bounded extrapolation and the device-family analytical model, in that order.
+The default extrapolation limit is 16x beyond the measured range.
+Extrapolation scales the nearest boundary measurement using the analytical model's predicted growth, following AIConfigurator's rule.
 
-> **Exact match** --> **Interpolation within the same discrete key** -->
-> **Bounded extrapolation** (by default at most 16x past the measured range;
-> the boundary row's measured efficiency is kept and an analytical model
-> supplies the growth, the rule AIConfigurator uses) --> **Analytical model
-> of the device family**
-
-Every query records a match type: `exact`, `interpolated`, `extrapolated` or
-`analytical` (complete-attention module queries raised to the first measured
-row are reported as `clamped`). The result JSON aggregates these counts per
-table, and the shapes no table could answer are written to
-`missing_shapes_<qps>.json`, the collection list for the next profiling round
-(section 9). Communication lookups (`collective`, `ep_all2all`) follow the same
-policy (sections 3.5 and 6), so a run never rests on formulas without saying
-so.
+Every query records a match type: `exact`, `interpolated`, `extrapolated` or `analytical` (complete-attention module queries raised to the first measured row are reported as `clamped`).
+The result JSON counts each match type per table.
+Queries that measurements cannot answer are written to `missing_shapes_<qps>.json`, which identifies what to collect in another profiling run (section 9).
+Communication lookups (`collective`, `ep_all2all`) follow the same fallback policy and report formula-based estimates (sections 3.5 and 6).
 
 ---
 
@@ -62,19 +58,17 @@ so.
 
 ### 2.1 Common Conventions
 
-All tables share two value columns: `latency_us` (execution time in
-microseconds) and `source_id`, which must name an entry of the package's
-`generation_meta.yaml` `sources` list with its evidence grade and acquisition
-method (section 7). Rows may also carry a `kernel` column (the kernel or
-framework call that produced the row) and a per-row `grade`; operator-module
-tables keep additional metadata columns such as the source hardware and
-collection version.
+All tables contain `latency_us`, the execution time in microseconds, and `source_id`, the identifier of the data source.
+Each `source_id` must name a record in the package's `generation_meta.yaml` `sources` list.
+That record states how the data was obtained and assigns an evidence grade, defined in section 7.
+Rows can also record the kernel or framework call in `kernel` and an evidence grade in `grade`.
+Tables for complete operator modules retain additional metadata, such as the source hardware and collection version.
 
-Each table has **key fields** that identify a row. A subset of them are
-**axes**, numeric fields along which interpolation is permitted (blended in log
-or linear space); the remaining **discrete fields** must match exactly. Dtype
-fields are normalized to canonical names (`bfloat16` -> `bf16`,
-`half` -> `fp16`, `float8` -> `fp8`, ...).
+Each table has **key fields** that identify a row.
+A key field used for interpolation is called an **axis**.
+The lookup combines measured values along that axis using logarithmic or linear coordinates.
+The remaining **discrete fields**, such as data type or kernel name, must match exactly.
+Dtype fields are normalized to canonical names (`bfloat16` -> `bf16`, `half` -> `fp16`, `float8` -> `fp8`, ...).
 
 ### 2.2 Primitive Operator Tables
 
@@ -91,9 +85,8 @@ fields are normalized to canonical names (`bfloat16` -> `bf16`,
 
 #### `gemm` and `grouped_gemm`
 
-`dtype` is the weight precision and a discrete key. It also decides which
-compute pipe the analytical model uses and how many bytes an activation
-element occupies:
+`dtype` is the weight precision and a discrete key.
+It also selects the compute units used by the analytical model and the bytes per activation element, as listed below.
 
 | dtype | Compute pipe | Activation bytes |
 | --- | --- | --- |
@@ -105,41 +98,30 @@ element occupies:
 | `int4_a8` | FP8 (4-bit weights, FP8 activations) | 1 |
 | `int4` | INT4, falling back to the INT8 peak | 1 |
 
-The three `gemm` axes are resolved from outer to inner (`k -> n -> m`) with
-logarithmic blending, which matches the roughly log-linear scaling of GEMM
-latency with matrix dimension. `grouped_gemm` adds the group count
-(`batch_size`) as the outermost axis and an output dtype; the projection plan
-of compressed-attention models uses it for the grouped low-rank output
-projection.
+The three `gemm` axes are resolved from outer to inner (`k -> n -> m`) with logarithmic blending, which matches the roughly log-linear scaling of GEMM latency with matrix dimension.
+`grouped_gemm` adds the group count (`batch_size`) as the outermost axis and an output dtype; the projection plan of compressed-attention models uses it for the grouped low-rank output projection.
 
 #### `context_attention` and `generation_attention`
 
-These tables time only the attention core; the QKV and output projections are
-separate GEMM queries. `num_heads` and `num_kv_heads` are the TP-local head
-counts, `attn_dtype` is the model's activation dtype and `kv_cache_dtype` its
-KV-cache dtype. `window_size` supports sliding-window attention; 0 means full
-causal attention. `num_heads` is blended linearly because attention time
-scales linearly with head count. Decode requests are grouped into
-context-length buckets (section 4.4) to limit the number of distinct lookups.
+These tables time the attention calculation, including query-key multiplication, softmax and value multiplication.
+The query, key and value (QKV) projections and the output projection are separate GEMM queries.
+`num_heads` and `num_kv_heads` are the TP-local head counts, `attn_dtype` is the model's activation dtype and `kv_cache_dtype` its KV-cache dtype.
+`window_size` supports sliding-window attention; 0 means full causal attention.
+`num_heads` is blended linearly because attention time scales linearly with head count.
+Decode requests are grouped into context-length buckets (section 4.4) to limit the number of distinct lookups.
 
-The sequence axes may extrapolate 64x past the measured range: the imported
-AIConfigurator tables stop at 16,384 prefill tokens and 131,072 decode context
-tokens, while agentic traces reach about one million tokens. With chunked
-prefill (section 4.2) prefill queries stay inside the measured range; the
-bound mainly serves decode attention over very long contexts and unchunked
-runs.
+The sequence axes may extrapolate 64x past the measured range: the imported AIConfigurator tables stop at 16,384 prefill tokens and 131,072 decode context tokens, while agentic traces reach about one million tokens.
+Processing prompts in chunks keeps prefill queries within the measured range (section 4.3).
+The larger extrapolation bound mainly supports decode attention over long contexts and runs that process prompts without chunking.
 
 #### `moe`
 
-The row gives the time of one rank holding `num_experts / ep_size` experts,
-each sharded `tp_size` ways. `num_tokens` is the number of tokens entering the
-layer for the whole expert-parallel group, before top-k expansion; the only
-interpolation axis is `num_tokens`. `dtype` is the routed-expert dtype
-(`operator_dtypes.routed_expert`, default: the model dtype).
+The row gives the time of one rank holding `num_experts / ep_size` experts, each sharded `tp_size` ways.
+`num_tokens` is the number of tokens entering the layer for the whole expert-parallel group, before top-k expansion; the only interpolation axis is `num_tokens`.
+`dtype` is the routed-expert dtype (`operator_dtypes.routed_expert`, default: the model dtype).
 
-`distribution` is a discrete label for the expert-load distribution used
-during collection (`uniform`, `balanced`, `power_law_1.01`, `power_law_1.2`).
-The backend tries several labels in order until one matches:
+`distribution` is a discrete label for the expert-load distribution used during collection (`uniform`, `balanced`, `power_law_1.01`, `power_law_1.2`).
+The backend tries the labels in the following table in order until one matches.
 
 | Model routing | Labels tried |
 | --- | --- |
@@ -149,8 +131,8 @@ The backend tries several labels in order until one matches:
 
 #### `elementwise`
 
-Covers memory-bound pointwise kernels. `dtype` is the activation dtype and
-`op_name` one of:
+The `elementwise` table covers kernels whose time is mainly limited by reading and writing tensor elements.
+`dtype` is the activation data type, and `op_name` selects one of the operations below.
 
 | op_name | Description |
 | --- | --- |
@@ -165,32 +147,25 @@ Covers memory-bound pointwise kernels. `dtype` is the activation dtype and
 
 #### `collective`
 
-Measured collective times from nccl-tests or equivalent benchmarks. Following
-the nccl-tests convention, `message_bytes` is the full buffer size and the
-latency is one out-of-place iteration for `group_size` ranks spread over
-`nodes` nodes. Operations: `all_reduce`, `all_gather`, `reduce_scatter`,
-`all_to_all`, `send_recv`. Queries use the model's activation dtype. The only
-axis is `message_bytes`; unmeasured configurations use the analytical
-communication model (section 6).
+The `collective` table stores group communication times measured by nccl-tests or equivalent benchmarks.
+Following the nccl-tests convention, `message_bytes` is the full buffer size and the latency is one out-of-place iteration for `group_size` ranks spread over `nodes` nodes.
+Supported operations are `all_reduce`, `all_gather`, `reduce_scatter`, `all_to_all` and `send_recv`.
+Queries use the model's activation dtype.
+The only axis is `message_bytes`; unmeasured configurations use the analytical communication model (section 6).
 
 #### `ep_all2all`
 
-Measured dispatch or combine time (`phase`) for one rank that sends
-`num_tokens` local tokens, each routed to `top_k` of `num_experts` experts
-spread over `ep_size` ranks on `nodes` nodes. `mode` names the kernel family:
-`deepep_high_throughput` and `deepep_low_latency` are selected by
-`all2all_backend`; `deepep_v2_context` and `deepep_v2_generation` (vLLM's
-split DeepEP variants) are kept in the tables but not selected by the
-simulator. DeepEP cost is driven by `num_tokens x top_k x hidden_size`, so the
-expert count and `top_k` are interpolation axes rather than discrete keys.
+The `ep_all2all` table stores measured token dispatch or result combination time, selected by `phase`.
+Each rank sends `num_tokens` tokens to `top_k` of `num_experts` experts distributed across `ep_size` ranks on `nodes` nodes.
+`all2all_backend` selects the `deepep_high_throughput` or `deepep_low_latency` kernel family through `mode`.
+The tables also retain vLLM's `deepep_v2_context` and `deepep_v2_generation` variants, which the simulator does not select.
+DeepEP work depends on `num_tokens x top_k x hidden_size`, so the lookup permits interpolation along expert count and `top_k`.
 
 ### 2.3 Operator-Module Tables
 
-A module table times a complete fused module whose internal operators would
-otherwise be priced one by one. When a module is selected, the compositor
-drops the primitives the module already contains, so they are not counted
-twice. The table names come from the AIConfigurator data families they are
-imported from.
+A module table measures several operators together as one complete module.
+When selected, its measured time replaces the individual operator estimates already included in that module.
+The table names come from the AIConfigurator data families they are imported from.
 
 | Table | Discrete key fields | Axes | Timed scope | Replaces |
 | --- | --- | --- | --- | --- |
@@ -198,11 +173,10 @@ imported from.
 | `mhc` | `op_name` (`pre`/`post`), `architecture`, `kernel_source`, `hidden_size`, `hc_mult`, `num_sites`, `sinkhorn_iters` | `num_tokens` (log) | Residual-mixing (hyper-connection) pre or post module for the recorded sites of one layer | the primitive `residual_add` queries |
 | `dsv4_megamoe` | `dtype`, `phase`, `kernel_source`, `kernel_dtype`, `distribution`, `pre_dispatch`, `source_policy`, `hidden_size`, `inter_size`, `top_k`, `num_experts`, `num_fused_shared_experts`, `tp_size`, `ep_size` | `num_tokens` (linear; rank-local tokens) | Fused expert-parallel MoE: routed dispatch, expert compute and combine under CUDA graphs; gate/top-k, buffer initialization and shared experts excluded | the `moe` query and the EP dispatch/combine all-to-all |
 
-Module tables are selected in two steps. The model YAML binds a table and the
-discrete selectors of the measured kernel under `operator_modules`; geometry
-(heads, hidden size, expert counts, compression ratio per layer) and the
-parallel layout come from the model and the serving configuration. Excerpt
-from `data/models/deepseek-v4-pro.yaml`:
+Module tables are selected in two steps.
+The model's `operator_modules` configuration selects the table and the measured kernel fields that must match exactly.
+The model and serving configuration supply the head counts, hidden size, expert counts, compression ratio per layer and parallel layout.
+The following excerpt comes from `data/models/deepseek-v4-pro.yaml`.
 
 ```yaml
 operator_modules:
@@ -217,7 +191,9 @@ operator_modules:
       architecture: DeepseekV4ForCausalLM
   mhc:
     table: mhc
-    key: {architecture: DeepseekV4ForCausalLM, num_sites: 2}
+    key:
+      architecture: DeepseekV4ForCausalLM
+      num_sites: 2
     kernels:
       pre: vllm.model_executor.kernels.mhc.tilelang.mhc_pre_tilelang
       post: vllm.model_executor.kernels.mhc.tilelang.mhc_post_tilelang
@@ -231,8 +207,8 @@ operator_modules:
       source_policy: random
 ```
 
-The serving configuration then switches each module on; the default for all
-three is `generic` (primitive operators):
+The serving flags listed below enable each module.
+All three default to `generic`, which estimates individual operators.
 
 | Flag | Binding | Additional requirements |
 | --- | --- | --- |
@@ -240,24 +216,17 @@ three is `generic` (primitive operators):
 | `--mhc_backend module` | `operator_modules.mhc` | compressed-attention model |
 | `--moe_backend deep_gemm_amxf4_mega_moe` | `operator_modules.moe` (the key must name exactly the five selectors shown) | expert parallelism over more than one rank, PP1, a complete single-node EP group; with DP > 1 also `--dp_lockstep` |
 
-All modules require table-based latency (`--latency_backend operator_table`
-with `table_first` or `table_only`) and the bound table in the selected
-package. An unmet requirement raises a configuration error at startup or at
-the first step that needs it. Module queries never fall back to formulas: a
-query whose discrete key has no rows, or that lies beyond the extrapolation
-bound, stops the run with an error (complete-attention and residual-mixing
-misses are also written to the missing-shape report). The one exception is
-complete attention, where queries below the first measured batch or length
-are raised to that row and reported as `clamped`.
+All modules require table-based latency (`--latency_backend operator_table` with `table_first` or `table_only`) and the bound table in the selected package.
+An unmet requirement raises a configuration error at startup or at the first step that needs it.
+Module queries never fall back to formulas: a query whose discrete key has no rows, or that lies beyond the extrapolation bound, stops the run with an error (complete-attention and residual-mixing misses are also written to the missing-shape report).
+The one exception is complete attention, where queries below the first measured batch or length are raised to that row and reported as `clamped`.
 
-With the fused MoE module, shared experts are priced separately: when they are
-`fp8_block`, by default as an analytical incremental estimate of the fused
-shared-expert path (grade D); otherwise, or with
-`--disable_moe_shared_fusion`, as serial `gemm` and `swiglu` queries.
-Speculative (MTP) draft passes of models with draft layers are priced when
-`--mtp_num_speculative_tokens` is positive; `--mtp_acceptance_length` sets the
-mean accepted tokens per verification step. See the [AgentX guide](agentx.md)
-for a complete configuration.
+Shared expert costs are calculated separately from routed expert costs.
+For `fp8_block` shared experts, the default uses formulas to estimate the extra time for computing them within the fused kernel (grade D).
+For other precisions, or with `--disable_moe_shared_fusion`, the simulator adds serial `gemm` and `swiglu` query times.
+For models with draft layers, a positive `--mtp_num_speculative_tokens` enables timing for multi-token prediction (MTP), which proposes tokens for the model to verify.
+`--mtp_acceptance_length` sets the average number of accepted tokens per verification step.
+See the [AgentX guide](agentx.md) for a complete configuration.
 
 ### 2.4 Package Directory Layout
 
@@ -272,77 +241,58 @@ data/operator_data/<device_id>/<backend>/
   shape_manifests/<id>.yaml     Manifest a generated package was built from
 ```
 
-Loading validates the package: `schema_version` 1 and `latency_unit: us`,
-every declared table present with its declared row count, no undeclared
-tables, every `source_id` declared and no duplicate keys. When the simulator
-loads a package it also requires `device_id` and `backend` to equal the
-directory names.
+Loading validates the package: `schema_version` 1 and `latency_unit: us`, every declared table present with its declared row count, no undeclared tables, every `source_id` declared and no duplicate keys.
+When the simulator loads a package it also requires `device_id` and `backend` to equal the directory names.
 
-`<backend>` names the serving stack whose kernels were measured. The bundled
-packages use `vllm`, `trtllm` and `sglang`, plus `nccl` (V100 collectives) and
-`analytical` (Groq). A worker group's `operator_backend` in the cluster file
-takes precedence over `--operator_backend` (choices `vllm`, `sglang`,
-`trtllm`, `analytical`); naming a backend the device does not have is an
-error. Without either, the first available backend in this order is used:
-
-> `vllm` > `trtllm` > `sglang` > `measured` > `cuda` > `groq` > `analytical`
-> (other names alphabetically)
+`<backend>` names the serving stack whose kernels were measured.
+The bundled packages use `vllm`, `trtllm` and `sglang`, plus `nccl` (V100 collectives) and `analytical` (Groq).
+A worker group's `operator_backend` in the cluster file takes precedence over `--operator_backend` (choices `vllm`, `sglang`, `trtllm`, `analytical`); naming a backend the device does not have is an error.
+When neither setting specifies a backend, the simulator uses the first available entry in this order: `vllm`, `trtllm`, `sglang`, `measured`, `cuda`, `groq`, `analytical`.
+Any remaining backend names are tried in alphabetical order.
 
 ---
 
 ## 3. Lookup Strategy
 
-The lookup engine (`TokenSim/operator_data/lookup.py`) resolves every query
-in up to four stages.
+The lookup engine (`TokenSim/operator_data/lookup.py`) resolves every query in up to four stages.
 
 ### 3.1 Stage 1: Exact Match
 
-The query key is normalized (dtype aliases resolved, strings lowercased,
-float-valued integers cast to int) and looked up in a hash map keyed by the
-full composite key. A hit returns immediately with `match_type = "exact"`.
+The query key is normalized (dtype aliases resolved, strings lowercased, float-valued integers cast to int) and looked up in a hash map keyed by the full composite key.
+A hit returns immediately with `match_type = "exact"`.
 
 ### 3.2 Stage 2: Multi-Axis Recursive Interpolation
 
-When no exact row exists but rows share the query's discrete fields, the
-engine interpolates:
+When measurements share the query's discrete fields but have different numeric dimensions, the engine interpolates through the following steps.
 
-1. **Discrete key isolation**: all rows sharing the discrete key values form a
-   (possibly ragged) grid indexed by the axis values.
+1. Group rows with matching discrete fields into a grid of measured axis values, allowing gaps in that grid.
 
-2. **Recursive outer-first resolution**: the axes are resolved from outer to
-   inner in the order of the table's `axes`. For a GEMM query, `k` is
-   resolved first, then `n`, then `m`.
+2. Resolve axes from outer to inner in the order given by the table's `axes`.
+   For a GEMM query, `k` is resolved first, then `n`, then `m`.
 
-3. **Per-axis blending**: at each level the engine takes the two nearest
-   measured values bracketing the target:
-   - **Logarithmic blending** (`"log"`), the default for size-like axes:
+3. For each axis, select the nearest measured value below and above the target and compute a weight.
+   - Use logarithmic coordinates (`"log"`) for size axes by default, with the following formula.
      ```
      weight = (log(target) - log(lo)) / (log(hi) - log(lo))
      ```
-   - **Linear blending** (`"linear"`), used for head counts, `top_k`, the
-     `dsv4_attention` sequence axes and the `dsv4_megamoe` token axis:
+   - Use linear coordinates (`"linear"`) for head counts, `top_k`, `dsv4_attention` sequence axes and the `dsv4_megamoe` token axis, with the following formula.
      ```
      weight = (target - lo) / (hi - lo)
      ```
 
-4. **Result composition**:
+4. Combine the two latency estimates using the computed weight.
    ```
    latency = lat_lo + weight * (lat_hi - lat_lo)
    ```
-   The `source_id` values of all contributing rows are joined with `+`, and
-   `match_type` is `"interpolated"`.
+   The `source_id` values of all contributing rows are joined with `+`, and `match_type` is `"interpolated"`.
 
-Consider a GEMM query for `(m=2048, n=4096, k=8192)` with measured points at
-`k = 4096` and `k = 16384`. The engine interpolates between the two `k`
-values and, at each of them, recursively resolves `n` and then `m`, so the
-interpolation follows the nested structure of the measurement grid instead of
-flattening it.
+Consider a GEMM query for `(m=2048, n=4096, k=8192)` with measured points at `k = 4096` and `k = 16384`.
+The engine interpolates between the two `k` values and, at each of them, recursively resolves `n` and then `m`, so the interpolation follows the nested structure of the measurement grid instead of flattening it.
 
 ### 3.3 Stage 3: Bounded Extrapolation
 
-When the query lies outside the measured range of an axis, the lookup starts
-from the nearest boundary row and applies the policy's `extrapolate` mode
-(`LookupPolicy` in `TokenSim/operator_data/lookup.py`):
+For a query outside an axis's measured range, the lookup scales the nearest boundary row using the `extrapolate` policy listed below.
+This policy is defined by `LookupPolicy` in `TokenSim/operator_data/lookup.py`.
 
 | Mode | Behaviour |
 | --- | --- |
@@ -352,40 +302,26 @@ from the nearest boundary row and applies the policy's `extrapolate` mode
 | `hold` | Returns the boundary row's latency unchanged. |
 | `none` | Raises `MissingOperatorDataError` (`extrapolation_disabled`). |
 
-Why `analytical` is the default: scaling by the axis ratio is right for the
-GEMM `m` axis but wrong for axes whose cost is not proportional to the value
-(decode attention against `context_len` has a large fixed part; collective
-latency against `message_bytes` follows an alpha-beta curve). The model's own
-growth keeps the extrapolated curve shaped like the work while the measured
-point pins its level. AIConfigurator applies the same rule ("hold the
-boundary utilisation, let the speed-of-light model carry the growth").
+The default `analytical` policy scales a boundary measurement by the analytical model's ratio between target and boundary work.
+Simple scaling by the dimension ratio suits the GEMM `m` axis, while decode attention and group communication also include fixed costs.
+Using the analytical ratio preserves those fixed costs and uses the measurement to set the latency level.
+AIConfigurator applies the same boundary-efficiency rule.
 
-`max_extrapolation_ratio` (default **16**) caps how far a query may go past
-the boundary on any axis, in either direction. Axes may override it:
-`context_attention.input_seq_len`, `generation_attention.context_len` and the
-`dsv4_attention` sequence axes allow 64x (the complete-attention module also
-raises its policy bound to 64x on every axis), `ep_all2all.num_experts`
-allows 1024x and `ep_all2all.top_k` 8x. Beyond the bound the lookup raises
-`MissingOperatorDataError` (`out_of_range`) and the query falls through to
-Stage 4.
+`max_extrapolation_ratio` (default **16**) caps how far a query may go past the boundary on any axis, in either direction.
+Axes may override it: `context_attention.input_seq_len`, `generation_attention.context_len` and the `dsv4_attention` sequence axes allow 64x (the complete-attention module also raises its policy bound to 64x on every axis), `ep_all2all.num_experts` allows 1024x and `ep_all2all.top_k` 8x.
+Beyond the bound the lookup raises `MissingOperatorDataError` (`out_of_range`) and the query falls through to Stage 4.
 
-Results that touched extrapolation have `match_type = "extrapolated"`;
-`detail["flags"]` additionally records `analytical_scaled`,
-`empirical_scaled`, `linear_scaled` or `held`.
+Results that touched extrapolation have `match_type = "extrapolated"`; `detail["flags"]` additionally records `analytical_scaled`, `empirical_scaled`, `linear_scaled` or `held`.
 
 ### 3.4 Stage 4: Analytical Fallback
 
-When the table-based stages fail (the table is absent, no row matches the
-discrete key, or an axis lies beyond the extrapolation bound), the
-device-family analytical model prices the query (section 5) and the miss is
-recorded. Operator-module tables do not fall back (section 2.3).
+When the table-based stages fail (the table is absent, no row matches the discrete key, or an axis lies beyond the extrapolation bound), the device-family analytical model estimates the query's latency (section 5) and the miss is recorded.
+Operator-module tables do not fall back (section 2.3).
 
 ### 3.5 Fallback Policy Configuration
 
-`--latency_fallback` selects one of `FALLBACK_POLICIES`
-(`TokenSim/operator_data/lookup.py`). A worker applies the same policy to its
-`OperatorTableLatencyBackend` (compute tables) and to its `CollectiveModel`
-(`collective`, `ep_all2all`):
+`--latency_fallback` selects one of `FALLBACK_POLICIES` (`TokenSim/operator_data/lookup.py`).
+A worker applies the policy in the following table to both compute lookups in `OperatorTableLatencyBackend` and communication lookups in `CollectiveModel` (`collective`, `ep_all2all`).
 
 | Fallback | Behavior |
 | --- | --- |
@@ -393,43 +329,34 @@ recorded. Operator-module tables do not fall back (section 2.3).
 | `table_only` | Table lookup only; the first miss, including a communication query without a measured row, raises `MissingOperatorDataError` and stops the run |
 | `analytical_only` | Skip tables entirely (`--latency_backend analytical` implies this) |
 
-Every miss carries a `kind` (`MISSING_KINDS`): `table_absent` (the package has
-no rows for that table, e.g. no `elementwise` data), `discrete_key` (rows
-exist but not for this dtype, head layout or `ep_size, nodes`),
-`out_of_range` (an axis beyond the extrapolation bound), `no_measured_mode`
-(the configured `all2all_backend` is priced by formula by design),
-`extrapolation_disabled`, `interpolation_disabled`, `malformed_key` and
-`unknown_table`. The report groups misses by `(table, discrete key)`, records
-the requested range of every axis, the number of recorded misses and a few
-example keys, and is written to `missing_shapes_<qps>.json` (section 9).
-Compute and communication misses share one report per worker, so the file is
-the collection checklist for the run. The run summary prints the analytical
-share per table as a warning whenever it is non-zero.
+Each unanswered query records a `kind` from `MISSING_KINDS`.
+`table_absent` means the package has no rows for that table, such as missing `elementwise` measurements.
+`discrete_key` means rows exist but their exact-match fields differ, such as data type, head layout or `ep_size, nodes`.
+`out_of_range` means a dimension exceeds the extrapolation bound.
+`no_measured_mode` means the configured `all2all_backend` uses formulas by design.
+Other reasons identify disabled policies (`extrapolation_disabled`, `interpolation_disabled`) or invalid queries (`malformed_key`, `unknown_table`).
+The report groups misses by `(table, discrete key)`, records the requested range of every axis, the number of recorded misses and a few example keys, and is written to `missing_shapes_<qps>.json` (section 9).
+Compute and communication misses share one report per worker, so the file is the collection checklist for the run.
+The run summary prints the analytical share per table as a warning whenever it is non-zero.
 
-When the device has no operator package at all, every query is priced
-analytically and recorded as a `table_absent` miss, so the report lists every
-shape the run needs. `analytical_only` records no misses.
+When the device has no operator package at all, every query is estimated by formulas and recorded as a `table_absent` miss, so the report lists every shape the run needs.
+`analytical_only` records no misses.
 
 ### 3.6 Result Caching
 
-The backend memoizes estimates per `(table, key)` in a bounded cache
-(262,144 entries, cleared when full). Decode steps with steady batch sizes
-repeat the same GEMM and elementwise queries, so most steps resolve from the
-cache.
+The backend caches estimates by `(table, key)` in a cache of 262,144 entries, which is cleared when full.
+Decode steps with steady batch sizes repeat the same GEMM and elementwise queries, so most steps resolve from the cache.
 
-The lookup index itself (exact-match map plus per-axis interpolation grids,
-`OperatorDataPackage.lookup_index`) is built once per loaded package and
-shared by every `OperatorLookup` created for it: each worker creates several
-lookups (operator backend, collective model, module estimators). A Blackwell
-vLLM package holds about 365,000 rows; loading and indexing it takes a few
-seconds once per run.
+`OperatorDataPackage.lookup_index` contains the exact-match map and interpolation grids for each axis.
+It is built once per loaded package and shared by that package's `OperatorLookup` instances.
+Each worker creates separate lookups for operator timing, communication and complete modules, all using that shared index.
+A Blackwell vLLM package holds about 365,000 rows; loading and indexing it takes a few seconds once per run.
 
 ---
 
 ## 4. From Model Config to Operator Queries
 
-The `OperatorTableLatencyBackend` maps the model geometry and the parallel
-configuration to per-operator lookups with TP-local dimensions.
+`OperatorTableLatencyBackend` uses the model dimensions and parallel configuration to query operators at each TP rank's local dimensions.
 
 ### 4.1 Dtypes
 
@@ -440,14 +367,11 @@ configuration to per-operator lookups with TP-local dimensions.
 | `activation_dtype` (default: `dtype`) | `attn_dtype` of the attention tables, `elementwise`, the activation bytes of TP/PP/EP messages, and the `dtype` of `collective` / `ep_all2all` queries |
 | `kv_cache_dtype` | `kv_cache_dtype` of the attention tables |
 
-Low-precision checkpoints (fp8, nvfp4, mxfp4) should set
-`activation_dtype: bf16`; otherwise attention, elementwise and communication
-queries ask for rows in the weight format (for example `nvfp4` attention),
-which the tables do not contain, and fall back to formulas.
+Low-precision checkpoints (fp8, nvfp4, mxfp4) should set `activation_dtype: bf16`; otherwise attention, elementwise and communication queries ask for rows in the weight format (for example `nvfp4` attention), which the tables do not contain, and fall back to formulas.
 
 ### 4.2 Local Dimensions Under Tensor Parallelism
 
-Given `TP = tensor_parallel_size`, the backend computes:
+Given `TP = tensor_parallel_size`, the backend calculates the following local dimensions.
 
 ```text
 heads_local        = ceil(num_attention_heads / TP)
@@ -463,25 +387,15 @@ dense_layers_local = layers_local - moe_layers_local
 
 ### 4.3 Step Composition and Chunked Prefill
 
-`LLMPagedAttnScheduler` builds every step under a token budget,
-`max_num_batched_tokens` (default 8192, vLLM V1's online-serving default;
-`--no-chunked_prefill` removes the budget). Running requests are served first
-in arrival order: a request that has already sampled takes its decode token
-(with MTP, the accepted draft tokens), and a request whose context is still
-being built (prefill, or recompute after a preemption) takes the next chunk,
-`min(remaining_context_tokens, budget_left)`. `--long_prefill_token_threshold`
-additionally caps a chunk while other requests are eligible. Whatever budget
-is left admits waiting requests, whose first chunk may be partial. A step
-therefore mixes decode tokens and prefill chunks (`SchedulePhase.MIXED`), and
-a prompt longer than the budget is spread over several steps; only the step
-that completes the context samples a token, so TTFT covers all chunks and the
-waits between them.
+`LLMPagedAttnScheduler` builds every step under a token budget, `max_num_batched_tokens` (default 8192, vLLM V1's online-serving default; `--no-chunked_prefill` removes the budget).
+Running requests are served first in arrival order: a request that has already sampled takes its decode token (with MTP, the accepted draft tokens), and a request whose context is still being built (prefill, or recompute after a preemption) takes the next chunk, `min(remaining_context_tokens, budget_left)`.
+`--long_prefill_token_threshold` additionally caps a chunk while other requests are eligible.
+Whatever budget is left admits waiting requests, whose first chunk may be partial.
+A step therefore mixes decode tokens and prefill chunks (`SchedulePhase.MIXED`), and a prompt longer than the budget is spread over several steps; only the step that completes the context samples a token, so TTFT covers all chunks and the waits between them.
 
-Every request carries `num_computed_tokens` (context tokens whose KV is
-present, prefix hits included) and `scheduled_tokens` (this step's share).
-`Request.step_tokens` is the latter, or the whole remaining context for a
-request that no paged scheduler scheduled (static and dynamic batching). The
-backend prices a step from these numbers:
+Every request carries `num_computed_tokens` (context tokens whose KV is present, prefix hits included) and `scheduled_tokens` (this step's share).
+`Request.step_tokens` is the latter, or the whole remaining context for a request that no paged scheduler scheduled (static and dynamic batching).
+The backend uses these token counts to estimate each step, following the rules below.
 
 | Query | Rule |
 | --- | --- |
@@ -490,16 +404,14 @@ backend prices a step from these numbers:
 | context chunk (`q_len` = this step's tokens, `kv_len = num_computed_tokens + q_len`) | requests grouped by `(q_len, kv_len)`: `context_attention(batch=count, input_seq_len=q_len)`, scaled by the FLOPs ratio when `kv_len > q_len` (cached prefix and earlier chunks alike) |
 | LM head rows | requests sampling this step: decodes plus the last chunk of each context build |
 
-Chunking keeps `input_seq_len <= max_num_batched_tokens`, so long prompts stay
-inside the measured prefill range of the tables (16,384 tokens for the
-AIConfigurator data) instead of being extrapolated; the growth with context
-length lives in the FLOPs ratio, the same correction AIConfigurator applies
-for prefixes. With uniform KV caches the blocks of the whole prompt are
-allocated at admission rather than per chunk; grouped caches reserve pages per
-chunk.
+Chunking keeps `input_seq_len <= max_num_batched_tokens`.
+With a budget within the measured prefill range, long prompts use table measurements for each chunk, up to 16,384 tokens in the AIConfigurator data.
+The floating-point operation count (FLOPs) ratio accounts for the extra work of attending to the existing context, following AIConfigurator's prefix correction.
+Uniform KV caches allocate blocks for the whole prompt when the request is admitted.
+Grouped caches reserve pages for each chunk.
 
-For a step with `T` tokens and `B` sampling requests (standard decoder models;
-compressed-attention models differ as described below the table):
+For standard decoder models, the following table gives the queries for a step with `T` tokens and `B` requests producing output tokens.
+Compressed-attention models differ as described below the table.
 
 | Component | Operator Queries |
 | --- | --- |
@@ -511,75 +423,56 @@ compressed-attention models differ as described below the table):
 | **Communication** | With TP > 1, one all-reduce per layer after the attention output projection, plus one after the FFN for dense layers and for MoE layers without EP (message `T * h * activation_bytes`). EP MoE layers: one dispatch and one combine each (message `T * top_k * h * activation_bytes`). PP: one point-to-point transfer of `T * h * activation_bytes` per step |
 | **Fixed overhead** | `device.step_overhead_us` (0 in every bundled device file, grade D) |
 
-Compressed-attention models replace the two attention projections with their
-projection plan (four projections, one of them a `grouped_gemm`), add an
-analytical hyper-residual output reduction before the LM head (reported as
-table `target_hc_head`), and the operator modules of section 2.3 replace the
-primitives they contain.
+Compressed-attention models use four attention projections, including one `grouped_gemm`.
+They also add a formula-based estimate for combining residual streams before the LM head, recorded as `target_hc_head`.
+The LM head projects hidden states to vocabulary logits.
+The operator modules in section 2.3 replace the individual operations included in their measurements.
 
 #### Prefix-Cache Scaling
 
-When `kv_len > query_len` (prefix-cache hit, or a later chunk of a long
-prompt), the table value for `input_seq_len = query_len` underestimates the
-work because queries also attend to the tokens already in KV. The backend
-scales the measured latency by `max(1.0, full_flops / base_flops)`, where
-`full_flops = 4 * batch * q_len * ((kv_len - q_len) + 0.5 * q_len) *
-q_dim_local` (bounded by the sliding window) and `base_flops` is the work of
-the measured padded batch.
+When `kv_len > query_len` (prefix-cache hit, or a later chunk of a long prompt), the table value for `input_seq_len = query_len` underestimates the work because queries also attend to the tokens already in KV.
+The backend scales the measured latency by `max(1.0, full_flops / base_flops)`, where `full_flops = 4 * batch * q_len * ((kv_len - q_len) + 0.5 * q_len) * q_dim_local` (bounded by the sliding window) and `base_flops` is the work of the measured padded batch.
 
 ### 4.4 Decode Tokens
 
-Decode tokens are grouped by context length into buckets of
-`--decode_context_bucket` tokens (default 128, rounding up). Each bucket
-issues one `generation_attention(batch=count, context_len=bucket_ceiling)`
-lookup, which avoids an explosion of distinct attention queries while keeping
-the approximation tight. All other operators follow the composition above.
+Decode tokens are grouped by context length into buckets of `--decode_context_bucket` tokens (default 128, rounding up).
+Each bucket uses one `generation_attention(batch=count, context_len=bucket_ceiling)` lookup.
+Rounding nearby context lengths to the same boundary reduces the number of distinct queries.
+All other operators follow the composition above.
 
 ### 4.5 MoE Straggler Modeling
 
-For MoE layers the step waits for the slowest expert rank. The backend:
+For MoE layers the step waits for the slowest expert rank.
+The backend estimates this extra waiting time through the following steps.
 
-1. builds a routing histogram for the step (`ExpertRouting`; trace
-   histograms or a synthetic distribution, see [MoE](moe.md)),
-2. derives the per-rank token load from the expert-to-rank mapping,
-3. computes `imbalance = max_rank_load / mean_rank_load`,
-4. queries the `moe` table at the balanced token count, and
-5. if `imbalance > 1`, queries again at `tokens * imbalance` and adds
-   `(busiest_time - balanced_time) * moe_layers_local`.
+1. Build token counts per expert for the step with `ExpertRouting`, using trace data or a generated distribution as described in [MoE](moe.md).
+2. Sum the token counts for the experts assigned to each rank.
+3. Compute `imbalance = max_rank_load / mean_rank_load`.
+4. Query the `moe` table at the balanced token count.
+5. If `imbalance > 1`, query again at `tokens * imbalance` and add `(busiest_time - balanced_time) * moe_layers_local`.
 
-A row measured with a `power_law_*` distribution already contains its
-distribution's slow ranks, so no straggler time is added on top of it.
+Measurements with a `power_law_*` distribution already include the effect of uneven work across ranks.
+The simulator therefore adds no separate waiting time for the busiest rank.
 
-The `moe` table is keyed by the tokens entering the layer for the whole
-expert-parallel group. TP ranks of a replica see the same tokens, so the group
-receives `tokens * replicas_per_group`, where `replicas_per_group =
-expert_parallel_group_size / tensor_parallel_size`: 1 for
-`expert_parallel_scope = per_dp`, `data_parallel_size` for a full `global`
-group. Replicas that share a group are assumed to advance in lockstep; this is
-an explicit modeling assumption.
+The `moe` table is keyed by the tokens entering the layer for the whole expert-parallel group.
+TP ranks of a replica see the same tokens, so the group receives `tokens * replicas_per_group`, where `replicas_per_group = expert_parallel_group_size / tensor_parallel_size`: 1 for `expert_parallel_scope = per_dp`, `data_parallel_size` for a full `global` group.
+Replicas that share a group are assumed to advance in lockstep; this is an explicit modeling assumption.
 
 ### 4.6 Avoiding Double-Counting
 
-- QKV and output projections are **not** in the attention tables; they are
-  separate GEMM queries.
+- QKV and output projections use separate GEMM queries.
 - Softmax **is** included in the attention tables.
-- SwiGLU is counted separately only for dense FFN layers; the `moe` table
-  already includes the activation function.
-- Dispatch/combine latency is counted only in the communication component,
-  not in the `moe` operator time.
-- A complete-attention module includes its projections, RoPE handling and
-  attention core; a residual-mixing module includes the residual additions; a
-  fused MoE module includes routed dispatch and combine (section 2.3).
-- Shared experts are priced once per MoE layer as `gemm` and `swiglu` queries
-  (or the fused incremental estimate); the `moe` table covers routed experts
-  only.
+- SwiGLU is counted separately only for dense FFN layers; the `moe` table already includes the activation function.
+- Dispatch and combine latency is counted in the communication component.
+- A complete-attention module includes its projections, RoPE handling and attention core; a residual-mixing module includes the residual additions; a fused MoE module includes routed dispatch and combine (section 2.3).
+- Shared expert time is counted once per MoE layer as `gemm` and `swiglu` queries (or the fused incremental estimate); the `moe` table covers routed experts only.
 
 ---
 
 ## 5. Analytical Fallback
 
-When table lookup fails, the system falls back to a roofline-style model
-registered per device family (`TokenSim/operator_data/analytical/`).
+When the fallback policy permits formulas, unanswered table queries use a roofline model for the device family in `TokenSim/operator_data/analytical/`.
+This model estimates compute and memory transfer times, takes the slower one and adds kernel launch overhead.
 
 ### 5.1 Core Formula
 
@@ -590,10 +483,9 @@ roofline_us  = max(compute_time, memory_time) + kernel_launch_overhead_us
 latency_us   = calibration.multiplier * roofline_us + calibration.offset_us
 ```
 
-The `Calibration` affine correction (`latency = m * roofline + b`, default
-`m = 1`, `b = 0`) is read per table from the package's `calibration:` section
-or passed to `generate --calibration`. The `calibrate` command (section 5.5)
-fits the efficiency parameters instead.
+The `Calibration` correction scales the roofline estimate and adds an offset: `latency = m * roofline + b`, with defaults `m = 1` and `b = 0`.
+Read this correction per table from the package's `calibration:` section or supply it through `generate --calibration`.
+The `calibrate` command (section 5.5) fits the efficiency parameters instead.
 
 <a id="analytical-defaults"></a>
 
@@ -601,7 +493,7 @@ fits the efficiency parameters instead.
 
 #### `nvidia_gpu` / `generic`
 
-For HBM/GDDR-based GPUs and accelerators:
+The following defaults apply to GPUs and accelerators with HBM or GDDR memory.
 
 | Parameter | Default (grade D) | Description |
 | --- | --- | --- |
@@ -613,16 +505,13 @@ For HBM/GDDR-based GPUs and accelerators:
 | `kernel_launch_us` | 4.0 | Software overhead per kernel launch |
 | `gemm_small_m_knee` | 64.0 | Below this `m`, tensor-core tiles waste work; FLOPs are computed as if `m = knee` |
 
-- **Small-m GEMMs**: tensor-core tiles process at least `knee` rows per pass,
-  so effective FLOPs are `2 * max(m, knee) * n * k`.
-- **MoE overhead**: grouped GEMM kernels issue gate/up and down kernels plus a
-  permutation, so the MoE launch overhead is 3x the kernel launch cost.
-- **Elementwise kernels**: memory-bound; the model uses the FP32 peak when the
-  device lists one.
+- **Small-m GEMMs**: tensor-core tiles process at least `knee` rows per pass, so effective FLOPs are `2 * max(m, knee) * n * k`.
+- **MoE overhead**: grouped GEMM kernels issue gate/up and down kernels plus a permutation, so the MoE launch overhead is 3x the kernel launch cost.
+- Elementwise kernel time is mainly limited by memory transfers, and the model uses the FP32 peak when the device lists one.
 
 #### `groq_tsp`
 
-For the Groq Tensor Streaming Processor (LPU):
+The following defaults apply to the Groq Tensor Streaming Processor (LPU).
 
 | Parameter | Default (grade D) | Description |
 | --- | --- | --- |
@@ -632,15 +521,13 @@ For the Groq Tensor Streaming Processor (LPU):
 | `memory_efficiency` | 0.90 | SRAM bandwidth is more predictable than HBM |
 | `kernel_launch_us` | 0.2 | Software-scheduled, no GPU-style launch overhead |
 
-Weights, activations and KV cache reside in on-chip SRAM, so the memory term
-uses the on-chip bandwidth (80 TB/s in `groqchip_v1.yaml`) rather than HBM
-bandwidth. The model also reports whether the rank-local weights fit in SRAM;
-the generator records this as a `fits_on_chip` flag in the analysis table.
+Weights, activations and the KV cache reside in on-chip SRAM.
+The memory term therefore uses the on-chip bandwidth, 80 TB/s in `groqchip_v1.yaml`.
+The model also reports whether the rank-local weights fit in SRAM; the generator records this as a `fits_on_chip` flag in the analysis table.
 
 #### Device-level overrides and their provenance
 
-A device YAML can override any analytical parameter in its `analytical:`
-block and declares where the numbers come from:
+A device YAML can override analytical parameters in its `analytical:` block and record their source, as in the following example.
 
 ```yaml
 analytical:
@@ -650,38 +537,32 @@ analytical:
   kernel_launch_us: 3.0         # mem_empirical_constant_latency
   collective_launch_us: 10.0    # node.p2p_latency
 memory:
-  reserved_bytes: {value: 4169138176, source_id: aiconfigurator-system-yaml, grade: C}
+  reserved_bytes:
+    value: 4169138176
+    source_id: aiconfigurator-system-yaml
+    grade: C
 ```
 
-All NVIDIA GPU files carry these AIConfigurator-derived values as grade C
-defaults. `memory.reserved_bytes` (NCCL buffers plus framework workspace) is
-subtracted by `CacheConfig` before KV-cache blocks are computed, and
-`collective_launch_us` replaces the family default launch cost in the
-communication model. `DeviceSpec.analytical_grade` and
-`analytical_source_id` expose the provenance to results.
+All NVIDIA GPU files carry these AIConfigurator-derived values as grade C defaults.
+`memory.reserved_bytes` (NCCL buffers plus framework workspace) is subtracted by `CacheConfig` before KV-cache blocks are computed, and `collective_launch_us` replaces the family default launch cost in the communication model.
+`DeviceSpec.analytical_grade` and `analytical_source_id` record the evidence grade and source identifier in results.
 
 ### 5.3 FLOPs and Bytes Formulas
 
 All work accounting is in `TokenSim/operator_data/workload.py`.
 
-- **GEMM**: `FLOPs = 2 * m * n * k`. Weight bytes `k * n * dtype_bytes`;
-  activation bytes `(m*k + m*n) * activation_bytes`.
-- **Grouped GEMM**: `FLOPs = 2 * g * m * n * k`; weight bytes
-  `g * n * k * dtype_bytes`; activation bytes
-  `g * m * (k * activation_bytes + n * out_dtype_bytes)`.
-- **Prefill attention**: `FLOPs = 4 * B * S * keys_per_query * h_q *
-  causal_factor`, with `h_q = num_heads * head_dim`. Causal masking halves
-  the effective key range (`causal_factor = 0.5`); a sliding window shorter
-  than `S` truncates `keys_per_query` to `window_size` with `causal_factor =
-  1`. KV bytes use `h_kv = num_kv_heads * head_dim`.
-- **Decode attention**: `FLOPs = 4 * B * keys * h_q`, with
-  `keys = min(context_len, window_size)`.
-- **MoE**: only routed token-expert pairs contribute: `FLOPs = local_pairs *
-  2 * hidden * local_inter * (g + 1)` (gate, up and down for a gated FFN,
-  `g = 2`), with `local_pairs = (T * top_k / ep_size) * imbalance` and
-  `local_inter = ceil(inter_size / tp_size)`.
-- **Elementwise**: FLOPs and bytes per element of the `num_tokens x
-  hidden_size` tensor:
+- GEMM work is `FLOPs = 2 * m * n * k`.
+  Weight storage uses `k * n * dtype_bytes` bytes, and activations use `(m*k + m*n) * activation_bytes` bytes.
+- Grouped GEMM uses `FLOPs = 2 * g * m * n * k`.
+  Weights use `g * n * k * dtype_bytes` bytes, and activations use `g * m * (k * activation_bytes + n * out_dtype_bytes)` bytes.
+- Prefill attention uses `FLOPs = 4 * B * S * keys_per_query * h_q * causal_factor`, with `h_q = num_heads * head_dim`.
+  Causal masking halves the effective key range (`causal_factor = 0.5`); a sliding window shorter than `S` truncates `keys_per_query` to `window_size` with `causal_factor = 1`.
+  KV bytes use `h_kv = num_kv_heads * head_dim`.
+- Decode attention uses `FLOPs = 4 * B * keys * h_q`, with `keys = min(context_len, window_size)`.
+- Routed MoE work is `FLOPs = local_pairs * 2 * hidden * local_inter * (g + 1)`.
+  A gated feed-forward network (FFN) has gate, up and down operations, with `g = 2`.
+  The calculation uses `local_pairs = (T * top_k / ep_size) * imbalance` and `local_inter = ceil(inter_size / tp_size)`.
+- Elementwise operations use the following FLOPs and byte counts per element of the `num_tokens x hidden_size` tensor.
 
 | op_name | FLOPs/element | Bytes/element (reads+writes, activation dtype) |
 | --- | --- | --- |
@@ -697,26 +578,23 @@ All work accounting is in `TokenSim/operator_data/workload.py`.
 ### 5.4 Accuracy
 
 The analytical model is suitable for order-of-magnitude estimates.
-Shape-sensitive kernel behavior (tile selection, wave quantization) still
-requires measured tables.
+Measured tables are needed to capture changes caused by kernel tile selection or the number of execution waves required by a particular shape.
 
 ### 5.5 Calibration
 
-The default parameters are grade D assumptions. The `calibrate` command fits
-the efficiency parameters of each table (`gemm_mfu`, `attention_mfu`,
-`moe_mfu`, `memory_efficiency`, `elementwise_memory_efficiency`,
-`kernel_launch_us`, `gemm_small_m_knee`) by a grid search that minimizes the
-mean absolute log error against a measured package, holding out 20% of the
-rows (sampling at most 3,000 rows per table):
+The default parameters are grade D assumptions.
+The `calibrate` command fits `gemm_mfu`, `attention_mfu`, `moe_mfu`, `memory_efficiency`, `elementwise_memory_efficiency`, `kernel_launch_us` and `gemm_small_m_knee` for each table.
+It searches parameter combinations to minimize the mean absolute error in log latency against a measured package.
+It samples at most 3,000 rows per table and reserves 20% of those rows for validation, as in the following example.
 
 ```bash
 python -m TokenSim.operator_data.cli calibrate \
-    --device a100_sxm_80g --backend trtllm \
+    --device a100_sxm_80g \
+    --backend trtllm \
     --out tmp/calibration/a100_sxm_80g-trtllm.yaml
 ```
 
-Mean relative error on the bundled A100 TensorRT-LLM package, before (device
-defaults, fit rows) and after fitting (holdout rows):
+The following table compares mean relative error using device defaults on fit rows and fitted parameters on held-out rows of the bundled A100 TensorRT-LLM package.
 
 | Table | Before | After (holdout) |
 | --- | --- | --- |
@@ -725,24 +603,19 @@ defaults, fit rows) and after fitting (holdout rows):
 | Decode attention | 0.62 | 0.41 |
 | MoE | 0.47 | 0.39 |
 
-The output YAML holds the fitted parameters and error statistics per table
-plus a merged `analytical` block. Shared parameters (`memory_efficiency`,
-`kernel_launch_us`) are fitted per table and the merged block keeps the last
-table's value, so review the per-table results before copying values into a
-device YAML's `analytical:` section (mark them grade C). `generate
---calibration <file>` applies the merged block directly.
+The output YAML holds the fitted parameters and error statistics per table plus a merged `analytical` block.
+Shared parameters (`memory_efficiency`, `kernel_launch_us`) are fitted per table and the merged block keeps the last table's value, so review the per-table results before copying values into a device YAML's `analytical:` section (mark them grade C).
+`generate --calibration <file>` applies the merged block directly.
 
 ---
 
 ## 6. Communication Model
 
-The hierarchical alpha-beta communication model lives in
-`TokenSim/comm/collectives.py`.
+The hierarchical alpha-beta communication model lives in `TokenSim/comm/collectives.py`.
 
 ### 6.1 Core Formula
 
-Given a group of ranks laid out across a topology, the model computes per
-topology level `l` (innermost first):
+For each topology level `l`, starting with the innermost level, the model calculates the following transfer cost for the rank group.
 
 ```text
 steps_l       = algorithm-dependent count of sequential transfer rounds
@@ -751,20 +624,17 @@ t_l           = steps_l * alpha_l + bytes_l / (beta_l * links_l * c_l / oversub_
 t_collective  = launch_us + sum_l(t_l)
 ```
 
-Where:
-- `alpha_l` = hop latency of the level's link class
-- `beta_l` = per-direction bandwidth of the link class
-- `links_l` = parallel links an endpoint drives at this level
-  (`links_per_endpoint`)
-- `c_l` = `LinkClass.collective_efficiency`, the fraction of peak bus
-  bandwidth a collective achieves at large messages
-- `oversub_l` = the level's `oversubscription` (default 1)
-- `eff(M) = M / (M + half_bandwidth_bytes)`, the message-size ramp;
-  `half_bandwidth_bytes` is the message size at which a transfer reaches half
-  its peak bandwidth
-- `launch_us` = software launch/synchronization cost: the device's
-  `analytical.collective_launch_us` (10 us in the bundled NVIDIA files), or
-  the family default (8.0 us NVIDIA, 0.5 us Groq TSP, 10.0 us generic)
+The variables have the following meanings.
+
+- `alpha_l` is the hop latency of the level's link class.
+- `beta_l` is that link class's bandwidth in each direction.
+- `links_l` counts the parallel links used by an endpoint at this level, configured as `links_per_endpoint`.
+- `c_l` is `LinkClass.collective_efficiency`, the fraction of peak bus bandwidth achieved by large collective transfers.
+- `oversub_l` is the level's `oversubscription` factor, with a default of 1.
+- `eff(M) = M / (M + half_bandwidth_bytes)` models how transfer bandwidth increases with message size.
+  `half_bandwidth_bytes` is the message size at which bandwidth reaches half its peak value.
+- `launch_us` is the software launch and synchronization cost from the device's `analytical.collective_launch_us`, set to 10 us in the bundled NVIDIA files.
+  If unset, the family default is 8.0 us for NVIDIA, 0.5 us for Groq TSP and 10.0 us for generic devices.
 
 ### 6.2 Algorithms
 
@@ -775,75 +645,49 @@ Where:
 | `direct` | `2` | `2(n-1)/n * M` | One-shot over a non-blocking fabric (NVSwitch multicast, Groq software-scheduled network) |
 | `auto` | -- | -- | Faster of ring and tree per level (matches the NCCL tuner); `direct` for all-to-all and send/recv, `tree` for broadcast |
 
-A topology level can fix the algorithm with `collective_algorithm`. For other
-operations:
+A topology level can fix the algorithm with `collective_algorithm`.
+Other communication operations use the following round counts and message sizes.
 
-- **all_gather / reduce_scatter**: ring uses `n-1` rounds with `(n-1)/n * M`
-  bytes; tree uses `log2(n)` rounds with `M` bytes; direct uses 1 round.
-- **all_to_all**: ring uses `n-1` rounds; direct uses 1 round. Both inject
-  `(n-1)/n * M` bytes.
-- **send_recv**: always 1 round, `M` bytes.
-- **broadcast**: tree uses `log2(n)` rounds; ring uses `n-1` rounds. Both
-  inject `M` bytes.
+- **all_gather / reduce_scatter**: ring uses `n-1` rounds with `(n-1)/n * M` bytes; tree uses `log2(n)` rounds with `M` bytes; direct uses 1 round.
+- **all_to_all**: ring uses `n-1` rounds; direct uses 1 round.
+  Both inject `(n-1)/n * M` bytes.
+- `send_recv` always uses 1 round and transfers `M` bytes.
+- **broadcast**: tree uses `log2(n)` rounds; ring uses `n-1` rounds.
+  Both inject `M` bytes.
 
 ### 6.3 Hierarchical Decomposition
 
-For multi-level topologies the operation runs level by level, matching NCCL's
-hierarchical algorithms: reduce-scatter inward, then all-gather outward. After
-resolving a level with `fan` participants, the data share handled by the next
-outer level is divided by `fan` (all-reduce, reduce-scatter and all-gather).
+For multi-level topologies the operation runs level by level, matching NCCL's hierarchical algorithms: reduce-scatter inward, then all-gather outward.
+After resolving a level with `fan` participants, the data share handled by the next outer level is divided by `fan` (all-reduce, reduce-scatter and all-gather).
 The cost is computed in O(levels), independent of the number of devices.
 
 ### 6.4 Measured Table Override
 
-When the device's operator package contains a `collective` table and a row
-matches the query's `(dtype, operation, group_size, nodes)`, the model uses the
-measured curve (with the interpolation and extrapolation of section 3; growth
-past the measured message sizes follows the alpha-beta formula) and tags the
-result `measured` (exact), `interpolated` or `extrapolated`. A query without a
-measured row follows the worker's fallback policy (section 3.5):
-`table_first` prices it with the formula and records the miss (`collective`,
-discrete key `dtype, operation, group_size, nodes`, requested `message_bytes`
-range); `table_only` stops the run.
+When the device's operator package contains a `collective` table and a row matches the query's `(dtype, operation, group_size, nodes)`, the model uses the measured curve (with the interpolation and extrapolation of section 3; growth past the measured message sizes follows the alpha-beta formula) and tags the result `measured` (exact), `interpolated` or `extrapolated`.
+When no measured row matches, the query follows the worker's fallback policy (section 3.5).
+`table_first` estimates its time with the formula and records the missing `collective` query, including `dtype, operation, group_size, nodes` and the requested `message_bytes` range.
+`table_only` stops the run.
 
-The AIConfigurator packages contain single-node NCCL curves (fp16 and int8;
-2, 4 and 8 GPUs, GB200/GB300 2 and 4) and the serving framework's custom
-all-reduce in bf16 (GB300 up to 16 GPUs in one NVLink domain); the Intel B60
-package contains oneCCL curves (fp16 and int8). The V100 package holds
-nccl-tests all-reduce curves in fp32. Because queries use the model's
-activation dtype, bf16 TP all-reduces resolve against the custom all-reduce
-rows.
+The AIConfigurator packages contain single-node NCCL curves (fp16 and int8; 2, 4 and 8 GPUs, GB200/GB300 2 and 4) and the serving framework's custom all-reduce in bf16 (GB300 up to 16 GPUs in one NVLink domain); the Intel B60 package contains oneCCL curves (fp16 and int8).
+The V100 package holds nccl-tests all-reduce curves in fp32.
+Because queries use the model's activation dtype, bf16 TP all-reduces resolve against the custom all-reduce rows.
 
 ### 6.5 Expert-Parallel Dispatch and Combine
 
-MoE layers under expert parallelism issue one dispatch and one combine per
-layer. `CollectiveModel.ep_all2all()` prices the pair from the `ep_all2all`
-table when the configured `all2all_backend` is a DeepEP mode
-(`deepep_high_throughput` / `deepep_low_latency`; the other DeepEP mode is
-tried when the requested one has no rows). The query key is this rank's token
-count, the model's hidden size, `top_k`, expert count, EP group size and the
-number of nodes the group spans. Without a measured row, or for `naive` /
-`allgather_reducescatter`, the pair is two analytical all-to-all collectives
-scaled by `EP_ALL2ALL_MODE_SCALE` (naive 1.5, allgather_reducescatter 1.0,
-deepep_high_throughput 0.7, deepep_low_latency 0.5; project assumptions,
-grade D). Both cases are reported: a DeepEP query with no row is a
-`table_absent`, `discrete_key` or `out_of_range` miss keyed by `mode,
-ep_size, nodes`, a non-DeepEP mode is a `no_measured_mode` miss, and under
-`table_only` either stops the run. Results record the outcome in
-`parallel_comm_match_type_counts`.
+MoE layers under expert parallelism issue one dispatch and one combine per layer.
+`CollectiveModel.ep_all2all()` estimates the pair's latency from the `ep_all2all` table when the configured `all2all_backend` is a DeepEP mode (`deepep_high_throughput` / `deepep_low_latency`; the other DeepEP mode is tried when the requested one has no rows).
+The query key is this rank's token count, the model's hidden size, `top_k`, expert count, EP group size and the number of nodes the group spans.
+Without a measured row, or for `naive` / `allgather_reducescatter`, the pair is two analytical all-to-all collectives scaled by `EP_ALL2ALL_MODE_SCALE` (naive 1.5, allgather_reducescatter 1.0, deepep_high_throughput 0.7, deepep_low_latency 0.5; project assumptions, grade D).
+Both cases are reported: a DeepEP query with no row is a `table_absent`, `discrete_key` or `out_of_range` miss keyed by `mode, ep_size, nodes`, a non-DeepEP mode is a `no_measured_mode` miss, and under `table_only` either stops the run.
+Results record the outcome in `parallel_comm_match_type_counts`.
 
-The EP group is the expert-parallel group of `ParallelConfig`
-(`expert_parallel_scope`, `expert_parallel_size`). With `per_dp` on an 8-GPU
-node the query is `ep_size=8, nodes=1`, which the B200, B300, H100 and H200
-packages cover (GB200 and GB300 measure 4-rank groups); a
-`global` group over 8 nodes asks for `ep_size=64, nodes=8`, which only the
-SGLang H100/H200 tables answer.
+The EP group is the expert-parallel group of `ParallelConfig` (`expert_parallel_scope`, `expert_parallel_size`).
+With `per_dp` on an 8-GPU node the query is `ep_size=8, nodes=1`, which the B200, B300, H100 and H200 packages cover (GB200 and GB300 measure 4-rank groups); a `global` group over 8 nodes asks for `ep_size=64, nodes=8`, which only the SGLang H100/H200 tables answer.
 
 ### 6.6 Validation Against Measurements
 
-Formula (bundled topologies `dgx_a100_8x_hdr` and `hgx_h100_8x_ndr`, 10 us
-launch cost) against the measured NCCL fp16 curves of the TensorRT-LLM
-packages:
+The following table compares the formula's estimates with measured NCCL fp16 curves from the TensorRT-LLM packages.
+The formula uses the bundled `dgx_a100_8x_hdr` and `hgx_h100_8x_ndr` topologies and a 10 us launch cost.
 
 | Configuration | Message size | Measured | Model |
 | --- | --- | --- | --- |
@@ -852,17 +696,13 @@ packages:
 | H100 8-GPU NCCL | 1 MiB all-reduce | 38 us | 63 us |
 | H100 8-GPU NCCL | 64 MiB all-reduce | 579 us | 579 us |
 
-The formula is conservative at small message sizes, where launch overhead
-dominates; the measured tables cover these cases.
+The formula is conservative at small message sizes, where launch overhead dominates; the measured tables cover these cases.
 
 ### 6.7 Scope
 
-**In scope**: service time of TP, PP and EP communication, computed per step.
-
-**Not in scope**: link contention, e.g. several micro-batches competing for
-the same physical link. TP, PP and EP communication is priced as uncontended
-service time within a step; only the grouped KV-storage path queues transfers
-on shared links ([Mooncake](mooncake.md)).
+The model calculates TP, PP and EP communication time for each step assuming uncontended links.
+It excludes delays from multiple micro-batches competing for the same physical link.
+Grouped KV storage separately queues transfers on shared links, as described in [Mooncake](mooncake.md).
 
 ---
 
@@ -870,8 +710,8 @@ on shared links ([Mooncake](mooncake.md)).
 
 ### 7.1 Evidence Grade System
 
-Every row of an operator package carries a `source_id` that maps to a
-`SourceRecord` in the package's `generation_meta.yaml`:
+Every row of an operator package has a `source_id` that identifies a `SourceRecord` in the package's `generation_meta.yaml`.
+The following tables describe source fields and evidence grades.
 
 | Field | Description |
 | --- | --- |
@@ -890,51 +730,32 @@ Every row of an operator package carries a `source_id` that maps to a
 | C | Derived from aggregate specifications or calibrated estimates |
 | D | Analytical model output or engineering assumption |
 
-**Acquisition methods**: `measured`, `imported`, `public_benchmark`,
-`analytical`, `assumption`.
+Supported acquisition methods are `measured`, `imported`, `public_benchmark`, `analytical` and `assumption`.
 
 ### 7.2 AIConfigurator Imports
 
-The bundled GPU tables are imported from NVIDIA AIConfigurator with
-`import-aiconfigurator` (pinned commit and rebuild steps:
-[AIConfigurator data usage](aiconfigurator.md)). Two source layouts are
-accepted: the upstream database
-(`aic-core/src/aiconfigurator_core/systems/data/<system>/<family>/<backend>/<version>/*_perf.parquet`)
-and a flat collector run directory (`*_perf.parquet` or `*_perf.txt` CSV
-staging files written by `collector/collect.py` and
-`network/collect_comm.sh` on your own node; see `scripts/collect/README.md`).
-Database rows are recorded as `method: imported` and collector-run rows as
-`method: measured` with the `source_id` prefix `aiconfigurator-collector:`;
-both are grade A. Imported operator-module rows are grade B.
+The bundled GPU tables are imported from NVIDIA AIConfigurator with `import-aiconfigurator` (pinned commit and rebuild steps: [AIConfigurator data usage](aiconfigurator.md)).
+Two source layouts are accepted: the upstream database (`aic-core/src/aiconfigurator_core/systems/data/<system>/<family>/<backend>/<version>/*_perf.parquet`) and a flat collector run directory (`*_perf.parquet` or `*_perf.txt` CSV staging files written by `collector/collect.py` and `network/collect_comm.sh` on your own node; see `scripts/collect/README.md`).
+Database rows are recorded as `method: imported` and collector-run rows as `method: measured` with the `source_id` prefix `aiconfigurator-collector:`; both are grade A.
+Imported operator-module rows are grade B.
 
-The importer converts milliseconds to microseconds, maps dtype and operation
-names, keeps the fastest kernel when several cover the same shape (what a
-framework's autotuner selects) and records `kernel_source` in the `kernel`
-column. Within one family it walks every version directory newest-first and
-keeps the first row seen per key, so a newer partial re-collection (for
-example the TensorRT-LLM 1.3.0rc23 MXFP4 MoE rows) is layered on top of the
-previous full collection instead of replacing it. This mirrors
-AIConfigurator's own backward-fill rule. The result is written to `--out`
-(default `data/operator_data/<device>/<backend>`); writing replaces the
-package's tables, so merge explicitly (`merge_packages`) when updating only a
-subset.
+The importer converts milliseconds to microseconds, maps dtype and operation names, keeps the fastest kernel when several cover the same shape (what a framework's autotuner selects) and records `kernel_source` in the `kernel` column.
+Within one family it walks every version directory newest-first and keeps the first row seen per key, so a newer partial re-collection (for example the TensorRT-LLM 1.3.0rc23 MXFP4 MoE rows) is layered on top of the previous full collection instead of replacing it.
+This mirrors AIConfigurator's own backward-fill rule.
+The result is written to `--out` (default `data/operator_data/<device>/<backend>`); writing replaces the package's tables, so merge explicitly (`merge_packages`) when updating only a subset.
 
-Imported systems and backends: `a100_sxm_80g`, `h100_sxm`, `h200_sxm`,
-`l40s`, `rtx_pro_6000_server`, `b200_sxm`, `b300_sxm`, `gb200` and `gb300`
-with `vllm`, `trtllm` and `sglang`; `intel_arc_pro_b60` with `vllm` (oneCCL
-collectives). The per-device status table and the reasons versions and
-kernels differ between systems are in `data/devices/README.md`; the coverage
-of every bundled package is summarized in the
-[data collection checklist](data-collection-checklist.md).
+Imported data covers `a100_sxm_80g`, `h100_sxm`, `h200_sxm`, `l40s`, `rtx_pro_6000_server`, `b200_sxm`, `b300_sxm`, `gb200` and `gb300` with `vllm`, `trtllm` and `sglang`.
+It also covers `intel_arc_pro_b60` with `vllm`, including oneCCL group communication measurements.
+The per-device status table and the reasons versions and kernels differ between systems are in `data/devices/README.md`; the coverage of every bundled package is summarized in the [data collection checklist](data-collection-checklist.md).
 
 ---
 
 ## 8. Command-Line Tools
 
-All operator-data commands are invoked as `python -m TokenSim.operator_data.cli
-<command>` (installed as `tokensim-operator-data`). The global option
-`--data-root` (before the command) selects the data directory; the default is
-the checkout's `data/` or `TOKENSIM_DATA_ROOT`. Commands print a JSON summary.
+All operator-data commands are invoked as `python -m TokenSim.operator_data.cli <command>` (installed as `tokensim-operator-data`).
+The global option `--data-root` (before the command) selects the data directory; the default is the checkout's `data/` or `TOKENSIM_DATA_ROOT`.
+Commands print a JSON summary.
+A manifest lists the operator queries needed by the selected models, parallel configurations and workload dimensions.
 
 | Command | Purpose |
 | --- | --- |
@@ -946,51 +767,36 @@ the checkout's `data/` or `TOKENSIM_DATA_ROOT`. Commands print a JSON summary.
 | `coverage` | Report exact / interpolated / extrapolated / missing per manifest key |
 | `calibrate` | Fit analytical parameters to a measured package |
 
-`manifest`, `generate` and `coverage` share the shape options `--models`
-(comma-separated catalog model ids), `--manifest` (an existing manifest,
-overrides `--models`), `--experiment-id`, `--tp`, `--ep` (comma-separated
-sizes, default 1), `--batch` (decode batch sizes, default 1-256),
-`--prefill-tokens` (default 16-8192), `--context` (decode context lengths,
-default 128-32768) and `--no-collectives` (skip the default collective grid:
-all-reduce and all-to-all over 2, 4 and 8 ranks, 1 KiB to 1 GiB).
+`manifest`, `generate` and `coverage` share the shape options `--models` (comma-separated catalog model ids), `--manifest` (an existing manifest, overrides `--models`), `--experiment-id`, `--tp`, `--ep` (comma-separated sizes, default 1), `--batch` (decode batch sizes, default 1-256), `--prefill-tokens` (default 16-8192), `--context` (decode context lengths, default 128-32768) and `--no-collectives` (skip the default collective grid: all-reduce and all-to-all over 2, 4 and 8 ranks, 1 KiB to 1 GiB).
 
 ### 8.1 `manifest` -- Generate Shape Manifests
 
 ```bash
 python -m TokenSim.operator_data.cli manifest \
-    --models llama-3-70b --tp 4,8 \
+    --models llama-3-70b \
+    --tp 4,8 \
     --out tmp/manifests/llama-3-70b.yaml
 ```
 
-The manifest lists the primitive operator keys (`gemm`, `grouped_gemm`,
-`context_attention`, `generation_attention`, `moe`, `elementwise`,
-`collective`) for the models, TP/EP sizes and workload grid, tagged with the
-roles that need them. Operator-module tables are not included. Without
-`--out` it is written to `<data-root>/operator_data/manifests/<id>.yaml`. Use
-it as the target list for profiling and as input to `coverage` and
-`scripts/collect/collect_elementwise.py`.
+The manifest lists the primitive operator keys (`gemm`, `grouped_gemm`, `context_attention`, `generation_attention`, `moe`, `elementwise`, `collective`) for the models, TP/EP sizes and workload grid, tagged with the roles that need them.
+Operator-module tables are not included.
+Without `--out` it is written to `<data-root>/operator_data/manifests/<id>.yaml`.
+Use it as the target list for profiling and as input to `coverage` and `scripts/collect/collect_elementwise.py`.
 
 ### 8.2 `generate` -- Generate Analytical Packages
 
 ```bash
 python -m TokenSim.operator_data.cli generate \
-    --device rtx_4090 --models llama-3-8b --tp 1,2,4,8
+    --device rtx_4090 \
+    --models llama-3-8b \
+    --tp 1,2,4,8
 ```
 
-Evaluates the device family's analytical model for every manifest key and
-writes `data/operator_data/rtx_4090/analytical` (grade D, or C with a
-calibration), including `*_analysis.parquet` files and the manifest.
-Communication keys are skipped; the collective model prices them at run time.
-Because `analytical` comes last in the default backend order (section 2.4),
-the simulator uses a generated package only when the device has none of the
-serving-stack packages, or when it is selected explicitly.
+The command evaluates the device family's analytical model for every manifest key and writes `data/operator_data/rtx_4090/analytical` (grade D, or C with a calibration), including `*_analysis.parquet` files and the manifest.
+Communication keys are skipped; the communication model estimates their latency at run time.
+Because `analytical` comes last in the default backend order (section 2.4), the simulator uses a generated package only when the device has none of the serving-stack packages, or when it is selected explicitly.
 
-Options: `--backend` (package label, default `analytical`), `--out`,
-`--calibration <file>` (per-table `multiplier`/`offset_us` entries and/or an
-`analytical:` parameter block, e.g. `calibrate` output), `--dataset-version`,
-`--merge` (merge into the package already in the output directory) and
-`--keep-existing` (on key clashes keep the existing rows), plus the shape
-options.
+The command accepts `--backend` (package label, default `analytical`), `--out`, `--calibration <file>` (per-table `multiplier`/`offset_us` entries and/or an `analytical:` parameter block, e.g. `calibrate` output), `--dataset-version`, `--merge` (merge into the package already in the output directory) and `--keep-existing` (on key clashes keep the existing rows), plus the shape options.
 
 ### 8.3 `import-aiconfigurator` -- Import Measured Data
 
@@ -999,47 +805,36 @@ git clone https://github.com/ai-dynamo/aiconfigurator.git /tmp/aiconfigurator
 git -C /tmp/aiconfigurator checkout f254959eb89e2f206b8f9a77051644d7c1cbdb89
 python -m TokenSim.operator_data.cli import-aiconfigurator \
     --system-dir /tmp/aiconfigurator/aic-core/src/aiconfigurator_core/systems/data/h100_sxm \
-    --device h100_sxm --backend vllm \
+    --device h100_sxm \
+    --backend vllm \
     --upstream-commit f254959eb89e2f206b8f9a77051644d7c1cbdb89 \
     --out /tmp/h100_sxm-vllm
 ```
 
-Options: `--backend` (default `trtllm`), `--version` (limit the framework
-collection version), `--nccl-version`, `--dataset-version`,
-`--upstream-commit` (recorded in source references; default `main`),
-`--no-custom-allreduce`, `--gpus-per-node` (EP ranks per node for SGLang
-wide-EP DeepEP tables; defaults to `num_gpus_per_node` in the upstream
-`systems/<system>.yaml`, and a collector run directory without one must pass
-it), `--out` and `--module-source
-table=system_directory` (repeatable; takes an operator-module table from
-another system and records the cross-device provenance).
+The command accepts `--backend` (default `trtllm`), `--version` (limit the framework collection version), `--nccl-version`, `--dataset-version`, `--upstream-commit` (recorded in source references; default `main`), `--no-custom-allreduce`, `--gpus-per-node` (EP ranks per node for SGLang wide-EP DeepEP tables; defaults to `num_gpus_per_node` in the upstream `systems/<system>.yaml`, and a collector run directory without one must pass it), `--out` and `--module-source table=system_directory` (repeatable; takes an operator-module table from another system and records the source device).
 
 ### 8.4 `import-nccl` -- Import nccl-tests Output
 
-Parses the out-of-place time column of nccl-tests stdout and adds the rows to
-the `collective` table of the package at `--out` (default
-`data/operator_data/<device>/<backend>`, backend default `nccl`), merging with
-the rows already there (new rows win on key clashes). `scripts/collect/run_nccl_tests.sh` runs nccl-tests
-and calls this command for every operation. For example, two-node all-reduce
-curves written by that script, added to the bundled H100 vLLM package:
+The command parses the out-of-place time column of nccl-tests stdout and adds the rows to the `collective` table of the package at `--out` (default `data/operator_data/<device>/<backend>`, backend default `nccl`), merging with the rows already there (new rows win on key clashes).
+`scripts/collect/run_nccl_tests.sh` runs nccl-tests and calls this command for every operation.
+The following example adds that script's two-node all-reduce measurements to the bundled H100 vLLM package.
 
 ```bash
 python -m TokenSim.operator_data.cli import-nccl \
-    --device h100_sxm --backend vllm \
+    --device h100_sxm \
+    --backend vllm \
     --file tmp/nccl/h100_sxm/all_reduce_perf_g8_n2_bfloat16.txt \
-    --operation all_reduce --group-size 16 --nodes 2
+    --operation all_reduce \
+    --group-size 16 \
+    --nodes 2
 ```
 
-`--operation` is one of `all_reduce`, `all_gather`, `reduce_scatter`,
-`all_to_all`, `send_recv`, `broadcast`; `--source-id`, `--reference` and
-`--notes` describe the measurement. The rows take the dtype printed by
-nccl-tests; TokenSim queries collectives with the model's activation dtype,
-so measure with that type (for bf16 models, nccl-tests `-d bfloat16`).
+`--operation` is one of `all_reduce`, `all_gather`, `reduce_scatter`, `all_to_all`, `send_recv`, `broadcast`; `--source-id`, `--reference` and `--notes` describe the measurement.
+The rows take the dtype printed by nccl-tests; TokenSim queries collectives with the model's activation dtype, so measure with that type (for bf16 models, nccl-tests `-d bfloat16`).
 
 ### 8.5 `validate` -- Validate a Package
 
-Checks schema conformance, declared row counts, `source_id` references and
-duplicate keys:
+The command checks the schema, declared row counts, `source_id` references and duplicate keys.
 
 ```bash
 python -m TokenSim.operator_data.cli validate data/operator_data/h100_sxm/vllm
@@ -1047,24 +842,24 @@ python -m TokenSim.operator_data.cli validate data/operator_data/h100_sxm/vllm
 
 ### 8.6 `coverage` -- Coverage Report
 
-Reports which manifest keys a package answers exactly, by interpolation or
-extrapolation, and which are missing:
+The command reports whether each manifest key has an exact match, can be interpolated or extrapolated, or is missing.
 
 ```bash
 python -m TokenSim.operator_data.cli coverage \
-    --device h100_sxm --backend vllm \
-    --models llama-3-70b --tp 8 \
+    --device h100_sxm \
+    --backend vllm \
+    --models llama-3-70b \
+    --tp 8 \
     --out tmp/coverage/h100_sxm-llama-3-70b.yaml
 ```
 
-Without `--backend` the default backend order applies. `--out` writes the
-summary and every missing key; without it, the first ten missing keys are
-printed.
+Without `--backend` the default backend order applies.
+`--out` writes the summary and every missing key; without it, the first ten missing keys are printed.
 
 ### 8.7 `calibrate` -- Fit Analytical Parameters
 
-See section 5.5. Options: `--backend`, `--holdout` (default 0.2), `--seed`
-(default 0), `--max-rows` (default 3000 per table) and `--out`.
+See section 5.5.
+The command accepts `--backend`, `--holdout` (default 0.2), `--seed` (default 0), `--max-rows` (default 3000 per table) and `--out`.
 
 ### 8.8 Simulation-Side Flags
 
@@ -1079,27 +874,41 @@ See section 5.5. Options: `--backend`, `--holdout` (default 0.2), `--seed`
 | `--disable_moe_shared_fusion` | off | Price shared experts serially with the fused MoE module |
 | `--data_root` | checkout `data/` | Directory holding `devices/`, `topologies/`, `models/` and `operator_data/` |
 
-A dense model on eight H100 GPUs, priced from the TensorRT-LLM tables:
+The following example runs a dense model on eight H100 GPUs using TensorRT-LLM timing tables.
 
 ```bash
 ./benchmark.py \
-    --model llama-3-8b --cluster data/clusters/8_h100/tp8.json \
-    --batching paged-attn --request_count 32 --qps 4 \
-    --latency_backend operator_table --latency_fallback table_first \
-    --operator_backend trtllm --decode_context_bucket 128 \
+    --model llama-3-8b \
+    --cluster data/clusters/8_h100/tp8.json \
+    --batching paged-attn \
+    --request_count 32 \
+    --qps 4 \
+    --latency_backend operator_table \
+    --latency_fallback table_first \
+    --operator_backend trtllm \
+    --decode_context_bucket 128 \
     --verbose none
 ```
 
-A compressed-attention MoE model with all three operator modules on eight
-B200 GPUs (DP8 with expert parallelism; the cluster selects `vllm`):
+The following example runs a compressed-attention MoE model with all three operator modules on eight B200 GPUs.
+It uses DP8 with expert parallelism, and the cluster selects `vllm`.
 
 ```bash
 ./benchmark.py \
-    --model deepseek-v4-pro --cluster data/clusters/8_b200/dep8.json \
-    --batching paged-attn --block_size 256 --max_num_seqs 16 \
-    --request_count 16 --prefill_mean_len 2048 --prefill_range_len 0 \
-    --decode_mean_len 32 --decode_range_len 0 --qps 4 --dp_lockstep \
-    --attention_backend module --mhc_backend module \
+    --model deepseek-v4-pro \
+    --cluster data/clusters/8_b200/dep8.json \
+    --batching paged-attn \
+    --block_size 256 \
+    --max_num_seqs 16 \
+    --request_count 16 \
+    --prefill_mean_len 2048 \
+    --prefill_range_len 0 \
+    --decode_mean_len 32 \
+    --decode_range_len 0 \
+    --qps 4 \
+    --dp_lockstep \
+    --attention_backend module \
+    --mhc_backend module \
     --moe_backend deep_gemm_amxf4_mega_moe \
     --verbose none
 ```
@@ -1108,7 +917,7 @@ B200 GPUs (DP8 with expert parallelism; the cluster selects `vllm`):
 
 ## 9. Result Provenance
 
-Every simulation result (`result_<qps>.json`) includes provenance fields:
+Every simulation result (`result_<qps>.json`) records the data sources and estimation methods in the fields below.
 
 | Field | Description |
 | --- | --- |
@@ -1126,58 +935,70 @@ Every simulation result (`result_<qps>.json`) includes provenance fields:
 | `parallel_link_type_counts` | Communication event counts per topology level |
 | `parallel_comm_match_type_counts` | Communication estimates by match type (measured, interpolated, extrapolated, analytical) |
 
-The full missing-shape report is exported to `missing_shapes_<qps>.json`
-whenever a miss was recorded. From the H100 example in section 8.8:
+The full missing-shape report is exported to `missing_shapes_<qps>.json` whenever a miss was recorded.
+The following report comes from the H100 example in section 8.8.
 
 ```json
 {
-  "group_count": 4, "shape_count": 16, "query_count": 16,
-  "per_table": {"elementwise": {"groups": 4, "shapes": 16, "queries": 16}},
+  "group_count": 4,
+  "shape_count": 16,
+  "query_count": 16,
+  "per_table": {
+    "elementwise": {
+      "groups": 4,
+      "shapes": 16,
+      "queries": 16
+    }
+  },
   "groups": [
-    {"table": "elementwise",
-     "key": {"op_name": "residual_add", "dtype": "bf16"},
-     "axes": {"hidden_size": [4096, 4096], "num_tokens": [1, 513]},
-     "query_count": 4, "shape_count": 4, "kinds": {"table_absent": 4},
-     "reason": "table has no rows in this package",
-     "examples": [{"op_name": "residual_add", "dtype": "bf16", "num_tokens": 512, "hidden_size": 4096}]}
+    {
+      "table": "elementwise",
+      "key": {
+        "op_name": "residual_add",
+        "dtype": "bf16"
+      },
+      "axes": {
+        "hidden_size": [4096, 4096],
+        "num_tokens": [1, 513]
+      },
+      "query_count": 4,
+      "shape_count": 4,
+      "kinds": {
+        "table_absent": 4
+      },
+      "reason": "table has no rows in this package",
+      "examples": [
+        {
+          "op_name": "residual_add",
+          "dtype": "bf16",
+          "num_tokens": 512,
+          "hidden_size": 4096
+        }
+      ]
+    }
   ]
 }
 ```
 
-Each group names the table, the discrete key a collection run must reproduce,
-the range every interpolation axis was requested over, how many misses were
-recorded and why. Estimates are memoized per worker, so a shape is recorded
-once per worker rather than once per step. Measure these shapes and add them
-to the package to improve coverage.
+Each group names the table, the discrete key a collection run must reproduce, the range every interpolation axis was requested over, how many misses were recorded and why.
+Each worker caches its estimates, so the report records a shape once per worker.
+Measure these shapes and add them to the package to improve coverage.
 
 ---
 
 ## 10. Known Limitations
 
-- **Ragged batches**: tables measure padding-aligned regular batches. Ragged
-  (continuous) batches are approximated by grouping requests by
-  `(query_len, kv_len)` and summing the per-group latencies.
-- **Prefix-cache attention**: prefill attention with cached context
-  (`kv_len > query_len`) scales the measured padded-batch value by the
-  analytical FLOPs ratio.
-- **EP lockstep assumption**: when an expert-parallel group spans data-parallel
-  replicas (`expert_parallel_scope = global`), those replicas are assumed to
-  advance in lockstep, so the group's token count is `tokens *
-  replicas_per_group`. `per_dp` groups never cross replicas.
-- **No MoE tensor parallelism inside an EP group**: experts are split
-  `expert_parallel_size` ways with `moe_tp = 1`; a `per_dp` group must equal
-  the replica's TP size.
-- **Borrowed module tables**: the fused-MoE rows of the B200 and B300 vLLM
-  packages were measured on GB200/GB300 with SGLang and are used without a
-  conversion factor (grade B); the measured scope and collector buffer
-  capacities are kept in the rows and source notes.
-- **No link contention in step time**: contention and queuing from pipelined
-  micro-batches are not part of the per-step service time.
-- <a id="gb300-derivation"></a>**GB200 and GB300 per-GPU peaks** are derived
-  from NVL72 rack totals (dense per-GPU value = rack sparse total / 72 / 2; FP4
-  from the dense rack figure), grade C. See the `sources` notes of
-  `data/devices/gb200.yaml` and `data/devices/gb300.yaml`.
+- Tables measure batches padded to common sequence lengths.
+  For batches with different request lengths, the simulator groups requests by `(query_len, kv_len)` and adds the group latencies.
+- **Prefix-cache attention**: prefill attention with cached context (`kv_len > query_len`) scales the measured padded-batch value by the analytical FLOPs ratio.
+- **EP lockstep assumption**: when an expert-parallel group spans data-parallel replicas (`expert_parallel_scope = global`), those replicas are assumed to advance in lockstep, so the group's token count is `tokens * replicas_per_group`.
+  `per_dp` groups never cross replicas.
+- **No MoE tensor parallelism inside an EP group**: experts are split `expert_parallel_size` ways with `moe_tp = 1`; a `per_dp` group must equal the replica's TP size.
+- The B200 and B300 vLLM packages use fused-MoE measurements collected on GB200 and GB300 with SGLang, without a conversion factor (grade B).
+  Rows and source notes record the measured operations and the token capacities of the collector's buffers.
+- **No link contention in step time**: contention and queuing from pipelined micro-batches are not part of the per-step service time.
+- <a id="gb300-derivation"></a>**GB200 and GB300 per-GPU peaks** are derived from NVL72 rack totals (dense per-GPU value = rack sparse total / 72 / 2; FP4 from the dense rack figure), grade C.
+  See the `sources` notes of `data/devices/gb200.yaml` and `data/devices/gb300.yaml`.
 - **H20 specifications** come from third-party benchmarks (grade B).
-- **Groq interconnect**: the often-quoted 480 GB/s is a derived bidirectional
-  aggregate (16 links x 4 lanes x 30 Gbps x 2 directions); the catalog uses the
-  ISCA 2022 per-link figure of 4 lanes x 25 Gbps (link class `groq_c2c_25g`).
+- The Groq 480 GB/s figure is total bidirectional bandwidth calculated as 16 links x 4 lanes x 30 Gbps x 2 directions.
+  The catalog uses ISCA 2022's per-link value of 4 lanes x 25 Gbps in link class `groq_c2c_25g`.
