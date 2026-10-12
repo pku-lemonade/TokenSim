@@ -1,204 +1,174 @@
 # TokenSim
 
-TokenSim is a discrete-event simulator for studying the hardware and software
-design of large language model inference systems. It models request arrivals,
-prefill and decode scheduling, KV-cache management, distributed execution, and
-hardware-dependent latency without requiring the simulated accelerator cluster.
+TokenSim is a deterministic discrete-event simulator for large language model (LLM) serving.
+It estimates request latency and throughput using model dimensions, hardware descriptions and operator measurements.
+The simulation includes batching, parallel execution, attention key/value (KV) caching and storage transfers.
+It runs on a CPU without requiring the simulated accelerators or model weights.
 
-Paper: [TokenSim: Enabling Hardware and Software Exploration for Large Language
-Model Inference Systems](https://arxiv.org/abs/2503.08415)
+The project paper is [TokenSim: Enabling Hardware and Software Exploration for Large Language Model Inference Systems](https://arxiv.org/abs/2503.08415).
 
 ## Features
 
-- Static, dynamic, and paged-attention batching with preemption and recomputation;
-  the paged-attention scheduler follows vLLM V1 chunked prefill (a per-step token
-  budget shared by decode tokens and prefill chunks, `--max_num_batched_tokens`).
-- Prefix KV-cache reuse driven by block hashes in JSON and JSONL workloads.
-- Hybrid and disaggregated prefill/decode worker layouts.
-- Tensor, pipeline, data, and expert parallel simulation.
-- MoE expert placement, routing distributions, all-to-all latency, and load metrics.
-- P2P and Mooncake-compatible KV transfer connectors.
-- Mooncake memory-store and SSD offload simulation with admission and LRU eviction.
-- Operator-level latency tables (measured kernels first, analytical roofline
-  fallback). Measured vLLM, TensorRT-LLM and SGLang tables ship for A100, H100,
-  H200, L40S, RTX PRO 6000, B200, B300, GB200 and GB300, vLLM tables for the
-  Intel Arc Pro B60, including NCCL/oneCCL collectives and DeepEP
-  dispatch/combine; catalog entries also cover A100 PCIe, A30, L4, H100 PCIe,
-  H20, RTX 4090, V100 and the Groq TSP (see `data/devices/README.md`).
-- Hierarchical interconnect topologies (chip / node / rack / cluster) with an
-  alpha-beta collective model that scales to thousands of devices.
-
-## Requirements
-
-Pure Python (3.10+), no compiled extensions. Operator tables are Parquet files
-read with `pyarrow`; catalogs are YAML.
+- TokenSim supports static, dynamic and paged-attention batching.
+  The paged scheduler follows vLLM V1 and shares a per-step token limit between prompt processing (prefill) and output token generation (decode).
+  It can process prompts in chunks, pause requests when memory is insufficient and recompute their context when they resume.
+- Requests can reuse cached prompt prefixes identified by recorded block hashes, including models with multiple cache groups and sliding-window layers.
+- Tensor parallelism divides work within layers, pipeline parallelism divides layers into stages, data parallelism handles separate request batches, and expert parallelism distributes expert networks across workers.
+  Workers can perform both prefill and decode or belong to separate pools, with synchronized data-parallel steps and routing that keeps conversations on a replica.
+- Operator latency estimates use measured kernel tables, interpolation between measurements and bounded extrapolation beyond the measured range.
+  The default fallback uses formulas for queries that tables cannot answer.
+  Measured vLLM, TensorRT-LLM and SGLang tables ship for A100, H100, H200, L40S, RTX PRO 6000, B200, B300, GB200 and GB300, and vLLM tables for the Intel Arc Pro B60.
+- Model configurations can select complete measured modules for compressed sparse attention, mixing residual streams through hyper-connections and fused mixture-of-experts (MoE) operations.
+- Multi-token prediction proposes draft tokens for the model to verify, with a configured average number of accepted tokens per step.
+- For MoE models, TokenSim models expert placement, token routing, communication between expert workers and the work assigned to each expert.
+- KV data can move directly between workers, be offloaded to CPU memory or use a Mooncake store with memory and SSD tiers.
+- Communication time follows the cluster's hierarchy of interconnects and combines fixed transfer latency with message size divided by effective bandwidth.
+- Workloads include generated request lengths, JSON and JSONL traces, and AgentX coding-agent traces whose requests follow their recorded dependencies.
 
 ## Installation
+
+Python 3.12 is recommended.
 
 ```bash
 git clone https://github.com/pku-lemonade/TokenSim.git
 cd TokenSim
-
-conda create -n tokensim python=3.12
-conda activate tokensim
-pip install -r requirements.txt
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e '.[dev]'
 ```
 
-## Quick Start
+## Quick start
 
-Run the default synthetic benchmark:
+The following command simulates 100 generated requests for Llama-7B on one A100 using formula-based latency estimates.
 
 ```bash
-./scripts/benchmark.sh
+tokensim --latency_backend analytical \
+  --request_count 100 \
+  --results_path results/example
 ```
 
-Run a JSON pair workload:
+The following command runs Llama-3-70B on eight H100 GPUs with measured operator tables, paged attention and prompt processing in chunks.
 
 ```bash
-./scripts/use_dataset.sh
-```
-
-Run Llama-3-70B on an 8x H100 node with measured TensorRT-LLM kernel tables:
-
-```bash
-./benchmark.py \
+tokensim --model data/models/llama-3-70b.yaml \
+  --cluster data/clusters/8_h100/tp8.json \
   --batching paged-attn \
-  --request_count 32 \
-  --cluster ./data/clusters/8_h100/tp8.json \
-  --model ./data/psla/llama-3-70b.json \
+  --block_size 16 \
+  --max_num_seqs 64 \
+  --max_num_batched_tokens 8192 \
+  --request_count 64 \
   --qps 4 \
-  --verbose none
+  --verbose none \
+  --results_path results/llama-3-70b
 ```
 
-Run the included MoE example with TP=2, DP=4, and expert parallelism:
+The following command replays requests with recorded lengths and hashes identifying their prompt prefixes.
 
 ```bash
-./benchmark.py \
+tokensim --model data/models/llama-7b.yaml \
+  --cluster data/clusters/1_a100/h1.json \
   --batching paged-attn \
   --block_size 16 \
-  --request_count 8 \
-  --prefill_mean_len 32 \
-  --prefill_range_len 0 \
-  --decode_mean_len 4 \
-  --decode_range_len 0 \
-  --cluster ./data/clusters/8_a100/moe_tp2_dp4.json \
-  --model ./data/psla/moe-toy.json \
-  --qps 10 \
-  --verbose none
-```
-
-Run a Mooncake store with SSD offload and repeated prefixes:
-
-```bash
-./benchmark.py \
-  --batching paged-attn \
-  --block_size 16 \
-  --request_count 4 \
-  --cluster ./data/clusters/1_a100/h1.json \
-  --kv_transfer_config ./data/kv_transfer/mooncake_store_standalone_ssd.json \
-  --dataset_path ./dataset/mooncake_reuse.json \
-  --workload_type json_pairs \
-  --model ./data/psla/llama-7b.json \
+  --workload_type qwen_jsonl \
+  --dataset_path dataset/qwen_example.jsonl \
   --qps 50 \
-  --verbose none
+  --verbose none \
+  --results_path results/trace
 ```
+
+`python benchmark.py` runs the same command line from a checkout.
+Run `tokensim --help` for every option.
 
 ## Configuration
 
-The main configuration surfaces are:
-
-| Surface | Location or option | Purpose |
+| Input | Location | Contents |
 | --- | --- | --- |
-| Workload defaults | `data/psla/*.json`, `--model` | Which catalog model to run, length distributions, SLOs, and MoE metadata |
-| Models | `data/models/*.yaml` | Architecture (hidden size, heads, KV heads, FFN, MoE) transcribed from HF configs; weight `dtype` plus `activation_dtype` / `kv_cache_dtype` |
-| Devices | `data/devices/*.yaml` | Peak compute per dtype, memory, on-chip SRAM, interconnect ports, sourced values |
-| Topologies | `data/topologies/*.yaml`, `links.yaml` | Link classes and chip/node/rack/cluster hierarchies |
-| Operator data | `data/operator_data/<device>/<backend>/` | Measured or analytical latency tables; see [operator latency model](docs/operator-latency-model.md) |
-| Cluster | `data/clusters/**/*.json`, `--cluster` | Worker roles, hardware, networks, optional `topology`, `device_indices`, `operator_backend` |
-| KV transfer | `data/kv_transfer/*.json`, `--kv_transfer_config` | P2P, Mooncake store, SSD, and multi-connector settings |
-| Dataset | `--dataset_path`, `--workload_type` | Synthetic, `json_pairs`, or `qwen_jsonl` requests |
-| Latency | `--latency_backend`, `--latency_fallback`, `--operator_backend` | `operator_table` (default) or `analytical`; fallback policy and which measured backend to load |
+| Model | `data/models/*.yaml`, `--model` | Layer geometry, dtypes, MoE and attention components, operator-module bindings |
+| Devices | `data/devices/*.yaml` | Compute, memory and interconnect capabilities with source grades |
+| Topologies | `data/topologies/*.yaml` | Link classes and chip/node/rack/cluster hierarchies |
+| Cluster | `data/clusters/**/*.json`, `--cluster` | Worker roles, hardware, parallel layout, storage |
+| Operator data | `data/operator_data/<device>/<backend>/` | Measured or analytical operator tables |
+| KV transfer | `data/kv_transfer/*.json`, `--kv_transfer_config` | Connector and storage settings |
+| Workload | CLI options or `--workload_config` | Arrival rate and distribution, lengths, SLO targets |
 
-Useful CLI options include:
+### Workload
 
-- `--qps`: request arrival rate; required for every run.
-- `--batching`: `static`, `dynamic`, or `paged-attn`.
-- `--request_count`: number of generated or loaded requests.
-- `--prefill_mean_len`, `--decode_mean_len`: synthetic request lengths.
-- `--tensor_parallel_size`, `--pipeline_parallel_size`, `--data_parallel_size`:
-  override parallel dimensions from the model or cluster config.
-- `--max_num_batched_tokens`: token budget of one paged-attention step
-  (default 8192); prompts longer than the remaining budget are prefilled in
-  chunks while decodes keep flowing. `--no-chunked_prefill` restores
-  whole-prompt prefill steps.
-- `--enable_expert_parallel`: enable or disable expert parallelism;
-  `--expert_parallel_scope global|per_dp` and `--expert_parallel_size` choose
-  and assert the expert-parallel group (see `docs/moe.md`).
-- `--moe_routing_distribution`: `uniform`, `skew`, `hot`, or `burst`.
-- `--trace_timestamp_scale`, `--trace_target_qps`: mutually exclusive controls
-  for replaying timestamped traces.
-- `--results_path`: write `result_<qps>.json` to a specific directory.
+Request generation and latency targets are independent of the model.
+A workload file can set them as shown below, and explicit CLI values take precedence.
+Latency targets are also called service-level objectives (SLOs).
 
-Run `./benchmark.py --help` for the complete option list. Users of the initial
-public release should also review the current configuration examples.
+```json
+{
+  "qps": 10,
+  "prefill_mean_len": 256,
+  "decode_mean_len": 64,
+  "first_token_latency": {
+    "max": 10
+  },
+  "decode_token_latency": {
+    "p99": 0.1
+  }
+}
+```
 
-## Feature Guides
+Targets are optional and in seconds.
+`first_token_latency` applies to the time to first token and `decode_token_latency` to each request's mean inter-token latency.
+A `max` target sets a limit for every request.
+`p50` sets a limit for the median latency, and `p99` sets a limit for the 99th percentile.
 
-- [Operator latency model](docs/operator-latency-model.md): device/model/topology
-  catalogs, operator tables, lookup rules, analytical fallback, communication
-  model, and the `operator_data` CLI.
-- [Data collection checklist](docs/data-collection-checklist.md): which kernels
-  to measure on which device, and how to import the results.
-- [Collection scripts](scripts/collect/README.md): run the AIConfigurator
-  collector, the elementwise profiler and nccl-tests on your own GPUs and turn
-  the output into operator packages.
-- [Prefix cache](docs/prefix-cache.md): workload metadata, exact hit conditions,
-  output-prefix reuse, and result metrics.
-- [MoE](docs/moe.md): model metadata, expert parallelism, routing distributions,
-  trace-provided expert histograms, and result metrics.
-- [Mooncake](docs/mooncake.md): direct P2P transfer, shared memory/SSD stores,
-  connector composition, configuration fields, and timing behavior.
-- [Parallelism](docs/parallelism.md): worker roles, TP/PP/DP/EP configuration,
-  rank mapping, communication modeling, and configuration precedence.
+AgentX replays recorded coding-agent traces using their request lengths, prompt-prefix hashes and dependencies between the main agent and its subagents.
+Set `--workload_type agentx_weka` to select AgentX replay.
+Provide a trace file or directory with `--dataset_path`.
+The `agentx` extra adds the tools for downloading and parsing AgentX traces.
+Install the extra with `python -m pip install -e '.[agentx,dev]'`.
+See the [AgentX guide](docs/agentx.md) for trace downloads, warmup and replay options.
 
-## Workload Formats
-
-`json_pairs` reads a JSON list whose records begin with
-`[prefill_len, decode_len]`. An optional third object can provide arrival times,
-prefix hashes, output hashes, reuse groups, or expert histograms. See
-`dataset/mooncake_reuse.json`.
-
-`qwen_jsonl` reads one object per line with `input_length` and `output_length`.
-Optional fields include `timestamp`, request/chat identifiers, prefix metadata,
-and expert histograms. See `dataset/qwen_example.jsonl`.
+Model, hardware and operator data are loaded from the checkout or installed package.
+Select another data directory with `--data_root` or `TOKENSIM_DATA_ROOT`.
 
 ## Results
 
-Without `--results_path`, results are written under:
+Results are written to `--results_path`, which defaults to `results/<model>/<cluster directory>/<cluster>`.
 
-```text
-results/<model>/<cluster-directory>/<cluster>/result_<qps>.json
-```
+- `result_<qps>.json`, or `agentx_c<concurrency>.json` for AgentX, summarizes latency, throughput, paused requests, recomputation, prefix reuse, KV transfers, parallel communication and MoE loads.
+  It records whether latency estimates come from measurements, interpolation, extrapolation or formulas.
+  With latency targets, `slo` reports which targets were met and goodput for requests meeting every `max` target.
+- `missing_shapes_<qps>.json` groups operator dimensions that tables could not answer, identifying what to measure in another profiling run.
+- `failure.json` records diagnostics for runs stopped before normal completion or with an error, alongside saved partial results.
+  `failed.txt` records the error message when the run fails.
 
-The JSON output includes latency and throughput, preemption/recomputation,
-prefix-cache reuse, connector transfer, parallelism, MoE, Mooncake metrics, and
-the provenance of every latency estimate (`latency_backends`,
-`operator_match_type_counts`, `operator_component_seconds`). Shapes that no
-table could answer are written to `missing_shapes_<qps>.json` next to the result.
-If the SimPy event queue ends with unfinished requests, TokenSim writes a failure
-snapshot and raises an error instead of exporting a successful result.
+## Documentation
 
-## Validation
+The [`docs/`](docs/) directory contains detailed feature descriptions, configuration examples and explanations of result metrics.
+
+| Guide | Features covered |
+| --- | --- |
+| [Operator latency model](docs/operator-latency-model.md) | Operator tables, interpolation and extrapolation, formula-based fallback, communication timing, calibration and result provenance |
+| [Parallelism](docs/parallelism.md) | Worker roles, tensor/pipeline/data/expert parallelism, conversation routing, synchronized data-parallel steps and communication topology |
+| [Mixture-of-experts](docs/moe.md) | Expert placement, token routing distributions and trace histograms, load imbalance, dispatch/combine communication and fused expert modules |
+| [Prefix caching](docs/prefix-cache.md) | Prefix matching conditions, cache isolation, reuse of generated output and cache-hit metrics |
+| [Mooncake storage](docs/mooncake.md) | Connectors, direct transfers, shared storage, uniform/grouped cache layouts, memory/disk tiers and transfer timing |
+| [AgentX workloads](docs/agentx.md) | Trace downloads, request dependencies, warmup, concurrency, stopping and cancellation, replay logs and comparison with InferenceX measurements |
+| [AIConfigurator data](docs/aiconfigurator.md) | Importing measured tables, rebuilding data packages, selecting operator-module scopes, data sources and latency units |
+| [Data collection checklist](docs/data-collection-checklist.md) | Required measurements for each operator table, shape manifests, recording metadata and validation data |
+
+The [collection scripts](scripts/collect/README.md) provide commands for measuring hardware.
+The [hardware catalog](data/devices/README.md) and [source grades guide](TokenSim/hardware/README.md) describe device specifications and their evidence sources.
+
+## Testing
 
 ```bash
-python -m compileall -q benchmark.py TokenSim util
-python -m unittest discover -s tests -v
-./scripts/benchmark.sh
+python -m unittest discover \
+  -s tests \
+  -t .
 ```
+
+Tests use small deterministic cases to check scheduling order, transfer and cache allocation accounting, request dependency timing, time limits, saved results and configuration validation.
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Citation
 
-If you use TokenSim in your research, please cite:
+If you use TokenSim in your research, cite the following paper.
 
 ```bibtex
 @misc{wu2025tokensimenablinghardwaresoftware,
@@ -212,8 +182,9 @@ If you use TokenSim in your research, please cite:
 }
 ```
 
-## Acknowledgments
+## License and acknowledgments
 
-TokenSim builds on SimPy. Measured GPU kernel tables are imported from NVIDIA's
-AIConfigurator (Apache-2.0). We thank their developers and the TokenSim
-contributors.
+TokenSim is licensed under [Apache-2.0](LICENSE).
+It builds on SimPy.
+Measured kernel tables are imported from NVIDIA AIConfigurator, the AgentX trace parser adapts NVIDIA AIPerf, and the scheduler and KV-cache designs follow vLLM.
+Attribution and retained licenses are in [NOTICE](NOTICE), `third_party/licenses` and the [operator-data notices](data/operator_data/LICENSES.md).

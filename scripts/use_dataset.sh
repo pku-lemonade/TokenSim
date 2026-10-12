@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-./benchmark.py \
+python benchmark.py \
     --batching paged-attn \
     --block_size 16 \
     --request_count 20 \
@@ -8,6 +8,6 @@
     --dataset_path ./dataset/example.json \
     --workload_type json_pairs \
     --qps 50 \
-    --max_parallem_sum 100 \
+    --max_num_seqs 100 \
     --verbose none \
-    --model ./data/psla/llama-7b.json
+    --model ./data/models/llama-7b.yaml

@@ -6,8 +6,6 @@ from dataclasses import dataclass, field
 from TokenSim.errors import ConfigurationError
 from TokenSim.mooncake.config import MooncakeConfig
 
-_GB = 1 << 30
-
 
 @dataclass
 class OffloadOperation:
@@ -35,10 +33,11 @@ class OffloadTier:
         if config.ssd_capacity_blocks is not None:
             self.capacity_blocks = int(config.ssd_capacity_blocks)
         else:
-            self.capacity_blocks = int(config.ssd_capacity_gb * _GB / self.block_bytes)
+            self.capacity_blocks = config.ssd_capacity_bytes // self.block_bytes
         self._blocks: dict[str, int] = {}
         self._lru: OrderedDict[str, None] = OrderedDict()
         self._used_blocks = 0
+        self._protected_until = {}
 
     def contains(self, key: str) -> bool:
         return key in self._blocks
@@ -55,7 +54,10 @@ class OffloadTier:
             latency=self._read_latency(bytes_),
         )
 
-    def write(self, key: str, blocks: int) -> OffloadOperation:
+    def pin(self, key: str, until: float) -> None:
+        self._protected_until[key] = max(self._protected_until.get(key, 0), until)
+
+    def write(self, key: str, blocks: int, *, now: float = 0) -> OffloadOperation:
         if self.capacity_blocks <= 0:
             raise ConfigurationError(
                 f"{self.tier.upper()} tier is not enabled or has zero capacity"
@@ -70,9 +72,16 @@ class OffloadTier:
                 evicted_keys=[key],
             )
         evicted: list[str] = []
-        while self.used_blocks + blocks > self.capacity_blocks and self._lru:
-            evicted.append(self._evict_lru())
-        if self.used_blocks + blocks > self.capacity_blocks:
+        extra = blocks - self._blocks.get(key, 0)
+        candidates, available = [], self.capacity_blocks - self.used_blocks
+        if extra > available:
+            for candidate in self._lru:
+                if candidate != key and self._protected_until.get(candidate, 0) <= now:
+                    candidates.append(candidate)
+                    available += self._blocks[candidate]
+                    if extra <= available:
+                        break
+        if extra > available:
             return OffloadOperation(
                 tier=self.tier,
                 blocks=0,
@@ -80,6 +89,9 @@ class OffloadTier:
                 latency=0.0,
                 evicted_keys=[key],
             )
+        for candidate in candidates:
+            self._remove_existing(candidate)
+            evicted.append(candidate)
         self._remove_existing(key)
         self._blocks[key] = blocks
         self._used_blocks += blocks
@@ -97,29 +109,25 @@ class OffloadTier:
     def used_blocks(self) -> int:
         return self._used_blocks
 
-    def _evict_lru(self) -> str:
-        key, _ = self._lru.popitem(last=False)
-        self._used_blocks -= self._blocks.pop(key, 0)
-        return key
-
     def _remove_existing(self, key: str) -> None:
         self._used_blocks -= self._blocks.pop(key, 0)
         self._lru.pop(key, None)
+        self._protected_until.pop(key, None)
 
     def _read_latency(self, bytes_: int) -> float:
         if bytes_ <= 0:
             return 0.0
-        return self.config.ssd_read_latency_us / 1e6 + bytes_ / _GB / max(
-            1e-9,
-            self.config.ssd_read_bw_gbps,
+        return (
+            self.config.ssd_read_latency_us / 1e6
+            + bytes_ / self.config.ssd_read_bandwidth_bytes_per_s
         )
 
     def _write_latency(self, bytes_: int) -> float:
         if bytes_ <= 0:
             return 0.0
-        return self.config.ssd_write_latency_us / 1e6 + bytes_ / _GB / max(
-            1e-9,
-            self.config.ssd_write_bw_gbps,
+        return (
+            self.config.ssd_write_latency_us / 1e6
+            + bytes_ / self.config.ssd_write_bandwidth_bytes_per_s
         )
 
 

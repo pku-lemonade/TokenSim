@@ -3,7 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from TokenSim.errors import WorkloadValidationError
+from TokenSim.errors import WorkloadValidationError, ConfigurationError
+from TokenSim.config.validation import integer, number
 from TokenSim.llm.llm_request import Request
 
 
@@ -26,7 +27,7 @@ class UserRequest:
     reuse_group: str | None = None
 
     def __post_init__(self):
-        self.request_id = int(self.request_id)
+        self.request_id = nonnegative_int(self.request_id, "request_id")
         self.prefill_len = _positive_int(self.prefill_len, "prefill_len")
         self.decode_len = _positive_int(self.decode_len, "decode_len")
         if self.arrival_time is not None and self.inter_arrival_time is not None:
@@ -34,11 +35,13 @@ class UserRequest:
                 "arrival_time and inter_arrival_time are mutually exclusive"
             )
         if self.arrival_time is not None:
-            self.arrival_time = float(self.arrival_time)
+            self.arrival_time = _timestamp(self.arrival_time, "arrival_time")
         if self.inter_arrival_time is not None:
-            self.inter_arrival_time = float(self.inter_arrival_time)
+            self.inter_arrival_time = _timestamp(
+                self.inter_arrival_time, "inter_arrival_time"
+            )
         if self.turn is not None:
-            self.turn = int(self.turn)
+            self.turn = nonnegative_int(self.turn, "turn")
         if self.hash_ids is not None:
             if not isinstance(self.hash_ids, list):
                 raise WorkloadValidationError("hash_ids must be a list when provided")
@@ -89,7 +92,24 @@ class UserRequestList(list[UserRequest]):
 
 
 def _positive_int(value: Any, field_name: str) -> int:
-    value = int(value)
-    if value <= 0:
-        raise WorkloadValidationError(f"{field_name} must be positive, got {value}")
-    return value
+    try:
+        return integer(value, field_name, minimum=1)
+    except ConfigurationError as error:
+        raise WorkloadValidationError(str(error)) from error
+
+
+def nonnegative_int(value: Any, field_name: str) -> int:
+    """An integer field of a workload record; decimal digit strings are accepted."""
+    if isinstance(value, str) and value.isdecimal():
+        value = int(value)
+    try:
+        return integer(value, field_name)
+    except ConfigurationError as error:
+        raise WorkloadValidationError(str(error)) from error
+
+
+def _timestamp(value, name):
+    try:
+        return float(number(value, name))
+    except ConfigurationError as error:
+        raise WorkloadValidationError(str(error)) from error

@@ -75,6 +75,24 @@ sources:
     converted ms -> us.
   device: gb200
   backend: sglang:0.5.14
+- source_id: aiconfigurator:gb200:mhc:sglang:0.5.14
+  grade: B
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/gb200/mhc/sglang/0.5.14
+  notes: mHC (hyper-connection residual mixing) pre/post module; each row covers the
+    recorded sites of one layer.
+  device: gb200
+  backend: sglang:0.5.14
+- source_id: aiconfigurator:gb200:dsv4_megamoe:sglang:0.5.10
+  grade: B
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/gb200/moe/sglang/0.5.10
+  notes: 'Fused expert-parallel MoE module (DeepGEMM MegaMoE, FP8 activations and
+    MXFP4 weights): routed dispatch, expert compute and combine under CUDA graphs.
+    Gate/top-k, buffer initialization and shared experts are excluded. Collector buffer
+    capacities are kept per row.'
+  device: gb200
+  backend: sglang:0.5.10
 calibration: {}
 tables:
   gemm:
@@ -89,6 +107,10 @@ tables:
     rows: 1226
   collective:
     rows: 382
+  mhc:
+    rows: 140
+  dsv4_megamoe:
+    rows: 256
 aiconfigurator_system: gb200
 aiconfigurator_layout: database
 aiconfigurator_commit: f254959eb89e2f206b8f9a77051644d7c1cbdb89

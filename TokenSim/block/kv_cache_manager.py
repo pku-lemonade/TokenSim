@@ -101,7 +101,9 @@ class KVCacheManager:
             self._cache[key] = block
             self.touch(block)
 
-    def register_output_blocks(self, req: Request, blocks: list[PhysicalTokenBlock]) -> None:
+    def register_output_blocks(
+        self, req: Request, blocks: list[PhysicalTokenBlock]
+    ) -> None:
         if not req.output_hash_ids:
             return
         if req.prefill_len % self.block_size != 0:

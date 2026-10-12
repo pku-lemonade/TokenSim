@@ -18,7 +18,7 @@ from TokenSim.operator_data.analytical.base import (
     register_model,
     roofline_estimate,
 )
-from TokenSim.operator_data.workload import gemm_work, work_for_table
+from TokenSim.operator_data.workload import work_for_table
 
 
 class GroqTSPModel:
@@ -35,15 +35,19 @@ class GroqTSPModel:
         calibration = calibration or Calibration()
         params = device.analytical
         sram = device.on_chip_memory_bytes or device.memory_capacity_bytes
-        bandwidth = (device.on_chip_bandwidth_bytes_per_s or device.memory_bandwidth_bytes_per_s).value
-        source_id = f"analytical:{self.family}:{device.device_id}:{calibration.calibration_id}"
+        bandwidth = (
+            device.on_chip_bandwidth_bytes_per_s or device.memory_bandwidth_bytes_per_s
+        ).value
+        source_id = (
+            f"analytical:{self.family}:{device.device_id}:{calibration.calibration_id}"
+        )
         overhead_us = float(params.get("kernel_launch_us", 0.2))
         gated = bool(context.get("gated", True))
         imbalance = float(context.get("imbalance", 1.0))
 
-        if table == "gemm":
+        if table in {"gemm", "grouped_gemm"}:
             dtype = str(key["dtype"])
-            work = gemm_work(int(key["m"]), int(key["n"]), int(key["k"]), dtype)
+            work = work_for_table(table, key)
             efficiency = float(params.get("gemm_mfu", 0.8))
             peak = device.peak_compute_for(dtype).value
         elif table in {"context_attention", "generation_attention"}:
@@ -62,7 +66,9 @@ class GroqTSPModel:
             efficiency = 0.8
             peak = device.peak_compute_for(dtype).value
         else:
-            raise ValueError(f"{self.family} analytical model does not cover table {table!r}")
+            raise ValueError(
+                f"{self.family} analytical model does not cover table {table!r}"
+            )
 
         fits = work.weight_bytes <= sram.value
         return roofline_estimate(

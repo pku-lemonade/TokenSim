@@ -1,0 +1,23 @@
+{
+    "num_workers": 8,
+    "networks": {
+        "nvlink_domain": "ethernet100Gb"
+    },
+    "parallel_config": {
+        "tensor_parallel_size": 8,
+        "pipeline_parallel_size": 1,
+        "data_parallel_size": 1,
+        "data_parallel_size_local": 1,
+        "enable_expert_parallel": true,
+        "expert_placement_strategy": "linear",
+        "all2all_backend": "deepep_high_throughput"
+    },
+    "worker_groups": [
+        {
+            "role": "hybrid",
+            "hardware": "B200",
+            "num_workers": 8,
+            "network": "nvlink_domain"
+        }
+    ]
+}

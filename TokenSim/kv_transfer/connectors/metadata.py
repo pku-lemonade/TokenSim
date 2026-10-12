@@ -36,7 +36,6 @@ class KVConnectorMetadata:
 class KVConnectorWorkerMetadata:
     finished_sending: set[int] = field(default_factory=set)
     finished_recving: set[int] = field(default_factory=set)
-    events: list[str] = field(default_factory=list)
 
     def aggregate(
         self,
@@ -45,7 +44,6 @@ class KVConnectorWorkerMetadata:
         return KVConnectorWorkerMetadata(
             finished_sending=self.finished_sending | other.finished_sending,
             finished_recving=self.finished_recving | other.finished_recving,
-            events=[*self.events, *other.events],
         )
 
 
