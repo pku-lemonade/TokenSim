@@ -139,12 +139,21 @@ Results are written to `--results_path`, which defaults to `results/<model>/<clu
 
 ## Documentation
 
-- The [operator latency model](docs/operator-latency-model.md) describes tables, lookup rules, extrapolation, formula-based fallback, communication and the operator-data CLI.
-- The [AIConfigurator guide](docs/aiconfigurator.md) explains how to import and validate measured tables.
-- The [data collection checklist](docs/data-collection-checklist.md) and [collection scripts](scripts/collect/README.md) describe how to measure your hardware.
-- Separate guides cover [parallelism](docs/parallelism.md), [MoE](docs/moe.md), [prefix caching](docs/prefix-cache.md) and [Mooncake storage](docs/mooncake.md).
-- The [AgentX guide](docs/agentx.md) describes trace replay and comparisons with InferenceX measurements.
-- The [hardware catalog](data/devices/README.md) and [source grades guide](TokenSim/hardware/README.md) explain device specifications and their evidence sources.
+The [`docs/`](docs/) directory contains detailed feature descriptions, configuration examples and explanations of result metrics.
+
+| Guide | Features covered |
+| --- | --- |
+| [Operator latency model](docs/operator-latency-model.md) | Operator tables, interpolation and extrapolation, formula-based fallback, communication timing, calibration and result provenance |
+| [Parallelism](docs/parallelism.md) | Worker roles, tensor/pipeline/data/expert parallelism, conversation routing, synchronized data-parallel steps and communication topology |
+| [Mixture-of-experts](docs/moe.md) | Expert placement, token routing distributions and trace histograms, load imbalance, dispatch/combine communication and fused expert modules |
+| [Prefix caching](docs/prefix-cache.md) | Prefix matching conditions, cache isolation, reuse of generated output and cache-hit metrics |
+| [Mooncake storage](docs/mooncake.md) | Connectors, direct transfers, shared storage, uniform/grouped cache layouts, memory/disk tiers and transfer timing |
+| [AgentX workloads](docs/agentx.md) | Trace downloads, request dependencies, warmup, concurrency, stopping and cancellation, replay logs and comparison with InferenceX measurements |
+| [AIConfigurator data](docs/aiconfigurator.md) | Importing measured tables, rebuilding data packages, selecting operator-module scopes, data sources and latency units |
+| [Data collection checklist](docs/data-collection-checklist.md) | Required measurements for each operator table, shape manifests, recording metadata and validation data |
+
+The [collection scripts](scripts/collect/README.md) provide commands for measuring hardware.
+The [hardware catalog](data/devices/README.md) and [source grades guide](TokenSim/hardware/README.md) describe device specifications and their evidence sources.
 
 ## Testing
 
