@@ -13,7 +13,8 @@ A collective is a communication operation involving a group of GPU workers.
 | `run_nccl_tests.sh` | multi-node or fabric-specific `collective` | nccl-tests; mpirun or srun for several nodes |
 | `common.py` | shared timing and environment helpers | PyTorch |
 
-Run the scripts from the repository root with TokenSim's `requirements.txt` installed in the same environment as the inference framework.
+Install TokenSim in the inference framework's environment with `python -m pip install -e .` from the repository root.
+Run the collection scripts from that directory.
 
 The scripts write data packages in the following ways.
 
