@@ -37,10 +37,6 @@ source .venv/bin/activate
 python -m pip install -e '.[dev]'
 ```
 
-The `agentx` extra adds the tools for downloading and parsing AgentX traces.
-Model, hardware and operator data are loaded from the checkout or installed package.
-Select another data directory with `--data_root` or `TOKENSIM_DATA_ROOT`.
-
 ## Quick start
 
 The following command simulates 100 generated requests for Llama-7B on one A100 using formula-based latency estimates.
@@ -95,6 +91,8 @@ Run `tokensim --help` for every option.
 | KV transfer | `data/kv_transfer/*.json`, `--kv_transfer_config` | Connector and storage settings |
 | Workload | CLI options or `--workload_config` | Arrival rate and distribution, lengths, SLO targets |
 
+### Workload
+
 Request generation and latency targets are independent of the model.
 A workload file can set them as shown below, and explicit CLI values take precedence.
 Latency targets are also called service-level objectives (SLOs).
@@ -117,6 +115,16 @@ Targets are optional and in seconds.
 `first_token_latency` applies to the time to first token and `decode_token_latency` to each request's mean inter-token latency.
 A `max` target sets a limit for every request.
 `p50` sets a limit for the median latency, and `p99` sets a limit for the 99th percentile.
+
+AgentX replays recorded coding-agent traces using their request lengths, prompt-prefix hashes and dependencies between the main agent and its subagents.
+Set `--workload_type agentx_weka` to select AgentX replay.
+Provide a trace file or directory with `--dataset_path`.
+The `agentx` extra adds the tools for downloading and parsing AgentX traces.
+Install the extra with `python -m pip install -e '.[agentx,dev]'`.
+See the [AgentX guide](docs/agentx.md) for trace downloads, warmup and replay options.
+
+Model, hardware and operator data are loaded from the checkout or installed package.
+Select another data directory with `--data_root` or `TOKENSIM_DATA_ROOT`.
 
 ## Results
 
