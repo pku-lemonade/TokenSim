@@ -209,12 +209,14 @@ def get_agentx_metrics(
         sub_ttft = [r.prefill_latency for r in subset]
         sub_e2e = [r.total_time for r in subset]
         sub_tpot = [
-            r.decode_time_sum / (r.decode_len - 1) for r in subset if r.decode_len > 1
+            r.decode_time_sum / (r.generation_idx - 1)
+            for r in subset
+            if r.generation_idx > 1
         ]
         result[f"{label}_ttft_s"] = _percentile_summary(sub_ttft)
         result[f"{label}_tpot_s"] = _percentile_summary(sub_tpot)
         result[f"{label}_e2e_s"] = _percentile_summary(sub_e2e)
-        result[f"{label}_output_tokens"] = sum(r.decode_len for r in subset)
+        result[f"{label}_output_tokens"] = sum(r.generation_idx for r in subset)
         result[f"{label}_input_tokens"] = sum(r.prefill_len for r in subset)
 
     return result
