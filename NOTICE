@@ -3,7 +3,6 @@ TokenSim is distributed under the Apache License, Version 2.0.
 AIPerf
 Copyright (c) 2025-2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 The AgentX conversation parser, chain classifier and trajectory planning adapt NVIDIA AIPerf revision 49634d1c.
-Source attribution and modification details are in TokenSim/workload/agentx_support/source_manifest.json.
 The license is third_party/licenses/AIPerf-Apache-2.0.txt.
 
 vLLM

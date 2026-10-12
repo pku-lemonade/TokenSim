@@ -5,8 +5,7 @@
 from __future__ import annotations
 
 import heapq
-import numpy as np
-from .records import _req_end, _np_lcp, ChainDetectionResult
+from .records import _IntervalCand, _req_end, ChainDetectionResult
 
 
 def _overlap_components(cands: list[_IntervalCand]) -> list[list[_IntervalCand]]:
@@ -108,64 +107,3 @@ def worker_group_assignment(
         for member, (_, _, _, ci) in enumerate(comp):
             out[ci] = (group, member)
     return out
-
-
-def worker_group_members(result: ChainDetectionResult, *, group_min: int) -> set[int]:
-    """Worker chain indices belonging to a parallel fan-out group.
-
-    Thin wrapper over :func:`worker_group_assignment` returning just the member
-    set. See that function for the fork-point ``(group, member)`` decomposition."""
-    return set(worker_group_assignment(result, group_min=group_min))
-
-
-def _observed_group_prefix(result: ChainDetectionResult, members: list[int]) -> int:
-    """LCP over the group members' first-request hash lists (0 if < 2)."""
-    firsts = [
-        np.asarray(result.chains[ci].requests[0][1].hash_ids, dtype=np.uint64)
-        for ci in members
-    ]
-    firsts = [f for f in firsts if f.shape[0] > 0]
-    if len(firsts) < 2:
-        return 0
-    observed = firsts[0].shape[0]
-    for other in firsts[1:]:
-        observed = min(observed, _np_lcp(firsts[0][:observed], other))
-    return observed
-
-
-def compute_chain_prefix_blocks(
-    result: ChainDetectionResult, *, declared_prefix_blocks: int
-) -> dict[int, int]:
-    """Effective setup-prefix block count per live chain (spec §5.4).
-
-    Chains are grouped by fork ancestry into namespace groups (each
-    zero-depth fork roots a new group). Per group, the observed prefix is
-    the LCP over members' first-request hash lists (0 for singletons).
-    The main chain keeps the LONGER of declared vs observed; other chains
-    use observed — they only prove the shared region, anything past it is
-    not common to the group.
-    """
-    live = [i for i, c in enumerate(result.chains) if c.spliced_into is None]
-    if not live:
-        return {}
-
-    def _group_root(ci: int) -> int:
-        while True:
-            c = result.chains[ci]
-            if c.fork is None or c.fork.parent_chain is None or c.fork.depth == 0:
-                return ci
-            ci = c.fork.parent_chain
-
-    groups: dict[int, list[int]] = {}
-    for ci in live:
-        groups.setdefault(_group_root(ci), []).append(ci)
-
-    prefixes: dict[int, int] = {}
-    for members in groups.values():
-        observed = _observed_group_prefix(result, members)
-        for ci in members:
-            if ci == result.main_index:
-                prefixes[ci] = max(declared_prefix_blocks, observed)
-            else:
-                prefixes[ci] = observed
-    return prefixes

@@ -33,8 +33,6 @@ from __future__ import annotations
 # preserves valid hash IDs above 2**63. No AIPerf runtime dependency.
 
 from TokenSim.workload.agentx_support.chain_detection.records import (
-    WekaNormalRequest,
-    WekaStreamingRequest,
     _EPSILON_SECONDS,
     _NormalRequestT,
     IndexedRequest,
@@ -49,9 +47,6 @@ from TokenSim.workload.agentx_support.chain_detection.records import (
 from TokenSim.workload.agentx_support.chain_detection.groups import (
     _overlap_components,
     worker_group_assignment,
-    worker_group_members,
-    _observed_group_prefix,
-    compute_chain_prefix_blocks,
 )
 from TokenSim.workload.agentx_support.chain_detection.detection import (
     _Phase1State,

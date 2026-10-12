@@ -67,7 +67,6 @@ class Conversation:
     agent_depth: int
     turns: list[GraphTurn]
     is_auxiliary: bool = False
-    branch_ids: list[str] = field(default_factory=list)
 
     @property
     def replay_scope_id(self) -> str:
@@ -91,7 +90,6 @@ class Branch:
     spawning_turn_index: int
     join_turn_index: int | None
     start_s: float
-    recorded_end_s: float
 
 
 @dataclass(slots=True)
@@ -116,10 +114,3 @@ class TraceGraph:
     def all_turns(self):
         for conversation in self.conversations:
             yield from conversation.turns
-
-    @property
-    def recorded_activity_end_s(self) -> float:
-        return max(
-            [turn.request.end_s for turn in self.all_turns()]
-            + [branch.recorded_end_s for branch in self.branches]
-        )

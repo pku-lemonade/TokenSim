@@ -71,7 +71,7 @@ class AgentXReplay(ReplayClock, RequestLifecycle):
         self.block_size, self.concurrency = block_size, concurrency
         self.profile_duration, self.grace_period = profile_duration, grace_period
         self.cancellation_timeout = cancellation_timeout
-        self.workload_seed = self.random_seed = workload_seed
+        self.workload_seed = workload_seed
         self.warmup, self.warmup_quota = warmup, warmup_requests_per_lane
         self.warmup_grace_period = warmup_grace_period
         self.tree_idle_cap, self.system_idle_cap = tree_idle_cap, system_idle_cap

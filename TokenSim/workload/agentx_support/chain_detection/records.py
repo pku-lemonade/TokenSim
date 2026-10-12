@@ -10,11 +10,9 @@ import numpy as np
 from TokenSim.workload.agentx_support.models import RawRequest
 
 
-WekaNormalRequest = WekaStreamingRequest = RawRequest
-
 _EPSILON_SECONDS = 1e-6
 
-_NormalRequestT = WekaNormalRequest | WekaStreamingRequest
+_NormalRequestT = RawRequest
 
 IndexedRequest = tuple[int, _NormalRequestT]
 

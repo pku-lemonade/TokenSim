@@ -30,9 +30,6 @@ dependencies = {file = ["requirements.txt"]}
 include = ["TokenSim*"]
 namespaces = true
 
-[tool.setuptools.package-data]
-"TokenSim.workload.agentx_support" = ["LICENSE-aiperf", "source_manifest.json"]
-
 [tool.black]
 line-length = 88
 target-version = ["py311", "py312"]

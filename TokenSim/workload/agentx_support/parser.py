@@ -389,10 +389,8 @@ def parse_trace_graph(raw: dict) -> TraceGraph:
             preceding,
             join,
             min(item[1] for item in items),
-            max(item[2] for item in items),
         )
         branches.append(branch)
-        root.branch_ids.append(bid)
     predecessors = infer_predecessors(conversations)
     sources = set()
     for conversation in conversations:

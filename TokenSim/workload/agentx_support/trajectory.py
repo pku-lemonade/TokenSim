@@ -24,7 +24,6 @@ class SnapshotState:
     next_turn_index: int
     dispatch_offset_s: float
     waiting_on_children: bool
-    join_memberships: tuple[tuple[str, int], ...] = ()
 
     @property
     def primer_turn_index(self) -> int | None:
@@ -38,17 +37,6 @@ class Snapshot:
     t_star_ms: float
     states: tuple[SnapshotState, ...]
     completed_boundaries: tuple[tuple[str, int], ...]
-
-    @property
-    def root_next_turn_index(self) -> int:
-        return next(
-            (
-                s.next_turn_index
-                for s in self.states
-                if s.conversation_id == self.graph.trace_id
-            ),
-            0,
-        )
 
 
 class SequentialTracePool:
@@ -95,18 +83,12 @@ def snapshot_at(
             if child_next is None:
                 continue
             child_ts = conversations[cid].turns[child_next].request.t * 1000.0
-            memberships = (
-                ((branch.branch_id, branch.join_turn_index),)
-                if branch.join_turn_index is not None
-                else ()
-            )
             states.append(
                 SnapshotState(
                     cid,
                     child_next,
                     max(0.0, child_ts - t_star_ms) / 1000,
                     False,
-                    memberships,
                 )
             )
         child_states.extend(states)
