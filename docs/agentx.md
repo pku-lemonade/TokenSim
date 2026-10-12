@@ -150,6 +150,8 @@ tokensim --workload_type agentx_weka \
 Select a model whose context limit and available KV cache can accommodate the chosen prompts.
 The full dataset includes very long prompts, so use the DeepSeek-V4-Pro examples above to replay those traces.
 For models with multiple KV cache groups, process prompts in chunks with a finite `--max_num_batched_tokens` limit.
+A finite `--max_num_batched_tokens` must be at least one plus `--mtp_num_speculative_tokens` to fit a complete MTP verification query.
+This requirement also applies when the expected accepted length is one token.
 
 `random_seed` controls simulation randomness, including MTP progress.
 `agentx_workload_seed` selects the starting points within traces used to prepare caches during warmup.

@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 
 from TokenSim.config.moe_execution import MoEExecutionConfig
 from TokenSim.config.router_config import validate_router_mapping
+from TokenSim.config.speculative_execution import validate_mtp_token_budget
 from TokenSim.errors import ConfigurationError
 from TokenSim.config.validation import integer, number, boolean
 
@@ -65,6 +66,9 @@ class SimulationConfig:
             raise ConfigurationError(
                 "MTP acceptance length cannot exceed 1 + draft tokens"
             )
+        validate_mtp_token_budget(
+            self.max_num_batched_tokens, self.mtp_num_speculative_tokens or 0
+        )
         for name in (
             "debug_print",
             "sticky_sessions",

@@ -5,6 +5,16 @@ import math
 from TokenSim.errors import ConfigurationError
 
 
+def validate_mtp_token_budget(max_num_batched_tokens, num_speculative_tokens):
+    """A decode step must fit the full verification query, including rejected drafts."""
+    width = 1 + num_speculative_tokens
+    if max_num_batched_tokens is not None and max_num_batched_tokens < width:
+        raise ConfigurationError(
+            f"max_num_batched_tokens must be at least {width} for MTP "
+            f"with {num_speculative_tokens} draft tokens"
+        )
+
+
 def resolve_mtp_tokens(model, acceptance_length, num_speculative_tokens=None):
     if not math.isfinite(acceptance_length) or acceptance_length < 1:
         raise ConfigurationError("MTP acceptance length must be finite and >=1")

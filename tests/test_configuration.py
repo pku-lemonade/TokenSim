@@ -97,3 +97,27 @@ class LookupConfigurationTest(unittest.TestCase):
             LookupPolicy(interpolate="false")
         with self.assertRaises(ConfigurationError):
             AxisSpec("m", scale="unknown")
+
+
+class MTPConfigurationTest(unittest.TestCase):
+    def test_cli_rejects_insufficient_mtp_budget_before_starting_simulation(self):
+        for drafts, acceptance in ((1, 2), (3, 1)):
+            with self.subTest(drafts=drafts, acceptance=acceptance):
+                output = io.StringIO()
+                with redirect_stderr(output):
+                    code = cli(
+                        [
+                            "--batching",
+                            "paged-attn",
+                            "--mtp_num_speculative_tokens",
+                            str(drafts),
+                            "--mtp_acceptance_length",
+                            str(acceptance),
+                            "--max_num_batched_tokens",
+                            str(drafts),
+                        ]
+                    )
+                self.assertEqual(code, 1)
+                self.assertIn("max_num_batched_tokens", output.getvalue())
+                self.assertIn("MTP", output.getvalue())
+                self.assertNotIn("Traceback", output.getvalue())

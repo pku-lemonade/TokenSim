@@ -10,6 +10,7 @@ from TokenSim.llm.llm_comm import KVConnectorMetadata, KVConnectorWorkerMetadata
 from TokenSim.llm.llm_request import Request, RequestStatus
 from TokenSim.block.block_manager import BlockManager
 from TokenSim.config.config import CacheConfig, KVTransferConfig
+from TokenSim.config.speculative_execution import validate_mtp_token_budget
 from TokenSim.errors import ConfigurationError
 from TokenSim.kv_transfer import NoopConnector
 from TokenSim.llm.paged_scheduling import PagedSchedulingMixin
@@ -201,6 +202,10 @@ class LLMPagedAttnScheduler(PagedSchedulingMixin, PagedTokenBudgetMixin, LLMSche
         )
         if self.mtp_enabled and not self.speculative_tokens:
             raise ConfigurationError("enabled MTP scheduler requires positive cache K")
+        validate_mtp_token_budget(
+            self.max_num_batched_tokens,
+            self.speculative_tokens if self.mtp_enabled else 0,
+        )
         self.prefill_capacity_bound = False
         self.defer_prefills = False
         self.effective_long_prefill_threshold = 0

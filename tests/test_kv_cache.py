@@ -3,11 +3,13 @@
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
+import simpy
 
 from TokenSim.block.hybrid.manager import HybridKVBlockManager
 from TokenSim.block.hybrid.kv_layout import CacheGroup, CacheLayerPage, HybridKVLayout
 from TokenSim.llm.llm_request import Request, RequestStatus
 from TokenSim.llm.llm_scheduler import LLMPagedAttnScheduler
+from TokenSim.errors import ConfigurationError
 
 
 def layout(eagle=False):
@@ -34,6 +36,33 @@ def layout(eagle=False):
 
 
 class GroupedCacheTest(unittest.TestCase):
+    def test_mtp_budget_boundary_rejects_insufficient_and_completes_at_minimum(self):
+        cache = SimpleNamespace(
+            hybrid_layout=layout(eagle=True),
+            num_gpu_blocks=40,
+            model="any-model",
+            block_size=16,
+        )
+        options = dict(max_num_seqs=1, mtp_enabled=True, mtp_acceptance_length=2)
+        with self.assertRaisesRegex(ConfigurationError, "max_num_batched_tokens.*MTP"):
+            LLMPagedAttnScheduler(0, cache, max_num_batched_tokens=1, **options)
+        scheduler = LLMPagedAttnScheduler(0, cache, max_num_batched_tokens=2, **options)
+        env = simpy.Environment()
+        request = Request(0, 1, 4, 16)
+        request.arrive(env)
+        scheduler.add_requests([request])
+        for _ in range(request.decode_len):
+            running, _ = scheduler.schedule()
+            self.assertEqual(running, [request])
+            env.run(until=env.now + 0.1)
+            request.advance(env, 0.1, 1)
+            scheduler.on_tokens_computed(request)
+            scheduler.update(running)
+            if request.is_done:
+                break
+        self.assertTrue(request.is_done)
+        self.assertEqual(request.generation_idx, 4)
+
     def test_same_public_id_in_separate_engines_cannot_share_unknown_tokens(self):
         managers = [HybridKVBlockManager(layout(), 20, "any-model") for _ in range(2)]
         requests = [Request(0, 64, 2, 16, hash_ids=[1, 2]) for _ in managers]
