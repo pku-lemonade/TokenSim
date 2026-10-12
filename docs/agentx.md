@@ -178,6 +178,8 @@ Pending transfers stop at that cutoff as well.
 The saved partial results include `termination_reason=sim_time_limit` and metadata describing the replay state at the cutoff.
 At the normal end of the measurement window, AgentX stops issuing new requests and allows outstanding requests to finish during `--agentx_grace_period`.
 It then cancels the remaining requests, waits up to `--agentx_cancellation_timeout` for cancellation and pending transfers to finish, and checks cache references and allocation accounting.
+An unacknowledged cancellation at the deadline stops the run with `termination_reason=failed`, including during warmup.
+The `notdone` list and `failure.json` retain the IDs of outstanding requests.
 If cleanup fails or the cache's allocation counts are inconsistent, the simulator saves results and diagnostic files before returning an error.
 
 ## Results and interpretation

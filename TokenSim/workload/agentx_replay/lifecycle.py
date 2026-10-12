@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uuid
 import simpy
+from TokenSim.errors import SimulationStateError
 from TokenSim.llm.llm_request import Request
 from .records import engine_hashes, TraceTurn
 
@@ -326,22 +327,27 @@ class RequestLifecycle:
             end = self.env.now + self.cancellation_timeout
             while self._in_flight and self.env.now < end:
                 yield from self._wait(end)
-            self.cancel_unreturned += len(self._in_flight)
-            for req, play, cid, primer in list(self._in_flight.values()):
-                phase = "warmup" if req.measurement_phase == "warmup" else "profiling"
-                self.phase_counts[phase]["cancelled"] += 1
-                self.phase_counts[phase]["cancel_unreturned"] += 1
-                self._record_terminal(req, play, "cancelled")
-                if phase == "warmup" and not primer:
-                    cursor = play.streams[cid]
-                    if cursor.index < len(cursor.conversation.turns):
-                        old_turn = cursor.conversation.turns[cursor.index]
-                        play.completed.add(old_turn.key)
-                        cursor.index += 1
-                        cursor.in_flight = None
-                        if cursor.index >= len(cursor.conversation.turns):
-                            play.set_terminal(cursor)
-                        play.in_flight -= 1
-                        if cursor.conversation is play.graph.root:
-                            self._open_branches(play, old_turn)
-            self._in_flight.clear()
+            # A completion at the deadline may already be triggered while
+            # its replay callback is still queued at the same timestamp.
+            completed = [
+                req.completion_event
+                for req, _, _, _ in self._in_flight.values()
+                if req.completion_event.triggered
+            ]
+            if completed:
+                yield simpy.events.AllOf(self.env, completed)
+            if self._in_flight:
+                self.cancel_unreturned += len(self._in_flight)
+                for req, play, _, _ in self._in_flight.values():
+                    phase = (
+                        "warmup" if req.measurement_phase == "warmup" else "profiling"
+                    )
+                    self.phase_counts[phase]["cancelled"] += 1
+                    self.phase_counts[phase]["cancel_unreturned"] += 1
+                    self._record_terminal(req, play, "cancelled")
+                # Retain pending requests and stream positions for failure
+                # diagnostics. Only acknowledged cancellation advances warmup.
+                raise SimulationStateError(
+                    f"AgentX cancellation timed out with {len(self._in_flight)} "
+                    "unacknowledged requests"
+                )

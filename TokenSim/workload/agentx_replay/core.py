@@ -121,6 +121,15 @@ class AgentXReplay(ReplayClock, RequestLifecycle):
         self._recorded_timer_sequence = 0
 
     @property
+    def unfinished_request_ids(self):
+        """Outstanding profiling or warmup requests, including unacknowledged cancels."""
+        return sorted(
+            request_id
+            for request_id, (req, _, _, _) in self._in_flight.items()
+            if not req.is_done and req.cancelled_at is None
+        )
+
+    @property
     def profile_elapsed(self):
         if self.profile_started_at is None:
             return 0.0

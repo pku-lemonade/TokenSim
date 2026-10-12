@@ -270,7 +270,11 @@ def main(args, preloaded_agentx_traces=None):
     else:
         duration = env.now
         successful = [r for r in requests if r.is_done and not r.cancel_requested]
-    unfinished = [r.id for r in requests if not r.is_done]
+    unfinished = (
+        replay.unfinished_request_ids
+        if replay
+        else [r.id for r in requests if not r.is_done]
+    )
     if unfinished and run.termination_reason == "completed":
         error = SimulationStateError("event queue exhausted with unfinished requests")
         run.termination_reason = "event_queue_exhausted"
