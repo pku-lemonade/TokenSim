@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections import Counter
 import math
 from TokenSim.errors import ConfigurationError
-from .estimates import AttentionEstimate
 
 
 class DecodeAttention:

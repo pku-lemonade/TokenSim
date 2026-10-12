@@ -6,7 +6,6 @@ import heapq
 import math
 import simpy
 from TokenSim.errors import SimulationStateError
-from .records import REPLAY_PROTOCOL, engine_hashes, TraceTurn, StreamCursor, TreePlay
 
 
 class ReplayClock:

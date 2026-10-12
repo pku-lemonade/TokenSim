@@ -7,7 +7,6 @@ import unittest
 from pathlib import Path
 from TokenSim.errors import ConfigurationError
 from TokenSim.operator_data.importers.nccl_tests import parse_nccl_tests_output
-from tests.support.operator_data import SOURCE, ROOT, _meta, _gemm_rows
 
 
 class AIConfiguratorImportTest(unittest.TestCase):

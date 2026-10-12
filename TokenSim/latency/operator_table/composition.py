@@ -6,7 +6,6 @@ import math
 from typing import Mapping
 from TokenSim.latency.base import query_tokens
 from TokenSim.llm.llm_request import Request
-from .stats import OperatorStats, OperatorEstimate, _MOE_DISTRIBUTION_CANDIDATES
 
 
 class StepComposition:

@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 import simpy
 from TokenSim.llm.llm_request import Request
-from .records import REPLAY_PROTOCOL, engine_hashes, TraceTurn, StreamCursor, TreePlay
+from .records import engine_hashes, TraceTurn
 
 
 class RequestLifecycle:

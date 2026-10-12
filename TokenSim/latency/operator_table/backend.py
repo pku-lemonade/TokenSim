@@ -33,7 +33,7 @@ from TokenSim.operator_data.lookup import (
 from TokenSim.operator_data.package import OperatorDataPackage
 from TokenSim.operator_data.workload import activation_bytes_for
 from TokenSim.parallel import ParallelCommunicator
-from .stats import OperatorStats, OperatorEstimate, _MOE_DISTRIBUTION_CANDIDATES
+from .stats import OperatorStats, _MOE_DISTRIBUTION_CANDIDATES
 from .composition import StepComposition
 from .queries import OperatorQueries
 

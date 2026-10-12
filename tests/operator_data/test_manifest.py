@@ -17,7 +17,7 @@ from TokenSim.operator_data.package import (
     SourceRecord,
 )
 from tests.support.hardware import moe_test_model, make_device, make_model
-from tests.support.operator_data import SOURCE, ROOT, _meta, _gemm_rows
+from tests.support.operator_data import _meta, _gemm_rows
 
 
 class ManifestGeneratorTest(unittest.TestCase):

@@ -22,7 +22,6 @@ from TokenSim.reporting import RunReport, export_result, print_all_stats
 from TokenSim.progress import TqdmManager
 from .configuration import (
     simulation_config,
-    max_num_batched_tokens,
     build_parallel_config,
     validate_moe_parallel_config,
 )

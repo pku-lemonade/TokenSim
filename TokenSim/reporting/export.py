@@ -18,7 +18,6 @@ from .stats import (
     get_parallel_stats,
     get_cache_capacity_stats,
     get_latency_stats,
-    analytical_share_by_table,
     get_moe_stats,
     get_mooncake_stats,
 )

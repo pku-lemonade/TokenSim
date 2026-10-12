@@ -32,6 +32,7 @@ The formatting step rewrites files, while the check confirms that formatting is 
 ```bash
 python -m black TokenSim tests benchmark.py scripts
 python -m black --check TokenSim tests benchmark.py scripts
+python scripts/check_source_lines.py
 python -m unittest discover \
   -s tests \
   -t .
@@ -39,6 +40,7 @@ git diff --check
 ```
 
 Run the formatter, tests and diff check before committing or submitting a code change.
+The source-line check includes tracked files and untracked files that Git does not ignore.
 `python -m pytest` runs the same tests.
 Tests use small deterministic inputs and do not assert historical throughput values.
 For documentation-only changes, check sentence layout, prohibited expressions, links and any edited examples.

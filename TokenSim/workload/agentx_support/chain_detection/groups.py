@@ -6,16 +6,7 @@ from __future__ import annotations
 
 import heapq
 import numpy as np
-from .records import (
-    _EPSILON_SECONDS,
-    _NormalRequestT,
-    IndexedRequest,
-    _req_end,
-    _np_lcp,
-    ChainFork,
-    AgentChain,
-    ChainDetectionResult,
-)
+from .records import _req_end, _np_lcp, ChainDetectionResult
 
 
 def _overlap_components(cands: list[_IntervalCand]) -> list[list[_IntervalCand]]:

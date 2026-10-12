@@ -13,7 +13,7 @@ from TokenSim.operator_data.workload import (
     generation_attention_work,
     moe_work,
 )
-from tests.support.operator_data import SOURCE, ROOT, _meta, _gemm_rows
+from tests.support.operator_data import ROOT
 
 
 class WorkloadFormulaTest(unittest.TestCase):

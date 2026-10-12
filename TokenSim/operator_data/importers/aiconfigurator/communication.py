@@ -9,12 +9,9 @@ from .discovery import (
     _map_dtype,
     _read_parquet,
     _has_table,
-    _version_key,
-    _latest_version,
     _select,
     _candidates,
     _version_label,
-    _system_gpus_per_node,
     _A2A_MODE_MAP,
     _OPERATION_MAP,
 )

@@ -11,7 +11,6 @@ from .stats import (
     get_prefix_reuse_stats,
     get_connector_stats,
     get_parallel_stats,
-    get_cache_capacity_stats,
     get_latency_stats,
     analytical_share_by_table,
     get_moe_stats,

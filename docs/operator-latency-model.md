@@ -1,6 +1,6 @@
 # Operator Latency Model (operator_table backend)
 
-The `operator_table` latency backend (`TokenSim/latency/operator_table.py`) estimates the duration of every scheduler step.
+The `operator_table` latency backend (`TokenSim/latency/operator_table/backend.py`) estimates the duration of every scheduler step.
 It breaks each worker's model layers into matrix multiplications (GEMMs), attention, mixture-of-experts (MoE) operations, elementwise kernels and communication between groups of workers (collectives).
 For each operator, it looks up measurements for that worker's device, inference framework, data type and dimensions.
 If measurements cannot answer a query, the configured fallback policy can use a formula-based model of the device family.

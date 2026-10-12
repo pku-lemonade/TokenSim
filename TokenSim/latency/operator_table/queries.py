@@ -8,7 +8,7 @@ from TokenSim.llm.llm_request import Request
 from TokenSim.operator_data.analytical import Calibration
 from TokenSim.operator_data.lookup import MissingOperatorDataError
 from TokenSim.operator_data.workload import context_attention_work
-from .stats import OperatorStats, OperatorEstimate, _MOE_DISTRIBUTION_CANDIDATES
+from .stats import OperatorEstimate
 
 
 class OperatorQueries:

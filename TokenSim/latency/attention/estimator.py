@@ -8,13 +8,16 @@ from TokenSim.errors import ConfigurationError
 from TokenSim.operator_data.lookup import LookupPolicy, OperatorLookup
 from TokenSim.operator_data.schema import TABLE_SPECS
 from TokenSim.latency.attention_work import CompressedAttentionWork
-from .estimates import AttentionEstimate
 from .lookup import AttentionLookup
 from .decode import DecodeAttention
 
 
 class CompressedAttentionEstimator(AttentionLookup, DecodeAttention):
-    """Price complete compressed-attention modules and mixed scheduler batches."""
+    """Price one local layer's complete attention module for each layer kind.
+
+    The measured table includes projection paths, compressor, indexer, sparse attention and output projection.
+    Callers must exclude these projections from the generic projection estimates.
+    """
 
     def __init__(self, backend):
         self.backend = backend

@@ -9,7 +9,7 @@ from TokenSim.operator_data.lookup import (
     OperatorLookup,
 )
 from TokenSim.operator_data.package import OperatorDataPackage
-from tests.support.operator_data import SOURCE, ROOT, _meta, _gemm_rows
+from tests.support.operator_data import _meta, _gemm_rows
 
 
 class LookupTest(unittest.TestCase):

@@ -22,15 +22,7 @@ from TokenSim.placement import (
 )
 from TokenSim.moe import build_expert_placement
 from TokenSim.config.model_config import ModelSpec
-from .messages import (
-    Task,
-    Message,
-    WorkerStatus,
-    Worker,
-    RequestCompletionDebugPrinter,
-    _request_ids,
-    _merge_connector_metadata,
-)
+from .messages import Task, Worker, RequestCompletionDebugPrinter
 from .worker import LLMWorker
 
 logger = logging.getLogger(__name__)

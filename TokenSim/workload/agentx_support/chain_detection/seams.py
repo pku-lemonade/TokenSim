@@ -6,16 +6,7 @@ from __future__ import annotations
 
 import heapq
 import numpy as np
-from .records import (
-    _EPSILON_SECONDS,
-    _NormalRequestT,
-    IndexedRequest,
-    _req_end,
-    _np_lcp,
-    ChainFork,
-    AgentChain,
-    ChainDetectionResult,
-)
+from .records import _EPSILON_SECONDS, _NormalRequestT, _req_end, _np_lcp, AgentChain
 
 
 def _last_hash_outer_idx(chain: AgentChain) -> int | None:
