@@ -100,7 +100,9 @@ def _run_single_request_p2p() -> (
     env = simpy.Environment()
     cluster = _pd_cluster()
     backend = _DeterministicBackend()
-    with patch("TokenSim.llm.llm_engine.build_latency_backend", return_value=backend):
+    with patch(
+        "TokenSim.llm.engine.worker.build_latency_backend", return_value=backend
+    ):
         engine = LLMEngine(
             env=env,
             kv_transfer_config=cluster.effective_kv_transfer(),
