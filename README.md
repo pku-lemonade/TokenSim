@@ -21,7 +21,8 @@ The project paper is [TokenSim: Enabling Hardware and Software Exploration for L
 - Model configurations can select complete measured modules for compressed sparse attention, mixing residual streams through hyper-connections and fused mixture-of-experts (MoE) operations.
 - Multi-token prediction proposes draft tokens for the model to verify, with a configured average number of accepted tokens per step.
 - For MoE models, TokenSim models expert placement, token routing, communication between expert workers and the work assigned to each expert.
-- KV data can move directly between workers, be offloaded to CPU memory or use a Mooncake store with memory, SSD and optional high-bandwidth flash (HBF) tiers.
+- KV data can move directly between workers, be offloaded to CPU memory or use a Mooncake store with memory, SSD and optional storage backend plugins.
+  A separately installable high-bandwidth flash (HBF) plugin provides a storage example.
   Experimental HBF1/HBF2 GPU memory variants are independent device examples.
 - Communication time follows the cluster's hierarchy of interconnects and combines fixed transfer latency with message size divided by effective bandwidth.
 - Workloads include generated request lengths, JSON and JSONL traces, and AgentX coding-agent traces whose requests follow their recorded dependencies.
@@ -149,6 +150,7 @@ The [`docs/`](docs/) directory contains detailed feature descriptions, configura
 | [Mixture-of-experts](docs/moe.md) | Expert placement, token routing distributions and trace histograms, load imbalance, dispatch/combine communication and fused expert modules |
 | [Prefix caching](docs/prefix-cache.md) | Prefix matching conditions, cache isolation, reuse of generated output and cache-hit metrics |
 | [Mooncake storage](docs/mooncake.md) | Connectors, direct transfers, shared storage, uniform/grouped cache layouts, memory/disk tiers and transfer timing |
+| [Storage backend plugins](docs/storage-backends.md) | Backend contracts, configuration, lazy loading, ownership and per-instance metrics |
 | [HBF examples](docs/hbf.md) | Optional flash storage, independent GPU memory variants, byte units and migration from the HBF snapshot |
 | [AgentX workloads](docs/agentx.md) | Trace downloads, request dependencies, warmup, concurrency, stopping and cancellation, replay logs and comparison with InferenceX measurements |
 | [AIConfigurator data](docs/aiconfigurator.md) | Importing measured tables, rebuilding data packages, selecting operator-module scopes, data sources and latency units |

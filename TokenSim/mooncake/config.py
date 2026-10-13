@@ -6,6 +6,8 @@ from numbers import Integral, Real
 import math
 
 from TokenSim.errors import ConfigurationError
+from TokenSim.storage import BackendSpec, StorageBackendFactory
+from TokenSim.storage.ssd import validate_plugin_selection
 
 
 SUPPORTED_CONNECTORS = {
@@ -15,7 +17,6 @@ SUPPORTED_CONNECTORS = {
 }
 SUPPORTED_MODES = {"embedded", "standalone-store"}
 SUPPORTED_PROTOCOLS = {"tcp", "rdma", "nvlink", "nvmeof"}
-SUPPORTED_OFFLOAD_TIERS = {"ssd", "hbf"}
 SUPPORTED_ADMISSION_POLICIES = {"always", "never"}
 SUPPORTED_EVICTION_POLICIES = {"lru", "none"}
 SUPPORTED_SAVE_POLICIES = {"mooncake", "every_step", "once"}
@@ -33,6 +34,7 @@ class MooncakeConfig:
     protocol: str = "rdma"
     global_segment_size: int = 8 * _GB
     local_buffer_size: int = 1 * _GB
+    offload: BackendSpec | dict[str, Any] | None = None
     enable_offload: bool = False
     offload_tier: str = "ssd"
     ssd_capacity_bytes: int = 0
@@ -40,13 +42,6 @@ class MooncakeConfig:
     ssd_write_bandwidth_bytes_per_s: float = 3 * _GB
     ssd_read_latency_us: float = 100.0
     ssd_write_latency_us: float = 200.0
-    hbf_capacity_bytes: int = 0
-    hbf_seq_read_bandwidth_bytes_per_s: float = 128 * _GB
-    hbf_seq_write_bandwidth_bytes_per_s: float = 128 * _GB
-    hbf_random_4k_read_bandwidth_bytes_per_s: float | None = None
-    hbf_random_4k_write_bandwidth_bytes_per_s: float | None = None
-    hbf_read_latency_us: float = 12.0
-    hbf_write_latency_us: float = 120.0
     replica_num: int = 1
     admission_policy: str = "always"
     eviction_policy: str = "lru"
@@ -61,7 +56,6 @@ class MooncakeConfig:
     bandwidth_bytes_per_s: float | None = None
     memory_capacity_blocks: int | None = None
     ssd_capacity_blocks: int | None = None
-    hbf_capacity_blocks: int | None = None
     preferred_segment: str | None = None
     group_id: int = 0
     pcp_rank: int = 0
@@ -91,11 +85,21 @@ class MooncakeConfig:
                 f"unsupported Mooncake protocol {self.protocol!r}; expected one of "
                 + f"{sorted(SUPPORTED_PROTOCOLS)}"
             )
-        if self.offload_tier not in SUPPORTED_OFFLOAD_TIERS:
+        if self.offload_tier != "ssd":
             raise ConfigurationError(
-                f"unsupported Mooncake offload_tier {self.offload_tier!r}; "
-                + f"expected one of {sorted(SUPPORTED_OFFLOAD_TIERS)}"
+                "legacy offload_tier must be ssd; select plugins with offload.backend"
             )
+        if self.offload is not None:
+            if not isinstance(self.enable_offload, bool):
+                raise ConfigurationError("enable_offload must be a boolean")
+            validate_plugin_selection(self)
+            self.offload = BackendSpec.from_mapping(self.offload)
+            backend = StorageBackendFactory.create(self.offload)
+            if backend.capacity_bytes <= 0:
+                raise ConfigurationError(
+                    "enabled storage backend needs positive capacity_bytes"
+                )
+            self.enable_offload = True
         if self.admission_policy not in SUPPORTED_ADMISSION_POLICIES:
             raise ConfigurationError(
                 "unsupported Mooncake admission_policy "
@@ -124,7 +128,6 @@ class MooncakeConfig:
             "pcp_rank",
             "dcp_rank",
             "ssd_capacity_bytes",
-            "hbf_capacity_bytes",
         ):
             value = getattr(self, name)
             minimum = 1 if name in {"replica_num", "num_nics", "parallel_paths"} else 0
@@ -140,33 +143,16 @@ class MooncakeConfig:
                 raise ConfigurationError(f"{name} must be a boolean")
         if self.transfer_overlap and not self.load_async:
             raise ConfigurationError("transfer_overlap requires load_async")
-        for direction in ("read", "write"):
-            seq_name = f"hbf_seq_{direction}_bandwidth_bytes_per_s"
-            _finite_number(getattr(self, seq_name), seq_name, positive=True)
-            name = f"hbf_random_4k_{direction}_bandwidth_bytes_per_s"
-            if getattr(self, name) is None:
-                setattr(
-                    self,
-                    name,
-                    0.8 * getattr(self, seq_name),
-                )
         for name in (
             "ssd_read_bandwidth_bytes_per_s",
             "ssd_write_bandwidth_bytes_per_s",
             "ssd_read_latency_us",
             "ssd_write_latency_us",
-            "hbf_seq_read_bandwidth_bytes_per_s",
-            "hbf_seq_write_bandwidth_bytes_per_s",
-            "hbf_random_4k_read_bandwidth_bytes_per_s",
-            "hbf_random_4k_write_bandwidth_bytes_per_s",
-            "hbf_read_latency_us",
-            "hbf_write_latency_us",
         ):
             _finite_number(getattr(self, name), name, positive="bandwidth" in name)
         for name in (
             "memory_capacity_blocks",
             "ssd_capacity_blocks",
-            "hbf_capacity_blocks",
             "host_available_bytes",
         ):
             value = getattr(self, name)
@@ -190,18 +176,34 @@ class MooncakeConfig:
         _finite_number(self.transfer_utilization, "transfer_utilization", positive=True)
         if self.transfer_utilization > 1:
             raise ConfigurationError("transfer_utilization must be in (0, 1]")
-        capacity_blocks = getattr(self, f"{self.offload_tier}_capacity_blocks")
-        capacity_bytes = getattr(self, f"{self.offload_tier}_capacity_bytes")
-        if self.enable_offload and (
-            capacity_blocks == 0 or capacity_blocks is None and capacity_bytes == 0
+        if (
+            self.enable_offload
+            and self.offload is None
+            and (
+                self.ssd_capacity_blocks == 0
+                or self.ssd_capacity_blocks is None
+                and self.ssd_capacity_bytes == 0
+            )
         ):
             raise ConfigurationError(
-                f"enabled {self.offload_tier.upper()} offload needs a positive capacity"
+                "enabled SSD offload needs a positive SSD capacity"
             )
 
 
 def parse_mooncake_config(value: dict[str, Any] | None = None) -> MooncakeConfig:
     raw = dict(value or {})
+    if raw.get("offload") is not None:
+        if (
+            any(name.startswith("ssd_") for name in raw)
+            or raw.get("offload_tier", "ssd") != "ssd"
+        ):
+            raise ConfigurationError(
+                "offload plugins and legacy SSD options cannot be combined"
+            )
+        if raw.get("enable_offload") is False:
+            raise ConfigurationError(
+                "offload selects an enabled backend; remove enable_offload=false"
+            )
     _normalize_size(raw, "global_segment_size", "global_segment_size_gb")
     _normalize_size(raw, "local_buffer_size", "local_buffer_size_gb")
     try:

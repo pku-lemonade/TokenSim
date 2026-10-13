@@ -6,17 +6,21 @@
         "global_segment_size_gb": 1,
         "local_buffer_size_gb": 1,
         "memory_capacity_blocks": 1,
-        "enable_offload": true,
-        "offload_tier": "hbf",
-        "hbf_read_latency_us": 12,
-        "hbf_write_latency_us": 120,
         "replica_num": 1,
         "admission_policy": "always",
         "eviction_policy": "lru",
         "load_async": false,
         "transfer_overlap": false,
-        "hbf_capacity_bytes": 1099511627776,
-        "hbf_seq_read_bandwidth_bytes_per_s": 137438953472,
-        "hbf_seq_write_bandwidth_bytes_per_s": 137438953472
+        "offload": {
+            "backend": "tokensim_hbf:HBFBackend",
+            "name": "hbf",
+            "config": {
+                "read_latency_us": 12,
+                "write_latency_us": 120,
+                "capacity_bytes": 1099511627776,
+                "seq_read_bandwidth_bytes_per_s": 137438953472,
+                "seq_write_bandwidth_bytes_per_s": 137438953472
+            }
+        }
     }
 }

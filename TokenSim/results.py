@@ -117,6 +117,7 @@ class LLMResult:
     moe_straggler_latency: float = 0
     moe_all2all_event_count: int = 0
     moe_routed_token_count: int = 0
+    storage_metrics: dict[str, dict[str, Any]] | None = None
     mooncake_get_count: int = 0
     mooncake_put_count: int = 0
     mooncake_store_hit_count: int = 0
@@ -127,11 +128,6 @@ class LLMResult:
     mooncake_ssd_read_bytes: int = 0
     mooncake_ssd_write_blocks: int = 0
     mooncake_ssd_write_bytes: int = 0
-    mooncake_hbf_tier_hit_count: int = 0
-    mooncake_hbf_read_blocks: int = 0
-    mooncake_hbf_read_bytes: int = 0
-    mooncake_hbf_write_blocks: int = 0
-    mooncake_hbf_write_bytes: int = 0
     mooncake_transferred_bytes: int = 0
     mooncake_effective_transfer_bandwidth_gib_per_s: float = 0
     mooncake_transfer_latency: float = 0

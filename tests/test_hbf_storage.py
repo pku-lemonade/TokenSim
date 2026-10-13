@@ -17,24 +17,36 @@ from TokenSim.mooncake.config import MooncakeConfig, parse_mooncake_config
 from TokenSim.mooncake.pool_key import KeyMetadata, PoolKey
 from TokenSim.mooncake.ssd import OffloadTier
 from TokenSim.mooncake.store import MooncakeStore
+from TokenSim.reporting.stats import get_mooncake_stats
+from TokenSim.storage import IORequest
+from tests.support.storage import example_storage_package
 
 ROOT = Path(__file__).resolve().parents[1]
 GIB = 1 << 30
 
 
-def hbf_config(**options):
+def hbf_config(capacity_bytes=4 * 4096, **options):
     return MooncakeConfig(
-        **{
-            "enable_offload": True,
-            "offload_tier": "hbf",
-            "hbf_capacity_blocks": 4,
-            "memory_capacity_blocks": 0,
-            **options,
-        }
+        memory_capacity_blocks=0,
+        offload={
+            "backend": "tokensim_hbf:HBFBackend",
+            "name": "hbf",
+            "config": {"capacity_bytes": capacity_bytes, **options},
+        },
     )
 
 
+def hbf_metrics(stats):
+    return stats.storage_metrics.as_dict()["default"]["hbf"]
+
+
 class HBFStorageTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        context = example_storage_package()
+        context.__enter__()
+        cls.addClassCleanup(context.__exit__, None, None, None)
+
     def test_runtime_reads_hbf_after_gpu_eviction_and_exports_media_counters(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory)
@@ -60,10 +72,12 @@ class HBFStorageTest(unittest.TestCase):
                     {
                         "kv_connector": "MooncakeStoreConnector",
                         "kv_connector_extra_config": {
-                            "enable_offload": True,
-                            "offload_tier": "hbf",
                             "memory_capacity_blocks": 0,
-                            "hbf_capacity_blocks": 8,
+                            "offload": {
+                                "backend": "tokensim_hbf:HBFBackend",
+                                "name": "hbf",
+                                "config": {"capacity_bytes": 64 << 20},
+                            },
                         },
                     }
                 )
@@ -110,10 +124,19 @@ class HBFStorageTest(unittest.TestCase):
             )
         self.assertEqual(engine.workers[0].device.device_id, "h100_sxm")
         self.assertEqual(result["notdone"], [])
-        self.assertGreater(result["mooncake_hbf_read_blocks"], 0)
-        self.assertGreater(result["mooncake_hbf_write_blocks"], 0)
+        self.assertGreater(
+            result["storage_metrics"]["default"]["hbf"]["read_blocks"], 0
+        )
+        self.assertGreater(
+            result["storage_metrics"]["default"]["hbf"]["write_blocks"], 0
+        )
         self.assertEqual(result["mooncake_ssd_read_blocks"], 0)
         self.assertEqual(result["mooncake_offload_tiers"], ["hbf"])
+        engine.reset_profile_stats()
+        reset = get_mooncake_stats(engine)["storage_metrics"]["default"]["hbf"]
+        self.assertEqual(reset["read_blocks"], 0)
+        self.assertEqual(reset["write_blocks"], 0)
+        self.assertEqual(reset["profile"]["capacity_bytes"], 64 << 20)
 
     def test_presets_use_byte_units_and_do_not_select_accelerator_memory(self):
         for hardware, capacity, bandwidth in (
@@ -138,38 +161,66 @@ class HBFStorageTest(unittest.TestCase):
                         )
                     else:
                         self.assertEqual(
-                            config.hbf_capacity_bytes, capacity * GIB // divisor
+                            config.offload.config["capacity_bytes"],
+                            capacity * GIB // divisor,
                         )
                         self.assertEqual(
-                            config.hbf_seq_read_bandwidth_bytes_per_s,
+                            config.offload.config["seq_read_bandwidth_bytes_per_s"],
                             bandwidth * GIB / divisor,
                         )
 
     def test_bandwidth_curve_has_random_and_sequential_limits(self):
-        config = hbf_config(hbf_seq_read_bandwidth_bytes_per_s=100 * GIB)
-        tier = OffloadTier(config, 4096)
-        self.assertEqual(tier._hbf_bandwidth(4096, is_write=False), 80 * GIB)
-        self.assertEqual(tier._hbf_bandwidth(10 << 20, is_write=False), 100 * GIB)
-        self.assertLess(80 * GIB, tier._hbf_bandwidth(1 << 20, is_write=False))
-        self.assertLess(tier._hbf_bandwidth(1 << 20, is_write=False), 100 * GIB)
+        tier = OffloadTier(hbf_config(seq_read_bandwidth_bytes_per_s=100 * GIB), 4096)
+        backend = tier.backend
+        for size, bandwidth in ((4096, 80 * GIB), (10 << 20, 100 * GIB)):
+            latency = backend.estimate_io(IORequest("read", size)).service_seconds
+            self.assertAlmostEqual(latency, 12e-6 + size / bandwidth)
+        middle = backend.estimate_io(IORequest("read", 1 << 20)).service_seconds
+        self.assertLess(12e-6 + (1 << 20) / (100 * GIB), middle)
+        self.assertLess(middle, 12e-6 + (1 << 20) / (80 * GIB))
         self.assertEqual(tier.read("missing").latency, 0)
-        expected = config.hbf_write_latency_us / 1e6 + 4096 / (0.8 * 128 * GIB)
+        expected = 120e-6 + 4096 / (0.8 * 128 * GIB)
         self.assertAlmostEqual(tier.write("key", 1).latency, expected)
 
-    def test_invalid_hbf_configuration_cannot_fall_back_to_ssd_capacity(self):
+    def test_invalid_options_are_validated_by_the_plugin(self):
         for values in (
-            {"hbf_capacity_blocks": -1},
-            {"hbf_capacity_bytes": 1.5},
-            {"hbf_seq_read_bandwidth_bytes_per_s": 0},
-            {"hbf_random_4k_write_bandwidth_bytes_per_s": float("nan")},
-            {"hbf_read_latency_us": -1},
-            {"enable_offload": True, "offload_tier": "hbf", "ssd_capacity_blocks": 10},
+            {"capacity_bytes": -1},
+            {"capacity_bytes": 1.5},
+            {"seq_read_bandwidth_bytes_per_s": 0},
+            {"random_4k_write_bandwidth_bytes_per_s": float("nan")},
+            {"read_latency_us": -1},
+            {"unknown_option": 1},
         ):
             with self.subTest(values=values), self.assertRaises(ConfigurationError):
-                parse_mooncake_config(values)
+                hbf_config(**values)
+        with self.assertRaises(ConfigurationError):
+            parse_mooncake_config(
+                {
+                    "offload": {"backend": "tokensim_hbf:HBFBackend", "config": {}},
+                    "ssd_capacity_blocks": 10,
+                }
+            )
+
+    def test_descriptions_normalize_explicit_defaults_and_access_patterns(self):
+        default = OffloadTier(hbf_config(), 4096).backend
+        explicit = OffloadTier(
+            hbf_config(read_latency_us=12, write_latency_us=120), 4096
+        ).backend
+        self.assertEqual(
+            json.dumps(default.describe(), sort_keys=True),
+            json.dumps(explicit.describe(), sort_keys=True),
+        )
+        size = 1 << 20
+        random = default.estimate_io(IORequest("read", size, "random")).service_seconds
+        sequential = default.estimate_io(
+            IORequest("read", size, "sequential")
+        ).service_seconds
+        automatic = default.estimate_io(IORequest("read", size)).service_seconds
+        self.assertLess(sequential, automatic)
+        self.assertLess(automatic, random)
 
     def test_writes_become_visible_on_completion_and_reads_pin_objects(self):
-        store = MooncakeStore(hbf_config(hbf_capacity_blocks=1), 4096)
+        store = MooncakeStore(hbf_config(capacity_bytes=4096), 4096)
         a, b = [PoolKey(KeyMetadata("test"), key) for key in "ab"]
         timing = store.put([a], now=0, initial_delay=1)
         self.assertGreater(timing, 0)
@@ -185,12 +236,12 @@ class HBFStorageTest(unittest.TestCase):
         store.put([b], now=ready + 2 + read_latency)
         self.assertNotIn(a.to_string(), store.objects)
         self.assertIn(b.to_string(), store.objects)
-        self.assertEqual(store.stats.hbf_read_bytes, 4096)
+        self.assertEqual(hbf_metrics(store.stats)["read_bytes"], 4096)
         self.assertEqual(store.stats.ssd_read_bytes, 0)
-        self.assertEqual(store.stats.hbf_write_blocks, 2)
+        self.assertEqual(hbf_metrics(store.stats)["write_blocks"], 2)
 
     def test_eviction_removes_stale_metadata_and_overwrite_preserves_capacity(self):
-        config = hbf_config(hbf_capacity_blocks=2)
+        config = hbf_config(capacity_bytes=2 * 4096)
         tier = OffloadTier(config, 4096)
         tier.write("a", 1)
         tier.write("b", 1)
@@ -206,7 +257,7 @@ class HBFStorageTest(unittest.TestCase):
         self.assertEqual(hit.tier, "hbf")
         profile = store.stats.as_dict()["mooncake_offload_profiles"][0]
         self.assertTrue(profile["write_blocking"])
-        self.assertEqual(profile["hbf_read_latency_us"], 12)
+        self.assertEqual(profile["profile"]["read_latency_us"], 12)
 
     def test_connector_uses_shared_prefix_policy_and_counts_hbf_hits(self):
         cache = SimpleNamespace(
@@ -215,9 +266,11 @@ class HBFStorageTest(unittest.TestCase):
         config = KVTransferConfig(
             kv_connector="MooncakeStoreConnector",
             kv_connector_extra_config={
-                "enable_offload": True,
-                "offload_tier": "hbf",
-                "hbf_capacity_blocks": 8,
+                "offload": {
+                    "backend": "tokensim_hbf:HBFBackend",
+                    "name": "hbf",
+                    "config": {"capacity_bytes": 128},
+                },
                 "memory_capacity_blocks": 0,
             },
         )
@@ -236,16 +289,18 @@ class HBFStorageTest(unittest.TestCase):
         connector.bind_connector_metadata(metadata)
         self.assertGreater(connector.start_load_kv(), 0)
         self.assertEqual(connector.mooncake_stats.mooncake_disk_hit_tokens, 48)
-        self.assertEqual(connector.mooncake_stats.hbf_read_blocks, 3)
+        self.assertEqual(hbf_metrics(connector.mooncake_stats)["read_blocks"], 3)
 
     def test_grouped_cache_offload_is_rejected_by_existing_runtime_boundary(self):
         config = KVTransferConfig(
             kv_connector="MooncakeStoreConnector",
             kv_connector_extra_config={
                 "cache_layout": "grouped",
-                "enable_offload": True,
-                "offload_tier": "hbf",
-                "hbf_capacity_blocks": 8,
+                "offload": {
+                    "backend": "tokensim_hbf:HBFBackend",
+                    "name": "hbf",
+                    "config": {"capacity_bytes": 128},
+                },
             },
         )
         with self.assertRaisesRegex(ConfigurationError, "single-replica DRAM"):

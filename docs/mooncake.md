@@ -141,8 +141,9 @@ Integer size fields count bytes, and the `global_segment_size_gb` and `local_buf
 
 ## Memory and SSD Tiers
 
-Uniform stores also support optional high-bandwidth flash (HBF) through `offload_tier: "hbf"`.
-HBF shares the store's admission, eviction, readiness and prefix-matching rules with SSD.
+Uniform stores support optional storage backend plugins through the generic `offload` object.
+See [storage backend plugins](storage-backends.md) for the interface and configuration.
+The [optional high-bandwidth flash (HBF) package](../examples/storage/hbf/) shares the store's admission, eviction, readiness and prefix-matching rules with SSD.
 Its media model and independent GPU memory examples are documented in [HBF examples](hbf.md).
 
 With `eviction_policy: "lru"`, memory pressure evicts the least recently used object that no transfer is using.
@@ -225,14 +226,11 @@ The following table describes the fields of `kv_connector_extra_config`.
 | `transfer_utilization` | 1.0 | Fraction of peak transfer bandwidth, in `(0, 1]`; the bundled grouped example uses 0.75 |
 | `preferred_segment` | unset | Segment label stored with admitted objects (uniform only) |
 | `group_id`, `pcp_rank`, `dcp_rank` | 0 | Additional pool-key namespaces |
-| `enable_offload`, `offload_tier` | `false`, `ssd` | Optional offload tier; `ssd` or `hbf` |
+| `offload` | unset | Optional backend reference, instance name and plugin-owned configuration |
+| `enable_offload`, `offload_tier` | `false`, `ssd` | Legacy SSD offload switch and tier |
 | `ssd_capacity_blocks`, `ssd_capacity_bytes` | unset, 0 | SSD capacity; blocks take precedence |
 | `ssd_read_bandwidth_bytes_per_s`, `ssd_write_bandwidth_bytes_per_s` | 7 GiB/s, 3 GiB/s | SSD bandwidth |
 | `ssd_read_latency_us`, `ssd_write_latency_us` | 100, 200 | SSD fixed latency |
-| `hbf_capacity_blocks`, `hbf_capacity_bytes` | unset, 0 | HBF capacity; blocks take precedence |
-| `hbf_seq_read_bandwidth_bytes_per_s`, `hbf_seq_write_bandwidth_bytes_per_s` | 128 GiB/s, 128 GiB/s | Sequential HBF bandwidth |
-| `hbf_random_4k_read_bandwidth_bytes_per_s`, `hbf_random_4k_write_bandwidth_bytes_per_s` | 80% of sequential | Small-operation HBF bandwidth |
-| `hbf_read_latency_us`, `hbf_write_latency_us` | 12, 120 | HBF fixed latency |
 
 Capacity fields ending in `_bytes` are byte counts; bandwidth fields ending in `_bytes_per_s` are bytes per second.
 Conflicting size aliases, fractional byte budgets and invalid rates are rejected.
@@ -267,7 +265,8 @@ Grouped storage is unsupported inside `MultiConnector`.
 ## Metrics
 
 Fields beginning with `connector_` report transfer counts, blocks, bytes and time spent waiting.
-Fields beginning with `mooncake_` report store reads and writes, hits and misses, memory and offload hit counts, SSD/HBF operations, transfer and store latency, and effective bandwidth.
+Fields beginning with `mooncake_` report store reads and writes, hits and misses, memory and offload hit counts, legacy SSD operations, transfer and store latency, and effective bandwidth.
+`storage_metrics` reports media operations for every backend, grouped by shared master and storage instance.
 They also record accepted and rejected writes, evictions, pending asynchronous jobs, hit tokens from GPU, memory and disk, sampled cache keys and the effective offload configuration.
 
 Operation counters belong to each connector, even when its store is shared.

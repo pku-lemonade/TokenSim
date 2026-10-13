@@ -8,6 +8,7 @@ from TokenSim.config.kv_transfer_config import KVTransferConfig
 from TokenSim.hardware import HardwareContext
 from TokenSim.operator_data.analytical.gpu import GPURooflineModel
 from tests.support.hardware import make_model
+from tests.support.storage import example_storage_package
 
 ROOT = Path(__file__).resolve().parents[1]
 GIB = 1 << 30
@@ -16,6 +17,9 @@ GIB = 1 << 30
 class HBFDeviceTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        context = example_storage_package()
+        context.__enter__()
+        cls.addClassCleanup(context.__exit__, None, None, None)
         cls.hardware = HardwareContext.load(ROOT / "data")
 
     def test_memory_variants_preserve_compute_and_links_with_separate_provenance(self):

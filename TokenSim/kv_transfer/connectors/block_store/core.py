@@ -79,11 +79,7 @@ class BlockStore(BlockTransferPlans, BaseKVConnector):
             ranks=world_size,
         )
         self.mooncake_stats = MooncakeStats()
-        if self.service.store.offload is not None:
-            self.mooncake_stats.record_offload_tier(self.service.store.offload.tier)
-            self.mooncake_stats.record_offload_profile(
-                self.service.store._offload_profile()
-            )
+        self.service.store.register_storage_stats(self.mooncake_stats)
 
     def bind_runtime(self, worker):
         self._bind_service(len(worker.engine.workers), worker.env, worker.engine)

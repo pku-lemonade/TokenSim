@@ -2,10 +2,17 @@
 
 High-bandwidth flash (HBF) is an optional storage tier for uniform attention key/value (KV) blocks in a Mooncake store.
 Selecting HBF storage leaves the cluster's accelerator specifications unchanged.
+The optional implementation lives in the independently installable `examples/storage/hbf/` package and uses the [storage backend plugin interface](storage-backends.md).
 The HBF model and memory-variant parameters originate from the public HBF snapshot, commit `0b8d751`, and its [HBF characterization paper](https://arxiv.org/abs/2608.11668).
 TokenSim simulates these devices without accessing physical HBF hardware.
 
 ## Ordinary GPUs with HBF storage
+
+Install the example plugin from the repository root.
+
+```bash
+python -m pip install -e examples/storage/hbf
+```
 
 Use a normal cluster configuration and select HBF through `--kv_transfer_config`.
 This example uses eight standard H100 GPUs, a 1 TiB HBF store and an assumed sequential bandwidth of 128 GiB/s in each direction.
@@ -56,9 +63,29 @@ Add measurements under the variant's own device ID when they become available.
 
 ## Storage timing and configuration units
 
-HBF capacity uses `hbf_capacity_bytes` or an explicit `hbf_capacity_blocks` test budget.
-Bandwidth fields use bytes per second: `hbf_seq_read_bandwidth_bytes_per_s`, `hbf_seq_write_bandwidth_bytes_per_s`, `hbf_random_4k_read_bandwidth_bytes_per_s` and `hbf_random_4k_write_bandwidth_bytes_per_s`.
-Fixed media latency uses `hbf_read_latency_us` and `hbf_write_latency_us`.
+The connector's `offload` object selects `tokensim_hbf:HBFBackend` and supplies plugin-owned options in `config`.
+The example configurations name the instance `hbf`.
+
+```json
+{
+  "offload": {
+    "backend": "tokensim_hbf:HBFBackend",
+    "name": "hbf",
+    "config": {
+      "capacity_bytes": 1099511627776,
+      "seq_read_bandwidth_bytes_per_s": 137438953472,
+      "seq_write_bandwidth_bytes_per_s": 137438953472,
+      "read_latency_us": 12,
+      "write_latency_us": 120
+    }
+  }
+}
+```
+
+Capacity uses `capacity_bytes`.
+Bandwidth fields use bytes per second: `seq_read_bandwidth_bytes_per_s`, `seq_write_bandwidth_bytes_per_s`, `random_4k_read_bandwidth_bytes_per_s` and `random_4k_write_bandwidth_bytes_per_s`.
+Fixed media latency uses `read_latency_us` and `write_latency_us`.
+The plugin validates these fields and supplies their defaults.
 Each operation costs its fixed latency plus transferred bytes divided by effective bandwidth.
 Missing random 4 KiB bandwidth values default to 80% of sequential bandwidth.
 The effective bandwidth interpolates logarithmically between 4 KiB and 10 MiB operation sizes and remains at the endpoint values outside that interval.
@@ -66,8 +93,9 @@ The effective bandwidth interpolates logarithmically between 4 KiB and 10 MiB op
 HBF uses the same store admission, prefix matching and ownership rules as SSD.
 Writes become visible after their modeled completion time, and in-progress reads pin their objects against eviction.
 Synchronous saves include media latency in the caller's blocking time.
-The connector's existing asynchronous options govern transfer overlap independently of the selected media.
-Results export HBF counters as `mooncake_hbf_*` and describe the configured media in `mooncake_offload_profiles`.
+The uniform connector waits for I/O completion and rejects `transfer_overlap`, independently of the selected backend.
+Results export HBF counters under `storage_metrics[master]["hbf"]` and describe the configured media in `mooncake_offload_profiles`.
+The generic dictionary replaces the fixed `mooncake_hbf_*` result fields.
 
 Grouped KV pages currently use the native DRAM page store.
 The runtime rejects HBF and SSD offload with `cache_layout=grouped`.
@@ -80,6 +108,8 @@ Their GPU-specific names identify the original experiments; each file now config
 The snapshot's `*_capacity_gb` and `*_bw_gbps` fields used binary GiB units, so the migrated values multiply those inputs by `2**30`.
 GPU memory bandwidth in the device examples follows the snapshot's decimal TB/s values and uses `10**12` bytes/s per TB/s.
 `accelerator_memory_preset`, `target_hardware` and `hbf_preset` have been removed from storage configurations.
+Move the intermediate flat `hbf_*` options into `offload.config` and remove their `hbf_` prefixes.
+Select `tokensim_hbf:HBFBackend` through `offload.backend`; the core rejects the old flat options.
 Choose the corresponding device ID in the cluster to reproduce a GPU memory variant.
 
 The merged runtime uses main's device catalog and operator latency model.

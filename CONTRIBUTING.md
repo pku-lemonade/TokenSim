@@ -30,8 +30,8 @@ Format Python code with the project's pinned Black version before every commit.
 The formatting step rewrites files, while the check confirms that formatting is complete.
 
 ```bash
-python -m black TokenSim tests benchmark.py scripts
-python -m black --check TokenSim tests benchmark.py scripts
+python -m black TokenSim tests benchmark.py scripts examples/storage/hbf
+python -m black --check TokenSim tests benchmark.py scripts examples/storage/hbf
 python -m unittest discover \
   -s tests \
   -t .

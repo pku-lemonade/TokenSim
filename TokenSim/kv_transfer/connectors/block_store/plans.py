@@ -160,9 +160,11 @@ class BlockTransferPlans:
     def _own_plans(
         self, plans: list[ConnectorTransferPlan]
     ) -> list[ConnectorTransferPlan]:
+        offload = self.service.store.offload
         return [
             plan
             for plan in plans
             if plan.extra.get("connector") == self.name
-            or plan.tier in {"memory", "ssd", "hbf"}
+            or plan.tier == "memory"
+            or (offload is not None and plan.tier == offload.tier)
         ]
