@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from tests.test_af_executor import af_test_resources
 from dataclasses import replace
 
 import simpy
@@ -77,6 +78,7 @@ def _executor(env, cluster, moe_config, plan, compute, transfer):
         hidden_size=plan.hidden_size,
         moe_config=moe_config,
         runtime_plan=plan,
+        resources=af_test_resources(env, cluster, cluster.workers()),
     )
 
 

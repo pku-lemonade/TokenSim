@@ -278,6 +278,9 @@ def _cluster_dict(
             "phases": list(phases),
             "af_block_size": af_block_size,
             "trace_enabled": trace_enabled,
+            "communication_domains": {"node_size": 8,
+                "node_count": (sum(g["num_workers"] for g in worker_groups) + 7) // 8,
+                "placement_strategy": "manual"},
             "links": [link],
         },
     }
@@ -320,6 +323,7 @@ def _two_link_cluster(*, shared_resource):
         ],
         af={
             "enabled": True,
+            "communication_domains": {"node_size": 8, "node_count": 1, "placement_strategy": "manual"},
             "phases": ["prefill", "decode"],
             "af_block_size": 1,
             "trace_enabled": True,
@@ -444,6 +448,18 @@ def _requests(env, count, *, phase="decode", prefill_lengths=None):
     return requests
 
 
+def af_test_resources(env, cluster, workers=None):
+    """Test providers use the same explicit placement as production providers."""
+    from TokenSim.af.resources import AFResourceRegistry
+    from TokenSim.hardware.placement import build_topology_placement
+    workers = cluster.workers() if workers is None else workers
+    hardware = af_test_hardware(devices=tuple(sorted({w.hardware for w in workers})),
+                                networks=tuple(sorted({w.nettype for w in workers})))
+    placement = (build_topology_placement(cluster, workers, hardware)
+                 if cluster.af.transfer_topology_mode == "physical" else None)
+    return AFResourceRegistry(env, cluster, workers, placement)
+
+
 def _executor(
     env,
     cluster,
@@ -462,6 +478,7 @@ def _executor(
         dtype="fp16",
         total_layers=layers,
         hidden_size=16,
+        resources=af_test_resources(env, cluster, cluster.workers()),
     )
 
 

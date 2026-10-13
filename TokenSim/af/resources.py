@@ -4,7 +4,9 @@ import simpy
 
 from TokenSim.config.cluster_config import AFLinkConfig, ClusterConfig, WorkerConfig
 from TokenSim.errors import ConfigurationError
-from TokenSim.hardware.domains import CommunicationDomainConfig, DomainResource, transfer_resources
+from TokenSim.hardware.domains import CommunicationDomainConfig, DomainResource, transfer_resources, physical_domain_config
+from TokenSim.hardware.placement import validate_domain_placement
+from TokenSim.af.snapshot import snapshot
 from TokenSim.af.domain_scheduler import DomainScheduler
 
 
@@ -16,6 +18,10 @@ class AFResourceRegistry:
         worker_configs: list[WorkerConfig],
         placement=None,
     ) -> None:
+        physical = physical_domain_config(cluster_config.af)
+        if physical is not None:
+            validate_domain_placement(placement, worker_configs, physical)
+        self.placement = snapshot(placement)
         self.env = env
         self.cluster_config = cluster_config
         self.worker_configs = {
@@ -57,12 +63,13 @@ class AFResourceRegistry:
             for key, config in cluster_config.af_communication_resources.items()
         }
         config = cluster_config.af.communication_domains or CommunicationDomainConfig()
-        self.node_by_worker = {
+        self.node_by_worker = ({worker_id: self.placement.node_id(worker_id)
+                               for worker_id in self.worker_configs} if physical is not None else {
             worker_id: (placement.device_index(worker_id) if placement is not None else
                         config.device_indices.get(worker.physical_worker_ref.identity,
                                                   worker.device_index if worker.device_index is not None else worker_id)) // config.node_size
             for worker_id, worker in self.worker_configs.items()
-        }
+        })
         nodes = set(range(config.node_count)) if config.node_count else set(self.node_by_worker.values())
         if not set(self.node_by_worker.values()) <= nodes:
             raise ConfigurationError("AF worker placement exceeds communication domain inventory")

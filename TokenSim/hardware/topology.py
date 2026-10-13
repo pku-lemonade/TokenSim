@@ -247,6 +247,18 @@ class TopologyPlacement:
     def device_index(self, worker_id: int) -> int:
         return self.device_index_by_worker.get(worker_id, worker_id)
 
+    def node_id(self, worker_id: int) -> int:
+        """Read a mapped worker's node without guessing a missing GPU index."""
+        if worker_id not in self.device_index_by_worker:
+            raise ConfigurationError(f"placement has no mapping for worker {worker_id}")
+        slot = self.device_index_by_worker[worker_id]
+        if type(slot) is not int or slot < 0:
+            raise ConfigurationError(f"placement worker {worker_id} needs a nonnegative integer GPU slot")
+        size = self.topology.levels[0].size
+        if type(size) is not int or size < 1:
+            raise ConfigurationError("placement node level requires a positive integer size")
+        return self.topology.coordinates(slot)[0]
+
     def layout(self, worker_ids: Sequence[int]) -> GroupLayout:
         return self.topology.group_layout([self.device_index(w) for w in worker_ids])
 

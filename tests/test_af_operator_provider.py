@@ -306,6 +306,8 @@ class TopologyTransferProviderTest(unittest.TestCase):
             TopologyLevel("rack", 2, "ethernet-test"),
             TopologyLevel("cluster", None, "ethernet-test", oversubscription=2),
         ))
+        self.cluster.af.communication_domains = replace(
+            self.cluster.af.communication_domains, node_count=4)
         times = []
         for index in (1, 8, 16):
             placement = TopologyPlacement(topology, {0:0, 1:2, 2:index, 3:24})

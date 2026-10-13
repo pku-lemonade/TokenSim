@@ -1,0 +1,39 @@
+Validation root: D:\youweiz\af分离\TokenSim-Groq
+C:\Users\hsh20\AppData\Local\Programs\Python\Python313\Lib\site-packages\simpy\__init__.py:11: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  from pkg_resources import get_distribution
+......................................................................................................................................................................................................................E................................................................................................................................................................................................................................................................................................................................................
+======================================================================
+ERROR: test_physical_endpoints_use_node_domains_not_rack_hops (tests.test_af_operator_provider.TopologyTransferProviderTest.test_physical_endpoints_use_node_domains_not_rack_hops)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\tests\test_af_operator_provider.py", line 312, in test_physical_endpoints_use_node_domains_not_rack_hops
+    provider = TopologyAFTransferProvider(self.hardware, self.cluster, self.workers, placement)
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\af\operator_provider.py", line 725, in __init__
+    validate_domain_placement(self.placement, worker_configs, physical)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\hardware\placement.py", line 161, in validate_domain_placement
+    raise ConfigurationError("AF physical placement exceeds declared node inventory")
+TokenSim.errors.ConfigurationError: AF physical placement exceeds declared node inventory
+
+----------------------------------------------------------------------
+Ran 551 tests in 476.204s
+
+FAILED (errors=1)
+[workload] Read 1 reqs from dataset "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-test-temp\tmpomi6j_78\moe_pairs.json", prefill average 8.0, decode average 2.0
+[workload] Read 1 reqs from dataset "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-test-temp\tmpexhc3czc\reuse.json", prefill average 32.0, decode average 2.0
+[workload] Read 3 reqs from dataset "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-test-temp\tmp5i2bu86a\trace.json", prefill average 16.0, decode average 1.0
+[workload] Read 2 reqs from dataset "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-test-temp\tmpuoh0pm1o\trace.json", prefill average 16.0, decode average 1.0
+[workload] Read 1 reqs from dataset "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-test-temp\tmpeyrselup\trace.json", prefill average 16.0, decode average 1.0
+[workload] Read 1 reqs from dataset "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-test-temp\tmpeyrselup\trace.json", prefill average 16.0, decode average 1.0
+[workload] Read 1 reqs from dataset "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-test-temp\tmpeyrselup\trace.json", prefill average 16.0, decode average 1.0
+[workload] Read 1 reqs from dataset "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-test-temp\tmpeyrselup\trace.json", prefill average 16.0, decode average 1.0
+[workload] Read 1 reqs from dataset "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-test-temp\tmpeyrselup\trace.json", prefill average 16.0, decode average 1.0
+[workload] Read 1 reqs from dataset "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-test-temp\tmpeyrselup\trace.json", prefill average 16.0, decode average 1.0
+[workload] Read 3 reqs from dataset "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-test-temp\tmpod_j6_84\trace.json", prefill average 16.0, decode average 1.0
+[workload] Read 1 reqs from dataset "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-test-temp\tmpqiej8yg1\trace.json", prefill average 16.0, decode average 1.0
+[workload] Read 3 reqs from dataset "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-test-temp\tmpnffb36z9\trace.jsonl", prefill average 16.0, decode average 1.0
+[workload] Read 2 reqs from dataset "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-test-temp\tmp5rpqp9b1\trace.json", prefill average 16.0, decode average 1.0
+[workload] Read 1 reqs from dataset "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-test-temp\tmpy6hyz8er\trace.json", prefill average 16.0, decode average 1.0
+[workload] Read 2 reqs from dataset "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-test-temp\tmpo57w2m6q\trace.json", prefill average 16.0, decode average 1.0
+[workload] Read 3 reqs from dataset "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-test-temp\tmpdilq2smf\trace.json", prefill average 16.0, decode average 1.0
+[workload] Read 4 reqs from dataset "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-test-temp\tmpwlrlw954\trace.jsonl", prefill average 32.0, decode average 4.0

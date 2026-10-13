@@ -71,6 +71,7 @@ class TrafficPhase:
     dtype: str = "bf16"
     local_work_bytes: int = 0
     layout_permutation: tuple[int, ...] = ()
+    transport_backend: str = "unspecified"
 
     @property
     def wire_bytes(self):
@@ -247,13 +248,9 @@ def point_to_point_plan(source, target, message_bytes, node_by_rank, dtype=None,
     return TrafficPlan("send_recv", (source, target), size, size, (phase,))
 
 
-def all_to_all_plan(ranks, message_bytes, node_by_rank, *, local_fraction=None,
-                    remote_fraction=None, load_imbalance=1.0, destination_redistribution=False, dtype="bf16"):
-    """Expected rank-pair volumes; never invent per-token expert assignments."""
-    ranks = tuple(ranks)
-    size = validated_bytes(message_bytes, dtype)
-    if not ranks or len(set(ranks)) != len(ranks) or any(rank not in node_by_rank for rank in ranks):
-        raise ConfigurationError("all-to-all participants must be nonempty, unique and mapped")
+def validate_all_to_all_parameters(local_fraction=None, remote_fraction=None, load_imbalance=1.0,
+                                   destination_redistribution=False):
+    """Topology-independent validation shared by flat and physical pricing."""
     for fraction in (local_fraction, remote_fraction):
         if fraction is not None and (isinstance(fraction, bool) or not isinstance(fraction, (float, int))
                                      or not math.isfinite(fraction) or not 0 <= fraction <= 1):
@@ -264,6 +261,16 @@ def all_to_all_plan(ranks, message_bytes, node_by_rank, *, local_fraction=None,
         raise ConfigurationError("load_imbalance must be finite and at least one")
     if type(destination_redistribution) is not bool:
         raise ConfigurationError("destination_redistribution must be boolean")
+
+
+def all_to_all_plan(ranks, message_bytes, node_by_rank, *, local_fraction=None,
+                    remote_fraction=None, load_imbalance=1.0, destination_redistribution=False, dtype="bf16"):
+    """Expected rank-pair volumes; never invent per-token expert assignments."""
+    ranks = tuple(ranks)
+    size = validated_bytes(message_bytes, dtype)
+    if not ranks or len(set(ranks)) != len(ranks) or any(rank not in node_by_rank for rank in ranks):
+        raise ConfigurationError("all-to-all participants must be nonempty, unique and mapped")
+    validate_all_to_all_parameters(local_fraction, remote_fraction, load_imbalance, destination_redistribution)
     groups = {}
     for rank in ranks:
         groups.setdefault(node_by_rank[rank], []).append(rank)

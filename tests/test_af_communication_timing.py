@@ -1,4 +1,5 @@
 import unittest
+from tests.test_af_executor import af_test_resources
 from types import SimpleNamespace
 
 import simpy
@@ -41,7 +42,7 @@ def run_case(submit_us=5., complete_us=0., wire_us=3., scope='per_worker', enabl
         cluster = ClusterConfig(**doc)
     env = simpy.Environment()
     executor = AFExecutor(env, cluster, cluster.workers(), ZeroCompute(),
-        WireOnly(wire_us, provider_scope), 'test', 'bf16', total_layers=1, hidden_size=16)
+        WireOnly(wire_us, provider_scope), 'test', 'bf16', total_layers=1, hidden_size=16, resources=af_test_resources(env, cluster, cluster.workers()))
     requests = [SimpleNamespace(id=i, is_prefill=True, prefill_len=1,
         prefill_compute_len=1, context_len=1) for i in range(2)]
     iteration = executor.submit(0, requests, 'prefill')
@@ -133,7 +134,7 @@ class CommunicationTimingTest(unittest.TestCase):
         env = simpy.Environment()
         executor = AFExecutor(env, cluster, cluster.workers(), ZeroCompute(), WireOnly(),
             shape.model_id, 'bf16', total_layers=1, hidden_size=shape.hidden_size,
-            moe_config=moe, runtime_plan=plan)
+            moe_config=moe, runtime_plan=plan, resources=af_test_resources(env, cluster, cluster.workers()))
         request = SimpleNamespace(id=0, is_prefill=False, context_len=4096, generation_idx=0)
         iteration = executor.submit(0, [request], 'decode')
         env.process(executor.run_iteration(iteration))

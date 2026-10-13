@@ -431,8 +431,10 @@ class IntegratedDomainTest(unittest.TestCase):
         from TokenSim.hardware.placement import build_topology_placement
         from types import SimpleNamespace
         cluster = _cluster(a_tp=8, a_dp=1, f_tp=8, f_dp=1)
-        cluster.af.communication_domains = CommunicationDomainConfig(node_size=4, node_count=4,
-                                                                     local_latency_us=1, inter_latency_us=2)
+        cluster.af.communication_domains = CommunicationDomainConfig(node_size=8, node_count=4,
+            local_latency_us=1, inter_latency_us=2,
+            device_indices={f'{pool}:{rank}': offset + (rank // 4) * 8 + rank % 4
+                            for pool, offset in (('a-pool', 0), ('f-pool', 16)) for rank in range(8)})
         cluster.af.service_estimate_cache = cache
         cluster.af.trace_enabled = trace
         workers = cluster.workers()

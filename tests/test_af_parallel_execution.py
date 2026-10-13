@@ -1,4 +1,5 @@
 import unittest
+from tests.test_af_executor import af_test_resources
 from types import SimpleNamespace
 
 import simpy
@@ -96,6 +97,7 @@ def _executor(env):
         total_layers=1,
         hidden_size=16,
         moe_config=moe,
+        resources=af_test_resources(env, cluster, cluster.workers()),
     )
     return executor, compute, transfer
 
@@ -219,6 +221,7 @@ class AFParallelExecutionOracleTest(unittest.TestCase):
             total_layers=1,
             hidden_size=16,
             moe_config=moe,
+            resources=af_test_resources(env, cluster, cluster.workers()),
         )
         slow = executor.submit(0, [_request(20, prefill_tokens=1)], "prefill")
         fast = executor.submit(2, [_request(21, prefill_tokens=1)], "prefill")
@@ -262,6 +265,7 @@ class AFParallelExecutionOracleTest(unittest.TestCase):
                 "bf16",
                 total_layers=1,
                 hidden_size=16,
+                resources=af_test_resources(env, cluster, cluster.workers()),
             )
         self.assertEqual(env.now, 0)
 

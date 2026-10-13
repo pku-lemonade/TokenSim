@@ -160,6 +160,7 @@ class ExecutionNode:
     source_endpoint: AFEndpoint | None = None
     target_endpoint: AFEndpoint | None = None
     participant_endpoints: tuple[AFEndpoint, ...] = ()
+    input_producer_ids: tuple[tuple[str, str], ...] = ()
     tensor_slices: tuple[AFTensorSlice, ...] = ()
     source_layout: AFTensorLayout | None = None
     target_layout: AFTensorLayout | None = None
@@ -223,12 +224,21 @@ class ExecutionNode:
             "tp_group",
             "ep_group",
             "participant_endpoints",
+            "input_producer_ids",
             "tensor_slices",
             "logical_input_bytes_per_rank",
             "logical_output_bytes_per_rank",
             "routing_edges",
         ):
             object.__setattr__(self, field_name, tuple(getattr(self, field_name)))
+        if self.input_producer_ids:
+            endpoints = tuple(endpoint for endpoint, _ in self.input_producer_ids)
+            if (self.kind != "communication" or endpoints != self.physical_workers
+                    or len(set(endpoints)) != len(endpoints)
+                    or any(producer not in self.predecessor_ids for _, producer in self.input_producer_ids)):
+                raise ConfigurationError("collective input bindings must uniquely cover endpoints in participant order and reference predecessors")
+        elif self.metadata.get("collective_input_binding_required"):
+            raise ConfigurationError("collective is missing required input bindings")
 
 
 @dataclass(frozen=True)
@@ -1868,6 +1878,7 @@ class ParallelExecutionPlanner(ConfigurationOwner):
             operation=plan.operation,
             kind="communication",
             predecessor_ids=tuple(producer_ids[item.domain_rank] for item in participants),
+            input_producer_ids=tuple((item.physical_identity, producer_ids[item.domain_rank]) for item in participants),
             stage=None,
             direction=plan.operation,
             source_domain=domain.name,
@@ -1894,6 +1905,7 @@ class ParallelExecutionPlanner(ConfigurationOwner):
             target_layout=target_layout,
             metadata={
                 "after_stage": after_stage,
+                "collective_input_binding_required": True,
                 "original_token_count": (
                     len(
                         {

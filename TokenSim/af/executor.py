@@ -470,6 +470,14 @@ class AFExecutor(ConfigurationOwner):
             done_event = self.env.event()
             done_events.append(done_event)
             predecessors = tuple(done_events[item] for item in predecessor_indices[index])
+            bindings = getattr(node, "input_producer_ids", ())
+            subgroup_inputs = None
+            if (bindings and self.cluster_config.af.transfer_topology_mode == "physical"
+                    and hasattr(self.transfer_provider, "communication_plan")):
+                events_by_id = dict(zip(node.predecessor_ids, predecessors))
+                subgroup_inputs = {endpoint: (producer, events_by_id[producer]) for endpoint, producer in bindings}
+                data_ids = {producer for _, producer in bindings}
+                predecessors = tuple(event for producer, event in events_by_id.items() if producer not in data_ids)
             processes.append(
                 self.env.process(
                     self._run_dag_node_guarded(
@@ -481,6 +489,7 @@ class AFExecutor(ConfigurationOwner):
                         failure_event,
                         failures,
                         done_event,
+                        subgroup_inputs,
                     )
                 )
             )
@@ -518,6 +527,7 @@ class AFExecutor(ConfigurationOwner):
         failure_event: simpy.Event,
         failures: list[BaseException],
         done_event: simpy.Event,
+        subgroup_inputs=None,
     ):
         try:
             if predecessors:
@@ -527,7 +537,11 @@ class AFExecutor(ConfigurationOwner):
                     return
             if failure_event.triggered:
                 return
-            yield from self._run_planned_step(block, layer_id, link, node)
+            if subgroup_inputs is not None:
+                yield from self._run_planned_communication(block, layer_id, link, node,
+                    input_readiness=(subgroup_inputs, failure_event))
+            else:
+                yield from self._run_planned_step(block, layer_id, link, node)
         except simpy.Interrupt:
             return
         except BaseException as exc:
@@ -687,6 +701,7 @@ class AFExecutor(ConfigurationOwner):
         layer_id: int,
         link: AFLinkConfig,
         step: ExecutionNode,
+        input_readiness=None,
     ):
         binding_key = (link.name, step.direction, step.resource_group, step.resource_lane,
                        step.physical_workers if self.cluster_config.af.transfer_topology_mode == "physical" else ())
@@ -701,6 +716,9 @@ class AFExecutor(ConfigurationOwner):
             binding = (keyed_resources, resource_ids)
             self._communication_resource_bindings[binding_key] = binding
         keyed_resources, resource_ids = binding
+        input_predecessors = tuple(producer for producer, _ in input_readiness[0].values()) if input_readiness else ()
+        if step.operation == "all_to_all" and (step.payload_bytes == 0 or len(step.physical_workers) == 1):
+            keyed_resources, resource_ids = (), ()
         endpoint_workers = self._endpoint_worker_bindings.get(step.physical_workers)
         if endpoint_workers is None:
             endpoint_workers = tuple(
@@ -790,6 +808,9 @@ class AFExecutor(ConfigurationOwner):
         communication_ready_at = self.env.now
         wire_node_id = step.node_id
         wire_predecessors = step.predecessor_ids
+        if input_readiness is not None:
+            input_ids = {producer for producer, _ in input_readiness[0].values()}
+            wire_predecessors = tuple(key for key in wire_predecessors if key not in input_ids)
         submission_finished_at = self.env.now
         if timing.enabled:
             submit_node_id = f"{step.node_id}:host_submit"
@@ -806,7 +827,8 @@ class AFExecutor(ConfigurationOwner):
                 layer_id,
                 step,
                 submit_node_id,
-                step.predecessor_ids,
+                tuple(key for key in step.predecessor_ids if input_readiness is None
+                      or key not in {producer for producer, _ in input_readiness[0].values()}),
                 submitters,
                 timing.host_submit_us / 1e6,
                 "host_submit",
@@ -823,7 +845,7 @@ class AFExecutor(ConfigurationOwner):
                     raise ConfigurationError("provider and executor use different communication domain placement")
                 multiple_phases = len(plan.phases) > 1
                 ready_at, start_at, end_at = yield from self._run_domain_plan(
-                    block, layer_id, step, wire_node_id, wire_predecessors, plan)
+                    block, layer_id, step, wire_node_id, wire_predecessors, plan, input_readiness)
                 resource_ids = tuple(sorted({key for phase in plan.phases for key in phase.resource_ids}))
             else:
                 ready_at, start_at, end_at = yield from self.resources.domain_scheduler.run(
@@ -885,7 +907,8 @@ class AFExecutor(ConfigurationOwner):
                 participant_ranks=step.domain_ranks,
                 physical_endpoints=step.physical_workers,
                 node_id=wire_node_id,
-                predecessor_ids=tuple(f"{wire_node_id}:phase:{phase.phase_id}" for phase in plan.phases) if multiple_phases else wire_predecessors,
+                predecessor_ids=(tuple(f"{wire_node_id}:phase:{phase.phase_id}" for phase in plan.phases)
+                    if multiple_phases else tuple(dict.fromkeys((*wire_predecessors, *input_predecessors)))),
                 dp_rank=step.dp_rank,
                 tp_rank=step.tp_rank,
                 ep_rank=step.ep_rank,
@@ -930,7 +953,7 @@ class AFExecutor(ConfigurationOwner):
             )
         self.active_stages.pop((block.iteration_id, block.block_id, step.node_id), None)
 
-    def _run_domain_plan(self, block, layer_id, step, wire_node_id, predecessors, plan):
+    def _run_domain_plan(self, block, layer_id, step, wire_node_id, predecessors, plan, input_readiness=None):
         """Instantiate cached phases with fresh dependency events and FIFO waits."""
         ready = self.env.now
         completed = {phase.phase_id: self.env.event() for phase in plan.phases}
@@ -939,8 +962,18 @@ class AFExecutor(ConfigurationOwner):
 
         def run_phase(phase):
             dependencies = [completed[key] for key in phase.predecessor_ids]
+            input_ids = ()
+            if input_readiness is not None and not phase.predecessor_ids:
+                bindings, failure = input_readiness
+                identities = tuple(self.resources.worker(rank).physical_worker_ref.identity for rank in phase.participants)
+                input_ids = tuple(dict.fromkeys(bindings[identity][0] for identity in identities))
+                dependencies.extend(bindings[identity][1] for identity in identities)
             if dependencies:
                 yield self.env.all_of(dependencies)
+            if input_readiness is not None and input_readiness[1].triggered:
+                raise SimulationStateError("collective input producer failed")
+            phase_predecessors = tuple(dict.fromkeys((*input_ids, *(
+                tuple(f"{wire_node_id}:phase:{key}" for key in phase.predecessor_ids) or predecessors))))
             estimate = self.transfer_provider.phase_estimate(phase)
             identity = (block.iteration_id, block.block_id, layer_id, step.node_id, phase.phase_id)
             node_id = f"{wire_node_id}:phase:{phase.phase_id}"
@@ -952,7 +985,7 @@ class AFExecutor(ConfigurationOwner):
                     local_children = tuple(f"{node_id}:worker:{rank}" for rank in phase.participants)
                     processes = [self.env.process(self._run_communication_reorder(
                         block, layer_id, step, phase, child_id,
-                        tuple(f"{wire_node_id}:phase:{key}" for key in phase.predecessor_ids), rank))
+                        phase_predecessors, rank))
                         for rank, child_id in zip(phase.participants, local_children)]
                     for process in processes:
                         process.defused = True
@@ -996,7 +1029,7 @@ class AFExecutor(ConfigurationOwner):
                         details={**estimate.details, "routing_provenance": plan.provenance,
                                  "dependency_wait_duration": phase_ready-ready},
                         node_id=node_id,
-                        predecessor_ids=local_children or tuple(f"{wire_node_id}:phase:{key}" for key in phase.predecessor_ids) or predecessors,
+                        predecessor_ids=local_children or phase_predecessors,
                         logical_stage_id=step.logical_stage_id,
                         source_domain=step.source_domain, target_domain=step.target_domain,
                         layer_type=step.layer_type, original_token_count=step.metadata.get("original_token_count", block.token_count),
@@ -1030,7 +1063,8 @@ class AFExecutor(ConfigurationOwner):
             raise
         start = min((times[1] for times in intervals.values()), default=ready)
         end = max((times[2] for times in intervals.values()), default=ready)
-        return ready, start, end
+        phase_ready = min((times[0] for times in intervals.values()), default=ready)
+        return phase_ready, start, end
 
     def _run_communication_reorder(self, block, layer_id, step, phase, node_id, predecessors, worker_id):
         worker = self.resources.worker(worker_id)

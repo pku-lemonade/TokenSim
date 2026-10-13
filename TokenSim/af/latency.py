@@ -250,6 +250,7 @@ class AFTransferQuery:
     logical_output_bytes_per_rank: tuple[tuple[int, int], ...] = ()
     routing_edges: tuple[AFRoutingEdge, ...] = ()
     local_fraction: float | None = None
+    transport_backend: str = "unspecified"
     remote_fraction: float | None = None
     load_imbalance: float = 1.0
     destination_redistribution: bool = False

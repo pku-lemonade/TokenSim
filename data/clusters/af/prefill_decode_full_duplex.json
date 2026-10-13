@@ -24,6 +24,7 @@
         }
     ],
     "af": {
+        "communication_domains": {"node_size": 8, "node_count": 1, "placement_strategy": "manual"},
         "enabled": true,
         "phases": [
             "prefill",

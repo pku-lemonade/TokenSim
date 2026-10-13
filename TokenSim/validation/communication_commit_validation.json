@@ -1,0 +1,48 @@
+{
+  "base_commit": "4f42e71372f0092fccb0c2c67a9a3eb536fa27fe",
+  "scope": "独立通信提交快照，排除工作区无关 AFD 修改",
+  "recorded_at_utc": "2026-10-13T03:00:55.600120+00:00",
+  "repository_tests": 432,
+  "communication_specialists": 56,
+  "total_tests": 488,
+  "log": "results/communication_correctness_commit_snapshot.log",
+  "log_sha256": "d386432d4783292a2c02672c024c1bd2599ffedb0e8ed111b428b7f168ac60d4",
+  "source_sha256": {
+    "TokenSim/hardware/domains.py": "3a52d0ce0837a041c77e85ee8faf9ace3b4b0fea776256c8302f3fa9413dab55",
+    "TokenSim/hardware/placement.py": "8c059811cd62961fe2a7cc09a8b699468e080032339f3eb3c2538e4fb06cf5f7",
+    "TokenSim/hardware/topology.py": "46568e809062e83d62b92b93350d63f34941d6b8a63d4e46e12a45843316c5d2",
+    "TokenSim/af/resources.py": "fb8d2a315882b1d611fe4e69bd9cf619c0f95e02bbe162c1475f9292f9631500",
+    "TokenSim/validation/test_communication_domains.py": "8640f49d32924cbb2638953536900494ce52a4c85b91dc540290dbed95c40609",
+    "TokenSim/validation/test_communication_correctness.py": "2542e9273823d1621e952c111fcbf248124166b7473b0ae36fa495b900196f30",
+    "TokenSim/validation/test_placement_correctness.py": "b50c040ea82092bee54e9864b49045ece912125dcbf94a169d5271399bd2cbca",
+    "TokenSim/validation/run_correctness_regression.py": "70456bf425ed3b4ecf362573e79cb33c6192c6b5c89f31e0630d244ea3c54736",
+    "tests/test_af_executor.py": "91b4f2500e7c742793694273519e5d14f39ddbb8d55f219fa6c7e9736192f4cb",
+    "tests/test_af_parallel_planning.py": "252a959602f5e64a7556c47cbcde0088168f67224932f502a58fda5b702c4408",
+    "tests/test_af_parallel_execution.py": "d01c43f9004605e16c257927c5def8ee9170f640403321794e56095f681391fc",
+    "tests/test_af_executor_dtype_contract.py": "65199947996995eede3a638e64e5217ae507da27792869b5e28ef4ef6ec62e71",
+    "tests/test_af_communication_timing.py": "34315d894d2b5a2b60bcfbd63640018311334355323277c3313bd48fde67531f",
+    "tests/test_af_router_placement.py": "012ecbd330b47da8423b8c99e38015603043deeef3fb2eced0e6bc55c7e6b5a0",
+    "tests/test_af_operator_provider.py": "5f3c6b7e5bb59d91bff56365861efb9c1b591bdc4532ffbe4fb9e3934a0aba7e",
+    "TokenSim/af/planning.py": "962c67ec312baf3c0f8949230e2500f9375902bbec194e6e438aeed35a09d344",
+    "TokenSim/af/executor.py": "b7bf6a7ca201c3d42e0f405e956106e188a40911431823dc29fa42ee981240af",
+    "TokenSim/af/operator_provider.py": "5cd63e0f416117d1ddadf9f276e2d273059c65208d8b25b5ed7e042c64766421",
+    "TokenSim/af/estimate_cache.py": "0a59bb68276e35b2395c129391fe72dffff2436ac04229ff1d3b683e2d63abde",
+    "TokenSim/comm/traffic.py": "e2503db08b61fec5a4e020f13798b6f5510cf45d386d1a045cc474d0c7c2efe8",
+    "TokenSim/af/latency.py": "d230dfcc3a2db49e2984a4c9dfb97b5d7428dae540e2a535ebc586700f34e6af",
+    "TokenSim/af/runtime.py": "cfa47c7eb242e21bca0c95db527e746054005bfbddbfdfe4de19cc85a76bcd96"
+  },
+  "workspace_validation": {
+    "repository_tests": 551,
+    "specialists": 56,
+    "total": 607,
+    "scope": "包含原有未提交 AFD 工作的完整工作区"
+  },
+  "archive": "openspec/changes/archive/2026-10-12-fix-af-communication-correctness",
+  "completed_tasks": 23,
+  "synced_main_requirements": 8,
+  "strict_main_specs": {
+    "passed": 5,
+    "failed": 0
+  },
+  "known_remaining_issue": "P2P 静态计划缓存缺少 dtype，未在本次修复"
+}

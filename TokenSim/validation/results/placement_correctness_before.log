@@ -1,0 +1,371 @@
+test_invalid_supplied_placement_is_rejected_by_both_consumers (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_invalid_supplied_placement_is_rejected_by_both_consumers) ... 
+  test_invalid_supplied_placement_is_rejected_by_both_consumers (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_invalid_supplied_placement_is_rejected_by_both_consumers) (placement=TopologyPlacement(topology=TopologySpec(topology_id='domain_synth_af-net', levels=(TopologyLevel(name='node', size=8, link='nvlink-test', fabric='switched', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto'), TopologyLevel(name='cluster', size=None, link='test', fabric='fat_tree', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto')), description='synthesized from cluster networks', source_id='derived:cluster-config', collective_table_scope=None), device_index_by_worker={0: 0}), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1B767A0>) ... FAIL
+  test_invalid_supplied_placement_is_rejected_by_both_consumers (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_invalid_supplied_placement_is_rejected_by_both_consumers) (placement=TopologyPlacement(topology=TopologySpec(topology_id='domain_synth_af-net', levels=(TopologyLevel(name='node', size=8, link='nvlink-test', fabric='switched', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto'), TopologyLevel(name='cluster', size=None, link='test', fabric='fat_tree', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto')), description='synthesized from cluster networks', source_id='derived:cluster-config', collective_table_scope=None), device_index_by_worker={0: 0}), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1B76840>) ... FAIL
+  test_invalid_supplied_placement_is_rejected_by_both_consumers (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_invalid_supplied_placement_is_rejected_by_both_consumers) (placement=TopologyPlacement(topology=TopologySpec(topology_id='domain_synth_af-net', levels=(TopologyLevel(name='node', size=8, link='nvlink-test', fabric='switched', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto'), TopologyLevel(name='cluster', size=None, link='test', fabric='fat_tree', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto')), description='synthesized from cluster networks', source_id='derived:cluster-config', collective_table_scope=None), device_index_by_worker={0: 0, 1: 0}), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1B77920>) ... FAIL
+  test_invalid_supplied_placement_is_rejected_by_both_consumers (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_invalid_supplied_placement_is_rejected_by_both_consumers) (placement=TopologyPlacement(topology=TopologySpec(topology_id='domain_synth_af-net', levels=(TopologyLevel(name='node', size=8, link='nvlink-test', fabric='switched', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto'), TopologyLevel(name='cluster', size=None, link='test', fabric='fat_tree', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto')), description='synthesized from cluster networks', source_id='derived:cluster-config', collective_table_scope=None), device_index_by_worker={0: 0, 1: 0}), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1B77740>) ... FAIL
+  test_invalid_supplied_placement_is_rejected_by_both_consumers (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_invalid_supplied_placement_is_rejected_by_both_consumers) (placement=TopologyPlacement(topology=TopologySpec(topology_id='domain_synth_af-net', levels=(TopologyLevel(name='node', size=8, link='nvlink-test', fabric='switched', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto'), TopologyLevel(name='cluster', size=None, link='test', fabric='fat_tree', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto')), description='synthesized from cluster networks', source_id='derived:cluster-config', collective_table_scope=None), device_index_by_worker={0: 0, 1: -1}), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1B77B00>) ... FAIL
+  test_invalid_supplied_placement_is_rejected_by_both_consumers (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_invalid_supplied_placement_is_rejected_by_both_consumers) (placement=TopologyPlacement(topology=TopologySpec(topology_id='domain_synth_af-net', levels=(TopologyLevel(name='node', size=8, link='nvlink-test', fabric='switched', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto'), TopologyLevel(name='cluster', size=None, link='test', fabric='fat_tree', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto')), description='synthesized from cluster networks', source_id='derived:cluster-config', collective_table_scope=None), device_index_by_worker={0: 0, 1: 16}), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1B77CE0>) ... FAIL
+  test_invalid_supplied_placement_is_rejected_by_both_consumers (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_invalid_supplied_placement_is_rejected_by_both_consumers) (placement=TopologyPlacement(topology=TopologySpec(topology_id='domain_synth_af-net', levels=(TopologyLevel(name='node', size=8, link='nvlink-test', fabric='switched', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto'), TopologyLevel(name='cluster', size=None, link='test', fabric='fat_tree', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto')), description='synthesized from cluster networks', source_id='derived:cluster-config', collective_table_scope=None), device_index_by_worker={0: 0, 1: True}), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1B77C40>) ... FAIL
+  test_invalid_supplied_placement_is_rejected_by_both_consumers (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_invalid_supplied_placement_is_rejected_by_both_consumers) (placement=TopologyPlacement(topology=TopologySpec(topology_id='domain_synth_af-net', levels=(TopologyLevel(name='node', size=8, link='nvlink-test', fabric='switched', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto'), TopologyLevel(name='cluster', size=None, link='test', fabric='fat_tree', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto')), description='synthesized from cluster networks', source_id='derived:cluster-config', collective_table_scope=None), device_index_by_worker={0: 0, 1: True}), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1B776A0>) ... FAIL
+  test_invalid_supplied_placement_is_rejected_by_both_consumers (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_invalid_supplied_placement_is_rejected_by_both_consumers) (placement=TopologyPlacement(topology=TopologySpec(topology_id='domain_synth_af-net', levels=(TopologyLevel(name='node', size=8, link='nvlink-test', fabric='switched', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto'), TopologyLevel(name='cluster', size=None, link='test', fabric='fat_tree', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto')), description='synthesized from cluster networks', source_id='derived:cluster-config', collective_table_scope=None), device_index_by_worker={0: 0, 1: 1.0}), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1B77D80>) ... FAIL
+  test_invalid_supplied_placement_is_rejected_by_both_consumers (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_invalid_supplied_placement_is_rejected_by_both_consumers) (placement=TopologyPlacement(topology=TopologySpec(topology_id='domain_synth_af-net', levels=(TopologyLevel(name='node', size=8, link='nvlink-test', fabric='switched', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto'), TopologyLevel(name='cluster', size=None, link='test', fabric='fat_tree', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto')), description='synthesized from cluster networks', source_id='derived:cluster-config', collective_table_scope=None), device_index_by_worker={0: 0, 1: 1.0}), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1B77F60>) ... FAIL
+  test_invalid_supplied_placement_is_rejected_by_both_consumers (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_invalid_supplied_placement_is_rejected_by_both_consumers) (placement=TopologyPlacement(topology=TopologySpec(topology_id='domain_synth_af-net', levels=(TopologyLevel(name='node', size=8, link='nvlink-test', fabric='switched', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto'), TopologyLevel(name='cluster', size=None, link='test', fabric='fat_tree', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto')), description='synthesized from cluster networks', source_id='derived:cluster-config', collective_table_scope=None), device_index_by_worker={0: 0, 1: 1, 2: 2}), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1B77BA0>) ... FAIL
+  test_invalid_supplied_placement_is_rejected_by_both_consumers (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_invalid_supplied_placement_is_rejected_by_both_consumers) (placement=TopologyPlacement(topology=TopologySpec(topology_id='domain_synth_af-net', levels=(TopologyLevel(name='node', size=8, link='nvlink-test', fabric='switched', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto'), TopologyLevel(name='cluster', size=None, link='test', fabric='fat_tree', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto')), description='synthesized from cluster networks', source_id='derived:cluster-config', collective_table_scope=None), device_index_by_worker={0: 0, 1: 1, 2: 2}), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1B77880>) ... FAIL
+  test_invalid_supplied_placement_is_rejected_by_both_consumers (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_invalid_supplied_placement_is_rejected_by_both_consumers) (placement=TopologyPlacement(topology=TopologySpec(topology_id='wrong-boundary', levels=(TopologyLevel(name='node', size=1, link='nvlink-test', fabric='switched', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto'), TopologyLevel(name='cluster', size=None, link='test', fabric='fat_tree', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto')), description='synthesized from cluster networks', source_id='derived:cluster-config', collective_table_scope=None), device_index_by_worker={0: 0, 1: 8}), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1B779C0>) ... FAIL
+  test_invalid_supplied_placement_is_rejected_by_both_consumers (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_invalid_supplied_placement_is_rejected_by_both_consumers) (placement=TopologyPlacement(topology=TopologySpec(topology_id='wrong-boundary', levels=(TopologyLevel(name='node', size=1, link='nvlink-test', fabric='switched', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto'), TopologyLevel(name='cluster', size=None, link='test', fabric='fat_tree', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto')), description='synthesized from cluster networks', source_id='derived:cluster-config', collective_table_scope=None), device_index_by_worker={0: 0, 1: 8}), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1B77E20>) ... FAIL
+  test_invalid_supplied_placement_is_rejected_by_both_consumers (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_invalid_supplied_placement_is_rejected_by_both_consumers) (placement=None, entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1BB45E0>) ... FAIL
+test_legacy_network_grouping_requires_explicit_migration (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_legacy_network_grouping_requires_explicit_migration) ... 
+  test_legacy_network_grouping_requires_explicit_migration (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_legacy_network_grouping_requires_explicit_migration) (entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1BB4860>) ... FAIL
+  test_legacy_network_grouping_requires_explicit_migration (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_legacy_network_grouping_requires_explicit_migration) (entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1BB4180>) ... FAIL
+  test_legacy_network_grouping_requires_explicit_migration (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_legacy_network_grouping_requires_explicit_migration) (entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1BB40E0>) ... FAIL
+  test_legacy_network_grouping_requires_explicit_migration (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_legacy_network_grouping_requires_explicit_migration) (entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1BB44A0>) ... FAIL
+test_legacy_topology_name_does_not_override_declared_domains (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_legacy_topology_name_does_not_override_declared_domains) ... ERROR
+test_missing_inventory_and_non_eight_size_fail_at_all_entrances (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_missing_inventory_and_non_eight_size_fail_at_all_entrances) ... 
+  test_missing_inventory_and_non_eight_size_fail_at_all_entrances (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_missing_inventory_and_non_eight_size_fail_at_all_entrances) (config=CommunicationDomainConfig(node_size=8, node_count=None, local_bandwidth_bytes_per_s=300000000000.0, inter_tx_bandwidth_bytes_per_s=50000000000.0, inter_rx_bandwidth_bytes_per_s=50000000000.0, local_latency_us=0.0, inter_latency_us=0.0, placement_strategy='manual', mixed_a_slots=2, device_indices={}, source_id='assumption:node-aggregate'), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1BB5760>) ... FAIL
+  test_missing_inventory_and_non_eight_size_fail_at_all_entrances (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_missing_inventory_and_non_eight_size_fail_at_all_entrances) (config=CommunicationDomainConfig(node_size=8, node_count=None, local_bandwidth_bytes_per_s=300000000000.0, inter_tx_bandwidth_bytes_per_s=50000000000.0, inter_rx_bandwidth_bytes_per_s=50000000000.0, local_latency_us=0.0, inter_latency_us=0.0, placement_strategy='manual', mixed_a_slots=2, device_indices={}, source_id='assumption:node-aggregate'), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1BB5800>) ... FAIL
+  test_missing_inventory_and_non_eight_size_fail_at_all_entrances (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_missing_inventory_and_non_eight_size_fail_at_all_entrances) (config=CommunicationDomainConfig(node_size=8, node_count=None, local_bandwidth_bytes_per_s=300000000000.0, inter_tx_bandwidth_bytes_per_s=50000000000.0, inter_rx_bandwidth_bytes_per_s=50000000000.0, local_latency_us=0.0, inter_latency_us=0.0, placement_strategy='manual', mixed_a_slots=2, device_indices={}, source_id='assumption:node-aggregate'), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1BB5940>) ... FAIL
+  test_missing_inventory_and_non_eight_size_fail_at_all_entrances (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_missing_inventory_and_non_eight_size_fail_at_all_entrances) (config=CommunicationDomainConfig(node_size=8, node_count=None, local_bandwidth_bytes_per_s=300000000000.0, inter_tx_bandwidth_bytes_per_s=50000000000.0, inter_rx_bandwidth_bytes_per_s=50000000000.0, local_latency_us=0.0, inter_latency_us=0.0, placement_strategy='manual', mixed_a_slots=2, device_indices={}, source_id='assumption:node-aggregate'), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1BB59E0>) ... FAIL
+  test_missing_inventory_and_non_eight_size_fail_at_all_entrances (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_missing_inventory_and_non_eight_size_fail_at_all_entrances) (config=CommunicationDomainConfig(node_size=4, node_count=2, local_bandwidth_bytes_per_s=300000000000.0, inter_tx_bandwidth_bytes_per_s=50000000000.0, inter_rx_bandwidth_bytes_per_s=50000000000.0, local_latency_us=0.0, inter_latency_us=0.0, placement_strategy='manual', mixed_a_slots=2, device_indices={}, source_id='assumption:node-aggregate'), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1BB6160>) ... FAIL
+  test_missing_inventory_and_non_eight_size_fail_at_all_entrances (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_missing_inventory_and_non_eight_size_fail_at_all_entrances) (config=CommunicationDomainConfig(node_size=4, node_count=2, local_bandwidth_bytes_per_s=300000000000.0, inter_tx_bandwidth_bytes_per_s=50000000000.0, inter_rx_bandwidth_bytes_per_s=50000000000.0, local_latency_us=0.0, inter_latency_us=0.0, placement_strategy='manual', mixed_a_slots=2, device_indices={}, source_id='assumption:node-aggregate'), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1BB6480>) ... FAIL
+  test_missing_inventory_and_non_eight_size_fail_at_all_entrances (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_missing_inventory_and_non_eight_size_fail_at_all_entrances) (config=CommunicationDomainConfig(node_size=4, node_count=2, local_bandwidth_bytes_per_s=300000000000.0, inter_tx_bandwidth_bytes_per_s=50000000000.0, inter_rx_bandwidth_bytes_per_s=50000000000.0, local_latency_us=0.0, inter_latency_us=0.0, placement_strategy='manual', mixed_a_slots=2, device_indices={}, source_id='assumption:node-aggregate'), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1BB5B20>) ... FAIL
+  test_missing_inventory_and_non_eight_size_fail_at_all_entrances (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_missing_inventory_and_non_eight_size_fail_at_all_entrances) (config=CommunicationDomainConfig(node_size=4, node_count=2, local_bandwidth_bytes_per_s=300000000000.0, inter_tx_bandwidth_bytes_per_s=50000000000.0, inter_rx_bandwidth_bytes_per_s=50000000000.0, local_latency_us=0.0, inter_latency_us=0.0, placement_strategy='manual', mixed_a_slots=2, device_indices={}, source_id='assumption:node-aggregate'), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1BB6200>) ... FAIL
+test_mixed_dedicated_manual_keep_role_and_override_semantics (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_mixed_dedicated_manual_keep_role_and_override_semantics) ... ok
+test_node_interface_never_defaults_missing_mapping (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_node_interface_never_defaults_missing_mapping) ... ERROR
+test_non_af_and_flat_keep_legacy_topology_path (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_non_af_and_flat_keep_legacy_topology_path) ... ok
+test_partial_nodes_keep_cross_node_service_cache_and_queue (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_partial_nodes_keep_cross_node_service_cache_and_queue) ... ERROR
+test_shared_node_identity_covers_slot_boundaries (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_shared_node_identity_covers_slot_boundaries) ... ERROR
+test_supplied_placement_obeys_role_policies_and_explicit_overrides (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_supplied_placement_obeys_role_policies_and_explicit_overrides) ... 
+  test_supplied_placement_obeys_role_policies_and_explicit_overrides (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_supplied_placement_obeys_role_policies_and_explicit_overrides) (strategy='mixed') ... FAIL
+  test_supplied_placement_obeys_role_policies_and_explicit_overrides (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_supplied_placement_obeys_role_policies_and_explicit_overrides) (strategy='mixed') ... FAIL
+  test_supplied_placement_obeys_role_policies_and_explicit_overrides (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_supplied_placement_obeys_role_policies_and_explicit_overrides) (strategy='dedicated') ... FAIL
+  test_supplied_placement_obeys_role_policies_and_explicit_overrides (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_supplied_placement_obeys_role_policies_and_explicit_overrides) (strategy='dedicated') ... FAIL
+test_supplied_placement_obeys_role_policies_and_explicit_overrides (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_supplied_placement_obeys_role_policies_and_explicit_overrides) ... FAIL
+
+======================================================================
+ERROR: test_legacy_topology_name_does_not_override_declared_domains (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_legacy_topology_name_does_not_override_declared_domains)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\test_placement_correctness.py", line 144, in test_legacy_topology_name_does_not_override_declared_domains
+    self.assertEqual((placement.node_id(0), placement.node_id(1)), (0, 1))
+                      ^^^^^^^^^^^^^^^^^
+AttributeError: 'TopologyPlacement' object has no attribute 'node_id'
+
+======================================================================
+ERROR: test_node_interface_never_defaults_missing_mapping (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_node_interface_never_defaults_missing_mapping)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\test_placement_correctness.py", line 113, in test_node_interface_never_defaults_missing_mapping
+    placement.node_id(99)
+    ^^^^^^^^^^^^^^^^^
+AttributeError: 'TopologyPlacement' object has no attribute 'node_id'
+
+======================================================================
+ERROR: test_partial_nodes_keep_cross_node_service_cache_and_queue (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_partial_nodes_keep_cross_node_service_cache_and_queue)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\test_placement_correctness.py", line 67, in test_partial_nodes_keep_cross_node_service_cache_and_queue
+    self.assertEqual(placement.node_id(0), 0)
+                     ^^^^^^^^^^^^^^^^^
+AttributeError: 'TopologyPlacement' object has no attribute 'node_id'
+
+======================================================================
+ERROR: test_shared_node_identity_covers_slot_boundaries (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_shared_node_identity_covers_slot_boundaries)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\test_placement_correctness.py", line 91, in test_shared_node_identity_covers_slot_boundaries
+    self.assertEqual({rank: placement.node_id(rank) for rank in range(4)}, expected)
+                            ^^^^^^^^^^^^^^^^^
+AttributeError: 'TopologyPlacement' object has no attribute 'node_id'
+
+======================================================================
+FAIL: test_invalid_supplied_placement_is_rejected_by_both_consumers (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_invalid_supplied_placement_is_rejected_by_both_consumers) (placement=TopologyPlacement(topology=TopologySpec(topology_id='domain_synth_af-net', levels=(TopologyLevel(name='node', size=8, link='nvlink-test', fabric='switched', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto'), TopologyLevel(name='cluster', size=None, link='test', fabric='fat_tree', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto')), description='synthesized from cluster networks', source_id='derived:cluster-config', collective_table_scope=None), device_index_by_worker={0: 0}), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1B767A0>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\test_placement_correctness.py", line 107, in test_invalid_supplied_placement_is_rejected_by_both_consumers
+    with self.subTest(placement=placement, entrance=entrance), self.assertRaises(ConfigurationError):
+                                                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: ConfigurationError not raised
+
+======================================================================
+FAIL: test_invalid_supplied_placement_is_rejected_by_both_consumers (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_invalid_supplied_placement_is_rejected_by_both_consumers) (placement=TopologyPlacement(topology=TopologySpec(topology_id='domain_synth_af-net', levels=(TopologyLevel(name='node', size=8, link='nvlink-test', fabric='switched', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto'), TopologyLevel(name='cluster', size=None, link='test', fabric='fat_tree', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto')), description='synthesized from cluster networks', source_id='derived:cluster-config', collective_table_scope=None), device_index_by_worker={0: 0}), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1B76840>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\test_placement_correctness.py", line 107, in test_invalid_supplied_placement_is_rejected_by_both_consumers
+    with self.subTest(placement=placement, entrance=entrance), self.assertRaises(ConfigurationError):
+                                                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: ConfigurationError not raised
+
+======================================================================
+FAIL: test_invalid_supplied_placement_is_rejected_by_both_consumers (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_invalid_supplied_placement_is_rejected_by_both_consumers) (placement=TopologyPlacement(topology=TopologySpec(topology_id='domain_synth_af-net', levels=(TopologyLevel(name='node', size=8, link='nvlink-test', fabric='switched', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto'), TopologyLevel(name='cluster', size=None, link='test', fabric='fat_tree', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto')), description='synthesized from cluster networks', source_id='derived:cluster-config', collective_table_scope=None), device_index_by_worker={0: 0, 1: 0}), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1B77920>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\test_placement_correctness.py", line 107, in test_invalid_supplied_placement_is_rejected_by_both_consumers
+    with self.subTest(placement=placement, entrance=entrance), self.assertRaises(ConfigurationError):
+                                                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: ConfigurationError not raised
+
+======================================================================
+FAIL: test_invalid_supplied_placement_is_rejected_by_both_consumers (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_invalid_supplied_placement_is_rejected_by_both_consumers) (placement=TopologyPlacement(topology=TopologySpec(topology_id='domain_synth_af-net', levels=(TopologyLevel(name='node', size=8, link='nvlink-test', fabric='switched', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto'), TopologyLevel(name='cluster', size=None, link='test', fabric='fat_tree', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto')), description='synthesized from cluster networks', source_id='derived:cluster-config', collective_table_scope=None), device_index_by_worker={0: 0, 1: 0}), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1B77740>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\test_placement_correctness.py", line 107, in test_invalid_supplied_placement_is_rejected_by_both_consumers
+    with self.subTest(placement=placement, entrance=entrance), self.assertRaises(ConfigurationError):
+                                                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: ConfigurationError not raised
+
+======================================================================
+FAIL: test_invalid_supplied_placement_is_rejected_by_both_consumers (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_invalid_supplied_placement_is_rejected_by_both_consumers) (placement=TopologyPlacement(topology=TopologySpec(topology_id='domain_synth_af-net', levels=(TopologyLevel(name='node', size=8, link='nvlink-test', fabric='switched', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto'), TopologyLevel(name='cluster', size=None, link='test', fabric='fat_tree', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto')), description='synthesized from cluster networks', source_id='derived:cluster-config', collective_table_scope=None), device_index_by_worker={0: 0, 1: -1}), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1B77B00>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\test_placement_correctness.py", line 107, in test_invalid_supplied_placement_is_rejected_by_both_consumers
+    with self.subTest(placement=placement, entrance=entrance), self.assertRaises(ConfigurationError):
+                                                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: ConfigurationError not raised
+
+======================================================================
+FAIL: test_invalid_supplied_placement_is_rejected_by_both_consumers (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_invalid_supplied_placement_is_rejected_by_both_consumers) (placement=TopologyPlacement(topology=TopologySpec(topology_id='domain_synth_af-net', levels=(TopologyLevel(name='node', size=8, link='nvlink-test', fabric='switched', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto'), TopologyLevel(name='cluster', size=None, link='test', fabric='fat_tree', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto')), description='synthesized from cluster networks', source_id='derived:cluster-config', collective_table_scope=None), device_index_by_worker={0: 0, 1: 16}), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1B77CE0>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\test_placement_correctness.py", line 107, in test_invalid_supplied_placement_is_rejected_by_both_consumers
+    with self.subTest(placement=placement, entrance=entrance), self.assertRaises(ConfigurationError):
+                                                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: ConfigurationError not raised
+
+======================================================================
+FAIL: test_invalid_supplied_placement_is_rejected_by_both_consumers (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_invalid_supplied_placement_is_rejected_by_both_consumers) (placement=TopologyPlacement(topology=TopologySpec(topology_id='domain_synth_af-net', levels=(TopologyLevel(name='node', size=8, link='nvlink-test', fabric='switched', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto'), TopologyLevel(name='cluster', size=None, link='test', fabric='fat_tree', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto')), description='synthesized from cluster networks', source_id='derived:cluster-config', collective_table_scope=None), device_index_by_worker={0: 0, 1: True}), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1B77C40>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\test_placement_correctness.py", line 107, in test_invalid_supplied_placement_is_rejected_by_both_consumers
+    with self.subTest(placement=placement, entrance=entrance), self.assertRaises(ConfigurationError):
+                                                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: ConfigurationError not raised
+
+======================================================================
+FAIL: test_invalid_supplied_placement_is_rejected_by_both_consumers (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_invalid_supplied_placement_is_rejected_by_both_consumers) (placement=TopologyPlacement(topology=TopologySpec(topology_id='domain_synth_af-net', levels=(TopologyLevel(name='node', size=8, link='nvlink-test', fabric='switched', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto'), TopologyLevel(name='cluster', size=None, link='test', fabric='fat_tree', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto')), description='synthesized from cluster networks', source_id='derived:cluster-config', collective_table_scope=None), device_index_by_worker={0: 0, 1: True}), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1B776A0>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\test_placement_correctness.py", line 107, in test_invalid_supplied_placement_is_rejected_by_both_consumers
+    with self.subTest(placement=placement, entrance=entrance), self.assertRaises(ConfigurationError):
+                                                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: ConfigurationError not raised
+
+======================================================================
+FAIL: test_invalid_supplied_placement_is_rejected_by_both_consumers (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_invalid_supplied_placement_is_rejected_by_both_consumers) (placement=TopologyPlacement(topology=TopologySpec(topology_id='domain_synth_af-net', levels=(TopologyLevel(name='node', size=8, link='nvlink-test', fabric='switched', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto'), TopologyLevel(name='cluster', size=None, link='test', fabric='fat_tree', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto')), description='synthesized from cluster networks', source_id='derived:cluster-config', collective_table_scope=None), device_index_by_worker={0: 0, 1: 1.0}), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1B77D80>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\test_placement_correctness.py", line 107, in test_invalid_supplied_placement_is_rejected_by_both_consumers
+    with self.subTest(placement=placement, entrance=entrance), self.assertRaises(ConfigurationError):
+                                                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: ConfigurationError not raised
+
+======================================================================
+FAIL: test_invalid_supplied_placement_is_rejected_by_both_consumers (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_invalid_supplied_placement_is_rejected_by_both_consumers) (placement=TopologyPlacement(topology=TopologySpec(topology_id='domain_synth_af-net', levels=(TopologyLevel(name='node', size=8, link='nvlink-test', fabric='switched', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto'), TopologyLevel(name='cluster', size=None, link='test', fabric='fat_tree', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto')), description='synthesized from cluster networks', source_id='derived:cluster-config', collective_table_scope=None), device_index_by_worker={0: 0, 1: 1.0}), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1B77F60>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\test_placement_correctness.py", line 107, in test_invalid_supplied_placement_is_rejected_by_both_consumers
+    with self.subTest(placement=placement, entrance=entrance), self.assertRaises(ConfigurationError):
+                                                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: ConfigurationError not raised
+
+======================================================================
+FAIL: test_invalid_supplied_placement_is_rejected_by_both_consumers (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_invalid_supplied_placement_is_rejected_by_both_consumers) (placement=TopologyPlacement(topology=TopologySpec(topology_id='domain_synth_af-net', levels=(TopologyLevel(name='node', size=8, link='nvlink-test', fabric='switched', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto'), TopologyLevel(name='cluster', size=None, link='test', fabric='fat_tree', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto')), description='synthesized from cluster networks', source_id='derived:cluster-config', collective_table_scope=None), device_index_by_worker={0: 0, 1: 1, 2: 2}), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1B77BA0>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\test_placement_correctness.py", line 107, in test_invalid_supplied_placement_is_rejected_by_both_consumers
+    with self.subTest(placement=placement, entrance=entrance), self.assertRaises(ConfigurationError):
+                                                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: ConfigurationError not raised
+
+======================================================================
+FAIL: test_invalid_supplied_placement_is_rejected_by_both_consumers (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_invalid_supplied_placement_is_rejected_by_both_consumers) (placement=TopologyPlacement(topology=TopologySpec(topology_id='domain_synth_af-net', levels=(TopologyLevel(name='node', size=8, link='nvlink-test', fabric='switched', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto'), TopologyLevel(name='cluster', size=None, link='test', fabric='fat_tree', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto')), description='synthesized from cluster networks', source_id='derived:cluster-config', collective_table_scope=None), device_index_by_worker={0: 0, 1: 1, 2: 2}), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1B77880>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\test_placement_correctness.py", line 107, in test_invalid_supplied_placement_is_rejected_by_both_consumers
+    with self.subTest(placement=placement, entrance=entrance), self.assertRaises(ConfigurationError):
+                                                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: ConfigurationError not raised
+
+======================================================================
+FAIL: test_invalid_supplied_placement_is_rejected_by_both_consumers (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_invalid_supplied_placement_is_rejected_by_both_consumers) (placement=TopologyPlacement(topology=TopologySpec(topology_id='wrong-boundary', levels=(TopologyLevel(name='node', size=1, link='nvlink-test', fabric='switched', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto'), TopologyLevel(name='cluster', size=None, link='test', fabric='fat_tree', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto')), description='synthesized from cluster networks', source_id='derived:cluster-config', collective_table_scope=None), device_index_by_worker={0: 0, 1: 8}), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1B779C0>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\test_placement_correctness.py", line 107, in test_invalid_supplied_placement_is_rejected_by_both_consumers
+    with self.subTest(placement=placement, entrance=entrance), self.assertRaises(ConfigurationError):
+                                                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: ConfigurationError not raised
+
+======================================================================
+FAIL: test_invalid_supplied_placement_is_rejected_by_both_consumers (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_invalid_supplied_placement_is_rejected_by_both_consumers) (placement=TopologyPlacement(topology=TopologySpec(topology_id='wrong-boundary', levels=(TopologyLevel(name='node', size=1, link='nvlink-test', fabric='switched', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto'), TopologyLevel(name='cluster', size=None, link='test', fabric='fat_tree', links_per_endpoint=1, oversubscription=1.0, collective_algorithm='auto')), description='synthesized from cluster networks', source_id='derived:cluster-config', collective_table_scope=None), device_index_by_worker={0: 0, 1: 8}), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1B77E20>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\test_placement_correctness.py", line 107, in test_invalid_supplied_placement_is_rejected_by_both_consumers
+    with self.subTest(placement=placement, entrance=entrance), self.assertRaises(ConfigurationError):
+                                                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: ConfigurationError not raised
+
+======================================================================
+FAIL: test_invalid_supplied_placement_is_rejected_by_both_consumers (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_invalid_supplied_placement_is_rejected_by_both_consumers) (placement=None, entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1BB45E0>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\test_placement_correctness.py", line 107, in test_invalid_supplied_placement_is_rejected_by_both_consumers
+    with self.subTest(placement=placement, entrance=entrance), self.assertRaises(ConfigurationError):
+                                                               ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: ConfigurationError not raised
+
+======================================================================
+FAIL: test_legacy_network_grouping_requires_explicit_migration (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_legacy_network_grouping_requires_explicit_migration) (entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1BB4860>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\test_placement_correctness.py", line 48, in test_legacy_network_grouping_requires_explicit_migration
+    with self.subTest(entrance=entrance), self.assertRaisesRegex(ConfigurationError, 'communication_domains'):
+                                          ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ConfigurationError not raised
+
+======================================================================
+FAIL: test_legacy_network_grouping_requires_explicit_migration (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_legacy_network_grouping_requires_explicit_migration) (entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1BB4180>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\test_placement_correctness.py", line 48, in test_legacy_network_grouping_requires_explicit_migration
+    with self.subTest(entrance=entrance), self.assertRaisesRegex(ConfigurationError, 'communication_domains'):
+                                          ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ConfigurationError not raised
+
+======================================================================
+FAIL: test_legacy_network_grouping_requires_explicit_migration (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_legacy_network_grouping_requires_explicit_migration) (entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1BB40E0>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\test_placement_correctness.py", line 48, in test_legacy_network_grouping_requires_explicit_migration
+    with self.subTest(entrance=entrance), self.assertRaisesRegex(ConfigurationError, 'communication_domains'):
+                                          ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ConfigurationError not raised
+
+======================================================================
+FAIL: test_legacy_network_grouping_requires_explicit_migration (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_legacy_network_grouping_requires_explicit_migration) (entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1BB44A0>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\test_placement_correctness.py", line 48, in test_legacy_network_grouping_requires_explicit_migration
+    with self.subTest(entrance=entrance), self.assertRaisesRegex(ConfigurationError, 'communication_domains'):
+                                          ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: ConfigurationError not raised
+
+======================================================================
+FAIL: test_missing_inventory_and_non_eight_size_fail_at_all_entrances (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_missing_inventory_and_non_eight_size_fail_at_all_entrances) (config=CommunicationDomainConfig(node_size=8, node_count=None, local_bandwidth_bytes_per_s=300000000000.0, inter_tx_bandwidth_bytes_per_s=50000000000.0, inter_rx_bandwidth_bytes_per_s=50000000000.0, local_latency_us=0.0, inter_latency_us=0.0, placement_strategy='manual', mixed_a_slots=2, device_indices={}, source_id='assumption:node-aggregate'), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1BB5760>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\test_placement_correctness.py", line 56, in test_missing_inventory_and_non_eight_size_fail_at_all_entrances
+    with self.subTest(config=invalid, entrance=entrance), self.assertRaises(ConfigurationError):
+                                                          ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: ConfigurationError not raised
+
+======================================================================
+FAIL: test_missing_inventory_and_non_eight_size_fail_at_all_entrances (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_missing_inventory_and_non_eight_size_fail_at_all_entrances) (config=CommunicationDomainConfig(node_size=8, node_count=None, local_bandwidth_bytes_per_s=300000000000.0, inter_tx_bandwidth_bytes_per_s=50000000000.0, inter_rx_bandwidth_bytes_per_s=50000000000.0, local_latency_us=0.0, inter_latency_us=0.0, placement_strategy='manual', mixed_a_slots=2, device_indices={}, source_id='assumption:node-aggregate'), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1BB5800>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\test_placement_correctness.py", line 56, in test_missing_inventory_and_non_eight_size_fail_at_all_entrances
+    with self.subTest(config=invalid, entrance=entrance), self.assertRaises(ConfigurationError):
+                                                          ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: ConfigurationError not raised
+
+======================================================================
+FAIL: test_missing_inventory_and_non_eight_size_fail_at_all_entrances (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_missing_inventory_and_non_eight_size_fail_at_all_entrances) (config=CommunicationDomainConfig(node_size=8, node_count=None, local_bandwidth_bytes_per_s=300000000000.0, inter_tx_bandwidth_bytes_per_s=50000000000.0, inter_rx_bandwidth_bytes_per_s=50000000000.0, local_latency_us=0.0, inter_latency_us=0.0, placement_strategy='manual', mixed_a_slots=2, device_indices={}, source_id='assumption:node-aggregate'), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1BB5940>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\test_placement_correctness.py", line 56, in test_missing_inventory_and_non_eight_size_fail_at_all_entrances
+    with self.subTest(config=invalid, entrance=entrance), self.assertRaises(ConfigurationError):
+                                                          ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: ConfigurationError not raised
+
+======================================================================
+FAIL: test_missing_inventory_and_non_eight_size_fail_at_all_entrances (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_missing_inventory_and_non_eight_size_fail_at_all_entrances) (config=CommunicationDomainConfig(node_size=8, node_count=None, local_bandwidth_bytes_per_s=300000000000.0, inter_tx_bandwidth_bytes_per_s=50000000000.0, inter_rx_bandwidth_bytes_per_s=50000000000.0, local_latency_us=0.0, inter_latency_us=0.0, placement_strategy='manual', mixed_a_slots=2, device_indices={}, source_id='assumption:node-aggregate'), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1BB59E0>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\test_placement_correctness.py", line 56, in test_missing_inventory_and_non_eight_size_fail_at_all_entrances
+    with self.subTest(config=invalid, entrance=entrance), self.assertRaises(ConfigurationError):
+                                                          ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: ConfigurationError not raised
+
+======================================================================
+FAIL: test_missing_inventory_and_non_eight_size_fail_at_all_entrances (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_missing_inventory_and_non_eight_size_fail_at_all_entrances) (config=CommunicationDomainConfig(node_size=4, node_count=2, local_bandwidth_bytes_per_s=300000000000.0, inter_tx_bandwidth_bytes_per_s=50000000000.0, inter_rx_bandwidth_bytes_per_s=50000000000.0, local_latency_us=0.0, inter_latency_us=0.0, placement_strategy='manual', mixed_a_slots=2, device_indices={}, source_id='assumption:node-aggregate'), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1BB6160>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\test_placement_correctness.py", line 56, in test_missing_inventory_and_non_eight_size_fail_at_all_entrances
+    with self.subTest(config=invalid, entrance=entrance), self.assertRaises(ConfigurationError):
+                                                          ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: ConfigurationError not raised
+
+======================================================================
+FAIL: test_missing_inventory_and_non_eight_size_fail_at_all_entrances (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_missing_inventory_and_non_eight_size_fail_at_all_entrances) (config=CommunicationDomainConfig(node_size=4, node_count=2, local_bandwidth_bytes_per_s=300000000000.0, inter_tx_bandwidth_bytes_per_s=50000000000.0, inter_rx_bandwidth_bytes_per_s=50000000000.0, local_latency_us=0.0, inter_latency_us=0.0, placement_strategy='manual', mixed_a_slots=2, device_indices={}, source_id='assumption:node-aggregate'), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1BB6480>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\test_placement_correctness.py", line 56, in test_missing_inventory_and_non_eight_size_fail_at_all_entrances
+    with self.subTest(config=invalid, entrance=entrance), self.assertRaises(ConfigurationError):
+                                                          ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: ConfigurationError not raised
+
+======================================================================
+FAIL: test_missing_inventory_and_non_eight_size_fail_at_all_entrances (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_missing_inventory_and_non_eight_size_fail_at_all_entrances) (config=CommunicationDomainConfig(node_size=4, node_count=2, local_bandwidth_bytes_per_s=300000000000.0, inter_tx_bandwidth_bytes_per_s=50000000000.0, inter_rx_bandwidth_bytes_per_s=50000000000.0, local_latency_us=0.0, inter_latency_us=0.0, placement_strategy='manual', mixed_a_slots=2, device_indices={}, source_id='assumption:node-aggregate'), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1BB5B20>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\test_placement_correctness.py", line 56, in test_missing_inventory_and_non_eight_size_fail_at_all_entrances
+    with self.subTest(config=invalid, entrance=entrance), self.assertRaises(ConfigurationError):
+                                                          ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: ConfigurationError not raised
+
+======================================================================
+FAIL: test_missing_inventory_and_non_eight_size_fail_at_all_entrances (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_missing_inventory_and_non_eight_size_fail_at_all_entrances) (config=CommunicationDomainConfig(node_size=4, node_count=2, local_bandwidth_bytes_per_s=300000000000.0, inter_tx_bandwidth_bytes_per_s=50000000000.0, inter_rx_bandwidth_bytes_per_s=50000000000.0, local_latency_us=0.0, inter_latency_us=0.0, placement_strategy='manual', mixed_a_slots=2, device_indices={}, source_id='assumption:node-aggregate'), entrance=<function PhysicalPlacementTests.entrances.<locals>.<lambda> at 0x000001ABC1BB6200>)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\test_placement_correctness.py", line 56, in test_missing_inventory_and_non_eight_size_fail_at_all_entrances
+    with self.subTest(config=invalid, entrance=entrance), self.assertRaises(ConfigurationError):
+                                                          ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: ConfigurationError not raised
+
+======================================================================
+FAIL: test_supplied_placement_obeys_role_policies_and_explicit_overrides (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_supplied_placement_obeys_role_policies_and_explicit_overrides) (strategy='mixed')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\test_placement_correctness.py", line 131, in test_supplied_placement_obeys_role_policies_and_explicit_overrides
+    with self.subTest(strategy=strategy), self.assertRaises(ConfigurationError):
+                                          ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: ConfigurationError not raised
+
+======================================================================
+FAIL: test_supplied_placement_obeys_role_policies_and_explicit_overrides (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_supplied_placement_obeys_role_policies_and_explicit_overrides) (strategy='mixed')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\test_placement_correctness.py", line 131, in test_supplied_placement_obeys_role_policies_and_explicit_overrides
+    with self.subTest(strategy=strategy), self.assertRaises(ConfigurationError):
+                                          ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: ConfigurationError not raised
+
+======================================================================
+FAIL: test_supplied_placement_obeys_role_policies_and_explicit_overrides (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_supplied_placement_obeys_role_policies_and_explicit_overrides) (strategy='dedicated')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\test_placement_correctness.py", line 131, in test_supplied_placement_obeys_role_policies_and_explicit_overrides
+    with self.subTest(strategy=strategy), self.assertRaises(ConfigurationError):
+                                          ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: ConfigurationError not raised
+
+======================================================================
+FAIL: test_supplied_placement_obeys_role_policies_and_explicit_overrides (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_supplied_placement_obeys_role_policies_and_explicit_overrides) (strategy='dedicated')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\test_placement_correctness.py", line 131, in test_supplied_placement_obeys_role_policies_and_explicit_overrides
+    with self.subTest(strategy=strategy), self.assertRaises(ConfigurationError):
+                                          ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: ConfigurationError not raised
+
+======================================================================
+FAIL: test_supplied_placement_obeys_role_policies_and_explicit_overrides (TokenSim.validation.test_placement_correctness.PhysicalPlacementTests.test_supplied_placement_obeys_role_policies_and_explicit_overrides)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\test_placement_correctness.py", line 136, in test_supplied_placement_obeys_role_policies_and_explicit_overrides
+    with self.assertRaises(ConfigurationError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: ConfigurationError not raised
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.084s
+
+FAILED (failures=32, errors=4)

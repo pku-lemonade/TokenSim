@@ -1,5 +1,6 @@
 """Router placement changes ownership and dependency order, not routed work."""
 import unittest
+from tests.test_af_executor import af_test_resources
 from dataclasses import replace
 from types import SimpleNamespace
 
@@ -26,7 +27,7 @@ class RouterPlacementTest(unittest.TestCase):
         env = simpy.Environment()
         executor = AFExecutor(env, cluster, cluster.workers(), ConstantProvider(),
             ConstantProvider(), "TestModel", "bf16", total_layers=2, hidden_size=16,
-            moe_config=moe, random_seed=42, runtime_plan=plan)
+            moe_config=moe, random_seed=42, runtime_plan=plan, resources=af_test_resources(env, cluster, cluster.workers()))
         requests = [SimpleNamespace(id=i, is_prefill=False, prefill_len=8,
             context_len=9, generation_idx=1) for i in range(2)]
         iteration = executor.submit(0, requests, "decode")

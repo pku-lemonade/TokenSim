@@ -72,6 +72,8 @@ def _cluster(
         ],
         af={
             "enabled": True,
+            "communication_domains": {"node_size": 8, "node_count": (a_workers + f_workers + 7) // 8,
+                "placement_strategy": "manual"},
             "phases": ["prefill", "decode"],
             "af_block_size": 1,
             "links": [

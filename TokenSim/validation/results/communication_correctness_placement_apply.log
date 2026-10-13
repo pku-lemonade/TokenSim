@@ -1,0 +1,33 @@
+Validation root: D:\youweiz\af分离\TokenSim-Groq
+C:\Users\hsh20\AppData\Local\Programs\Python\Python313\Lib\site-packages\simpy\__init__.py:11: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  from pkg_resources import get_distribution
+.......................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................................
+----------------------------------------------------------------------
+Ran 551 tests in 283.633s
+
+OK
+[workload] Read 1 reqs from dataset "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-test-temp\tmpyhcckjb5\moe_pairs.json", prefill average 8.0, decode average 2.0
+[workload] Read 1 reqs from dataset "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-test-temp\tmpv401zry3\reuse.json", prefill average 32.0, decode average 2.0
+[workload] Read 3 reqs from dataset "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-test-temp\tmpw3a46oxg\trace.json", prefill average 16.0, decode average 1.0
+[workload] Read 2 reqs from dataset "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-test-temp\tmpi9wr157y\trace.json", prefill average 16.0, decode average 1.0
+[workload] Read 1 reqs from dataset "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-test-temp\tmp037hbwyb\trace.json", prefill average 16.0, decode average 1.0
+[workload] Read 1 reqs from dataset "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-test-temp\tmp037hbwyb\trace.json", prefill average 16.0, decode average 1.0
+[workload] Read 1 reqs from dataset "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-test-temp\tmp037hbwyb\trace.json", prefill average 16.0, decode average 1.0
+[workload] Read 1 reqs from dataset "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-test-temp\tmp037hbwyb\trace.json", prefill average 16.0, decode average 1.0
+[workload] Read 1 reqs from dataset "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-test-temp\tmp037hbwyb\trace.json", prefill average 16.0, decode average 1.0
+[workload] Read 1 reqs from dataset "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-test-temp\tmp037hbwyb\trace.json", prefill average 16.0, decode average 1.0
+[workload] Read 3 reqs from dataset "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-test-temp\tmp3uavwjbn\trace.json", prefill average 16.0, decode average 1.0
+[workload] Read 1 reqs from dataset "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-test-temp\tmpy351ux8r\trace.json", prefill average 16.0, decode average 1.0
+[workload] Read 3 reqs from dataset "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-test-temp\tmpopyhr3bi\trace.jsonl", prefill average 16.0, decode average 1.0
+[workload] Read 2 reqs from dataset "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-test-temp\tmpygezjmfc\trace.json", prefill average 16.0, decode average 1.0
+[workload] Read 1 reqs from dataset "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-test-temp\tmp8e04r8tt\trace.json", prefill average 16.0, decode average 1.0
+[workload] Read 2 reqs from dataset "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-test-temp\tmp_1jgn32d\trace.json", prefill average 16.0, decode average 1.0
+[workload] Read 3 reqs from dataset "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-test-temp\tmpg_unmsck\trace.json", prefill average 16.0, decode average 1.0
+[workload] Read 4 reqs from dataset "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-test-temp\tmpievt8nps\trace.jsonl", prefill average 32.0, decode average 4.0
+C:\Users\hsh20\AppData\Local\Programs\Python\Python313\Lib\site-packages\simpy\__init__.py:11: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  from pkg_resources import get_distribution
+........................................................
+----------------------------------------------------------------------
+Ran 56 tests in 0.739s
+
+OK

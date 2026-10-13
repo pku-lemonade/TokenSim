@@ -8,7 +8,7 @@ from typing import Any, Sequence
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.context import HardwareContext
 from TokenSim.hardware.topology import TopologyPlacement, TopologySpec
-from TokenSim.hardware.domains import CommunicationDomainConfig
+from TokenSim.hardware.domains import CommunicationDomainConfig, physical_domain_config
 
 logger = logging.getLogger(__name__)
 
@@ -20,14 +20,16 @@ def build_topology_placement(
 ) -> TopologyPlacement:
     """Resolve the cluster's topology and each worker's device index.
 
-    When the cluster names a ``topology`` from the catalog, workers are placed
+    AF physical mode uses explicit eight-slot communication-domain inventory.
+    For other modes, when the cluster names a ``topology`` from the catalog, workers are placed
     either at the explicit ``device_indices`` of their group or sequentially.
     Otherwise a two-level topology is synthesized from the legacy ``networks``
     section: workers sharing a named network form one node connected by the
     device's scale-up link, and nodes are joined by the network's link class.
     """
-    domains = getattr(getattr(cluster_config, "af", None), "communication_domains", None)
-    if domains is not None and cluster_config.af.transfer_topology_mode == "physical":
+    af = getattr(cluster_config, "af", None)
+    domains = physical_domain_config(af) if af is not None else None
+    if domains is not None:
         return build_domain_placement(cluster_config, worker_configs, hardware, domains)
     explicit: dict[int, int] = {}
     cursor = 0
@@ -72,8 +74,12 @@ def build_topology_placement(
 
 def build_domain_placement(cluster_config, worker_configs, hardware, config):
     """Reserve explicit slots first; never expand a declared inventory."""
-    node_count = config.node_count or max(1, -(-len(worker_configs) // config.node_size))
-    identities = {worker.physical_worker_ref.identity: index for index, worker in enumerate(worker_configs)}
+    config.validate_physical_inventory()
+    node_count = config.node_count
+    refs = [getattr(worker, "physical_worker_ref", None) for worker in worker_configs]
+    if any(ref is None for ref in refs) or len({ref.identity for ref in refs}) != len(refs):
+        raise ConfigurationError("AF physical placement needs unique physical worker identities")
+    identities = {ref.identity: index for index, ref in enumerate(refs)}
     overrides = dict(config.device_indices)
     for group in cluster_config.worker_groups:
         if group.device_indices is not None:
@@ -86,6 +92,8 @@ def build_domain_placement(cluster_config, worker_configs, hardware, config):
         raise ConfigurationError("domain placement override references an unknown worker")
     if len(set(overrides.values())) != len(overrides):
         raise ConfigurationError("domain placement duplicates a GPU slot")
+    if any(type(slot) is not int or slot < 0 for slot in overrides.values()):
+        raise ConfigurationError("domain placement requires nonnegative integer GPU slots")
     attention = {index for index, worker in enumerate(worker_configs) if "af_attention" in worker.capabilities}
     roles = {index: ("a" if index in attention else "f") for index in range(len(worker_configs))}
     dedicated_nodes = {}
@@ -129,7 +137,51 @@ def build_domain_placement(cluster_config, worker_configs, hardware, config):
     legacy = synthesize_topology(cluster_config, worker_configs, hardware)
     topology = TopologySpec.two_level("domain_" + legacy.topology_id, node_size=config.node_size,
                                      node_link=legacy.levels[0].link, cluster_link=legacy.levels[-1].link)
-    return TopologyPlacement(topology, placed)
+    result = TopologyPlacement(topology, placed)
+    validate_domain_placement(result, worker_configs, config)
+    return result
+
+
+def validate_domain_placement(placement, worker_configs, config):
+    """Validate supplied and generated AF mappings before creating resources."""
+    config.validate_physical_inventory()
+    if placement is None:
+        raise ConfigurationError("AF physical requires placement from explicit communication_domains")
+    if placement.topology.levels[0].size != config.node_size:
+        raise ConfigurationError("AF physical placement node size must equal communication_domains.node_size=8; migrate legacy placement")
+    mapping = placement.device_index_by_worker
+    if (set(mapping) != set(range(len(worker_configs)))
+            or any(type(rank) is not int for rank in mapping)):
+        raise ConfigurationError("AF physical placement must map every actual worker exactly once")
+    slots = tuple(mapping.values())
+    if any(type(slot) is not int or slot < 0 for slot in slots):
+        raise ConfigurationError("AF physical placement requires nonnegative integer GPU slots")
+    if len(set(slots)) != len(slots):
+        raise ConfigurationError("AF physical placement duplicates a GPU slot")
+    if any(slot >= config.node_count * config.node_size for slot in slots):
+        raise ConfigurationError("AF physical placement exceeds declared node inventory")
+    identities = set()
+    node_roles = {}
+    for worker_id, worker in enumerate(worker_configs):
+        ref = worker.physical_worker_ref
+        if ref is None or ref.identity in identities:
+            raise ConfigurationError("AF physical placement needs unique physical worker identities")
+        identities.add(ref.identity)
+        slot = mapping[worker_id]
+        for explicit in (config.device_indices.get(ref.identity), worker.device_index):
+            if explicit is not None and (type(explicit) is not int or explicit < 0):
+                raise ConfigurationError(f"AF placement needs a nonnegative integer GPU slot for {ref.identity}")
+            if explicit is not None and explicit != slot:
+                raise ConfigurationError(f"AF placement conflicts with explicit GPU slot for {ref.identity}")
+        is_a = "af_attention" in worker.capabilities
+        node, local = placement.node_id(worker_id), slot % config.node_size
+        if config.placement_strategy == "mixed" and (local < config.mixed_a_slots) != is_a:
+            raise ConfigurationError("AF mixed placement violates declared role slots")
+        if config.placement_strategy == "dedicated":
+            if node_roles.setdefault(node, is_a) != is_a:
+                raise ConfigurationError("AF dedicated placement mixes A/F in one node")
+    if set(config.device_indices) - identities:
+        raise ConfigurationError("AF placement override references an unknown physical worker")
 
 
 def synthesize_topology(

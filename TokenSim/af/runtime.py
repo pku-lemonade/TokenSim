@@ -1526,6 +1526,8 @@ def compile_af_runtime_plan(
 ) -> AFRuntimePlan:
     if not cluster_config.af.enabled:
         raise ConfigurationError("AF runtime plan requires af.enabled=true")
+    from TokenSim.hardware.domains import physical_domain_config
+    physical_domain_config(cluster_config.af)
     if not 0 <= watermark < 1:
         raise ConfigurationError("AF runtime watermark must be in [0, 1)")
     from TokenSim.config.model_config import ModelSpec

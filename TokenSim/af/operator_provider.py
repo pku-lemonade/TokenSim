@@ -24,7 +24,7 @@ from __future__ import annotations
 import math
 import json
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Iterable, Mapping, Sequence
 
 from TokenSim.af.latency import (
@@ -35,8 +35,9 @@ from TokenSim.af.latency import (
 )
 from TokenSim.af.snapshot import ConfigurationOwner, HardwareSnapshot, snapshot
 from TokenSim.af.estimate_cache import cached_estimate, cached_phase_estimate, cached_plan, initialize_cache, traffic_feature_fingerprint
-from TokenSim.comm.traffic import all_to_all_plan, collective_plan, point_to_point_plan, ring_volume, validated_bytes
-from TokenSim.hardware.domains import CommunicationDomainConfig, MODEL_VERSION
+from TokenSim.comm.traffic import all_to_all_plan, collective_plan, point_to_point_plan, ring_volume, validated_bytes, validate_all_to_all_parameters
+from TokenSim.hardware.domains import CommunicationDomainConfig, MODEL_VERSION, physical_domain_config
+from TokenSim.hardware.placement import validate_domain_placement
 from TokenSim.config.cache_config import local_kv_heads
 from TokenSim.config.model_config import ModelSpec
 from TokenSim.errors import ConfigurationError
@@ -653,7 +654,7 @@ class TopologyAFTransferProvider(ConfigurationOwner):
     """
 
     _configuration_fields = OperatorTableAFComputeProvider._configuration_fields + (
-        "domain_config", "node_by_worker", "phase_measurements",
+        "domain_config", "node_by_worker", "phase_measurements", "_scope_by_worker",
     )
 
     def __init__(
@@ -688,27 +689,55 @@ class TopologyAFTransferProvider(ConfigurationOwner):
         self.link_classes = {link.network: self.link_class(link.network) for link in cluster_config.af.links}
         if placement is None and cluster_config.af.transfer_topology_mode != "flat_link":
             raise ConfigurationError("AF physical topology requires placement; explicitly select flat_link for legacy link pricing")
+        physical = physical_domain_config(cluster_config.af)
         self.domain_config = snapshot(cluster_config.af.communication_domains or CommunicationDomainConfig())
-        if (cluster_config.af.transfer_topology_mode == "physical" and
-                cluster_config.af.communication_domains is None and placement is not None and
-                (placement.topology.levels[0].size or len(worker_configs)) > self.domain_config.node_size):
-            raise ConfigurationError("legacy virtual topology requires explicit af.communication_domains placement migration")
-        self.node_by_worker = snapshot({worker_id: self.placement.device_index(worker_id) // self.domain_config.node_size
+        if physical is not None:
+            validate_domain_placement(self.placement, worker_configs, physical)
+        self.node_by_worker = snapshot({worker_id: (self.placement.node_id(worker_id) if physical is not None
+                                                   else self.placement.device_index(worker_id) // self.domain_config.node_size)
                                        for worker_id in self._worker_ids.values()}) if placement is not None else {}
         records = []
+        resolved_backends = {}
         if fallback != "analytical_only":
             for hardware_name in sorted(set(self._hardware_by_identity.values())):
                 device = self.hardware.device(hardware_name)
                 backend = self.backend_by_device.get(hardware_name, self.operator_backend)
                 package = self.hardware.operator_package(device.device_id, backend)
                 if package is not None:
+                    backend = getattr(package.meta, "backend", backend)
+                    resolved_backends[hardware_name] = backend
                     for record in package.meta.extra.get("communication_phase_services", ()):
-                        candidate = {**record, "dataset_version": package.meta.dataset_version}
+                        explicit_scope = record.get("participant_hardware_backends")
+                        count = record.get("participants")
+                        if type(count) is not int or count < 1:
+                            raise ConfigurationError("phase measurement participants must be a positive integer")
+                        if explicit_scope is None:
+                            scope = ((device.device_id, backend),) * count
+                        else:
+                            if (not isinstance(explicit_scope, (list, tuple)) or len(explicit_scope) != count
+                                    or any(not isinstance(item, (list, tuple)) or len(item) != 2 for item in explicit_scope)):
+                                raise ConfigurationError("phase measurement hardware/backend scope must match participants")
+                            scope = tuple((self.hardware.device(item[0]).device_id, item[1]) for item in explicit_scope)
+                        if any(value is not None and (not isinstance(value, str) or not value) for _, value in scope):
+                            raise ConfigurationError("phase measurement package backend must be a nonempty string or unspecified")
+                        transport = record.get("transport_backend", "unspecified")
+                        if not isinstance(transport, str) or not transport:
+                            raise ConfigurationError("phase measurement transport backend must be a nonempty string")
+                        candidate = {**record, "dataset_version": package.meta.dataset_version,
+                            "measurement_device": device.device_id, "measurement_backend": backend,
+                            "participant_hardware_backends": scope,
+                            "transport_backend": transport,
+                            "applicability_origin": "explicit" if explicit_scope is not None else "owning_package_homogeneous"}
                         # A/F device aliases may expose the same measurement package.
                         if candidate not in records:
                             records.append(candidate)
         self.phase_measurements = snapshot(tuple(records))
-        self._estimate_namespace += (self._fingerprints(self.phase_measurements),)
+        self._scope_by_worker = snapshot({worker_id: (
+            self.hardware.device(self._hardware_by_identity[identity]).device_id,
+            resolved_backends.get(self._hardware_by_identity[identity],
+                self.backend_by_device.get(self._hardware_by_identity[identity], self.operator_backend)))
+            for identity, worker_id in self._worker_ids.items()})
+        self._estimate_namespace += (self._fingerprints(self.phase_measurements), self._fingerprints(self._scope_by_worker))
         if cluster_config.af.transfer_topology_mode == "physical":
             for domain in self.cluster_config.af.execution_domains:
                 for instance in domain.logical_instances:
@@ -742,14 +771,43 @@ class TopologyAFTransferProvider(ConfigurationOwner):
             "model_version": MODEL_VERSION,
             "domain_config": dict(vars(self.domain_config)),
             "worker_nodes": dict(self.node_by_worker),
+            "worker_device_indices": ({worker: self.placement.device_index(worker)
+                                       for worker in self.node_by_worker} if self.placement is not None else {}),
+            "placement_source": ("explicit:af.communication_domains"
+                                 if self.cluster_config.af.enabled and self.cluster_config.af.transfer_topology_mode == "physical"
+                                 else "legacy:topology"),
             "configuration_fingerprint": traffic_feature_fingerprint(({
                 "model_version": MODEL_VERSION, "domains": dict(vars(self.domain_config)),
                 "placement": self.node_by_worker, "mode": self.cluster_config.af.transfer_topology_mode,
-                "measurements": self.phase_measurements},)),
+                "measurements": self.phase_measurements, "hardware_backends": self._scope_by_worker},)),
         }
+
+    def validate_query(self, query):
+        if query.operation != "all_to_all":
+            return
+        if type(query.payload_bytes) is not int:
+            raise ConfigurationError("all-to-all payload_bytes must be a non-negative integer")
+        validated_bytes(query.payload_bytes, query.dtype)
+        endpoints = query.physical_endpoints
+        if query.group_size is not None and (type(query.group_size) is not int or query.group_size < 1):
+            raise ConfigurationError("all-to-all group_size must be a positive integer")
+        if (not endpoints or len(set(endpoints)) != len(endpoints)
+                or any(item not in self._worker_ids for item in endpoints)
+                or query.group_size not in (None, len(endpoints))
+                or (query.participant_ranks and (len(set(query.participant_ranks)) != len(endpoints)
+                                                or len(query.participant_ranks) != len(endpoints)))):
+            raise ConfigurationError("all-to-all needs actual unique mapped participants matching group_size")
+        validate_all_to_all_parameters(query.local_fraction, query.remote_fraction,
+                                      query.load_imbalance, query.destination_redistribution)
+        if self.cluster_config.af.transfer_topology_mode == "flat_link" and (
+            query.local_fraction is not None or query.remote_fraction is not None
+            or query.load_imbalance != 1 or query.destination_redistribution
+        ):
+            raise ConfigurationError("flat all-to-all supports uniform defaults only; use physical for locality, imbalance or redistribution")
 
     def communication_plan(self, query):
         """Static traffic only. Invocation identities and readiness stay outside."""
+        self.validate_query(query)
         endpoints = tuple(query.physical_endpoints)
         if not endpoints or len(set(endpoints)) != len(endpoints) or any(item not in self._worker_ids for item in endpoints):
             raise ConfigurationError("communication participants must be nonempty, distinct and mapped")
@@ -772,16 +830,21 @@ class TopologyAFTransferProvider(ConfigurationOwner):
                query.logical_input_bytes_per_rank, query.logical_output_bytes_per_rank,
                traffic_feature_fingerprint(query.routing_edges),
                traffic_feature_fingerprint(query.tensor_slices), query.topology)
-        key += (query.local_fraction, query.remote_fraction, query.load_imbalance, query.destination_redistribution)
+        transport_backend = getattr(query, "transport_backend", "unspecified")
+        if not isinstance(transport_backend, str) or not transport_backend:
+            raise ConfigurationError("transport backend must be a nonempty string")
+        key += (query.local_fraction, query.remote_fraction, query.load_imbalance, query.destination_redistribution, transport_backend)
         def build():
             if operation == "all_to_all":
-                return all_to_all_plan(ranks, payload, self.node_by_worker,
+                plan = all_to_all_plan(ranks, payload, self.node_by_worker,
                                        local_fraction=query.local_fraction, remote_fraction=query.remote_fraction,
                                        load_imbalance=query.load_imbalance,
                                        destination_redistribution=query.destination_redistribution, dtype=query.dtype)
-            if collective:
-                return collective_plan(operation, ranks, payload, self.node_by_worker, query.dtype)
-            return point_to_point_plan(ranks[0], ranks[1], payload, self.node_by_worker, wire_dtype=query.dtype)
+            elif collective:
+                plan = collective_plan(operation, ranks, payload, self.node_by_worker, query.dtype)
+            else:
+                plan = point_to_point_plan(ranks[0], ranks[1], payload, self.node_by_worker, wire_dtype=query.dtype)
+            return replace(plan, phases=tuple(replace(phase, transport_backend=transport_backend) for phase in plan.phases))
         return cached_plan(self, key, build)
 
     @cached_phase_estimate
@@ -791,6 +854,8 @@ class TopologyAFTransferProvider(ConfigurationOwner):
             {self.node_by_worker[rank] for rank in phase.participants}))}
         signature = {
             "model_version": MODEL_VERSION, "algorithm": algorithm,
+            "participant_hardware_backends": tuple(self._scope_by_worker[rank] for rank in phase.participants),
+            "transport_backend": phase.transport_backend,
             "phase_kind": phase.phase_id.split(":")[0], "operation": phase.operation,
             "dtype": phase.dtype, "participants": len(phase.participants),
             "nodes": len({self.node_by_worker[rank] for rank in phase.participants}),
@@ -817,6 +882,9 @@ class TopologyAFTransferProvider(ConfigurationOwner):
             return AFServiceEstimate(duration * 1e-6, record["source_id"], phase.logical_input_bytes,
                                      record["dataset_version"], "exact",
                                      {**signature, "timing_scope": "transport_service", "phase_id": phase.phase_id,
+                                      "measurement_device": record["measurement_device"],
+                                      "measurement_backend": record["measurement_backend"],
+                                      "applicability_origin": record["applicability_origin"],
                                       "resource_wire_bytes": phase.resource_wire_bytes,
                                       "resource_identities": phase.resource_ids})
         if self.fallback == "table_only" and phase.wire_bytes:
@@ -825,6 +893,8 @@ class TopologyAFTransferProvider(ConfigurationOwner):
             f"analytical:{MODEL_VERSION}:{phase.phase_id}", phase.logical_input_bytes,
             MODEL_VERSION, "analytical", {
                 "timing_scope": "transport_service", "model_version": MODEL_VERSION,
+                "participant_hardware_backends": signature["participant_hardware_backends"],
+                "transport_backend": phase.transport_backend,
                 "phase_id": phase.phase_id, "algorithm": algorithm,
                 "participants": phase.participants, "fan": phase.fan,
                 "logical_bytes": phase.logical_input_bytes, "wire_bytes": phase.wire_bytes,
@@ -879,7 +949,7 @@ class TopologyAFTransferProvider(ConfigurationOwner):
             wire_bytes = query.payload_bytes * (count-1) / count
             return self._collective_estimate(link.analytical_transfer_us(wire_bytes),
                 f"link:{link.link_id}:{link.source_id}", f"links:{link.link_id}", "analytical", query,
-                {"algorithm": "direct", "wire_bytes": wire_bytes, "group_size": count,
+                {"algorithm": "direct", "wire_bytes": wire_bytes, "wire_bytes_scope": "per_rank", "group_size": count,
                  "model_version": MODEL_VERSION, "routing_provenance": "uniform_fallback"})
         link = self.link_class(query.network)
         payload = query.payload_bytes

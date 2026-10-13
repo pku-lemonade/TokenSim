@@ -1,0 +1,46 @@
+C:\Users\hsh20\AppData\Local\Programs\Python\Python313\Lib\site-packages\simpy\__init__.py:11: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  from pkg_resources import get_distribution
+FFFF
+======================================================================
+FAIL: test_a_measurement_does_not_price_f_device (TokenSim.validation.test_communication_correctness.CommunicationBugReproductions.test_a_measurement_does_not_price_f_device)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-snapshot\TokenSim\validation\test_communication_correctness.py", line 108, in test_a_measurement_does_not_price_f_device
+    self.assertEqual(provider.estimate(fquery).match_type, 'analytical')
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 'exact' != 'analytical'
+- exact
++ analytical
+
+
+======================================================================
+FAIL: test_flat_checks_dtype_alignment (TokenSim.validation.test_communication_correctness.CommunicationBugReproductions.test_flat_checks_dtype_alignment)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-snapshot\TokenSim\validation\test_communication_correctness.py", line 121, in test_flat_checks_dtype_alignment
+    with self.assertRaises(ConfigurationError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: ConfigurationError not raised
+
+======================================================================
+FAIL: test_flat_rejects_bad_fraction (TokenSim.validation.test_communication_correctness.CommunicationBugReproductions.test_flat_rejects_bad_fraction)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-snapshot\TokenSim\validation\test_communication_correctness.py", line 114, in test_flat_rejects_bad_fraction
+    with self.assertRaises(ConfigurationError):
+         ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+AssertionError: ConfigurationError not raised
+
+======================================================================
+FAIL: test_ready_subgroup_starts_at_zero (TokenSim.validation.test_communication_correctness.CommunicationBugReproductions.test_ready_subgroup_starts_at_zero)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "D:\youweiz\af分离\TokenSim-Groq\TokenSim\validation\.correctness-snapshot\TokenSim\validation\test_communication_correctness.py", line 96, in test_ready_subgroup_starts_at_zero
+    self.assertEqual(event.start_at, 0)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+AssertionError: 0.0001 != 0
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.052s
+
+FAILED (failures=4)

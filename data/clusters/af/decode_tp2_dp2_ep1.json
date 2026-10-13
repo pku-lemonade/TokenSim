@@ -27,6 +27,7 @@
     }
   ],
   "af": {
+    "communication_domains": {"node_size": 8, "node_count": 2, "placement_strategy": "manual"},
     "enabled": true,
     "phases": ["decode"],
     "af_block_size": 1,

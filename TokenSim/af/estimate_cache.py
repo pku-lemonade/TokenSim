@@ -174,6 +174,9 @@ def cached_estimate(method):
     @wraps(method)
     def estimate(self, query):
         self.estimate_requests += 1
+        validator = getattr(self, "validate_query", None)
+        if validator is not None:
+            validator(query)
         if not self.cache_enabled:
             result = method(self, query)
             return replace(result, details=freeze(result.details))
