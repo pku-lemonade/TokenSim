@@ -24,8 +24,7 @@ custom_allreduce_perf      collective (kernel=custom)  all_reduce only
 moe_a2a_perf               ep_all2all                  DeepEP dispatch/combine (latency already in us)
 wideep_deepep_{ll,normal}  ep_all2all                  SGLang DeepEP (two rows per source row)
 wideep_*moe_perf           moe (backfill only)         wide-EP expert kernels
-=========================  ==========================  ===============================
-"""
+=========================  ==========================  ==============================="""
 
 from __future__ import annotations
 

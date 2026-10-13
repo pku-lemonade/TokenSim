@@ -138,36 +138,24 @@ class HBFStorageTest(unittest.TestCase):
         self.assertEqual(reset["write_blocks"], 0)
         self.assertEqual(reset["profile"]["capacity_bytes"], 64 << 20)
 
-    def test_presets_use_byte_units_and_do_not_select_accelerator_memory(self):
-        for hardware, capacity, bandwidth in (
-            ("h100", 24 * 1024, 1200),
-            ("b200", 48 * 1024, 2400),
-        ):
-            for preset in ("hbf1", "hbf1-48gib", "hbf2"):
-                divisor = 2 if preset == "hbf2" else 1
-                for media in ("", "ssd_"):
-                    path = (
-                        ROOT
-                        / f"data/kv_transfer/mooncake_store_{hardware}_{media}{preset}.json"
-                    )
-                    kv = KVTransferConfig.from_file(path)
-                    config = parse_mooncake_config(kv.kv_connector_extra_config)
-                    self.assertNotIn(
-                        "accelerator_memory_preset", kv.kv_connector_extra_config
-                    )
-                    if media:
-                        self.assertEqual(
-                            config.ssd_capacity_bytes, capacity * GIB // divisor
-                        )
-                    else:
-                        self.assertEqual(
-                            config.offload.config["capacity_bytes"],
-                            capacity * GIB // divisor,
-                        )
-                        self.assertEqual(
-                            config.offload.config["seq_read_bandwidth_bytes_per_s"],
-                            bandwidth * GIB / divisor,
-                        )
+    def test_packaged_example_supports_prefix_reuse(self):
+        config = KVTransferConfig.from_file(
+            ROOT / "data/kv_transfer/mooncake_store_hbf.json"
+        )
+        cache = SimpleNamespace(
+            block_size=16, size_per_token=1, model="test", rank_info=None
+        )
+        connector = KVConnectorFactory.create_connector(config, cache)
+        request = Request(0, 64, 2, 16, hash_ids=[1, 2, 3, 4])
+        keys = connector._keys_for_request(request)
+        store = connector.service.store
+        delay = store.put(keys)
+        self.assertGreater(delay, 0)
+        self.assertEqual(store.lookup(keys, now=0).hit_blocks, 0)
+        hit = store.lookup(keys, now=delay)
+        self.assertEqual(hit.hit_blocks, 4)
+        self.assertEqual(hit.tier, "hbf")
+        self.assertEqual(hbf_metrics(store.stats)["write_bytes"], 64)
 
     def test_bandwidth_curve_has_random_and_sequential_limits(self):
         tier = OffloadTier(hbf_config(seq_read_bandwidth_bytes_per_s=100 * GIB), 4096)

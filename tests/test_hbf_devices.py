@@ -54,9 +54,7 @@ class HBFDeviceTest(unittest.TestCase):
     def test_storage_selection_does_not_change_device_or_kv_budget(self):
         base = self.hardware.device("H100")
         cache = CacheConfig(16, base, make_model())
-        KVTransferConfig.from_file(
-            ROOT / "data/kv_transfer/mooncake_store_h100_hbf1.json"
-        )
+        KVTransferConfig.from_file(ROOT / "data/kv_transfer/mooncake_store_hbf.json")
         self.assertIs(self.hardware.device("H100"), base)
         self.assertEqual(base.memory_capacity_bytes.value, 80 * GIB)
         self.assertEqual(

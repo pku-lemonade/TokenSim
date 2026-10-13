@@ -103,8 +103,8 @@ Supporting flash for grouped pages requires extending that page-storage interfac
 
 ## Migration from the public HBF snapshot
 
-The twelve H100/B200 storage configurations retain their capacity, bandwidth and media-latency assumptions.
-Their GPU-specific names identify the original experiments; each file now configures storage independently.
+The checkout includes one hardware-independent HBF storage configuration, `data/kv_transfer/mooncake_store_hbf.json`.
+Set storage capacity and bandwidth in its plugin options for the system being modeled.
 The snapshot's `*_capacity_gb` and `*_bw_gbps` fields used binary GiB units, so the migrated values multiply those inputs by `2**30`.
 GPU memory bandwidth in the device examples follows the snapshot's decimal TB/s values and uses `10**12` bytes/s per TB/s.
 `accelerator_memory_preset`, `target_hardware` and `hbf_preset` have been removed from storage configurations.
@@ -116,5 +116,4 @@ The merged runtime uses main's device catalog and operator latency model.
 Its hardware, model accounting and scheduling corrections can change results relative to the original HBF snapshot.
 Uniform external prefix hits follow main's trailing-block rule, so full-prompt reuse leaves one block for computation.
 The retired TransformerRoofline backend and PSLA configuration interface remain available in commit `0b8d751`.
-The MiniMax sweep scripts under `scripts/hpc/minimax_m2_7_latency_sweep/` and the legacy `scripts/run_qwen_traceA_models.sh` use that snapshot's interfaces and require a checkout of that revision.
-The Qwen block-variant converter supports this checkout and uses `dataset/qwen-bailian-usagetraces-anon/` by default.
+Historical experiment configurations and runners are available in that snapshot.
