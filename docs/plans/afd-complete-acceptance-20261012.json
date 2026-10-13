@@ -1,0 +1,267 @@
+{
+  "scope": "tiny Qwen3 MoE, BF16 eager, GPU2/3 same-node 1A1F decode",
+  "acceptance_target": "positive same-scope max/min < 10; causal oracle for waiting",
+  "scoped_alignment_passed": true,
+  "step_results": [
+    {
+      "batch": 1,
+      "heldout": false,
+      "simulation": {
+        "batch": 1,
+        "steps": 31,
+        "mean_step_us": 4674.397933946477,
+        "expected_calls_per_step": {
+          "control_encode_us": 1,
+          "control_decode_us": 1,
+          "engine_step_schedule_us": 1,
+          "engine_output_process_us": 1,
+          "send_torch_distributed_nccl_a_to_f_us": 2,
+          "receive_torch_distributed_nccl_a_to_f_us": 2,
+          "send_pynccl_a_to_f_us": 2,
+          "receive_pynccl_a_to_f_us": 2,
+          "send_pynccl_f_to_a_us": 2,
+          "receive_pynccl_f_to_a_us": 2,
+          "engine_runner_bookkeeping_us": 1,
+          "compute_a_embedding_us": 1,
+          "compute_a_final_norm_us": 1,
+          "compute_a_lm_head_us": 1,
+          "compute_a_token_selection_us": 1,
+          "compute_a_attention_us": 2,
+          "compute_a_post_norm_us": 2,
+          "compute_f_moe_block_us": 2
+        },
+        "all_profile_costs_materialized": true,
+        "critical_chain_us": {
+          "host_service": 3763.0074999999933,
+          "operation_service": 711.1225833333289,
+          "compute": 166.5904417589899,
+          "data_transport": 33.67740885416351
+        },
+        "native_call_order_enabled": true,
+        "validation_not_assessed_here": [
+          "CUDA API/device launch calibration",
+          "independent native component validation"
+        ],
+        "operation_and_local_domain_counts_verified": true
+      },
+      "native_mean_us": 4066.690897078664,
+      "native_samples": 10726,
+      "window_ratios": [
+        1.1585635651414934,
+        1.1164244891130888,
+        1.1749184517932534
+      ],
+      "step_order_pass": true
+    },
+    {
+      "batch": 8,
+      "heldout": false,
+      "simulation": {
+        "batch": 8,
+        "steps": 31,
+        "mean_step_us": 4678.352136681182,
+        "expected_calls_per_step": {
+          "control_encode_us": 1,
+          "control_decode_us": 1,
+          "engine_step_schedule_us": 1,
+          "engine_output_process_us": 1,
+          "send_torch_distributed_nccl_a_to_f_us": 2,
+          "receive_torch_distributed_nccl_a_to_f_us": 2,
+          "send_pynccl_a_to_f_us": 2,
+          "receive_pynccl_a_to_f_us": 2,
+          "send_pynccl_f_to_a_us": 2,
+          "receive_pynccl_f_to_a_us": 2,
+          "engine_runner_bookkeeping_us": 1,
+          "compute_a_embedding_us": 1,
+          "compute_a_final_norm_us": 1,
+          "compute_a_lm_head_us": 1,
+          "compute_a_token_selection_us": 1,
+          "compute_a_attention_us": 2,
+          "compute_a_post_norm_us": 2,
+          "compute_f_moe_block_us": 2
+        },
+        "all_profile_costs_materialized": true,
+        "critical_chain_us": {
+          "host_service": 3763.0074999999943,
+          "operation_service": 711.1225833333289,
+          "compute": 168.20972424629258,
+          "data_transport": 36.01232910156606
+        },
+        "native_call_order_enabled": true,
+        "validation_not_assessed_here": [
+          "CUDA API/device launch calibration",
+          "independent native component validation"
+        ],
+        "operation_and_local_domain_counts_verified": true
+      },
+      "native_mean_us": 4552.278192961087,
+      "native_samples": 9517,
+      "window_ratios": [
+        1.0409182749352144,
+        1.142568635815011,
+        1.003015684326255
+      ],
+      "step_order_pass": true
+    },
+    {
+      "batch": 4,
+      "heldout": false,
+      "simulation": {
+        "batch": 4,
+        "steps": 31,
+        "mean_step_us": 4676.3313902465625,
+        "expected_calls_per_step": {
+          "control_encode_us": 1,
+          "control_decode_us": 1,
+          "engine_step_schedule_us": 1,
+          "engine_output_process_us": 1,
+          "send_torch_distributed_nccl_a_to_f_us": 2,
+          "receive_torch_distributed_nccl_a_to_f_us": 2,
+          "send_pynccl_a_to_f_us": 2,
+          "receive_pynccl_a_to_f_us": 2,
+          "send_pynccl_f_to_a_us": 2,
+          "receive_pynccl_f_to_a_us": 2,
+          "engine_runner_bookkeeping_us": 1,
+          "compute_a_embedding_us": 1,
+          "compute_a_final_norm_us": 1,
+          "compute_a_lm_head_us": 1,
+          "compute_a_token_selection_us": 1,
+          "compute_a_attention_us": 2,
+          "compute_a_post_norm_us": 2,
+          "compute_f_moe_block_us": 2
+        },
+        "all_profile_costs_materialized": true,
+        "critical_chain_us": {
+          "host_service": 3763.0074999999933,
+          "operation_service": 711.1225833333289,
+          "compute": 167.5232179530401,
+          "data_transport": 34.67808896019959
+        },
+        "native_call_order_enabled": true,
+        "validation_not_assessed_here": [
+          "CUDA API/device launch calibration",
+          "independent native component validation"
+        ],
+        "operation_and_local_domain_counts_verified": true
+      },
+      "native_mean_us": 4202.722399650455,
+      "native_samples": 10323,
+      "window_ratios": [
+        1.1237786854758918,
+        1.067317444757747,
+        1.1502410091610895
+      ],
+      "step_order_pass": true
+    },
+    {
+      "batch": 7,
+      "heldout": true,
+      "simulation": {
+        "batch": 7,
+        "steps": 31,
+        "mean_step_us": 4677.879726266574,
+        "expected_calls_per_step": {
+          "control_encode_us": 1,
+          "control_decode_us": 1,
+          "engine_step_schedule_us": 1,
+          "engine_output_process_us": 1,
+          "send_torch_distributed_nccl_a_to_f_us": 2,
+          "receive_torch_distributed_nccl_a_to_f_us": 2,
+          "send_pynccl_a_to_f_us": 2,
+          "receive_pynccl_a_to_f_us": 2,
+          "send_pynccl_f_to_a_us": 2,
+          "receive_pynccl_f_to_a_us": 2,
+          "engine_runner_bookkeeping_us": 1,
+          "compute_a_embedding_us": 1,
+          "compute_a_final_norm_us": 1,
+          "compute_a_lm_head_us": 1,
+          "compute_a_token_selection_us": 1,
+          "compute_a_attention_us": 2,
+          "compute_a_post_norm_us": 2,
+          "compute_f_moe_block_us": 2
+        },
+        "all_profile_costs_materialized": true,
+        "critical_chain_us": {
+          "host_service": 3763.007499999994,
+          "operation_service": 711.1225833333289,
+          "compute": 168.07087386703455,
+          "data_transport": 35.67876906621659
+        },
+        "native_call_order_enabled": true,
+        "validation_not_assessed_here": [
+          "CUDA API/device launch calibration",
+          "independent native component validation"
+        ],
+        "operation_and_local_domain_counts_verified": true
+      },
+      "native_mean_us": 4049.182429939388,
+      "native_samples": 10664,
+      "window_ratios": [
+        1.156052538461896,
+        1.1628714123105022,
+        1.1469818883033358
+      ],
+      "step_order_pass": true
+    }
+  ],
+  "device_heldout": [
+    {
+      "role": "a-pool:0",
+      "window": 0,
+      "native_us": 135.5213548387097,
+      "model_us": 111.28214955706937,
+      "ratio": 1.2178175509560014,
+      "order_pass": true
+    },
+    {
+      "role": "f-pool:0",
+      "window": 0,
+      "native_us": 59.418,
+      "model_us": 56.78872430996529,
+      "ratio": 1.0462992560932263,
+      "order_pass": true
+    },
+    {
+      "role": "a-pool:0",
+      "window": 1,
+      "native_us": 135.53129032258067,
+      "model_us": 111.28214955706937,
+      "ratio": 1.217906832875074,
+      "order_pass": true
+    },
+    {
+      "role": "f-pool:0",
+      "window": 1,
+      "native_us": 59.41967741935484,
+      "model_us": 56.78872430996529,
+      "ratio": 1.0463287939878563,
+      "order_pass": true
+    },
+    {
+      "role": "a-pool:0",
+      "window": 2,
+      "native_us": 135.46590322580647,
+      "model_us": 111.28214955706937,
+      "ratio": 1.217319253492087,
+      "order_pass": true
+    },
+    {
+      "role": "f-pool:0",
+      "window": 2,
+      "native_us": 59.48116129032258,
+      "model_us": 56.78872430996529,
+      "ratio": 1.047411471433332,
+      "order_pass": true
+    }
+  ],
+  "host_operation_max_ratio": 2.5556396874465483,
+  "transport_max_ratio": 1.039238819325687,
+  "frozen_bundle_sha256": "53623d9945343819a2b0da48accbf2dd5653dd336342bb4ca3d3c494a609f451",
+  "independent_component_validation_kind": "retrospective_independent_not_blind",
+  "limitations": [
+    "quantity agreement does not imply small percentage error",
+    "CPU/runtime groups and GPU fixed-service coefficient are aggregate approximations",
+    "CUPTI and cross-device timing uncertainty retained; transport is device service, not physical wire-only time",
+    "no prefill, cross-node, DSV3 or multi-inflight validation"
+  ]
+}

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import math
+from dataclasses import replace
+from types import SimpleNamespace
 from collections.abc import Sequence
 from typing import Any
 
@@ -27,6 +29,12 @@ from TokenSim.af.planning import (
 )
 from TokenSim.af.resources import AFResourceRegistry
 from TokenSim.af.runtime import AFRuntimePlan
+from TokenSim.af.readiness import TransferReadiness
+from TokenSim.af.control import NativeControlMixin
+from TokenSim.af.native_order import NativeOrderMixin
+from TokenSim.af.calibration import HostOverheadProfile, runtime_fingerprint, COMPUTE_CALL_FIELDS, MESSAGE_CALL_FIELDS
+from TokenSim.af.routing_replay import RoutingReplay
+from TokenSim.af.operation_profile import OperationServiceProfile
 from TokenSim.dtypes import dtype_size_bytes
 from TokenSim.af.trace import AFTraceEvent, AFTraceRecorder
 from TokenSim.config.cluster_config import AFLinkConfig, ClusterConfig, WorkerConfig
@@ -34,7 +42,7 @@ from TokenSim.errors import ConfigurationError, SimulationStateError
 from TokenSim.moe.routing import ExpertRouting
 
 
-class AFExecutor(ConfigurationOwner):
+class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
     _configuration_fields = (
         "cluster_config", "runtime_plan", "model_id", "dtype", "total_layers",
         "hidden_size",
@@ -56,6 +64,7 @@ class AFExecutor(ConfigurationOwner):
         moe_config: Any | None = None,
         random_seed: int = 0,
         runtime_plan: AFRuntimePlan | None = None,
+        transfer_readiness=None,
     ) -> None:
         cluster_config = snapshot(cluster_config)
         # Compiled AFRuntimePlan is already a graph of frozen records/tuples.
@@ -82,6 +91,58 @@ class AFExecutor(ConfigurationOwner):
         self.total_layers = total_layers
         self.hidden_size = hidden_size
         self.runtime_plan = runtime_plan
+        self.overhead_profile = None
+        if cluster_config.af.engine_overhead_profile is not None:
+            self.overhead_profile = HostOverheadProfile(
+                cluster_config.af.engine_overhead_profile,
+                expected_runtime=runtime_fingerprint(runtime_plan, cluster_config, worker_configs,
+                                                     getattr(compute_provider, "hardware", None)),
+                expected_environment=cluster_config.af.calibration_environment,
+                explicit_costs=cluster_config.af.communication_timing._explicit_cost_fields)
+            if self.overhead_profile.document['schema_version']==4:
+                source=self.overhead_profile.document['device_service_source_id']
+                hardware=getattr(compute_provider,'hardware',None)
+                if (getattr(compute_provider,'fallback',None)!='analytical_only' or hardware is None
+                    or any(hardware.device(w.hardware).analytical_source_id!=source for w in worker_configs)):
+                    raise ConfigurationError('CPU API submission costs require matching device-only calibration; old launch assumptions conflict')
+            if (any(name in self.overhead_profile.document['costs'] for name in
+                    ('engine_output_process_us','engine_runner_bookkeeping_us'))
+                    and not getattr(self, 'supports_sampled_token_readback', False)):
+                raise ConfigurationError('engine output processing requires the whole-model executor')
+        self.operation_profile = None
+        if cluster_config.af.operation_service_profile is not None:
+            self.operation_profile = OperationServiceProfile(
+                cluster_config.af.operation_service_profile,
+                expected_runtime=runtime_fingerprint(runtime_plan, cluster_config, worker_configs,
+                                                     getattr(compute_provider, "hardware", None)),
+                expected_environment=cluster_config.af.calibration_environment,
+                explicit_costs=cluster_config.af.communication_timing._explicit_cost_fields)
+            if 'sampled_token_readback' in self.operation_profile.document['operations']:
+                if not getattr(self, 'supports_sampled_token_readback', False):
+                    raise ConfigurationError('sampled_token_readback requires the whole-model executor')
+                if getattr(compute_provider, 'fallback', None) != 'analytical_only':
+                    raise ConfigurationError('sampled_token_readback requires audited analytical_only compute coverage')
+            if any(name in self.operation_profile.document['operations'] for name in ('a_input_prepare','a_attention_metadata')):
+                if getattr(compute_provider, 'fallback', None) != 'analytical_only':
+                    raise ConfigurationError('a_input_prepare requires audited analytical_only compute coverage')
+                if self.overhead_profile is not None and 'a_step_prepare_us' in self.overhead_profile.document['costs']:
+                    raise ConfigurationError('duplicate operation/host profile coverage: a_input_prepare')
+            if ('f_dp_metadata' in self.operation_profile.document['operations'] and self.overhead_profile is not None
+                    and 'f_step_prepare_us' in self.overhead_profile.document['costs']):
+                raise ConfigurationError('duplicate operation/host profile coverage: f_dp_metadata')
+        timing = cluster_config.af.communication_timing
+        self.routing_replay = None
+        if cluster_config.af.routing_replay is not None:
+            self.routing_replay = RoutingReplay(
+                cluster_config.af.routing_replay,
+                expected_runtime=runtime_fingerprint(runtime_plan, cluster_config, worker_configs,
+                                                     getattr(compute_provider, 'hardware', None)),
+                expected_environment=cluster_config.af.calibration_environment)
+        if runtime_plan is None and (timing.a_step_prepare_us or timing.f_step_prepare_us
+                                     or timing.native_control_enabled):
+            raise ConfigurationError("fixed step preparation requires a compiled AF runtime plan")
+        # This callback supplies invocation events, not cached service times.
+        self.transfer_readiness = transfer_readiness
         self._validate_provider_dtype_contract()
         self.resources = resources or AFResourceRegistry(
             env, cluster_config, worker_configs, getattr(transfer_provider, "placement", None)
@@ -108,12 +169,151 @@ class AFExecutor(ConfigurationOwner):
         self._links = {link.name: link for link in cluster_config.af.links}
         self._next_iteration_id = 0
         self.active_iterations: dict[int, AFIteration] = {}
+        self._fused_combines = {}
         self.active_stages: dict[tuple[int, int, str], dict[str, object]] = {}
         self._compute_resource_bindings = {}
         self._communication_resource_bindings = {}
         self._endpoint_worker_bindings = {}
         self._effective_dtype_bindings = {}
         self._query_mappings = {}
+        self._step_preparation = {}
+        self._native_controls = {}
+
+    def _host_cost_us(self, name, block=None, *, tokens=None):
+        fallback = getattr(self.cluster_config.af.communication_timing, name, 0.0)
+        if self.overhead_profile is None:
+            return fallback
+        count = tokens if tokens is not None else block.token_count
+        return self.overhead_profile.cost(name, count, fallback)
+
+    def _native_call_cost_field(self, step, action):
+        if action == 'compute':
+            if (step.operation == 'router_topk' and self.overhead_profile is not None
+                    and 'compute_f_moe_block_us' in self.overhead_profile.document['costs']):
+                return 'compute_f_moe_block_us'
+            field = COMPUTE_CALL_FIELDS.get(step.operation)
+            fallback = 'compute_submit_us'
+        else:
+            backend = step.metadata.get('transport_backend', 'pynccl')
+            field = MESSAGE_CALL_FIELDS.get((backend, step.direction, action))
+            fallback = 'host_submit_us' if action == 'send' else 'host_receive_submit_us'
+        if self.overhead_profile is not None and field in self.overhead_profile.document['costs']:
+            return field
+        return fallback
+
+    def host_cost_provenance(self, name, *, tokens):
+        """Materialized per-call cost, distinct from whole-engine validation."""
+        profile = self.overhead_profile
+        covered = profile is not None and name in profile.document['costs']
+        explicit = name in self.cluster_config.af.communication_timing._explicit_cost_fields
+        measured = covered and profile.document['evidence']['kind'] == 'measured'
+        return dict(value_us=self._host_cost_us(name, tokens=tokens), unit='us',
+                    calibrated=measured,
+                    origin=('measured_profile' if measured else 'synthetic_test_profile' if covered
+                            else 'manual_assumption' if explicit else 'unmeasured_default'),
+                    profile_id=profile.document['profile_id'] if covered else None,
+                    profile_fingerprint=profile.fingerprint if covered else None,
+                    coverage=list(profile.document['costs'][name]['coverage']) if covered else [],
+                    validation_status=profile.document['evidence']['validation_status'] if covered else None)
+
+    def _start_step_preparation(self, iteration):
+        """One independent host preparation per participating worker/iteration."""
+        timing = self.cluster_config.af.communication_timing
+        preparations = {}
+        a_cost = self._host_cost_us("a_step_prepare_us", tokens=len(iteration.request_ids))
+        f_cost = self._host_cost_us("f_step_prepare_us", tokens=len(iteration.request_ids))
+        schedule_cost = self._host_cost_us('engine_step_schedule_us', tokens=len(iteration.request_ids))
+        input_operations = tuple(name for name in ('a_input_prepare','a_attention_metadata')
+            if self.operation_profile is not None and name in self.operation_profile.document['operations'])
+        input_operation = bool(input_operations)
+        if input_operation:
+            a_cost = sum(self.operation_profile.document['operations'][name]['fixed_us'] for name in input_operations)
+        if not timing.enabled or not (a_cost or f_cost or input_operation or schedule_cost):
+            return preparations
+        for block in iteration.blocks:
+            for domain, instance, duration, field in (
+                (block.placement.a_domain, block.placement.a_instance, a_cost, "a_step_prepare_us"),
+                (block.placement.f_domain, block.placement.f_instance, f_cost, "f_step_prepare_us"),
+            ):
+                if not duration and not ((input_operation or schedule_cost) and field == 'a_step_prepare_us'):
+                    continue
+                for binding in self.runtime_plan.bindings_for_instance(domain, instance):
+                    identity = binding.physical_identity
+                    if identity in preparations:
+                        continue
+                    node_id = f"i{iteration.iteration_id}:prepare:{identity}"
+                    if (input_operation or schedule_cost) and field == 'a_step_prepare_us':
+                        process = self.env.process(self._run_a_step_preparation(block, identity, node_id, duration))
+                        preparations[identity] = (process, node_id)
+                        continue
+                    step = SimpleNamespace(operation="step_prepare", direction=None,
+                        logical_stage_id=None, leg_id=None, source_domain=domain,
+                        target_domain=domain, layer_type=None)
+                    process = self.env.process(self._run_preparation_stage(
+                        block, -1, step, node_id, (), (identity,), duration / 1e6,
+                        "host_prepare", details={"cost_field": field, "cost_scope": "per_step_per_worker",
+                                                "calibrated": False}))
+                    preparations[identity] = (process, node_id)
+        return preparations
+
+    def _run_a_step_preparation(self, block, identity, node_id, duration):
+        try:
+            predecessors = ()
+            schedule = self._host_cost_us('engine_step_schedule_us', block)
+            if schedule:
+                scheduled = node_id+':schedule'
+                template = self._control_nodes(block)[0]
+                yield from self._run_communication_host_stage(block,-1,template,scheduled,(),(identity,),
+                    schedule/1e6,'host_prepare',details={'cost_field':'engine_step_schedule_us','cost_scope':'per_step_per_worker'})
+                predecessors = (scheduled,)
+            if self.operation_profile is not None and any(
+                    n in self.operation_profile.document['operations'] for n in ('a_input_prepare','a_attention_metadata')):
+                yield from self._run_input_preparation(block, identity, node_id, predecessors)
+            else:
+                yield from self._run_communication_host_stage(block,-1,self._control_nodes(block)[0],node_id,
+                    predecessors,(identity,),duration/1e6,'host_prepare',
+                    details={'cost_field':'a_step_prepare_us','cost_scope':'per_step_per_worker'})
+        except simpy.Interrupt:
+            return
+
+    def _run_input_preparation(self, block, identity, node_id, predecessors=()):
+        try:
+            names = [name for name in ('a_input_prepare','a_attention_metadata')
+                     if name in self.operation_profile.document['operations']]
+            for index,name in enumerate(names):
+                completed = yield from self._control_stage(block,self._control_nodes(block)[0],name,predecessors,
+                    identity,0,device=True,node_id=node_id if index==len(names)-1 else node_id+':'+name)
+                predecessors = (completed,)
+        except simpy.Interrupt:
+            return
+
+    def _run_preparation_stage(self, *args, **kwargs):
+        try:
+            yield from self._run_communication_host_stage(*args, **kwargs)
+        except simpy.Interrupt:
+            return
+
+    def _run_receiver_submit(self, block, layer_id, step, node_id, duration, cost_field='host_receive_submit_us'):
+        try:
+            prepared = yield from self._wait_step_preparation(block, (step.physical_workers[-1],))
+            control = self._native_controls.get(block.iteration_id)
+            if control is not None and step.direction == "a_to_f" and step.metadata.get("message_class") != "control":
+                yield control["f_ready"]
+                prepared = (*prepared, control["f_node"])
+            yield from self._run_communication_host_stage(
+                block, layer_id, step, node_id,
+                tuple(dict.fromkeys((*step.predecessor_ids, *prepared))),
+                (step.physical_workers[-1],), duration, "host_submit",
+                details={"cost_field": cost_field, "cost_scope": "per_receive_call", "calibrated": False})
+        except simpy.Interrupt:
+            return
+
+    def _wait_step_preparation(self, block, identities):
+        preparations = self._step_preparation.get(block.iteration_id, {})
+        selected = [preparations[x] for x in identities if x in preparations]
+        if selected:
+            yield self.env.all_of([event for event, _ in selected])
+        return tuple(node_id for _, node_id in selected)
 
     def _effective_dtypes(self, link_name: str) -> dict[str, str]:
         cached = self._effective_dtype_bindings.get(link_name)
@@ -209,6 +409,10 @@ class AFExecutor(ConfigurationOwner):
         phase: AFPhase | None = None,
     ) -> AFIteration:
         resolved_phase = phase or phase_for_requests(requests)
+        if self.operation_profile is not None:
+            self.operation_profile.validate_workload(requests, resolved_phase)
+        if self.overhead_profile is not None:
+            self.overhead_profile.validate_workload(requests, resolved_phase)
         if resolved_phase not in self.cluster_config.af.phases:
             raise ConfigurationError(
                 f"AF phase {resolved_phase!r} is not selected by af.phases"
@@ -294,6 +498,10 @@ class AFExecutor(ConfigurationOwner):
                     f"AF runtime layer {layer_id} is MoE but no ExpertRouting "
                     "configuration is available"
                 )
+            if self.routing_replay is not None:
+                block_requests = self.routing_replay.requests_for(
+                    block_requests, phase=snapshot_phase, layer_id=layer_id,
+                    decode_step=self._routing_step(snapshot_phase, block_requests))
             return self.expert_routing.snapshot_for_layer(
                 block_requests,
                 iteration_id=snapshot_iteration_id,
@@ -366,8 +574,14 @@ class AFExecutor(ConfigurationOwner):
             raise SimulationStateError(
                 f"AF iteration {iteration.iteration_id} is already active"
             )
+        native_control = self.cluster_config.af.communication_timing.native_control_enabled
+        if native_control and self.active_iterations:
+            raise SimulationStateError("native control eager mode supports one in-flight iteration")
+        if native_control and len(iteration.blocks) > 1:
+            raise ConfigurationError("native control eager DP=1 requires one unsplit block per iteration")
         iteration.start_at = self.env.now
         self.active_iterations[iteration.iteration_id] = iteration
+        self._step_preparation[iteration.iteration_id] = self._start_step_preparation(iteration)
         failure_event = self.env.event()
         failures: list[BaseException] = []
         done_events = [self.env.event() for _ in iteration.blocks]
@@ -377,6 +591,17 @@ class AFExecutor(ConfigurationOwner):
             )
             for block, done_event in zip(iteration.blocks, done_events)
         ]
+        if native_control and iteration.blocks:
+            state = {"a_ready": self.env.event(), "f_ready": self.env.event(),
+                     "a_node": f"i{iteration.iteration_id}:control:payload:transport",
+                     "f_node": f"i{iteration.iteration_id}:control:decode"}
+            self._native_controls[iteration.iteration_id] = state
+            if self.cluster_config.af.communication_timing.native_call_order_enabled:
+                self._start_native_call_order(iteration.blocks[0], state)
+            control_done = self.env.event()
+            done_events.append(control_done)
+            processes.append(self.env.process(self._run_control_guarded(
+                iteration.blocks[0], state, failure_event, failures, control_done)))
         try:
             if processes:
                 completion = self.env.all_of(done_events)
@@ -404,6 +629,20 @@ class AFExecutor(ConfigurationOwner):
                 yield self.env.all_of(done_events)
             raise
         finally:
+            state = self._native_controls.pop(iteration.iteration_id, None)
+            receivers = [call['receiver'] for call in state.get('calls', {}).values()] if state else []
+            for receiver in receivers:
+                if receiver.is_alive:
+                    receiver.interrupt('native iteration finished or cancelled')
+            if receivers:
+                yield self.env.all_of(receivers)
+            self._fused_combines.pop(iteration.iteration_id, None)
+            preparations = self._step_preparation.pop(iteration.iteration_id, {})
+            for process, _ in preparations.values():
+                if process.is_alive:
+                    process.interrupt("AF iteration preparation cancelled")
+            if preparations:
+                yield self.env.all_of([process for process, _ in preparations.values()])
             self.active_iterations.pop(iteration.iteration_id, None)
             for key in tuple(self.active_stages):
                 if key[0] == iteration.iteration_id:
@@ -418,6 +657,19 @@ class AFExecutor(ConfigurationOwner):
             self.trace.validate_invariants(iteration.iteration_id)
         return iteration
 
+    def _run_control_guarded(self, block, state, failure_event, failures, done):
+        try:
+            yield from self._run_native_control(block, state)
+        except simpy.Interrupt:
+            return
+        except BaseException as exc:
+            failures.append(exc)
+            if not failure_event.triggered:
+                failure_event.succeed()
+        finally:
+            if not done.triggered:
+                done.succeed()
+
     def _run_block_guarded(
         self,
         block: AFBlock,
@@ -426,6 +678,11 @@ class AFExecutor(ConfigurationOwner):
         done_event: simpy.Event,
     ):
         try:
+            control = self._native_controls.get(block.iteration_id)
+            if control is not None:
+                yield self.env.any_of((control["a_ready"], failure_event))
+                if failure_event.triggered:
+                    return
             yield from self._run_block(block)
         except simpy.Interrupt:
             return
@@ -575,6 +832,40 @@ class AFExecutor(ConfigurationOwner):
         layer_id: int,
         step: ExecutionNode,
     ):
+        preparation_ids = yield from self._wait_step_preparation(block, step.physical_workers)
+        control = self._native_controls.get(block.iteration_id)
+        if control is not None and not step.predecessor_ids:
+            preparation_ids = (*preparation_ids, control["a_node"])
+        timing = self.cluster_config.af.communication_timing
+        compute_cost_field = self._native_call_cost_field(step, 'compute')
+        compute_submit_us = self._host_cost_us(compute_cost_field, block)
+        if (step.operation in ('routed_expert','f_weighted_combine') and self.overhead_profile is not None
+                and 'compute_f_moe_block_us' in self.overhead_profile.document['costs']):
+            compute_submit_us = 0  # One native FusedMoE call owns router, experts and combine dispatch.
+        if (step.operation == 'f_weighted_combine' and self.overhead_profile is not None
+                and 'compute_f_expert_group_us' in self.overhead_profile.document['costs']):
+            compute_submit_us = 0  # Native grouped invocation includes combine dispatch.
+        combine_key = (block.block_id, layer_id, step.physical_workers)
+        fused = (self._fused_combines.get(block.iteration_id, {}).get(combine_key)
+                 if step.stage == 'weighted_combine' else None)
+        if fused is not None:
+            compute_submit_us = 0
+        if timing.enabled and compute_submit_us:
+            submit_id = f"{step.node_id}:compute_submit"
+            yield from self._run_communication_host_stage(
+                block, layer_id, step, submit_id,
+                tuple(dict.fromkeys((*step.predecessor_ids, *preparation_ids))),
+                step.physical_workers, compute_submit_us / 1e6, "host_submit",
+                details={"cost_field": compute_cost_field,
+                    "cost_scope": "per_native_call_group" if compute_cost_field != 'compute_submit_us' else "per_compute_dag_node",
+                    "calibrated": False})
+            step = replace(step, predecessor_ids=(submit_id,))
+        elif preparation_ids and not step.predecessor_ids:
+            step = replace(step, predecessor_ids=preparation_ids)
+        if control is not None and 'a_device_ready' in control and control['a_node'] in preparation_ids:
+            yield control['a_device_ready']
+            step = replace(step, predecessor_ids=tuple(dict.fromkeys((*step.predecessor_ids,
+                f'i{block.iteration_id}:control:payload:transport'))))
         if self.runtime_plan is not None:
             self.runtime_plan.validate_execution_node(step)
         resources = self._compute_resource_bindings.get(step.physical_workers)
@@ -635,10 +926,15 @@ class AFExecutor(ConfigurationOwner):
             layer_id,
             step.node_id,
             tuple(resource for _, resource in resources),
-            lambda: self._estimate(
+            lambda: (AFServiceEstimate(0, fused.source_id, dataset_version=fused.dataset_version,
+                match_type=fused.match_type, details={'timing_scope':'device_service',
+                    'covered_by':'routed_experts', 'semantic_completion_only':True}) if fused is not None else self._estimate(
                 self.compute_provider, query, block, layer_id, stage_name
-            ),
+            )),
         )
+        if (self.cluster_config.af.execution_protocol == 'vllm_afd' and step.stage == 'routed_expert'
+                and 'weighted_combine' in estimate.details.get('covered_operations', ())):
+            self._fused_combines.setdefault(block.iteration_id, {})[combine_key] = estimate
         if self.trace.enabled:
             resource_ids = tuple(f"worker:{item[0]}" for item in resources)
             self.trace.record(
@@ -663,7 +959,9 @@ class AFExecutor(ConfigurationOwner):
                 source_id=estimate.source_id,
                 dataset_version=estimate.dataset_version,
                 match_type=estimate.match_type,
-                details=estimate.details,
+                details={**estimate.details, "execution_protocol": self.cluster_config.af.execution_protocol,
+                         **({"routing_replay": self.routing_replay.describe()}
+                            if self.routing_replay is not None and step.stage == "router" else {})},
                 source_domain=step.source_domain,
                 target_domain=step.target_domain,
                 logical_participants=step.logical_participants,
@@ -701,8 +999,10 @@ class AFExecutor(ConfigurationOwner):
         layer_id: int,
         link: AFLinkConfig,
         step: ExecutionNode,
+        transport_completed=None,
         input_readiness=None,
     ):
+        is_control = step.metadata.get("message_class") == "control"
         binding_key = (link.name, step.direction, step.resource_group, step.resource_lane,
                        step.physical_workers if self.cluster_config.af.transfer_topology_mode == "physical" else ())
         binding = self._communication_resource_bindings.get(binding_key)
@@ -736,6 +1036,8 @@ class AFExecutor(ConfigurationOwner):
             if step.direction == "f_to_a"
             else effective_dtypes["activation_dtype"]
         )
+        if is_control:
+            transfer_dtype = step.metadata["wire_dtype"]
         is_collective = step.direction == "collective"
         query = prepare_query(self.transfer_provider, AFTransferQuery,
             iteration_id=block.iteration_id,
@@ -750,6 +1052,8 @@ class AFExecutor(ConfigurationOwner):
             target_device=target_device,
             network=step.network or link.network,
             operation=step.operation,
+            transport_backend=(step.metadata["transport_backend"] if is_control else
+                "pynccl" if self.cluster_config.af.execution_protocol == "vllm_afd" else "unspecified"),
             link_group=link.resource_group,
             group_size=max(1, len(step.domain_ranks)),
             payload_bytes=step.payload_bytes,
@@ -812,6 +1116,20 @@ class AFExecutor(ConfigurationOwner):
             input_ids = {producer for producer, _ in input_readiness[0].values()}
             wire_predecessors = tuple(key for key in wire_predecessors if key not in input_ids)
         submission_finished_at = self.env.now
+        receiver_process = None
+        native_state = self._native_controls.get(block.iteration_id, {})
+        native_call = native_state.get('calls', {}).get(step.node_id)
+        receiver_id = f"{step.node_id}:receive_submit"
+        needs_receiver = timing.enabled and step.direction in {"a_to_f", "f_to_a"} and (
+            timing.host_receive_submit_us or timing.a_step_prepare_us or timing.f_step_prepare_us
+            or timing.native_control_enabled
+        )
+        if native_call is not None:
+            receiver_process = native_call['receiver']
+        elif needs_receiver:
+            receive_cost_field = self._native_call_cost_field(step, 'receive')
+            receiver_process = self.env.process(self._run_receiver_submit(
+                block, layer_id, step, receiver_id, self._host_cost_us(receive_cost_field, block) / 1e6, receive_cost_field))
         if timing.enabled:
             submit_node_id = f"{step.node_id}:host_submit"
             is_collective = step.operation in {
@@ -822,20 +1140,50 @@ class AFExecutor(ConfigurationOwner):
                 if is_collective
                 else (step.physical_workers[0],)
             )
-            yield from self._run_communication_host_stage(
-                block,
-                layer_id,
-                step,
-                submit_node_id,
-                tuple(key for key in step.predecessor_ids if input_readiness is None
-                      or key not in {producer for producer, _ in input_readiness[0].values()}),
-                submitters,
-                timing.host_submit_us / 1e6,
-                "host_submit",
-            )
+            try:
+                send_cost_field = self._native_call_cost_field(step, 'send')
+                yield from self._run_communication_host_stage(
+                    block, layer_id, step, submit_node_id,
+                    tuple(key for key in step.predecessor_ids if input_readiness is None
+                          or key not in {producer for producer, _ in input_readiness[0].values()}),
+                    submitters, self._host_cost_us(send_cost_field, block) / 1e6, "host_submit",
+                    details={"cost_field": send_cost_field})
+            except BaseException:
+                if receiver_process is not None and receiver_process.is_alive:
+                    receiver_process.interrupt("AF sender submission cancelled")
+                    yield receiver_process
+                raise
             submission_finished_at = self.env.now
+            if native_call is not None:
+                native_call['submitted'].succeed()
+                if step.operation == 'af_control_payload':
+                    native_state['a_ready'].succeed()
             wire_node_id = f"{step.node_id}:transport"
             wire_predecessors = (submit_node_id,)
+
+        readiness_mode = "dag_dependencies_only"
+        peer_wait_started_at = self.env.now
+        if receiver_process is not None:
+            try:
+                receiver_result = yield receiver_process
+                if isinstance(receiver_result, Exception):
+                    raise receiver_result
+            except BaseException:
+                if receiver_process.is_alive:
+                    receiver_process.interrupt("AF receive submission cancelled")
+                    yield receiver_process
+                raise
+            wire_predecessors = (*wire_predecessors, receiver_id)
+            readiness_mode = "native_preposted_call_order" if native_call is not None else "fixed_host_preparation"
+        if self.transfer_readiness is not None:
+            readiness = self.transfer_readiness(block, layer_id, step)
+            if not isinstance(readiness, TransferReadiness):
+                raise SimulationStateError("transfer_readiness must return TransferReadiness")
+            readiness_mode = "invocation_events"
+            readiness_events = readiness.events(self.env)
+            if readiness_events:
+                yield self.env.all_of(readiness_events)
+        peer_ready_at = self.env.now
 
         multiple_phases = False
         if self.cluster_config.af.transfer_topology_mode == "physical":
@@ -871,7 +1219,7 @@ class AFExecutor(ConfigurationOwner):
                 block_id=block.block_id,
                 layer_id=layer_id,
                 phase=block.phase,
-                event_type=("synchronize" if multiple_phases else "collective" if step.operation in {"tp_collective", "all_reduce", "all_gather", "reduce_scatter"} else "transfer"),
+                event_type=("synchronize" if multiple_phases else "control_transfer" if is_control else "collective" if step.operation in {"tp_collective", "all_reduce", "all_gather", "reduce_scatter"} else "transfer"),
                 operation=step.operation,
                 direction=step.direction,
                 resource_id=(f"completion:{wire_node_id}" if multiple_phases or not resource_ids else resource_ids[0]),
@@ -891,6 +1239,16 @@ class AFExecutor(ConfigurationOwner):
                     **estimate.details,
                     "communication_operation": step.operation,
                     "phase_completion_only": multiple_phases,
+                    "message_class": "control" if is_control else "data",
+                    "transport_backend": query.transport_backend,
+                    "wire_dtype": transfer_dtype,
+                    **({"control_schema": step.metadata["control_schema"],
+                        "payload_utf8": step.metadata.get("payload_utf8")} if is_control else {}),
+                    "execution_protocol": self.cluster_config.af.execution_protocol,
+                    "readiness_mode": readiness_mode,
+                    "readiness_wait_started_at": peer_wait_started_at,
+                    "peer_ready_at": peer_ready_at,
+                    "readiness_wait_duration": peer_ready_at - peer_wait_started_at,
                     **(
                         {
                             "communication_ready_at": communication_ready_at,
@@ -908,7 +1266,8 @@ class AFExecutor(ConfigurationOwner):
                 physical_endpoints=step.physical_workers,
                 node_id=wire_node_id,
                 predecessor_ids=(tuple(f"{wire_node_id}:phase:{phase.phase_id}" for phase in plan.phases)
-                    if multiple_phases else tuple(dict.fromkeys((*wire_predecessors, *input_predecessors)))),
+                    if multiple_phases else tuple(dict.fromkeys((*wire_predecessors,
+                                                                 *input_predecessors)))),
                 dp_rank=step.dp_rank,
                 tp_rank=step.tp_rank,
                 ep_rank=step.ep_rank,
@@ -925,6 +1284,8 @@ class AFExecutor(ConfigurationOwner):
                 )
             )
         self.active_stages.pop((block.iteration_id, block.block_id, wire_node_id), None)
+        if transport_completed is not None and not transport_completed.triggered:
+            transport_completed.succeed()
         if timing.enabled:
             is_collective = step.operation in {
                 "tp_collective", "all_reduce", "all_gather", "reduce_scatter"
@@ -941,9 +1302,10 @@ class AFExecutor(ConfigurationOwner):
                 step.node_id,
                 (wire_node_id,),
                 completers,
-                timing.host_completion_us / 1e6,
+                0.0 if is_control else self._host_cost_us("host_completion_us", block) / 1e6,
                 "synchronize",
                 details={
+                    "cost_field": None if is_control else "host_completion_us",
                     "communication_ready_at": communication_ready_at,
                     "submission_finished_at": submission_finished_at,
                     "transfer_finished_at": end_at,
@@ -956,7 +1318,10 @@ class AFExecutor(ConfigurationOwner):
     def _run_domain_plan(self, block, layer_id, step, wire_node_id, predecessors, plan, input_readiness=None):
         """Instantiate cached phases with fresh dependency events and FIFO waits."""
         ready = self.env.now
-        completed = {phase.phase_id: self.env.event() for phase in plan.phases}
+        single_phase = (len(plan.phases) == 1 and
+                        not plan.phases[0].local_work_bytes)
+        completed = ({} if single_phase else
+                     {phase.phase_id: self.env.event() for phase in plan.phases})
         intervals = {}
         children = []
 
@@ -1034,12 +1399,35 @@ class AFExecutor(ConfigurationOwner):
                         source_domain=step.source_domain, target_domain=step.target_domain,
                         layer_type=step.layer_type, original_token_count=step.metadata.get("original_token_count", block.token_count),
                     ))
-                completed[phase.phase_id].succeed()
+                if not single_phase:
+                    completed[phase.phase_id].succeed()
             finally:
                 self.active_stages.pop((block.iteration_id, block.block_id, node_id), None)
 
         try:
-            children = [self.env.process(run_phase(phase)) for phase in plan.phases]
+            # One transport phase needs no child Process or ConditionValue.
+            # Retain the urgent start and two normal completion turns of the
+            # old Initialize -> Process -> AllOf path. Removing those turns
+            # can change downstream compute/host FIFO ties at the same time.
+            # The old phase-done event had no consumers and can be omitted.
+            if single_phase:
+                start_event = self.env.event()
+                start_event._ok, start_event._value = True, None
+                self.env.schedule(start_event, priority=simpy.events.URGENT)
+                yield start_event
+                error = None
+                try:
+                    yield from run_phase(plan.phases[0])
+                except simpy.Interrupt:
+                    raise
+                except BaseException as exc:
+                    error = exc
+                yield self.env.timeout(0)
+                yield self.env.timeout(0)
+                if error is not None:
+                    raise error
+            else:
+                children = [self.env.process(run_phase(phase)) for phase in plan.phases]
             if children:
                 # Parent cancellation detaches its wait callback. Defuse the
                 # abandoned join and each child, while yielding still propagates
@@ -1132,16 +1520,25 @@ class AFExecutor(ConfigurationOwner):
             event_type = "synchronize"
         estimate = AFServiceEstimate(
             duration,
-            "assumption:communication-host-cost",
+            (f"profile:{self.overhead_profile.fingerprint}:{details['cost_field']}"
+             if self.overhead_profile is not None and details
+             and details.get("cost_field") in self.overhead_profile.document['costs']
+             else "assumption:communication-host-cost"),
             dataset_version="communication-timing-config",
             details={
                 "communication_operation": step.operation,
-                "timing_scope": "host_service",
+                "timing_scope": (self.overhead_profile.document['timing_scope']
+                    if self.overhead_profile is not None else "host_service"),
                 "fixed_cost_us": duration * 1e6,
                 "host_resource_scope": (
                     self.cluster_config.af.communication_timing.host_resource_scope
                 ),
                 **(details or {}),
+                **({"host_profile": self.overhead_profile.describe()}
+                   if self.overhead_profile is not None else {}),
+                **({"effective_cost": self.host_cost_provenance(details['cost_field'], tokens=block.token_count),
+                    "calibrated": self.host_cost_provenance(details['cost_field'], tokens=block.token_count)['calibrated']}
+                   if details and details.get('cost_field') else {}),
             } if self.trace.enabled else {},
         )
         ready, start, end, _ = yield from self._run_resources_stage(

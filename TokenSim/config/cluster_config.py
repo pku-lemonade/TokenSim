@@ -352,15 +352,45 @@ class AFCommunicationTimingConfig:
     host_submit_us: float = 5.0
     host_completion_us: float = 0.0
     host_resource_scope: str = "per_worker"
+    a_step_prepare_us: float = 0.0
+    f_step_prepare_us: float = 0.0
+    compute_submit_us: float = 0.0
+    host_receive_submit_us: float = 0.0
+    native_control_enabled: bool = False
+    control_encode_us: float = 0.0
+    control_h2d_us: float = 0.0
+    control_length_readback_us: float = 0.0
+    control_payload_readback_us: float = 0.0
+    control_decode_us: float = 0.0
+    native_call_order_enabled: bool = False
+    cost_presence_input: InitVar[tuple[str, ...]] = ()
 
-    @field_validator("enabled", mode="before")
+    @model_validator(mode="before")
     @classmethod
-    def _validate_enabled(cls, value):
+    def _capture_cost_presence(cls, value):
+        names = ("enabled", "host_submit_us", "host_completion_us", "host_resource_scope",
+                 "a_step_prepare_us", "f_step_prepare_us", "compute_submit_us",
+                 "host_receive_submit_us", "native_control_enabled", "control_encode_us",
+                 "control_h2d_us", "control_length_readback_us", "control_payload_readback_us",
+                 "control_decode_us", "native_call_order_enabled")
+        return _capture_explicit_fields(value, field_names=frozenset(n for n in names if n.endswith("_us")),
+                                        positional_names=names, init_var_name="cost_presence_input")
+
+    def __post_init__(self, cost_presence_input):
+        object.__setattr__(self, "_explicit_cost_fields", frozenset(cost_presence_input))
+
+    @field_validator("enabled", "native_control_enabled", "native_call_order_enabled", mode="before")
+    @classmethod
+    def _validate_enabled(cls, value, info):
         if type(value) is not bool:
-            raise ConfigurationError("communication_timing.enabled must be boolean")
+            raise ConfigurationError(f"communication_timing.{info.field_name} must be boolean")
         return value
 
-    @field_validator("host_submit_us", "host_completion_us", mode="before")
+    @field_validator("host_submit_us", "host_completion_us", "a_step_prepare_us",
+                     "f_step_prepare_us", "compute_submit_us", "host_receive_submit_us",
+                     "control_encode_us", "control_h2d_us", "control_length_readback_us",
+                     "control_payload_readback_us", "control_decode_us",
+                     mode="before")
     @classmethod
     def _validate_duration(cls, value, info):
         if (
@@ -945,6 +975,12 @@ class AFConfig:
     communication_domains: CommunicationDomainConfig | None = None
     service_estimate_cache: bool = True
     dag_template_cache: bool = True
+    execution_protocol: str = "partial_return"
+    operation_service_profile: dict[str, Any] | None = None
+    transport_service_profile: dict[str, Any] | None = None
+    engine_overhead_profile: dict[str, Any] | None = None
+    calibration_environment: dict[str, str] = Field(default_factory=dict)
+    routing_replay: dict[str, Any] | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -1001,6 +1037,37 @@ class AFConfig:
         if type(self.trace_enabled) is not bool:
             raise ConfigurationError("af.trace_enabled must be a boolean")
         self.phases = _normalize_phases(self.phases, "af.phases")
+        if self.execution_protocol not in {"partial_return", "vllm_afd"}:
+            raise ConfigurationError("af.execution_protocol must be partial_return or vllm_afd")
+        timing = self.communication_timing
+        if timing.native_call_order_enabled and not timing.native_control_enabled:
+            raise ConfigurationError("native call order requires native_control_enabled=true")
+        if self.engine_overhead_profile is not None or self.routing_replay is not None or self.operation_service_profile is not None or self.transport_service_profile is not None:
+            if self.execution_protocol != "vllm_afd" or not timing.enabled or not timing.native_control_enabled:
+                raise ConfigurationError("native profile/replay requires vllm_afd with separated timing and native control")
+        control_costs = (timing.control_encode_us, timing.control_h2d_us,
+                         timing.control_length_readback_us, timing.control_payload_readback_us,
+                         timing.control_decode_us)
+        if any(control_costs) and not timing.native_control_enabled:
+            raise ConfigurationError("control costs require native_control_enabled=true")
+        if any((timing.a_step_prepare_us, timing.f_step_prepare_us,
+                timing.compute_submit_us, timing.host_receive_submit_us,
+                timing.native_control_enabled)) and (
+            not timing.enabled or self.execution_protocol != "vllm_afd"
+        ):
+            raise ConfigurationError("fixed host preparation requires vllm_afd and separated timing")
+        if self.execution_protocol == "vllm_afd":
+            if set(self.phases) != {"decode"}:
+                raise ConfigurationError("vllm_afd supports decode-only AF; prefill is not calibrated")
+            # The measured Qwen3 plugin owns gate, experts and combine on F.
+            # Router placement is a protocol property, not a sweep parameter.
+            self.router_location = "f"
+            if self.transport_router_logits:
+                raise ConfigurationError("vllm_afd does not transport A-side router logits")
+            if self.routed_expert_execution != "grouped":
+                raise ConfigurationError("vllm_afd requires grouped expert execution")
+            if not self.communication_timing.enabled:
+                raise ConfigurationError("vllm_afd requires communication_timing.enabled=true")
         if self.af_block_size < 1:
             raise ConfigurationError("af_block_size must be a positive integer")
         if self.latency_provider not in AF_LATENCY_PROVIDERS:

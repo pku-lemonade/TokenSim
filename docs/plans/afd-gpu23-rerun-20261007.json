@@ -1,0 +1,350 @@
+{
+  "native": {
+    "rows": [
+      {
+        "batch": 1,
+        "repetitions": 124,
+        "engine_decode_median_us": 3709.4399999999996,
+        "engine_decode_p10_p90_us": [
+          3648.8779999999997,
+          3931.0525000000002
+        ],
+        "repeated_tokens_equal": true,
+        "tokens_equal_to_gpu03": true,
+        "token_sha256": "541c3915ee718cc2e049ec72dbc1ba2c43f6657d0cc0f30a786dfbb84e5fd6b1",
+        "case": {
+          "concurrency": 1,
+          "isl": 128,
+          "osl": 32,
+          "port": 17839,
+          "gpu_uuids": [
+            "GPU-8df5e331-8f9a-3cdc-af30-42b94f908018",
+            "GPU-76ca30e6-17c9-9a38-cb06-57aebeaa6973"
+          ],
+          "a_nvidia_smi_index": 2,
+          "f_nvidia_smi_index": 3
+        },
+        "result": {
+          "concurrency": 1,
+          "isl": 128,
+          "osl": 32,
+          "port": 17839,
+          "gpu_uuids": [
+            "GPU-8df5e331-8f9a-3cdc-af30-42b94f908018",
+            "GPU-76ca30e6-17c9-9a38-cb06-57aebeaa6973"
+          ],
+          "a_nvidia_smi_index": 2,
+          "f_nvidia_smi_index": 3,
+          "repetitions": 124,
+          "measured_seconds": 15.039745331,
+          "total_output_tokens": 3968,
+          "total_tps": 263.83425468123704,
+          "user_tps": 266.78313758836094,
+          "user_tps_p25": 262.33491209048407,
+          "user_tps_p75": 269.3574918548414,
+          "mean_power_w": 172.93730330918194,
+          "gpu_energy_j": [
+            1314.866,
+            1286.067
+          ],
+          "tps_per_mw": 1525606.3881691685,
+          "latency_p50_ms": 120.45619500000001,
+          "latency_p95_ms": 127.9118338,
+          "ttft_p50_ms": 4.086876500000001,
+          "user_e2e_tps": 265.65673936487866,
+          "repeat_token_min_match": 1.0,
+          "power_samples": 151,
+          "x_definition": "(OSL-1)/(last decode step completion - prefill first-token completion), median over fixed cohorts",
+          "y_definition": "total output tokens / two selected GPU energy joules * 1e6",
+          "power_scope": "NVML cumulative board energy of GPU 2 and 3 only; CPU/network/other GPUs excluded",
+          "profiler_during_measurement": false,
+          "router": "F",
+          "af_batching": "unsplit; AF batch equals current cohort concurrency"
+        },
+        "attention": {
+          "decode_steps": 31,
+          "prefill_steps": 1,
+          "runtime_fallback_kernels": 32,
+          "unmatched_kernels": {},
+          "median_us": {
+            "compute": 101.762,
+            "nccl_occupancy": 78.84700000000001
+          },
+          "range_us": {
+            "compute": [
+              100.869,
+              102.68700000000001
+            ],
+            "nccl_occupancy": [
+              47.68000000000001,
+              212476.962
+            ]
+          },
+          "profiled_step_median_us_excluding_first": 6163.112
+        },
+        "ffn": {
+          "decode_steps": 31,
+          "prefill_steps": 1,
+          "runtime_fallback_kernels": 0,
+          "unmatched_kernels": {},
+          "median_us": {
+            "compute": 52.226000000000006,
+            "nccl_occupancy": 4481.317
+          },
+          "range_us": {
+            "compute": [
+              51.968999999999994,
+              52.767
+            ],
+            "nccl_occupancy": [
+              2128.5939999999996,
+              59727.2
+            ]
+          },
+          "profiled_step_median_us_excluding_first": 6150.409
+        }
+      },
+      {
+        "batch": 8,
+        "repetitions": 115,
+        "engine_decode_median_us": 3844.3070000000002,
+        "engine_decode_p10_p90_us": [
+          3709.5008000000003,
+          4815.7572
+        ],
+        "repeated_tokens_equal": true,
+        "tokens_equal_to_gpu03": true,
+        "token_sha256": "8d5616066cfa93e503c1788b6147c21b6a4f0f8e65ff4bc816b2756f45b4142c",
+        "case": {
+          "concurrency": 8,
+          "isl": 128,
+          "osl": 32,
+          "port": 17839,
+          "gpu_uuids": [
+            "GPU-8df5e331-8f9a-3cdc-af30-42b94f908018",
+            "GPU-76ca30e6-17c9-9a38-cb06-57aebeaa6973"
+          ],
+          "a_nvidia_smi_index": 2,
+          "f_nvidia_smi_index": 3
+        },
+        "result": {
+          "concurrency": 8,
+          "isl": 128,
+          "osl": 32,
+          "port": 17839,
+          "gpu_uuids": [
+            "GPU-8df5e331-8f9a-3cdc-af30-42b94f908018",
+            "GPU-76ca30e6-17c9-9a38-cb06-57aebeaa6973"
+          ],
+          "a_nvidia_smi_index": 2,
+          "f_nvidia_smi_index": 3,
+          "repetitions": 115,
+          "measured_seconds": 15.111139075,
+          "total_output_tokens": 29440,
+          "total_tps": 1948.2316888146302,
+          "user_tps": 257.5488245899509,
+          "user_tps_p25": 245.74721354001093,
+          "user_tps_p75": 262.54680252058495,
+          "mean_power_w": 189.42198770015622,
+          "gpu_energy_j": [
+            1458.971,
+            1403.411
+          ],
+          "tps_per_mw": 10285140.13852798,
+          "latency_p50_ms": 125.559688,
+          "latency_p95_ms": 159.21997819999999,
+          "ttft_p50_ms": 5.050487,
+          "user_e2e_tps": 254.85886839731555,
+          "repeat_token_min_match": 1.0,
+          "power_samples": 151,
+          "x_definition": "(OSL-1)/(last decode step completion - prefill first-token completion), median over fixed cohorts",
+          "y_definition": "total output tokens / two selected GPU energy joules * 1e6",
+          "power_scope": "NVML cumulative board energy of GPU 2 and 3 only; CPU/network/other GPUs excluded",
+          "profiler_during_measurement": false,
+          "router": "F",
+          "af_batching": "unsplit; AF batch equals current cohort concurrency"
+        },
+        "attention": {
+          "decode_steps": 31,
+          "prefill_steps": 1,
+          "runtime_fallback_kernels": 32,
+          "unmatched_kernels": {},
+          "median_us": {
+            "compute": 140.416,
+            "nccl_occupancy": 53.34400000000001
+          },
+          "range_us": {
+            "compute": [
+              140.00300000000001,
+              140.76899999999998
+            ],
+            "nccl_occupancy": [
+              49.28,
+              111074.18000000001
+            ]
+          },
+          "profiled_step_median_us_excluding_first": 4986.115
+        },
+        "ffn": {
+          "decode_steps": 31,
+          "prefill_steps": 1,
+          "runtime_fallback_kernels": 0,
+          "unmatched_kernels": {},
+          "median_us": {
+            "compute": 59.138,
+            "nccl_occupancy": 3736.1580000000004
+          },
+          "range_us": {
+            "compute": [
+              58.98,
+              59.359
+            ],
+            "nccl_occupancy": [
+              3525.63,
+              58328.548
+            ]
+          },
+          "profiled_step_median_us_excluding_first": 4990.256
+        }
+      },
+      {
+        "batch": 4,
+        "repetitions": 115,
+        "engine_decode_median_us": 3862.348,
+        "engine_decode_p10_p90_us": [
+          3684.0832,
+          4811.4490000000005
+        ],
+        "repeated_tokens_equal": true,
+        "tokens_equal_to_gpu03": true,
+        "token_sha256": "fd25a3a8ac5936bf9a57dcb5f5f902468ba12f2ac46282e749638feb1a6ac16e",
+        "case": {
+          "concurrency": 4,
+          "isl": 128,
+          "osl": 32,
+          "port": 17839,
+          "gpu_uuids": [
+            "GPU-8df5e331-8f9a-3cdc-af30-42b94f908018",
+            "GPU-76ca30e6-17c9-9a38-cb06-57aebeaa6973"
+          ],
+          "a_nvidia_smi_index": 2,
+          "f_nvidia_smi_index": 3
+        },
+        "result": {
+          "concurrency": 4,
+          "isl": 128,
+          "osl": 32,
+          "port": 17839,
+          "gpu_uuids": [
+            "GPU-8df5e331-8f9a-3cdc-af30-42b94f908018",
+            "GPU-76ca30e6-17c9-9a38-cb06-57aebeaa6973"
+          ],
+          "a_nvidia_smi_index": 2,
+          "f_nvidia_smi_index": 3,
+          "repetitions": 115,
+          "measured_seconds": 15.102052823,
+          "total_output_tokens": 14720,
+          "total_tps": 974.7019277791068,
+          "user_tps": 255.9816787141416,
+          "user_tps_p25": 241.44932796234525,
+          "user_tps_p75": 262.9028069614634,
+          "mean_power_w": 184.4984276413427,
+          "gpu_energy_j": [
+            1400.414,
+            1385.891
+          ],
+          "tps_per_mw": 5282982.300932596,
+          "latency_p50_ms": 125.620644,
+          "latency_p95_ms": 157.06804169999998,
+          "ttft_p50_ms": 4.591916,
+          "user_e2e_tps": 254.73520100724846,
+          "repeat_token_min_match": 1.0,
+          "power_samples": 151,
+          "x_definition": "(OSL-1)/(last decode step completion - prefill first-token completion), median over fixed cohorts",
+          "y_definition": "total output tokens / two selected GPU energy joules * 1e6",
+          "power_scope": "NVML cumulative board energy of GPU 2 and 3 only; CPU/network/other GPUs excluded",
+          "profiler_during_measurement": false,
+          "router": "F",
+          "af_batching": "unsplit; AF batch equals current cohort concurrency"
+        },
+        "attention": {
+          "decode_steps": 31,
+          "prefill_steps": 1,
+          "runtime_fallback_kernels": 32,
+          "unmatched_kernels": {},
+          "median_us": {
+            "compute": 134.749,
+            "nccl_occupancy": 97.344
+          },
+          "range_us": {
+            "compute": [
+              134.113,
+              135.51500000000001
+            ],
+            "nccl_occupancy": [
+              48.224999999999994,
+              116861.84
+            ]
+          },
+          "profiled_step_median_us_excluding_first": 5142.204
+        },
+        "ffn": {
+          "decode_steps": 31,
+          "prefill_steps": 1,
+          "runtime_fallback_kernels": 0,
+          "unmatched_kernels": {},
+          "median_us": {
+            "compute": 58.43200000000001,
+            "nccl_occupancy": 3727.0730000000003
+          },
+          "range_us": {
+            "compute": [
+              58.175,
+              58.687
+            ],
+            "nccl_occupancy": [
+              3329.533,
+              40648.822
+            ]
+          },
+          "profiled_step_median_us_excluding_first": 5144.386
+        }
+      }
+    ],
+    "source_sha256": {
+      "src/afd-plugin/afd_plugin/model_executor/models/qwen3_moe.py": "f9d390d00d6857d9b8291832a569c4748f8989b9d5d6f80dc07895880ea71975",
+      "src/afd-plugin/afd_plugin/connectors/gpu/p2p.py": "4a98fa3b1ee4121be0c176ca52581d0257ca6e8adbeb57e69497374543d84288",
+      "models/qwen3-moe-tiny-random/config.json": "093e215f3788b9415b52788a59d702031252de542e0e1e14137e3b1f211cbfa5",
+      "profiling/afd-gpu23-rerun-20261007/run_curve.py": "2549bbdf6caea8ca49f264d129e57155e3a31df06bf3dfc3fd2beeda258dbbf0",
+      "profiling/afd-gpu23-rerun-20261007/attention.py": "e388efec1b4281fb7e044010ae6608c1d0403374a8e440f15d70554ab0cfe02e",
+      "/home/youwei/autodl-tmp/af-workspace/profiling/summarize_gpu23_rerun.py": "8087790e4f87553d5aa9dffd32ef442dfacef8dc81b689bb29fd48064a73e8e7"
+    },
+    "scope": "tiny Qwen decode; kernel sums and unprofiled engine latency are different scopes; NCCL occupancy includes waiting"
+  },
+  "comparison": [
+    {
+      "batch": 1,
+      "native_us": 3709.4399999999996,
+      "previous_us": 3772.437,
+      "simulator_us": 189.6328792617194,
+      "change_percent": -1.6699284838951667,
+      "native_over_simulator": 19.56116478556687
+    },
+    {
+      "batch": 4,
+      "native_us": 3862.348,
+      "previous_us": 3912.214,
+      "simulator_us": 191.061390269472,
+      "change_percent": -1.274623525195706,
+      "native_over_simulator": 20.215219802140894
+    },
+    {
+      "batch": 8,
+      "native_us": 3844.3070000000002,
+      "previous_us": 4045.9709999999995,
+      "simulator_us": 191.61132225913477,
+      "change_percent": -4.984316496583874,
+      "native_over_simulator": 20.063047186746967
+    }
+  ]
+}

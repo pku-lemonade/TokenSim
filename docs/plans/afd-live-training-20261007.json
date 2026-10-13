@@ -1,0 +1,67 @@
+{
+  "source": "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1",
+  "completed_windows": 6,
+  "expected_windows": 6,
+  "windows": [
+    {
+      "batch": 1,
+      "window": 0,
+      "cohorts": 123,
+      "samples": 3813,
+      "mean_decode_us": 3794.608419092578,
+      "median_decode_us": 3753.249,
+      "profiler_during_measurement": false,
+      "repeat_token_min_match": 1.0
+    },
+    {
+      "batch": 1,
+      "window": 1,
+      "cohorts": 139,
+      "samples": 4309,
+      "mean_decode_us": 3360.4610573218843,
+      "median_decode_us": 3135.218,
+      "profiler_during_measurement": false,
+      "repeat_token_min_match": 1.0
+    },
+    {
+      "batch": 1,
+      "window": 2,
+      "cohorts": 138,
+      "samples": 4278,
+      "mean_decode_us": 3385.846327489481,
+      "median_decode_us": 3177.9995,
+      "profiler_during_measurement": false,
+      "repeat_token_min_match": 1.0
+    },
+    {
+      "batch": 8,
+      "window": 0,
+      "cohorts": 120,
+      "samples": 3720,
+      "mean_decode_us": 3883.8562110215053,
+      "median_decode_us": 3814.8705,
+      "profiler_during_measurement": false,
+      "repeat_token_min_match": 1.0
+    },
+    {
+      "batch": 8,
+      "window": 1,
+      "cohorts": 130,
+      "samples": 4030,
+      "mean_decode_us": 3574.9965210918112,
+      "median_decode_us": 3560.098,
+      "profiler_during_measurement": false,
+      "repeat_token_min_match": 1.0
+    },
+    {
+      "batch": 8,
+      "window": 2,
+      "cohorts": 122,
+      "samples": 3782,
+      "mean_decode_us": 3809.9888196721313,
+      "median_decode_us": 3837.0119999999997,
+      "profiler_during_measurement": false,
+      "repeat_token_min_match": 1.0
+    }
+  ]
+}

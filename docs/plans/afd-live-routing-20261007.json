@@ -1,0 +1,18 @@
+[
+  {
+    "batch": 1,
+    "histograms_verified": 62,
+    "data_messages": 124,
+    "bytes_per_message": 512,
+    "simulated_step_us": 229.59552926171898,
+    "routing_status": "assignments_replayed_not_timing_validation"
+  },
+  {
+    "batch": 8,
+    "histograms_verified": 62,
+    "data_messages": 124,
+    "bytes_per_message": 4096,
+    "simulated_step_us": 231.26259841567352,
+    "routing_status": "assignments_replayed_not_timing_validation"
+  }
+]

@@ -1,0 +1,586 @@
+{
+  "compute": [
+    {
+      "batch": 1,
+      "role": "attention",
+      "model_device_us": 72.66747582133846,
+      "historical_native_device_us": 113.53500000000003,
+      "ratio": 1.5623908594147289,
+      "scope": "device service aggregate; historical independent GPU evidence, not new-window measurement"
+    },
+    {
+      "batch": 1,
+      "role": "ffn",
+      "model_device_us": 37.03452344037741,
+      "historical_native_device_us": 53.087999999999994,
+      "ratio": 1.4334732856888892,
+      "scope": "device service aggregate; historical independent GPU evidence, not new-window measurement"
+    },
+    {
+      "batch": 8,
+      "role": "attention",
+      "model_device_us": 73.47136212624463,
+      "historical_native_device_us": 148.89699999999996,
+      "ratio": 2.026599149531932,
+      "scope": "device service aggregate; historical independent GPU evidence, not new-window measurement"
+    },
+    {
+      "batch": 8,
+      "role": "ffn",
+      "model_device_us": 37.84991962275139,
+      "historical_native_device_us": 59.169999999999995,
+      "ratio": 1.563279409566651,
+      "scope": "device service aggregate; historical independent GPU evidence, not new-window measurement"
+    },
+    {
+      "batch": 4,
+      "role": "attention",
+      "model_device_us": 73.011998523445,
+      "historical_native_device_us": 145.216,
+      "ratio": 1.9889333662517055,
+      "scope": "device service aggregate; historical independent GPU evidence, not new-window measurement"
+    },
+    {
+      "batch": 4,
+      "role": "ffn",
+      "model_device_us": 37.62277693232321,
+      "historical_native_device_us": 58.847,
+      "ratio": 1.5641322836391223,
+      "scope": "device service aggregate; historical independent GPU evidence, not new-window measurement"
+    }
+  ],
+  "transport": [
+    {
+      "backend": "pynccl",
+      "bytes": 512,
+      "direction": "a_to_f",
+      "peer_delay_ms": 0,
+      "model_us": 1.0017066666692598,
+      "native_us": 8.5360107421875,
+      "ratio": 8.521467437738329,
+      "scope": "historical paired GPU service; not CPU API or inclusive operation",
+      "model_source": "analytical local alpha1us + bytes/300GBps"
+    },
+    {
+      "backend": "pynccl",
+      "bytes": 512,
+      "direction": "a_to_f",
+      "peer_delay_ms": 5,
+      "model_us": 1.0017066666692598,
+      "native_us": 8.597991943359375,
+      "ratio": 8.583343037885792,
+      "scope": "historical paired GPU service; not CPU API or inclusive operation",
+      "model_source": "analytical local alpha1us + bytes/300GBps"
+    },
+    {
+      "backend": "pynccl",
+      "bytes": 512,
+      "direction": "a_to_f",
+      "peer_delay_ms": 20,
+      "model_us": 1.0017066666692598,
+      "native_us": 8.601531982421875,
+      "ratio": 8.58687704557516,
+      "scope": "historical paired GPU service; not CPU API or inclusive operation",
+      "model_source": "analytical local alpha1us + bytes/300GBps"
+    },
+    {
+      "backend": "pynccl",
+      "bytes": 512,
+      "direction": "f_to_a",
+      "peer_delay_ms": 0,
+      "model_us": 1.0017066666693157,
+      "native_us": 8.263519287109375,
+      "ratio": 8.249440242407147,
+      "scope": "historical paired GPU service; not CPU API or inclusive operation",
+      "model_source": "analytical local alpha1us + bytes/300GBps"
+    },
+    {
+      "backend": "pynccl",
+      "bytes": 512,
+      "direction": "f_to_a",
+      "peer_delay_ms": 5,
+      "model_us": 1.0017066666693157,
+      "native_us": 8.19598388671875,
+      "ratio": 8.182019906057404,
+      "scope": "historical paired GPU service; not CPU API or inclusive operation",
+      "model_source": "analytical local alpha1us + bytes/300GBps"
+    },
+    {
+      "backend": "pynccl",
+      "bytes": 512,
+      "direction": "f_to_a",
+      "peer_delay_ms": 20,
+      "model_us": 1.0017066666693157,
+      "native_us": 8.188507080078125,
+      "ratio": 8.174555838092791,
+      "scope": "historical paired GPU service; not CPU API or inclusive operation",
+      "model_source": "analytical local alpha1us + bytes/300GBps"
+    },
+    {
+      "backend": "pynccl",
+      "bytes": 4096,
+      "direction": "a_to_f",
+      "peer_delay_ms": 0,
+      "model_us": 1.0136533333361233,
+      "native_us": 9.219482421875,
+      "ratio": 9.09530124222248,
+      "scope": "historical paired GPU service; not CPU API or inclusive operation",
+      "model_source": "analytical local alpha1us + bytes/300GBps"
+    },
+    {
+      "backend": "pynccl",
+      "bytes": 4096,
+      "direction": "a_to_f",
+      "peer_delay_ms": 5,
+      "model_us": 1.0136533333361233,
+      "native_us": 9.2354736328125,
+      "ratio": 9.111077060652308,
+      "scope": "historical paired GPU service; not CPU API or inclusive operation",
+      "model_source": "analytical local alpha1us + bytes/300GBps"
+    },
+    {
+      "backend": "pynccl",
+      "bytes": 4096,
+      "direction": "a_to_f",
+      "peer_delay_ms": 20,
+      "model_us": 1.0136533333361233,
+      "native_us": 9.144989013671875,
+      "ratio": 9.02181121781941,
+      "scope": "historical paired GPU service; not CPU API or inclusive operation",
+      "model_source": "analytical local alpha1us + bytes/300GBps"
+    },
+    {
+      "backend": "pynccl",
+      "bytes": 4096,
+      "direction": "f_to_a",
+      "peer_delay_ms": 0,
+      "model_us": 1.0136533333361233,
+      "native_us": 8.84796142578125,
+      "ratio": 8.728784422442482,
+      "scope": "historical paired GPU service; not CPU API or inclusive operation",
+      "model_source": "analytical local alpha1us + bytes/300GBps"
+    },
+    {
+      "backend": "pynccl",
+      "bytes": 4096,
+      "direction": "f_to_a",
+      "peer_delay_ms": 5,
+      "model_us": 1.0136533333361233,
+      "native_us": 8.86102294921875,
+      "ratio": 8.741670014595089,
+      "scope": "historical paired GPU service; not CPU API or inclusive operation",
+      "model_source": "analytical local alpha1us + bytes/300GBps"
+    },
+    {
+      "backend": "pynccl",
+      "bytes": 4096,
+      "direction": "f_to_a",
+      "peer_delay_ms": 20,
+      "model_us": 1.0136533333361233,
+      "native_us": 8.83349609375,
+      "ratio": 8.714513930198708,
+      "scope": "historical paired GPU service; not CPU API or inclusive operation",
+      "model_source": "analytical local alpha1us + bytes/300GBps"
+    },
+    {
+      "backend": "torch_distributed_nccl",
+      "bytes": 8,
+      "direction": "a_to_f",
+      "peer_delay_ms": 0,
+      "model_us": 1.0000266666689848,
+      "native_us": 8.388519287109375,
+      "ratio": 8.388295599207284,
+      "scope": "historical paired GPU service; not CPU API or inclusive operation",
+      "model_source": "analytical local alpha1us + bytes/300GBps"
+    },
+    {
+      "backend": "torch_distributed_nccl",
+      "bytes": 8,
+      "direction": "a_to_f",
+      "peer_delay_ms": 5,
+      "model_us": 1.0000266666689848,
+      "native_us": 8.397979736328125,
+      "ratio": 8.397755796154094,
+      "scope": "historical paired GPU service; not CPU API or inclusive operation",
+      "model_source": "analytical local alpha1us + bytes/300GBps"
+    },
+    {
+      "backend": "torch_distributed_nccl",
+      "bytes": 8,
+      "direction": "a_to_f",
+      "peer_delay_ms": 20,
+      "model_us": 1.0000266666689848,
+      "native_us": 8.303955078125,
+      "ratio": 8.303733645208546,
+      "scope": "historical paired GPU service; not CPU API or inclusive operation",
+      "model_source": "analytical local alpha1us + bytes/300GBps"
+    },
+    {
+      "backend": "torch_distributed_nccl",
+      "bytes": 179,
+      "direction": "a_to_f",
+      "peer_delay_ms": 0,
+      "model_us": 1.00059666666421,
+      "native_us": 8.510498046875,
+      "ratio": 8.505423144419725,
+      "scope": "historical paired GPU service; not CPU API or inclusive operation",
+      "model_source": "analytical local alpha1us + bytes/300GBps"
+    },
+    {
+      "backend": "torch_distributed_nccl",
+      "bytes": 179,
+      "direction": "a_to_f",
+      "peer_delay_ms": 5,
+      "model_us": 1.00059666666421,
+      "native_us": 8.53399658203125,
+      "ratio": 8.52890766714414,
+      "scope": "historical paired GPU service; not CPU API or inclusive operation",
+      "model_source": "analytical local alpha1us + bytes/300GBps"
+    },
+    {
+      "backend": "torch_distributed_nccl",
+      "bytes": 179,
+      "direction": "a_to_f",
+      "peer_delay_ms": 20,
+      "model_us": 1.00059666666421,
+      "native_us": 8.522979736328125,
+      "ratio": 8.517897390905809,
+      "scope": "historical paired GPU service; not CPU API or inclusive operation",
+      "model_source": "analytical local alpha1us + bytes/300GBps"
+    }
+  ],
+  "fixed_parameters": [
+    {
+      "name": "control_encode_us",
+      "scope": "host_service",
+      "fixed_us": 6.163,
+      "coverage": [
+        "control_encode"
+      ],
+      "p50_us": 5.795,
+      "p95_us": 8.727,
+      "residual_to_training_p50_us": 0.3680000000000003,
+      "independent_validation": false
+    },
+    {
+      "name": "control_decode_us",
+      "scope": "host_service",
+      "fixed_us": 14.971416666666666,
+      "coverage": [
+        "control_decode"
+      ],
+      "p50_us": 13.858,
+      "p95_us": 19.22,
+      "residual_to_training_p50_us": 1.1134166666666658,
+      "independent_validation": false
+    },
+    {
+      "name": "engine_step_schedule_us",
+      "scope": "host_service",
+      "fixed_us": 68.15916666666666,
+      "coverage": [
+        "engine_schedule_excluding_input_preparation"
+      ],
+      "p50_us": 73.89699999999999,
+      "p95_us": 116.647,
+      "residual_to_training_p50_us": -5.737833333333327,
+      "independent_validation": false
+    },
+    {
+      "name": "engine_output_process_us",
+      "scope": "host_service",
+      "fixed_us": 34.23233333333334,
+      "coverage": [
+        "engine_output_excluding_sampling_and_readback"
+      ],
+      "p50_us": 42.786500000000004,
+      "p95_us": 57.809,
+      "residual_to_training_p50_us": -8.554166666666667,
+      "independent_validation": false
+    },
+    {
+      "name": "send_torch_distributed_nccl_a_to_f_us",
+      "scope": "host_service",
+      "fixed_us": 235.4850416666667,
+      "coverage": [
+        "native_call:send_torch_distributed_nccl_a_to_f"
+      ],
+      "p50_us": 227.6505,
+      "p95_us": 330.589,
+      "residual_to_training_p50_us": 7.834541666666695,
+      "independent_validation": false
+    },
+    {
+      "name": "receive_torch_distributed_nccl_a_to_f_us",
+      "scope": "host_service",
+      "fixed_us": 221.82274999999998,
+      "coverage": [
+        "native_call:receive_torch_distributed_nccl_a_to_f"
+      ],
+      "p50_us": 217.463,
+      "p95_us": 322.371,
+      "residual_to_training_p50_us": 4.359749999999991,
+      "independent_validation": false
+    },
+    {
+      "name": "send_pynccl_a_to_f_us",
+      "scope": "host_service",
+      "fixed_us": 94.38108333333334,
+      "coverage": [
+        "native_call:send_pynccl_a_to_f"
+      ],
+      "p50_us": 92.4065,
+      "p95_us": 139.8,
+      "residual_to_training_p50_us": 1.9745833333333422,
+      "independent_validation": false
+    },
+    {
+      "name": "receive_pynccl_a_to_f_us",
+      "scope": "host_service",
+      "fixed_us": 83.51883333333333,
+      "coverage": [
+        "native_call:receive_pynccl_a_to_f"
+      ],
+      "p50_us": 80.03800000000001,
+      "p95_us": 138.636,
+      "residual_to_training_p50_us": 3.4808333333333223,
+      "independent_validation": false
+    },
+    {
+      "name": "send_pynccl_f_to_a_us",
+      "scope": "host_service",
+      "fixed_us": 122.21266666666666,
+      "coverage": [
+        "native_call:send_pynccl_f_to_a"
+      ],
+      "p50_us": 127.28649999999999,
+      "p95_us": 143.035,
+      "residual_to_training_p50_us": -5.073833333333326,
+      "independent_validation": false
+    },
+    {
+      "name": "receive_pynccl_f_to_a_us",
+      "scope": "host_service",
+      "fixed_us": 102.09908333333334,
+      "coverage": [
+        "native_call:receive_pynccl_f_to_a"
+      ],
+      "p50_us": 104.116,
+      "p95_us": 140.303,
+      "residual_to_training_p50_us": -2.01691666666666,
+      "independent_validation": false
+    },
+    {
+      "name": "engine_runner_bookkeeping_us",
+      "scope": "host_service",
+      "fixed_us": 41.703833333333336,
+      "coverage": [
+        "runner_bookkeeping_excluding_token_readback"
+      ],
+      "p50_us": 43.727000000000004,
+      "p95_us": 55.022000000000006,
+      "residual_to_training_p50_us": -2.0231666666666683,
+      "independent_validation": false
+    },
+    {
+      "name": "compute_a_embedding_us",
+      "scope": "host_service",
+      "fixed_us": 45.559916666666666,
+      "coverage": [
+        "native_call:compute_a_embedding"
+      ],
+      "p50_us": 45.466499999999996,
+      "p95_us": 47.76,
+      "residual_to_training_p50_us": 0.09341666666666981,
+      "independent_validation": false
+    },
+    {
+      "name": "compute_a_final_norm_us",
+      "scope": "host_service",
+      "fixed_us": 24.270666666666667,
+      "coverage": [
+        "native_call:compute_a_final_norm"
+      ],
+      "p50_us": 24.289,
+      "p95_us": 26.765,
+      "residual_to_training_p50_us": -0.018333333333334423,
+      "independent_validation": false
+    },
+    {
+      "name": "compute_a_lm_head_us",
+      "scope": "host_service",
+      "fixed_us": 54.01391666666667,
+      "coverage": [
+        "native_call:compute_a_lm_head"
+      ],
+      "p50_us": 54.073,
+      "p95_us": 57.679,
+      "residual_to_training_p50_us": -0.0590833333333336,
+      "independent_validation": false
+    },
+    {
+      "name": "compute_a_token_selection_us",
+      "scope": "host_service",
+      "fixed_us": 69.46583333333334,
+      "coverage": [
+        "native_call:compute_a_token_selection"
+      ],
+      "p50_us": 69.358,
+      "p95_us": 72.895,
+      "residual_to_training_p50_us": 0.1078333333333319,
+      "independent_validation": false
+    },
+    {
+      "name": "compute_a_attention_us",
+      "scope": "host_service",
+      "fixed_us": 434.4805,
+      "coverage": [
+        "native_call:compute_a_attention"
+      ],
+      "p50_us": 432.5475,
+      "p95_us": 480.03499999999997,
+      "residual_to_training_p50_us": 1.9329999999999927,
+      "independent_validation": false
+    },
+    {
+      "name": "compute_a_post_norm_us",
+      "scope": "host_service",
+      "fixed_us": 27.458333333333332,
+      "coverage": [
+        "native_call:compute_a_post_norm"
+      ],
+      "p50_us": 27.500500000000002,
+      "p95_us": 29.659,
+      "residual_to_training_p50_us": -0.04216666666667024,
+      "independent_validation": false
+    },
+    {
+      "name": "compute_f_moe_block_us",
+      "scope": "host_service",
+      "fixed_us": 583.0460416666667,
+      "coverage": [
+        "native_call:compute_f_moe_block"
+      ],
+      "p50_us": 561.2055,
+      "p95_us": 722.188,
+      "residual_to_training_p50_us": 21.840541666666695,
+      "independent_validation": false
+    },
+    {
+      "name": "h2d",
+      "scope": "operation_service",
+      "fixed_us": 38.16891666666667,
+      "coverage": [
+        "control_staging"
+      ],
+      "statistics": {
+        "p50_us": 38.105999999999995,
+        "p95_us": 40.239,
+        "samples": 1200
+      },
+      "residual_to_training_p50_us": 0.0629166666666734,
+      "independent_validation": false
+    },
+    {
+      "name": "length_readback",
+      "scope": "operation_service",
+      "fixed_us": 10.946,
+      "coverage": [
+        "control_length_readback"
+      ],
+      "statistics": {
+        "p50_us": 10.977,
+        "p95_us": 11.52,
+        "samples": 1200
+      },
+      "residual_to_training_p50_us": -0.031000000000000583,
+      "independent_validation": false
+    },
+    {
+      "name": "payload_readback",
+      "scope": "operation_service",
+      "fixed_us": 19.365916666666667,
+      "coverage": [
+        "control_payload_readback"
+      ],
+      "statistics": {
+        "p50_us": 19.345,
+        "p95_us": 20.324,
+        "samples": 1200
+      },
+      "residual_to_training_p50_us": 0.02091666666666825,
+      "independent_validation": false
+    },
+    {
+      "name": "a_input_prepare",
+      "scope": "operation_service",
+      "fixed_us": 459.12283333333335,
+      "coverage": [
+        "a_input_prepare"
+      ],
+      "statistics": {
+        "p50_us": 440.31,
+        "p95_us": 553.383,
+        "samples": 1200
+      },
+      "residual_to_training_p50_us": 18.812833333333344,
+      "independent_validation": false
+    },
+    {
+      "name": "a_attention_metadata",
+      "scope": "operation_service",
+      "fixed_us": 157.48883333333333,
+      "coverage": [
+        "a_attention_metadata"
+      ],
+      "statistics": {
+        "p50_us": 161.5585,
+        "p95_us": 187.726,
+        "samples": 1200
+      },
+      "residual_to_training_p50_us": -4.069666666666677,
+      "independent_validation": false
+    },
+    {
+      "name": "f_dp_metadata",
+      "scope": "operation_service",
+      "fixed_us": 34.24208333333333,
+      "coverage": [
+        "f_dp_metadata"
+      ],
+      "statistics": {
+        "p50_us": 35.84,
+        "p95_us": 39.946,
+        "samples": 1200
+      },
+      "residual_to_training_p50_us": -1.59791666666667,
+      "independent_validation": false
+    },
+    {
+      "name": "sampled_token_readback",
+      "scope": "operation_service",
+      "fixed_us": 56.342,
+      "coverage": [
+        "sampled_token_readback"
+      ],
+      "statistics": {
+        "p50_us": 58.813,
+        "p95_us": 65.416,
+        "samples": 1200
+      },
+      "residual_to_training_p50_us": -2.4710000000000036,
+      "independent_validation": false
+    }
+  ],
+  "parameters_unchanged": true,
+  "all_historical_component_ratios_under10": true,
+  "full_alignment_passed": false,
+  "unresolved": [
+    "Independent host/operation heldout component validation",
+    "CUDA API/device startup calibration remains incomplete"
+  ],
+  "evidence_sources": [
+    "afd-compute-alignment-20261006.json",
+    "afd-preposted-service-20261007.json"
+  ]
+}

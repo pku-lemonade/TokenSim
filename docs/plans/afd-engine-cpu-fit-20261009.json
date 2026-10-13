@@ -1,0 +1,44 @@
+{
+  "coverage": [
+    "Scheduler.schedule",
+    "Scheduler.update_from_output",
+    "OutputProcessor.process_outputs"
+  ],
+  "excludes": [
+    "sample_tokens",
+    "_bookkeeping_sync",
+    "GPU and message submission"
+  ],
+  "costs": {
+    "engine_step_schedule_us": {
+      "fixed_us": 68.15916666666666,
+      "quantiles_us": {
+        "p50": 73.89699999999999,
+        "p95": 116.647
+      },
+      "batch_medians_us": {
+        "1": 42.38366666666666,
+        "8": 93.93466666666666
+      },
+      "batch_residual_us": {
+        "1": -25.7755,
+        "8": 25.775499999999994
+      }
+    },
+    "engine_output_process_us": {
+      "fixed_us": 34.23233333333334,
+      "quantiles_us": {
+        "p50": 42.786500000000004,
+        "p95": 57.809
+      },
+      "batch_medians_us": {
+        "1": 23.210333333333335,
+        "8": 45.254333333333335
+      },
+      "batch_residual_us": {
+        "1": -11.022000000000002,
+        "8": 11.021999999999998
+      }
+    }
+  }
+}

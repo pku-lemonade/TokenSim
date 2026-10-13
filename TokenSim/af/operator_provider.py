@@ -53,7 +53,7 @@ from TokenSim.latency.operator_table import (
 )
 from TokenSim.operator_data.lookup import LookupPolicy
 
-TRANSFER_OPERATIONS = ("af_a_to_f", "af_f_to_a", "af_router_metadata", "ep_dispatch", "ep_combine", "tp_collective", "all_reduce", "all_gather", "reduce_scatter", "all_to_all")
+TRANSFER_OPERATIONS = ("af_a_to_f", "af_f_to_a", "af_control_length", "af_control_payload", "af_router_metadata", "ep_dispatch", "ep_combine", "tp_collective", "all_reduce", "all_gather", "reduce_scatter", "all_to_all")
 _MATCH_RANK = {name: rank for rank, name in enumerate(AF_MATCH_TYPES)}
 _COLLECTIVE_MATCH = {"measured": "exact"}
 
@@ -103,6 +103,7 @@ class OperatorComponent:
     match_type: str
     source_id: str
     dataset_version: str = ""
+    covered_operations: tuple[str, ...] = ()
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -113,6 +114,7 @@ class OperatorComponent:
             "match_type": self.match_type,
             "source_id": self.source_id,
             "dataset_version": self.dataset_version,
+            "covered_operations": self.covered_operations,
         }
 
 
@@ -138,7 +140,7 @@ class OperatorTableAFComputeProvider(ConfigurationOwner):
 
     _configuration_fields = (
         "hardware", "model", "fallback", "lookup_policy", "operator_backend",
-        "backend_by_device", "cluster_config", "placement", "dtype",
+        "backend_by_device", "cluster_config", "placement", "dtype", "execution_protocol", "require_device_scope",
     )
 
     def __init__(
@@ -151,17 +153,21 @@ class OperatorTableAFComputeProvider(ConfigurationOwner):
         fallback: str = "table_first",
         lookup_policy: LookupPolicy | None = None,
         cache_enabled: bool = True,
+        execution_protocol: str = "partial_return",
+        require_device_scope: bool = False,
     ) -> None:
         if fallback not in FALLBACK_POLICIES:
             raise ConfigurationError(
                 f"AF compute provider fallback must be one of {FALLBACK_POLICIES}, got {fallback!r}"
             )
         self.hardware = HardwareSnapshot(hardware)
+        self.require_device_scope = require_device_scope or execution_protocol == 'vllm_afd'
         self.model = snapshot(model)
         self.operator_backend = operator_backend
         self.backend_by_device = snapshot(dict(backend_by_device or {}))
         self.fallback = fallback
         self.lookup_policy = snapshot(lookup_policy)
+        self.execution_protocol = execution_protocol
         initialize_cache(self, cache_enabled)
         self._resolvers: dict[str, OperatorResolver] = {}
         routing = model.moe.routing.distribution if model.moe.routing else "uniform"
@@ -205,6 +211,7 @@ class OperatorTableAFComputeProvider(ConfigurationOwner):
         return {
             "provider": "operator_table",
             "model_id": self.model.model_id,
+            "execution_protocol": self.execution_protocol,
             "fallback": self.fallback,
             "devices": {
                 device_type: {
@@ -236,6 +243,11 @@ class OperatorTableAFComputeProvider(ConfigurationOwner):
             size = validated_bytes(query.local_shape["reorder_bytes"], query.dtype)
             components = [self._elementwise(resolver, "data_reorder", "data_reorder", 1,
                                              size // dtype_size_bytes(query.dtype, role="activation_dtype"), dtype)]
+        elif self.execution_protocol == "vllm_afd" and query.stage in {"router", "routed_expert", "weighted_combine"}:
+            # These compositions preserve exact expert histograms and exclude
+            # norm/residual work owned by A. The routed_experts contract does
+            # not include combine, which is priced separately on F.
+            components = self._mla_stage(resolver, query, tokens, tp_size, dtype)
         elif self.model.attention_type == "mla":
             components = self._mla_stage(resolver, query, tokens, tp_size, dtype)
         elif query.stage in {"a", "attention"}:
@@ -296,6 +308,8 @@ class OperatorTableAFComputeProvider(ConfigurationOwner):
                 "expert_workload": dict(query.expert_workload),
                 "components": [component.as_dict() for component in components],
                 "total_latency_us": latency_us,
+                "covered_operations": tuple(sorted({operation for component in components
+                                                      for operation in component.covered_operations})),
             },
         )
 
@@ -405,6 +419,11 @@ class OperatorTableAFComputeProvider(ConfigurationOwner):
             self._gemm(resolver, "qkv_projection", tokens, q_local + 2 * kv_local, h, dtype),
             self._elementwise(resolver, "rope", "rope", tokens, q_local + kv_local, dtype),
         ]
+        if self.execution_protocol == "vllm_afd":
+            components[2:2] = [
+                self._elementwise(resolver, "q_norm", "rmsnorm", tokens * heads_local, model.head_dim, dtype),
+                self._elementwise(resolver, "k_norm", "rmsnorm", tokens * kv_heads_local, model.head_dim, dtype),
+            ]
         components.extend(
             self._attention_core(resolver, query, tokens, heads_local, kv_heads_local, dtype)
         )
@@ -549,11 +568,21 @@ class OperatorTableAFComputeProvider(ConfigurationOwner):
         key = {"op_name": op_name, "dtype": dtype, "num_tokens": int(tokens), "hidden_size": int(hidden)}
         return self._component(resolver, name, "elementwise", key)
 
-    @staticmethod
     def _component(
-        resolver: OperatorResolver, name: str, table: str, key: Mapping[str, Any]
+        self, resolver: OperatorResolver, name: str, table: str, key: Mapping[str, Any]
     ) -> OperatorComponent:
         estimate: OperatorEstimate = resolver.query(table, key)
+        covered = ()
+        if self.require_device_scope and estimate.match_type != 'analytical':
+            metadata = resolver.package.meta.extra if resolver.package is not None else {}
+            if metadata.get('timing_scopes', {}).get(table) != 'device_service':
+                raise ConfigurationError(f'{table}: native/profile mode requires measured device_service scope excluding host/wait')
+            coverage = metadata.get('operation_coverage', {}).get(table)
+            if table == 'routed_experts':
+                if not isinstance(coverage, (list, tuple)) or tuple(coverage) not in (
+                        ('routed_experts',), ('routed_experts', 'weighted_combine')):
+                    raise ConfigurationError('routed_experts: declare exact operation_coverage including optional weighted_combine')
+                covered = tuple(coverage)
         return OperatorComponent(
             name=name,
             table=table,
@@ -562,6 +591,7 @@ class OperatorTableAFComputeProvider(ConfigurationOwner):
             match_type=estimate.match_type,
             source_id=estimate.source_id,
             dataset_version=_estimate_dataset_version(resolver, estimate),
+            covered_operations=covered,
         )
 
     # -- validation ------------------------------------------------------------
@@ -654,7 +684,7 @@ class TopologyAFTransferProvider(ConfigurationOwner):
     """
 
     _configuration_fields = OperatorTableAFComputeProvider._configuration_fields + (
-        "domain_config", "node_by_worker", "phase_measurements", "_scope_by_worker",
+        "domain_config", "node_by_worker", "phase_measurements", "_scope_by_worker", "transport_profile",
     )
 
     def __init__(
@@ -738,6 +768,19 @@ class TopologyAFTransferProvider(ConfigurationOwner):
                 self.backend_by_device.get(self._hardware_by_identity[identity], self.operator_backend)))
             for identity, worker_id in self._worker_ids.items()})
         self._estimate_namespace += (self._fingerprints(self.phase_measurements), self._fingerprints(self._scope_by_worker))
+        transport_profile = None
+        profile = cluster_config.af.transport_service_profile
+        if profile is not None:
+            if records:
+                raise ConfigurationError('transport profile conflicts with operator-package phase measurements')
+            if cluster_config.af.transfer_topology_mode != 'physical' or physical is None or len(set(self.node_by_worker.values())) != 1:
+                raise ConfigurationError('measured direct transport profile requires explicit same-node physical domains')
+            from TokenSim.af.transport_profile import TransportServiceProfile
+            transport_profile = TransportServiceProfile(profile,
+                environment=cluster_config.af.calibration_environment, domains=self.domain_config,
+                device_indices={identity:self.placement.device_index(worker) for identity,worker in self._worker_ids.items()})
+            self._estimate_namespace += (('transport_service',transport_profile.fingerprint),)
+        self.transport_profile = transport_profile
         if cluster_config.af.transfer_topology_mode == "physical":
             for domain in self.cluster_config.af.execution_domains:
                 for instance in domain.logical_instances:
@@ -765,6 +808,7 @@ class TopologyAFTransferProvider(ConfigurationOwner):
     def describe(self) -> dict[str, Any]:
         return {
             "provider": "topology_links",
+            "transport_service_profile": self.transport_profile.fingerprint if self.transport_profile else None,
             "dtype": self.dtype,
             "links": {network: link.link_id for network, link in sorted(self.link_classes.items())},
             "placement": self.placement.topology.topology_id if self.placement is not None else None,
@@ -823,9 +867,8 @@ class TopologyAFTransferProvider(ConfigurationOwner):
         if not collective and len(ranks) != 2:
             raise ConfigurationError("endpoint communication requires exactly two ranks")
         payload = validated_bytes(query.payload_bytes)
-        # Protocol metadata can have byte alignment different from activation dtype.
-        plan_dtype = query.dtype if collective else None
-        key = (MODEL_VERSION, operation, payload, plan_dtype, endpoints,
+        # Byte-oriented metadata need not align to dtype; measured service still does.
+        key = (MODEL_VERSION, operation, payload, query.dtype, endpoints,
                query.participant_ranks, self.node_by_worker, self.placement,
                query.logical_input_bytes_per_rank, query.logical_output_bytes_per_rank,
                traffic_feature_fingerprint(query.routing_edges),
@@ -849,6 +892,26 @@ class TopologyAFTransferProvider(ConfigurationOwner):
 
     @cached_phase_estimate
     def phase_estimate(self, phase):
+        if self.transport_profile is not None:
+            if phase.operation != 'send_recv' or len(phase.participants)!=2:
+                raise ConfigurationError('direct transport profile cannot price collective phases')
+            source,target=phase.participants
+            duration=self.transport_profile.estimate_us(source=self.placement.device_index(source),
+                target=self.placement.device_index(target),backend=phase.transport_backend,
+                dtype=phase.dtype,size=phase.wire_bytes)
+            exact=any(row['source_device']==self.placement.device_index(source)
+                and row['target_device']==self.placement.device_index(target)
+                and row['backend']==phase.transport_backend and row['dtype']==phase.dtype
+                and any(point['bytes']==phase.wire_bytes for point in row['points'])
+                for row in self.transport_profile.document['records'])
+            return AFServiceEstimate(duration*1e-6,self.transport_profile.document['profile_id'],
+                phase.logical_input_bytes,self.transport_profile.fingerprint,'exact' if exact else 'interpolated',
+                {'timing_scope':'transport_service','transport_backend':phase.transport_backend,
+                 'model_version':MODEL_VERSION,'phase_id':phase.phase_id,
+                 'resource_identities':phase.resource_ids,'resource_wire_bytes':phase.resource_wire_bytes,
+                 'contains_cpu_submit':False,'contains_external_wait':False,
+                 'measurement_boundary':self.transport_profile.document['evidence']['measurement_boundary'],
+                 'interpolation':'linear_within_training_range'})
         algorithm = "direct" if phase.operation in {"send_recv", "all_to_all"} else "ring"
         nodes = {node: index for index, node in enumerate(sorted(
             {self.node_by_worker[rank] for rank in phase.participants}))}
@@ -966,6 +1029,8 @@ class TopologyAFTransferProvider(ConfigurationOwner):
                 "provider": "topology_links",
                 "model_version": MODEL_VERSION,
                 "timing_scope": "transport_service",
+                "transport_backend": query.transport_backend,
+                "backend_calibrated": False,
                 "link": (
                     link.link_id
                     if link is not None
@@ -1081,6 +1146,8 @@ def build_operator_table_af_providers(
         backend_by_device=backend_by_device,
         fallback=fallback,
         cache_enabled=cluster_config.af.service_estimate_cache,
+        execution_protocol=cluster_config.af.execution_protocol,
+        require_device_scope=cluster_config.af.engine_overhead_profile is not None,
     )
     transfer = TopologyAFTransferProvider(
         hardware,
@@ -1094,6 +1161,16 @@ def build_operator_table_af_providers(
     )
     for hardware_name in sorted({worker.hardware for worker in worker_configs}):
         compute.resolver_for(hardware_name)
+    if cluster_config.af.engine_overhead_profile is not None:
+        from TokenSim.af.calibration import content_fingerprint
+        fingerprint = content_fingerprint(cluster_config.af.engine_overhead_profile)
+        for provider in (compute, transfer):
+            provider._estimate_namespace += (fingerprint,)
+    if cluster_config.af.operation_service_profile is not None:
+        from TokenSim.af.calibration import content_fingerprint
+        fingerprint = content_fingerprint(cluster_config.af.operation_service_profile)
+        for provider in (compute, transfer):
+            provider._estimate_namespace += (('operation_service', fingerprint),)
     return compute, transfer
 
 

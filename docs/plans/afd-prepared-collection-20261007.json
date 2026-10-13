@@ -1,0 +1,281 @@
+{
+  "schema_version": 1,
+  "source_hashes": {
+    "afd_plugin/connectors/metadata.py": "161316e4ed8f8a316ba89489a26ebf5c2d3d4f252ee606f2b1a66bd868568f73",
+    "afd_plugin/connectors/gpu/p2p.py": "4a98fa3b1ee4121be0c176ca52581d0257ca6e8adbeb57e69497374543d84288",
+    "afd_plugin/v1/worker/attention_metadata.py": "08f8f88921c6553f343b5463a6a5502180a28211dba802ba3111be41513cab53",
+    "afd_plugin/v1/worker/attention_model_runner.py": "2229ffde192a85f76847afdcc87e0edef68b064bebfe6461ba7bcf3942fe5938",
+    "afd_plugin/v1/worker/ffn_model_runner.py": "14aa42f09bb3807808faa9b4f9b702fcc5ecc8d83ba85ced72f6781da0aade93",
+    "afd_plugin/v1/worker/ffn_worker.py": "2349262887e00748bfe3886485a3b4e0ce53575da3e25a68c47a95b8c6fbef59",
+    "afd_plugin/model_executor/models/qwen3_moe.py": "f9d390d00d6857d9b8291832a569c4748f8989b9d5d6f80dc07895880ea71975"
+  },
+  "driver_hashes": {
+    "run_curve.py": "5ed83429cf59957ffa161f1d8fbbb98a9c4108e8f9155c5b2bcae77a3cdbc099",
+    "attention.py": "4cc823b1d2e68a8cfa31311f89633dbaeefca95c2ef9b9273d7d6bcee599d1b3"
+  },
+  "isolated_hashes": {
+    "afd_plugin/connectors/metadata.py": "161316e4ed8f8a316ba89489a26ebf5c2d3d4f252ee606f2b1a66bd868568f73",
+    "afd_plugin/connectors/gpu/p2p.py": "4a98fa3b1ee4121be0c176ca52581d0257ca6e8adbeb57e69497374543d84288",
+    "afd_plugin/v1/worker/attention_metadata.py": "08f8f88921c6553f343b5463a6a5502180a28211dba802ba3111be41513cab53",
+    "afd_plugin/v1/worker/attention_model_runner.py": "b5a6644e5b70daa622febd633dd9c1a5ec68520fd7239d275cb3999b67185217",
+    "afd_plugin/v1/worker/ffn_model_runner.py": "e108a6f9a5b84574cefaeced2a84053c8a941858cfc88eb6f1f733344a09980d",
+    "afd_plugin/v1/worker/ffn_worker.py": "2349262887e00748bfe3886485a3b4e0ce53575da3e25a68c47a95b8c6fbef59",
+    "afd_plugin/model_executor/models/qwen3_moe.py": "f9d390d00d6857d9b8291832a569c4748f8989b9d5d6f80dc07895880ea71975"
+  },
+  "hooks_sha256": "2fb5f518f706014f41fc0c88b5d13dc72769475ad3722f770b8d9f685786afa0",
+  "cases": [
+    {
+      "mode": "capture",
+      "batch": 1,
+      "window": 0,
+      "environment": {
+        "AF_WORKSPACE": "/home/youwei/autodl-tmp/af-workspace",
+        "AFD_ISOLATED_PLUGIN": "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/plugin",
+        "AFD_CAPTURE_DIR": "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/capture-b1-w0",
+        "AFD_CAPTURE_BATCH": "1",
+        "AFD_CAPTURE_STEPS": "31"
+      },
+      "command": [
+        "/home/youwei/autodl-tmp/af-workspace/envs/afd026/bin/python",
+        "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/capture-b1-w0/run_curve.py",
+        "--concurrency",
+        "1"
+      ],
+      "driver_hashes": {
+        "run_curve.py": "026235e5da80d7c1e53313a7b483e352cff597aa4992c063c56e267787edc0c2",
+        "attention.py": "922044ede3bcaaf7cb9385a4221d19bb3a9edf9a1808ed18cdbd889710ea7707"
+      },
+      "result": "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/capture-b1-w0/c1/result.json"
+    },
+    {
+      "mode": "capture",
+      "batch": 8,
+      "window": 0,
+      "environment": {
+        "AF_WORKSPACE": "/home/youwei/autodl-tmp/af-workspace",
+        "AFD_ISOLATED_PLUGIN": "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/plugin",
+        "AFD_CAPTURE_DIR": "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/capture-b8-w0",
+        "AFD_CAPTURE_BATCH": "8",
+        "AFD_CAPTURE_STEPS": "31"
+      },
+      "command": [
+        "/home/youwei/autodl-tmp/af-workspace/envs/afd026/bin/python",
+        "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/capture-b8-w0/run_curve.py",
+        "--concurrency",
+        "8"
+      ],
+      "driver_hashes": {
+        "run_curve.py": "026235e5da80d7c1e53313a7b483e352cff597aa4992c063c56e267787edc0c2",
+        "attention.py": "922044ede3bcaaf7cb9385a4221d19bb3a9edf9a1808ed18cdbd889710ea7707"
+      },
+      "result": "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/capture-b8-w0/c8/result.json"
+    },
+    {
+      "mode": "capture",
+      "batch": 4,
+      "window": 0,
+      "environment": {
+        "AF_WORKSPACE": "/home/youwei/autodl-tmp/af-workspace",
+        "AFD_ISOLATED_PLUGIN": "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/plugin",
+        "AFD_CAPTURE_DIR": "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/capture-b4-w0",
+        "AFD_CAPTURE_BATCH": "4",
+        "AFD_CAPTURE_STEPS": "31"
+      },
+      "command": [
+        "/home/youwei/autodl-tmp/af-workspace/envs/afd026/bin/python",
+        "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/capture-b4-w0/run_curve.py",
+        "--concurrency",
+        "4"
+      ],
+      "driver_hashes": {
+        "run_curve.py": "026235e5da80d7c1e53313a7b483e352cff597aa4992c063c56e267787edc0c2",
+        "attention.py": "922044ede3bcaaf7cb9385a4221d19bb3a9edf9a1808ed18cdbd889710ea7707"
+      },
+      "result": "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/capture-b4-w0/c4/result.json"
+    },
+    {
+      "mode": "timing",
+      "batch": 1,
+      "window": 0,
+      "environment": {
+        "AF_WORKSPACE": "/home/youwei/autodl-tmp/af-workspace",
+        "AFD_ISOLATED_PLUGIN": "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/plugin"
+      },
+      "command": [
+        "/home/youwei/autodl-tmp/af-workspace/envs/afd026/bin/python",
+        "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/timing-b1-w0/run_curve.py",
+        "--concurrency",
+        "1"
+      ],
+      "driver_hashes": {
+        "run_curve.py": "026235e5da80d7c1e53313a7b483e352cff597aa4992c063c56e267787edc0c2",
+        "attention.py": "922044ede3bcaaf7cb9385a4221d19bb3a9edf9a1808ed18cdbd889710ea7707"
+      },
+      "result": "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/timing-b1-w0/c1/result.json"
+    },
+    {
+      "mode": "timing",
+      "batch": 1,
+      "window": 1,
+      "environment": {
+        "AF_WORKSPACE": "/home/youwei/autodl-tmp/af-workspace",
+        "AFD_ISOLATED_PLUGIN": "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/plugin"
+      },
+      "command": [
+        "/home/youwei/autodl-tmp/af-workspace/envs/afd026/bin/python",
+        "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/timing-b1-w1/run_curve.py",
+        "--concurrency",
+        "1"
+      ],
+      "driver_hashes": {
+        "run_curve.py": "026235e5da80d7c1e53313a7b483e352cff597aa4992c063c56e267787edc0c2",
+        "attention.py": "922044ede3bcaaf7cb9385a4221d19bb3a9edf9a1808ed18cdbd889710ea7707"
+      },
+      "result": "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/timing-b1-w1/c1/result.json"
+    },
+    {
+      "mode": "timing",
+      "batch": 1,
+      "window": 2,
+      "environment": {
+        "AF_WORKSPACE": "/home/youwei/autodl-tmp/af-workspace",
+        "AFD_ISOLATED_PLUGIN": "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/plugin"
+      },
+      "command": [
+        "/home/youwei/autodl-tmp/af-workspace/envs/afd026/bin/python",
+        "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/timing-b1-w2/run_curve.py",
+        "--concurrency",
+        "1"
+      ],
+      "driver_hashes": {
+        "run_curve.py": "026235e5da80d7c1e53313a7b483e352cff597aa4992c063c56e267787edc0c2",
+        "attention.py": "922044ede3bcaaf7cb9385a4221d19bb3a9edf9a1808ed18cdbd889710ea7707"
+      },
+      "result": "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/timing-b1-w2/c1/result.json"
+    },
+    {
+      "mode": "timing",
+      "batch": 8,
+      "window": 0,
+      "environment": {
+        "AF_WORKSPACE": "/home/youwei/autodl-tmp/af-workspace",
+        "AFD_ISOLATED_PLUGIN": "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/plugin"
+      },
+      "command": [
+        "/home/youwei/autodl-tmp/af-workspace/envs/afd026/bin/python",
+        "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/timing-b8-w0/run_curve.py",
+        "--concurrency",
+        "8"
+      ],
+      "driver_hashes": {
+        "run_curve.py": "026235e5da80d7c1e53313a7b483e352cff597aa4992c063c56e267787edc0c2",
+        "attention.py": "922044ede3bcaaf7cb9385a4221d19bb3a9edf9a1808ed18cdbd889710ea7707"
+      },
+      "result": "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/timing-b8-w0/c8/result.json"
+    },
+    {
+      "mode": "timing",
+      "batch": 8,
+      "window": 1,
+      "environment": {
+        "AF_WORKSPACE": "/home/youwei/autodl-tmp/af-workspace",
+        "AFD_ISOLATED_PLUGIN": "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/plugin"
+      },
+      "command": [
+        "/home/youwei/autodl-tmp/af-workspace/envs/afd026/bin/python",
+        "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/timing-b8-w1/run_curve.py",
+        "--concurrency",
+        "8"
+      ],
+      "driver_hashes": {
+        "run_curve.py": "026235e5da80d7c1e53313a7b483e352cff597aa4992c063c56e267787edc0c2",
+        "attention.py": "922044ede3bcaaf7cb9385a4221d19bb3a9edf9a1808ed18cdbd889710ea7707"
+      },
+      "result": "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/timing-b8-w1/c8/result.json"
+    },
+    {
+      "mode": "timing",
+      "batch": 8,
+      "window": 2,
+      "environment": {
+        "AF_WORKSPACE": "/home/youwei/autodl-tmp/af-workspace",
+        "AFD_ISOLATED_PLUGIN": "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/plugin"
+      },
+      "command": [
+        "/home/youwei/autodl-tmp/af-workspace/envs/afd026/bin/python",
+        "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/timing-b8-w2/run_curve.py",
+        "--concurrency",
+        "8"
+      ],
+      "driver_hashes": {
+        "run_curve.py": "026235e5da80d7c1e53313a7b483e352cff597aa4992c063c56e267787edc0c2",
+        "attention.py": "922044ede3bcaaf7cb9385a4221d19bb3a9edf9a1808ed18cdbd889710ea7707"
+      },
+      "result": "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/timing-b8-w2/c8/result.json"
+    },
+    {
+      "mode": "timing",
+      "batch": 4,
+      "window": 0,
+      "environment": {
+        "AF_WORKSPACE": "/home/youwei/autodl-tmp/af-workspace",
+        "AFD_ISOLATED_PLUGIN": "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/plugin"
+      },
+      "command": [
+        "/home/youwei/autodl-tmp/af-workspace/envs/afd026/bin/python",
+        "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/timing-b4-w0/run_curve.py",
+        "--concurrency",
+        "4"
+      ],
+      "driver_hashes": {
+        "run_curve.py": "026235e5da80d7c1e53313a7b483e352cff597aa4992c063c56e267787edc0c2",
+        "attention.py": "922044ede3bcaaf7cb9385a4221d19bb3a9edf9a1808ed18cdbd889710ea7707"
+      },
+      "result": "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/timing-b4-w0/c4/result.json"
+    },
+    {
+      "mode": "timing",
+      "batch": 4,
+      "window": 1,
+      "environment": {
+        "AF_WORKSPACE": "/home/youwei/autodl-tmp/af-workspace",
+        "AFD_ISOLATED_PLUGIN": "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/plugin"
+      },
+      "command": [
+        "/home/youwei/autodl-tmp/af-workspace/envs/afd026/bin/python",
+        "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/timing-b4-w1/run_curve.py",
+        "--concurrency",
+        "4"
+      ],
+      "driver_hashes": {
+        "run_curve.py": "026235e5da80d7c1e53313a7b483e352cff597aa4992c063c56e267787edc0c2",
+        "attention.py": "922044ede3bcaaf7cb9385a4221d19bb3a9edf9a1808ed18cdbd889710ea7707"
+      },
+      "result": "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/timing-b4-w1/c4/result.json"
+    },
+    {
+      "mode": "timing",
+      "batch": 4,
+      "window": 2,
+      "environment": {
+        "AF_WORKSPACE": "/home/youwei/autodl-tmp/af-workspace",
+        "AFD_ISOLATED_PLUGIN": "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/plugin"
+      },
+      "command": [
+        "/home/youwei/autodl-tmp/af-workspace/envs/afd026/bin/python",
+        "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/timing-b4-w2/run_curve.py",
+        "--concurrency",
+        "4"
+      ],
+      "driver_hashes": {
+        "run_curve.py": "026235e5da80d7c1e53313a7b483e352cff597aa4992c063c56e267787edc0c2",
+        "attention.py": "922044ede3bcaaf7cb9385a4221d19bb3a9edf9a1808ed18cdbd889710ea7707"
+      },
+      "result": "/home/youwei/autodl-tmp/af-workspace/profiling/afd-native-collection-20261007-v1/timing-b4-w2/c4/result.json"
+    }
+  ],
+  "status": "prepared_not_executed",
+  "capture_scope": "intrusive, no timing calibration",
+  "execution_order": "timing batches 1/8; freeze profile; timing batch4; capture separately",
+  "heldout_requires_frozen_profile": true
+}

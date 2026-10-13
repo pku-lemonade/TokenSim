@@ -1,0 +1,5 @@
+{
+  "reporter_sha256": "e7519e012fb3a26c083741b6e30f8d2a4fef390ba6327287919909ac8289ce3e",
+  "reason": "仅修复报告器CRLF原始字节hash校验，未变更冻结源码或参数",
+  "frozen_bundle_sha256": "53623d9945343819a2b0da48accbf2dd5653dd336342bb4ca3d3c494a609f451"
+}

@@ -1,0 +1,34 @@
+[
+  {
+    "batch": 1,
+    "steps": 31,
+    "operation_calls": 217,
+    "mean_step_us": 991.0956248689581,
+    "critical_chain_us": {
+      "operation_service": 775.6765833333349,
+      "host_service": 46.13441666666963,
+      "control_transport": 29.962649999999723,
+      "data_transport": 59.930880000002276,
+      "compute": 79.39109486895195
+    },
+    "before_us": 934.7536248689578,
+    "readback_us": 56.342,
+    "readback_calls": 31
+  },
+  {
+    "batch": 8,
+    "steps": 31,
+    "operation_calls": 217,
+    "mean_step_us": 992.3710867877783,
+    "critical_chain_us": {
+      "operation_service": 775.6765833333349,
+      "host_service": 46.1344166666696,
+      "control_transport": 29.962649999999723,
+      "data_transport": 59.978666666667856,
+      "compute": 80.61877012110658
+    },
+    "before_us": 936.0290867877776,
+    "readback_us": 56.342,
+    "readback_calls": 31
+  }
+]

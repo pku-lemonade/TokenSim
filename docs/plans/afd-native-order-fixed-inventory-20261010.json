@@ -1,0 +1,293 @@
+{
+  "scope": "applied fixed-cost coverage inventory; independent component acceptance pending",
+  "implementation_hashes_match_frozen_bundle": true,
+  "operation_counts_verified_batches": [
+    1,
+    8,
+    4,
+    2
+  ],
+  "steps_per_batch": 31,
+  "parameters": [
+    {
+      "name": "control_encode_us",
+      "scope": "host_service",
+      "fixed_us": 6.163,
+      "coverage": [
+        "control_encode"
+      ],
+      "profile_id": "pkua100-native-fixed-costs-20261009-v1:native-order-v1",
+      "source": "PKUa100:afd-cpu-codec-fixed-20261007-v1:isolated-codecs-not-whole-engine:86e662b9e781c91f6afbb5f4f14c26bcc1ce109ec7553bab2f107c60cdfef6f8;inherited-profile:f84d1056ee4873041954d58dc0b2a856371b49d2bc581ea63ebc9d4b1e182e78;engine-cpu:cac303d00d3cd8b4f8d73e3835c3cbaf2e80a05b63321ffaf56ca1d987d17a59;parent-profile:e1a5c8d40730b539502684cc1ed3a9678b30fc0a78d4afa316e85084f7d97a19;submit:d7ff250ed427f4efadec0206e40c1a899f1d67ac23f268c67c00943f03024c5f;bookkeeping:6e824722068d1cd3ed821d3e3696047d51e5d65eda3fe1c1ee8a971f7ff47fdb;compute-cpu-excludes-all-CUDA-API:71a3392a20a12ebc9ec0d99501c9a9f4173eaeac415741ab6090cffae37a82e6",
+      "validation_status": "pending"
+    },
+    {
+      "name": "control_decode_us",
+      "scope": "host_service",
+      "fixed_us": 14.971416666666666,
+      "coverage": [
+        "control_decode"
+      ],
+      "profile_id": "pkua100-native-fixed-costs-20261009-v1:native-order-v1",
+      "source": "PKUa100:afd-cpu-codec-fixed-20261007-v1:isolated-codecs-not-whole-engine:86e662b9e781c91f6afbb5f4f14c26bcc1ce109ec7553bab2f107c60cdfef6f8;inherited-profile:f84d1056ee4873041954d58dc0b2a856371b49d2bc581ea63ebc9d4b1e182e78;engine-cpu:cac303d00d3cd8b4f8d73e3835c3cbaf2e80a05b63321ffaf56ca1d987d17a59;parent-profile:e1a5c8d40730b539502684cc1ed3a9678b30fc0a78d4afa316e85084f7d97a19;submit:d7ff250ed427f4efadec0206e40c1a899f1d67ac23f268c67c00943f03024c5f;bookkeeping:6e824722068d1cd3ed821d3e3696047d51e5d65eda3fe1c1ee8a971f7ff47fdb;compute-cpu-excludes-all-CUDA-API:71a3392a20a12ebc9ec0d99501c9a9f4173eaeac415741ab6090cffae37a82e6",
+      "validation_status": "pending"
+    },
+    {
+      "name": "engine_step_schedule_us",
+      "scope": "host_service",
+      "fixed_us": 68.15916666666666,
+      "coverage": [
+        "engine_schedule_excluding_input_preparation"
+      ],
+      "profile_id": "pkua100-native-fixed-costs-20261009-v1:native-order-v1",
+      "source": "PKUa100:afd-cpu-codec-fixed-20261007-v1:isolated-codecs-not-whole-engine:86e662b9e781c91f6afbb5f4f14c26bcc1ce109ec7553bab2f107c60cdfef6f8;inherited-profile:f84d1056ee4873041954d58dc0b2a856371b49d2bc581ea63ebc9d4b1e182e78;engine-cpu:cac303d00d3cd8b4f8d73e3835c3cbaf2e80a05b63321ffaf56ca1d987d17a59;parent-profile:e1a5c8d40730b539502684cc1ed3a9678b30fc0a78d4afa316e85084f7d97a19;submit:d7ff250ed427f4efadec0206e40c1a899f1d67ac23f268c67c00943f03024c5f;bookkeeping:6e824722068d1cd3ed821d3e3696047d51e5d65eda3fe1c1ee8a971f7ff47fdb;compute-cpu-excludes-all-CUDA-API:71a3392a20a12ebc9ec0d99501c9a9f4173eaeac415741ab6090cffae37a82e6",
+      "validation_status": "pending"
+    },
+    {
+      "name": "engine_output_process_us",
+      "scope": "host_service",
+      "fixed_us": 34.23233333333334,
+      "coverage": [
+        "engine_output_excluding_sampling_and_readback"
+      ],
+      "profile_id": "pkua100-native-fixed-costs-20261009-v1:native-order-v1",
+      "source": "PKUa100:afd-cpu-codec-fixed-20261007-v1:isolated-codecs-not-whole-engine:86e662b9e781c91f6afbb5f4f14c26bcc1ce109ec7553bab2f107c60cdfef6f8;inherited-profile:f84d1056ee4873041954d58dc0b2a856371b49d2bc581ea63ebc9d4b1e182e78;engine-cpu:cac303d00d3cd8b4f8d73e3835c3cbaf2e80a05b63321ffaf56ca1d987d17a59;parent-profile:e1a5c8d40730b539502684cc1ed3a9678b30fc0a78d4afa316e85084f7d97a19;submit:d7ff250ed427f4efadec0206e40c1a899f1d67ac23f268c67c00943f03024c5f;bookkeeping:6e824722068d1cd3ed821d3e3696047d51e5d65eda3fe1c1ee8a971f7ff47fdb;compute-cpu-excludes-all-CUDA-API:71a3392a20a12ebc9ec0d99501c9a9f4173eaeac415741ab6090cffae37a82e6",
+      "validation_status": "pending"
+    },
+    {
+      "name": "send_torch_distributed_nccl_a_to_f_us",
+      "scope": "host_service",
+      "fixed_us": 235.4850416666667,
+      "coverage": [
+        "native_call:send_torch_distributed_nccl_a_to_f"
+      ],
+      "profile_id": "pkua100-native-fixed-costs-20261009-v1:native-order-v1",
+      "source": "PKUa100:afd-cpu-codec-fixed-20261007-v1:isolated-codecs-not-whole-engine:86e662b9e781c91f6afbb5f4f14c26bcc1ce109ec7553bab2f107c60cdfef6f8;inherited-profile:f84d1056ee4873041954d58dc0b2a856371b49d2bc581ea63ebc9d4b1e182e78;engine-cpu:cac303d00d3cd8b4f8d73e3835c3cbaf2e80a05b63321ffaf56ca1d987d17a59;parent-profile:e1a5c8d40730b539502684cc1ed3a9678b30fc0a78d4afa316e85084f7d97a19;submit:d7ff250ed427f4efadec0206e40c1a899f1d67ac23f268c67c00943f03024c5f;bookkeeping:6e824722068d1cd3ed821d3e3696047d51e5d65eda3fe1c1ee8a971f7ff47fdb;compute-cpu-excludes-all-CUDA-API:71a3392a20a12ebc9ec0d99501c9a9f4173eaeac415741ab6090cffae37a82e6",
+      "validation_status": "pending"
+    },
+    {
+      "name": "receive_torch_distributed_nccl_a_to_f_us",
+      "scope": "host_service",
+      "fixed_us": 221.82274999999998,
+      "coverage": [
+        "native_call:receive_torch_distributed_nccl_a_to_f"
+      ],
+      "profile_id": "pkua100-native-fixed-costs-20261009-v1:native-order-v1",
+      "source": "PKUa100:afd-cpu-codec-fixed-20261007-v1:isolated-codecs-not-whole-engine:86e662b9e781c91f6afbb5f4f14c26bcc1ce109ec7553bab2f107c60cdfef6f8;inherited-profile:f84d1056ee4873041954d58dc0b2a856371b49d2bc581ea63ebc9d4b1e182e78;engine-cpu:cac303d00d3cd8b4f8d73e3835c3cbaf2e80a05b63321ffaf56ca1d987d17a59;parent-profile:e1a5c8d40730b539502684cc1ed3a9678b30fc0a78d4afa316e85084f7d97a19;submit:d7ff250ed427f4efadec0206e40c1a899f1d67ac23f268c67c00943f03024c5f;bookkeeping:6e824722068d1cd3ed821d3e3696047d51e5d65eda3fe1c1ee8a971f7ff47fdb;compute-cpu-excludes-all-CUDA-API:71a3392a20a12ebc9ec0d99501c9a9f4173eaeac415741ab6090cffae37a82e6",
+      "validation_status": "pending"
+    },
+    {
+      "name": "send_pynccl_a_to_f_us",
+      "scope": "host_service",
+      "fixed_us": 94.38108333333334,
+      "coverage": [
+        "native_call:send_pynccl_a_to_f"
+      ],
+      "profile_id": "pkua100-native-fixed-costs-20261009-v1:native-order-v1",
+      "source": "PKUa100:afd-cpu-codec-fixed-20261007-v1:isolated-codecs-not-whole-engine:86e662b9e781c91f6afbb5f4f14c26bcc1ce109ec7553bab2f107c60cdfef6f8;inherited-profile:f84d1056ee4873041954d58dc0b2a856371b49d2bc581ea63ebc9d4b1e182e78;engine-cpu:cac303d00d3cd8b4f8d73e3835c3cbaf2e80a05b63321ffaf56ca1d987d17a59;parent-profile:e1a5c8d40730b539502684cc1ed3a9678b30fc0a78d4afa316e85084f7d97a19;submit:d7ff250ed427f4efadec0206e40c1a899f1d67ac23f268c67c00943f03024c5f;bookkeeping:6e824722068d1cd3ed821d3e3696047d51e5d65eda3fe1c1ee8a971f7ff47fdb;compute-cpu-excludes-all-CUDA-API:71a3392a20a12ebc9ec0d99501c9a9f4173eaeac415741ab6090cffae37a82e6",
+      "validation_status": "pending"
+    },
+    {
+      "name": "receive_pynccl_a_to_f_us",
+      "scope": "host_service",
+      "fixed_us": 83.51883333333333,
+      "coverage": [
+        "native_call:receive_pynccl_a_to_f"
+      ],
+      "profile_id": "pkua100-native-fixed-costs-20261009-v1:native-order-v1",
+      "source": "PKUa100:afd-cpu-codec-fixed-20261007-v1:isolated-codecs-not-whole-engine:86e662b9e781c91f6afbb5f4f14c26bcc1ce109ec7553bab2f107c60cdfef6f8;inherited-profile:f84d1056ee4873041954d58dc0b2a856371b49d2bc581ea63ebc9d4b1e182e78;engine-cpu:cac303d00d3cd8b4f8d73e3835c3cbaf2e80a05b63321ffaf56ca1d987d17a59;parent-profile:e1a5c8d40730b539502684cc1ed3a9678b30fc0a78d4afa316e85084f7d97a19;submit:d7ff250ed427f4efadec0206e40c1a899f1d67ac23f268c67c00943f03024c5f;bookkeeping:6e824722068d1cd3ed821d3e3696047d51e5d65eda3fe1c1ee8a971f7ff47fdb;compute-cpu-excludes-all-CUDA-API:71a3392a20a12ebc9ec0d99501c9a9f4173eaeac415741ab6090cffae37a82e6",
+      "validation_status": "pending"
+    },
+    {
+      "name": "send_pynccl_f_to_a_us",
+      "scope": "host_service",
+      "fixed_us": 122.21266666666666,
+      "coverage": [
+        "native_call:send_pynccl_f_to_a"
+      ],
+      "profile_id": "pkua100-native-fixed-costs-20261009-v1:native-order-v1",
+      "source": "PKUa100:afd-cpu-codec-fixed-20261007-v1:isolated-codecs-not-whole-engine:86e662b9e781c91f6afbb5f4f14c26bcc1ce109ec7553bab2f107c60cdfef6f8;inherited-profile:f84d1056ee4873041954d58dc0b2a856371b49d2bc581ea63ebc9d4b1e182e78;engine-cpu:cac303d00d3cd8b4f8d73e3835c3cbaf2e80a05b63321ffaf56ca1d987d17a59;parent-profile:e1a5c8d40730b539502684cc1ed3a9678b30fc0a78d4afa316e85084f7d97a19;submit:d7ff250ed427f4efadec0206e40c1a899f1d67ac23f268c67c00943f03024c5f;bookkeeping:6e824722068d1cd3ed821d3e3696047d51e5d65eda3fe1c1ee8a971f7ff47fdb;compute-cpu-excludes-all-CUDA-API:71a3392a20a12ebc9ec0d99501c9a9f4173eaeac415741ab6090cffae37a82e6",
+      "validation_status": "pending"
+    },
+    {
+      "name": "receive_pynccl_f_to_a_us",
+      "scope": "host_service",
+      "fixed_us": 102.09908333333334,
+      "coverage": [
+        "native_call:receive_pynccl_f_to_a"
+      ],
+      "profile_id": "pkua100-native-fixed-costs-20261009-v1:native-order-v1",
+      "source": "PKUa100:afd-cpu-codec-fixed-20261007-v1:isolated-codecs-not-whole-engine:86e662b9e781c91f6afbb5f4f14c26bcc1ce109ec7553bab2f107c60cdfef6f8;inherited-profile:f84d1056ee4873041954d58dc0b2a856371b49d2bc581ea63ebc9d4b1e182e78;engine-cpu:cac303d00d3cd8b4f8d73e3835c3cbaf2e80a05b63321ffaf56ca1d987d17a59;parent-profile:e1a5c8d40730b539502684cc1ed3a9678b30fc0a78d4afa316e85084f7d97a19;submit:d7ff250ed427f4efadec0206e40c1a899f1d67ac23f268c67c00943f03024c5f;bookkeeping:6e824722068d1cd3ed821d3e3696047d51e5d65eda3fe1c1ee8a971f7ff47fdb;compute-cpu-excludes-all-CUDA-API:71a3392a20a12ebc9ec0d99501c9a9f4173eaeac415741ab6090cffae37a82e6",
+      "validation_status": "pending"
+    },
+    {
+      "name": "engine_runner_bookkeeping_us",
+      "scope": "host_service",
+      "fixed_us": 41.703833333333336,
+      "coverage": [
+        "runner_bookkeeping_excluding_token_readback"
+      ],
+      "profile_id": "pkua100-native-fixed-costs-20261009-v1:native-order-v1",
+      "source": "PKUa100:afd-cpu-codec-fixed-20261007-v1:isolated-codecs-not-whole-engine:86e662b9e781c91f6afbb5f4f14c26bcc1ce109ec7553bab2f107c60cdfef6f8;inherited-profile:f84d1056ee4873041954d58dc0b2a856371b49d2bc581ea63ebc9d4b1e182e78;engine-cpu:cac303d00d3cd8b4f8d73e3835c3cbaf2e80a05b63321ffaf56ca1d987d17a59;parent-profile:e1a5c8d40730b539502684cc1ed3a9678b30fc0a78d4afa316e85084f7d97a19;submit:d7ff250ed427f4efadec0206e40c1a899f1d67ac23f268c67c00943f03024c5f;bookkeeping:6e824722068d1cd3ed821d3e3696047d51e5d65eda3fe1c1ee8a971f7ff47fdb;compute-cpu-excludes-all-CUDA-API:71a3392a20a12ebc9ec0d99501c9a9f4173eaeac415741ab6090cffae37a82e6",
+      "validation_status": "pending"
+    },
+    {
+      "name": "compute_a_embedding_us",
+      "scope": "host_service",
+      "fixed_us": 45.559916666666666,
+      "coverage": [
+        "native_call:compute_a_embedding"
+      ],
+      "profile_id": "pkua100-native-fixed-costs-20261009-v1:native-order-v1",
+      "source": "PKUa100:afd-cpu-codec-fixed-20261007-v1:isolated-codecs-not-whole-engine:86e662b9e781c91f6afbb5f4f14c26bcc1ce109ec7553bab2f107c60cdfef6f8;inherited-profile:f84d1056ee4873041954d58dc0b2a856371b49d2bc581ea63ebc9d4b1e182e78;engine-cpu:cac303d00d3cd8b4f8d73e3835c3cbaf2e80a05b63321ffaf56ca1d987d17a59;parent-profile:e1a5c8d40730b539502684cc1ed3a9678b30fc0a78d4afa316e85084f7d97a19;submit:d7ff250ed427f4efadec0206e40c1a899f1d67ac23f268c67c00943f03024c5f;bookkeeping:6e824722068d1cd3ed821d3e3696047d51e5d65eda3fe1c1ee8a971f7ff47fdb;compute-cpu-excludes-all-CUDA-API:71a3392a20a12ebc9ec0d99501c9a9f4173eaeac415741ab6090cffae37a82e6",
+      "validation_status": "pending"
+    },
+    {
+      "name": "compute_a_final_norm_us",
+      "scope": "host_service",
+      "fixed_us": 24.270666666666667,
+      "coverage": [
+        "native_call:compute_a_final_norm"
+      ],
+      "profile_id": "pkua100-native-fixed-costs-20261009-v1:native-order-v1",
+      "source": "PKUa100:afd-cpu-codec-fixed-20261007-v1:isolated-codecs-not-whole-engine:86e662b9e781c91f6afbb5f4f14c26bcc1ce109ec7553bab2f107c60cdfef6f8;inherited-profile:f84d1056ee4873041954d58dc0b2a856371b49d2bc581ea63ebc9d4b1e182e78;engine-cpu:cac303d00d3cd8b4f8d73e3835c3cbaf2e80a05b63321ffaf56ca1d987d17a59;parent-profile:e1a5c8d40730b539502684cc1ed3a9678b30fc0a78d4afa316e85084f7d97a19;submit:d7ff250ed427f4efadec0206e40c1a899f1d67ac23f268c67c00943f03024c5f;bookkeeping:6e824722068d1cd3ed821d3e3696047d51e5d65eda3fe1c1ee8a971f7ff47fdb;compute-cpu-excludes-all-CUDA-API:71a3392a20a12ebc9ec0d99501c9a9f4173eaeac415741ab6090cffae37a82e6",
+      "validation_status": "pending"
+    },
+    {
+      "name": "compute_a_lm_head_us",
+      "scope": "host_service",
+      "fixed_us": 54.01391666666667,
+      "coverage": [
+        "native_call:compute_a_lm_head"
+      ],
+      "profile_id": "pkua100-native-fixed-costs-20261009-v1:native-order-v1",
+      "source": "PKUa100:afd-cpu-codec-fixed-20261007-v1:isolated-codecs-not-whole-engine:86e662b9e781c91f6afbb5f4f14c26bcc1ce109ec7553bab2f107c60cdfef6f8;inherited-profile:f84d1056ee4873041954d58dc0b2a856371b49d2bc581ea63ebc9d4b1e182e78;engine-cpu:cac303d00d3cd8b4f8d73e3835c3cbaf2e80a05b63321ffaf56ca1d987d17a59;parent-profile:e1a5c8d40730b539502684cc1ed3a9678b30fc0a78d4afa316e85084f7d97a19;submit:d7ff250ed427f4efadec0206e40c1a899f1d67ac23f268c67c00943f03024c5f;bookkeeping:6e824722068d1cd3ed821d3e3696047d51e5d65eda3fe1c1ee8a971f7ff47fdb;compute-cpu-excludes-all-CUDA-API:71a3392a20a12ebc9ec0d99501c9a9f4173eaeac415741ab6090cffae37a82e6",
+      "validation_status": "pending"
+    },
+    {
+      "name": "compute_a_token_selection_us",
+      "scope": "host_service",
+      "fixed_us": 69.46583333333334,
+      "coverage": [
+        "native_call:compute_a_token_selection"
+      ],
+      "profile_id": "pkua100-native-fixed-costs-20261009-v1:native-order-v1",
+      "source": "PKUa100:afd-cpu-codec-fixed-20261007-v1:isolated-codecs-not-whole-engine:86e662b9e781c91f6afbb5f4f14c26bcc1ce109ec7553bab2f107c60cdfef6f8;inherited-profile:f84d1056ee4873041954d58dc0b2a856371b49d2bc581ea63ebc9d4b1e182e78;engine-cpu:cac303d00d3cd8b4f8d73e3835c3cbaf2e80a05b63321ffaf56ca1d987d17a59;parent-profile:e1a5c8d40730b539502684cc1ed3a9678b30fc0a78d4afa316e85084f7d97a19;submit:d7ff250ed427f4efadec0206e40c1a899f1d67ac23f268c67c00943f03024c5f;bookkeeping:6e824722068d1cd3ed821d3e3696047d51e5d65eda3fe1c1ee8a971f7ff47fdb;compute-cpu-excludes-all-CUDA-API:71a3392a20a12ebc9ec0d99501c9a9f4173eaeac415741ab6090cffae37a82e6",
+      "validation_status": "pending"
+    },
+    {
+      "name": "compute_a_attention_us",
+      "scope": "host_service",
+      "fixed_us": 434.4805,
+      "coverage": [
+        "native_call:compute_a_attention"
+      ],
+      "profile_id": "pkua100-native-fixed-costs-20261009-v1:native-order-v1",
+      "source": "PKUa100:afd-cpu-codec-fixed-20261007-v1:isolated-codecs-not-whole-engine:86e662b9e781c91f6afbb5f4f14c26bcc1ce109ec7553bab2f107c60cdfef6f8;inherited-profile:f84d1056ee4873041954d58dc0b2a856371b49d2bc581ea63ebc9d4b1e182e78;engine-cpu:cac303d00d3cd8b4f8d73e3835c3cbaf2e80a05b63321ffaf56ca1d987d17a59;parent-profile:e1a5c8d40730b539502684cc1ed3a9678b30fc0a78d4afa316e85084f7d97a19;submit:d7ff250ed427f4efadec0206e40c1a899f1d67ac23f268c67c00943f03024c5f;bookkeeping:6e824722068d1cd3ed821d3e3696047d51e5d65eda3fe1c1ee8a971f7ff47fdb;compute-cpu-excludes-all-CUDA-API:71a3392a20a12ebc9ec0d99501c9a9f4173eaeac415741ab6090cffae37a82e6",
+      "validation_status": "pending"
+    },
+    {
+      "name": "compute_a_post_norm_us",
+      "scope": "host_service",
+      "fixed_us": 27.458333333333332,
+      "coverage": [
+        "native_call:compute_a_post_norm"
+      ],
+      "profile_id": "pkua100-native-fixed-costs-20261009-v1:native-order-v1",
+      "source": "PKUa100:afd-cpu-codec-fixed-20261007-v1:isolated-codecs-not-whole-engine:86e662b9e781c91f6afbb5f4f14c26bcc1ce109ec7553bab2f107c60cdfef6f8;inherited-profile:f84d1056ee4873041954d58dc0b2a856371b49d2bc581ea63ebc9d4b1e182e78;engine-cpu:cac303d00d3cd8b4f8d73e3835c3cbaf2e80a05b63321ffaf56ca1d987d17a59;parent-profile:e1a5c8d40730b539502684cc1ed3a9678b30fc0a78d4afa316e85084f7d97a19;submit:d7ff250ed427f4efadec0206e40c1a899f1d67ac23f268c67c00943f03024c5f;bookkeeping:6e824722068d1cd3ed821d3e3696047d51e5d65eda3fe1c1ee8a971f7ff47fdb;compute-cpu-excludes-all-CUDA-API:71a3392a20a12ebc9ec0d99501c9a9f4173eaeac415741ab6090cffae37a82e6",
+      "validation_status": "pending"
+    },
+    {
+      "name": "compute_f_moe_block_us",
+      "scope": "host_service",
+      "fixed_us": 583.0460416666667,
+      "coverage": [
+        "native_call:compute_f_moe_block"
+      ],
+      "profile_id": "pkua100-native-fixed-costs-20261009-v1:native-order-v1",
+      "source": "PKUa100:afd-cpu-codec-fixed-20261007-v1:isolated-codecs-not-whole-engine:86e662b9e781c91f6afbb5f4f14c26bcc1ce109ec7553bab2f107c60cdfef6f8;inherited-profile:f84d1056ee4873041954d58dc0b2a856371b49d2bc581ea63ebc9d4b1e182e78;engine-cpu:cac303d00d3cd8b4f8d73e3835c3cbaf2e80a05b63321ffaf56ca1d987d17a59;parent-profile:e1a5c8d40730b539502684cc1ed3a9678b30fc0a78d4afa316e85084f7d97a19;submit:d7ff250ed427f4efadec0206e40c1a899f1d67ac23f268c67c00943f03024c5f;bookkeeping:6e824722068d1cd3ed821d3e3696047d51e5d65eda3fe1c1ee8a971f7ff47fdb;compute-cpu-excludes-all-CUDA-API:71a3392a20a12ebc9ec0d99501c9a9f4173eaeac415741ab6090cffae37a82e6",
+      "validation_status": "pending"
+    },
+    {
+      "name": "h2d",
+      "scope": "operation_service",
+      "fixed_us": 38.16891666666667,
+      "coverage": [
+        "control_staging"
+      ],
+      "profile_id": "pkua100-preparation-and-readback-20261008-v1:native-order-v1",
+      "source": "afd-control-staging-20261007-v1:f5d110cec758a5af899a1c3582aaea5c97e471d3e5f3fb5ac525f8d55cf6d11b;input-prepare:4c526ce1cf482e7904cca34528169c720a685900284e0818f987bb070c8ef578;metadata:0488dd5ac55181e1798ec933f356dd4ef07f8cc095271ac70e7316914e01be6d;readback:ea107e02131da49e6e5632eee8679db6a101fb5630333536758e8571ae02ccbe",
+      "validation_status": "pending"
+    },
+    {
+      "name": "length_readback",
+      "scope": "operation_service",
+      "fixed_us": 10.946,
+      "coverage": [
+        "control_length_readback"
+      ],
+      "profile_id": "pkua100-preparation-and-readback-20261008-v1:native-order-v1",
+      "source": "afd-control-staging-20261007-v1:f5d110cec758a5af899a1c3582aaea5c97e471d3e5f3fb5ac525f8d55cf6d11b;input-prepare:4c526ce1cf482e7904cca34528169c720a685900284e0818f987bb070c8ef578;metadata:0488dd5ac55181e1798ec933f356dd4ef07f8cc095271ac70e7316914e01be6d;readback:ea107e02131da49e6e5632eee8679db6a101fb5630333536758e8571ae02ccbe",
+      "validation_status": "pending"
+    },
+    {
+      "name": "payload_readback",
+      "scope": "operation_service",
+      "fixed_us": 19.365916666666667,
+      "coverage": [
+        "control_payload_readback"
+      ],
+      "profile_id": "pkua100-preparation-and-readback-20261008-v1:native-order-v1",
+      "source": "afd-control-staging-20261007-v1:f5d110cec758a5af899a1c3582aaea5c97e471d3e5f3fb5ac525f8d55cf6d11b;input-prepare:4c526ce1cf482e7904cca34528169c720a685900284e0818f987bb070c8ef578;metadata:0488dd5ac55181e1798ec933f356dd4ef07f8cc095271ac70e7316914e01be6d;readback:ea107e02131da49e6e5632eee8679db6a101fb5630333536758e8571ae02ccbe",
+      "validation_status": "pending"
+    },
+    {
+      "name": "a_input_prepare",
+      "scope": "operation_service",
+      "fixed_us": 459.12283333333335,
+      "coverage": [
+        "a_input_prepare"
+      ],
+      "profile_id": "pkua100-preparation-and-readback-20261008-v1:native-order-v1",
+      "source": "afd-control-staging-20261007-v1:f5d110cec758a5af899a1c3582aaea5c97e471d3e5f3fb5ac525f8d55cf6d11b;input-prepare:4c526ce1cf482e7904cca34528169c720a685900284e0818f987bb070c8ef578;metadata:0488dd5ac55181e1798ec933f356dd4ef07f8cc095271ac70e7316914e01be6d;readback:ea107e02131da49e6e5632eee8679db6a101fb5630333536758e8571ae02ccbe",
+      "validation_status": "pending"
+    },
+    {
+      "name": "a_attention_metadata",
+      "scope": "operation_service",
+      "fixed_us": 157.48883333333333,
+      "coverage": [
+        "a_attention_metadata"
+      ],
+      "profile_id": "pkua100-preparation-and-readback-20261008-v1:native-order-v1",
+      "source": "afd-control-staging-20261007-v1:f5d110cec758a5af899a1c3582aaea5c97e471d3e5f3fb5ac525f8d55cf6d11b;input-prepare:4c526ce1cf482e7904cca34528169c720a685900284e0818f987bb070c8ef578;metadata:0488dd5ac55181e1798ec933f356dd4ef07f8cc095271ac70e7316914e01be6d;readback:ea107e02131da49e6e5632eee8679db6a101fb5630333536758e8571ae02ccbe",
+      "validation_status": "pending"
+    },
+    {
+      "name": "f_dp_metadata",
+      "scope": "operation_service",
+      "fixed_us": 34.24208333333333,
+      "coverage": [
+        "f_dp_metadata"
+      ],
+      "profile_id": "pkua100-preparation-and-readback-20261008-v1:native-order-v1",
+      "source": "afd-control-staging-20261007-v1:f5d110cec758a5af899a1c3582aaea5c97e471d3e5f3fb5ac525f8d55cf6d11b;input-prepare:4c526ce1cf482e7904cca34528169c720a685900284e0818f987bb070c8ef578;metadata:0488dd5ac55181e1798ec933f356dd4ef07f8cc095271ac70e7316914e01be6d;readback:ea107e02131da49e6e5632eee8679db6a101fb5630333536758e8571ae02ccbe",
+      "validation_status": "pending"
+    },
+    {
+      "name": "sampled_token_readback",
+      "scope": "operation_service",
+      "fixed_us": 56.342,
+      "coverage": [
+        "sampled_token_readback"
+      ],
+      "profile_id": "pkua100-preparation-and-readback-20261008-v1:native-order-v1",
+      "source": "afd-control-staging-20261007-v1:f5d110cec758a5af899a1c3582aaea5c97e471d3e5f3fb5ac525f8d55cf6d11b;input-prepare:4c526ce1cf482e7904cca34528169c720a685900284e0818f987bb070c8ef578;metadata:0488dd5ac55181e1798ec933f356dd4ef07f8cc095271ac70e7316914e01be6d;readback:ea107e02131da49e6e5632eee8679db6a101fb5630333536758e8571ae02ccbe",
+      "validation_status": "pending"
+    }
+  ],
+  "remaining": [
+    "CUDA API/device launch unique-coverage calibration",
+    "independent component acceptance table",
+    "supplemental batch3 native validation blocked by GPU2 occupancy"
+  ]
+}

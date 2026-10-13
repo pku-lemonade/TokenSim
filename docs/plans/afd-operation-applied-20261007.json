@@ -1,0 +1,34 @@
+{
+  "status": "partial_operation_calibration_verified_not_full_engine",
+  "results": [
+    {
+      "batch": 1,
+      "steps": 31,
+      "operations_per_step": 3,
+      "codec_calls_per_step": 2,
+      "mean_step_us": 284.8734459283866,
+      "critical_chain_us": {
+        "host_service": 36.16299999999907,
+        "operation_service": 49.11491666666679,
+        "control_transport": 29.96264999999984,
+        "compute": 109.70199926172074,
+        "data_transport": 59.93088000000016
+      }
+    },
+    {
+      "batch": 8,
+      "steps": 31,
+      "operations_per_step": 3,
+      "codec_calls_per_step": 2,
+      "mean_step_us": 286.5405150823411,
+      "critical_chain_us": {
+        "host_service": 36.162999999999066,
+        "operation_service": 49.11491666666679,
+        "control_transport": 29.962649999999815,
+        "compute": 111.32128174900916,
+        "data_transport": 59.97866666666622,
+        "unexplained": 6.994852725712932e-15
+      }
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "execution_mode": "eager",
+  "software_sha256": "7e6c829d912115c482b67bf09aca64ac44917196768458bf2b73b13b2c690273",
+  "vllm_version": "0.26.0",
+  "torch_version": "2.11.0",
+  "gpu_pair": "GPU-8df5e331-8f9a-3cdc-af30-42b94f908018,GPU-76ca30e6-17c9-9a38-cb06-57aebeaa6973"
+}

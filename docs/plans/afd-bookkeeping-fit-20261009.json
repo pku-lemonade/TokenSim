@@ -1,0 +1,48 @@
+{
+  "scope": "bookkeeping excluding nested readback",
+  "fixed_us": 41.703833333333336,
+  "windows": [
+    {
+      "batch": 1,
+      "window": 0,
+      "samples": 200,
+      "p50_us": 38.721000000000004,
+      "p95_us": 41.014
+    },
+    {
+      "batch": 1,
+      "window": 1,
+      "samples": 200,
+      "p50_us": 42.168,
+      "p95_us": 43.706999999999994
+    },
+    {
+      "batch": 1,
+      "window": 2,
+      "samples": 200,
+      "p50_us": 33.578500000000005,
+      "p95_us": 34.516000000000005
+    },
+    {
+      "batch": 8,
+      "window": 0,
+      "samples": 200,
+      "p50_us": 44.569,
+      "p95_us": 46.89900000000001
+    },
+    {
+      "batch": 8,
+      "window": 1,
+      "samples": 200,
+      "p50_us": 46.055,
+      "p95_us": 47.303
+    },
+    {
+      "batch": 8,
+      "window": 2,
+      "samples": 200,
+      "p50_us": 45.1315,
+      "p95_us": 56.147
+    }
+  ]
+}

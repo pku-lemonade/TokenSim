@@ -1,0 +1,52 @@
+[
+  {
+    "batch": 1,
+    "steps": 31,
+    "mean_step_us": 1961.78245820229,
+    "covered_costs": [
+      "control_encode_us",
+      "control_decode_us",
+      "engine_step_schedule_us",
+      "engine_output_process_us",
+      "send_torch_distributed_nccl_a_to_f_us",
+      "receive_torch_distributed_nccl_a_to_f_us",
+      "send_pynccl_a_to_f_us",
+      "receive_pynccl_a_to_f_us",
+      "send_pynccl_f_to_a_us",
+      "receive_pynccl_f_to_a_us"
+    ],
+    "all_profile_costs_materialized": true,
+    "generic_send_receive_assumptions_replaced": true,
+    "remaining": [
+      "compute submission",
+      "runner bookkeeping",
+      "precise native preposted readiness",
+      "new frozen validation"
+    ]
+  },
+  {
+    "batch": 8,
+    "steps": 31,
+    "mean_step_us": 1963.0579201210876,
+    "covered_costs": [
+      "control_encode_us",
+      "control_decode_us",
+      "engine_step_schedule_us",
+      "engine_output_process_us",
+      "send_torch_distributed_nccl_a_to_f_us",
+      "receive_torch_distributed_nccl_a_to_f_us",
+      "send_pynccl_a_to_f_us",
+      "receive_pynccl_a_to_f_us",
+      "send_pynccl_f_to_a_us",
+      "receive_pynccl_f_to_a_us"
+    ],
+    "all_profile_costs_materialized": true,
+    "generic_send_receive_assumptions_replaced": true,
+    "remaining": [
+      "compute submission",
+      "runner bookkeeping",
+      "precise native preposted readiness",
+      "new frozen validation"
+    ]
+  }
+]

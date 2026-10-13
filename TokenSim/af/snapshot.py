@@ -77,6 +77,7 @@ class HardwareSnapshot(ConfigurationOwner):
         self._source = source
         self._devices = {}
         self._packages = {}
+        self._topologies = {}
         self.links = LinkCatalog(snapshot(link) for link in source.links)
         self.links._links = FrozenDict(self.links._links)
 
@@ -87,6 +88,11 @@ class HardwareSnapshot(ConfigurationOwner):
 
     def link(self, name):
         return self.links.get(name)
+
+    def topology(self, name):
+        if name not in self._topologies:
+            self._topologies[name] = snapshot(self._source.topology(name))
+        return self._topologies[name]
 
     def operator_package(self, device_id, backend=None):
         key = (device_id, backend)

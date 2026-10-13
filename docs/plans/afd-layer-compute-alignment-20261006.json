@@ -1,0 +1,1070 @@
+[
+  {
+    "batch": 1,
+    "layers": [
+      {
+        "layer": 0,
+        "simulated_a_us": 27.310148394241295,
+        "simulated_f_us": 18.517261720192245,
+        "native_a_us": 31.943032258064516,
+        "native_f_us": 26.505709677419354,
+        "simulated_components": {
+          "input_norm_previous_residual": 3.001133997785162,
+          "qkv_projection": 3.1703359173126637,
+          "q_norm": 3.0008504983388713,
+          "k_norm": 3.0004724990771487,
+          "rope": 3.001133997785162,
+          "attention_and_kv": 3.0486201550387597,
+          "output_projection": 3.0853333333333315,
+          "post_norm_attention_residual": 6.002267995570195,
+          "layout_copy": 0.0,
+          "router": 6.00167072720574,
+          "expert_combine": 12.515590992986507
+        },
+        "native_components": {
+          "input_norm_previous_residual": 2.929516129032258,
+          "qkv_projection": 3.497258064516129,
+          "q_norm": 2.8861935483870966,
+          "k_norm": 2.811806451612903,
+          "rope": 2.712806451612903,
+          "attention_and_kv": 11.44358064516129,
+          "output_projection": 2.866483870967742,
+          "post_norm_attention_residual": 2.7953870967741934,
+          "layout_copy": 0,
+          "router": 7.36316129032258,
+          "expert_combine": 19.142548387096774
+        },
+        "raw_logical_layer_simulated_us": 48.82854411221862
+      },
+      {
+        "layer": 1,
+        "simulated_a_us": 30.31128239202632,
+        "simulated_f_us": 18.51726172019226,
+        "native_a_us": 31.496258064516127,
+        "native_f_us": 26.532290322580646,
+        "simulated_components": {
+          "input_norm_previous_residual": 6.002267995570193,
+          "qkv_projection": 3.1703359173126637,
+          "q_norm": 3.0008504983388713,
+          "k_norm": 3.0004724990771487,
+          "rope": 3.001133997785162,
+          "attention_and_kv": 3.0486201550387597,
+          "output_projection": 3.0853333333333315,
+          "post_norm_attention_residual": 6.002267995570191,
+          "layout_copy": 0.0,
+          "router": 6.001670727205747,
+          "expert_combine": 12.51559099298651
+        },
+        "native_components": {
+          "input_norm_previous_residual": 2.6653225806451615,
+          "qkv_projection": 3.4890322580645163,
+          "q_norm": 2.845870967741935,
+          "k_norm": 2.7458709677419355,
+          "rope": 2.6993225806451613,
+          "attention_and_kv": 11.431290322580645,
+          "output_projection": 2.872774193548387,
+          "post_norm_attention_residual": 2.746774193548387,
+          "layout_copy": 0,
+          "router": 7.42516129032258,
+          "expert_combine": 19.107129032258065
+        },
+        "raw_logical_layer_simulated_us": 48.82854411221864
+      }
+    ],
+    "simulated_outside_us": 15.046045035068083,
+    "native_outside_us": 50.54896774193548,
+    "native_evidence": {
+      "batch": 1,
+      "attention": {
+        "decode_steps": 31,
+        "unclassified": {},
+        "layer_copy_shapes": {},
+        "mean_us": {
+          "layer0": 31.943032258064516,
+          "layer0/attention_core": 8.54516129032258,
+          "layer0/input_norm_previous_residual": 2.929516129032258,
+          "layer0/k_norm": 2.811806451612903,
+          "layer0/kv_cache_write": 2.8984193548387096,
+          "layer0/output_projection": 2.866483870967742,
+          "layer0/post_norm_attention_residual": 2.7953870967741934,
+          "layer0/q_norm": 2.8861935483870966,
+          "layer0/qkv_projection": 3.497258064516129,
+          "layer0/rope": 2.712806451612903,
+          "layer1": 31.496258064516127,
+          "layer1/attention_core": 8.563645161290323,
+          "layer1/input_norm_previous_residual": 2.6653225806451615,
+          "layer1/k_norm": 2.7458709677419355,
+          "layer1/kv_cache_write": 2.8676451612903224,
+          "layer1/output_projection": 2.872774193548387,
+          "layer1/post_norm_attention_residual": 2.746774193548387,
+          "layer1/q_norm": 2.845870967741935,
+          "layer1/qkv_projection": 3.4890322580645163,
+          "layer1/rope": 2.6993225806451613,
+          "outside": 50.54896774193548,
+          "outside/argmax": 5.073516129032258,
+          "outside/auxiliary": 32.85716129032258,
+          "outside/embedding": 3.2113870967741938,
+          "outside/final_norm_last_residual": 2.665258064516129,
+          "outside/kv_slot_mapping": 3.6634516129032257,
+          "outside/lm_head": 3.078193548387097,
+          "total": 113.98825806451615
+        },
+        "median_us": {
+          "layer0": 31.936,
+          "layer0/attention_core": 8.544,
+          "layer0/input_norm_previous_residual": 2.944,
+          "layer0/k_norm": 2.816,
+          "layer0/kv_cache_write": 2.912,
+          "layer0/output_projection": 2.879,
+          "layer0/post_norm_attention_residual": 2.784,
+          "layer0/q_norm": 2.88,
+          "layer0/qkv_projection": 3.488,
+          "layer0/rope": 2.751,
+          "layer1": 31.392,
+          "layer1/attention_core": 8.576,
+          "layer1/input_norm_previous_residual": 2.624,
+          "layer1/k_norm": 2.72,
+          "layer1/kv_cache_write": 2.88,
+          "layer1/output_projection": 2.88,
+          "layer1/post_norm_attention_residual": 2.72,
+          "layer1/q_norm": 2.848,
+          "layer1/qkv_projection": 3.488,
+          "layer1/rope": 2.72,
+          "outside": 50.336,
+          "outside/argmax": 5.056,
+          "outside/auxiliary": 32.736999999999995,
+          "outside/embedding": 3.232,
+          "outside/final_norm_last_residual": 2.625,
+          "outside/kv_slot_mapping": 3.648,
+          "outside/lm_head": 3.072,
+          "total": 113.53500000000003
+        },
+        "min_max_us": {
+          "layer0": [
+            31.775,
+            32.129
+          ],
+          "layer0/attention_core": [
+            8.384,
+            8.641
+          ],
+          "layer0/input_norm_previous_residual": [
+            2.911,
+            2.945
+          ],
+          "layer0/k_norm": [
+            2.783,
+            2.817
+          ],
+          "layer0/kv_cache_write": [
+            2.815,
+            2.944
+          ],
+          "layer0/output_projection": [
+            2.847,
+            2.944
+          ],
+          "layer0/post_norm_attention_residual": [
+            2.783,
+            2.816
+          ],
+          "layer0/q_norm": [
+            2.848,
+            2.976
+          ],
+          "layer0/qkv_projection": [
+            3.456,
+            3.648
+          ],
+          "layer0/rope": [
+            2.624,
+            2.784
+          ],
+          "layer1": [
+            31.167,
+            31.841
+          ],
+          "layer1/attention_core": [
+            8.448,
+            8.672
+          ],
+          "layer1/input_norm_previous_residual": [
+            2.592,
+            2.752
+          ],
+          "layer1/k_norm": [
+            2.688,
+            2.817
+          ],
+          "layer1/kv_cache_write": [
+            2.784,
+            2.913
+          ],
+          "layer1/output_projection": [
+            2.848,
+            2.881
+          ],
+          "layer1/post_norm_attention_residual": [
+            2.687,
+            2.816
+          ],
+          "layer1/q_norm": [
+            2.815,
+            2.88
+          ],
+          "layer1/qkv_projection": [
+            3.456,
+            3.52
+          ],
+          "layer1/rope": [
+            2.624,
+            2.752
+          ],
+          "outside": [
+            49.824,
+            51.395999999999994
+          ],
+          "outside/argmax": [
+            4.96,
+            5.185
+          ],
+          "outside/auxiliary": [
+            32.31999999999999,
+            33.636
+          ],
+          "outside/embedding": [
+            3.104,
+            3.264
+          ],
+          "outside/final_norm_last_residual": [
+            2.591,
+            2.752
+          ],
+          "outside/kv_slot_mapping": [
+            3.648,
+            3.68
+          ],
+          "outside/lm_head": [
+            3.039,
+            3.232
+          ],
+          "total": [
+            112.993,
+            115.196
+          ]
+        },
+        "kernel_count_ranges": {
+          "layer0": [
+            9,
+            9
+          ],
+          "layer1": [
+            9,
+            9
+          ],
+          "outside": [
+            18,
+            18
+          ]
+        }
+      },
+      "ffn": {
+        "decode_steps": 31,
+        "unclassified": {},
+        "layer_copy_shapes": {},
+        "mean_us": {
+          "layer0": 26.505709677419354,
+          "layer0/combine_sum": 2.296870967741935,
+          "layer0/expert_and_routing_layout": 16.84567741935484,
+          "layer0/router": 7.36316129032258,
+          "layer1": 26.532290322580646,
+          "layer1/combine_sum": 2.2927096774193547,
+          "layer1/expert_and_routing_layout": 16.81441935483871,
+          "layer1/router": 7.42516129032258,
+          "total": 53.038
+        },
+        "median_us": {
+          "layer0": 26.558999999999997,
+          "layer0/combine_sum": 2.304,
+          "layer0/expert_and_routing_layout": 16.832,
+          "layer0/router": 7.423,
+          "layer1": 26.529,
+          "layer1/combine_sum": 2.304,
+          "layer1/expert_and_routing_layout": 16.8,
+          "layer1/router": 7.425,
+          "total": 53.087999999999994
+        },
+        "min_max_us": {
+          "layer0": [
+            26.334999999999997,
+            26.718999999999998
+          ],
+          "layer0/combine_sum": [
+            2.271,
+            2.305
+          ],
+          "layer0/expert_and_routing_layout": [
+            16.8,
+            16.994
+          ],
+          "layer0/router": [
+            7.199999999999999,
+            7.487
+          ],
+          "layer1": [
+            26.401999999999997,
+            26.753
+          ],
+          "layer1/combine_sum": [
+            2.271,
+            2.305
+          ],
+          "layer1/expert_and_routing_layout": [
+            16.736,
+            16.896
+          ],
+          "layer1/router": [
+            7.327,
+            7.584
+          ],
+          "total": [
+            52.739,
+            53.312999999999995
+          ]
+        },
+        "kernel_count_ranges": {
+          "layer0": [
+            7,
+            7
+          ],
+          "layer1": [
+            7,
+            7
+          ]
+        }
+      }
+    }
+  },
+  {
+    "batch": 4,
+    "layers": [
+      {
+        "layer": 0,
+        "simulated_a_us": 27.47571207087493,
+        "simulated_f_us": 19.04901587301578,
+        "native_a_us": 46.34909677419355,
+        "native_f_us": 29.4938064516129,
+        "simulated_components": {
+          "input_norm_previous_residual": 3.0034019933554816,
+          "qkv_projection": 3.173312661498708,
+          "q_norm": 3.00311849390919,
+          "k_norm": 3.0016064968623106,
+          "rope": 3.0045359911406435,
+          "attention_and_kv": 3.194480620155039,
+          "output_projection": 3.087317829457366,
+          "post_norm_attention_residual": 6.007937984496191,
+          "layout_copy": 0.0,
+          "router": 6.002713916574317,
+          "expert_combine": 13.046301956441463
+        },
+        "native_components": {
+          "input_norm_previous_residual": 2.8448709677419353,
+          "qkv_projection": 4.948612903225807,
+          "q_norm": 2.923225806451613,
+          "k_norm": 2.8284193548387098,
+          "rope": 2.9573225806451613,
+          "attention_and_kv": 11.567483870967742,
+          "output_projection": 4.937290322580645,
+          "post_norm_attention_residual": 2.8840645161290324,
+          "layout_copy": 10.457806451612903,
+          "router": 10.202806451612902,
+          "expert_combine": 19.291
+        },
+        "raw_logical_layer_simulated_us": 49.529263935031366
+      },
+      {
+        "layer": 1,
+        "simulated_a_us": 30.480248062015548,
+        "simulated_f_us": 19.049015873015776,
+        "native_a_us": 46.05770967741935,
+        "native_f_us": 29.355516129032257,
+        "simulated_components": {
+          "input_norm_previous_residual": 6.007937984496084,
+          "qkv_projection": 3.173312661498708,
+          "q_norm": 3.00311849390919,
+          "k_norm": 3.0016064968623106,
+          "rope": 3.0045359911406435,
+          "attention_and_kv": 3.194480620155039,
+          "output_projection": 3.087317829457366,
+          "post_norm_attention_residual": 6.0079379844962055,
+          "layout_copy": 0.0,
+          "router": 6.002713916574303,
+          "expert_combine": 13.046301956441473
+        },
+        "native_components": {
+          "input_norm_previous_residual": 2.774806451612903,
+          "qkv_projection": 5.1489032258064515,
+          "q_norm": 2.8841290322580644,
+          "k_norm": 2.8315806451612904,
+          "rope": 2.8449354838709677,
+          "attention_and_kv": 11.521032258064517,
+          "output_projection": 4.923903225806452,
+          "post_norm_attention_residual": 2.8934193548387097,
+          "layout_copy": 10.235,
+          "router": 10.134774193548386,
+          "expert_combine": 19.220741935483872
+        },
+        "raw_logical_layer_simulated_us": 49.52926393503136
+      }
+    ],
+    "simulated_outside_us": 15.05603839055021,
+    "native_outside_us": 52.879935483870966,
+    "native_evidence": {
+      "batch": 4,
+      "attention": {
+        "decode_steps": 31,
+        "unclassified": {},
+        "layer_copy_shapes": {
+          "[[4, 2, 2, 64], [4, 2, 2, 64], []]": 124,
+          "[[2, 2, 4], [2, 2, 4], []]": 62
+        },
+        "mean_us": {
+          "layer0": 46.34909677419355,
+          "layer0/attention_core": 8.627612903225806,
+          "layer0/input_norm_previous_residual": 2.8448709677419353,
+          "layer0/k_norm": 2.8284193548387098,
+          "layer0/kv_cache_write": 2.9398709677419355,
+          "layer0/layout_copy": 10.457806451612903,
+          "layer0/output_projection": 4.937290322580645,
+          "layer0/post_norm_attention_residual": 2.8840645161290324,
+          "layer0/q_norm": 2.923225806451613,
+          "layer0/qkv_projection": 4.948612903225807,
+          "layer0/rope": 2.9573225806451613,
+          "layer1": 46.05770967741935,
+          "layer1/attention_core": 8.616290322580646,
+          "layer1/input_norm_previous_residual": 2.774806451612903,
+          "layer1/k_norm": 2.8315806451612904,
+          "layer1/kv_cache_write": 2.904741935483871,
+          "layer1/layout_copy": 10.235,
+          "layer1/output_projection": 4.923903225806452,
+          "layer1/post_norm_attention_residual": 2.8934193548387097,
+          "layer1/q_norm": 2.8841290322580644,
+          "layer1/qkv_projection": 5.1489032258064515,
+          "layer1/rope": 2.8449354838709677,
+          "outside": 52.879935483870966,
+          "outside/argmax": 5.460645161290323,
+          "outside/auxiliary": 31.850741935483867,
+          "outside/embedding": 4.279677419354839,
+          "outside/final_norm_last_residual": 2.758258064516129,
+          "outside/kv_slot_mapping": 3.6500645161290324,
+          "outside/lm_head": 4.880548387096774,
+          "total": 145.28674193548386
+        },
+        "median_us": {
+          "layer0": 46.33699999999999,
+          "layer0/attention_core": 8.64,
+          "layer0/input_norm_previous_residual": 2.848,
+          "layer0/k_norm": 2.816,
+          "layer0/kv_cache_write": 2.944,
+          "layer0/layout_copy": 10.464,
+          "layer0/output_projection": 4.928,
+          "layer0/post_norm_attention_residual": 2.88,
+          "layer0/q_norm": 2.912,
+          "layer0/qkv_projection": 4.959,
+          "layer0/rope": 2.944,
+          "layer1": 46.080999999999996,
+          "layer1/attention_core": 8.64,
+          "layer1/input_norm_previous_residual": 2.784,
+          "layer1/k_norm": 2.817,
+          "layer1/kv_cache_write": 2.912,
+          "layer1/layout_copy": 10.24,
+          "layer1/output_projection": 4.928,
+          "layer1/post_norm_attention_residual": 2.88,
+          "layer1/q_norm": 2.88,
+          "layer1/qkv_projection": 5.152,
+          "layer1/rope": 2.848,
+          "outside": 52.83299999999999,
+          "outside/argmax": 5.44,
+          "outside/auxiliary": 31.807999999999996,
+          "outside/embedding": 4.319,
+          "outside/final_norm_last_residual": 2.784,
+          "outside/kv_slot_mapping": 3.648,
+          "outside/lm_head": 4.895,
+          "total": 145.216
+        },
+        "min_max_us": {
+          "layer0": [
+            46.207,
+            46.525
+          ],
+          "layer0/attention_core": [
+            8.48,
+            8.736
+          ],
+          "layer0/input_norm_previous_residual": [
+            2.816,
+            2.848
+          ],
+          "layer0/k_norm": [
+            2.815,
+            2.848
+          ],
+          "layer0/kv_cache_write": [
+            2.911,
+            2.976
+          ],
+          "layer0/layout_copy": [
+            10.4,
+            10.496
+          ],
+          "layer0/output_projection": [
+            4.896,
+            4.96
+          ],
+          "layer0/post_norm_attention_residual": [
+            2.879,
+            2.912
+          ],
+          "layer0/q_norm": [
+            2.912,
+            2.944
+          ],
+          "layer0/qkv_projection": [
+            4.928,
+            5.056
+          ],
+          "layer0/rope": [
+            2.943,
+            2.976
+          ],
+          "layer1": [
+            45.854,
+            46.17999999999999
+          ],
+          "layer1/attention_core": [
+            8.384,
+            8.705
+          ],
+          "layer1/input_norm_previous_residual": [
+            2.657,
+            2.817
+          ],
+          "layer1/k_norm": [
+            2.815,
+            2.849
+          ],
+          "layer1/kv_cache_write": [
+            2.88,
+            2.913
+          ],
+          "layer1/layout_copy": [
+            10.208,
+            10.303
+          ],
+          "layer1/output_projection": [
+            4.896,
+            4.928
+          ],
+          "layer1/post_norm_attention_residual": [
+            2.88,
+            2.913
+          ],
+          "layer1/q_norm": [
+            2.848,
+            2.912
+          ],
+          "layer1/qkv_projection": [
+            5.12,
+            5.184
+          ],
+          "layer1/rope": [
+            2.816,
+            2.88
+          ],
+          "outside": [
+            52.192,
+            53.601000000000006
+          ],
+          "outside/argmax": [
+            5.344,
+            5.536
+          ],
+          "outside/auxiliary": [
+            31.296000000000003,
+            32.416999999999994
+          ],
+          "outside/embedding": [
+            4.128,
+            4.416
+          ],
+          "outside/final_norm_last_residual": [
+            2.656,
+            2.816
+          ],
+          "outside/kv_slot_mapping": [
+            3.616,
+            3.68
+          ],
+          "outside/lm_head": [
+            4.863,
+            4.897
+          ],
+          "total": [
+            144.543,
+            146.14299999999997
+          ]
+        },
+        "kernel_count_ranges": {
+          "layer0": [
+            12,
+            12
+          ],
+          "layer1": [
+            12,
+            12
+          ],
+          "outside": [
+            18,
+            18
+          ]
+        }
+      },
+      "ffn": {
+        "decode_steps": 31,
+        "unclassified": {},
+        "layer_copy_shapes": {},
+        "mean_us": {
+          "layer0": 29.4938064516129,
+          "layer0/combine_sum": 2.312258064516129,
+          "layer0/expert_and_routing_layout": 16.97874193548387,
+          "layer0/router": 10.202806451612902,
+          "layer1": 29.355516129032257,
+          "layer1/combine_sum": 2.306064516129032,
+          "layer1/expert_and_routing_layout": 16.914677419354838,
+          "layer1/router": 10.134774193548386,
+          "total": 58.84932258064516
+        },
+        "median_us": {
+          "layer0": 29.502999999999997,
+          "layer0/combine_sum": 2.304,
+          "layer0/expert_and_routing_layout": 16.992,
+          "layer0/router": 10.207999999999998,
+          "layer1": 29.375999999999998,
+          "layer1/combine_sum": 2.304,
+          "layer1/expert_and_routing_layout": 16.896,
+          "layer1/router": 10.144,
+          "total": 58.847
+        },
+        "min_max_us": {
+          "layer0": [
+            29.378,
+            29.663999999999998
+          ],
+          "layer0/combine_sum": [
+            2.303,
+            2.337
+          ],
+          "layer0/expert_and_routing_layout": [
+            16.865000000000002,
+            17.12
+          ],
+          "layer0/router": [
+            10.143,
+            10.271999999999998
+          ],
+          "layer1": [
+            29.216,
+            29.506
+          ],
+          "layer1/combine_sum": [
+            2.272,
+            2.336
+          ],
+          "layer1/expert_and_routing_layout": [
+            16.832,
+            17.025000000000002
+          ],
+          "layer1/router": [
+            10.047,
+            10.21
+          ],
+          "total": [
+            58.654999999999994,
+            59.06999999999999
+          ]
+        },
+        "kernel_count_ranges": {
+          "layer0": [
+            8,
+            8
+          ],
+          "layer1": [
+            8,
+            8
+          ]
+        }
+      }
+    }
+  },
+  {
+    "batch": 8,
+    "layers": [
+      {
+        "layer": 0,
+        "simulated_a_us": 27.696463639719372,
+        "simulated_f_us": 19.080646733111667,
+        "native_a_us": 46.89519354838709,
+        "native_f_us": 29.749709677419354,
+        "simulated_components": {
+          "input_norm_previous_residual": 3.006425987449242,
+          "qkv_projection": 3.1772816537467707,
+          "q_norm": 3.0061424880029515,
+          "k_norm": 3.00311849390919,
+          "rope": 3.0090719822812835,
+          "attention_and_kv": 3.3889612403100773,
+          "output_projection": 3.0899638242894047,
+          "post_norm_attention_residual": 6.015497969730451,
+          "layout_copy": 0.0,
+          "router": 6.004104835732602,
+          "expert_combine": 13.076541897379066
+        },
+        "native_components": {
+          "input_norm_previous_residual": 2.858290322580645,
+          "qkv_projection": 4.980645161290322,
+          "q_norm": 3.0668709677419357,
+          "k_norm": 2.9678387096774195,
+          "rope": 2.704548387096774,
+          "attention_and_kv": 11.85267741935484,
+          "output_projection": 5.224387096774194,
+          "post_norm_attention_residual": 2.8923870967741934,
+          "layout_copy": 10.347548387096774,
+          "router": 10.261677419354838,
+          "expert_combine": 19.488032258064514
+        },
+        "raw_logical_layer_simulated_us": 49.78618235511229
+      },
+      {
+        "layer": 1,
+        "simulated_a_us": 30.70553562200062,
+        "simulated_f_us": 19.08064673311168,
+        "native_a_us": 47.29164516129032,
+        "native_f_us": 29.416612903225804,
+        "simulated_components": {
+          "input_norm_previous_residual": 6.015497969730491,
+          "qkv_projection": 3.1772816537467707,
+          "q_norm": 3.0061424880029515,
+          "k_norm": 3.00311849390919,
+          "rope": 3.0090719822812835,
+          "attention_and_kv": 3.3889612403100773,
+          "output_projection": 3.0899638242894047,
+          "post_norm_attention_residual": 6.015497969730452,
+          "layout_copy": 0.0,
+          "router": 6.004104835732602,
+          "expert_combine": 13.07654189737908
+        },
+        "native_components": {
+          "input_norm_previous_residual": 2.776806451612903,
+          "qkv_projection": 5.204580645161291,
+          "q_norm": 2.953225806451613,
+          "k_norm": 2.9719032258064515,
+          "rope": 2.850064516129032,
+          "attention_and_kv": 11.81,
+          "output_projection": 5.021870967741935,
+          "post_norm_attention_residual": 2.870774193548387,
+          "layout_copy": 10.832419354838711,
+          "router": 10.188677419354839,
+          "expert_combine": 19.227935483870972
+        },
+        "raw_logical_layer_simulated_us": 49.7861823551123
+      }
+    ],
+    "simulated_outside_us": 15.069362864525777,
+    "native_outside_us": 54.703,
+    "native_evidence": {
+      "batch": 8,
+      "attention": {
+        "decode_steps": 31,
+        "unclassified": {},
+        "layer_copy_shapes": {
+          "[[8, 2, 2, 64], [8, 2, 2, 64], []]": 124,
+          "[[2, 2, 8], [2, 2, 8], []]": 62
+        },
+        "mean_us": {
+          "layer0": 46.89519354838709,
+          "layer0/attention_core": 8.788806451612905,
+          "layer0/input_norm_previous_residual": 2.858290322580645,
+          "layer0/k_norm": 2.9678387096774195,
+          "layer0/kv_cache_write": 3.0638709677419356,
+          "layer0/layout_copy": 10.347548387096774,
+          "layer0/output_projection": 5.224387096774194,
+          "layer0/post_norm_attention_residual": 2.8923870967741934,
+          "layer0/q_norm": 3.0668709677419357,
+          "layer0/qkv_projection": 4.980645161290322,
+          "layer0/rope": 2.704548387096774,
+          "layer1": 47.29164516129032,
+          "layer1/attention_core": 8.792741935483871,
+          "layer1/input_norm_previous_residual": 2.776806451612903,
+          "layer1/k_norm": 2.9719032258064515,
+          "layer1/kv_cache_write": 3.017258064516129,
+          "layer1/layout_copy": 10.832419354838711,
+          "layer1/output_projection": 5.021870967741935,
+          "layer1/post_norm_attention_residual": 2.870774193548387,
+          "layer1/q_norm": 2.953225806451613,
+          "layer1/qkv_projection": 5.204580645161291,
+          "layer1/rope": 2.850064516129032,
+          "outside": 54.703,
+          "outside/argmax": 5.679548387096774,
+          "outside/auxiliary": 31.850580645161287,
+          "outside/embedding": 5.823032258064516,
+          "outside/final_norm_last_residual": 2.758322580645161,
+          "outside/kv_slot_mapping": 3.6955483870967742,
+          "outside/lm_head": 4.8959677419354835,
+          "total": 148.88983870967738
+        },
+        "median_us": {
+          "layer0": 46.881,
+          "layer0/attention_core": 8.8,
+          "layer0/input_norm_previous_residual": 2.848,
+          "layer0/k_norm": 2.976,
+          "layer0/kv_cache_write": 3.072,
+          "layer0/layout_copy": 10.337,
+          "layer0/output_projection": 5.216,
+          "layer0/post_norm_attention_residual": 2.88,
+          "layer0/q_norm": 3.072,
+          "layer0/qkv_projection": 4.992,
+          "layer0/rope": 2.72,
+          "layer1": 47.29599999999999,
+          "layer1/attention_core": 8.8,
+          "layer1/input_norm_previous_residual": 2.784,
+          "layer1/k_norm": 2.976,
+          "layer1/kv_cache_write": 3.008,
+          "layer1/layout_copy": 10.816,
+          "layer1/output_projection": 5.024,
+          "layer1/post_norm_attention_residual": 2.88,
+          "layer1/q_norm": 2.944,
+          "layer1/qkv_projection": 5.216,
+          "layer1/rope": 2.848,
+          "outside": 54.748999999999995,
+          "outside/argmax": 5.696,
+          "outside/auxiliary": 31.842999999999996,
+          "outside/embedding": 5.856,
+          "outside/final_norm_last_residual": 2.784,
+          "outside/kv_slot_mapping": 3.68,
+          "outside/lm_head": 4.896,
+          "total": 148.89699999999996
+        },
+        "min_max_us": {
+          "layer0": [
+            46.687999999999995,
+            47.041999999999994
+          ],
+          "layer0/attention_core": [
+            8.64,
+            8.896
+          ],
+          "layer0/input_norm_previous_residual": [
+            2.848,
+            2.88
+          ],
+          "layer0/k_norm": [
+            2.944,
+            2.977
+          ],
+          "layer0/kv_cache_write": [
+            3.039,
+            3.104
+          ],
+          "layer0/layout_copy": [
+            10.302999999999999,
+            10.4
+          ],
+          "layer0/output_projection": [
+            5.216,
+            5.249
+          ],
+          "layer0/post_norm_attention_residual": [
+            2.879,
+            2.913
+          ],
+          "layer0/q_norm": [
+            3.04,
+            3.136
+          ],
+          "layer0/qkv_projection": [
+            4.959,
+            5.12
+          ],
+          "layer0/rope": [
+            2.656,
+            2.753
+          ],
+          "layer1": [
+            46.977000000000004,
+            47.458
+          ],
+          "layer1/attention_core": [
+            8.512,
+            8.895
+          ],
+          "layer1/input_norm_previous_residual": [
+            2.688,
+            2.817
+          ],
+          "layer1/k_norm": [
+            2.944,
+            2.977
+          ],
+          "layer1/kv_cache_write": [
+            2.976,
+            3.04
+          ],
+          "layer1/layout_copy": [
+            10.815,
+            10.881000000000002
+          ],
+          "layer1/output_projection": [
+            4.991,
+            5.056
+          ],
+          "layer1/post_norm_attention_residual": [
+            2.848,
+            2.881
+          ],
+          "layer1/q_norm": [
+            2.943,
+            2.977
+          ],
+          "layer1/qkv_projection": [
+            5.183,
+            5.248
+          ],
+          "layer1/rope": [
+            2.816,
+            2.88
+          ],
+          "outside": [
+            54.080999999999996,
+            55.327
+          ],
+          "outside/argmax": [
+            5.631,
+            5.729
+          ],
+          "outside/auxiliary": [
+            31.392,
+            32.353
+          ],
+          "outside/embedding": [
+            5.632,
+            5.984
+          ],
+          "outside/final_norm_last_residual": [
+            2.688,
+            2.785
+          ],
+          "outside/kv_slot_mapping": [
+            3.68,
+            3.713
+          ],
+          "outside/lm_head": [
+            4.863,
+            4.928
+          ],
+          "total": [
+            148.16299999999995,
+            149.72999999999996
+          ]
+        },
+        "kernel_count_ranges": {
+          "layer0": [
+            12,
+            12
+          ],
+          "layer1": [
+            12,
+            12
+          ],
+          "outside": [
+            18,
+            18
+          ]
+        }
+      },
+      "ffn": {
+        "decode_steps": 31,
+        "unclassified": {},
+        "layer_copy_shapes": {},
+        "mean_us": {
+          "layer0": 29.749709677419354,
+          "layer0/combine_sum": 2.2936451612903226,
+          "layer0/expert_and_routing_layout": 17.194387096774193,
+          "layer0/router": 10.261677419354838,
+          "layer1": 29.416612903225804,
+          "layer1/combine_sum": 2.295709677419355,
+          "layer1/expert_and_routing_layout": 16.932225806451616,
+          "layer1/router": 10.188677419354839,
+          "total": 59.16632258064516
+        },
+        "median_us": {
+          "layer0": 29.761,
+          "layer0/combine_sum": 2.304,
+          "layer0/expert_and_routing_layout": 17.217,
+          "layer0/router": 10.271999999999998,
+          "layer1": 29.409,
+          "layer1/combine_sum": 2.304,
+          "layer1/expert_and_routing_layout": 16.929000000000002,
+          "layer1/router": 10.176,
+          "total": 59.169999999999995
+        },
+        "min_max_us": {
+          "layer0": [
+            29.503999999999998,
+            29.921
+          ],
+          "layer0/combine_sum": [
+            2.271,
+            2.305
+          ],
+          "layer0/expert_and_routing_layout": [
+            16.96,
+            17.313
+          ],
+          "layer0/router": [
+            10.239,
+            10.303999999999998
+          ],
+          "layer1": [
+            29.215,
+            29.567999999999998
+          ],
+          "layer1/combine_sum": [
+            2.272,
+            2.336
+          ],
+          "layer1/expert_and_routing_layout": [
+            16.832,
+            17.056
+          ],
+          "layer1/router": [
+            10.111,
+            10.303999999999998
+          ],
+          "total": [
+            58.815,
+            59.392999999999994
+          ]
+        },
+        "kernel_count_ranges": {
+          "layer0": [
+            8,
+            8
+          ],
+          "layer1": [
+            8,
+            8
+          ]
+        }
+      }
+    }
+  }
+]

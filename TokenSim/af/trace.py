@@ -52,7 +52,7 @@ class AFTraceEvent:
     block_id: int
     layer_id: int
     phase: AFPhase
-    event_type: Literal["compute", "transfer", "collective", "host_submit", "synchronize"]
+    event_type: Literal["compute", "transfer", "control_transfer", "control_device", "operation_service", "collective", "host_submit", "host_prepare", "synchronize"]
     resource_id: str
     ready_at: float
     start_at: float
@@ -241,6 +241,7 @@ class AFTraceRecorder:
                     )
                 if (
                     len(event.predecessor_ids) > 1
+                    and event.details.get("readiness_mode") != "invocation_events"
                     and abs(event.ready_at - latest) > tolerance
                 ):
                     raise SimulationStateError(
@@ -518,6 +519,14 @@ class AFTraceRecorder:
             original_tokens if shared else 0
         )
         for event in combines:
+            expected_domain = (
+                router.source_domain if event.operation == "f_weighted_combine" else a_domain
+            )
+            if event.source_domain != expected_domain or (
+                event.operation == "f_weighted_combine"
+                and (expected_domain == a_domain or len(combines) != 1)
+            ):
+                raise SimulationStateError("AF trace invariant failed: combine protocol domain mismatch")
             if (
                 event.original_token_count != original_tokens
                 or event.assignment_count != len(expected_edges)
@@ -557,6 +566,15 @@ class AFTraceRecorder:
             "barrier_wait": dict(iteration.barrier_wait),
             "resource_utilization": utilization,
         }
+
+    def summarize_timeline(self, iteration: AFIteration) -> dict[str, Any]:
+        """Optional detailed accounting, restricted to this iteration's index."""
+        from TokenSim.af.timeline import summarize_timeline
+        if iteration.start_at is None or iteration.end_at is None:
+            raise SimulationStateError("timeline summary requires a completed iteration")
+        return summarize_timeline(self.events_for(iteration.iteration_id),
+                                  iteration.start_at, iteration.end_at,
+                                  self.resource_capacities)
 
     def export_summary(self, summary: Mapping[str, Any]) -> dict[str, Any]:
         """Materialize a detached public result at the export boundary only."""

@@ -1,0 +1,64 @@
+"""Archive compact measurements with corrected completion-scope interpretation."""
+import json
+from pathlib import Path
+
+root = Path(__file__).resolve().parents[1]
+data = root/'outputs/nccl-gpu23-20261007'
+send = json.loads((data/'send-summary.json').read_text())
+ack = json.loads((data/'ack-summary.json').read_text())
+assert send['complete'] and ack['complete']
+def get(doc, sender, mode, size, delay=0):
+    return next(r for r in doc['rows'] if (r['sender'],r['mode'],r['bytes'],r['delay_ms']) == (sender,mode,size,delay))
+for direction in (0,1):
+    base = get(ack,direction,'delayed',4096)['sender_median_us']
+    for delay in (5,20):
+        measured = get(ack,direction,'delayed',4096,delay)['sender_median_us']
+        assert measured >= delay*1000, (direction,delay,measured)
+        assert abs((measured-base)-delay*1000) < 2000
+bundle = dict(status='measured; not fitted or imported',
+              interpretation=dict(send_only='sender local completion; does not confirm receiver delivery',
+                                  ack='ready data plus 32-byte acknowledgement RTT; never label as one-way service',
+                                  delayed='includes handshake, host delay and peer wait; excluded from fitting'),
+              send=send, acknowledgement=ack,
+              engine_rerun='not launched; automatic approval review rejected the additional full-engine run')
+out = root/'docs/plans/nccl-gpu23-20261007'
+out.with_suffix('.json').write_text(json.dumps(bundle,indent=2),encoding='utf-8')
+lines = ['# GPU2/3 NVLink通信微基准，2026-10-07', '',
+         '已实际完成双向PyNccl BF16点对点测量及回执对照。每个方向、消息大小和模式有3个窗口，每窗口10次预热、30次计时；接收内容校验通过。未运行额外AFD引擎复测，未拟合或修改模拟参数。', '',
+         '## 关键结果', '',
+         'GPU2为A方向起点，GPU3为F方向起点。下表为3个窗口中位数的中位数，单位微秒。回执大小固定32 bytes，表中回执时间是数据发送到回执返回的RTT，不是同尺寸双向传输，也不是单向纯服务。', '',
+         '| 数据bytes | A→F发送端局部完成 | F→A发送端局部完成 | A→F数据＋回执RTT | F→A数据＋回执RTT |',
+         '| ---: | ---: | ---: | ---: | ---: |']
+for size in (32,256,512,2048,4096,8192,65536,1048576,16777216):
+    vals=[get(doc,s,'ready',size)['sender_median_us'] for doc in (send,ack) for s in (0,1)]
+    lines.append('| '+str(size)+' | '+' | '.join(f'{v:.2f}' for v in vals)+' |')
+lines += ['', '当前小模型每层每方向的数据量为batch1=512、batch4=2048、batch8=4096 bytes；该范围回执RTT约21.5–22.5µs。32/256 bytes仅为小消息探针，没有采集插件真实metadata消息序列，不能声称metadata校准完成。', '',
+          '## 等待与完成语义验证', '',
+          '| 接收端延迟 | A→F回执完成 ms | F→A回执完成 ms |', '| ---: | ---: | ---: |']
+for delay in (0,5,20):
+    vals=[get(ack,s,'delayed',4096,delay)['sender_median_us']/1000 for s in (0,1)]
+    lines.append(f'| {delay} ms | {vals[0]:.3f} | {vals[1]:.3f} |')
+lines += ['',
+          '最初仅测发送端CUDA start/send/end，5/20ms接收延迟没有进入该事件区间。这说明此处发送端局部完成不能证明对端数据可用；初版summary中的service candidate描述被本报告的解释取代，不能导入校准表。至于缓冲或协议推进的具体内部原因，本次未证明。', '',
+          '补充实验在接收端同一CUDA stream依次执行recv(data)、send(32-byte ack)，发送端测send(data)到recv(ack)完成。该依赖保证回执完成发生在对端数据接收之后。延迟对照得到约5.4/20.6ms，等待影响按预期出现；0ms对照仍约0.27–0.29ms，因为包含CPU握手、未预贴接收和主机提交空隙，不能用作纯服务。', '',
+          '## 提前就绪测量口径', '',
+          '接收端先提交recv（回执模式再提交send ack），经CPU Gloo barrier确认提交后，发送端stream先执行CUDA sleep gate，再执行计时起点、通信和终点。gate允许Python预先排好CUDA操作，排除计时区间内的主要Python提交空隙；它只用于微基准，不是模拟器中的通信延迟。接收端事件包含毫秒级等待，明确排除。', '',
+          '4KiB gate由500万改到2000万cycles时，回执RTT仍约22.53µs（短gate两个方向约22.53/21.50µs）。样本有约1.024µs量化台阶，不能解读为纳秒级精度。主机API调用耗时随模式/等待变化，本次不将其直接用作host_submit校准值。', '',
+          '## 对建模的含义', '',
+          '- 已建立局部send完成与对端数据可用不同的实测证据；消费者依赖应以接收完成定义。需要继续审计模拟runtime的对应事件语义，不能直接宣称实现正确。',
+          '- 小消息数据＋回执约22µs，与此前毫秒级完整引擎步耗时明显不同；仍不能据此将整步剩余部分全归CPU，因为metadata、等待和实际提交时序尚未对齐。',
+          '- 不把RTT直接除二作为正式单向参数；两个方向消息大小不同，NCCL分块/协议与缓冲行为可能影响可加性。大消息发送端完成和回执差距更明显，也不以发送端局部区间推导目标端交付带宽。',
+          '- 后续应核对真实插件data/metadata消息及接收完成边界，使用明确定义的可加模型或匹配协议的成组测量，再生成版本化profile。当前只提交测量证据，未写入参数。', '',
+          '## 运行与限制', '',
+          '每次运行前以UUID检查GPU2/3无计算进程；每次命令限制600秒。本次均正常退出，最后nvidia-smi计算进程列表为空，没有停止外部作业。只下载小型摘要，原始样本保留服务器。', '',
+          '原始目录：`/home/youwei/autodl-tmp/af-workspace/profiling/nccl-service-gpu23-20261007` 和 `nccl-ack-gpu23-20261007`。manifest记录GPU UUID、NV12拓扑、PyTorch版本和对应测量脚本哈希。', '',
+          '使用`envs/afd026/bin/python profiling/measure_nccl_service.py NEW_DIR`测发送端局部区间；加`--ack --port 17850`测回执。输出目录禁止覆盖。`summarize_nccl_service.py`只读汇总，`report_nccl_service.py`在本地验证延迟效果并归档。', '',
+          '额外GPU2/3上batch1/8/4真实AFD引擎复测被自动审批拒绝，理由是共享GPU占用风险和它认为授权范围不明确；该命令没有执行。需要用户明确确认此项作业后才能继续。', '']
+out.with_suffix('.md').write_text('\n'.join(lines),encoding='utf-8')
+followup = root/'docs/plans/afd-gpu23-rerun-20261007.md'
+if followup.exists():
+    doc = out.with_suffix('.md').read_text(encoding='utf-8')
+    title, body = doc.split('\n', 1)
+    note = '\n\n后续更新：用户确认后已完成额外AFD引擎复测，见 `afd-gpu23-rerun-20261007.md`。下文未运行/审批拒绝描述为此前阶段历史状态。\n'
+    out.with_suffix('.md').write_text(title+note+body,encoding='utf-8')
+print(out.with_suffix('.md'))

@@ -1,0 +1,128 @@
+{
+  "schema_version": 1,
+  "profile_id": "pkua100-paired-device-transport-20261012-candidate",
+  "timing_scope": "transport_service",
+  "unit": "us",
+  "contains_wait": false,
+  "contains_cpu_submit": false,
+  "model_version": "node-domain-fifo-v1",
+  "environment": {
+    "execution_mode": "eager",
+    "software_sha256": "7e6c829d912115c482b67bf09aca64ac44917196768458bf2b73b13b2c690273",
+    "vllm_version": "0.26.0",
+    "torch_version": "2.11.0",
+    "gpu_pair": "GPU-8df5e331-8f9a-3cdc-af30-42b94f908018,GPU-76ca30e6-17c9-9a38-cb06-57aebeaa6973"
+  },
+  "domains": {
+    "node_size": 8,
+    "node_count": 1,
+    "local_bandwidth_bytes_per_s": 300000000000.0,
+    "inter_tx_bandwidth_bytes_per_s": 50000000000.0,
+    "inter_rx_bandwidth_bytes_per_s": 50000000000.0,
+    "local_latency_us": 1.0,
+    "inter_latency_us": 0.0,
+    "placement_strategy": "manual",
+    "mixed_a_slots": 2,
+    "device_indices": {
+      "a-pool:0": 2,
+      "f-pool:0": 3
+    },
+    "source_id": "pkua100-gpu23-nv12:bandwidth-and-alpha-catalog-assumptions"
+  },
+  "device_indices": {
+    "a-pool:0": 2,
+    "f-pool:0": 3
+  },
+  "records": [
+    {
+      "source_device": 2,
+      "target_device": 3,
+      "backend": "pynccl",
+      "dtype": "bf16",
+      "points": [
+        {
+          "bytes": 512,
+          "service_us": 8.598520914713541
+        },
+        {
+          "bytes": 4096,
+          "service_us": 9.197509765625
+        }
+      ],
+      "interpolation": "linear_within_training_range"
+    },
+    {
+      "source_device": 3,
+      "target_device": 2,
+      "backend": "pynccl",
+      "dtype": "bf16",
+      "points": [
+        {
+          "bytes": 512,
+          "service_us": 8.240183512369791
+        },
+        {
+          "bytes": 4096,
+          "service_us": 8.80865478515625
+        }
+      ],
+      "interpolation": "linear_within_training_range"
+    },
+    {
+      "source_device": 2,
+      "target_device": 3,
+      "backend": "torch_distributed_nccl",
+      "dtype": "int64",
+      "points": [
+        {
+          "bytes": 8,
+          "service_us": 8.388336181640625
+        }
+      ],
+      "interpolation": "linear_within_training_range"
+    },
+    {
+      "source_device": 2,
+      "target_device": 3,
+      "backend": "torch_distributed_nccl",
+      "dtype": "uint8",
+      "points": [
+        {
+          "bytes": 179,
+          "service_us": 8.592844645182291
+        }
+      ],
+      "interpolation": "linear_within_training_range"
+    }
+  ],
+  "evidence": {
+    "kind": "measured",
+    "source": {
+      "pynccl-w0-kernels.json": "2b1c1754dca2ac576d7b38b541bb27150d592073f6d1069748eabc004827eed1",
+      "pynccl-w1-kernels.json": "d0c611482c6725e9607a80cc42433bcaf1eb9d04140affbe6520a3fdfb0a10bf",
+      "pynccl-w2-kernels.json": "cb20475bac0b2ec418e7e5f894a2fdeed90360de263f5a72b96bf7f386bab3b4",
+      "torch-w0-kernels.json": "c3704a98b94c9b37beebc3ff9fa964c293813fd0e0126eac9b0e760c71707cab",
+      "torch-w1-kernels.json": "0fa0289d6572112ee0b803f543487b814b2c088029600d68914f5dd452f68cfb",
+      "torch-w2-kernels.json": "e343afa45b5ce538653ff359868bf255d175ba0fb4f23c07a1a646ab3cae608f"
+    },
+    "window_count": 3,
+    "sample_count": 900,
+    "training_batches": [
+      1,
+      8
+    ],
+    "heldout_batches": [
+      6
+    ],
+    "validation_status": "pending",
+    "measurement_boundary": "after_both_device_kernels_started_until_both_complete",
+    "peer_delay_audit_passed": true,
+    "method": "mean of three window medians; zero-delay only; bounded linear bytes interpolation",
+    "limitations": [
+      "CUPTI device timestamps, not physical wire-only latency",
+      "cross-device clock calibration and profiler perturbation remain measurement uncertainty",
+      "excludes CPU launch and device scheduling before both kernels start",
+      "historical raw diagnostic labels preserved; independent validation pending"
+    ]
+  }
+}

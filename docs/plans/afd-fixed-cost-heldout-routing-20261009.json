@@ -1,0 +1,10 @@
+{
+  "batch": 2,
+  "steps": 31,
+  "matched_layer_histograms": 62,
+  "data_messages": 124,
+  "control_messages": 62,
+  "hidden_bytes_per_message": 1024,
+  "metadata_payload_bytes": 179,
+  "scope": "captured row identity/routing/shape, not API timestamps"
+}

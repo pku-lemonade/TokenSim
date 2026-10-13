@@ -1,0 +1,25 @@
+{
+  "base_commit": "e0c19e637c4e4735115a971d4943262594f82920",
+  "scope": "decode-only; native prefill excluded; no full-engine handoff validation",
+  "native_root": "/home/youwei/autodl-tmp/af-workspace/src/afd-plugin",
+  "native_hashes": {
+    "qwen3_moe.py": "f9d390d00d6857d9b8291832a569c4748f8989b9d5d6f80dc07895880ea71975",
+    "p2p.py": "4a98fa3b1ee4121be0c176ca52581d0257ca6e8adbeb57e69497374543d84288"
+  },
+  "baseline_files": {
+    "docs/plans/afd-1a1f-alignment-20261006.md": "4a4c82e3ab5ed29f2d1947854100f90d1c61c1f9af3495d0f280f19fac1826f8",
+    "outputs/afd-1a1f-alignment-20261006/native-summary.json": "0b8ea47c92edc4e90ec149ba00a31abcb996f5c86f4449f418b1cb5bce4bd3a0",
+    "outputs/afd-1a1f-alignment-20261006/manifest.json": "7b2b19a3a8961e418540974796f7a5fb04ea235fc2cde98859ee803f54a58265",
+    "outputs/afd-1a1f-alignment-20261006/tokensim-summary.json": "83fdf3a4557313a53447f78e389d376d8ff8490a97aba682dc652294ef7f9ab0"
+  },
+  "gpu_observation": {
+    "gpu2_pid": 1305614,
+    "gpu3_pid": 1515380,
+    "action": "no GPU job started; existing jobs untouched"
+  },
+  "prerequisites": {
+    "integrate-deepseek-v3-core-runtime": "implemented, delta sync before this change",
+    "rebuild-hierarchical-af-communication": "unimplemented, do not overwrite protocol/readiness semantics on future integration"
+  },
+  "calibration_status": "not calibrated; baseline is not overwritten"
+}

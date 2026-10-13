@@ -1,0 +1,3 @@
+# Calibration profiles and frozen evidence bind SHA256 to original file bytes.
+docs/plans/afd-*.json -text whitespace=cr-at-eol
+docs/plans/nccl-gpu23-*.json -text whitespace=cr-at-eol

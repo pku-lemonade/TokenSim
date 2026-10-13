@@ -1,0 +1,1036 @@
+{
+  "status": "measured; not fitted or imported",
+  "interpretation": {
+    "send_only": "sender local completion; does not confirm receiver delivery",
+    "ack": "ready data plus 32-byte acknowledgement RTT; never label as one-way service",
+    "delayed": "includes handshake, host delay and peer wait; excluded from fitting"
+  },
+  "send": {
+    "manifest": {
+      "uuids": [
+        "GPU-8df5e331-8f9a-3cdc-af30-42b94f908018",
+        "GPU-76ca30e6-17c9-9a38-cb06-57aebeaa6973"
+      ],
+      "torch": "2.11.0+cu130",
+      "scope": "PyNccl BF16 P2P; no plugin metadata protocol",
+      "script_sha256": "fec8cbb54d614dc303ef10ee14a84153f4483f611610316e00aa6cc58c99b59b",
+      "topology": "\t\u001b[4mGPU0\tGPU1\tGPU2\tGPU3\tCPU Affinity\tNUMA Affinity\tGPU NUMA ID\u001b[0m\nGPU0\t X \tSYS\tSYS\tSYS\t0-27,56-83\t0\t\tN/A\nGPU1\tSYS\t X \tPXB\tPXB\t28-55,84-111\t1\t\tN/A\nGPU2\tSYS\tPXB\t X \tNV12\t28-55,84-111\t1\t\tN/A\nGPU3\tSYS\tPXB\tNV12\t X \t28-55,84-111\t1\t\tN/A\n\nLegend:\n\n  X    = Self\n  SYS  = Connection traversing PCIe as well as the SMP interconnect between NUMA nodes (e.g., QPI/UPI)\n  NODE = Connection traversing PCIe as well as the interconnect between PCIe Host Bridges within a NUMA node\n  PHB  = Connection traversing PCIe as well as a PCIe Host Bridge (typically the CPU)\n  PXB  = Connection traversing multiple PCIe bridges (without traversing the PCIe Host Bridge)\n  PIX  = Connection traversing at most a single PCIe bridge\n  NV#  = Connection traversing a bonded set of # NVLinks\n",
+      "gate": "sender CUDA sleep before timing events; check gate duration sensitivity",
+      "ready_scope": "sender device event interval after recv prepost; receiver includes wait",
+      "delayed_scope": "sender includes CPU handshake and receiver delay; never fit as service"
+    },
+    "complete": true,
+    "rows": [
+      {
+        "sender": 0,
+        "mode": "delayed",
+        "bytes": 4096,
+        "delay_ms": 0,
+        "gate_cycles": 0,
+        "sender_median_us": 28.672000393271446,
+        "sender_window_medians_us": [
+          28.672000393271446,
+          28.672000393271446,
+          28.672000393271446
+        ],
+        "sender_min_max_us": [
+          27.648000046610832,
+          37.88800165057182
+        ],
+        "receiver_occupancy_median_us": 24.57600086927414,
+        "host_api_median_us": 22.1075
+      },
+      {
+        "sender": 0,
+        "mode": "delayed",
+        "bytes": 4096,
+        "delay_ms": 5.0,
+        "gate_cycles": 0,
+        "sender_median_us": 146.43199741840363,
+        "sender_window_medians_us": [
+          146.43199741840363,
+          150.52800625562668,
+          103.42400148510933
+        ],
+        "sender_min_max_us": [
+          62.463998794555664,
+          184.32000279426575
+        ],
+        "receiver_occupancy_median_us": 151.5520066022873,
+        "host_api_median_us": 123.53399999999999
+      },
+      {
+        "sender": 0,
+        "mode": "delayed",
+        "bytes": 4096,
+        "delay_ms": 20.0,
+        "gate_cycles": 0,
+        "sender_median_us": 150.01600235700607,
+        "sender_window_medians_us": [
+          150.01600235700607,
+          150.01600235700607,
+          133.11999291181564
+        ],
+        "sender_min_max_us": [
+          43.007999658584595,
+          269.3119943141937
+        ],
+        "receiver_occupancy_median_us": 162.30399906635284,
+        "host_api_median_us": 126.15899999999999
+      },
+      {
+        "sender": 0,
+        "mode": "gate_check",
+        "bytes": 4096,
+        "delay_ms": 0,
+        "gate_cycles": 20000000,
+        "sender_median_us": 12.28800043463707,
+        "sender_window_medians_us": [
+          12.28800043463707,
+          12.28800043463707,
+          12.28800043463707
+        ],
+        "sender_min_max_us": [
+          11.264000087976456,
+          12.28800043463707
+        ],
+        "receiver_occupancy_median_us": 14875.135898590088,
+        "host_api_median_us": 45.0015
+      },
+      {
+        "sender": 0,
+        "mode": "ready",
+        "bytes": 32,
+        "delay_ms": 0,
+        "gate_cycles": 5000000,
+        "sender_median_us": 11.264000087976456,
+        "sender_window_medians_us": [
+          11.264000087976456,
+          11.264000087976456,
+          11.264000087976456
+        ],
+        "sender_min_max_us": [
+          11.264000087976456,
+          12.28800043463707
+        ],
+        "receiver_occupancy_median_us": 4568.575859069824,
+        "host_api_median_us": 75.72999999999999
+      },
+      {
+        "sender": 0,
+        "mode": "ready",
+        "bytes": 256,
+        "delay_ms": 0,
+        "gate_cycles": 5000000,
+        "sender_median_us": 11.264000087976456,
+        "sender_window_medians_us": [
+          11.264000087976456,
+          11.264000087976456,
+          12.28800043463707
+        ],
+        "sender_min_max_us": [
+          11.264000087976456,
+          12.28800043463707
+        ],
+        "receiver_occupancy_median_us": 4325.37579536438,
+        "host_api_median_us": 42.611999999999995
+      },
+      {
+        "sender": 0,
+        "mode": "ready",
+        "bytes": 512,
+        "delay_ms": 0,
+        "gate_cycles": 5000000,
+        "sender_median_us": 11.264000087976456,
+        "sender_window_medians_us": [
+          11.776000261306763,
+          11.264000087976456,
+          11.264000087976456
+        ],
+        "sender_min_max_us": [
+          11.264000087976456,
+          12.28800043463707
+        ],
+        "receiver_occupancy_median_us": 3789.8240089416504,
+        "host_api_median_us": 42.658500000000004
+      },
+      {
+        "sender": 0,
+        "mode": "ready",
+        "bytes": 2048,
+        "delay_ms": 0,
+        "gate_cycles": 5000000,
+        "sender_median_us": 11.264000087976456,
+        "sender_window_medians_us": [
+          11.264000087976456,
+          11.264000087976456,
+          12.28800043463707
+        ],
+        "sender_min_max_us": [
+          11.264000087976456,
+          12.28800043463707
+        ],
+        "receiver_occupancy_median_us": 3762.6880407333374,
+        "host_api_median_us": 25.133499999999998
+      },
+      {
+        "sender": 0,
+        "mode": "ready",
+        "bytes": 4096,
+        "delay_ms": 0,
+        "gate_cycles": 5000000,
+        "sender_median_us": 12.28800043463707,
+        "sender_window_medians_us": [
+          12.28800043463707,
+          12.28800043463707,
+          12.28800043463707
+        ],
+        "sender_min_max_us": [
+          11.264000087976456,
+          12.28800043463707
+        ],
+        "receiver_occupancy_median_us": 3747.3279237747192,
+        "host_api_median_us": 25.8995
+      },
+      {
+        "sender": 0,
+        "mode": "ready",
+        "bytes": 8192,
+        "delay_ms": 0,
+        "gate_cycles": 5000000,
+        "sender_median_us": 12.28800043463707,
+        "sender_window_medians_us": [
+          12.28800043463707,
+          12.28800043463707,
+          12.28800043463707
+        ],
+        "sender_min_max_us": [
+          11.264000087976456,
+          13.311999849975109
+        ],
+        "receiver_occupancy_median_us": 3741.6958808898926,
+        "host_api_median_us": 24.7125
+      },
+      {
+        "sender": 0,
+        "mode": "ready",
+        "bytes": 65536,
+        "delay_ms": 0,
+        "gate_cycles": 5000000,
+        "sender_median_us": 13.311999849975109,
+        "sender_window_medians_us": [
+          13.311999849975109,
+          13.311999849975109,
+          13.311999849975109
+        ],
+        "sender_min_max_us": [
+          12.28800043463707,
+          14.336000196635723
+        ],
+        "receiver_occupancy_median_us": 3760.1280212402344,
+        "host_api_median_us": 22.811500000000002
+      },
+      {
+        "sender": 0,
+        "mode": "ready",
+        "bytes": 1048576,
+        "delay_ms": 0,
+        "gate_cycles": 5000000,
+        "sender_median_us": 20.479999482631683,
+        "sender_window_medians_us": [
+          19.45599913597107,
+          20.479999482631683,
+          20.479999482631683
+        ],
+        "sender_min_max_us": [
+          19.45599913597107,
+          21.503999829292297
+        ],
+        "receiver_occupancy_median_us": 3779.0719270706177,
+        "host_api_median_us": 26.3505
+      },
+      {
+        "sender": 0,
+        "mode": "ready",
+        "bytes": 16777216,
+        "delay_ms": 0,
+        "gate_cycles": 5000000,
+        "sender_median_us": 57.34400078654289,
+        "sender_window_medians_us": [
+          57.34400078654289,
+          57.34400078654289,
+          57.34400078654289
+        ],
+        "sender_min_max_us": [
+          56.32000043988228,
+          59.39200147986412
+        ],
+        "receiver_occupancy_median_us": 3872.767925262451,
+        "host_api_median_us": 25.7025
+      },
+      {
+        "sender": 1,
+        "mode": "delayed",
+        "bytes": 4096,
+        "delay_ms": 0,
+        "gate_cycles": 0,
+        "sender_median_us": 24.57600086927414,
+        "sender_window_medians_us": [
+          24.57600086927414,
+          24.57600086927414,
+          24.57600086927414
+        ],
+        "sender_min_max_us": [
+          23.552000522613525,
+          31.74399957060814
+        ],
+        "receiver_occupancy_median_us": 29.69600073993206,
+        "host_api_median_us": 17.869500000000002
+      },
+      {
+        "sender": 1,
+        "mode": "delayed",
+        "bytes": 4096,
+        "delay_ms": 5.0,
+        "gate_cycles": 0,
+        "sender_median_us": 100.35200044512749,
+        "sender_window_medians_us": [
+          144.896000623703,
+          100.35200044512749,
+          68.09600070118904
+        ],
+        "sender_min_max_us": [
+          43.007999658584595,
+          194.5600062608719
+        ],
+        "receiver_occupancy_median_us": 113.66400122642517,
+        "host_api_median_us": 82.517
+      },
+      {
+        "sender": 1,
+        "mode": "delayed",
+        "bytes": 4096,
+        "delay_ms": 20.0,
+        "gate_cycles": 0,
+        "sender_median_us": 155.64800053834915,
+        "sender_window_medians_us": [
+          154.62400019168854,
+          157.69600123167038,
+          155.64800053834915
+        ],
+        "sender_min_max_us": [
+          47.10400104522705,
+          193.53599846363068
+        ],
+        "receiver_occupancy_median_us": 167.93600469827652,
+        "host_api_median_us": 131.73250000000002
+      },
+      {
+        "sender": 1,
+        "mode": "gate_check",
+        "bytes": 4096,
+        "delay_ms": 0,
+        "gate_cycles": 20000000,
+        "sender_median_us": 11.264000087976456,
+        "sender_window_medians_us": [
+          11.264000087976456,
+          11.264000087976456,
+          11.264000087976456
+        ],
+        "sender_min_max_us": [
+          11.264000087976456,
+          12.28800043463707
+        ],
+        "receiver_occupancy_median_us": 14985.72826385498,
+        "host_api_median_us": 43.533500000000004
+      },
+      {
+        "sender": 1,
+        "mode": "ready",
+        "bytes": 32,
+        "delay_ms": 0,
+        "gate_cycles": 5000000,
+        "sender_median_us": 11.264000087976456,
+        "sender_window_medians_us": [
+          11.264000087976456,
+          11.264000087976456,
+          11.264000087976456
+        ],
+        "sender_min_max_us": [
+          10.239999741315842,
+          12.28800043463707
+        ],
+        "receiver_occupancy_median_us": 4240.383863449097,
+        "host_api_median_us": 42.579
+      },
+      {
+        "sender": 1,
+        "mode": "ready",
+        "bytes": 256,
+        "delay_ms": 0,
+        "gate_cycles": 5000000,
+        "sender_median_us": 11.264000087976456,
+        "sender_window_medians_us": [
+          11.264000087976456,
+          11.264000087976456,
+          11.264000087976456
+        ],
+        "sender_min_max_us": [
+          10.239999741315842,
+          12.28800043463707
+        ],
+        "receiver_occupancy_median_us": 4260.864019393921,
+        "host_api_median_us": 44.179
+      },
+      {
+        "sender": 1,
+        "mode": "ready",
+        "bytes": 512,
+        "delay_ms": 0,
+        "gate_cycles": 5000000,
+        "sender_median_us": 11.264000087976456,
+        "sender_window_medians_us": [
+          11.264000087976456,
+          11.264000087976456,
+          11.264000087976456
+        ],
+        "sender_min_max_us": [
+          10.239999741315842,
+          11.264000087976456
+        ],
+        "receiver_occupancy_median_us": 3764.73605632782,
+        "host_api_median_us": 30.014
+      },
+      {
+        "sender": 1,
+        "mode": "ready",
+        "bytes": 2048,
+        "delay_ms": 0,
+        "gate_cycles": 5000000,
+        "sender_median_us": 11.264000087976456,
+        "sender_window_medians_us": [
+          11.264000087976456,
+          11.264000087976456,
+          11.264000087976456
+        ],
+        "sender_min_max_us": [
+          10.239999741315842,
+          12.28800043463707
+        ],
+        "receiver_occupancy_median_us": 3763.7120485305786,
+        "host_api_median_us": 26.179499999999997
+      },
+      {
+        "sender": 1,
+        "mode": "ready",
+        "bytes": 4096,
+        "delay_ms": 0,
+        "gate_cycles": 5000000,
+        "sender_median_us": 11.264000087976456,
+        "sender_window_medians_us": [
+          11.264000087976456,
+          11.264000087976456,
+          11.264000087976456
+        ],
+        "sender_min_max_us": [
+          11.264000087976456,
+          12.28800043463707
+        ],
+        "receiver_occupancy_median_us": 3757.0559978485107,
+        "host_api_median_us": 24.072499999999998
+      },
+      {
+        "sender": 1,
+        "mode": "ready",
+        "bytes": 8192,
+        "delay_ms": 0,
+        "gate_cycles": 5000000,
+        "sender_median_us": 12.28800043463707,
+        "sender_window_medians_us": [
+          12.28800043463707,
+          12.28800043463707,
+          11.264000087976456
+        ],
+        "sender_min_max_us": [
+          11.264000087976456,
+          12.28800043463707
+        ],
+        "receiver_occupancy_median_us": 3748.3519315719604,
+        "host_api_median_us": 26.5255
+      },
+      {
+        "sender": 1,
+        "mode": "ready",
+        "bytes": 65536,
+        "delay_ms": 0,
+        "gate_cycles": 5000000,
+        "sender_median_us": 13.311999849975109,
+        "sender_window_medians_us": [
+          13.311999849975109,
+          13.311999849975109,
+          13.311999849975109
+        ],
+        "sender_min_max_us": [
+          12.28800043463707,
+          18.432000651955605
+        ],
+        "receiver_occupancy_median_us": 3767.296075820923,
+        "host_api_median_us": 27.2815
+      },
+      {
+        "sender": 1,
+        "mode": "ready",
+        "bytes": 1048576,
+        "delay_ms": 0,
+        "gate_cycles": 5000000,
+        "sender_median_us": 19.45599913597107,
+        "sender_window_medians_us": [
+          19.45599913597107,
+          19.967999309301376,
+          19.45599913597107
+        ],
+        "sender_min_max_us": [
+          19.45599913597107,
+          21.503999829292297
+        ],
+        "receiver_occupancy_median_us": 3792.896032333374,
+        "host_api_median_us": 25.025
+      },
+      {
+        "sender": 1,
+        "mode": "ready",
+        "bytes": 16777216,
+        "delay_ms": 0,
+        "gate_cycles": 5000000,
+        "sender_median_us": 57.34400078654289,
+        "sender_window_medians_us": [
+          57.34400078654289,
+          57.34400078654289,
+          57.34400078654289
+        ],
+        "sender_min_max_us": [
+          55.296000093221664,
+          59.39200147986412
+        ],
+        "receiver_occupancy_median_us": 3913.7279987335205,
+        "host_api_median_us": 27.3135
+      }
+    ],
+    "caveat": "Only ready sender device interval is service candidate; delay/receiver intervals contain wait. No fitted profile."
+  },
+  "acknowledgement": {
+    "manifest": {
+      "uuids": [
+        "GPU-8df5e331-8f9a-3cdc-af30-42b94f908018",
+        "GPU-76ca30e6-17c9-9a38-cb06-57aebeaa6973"
+      ],
+      "torch": "2.11.0+cu130",
+      "scope": "PyNccl BF16 P2P; no plugin metadata protocol",
+      "ack_bytes": 32,
+      "script_sha256": "2dd7ac3ecbc60a8216e977610bc851ed3397e4e7b880c4d4db43da0b0000cd37",
+      "topology": "\t\u001b[4mGPU0\tGPU1\tGPU2\tGPU3\tCPU Affinity\tNUMA Affinity\tGPU NUMA ID\u001b[0m\nGPU0\t X \tSYS\tSYS\tSYS\t0-27,56-83\t0\t\tN/A\nGPU1\tSYS\t X \tPXB\tPXB\t28-55,84-111\t1\t\tN/A\nGPU2\tSYS\tPXB\t X \tNV12\t28-55,84-111\t1\t\tN/A\nGPU3\tSYS\tPXB\tNV12\t X \t28-55,84-111\t1\t\tN/A\n\nLegend:\n\n  X    = Self\n  SYS  = Connection traversing PCIe as well as the SMP interconnect between NUMA nodes (e.g., QPI/UPI)\n  NODE = Connection traversing PCIe as well as the interconnect between PCIe Host Bridges within a NUMA node\n  PHB  = Connection traversing PCIe as well as a PCIe Host Bridge (typically the CPU)\n  PXB  = Connection traversing multiple PCIe bridges (without traversing the PCIe Host Bridge)\n  PIX  = Connection traversing at most a single PCIe bridge\n  NV#  = Connection traversing a bonded set of # NVLinks\n",
+      "gate": "sender CUDA sleep before timing events; check gate duration sensitivity",
+      "ready_scope": "sender device event interval after recv prepost; receiver includes wait",
+      "delayed_scope": "sender includes CPU handshake and receiver delay; never fit as service"
+    },
+    "complete": true,
+    "rows": [
+      {
+        "sender": 0,
+        "mode": "delayed",
+        "bytes": 4096,
+        "delay_ms": 0,
+        "gate_cycles": 0,
+        "sender_median_us": 272.38398790359497,
+        "sender_window_medians_us": [
+          249.85599517822266,
+          272.38398790359497,
+          286.72000765800476
+        ],
+        "sender_min_max_us": [
+          207.87200331687927,
+          394.23999190330505
+        ],
+        "receiver_occupancy_median_us": 50.175998359918594,
+        "host_api_median_us": 41.7755
+      },
+      {
+        "sender": 0,
+        "mode": "delayed",
+        "bytes": 4096,
+        "delay_ms": 5.0,
+        "gate_cycles": 0,
+        "sender_median_us": 5385.728120803833,
+        "sender_window_medians_us": [
+          5385.728120803833,
+          5336.063861846924,
+          5512.192010879517
+        ],
+        "sender_min_max_us": [
+          5270.5278396606445,
+          5864.448070526123
+        ],
+        "receiver_occupancy_median_us": 94.72000226378441,
+        "host_api_median_us": 51.805
+      },
+      {
+        "sender": 0,
+        "mode": "delayed",
+        "bytes": 4096,
+        "delay_ms": 20.0,
+        "gate_cycles": 0,
+        "sender_median_us": 20670.976638793945,
+        "sender_window_medians_us": [
+          20650.49648284912,
+          20706.815719604492,
+          20670.976638793945
+        ],
+        "sender_min_max_us": [
+          20413.440704345703,
+          20938.751220703125
+        ],
+        "receiver_occupancy_median_us": 208.8960036635399,
+        "host_api_median_us": 70.628
+      },
+      {
+        "sender": 0,
+        "mode": "gate_check",
+        "bytes": 4096,
+        "delay_ms": 0,
+        "gate_cycles": 20000000,
+        "sender_median_us": 22.52800017595291,
+        "sender_window_medians_us": [
+          22.52800017595291,
+          22.52800017595291,
+          22.52800017595291
+        ],
+        "sender_min_max_us": [
+          21.503999829292297,
+          22.52800017595291
+        ],
+        "receiver_occupancy_median_us": 14533.120155334473,
+        "host_api_median_us": 59.7535
+      },
+      {
+        "sender": 0,
+        "mode": "ready",
+        "bytes": 32,
+        "delay_ms": 0,
+        "gate_cycles": 5000000,
+        "sender_median_us": 21.503999829292297,
+        "sender_window_medians_us": [
+          21.503999829292297,
+          21.503999829292297,
+          21.503999829292297
+        ],
+        "sender_min_max_us": [
+          20.479999482631683,
+          22.52800017595291
+        ],
+        "receiver_occupancy_median_us": 3761.664032936096,
+        "host_api_median_us": 38.5235
+      },
+      {
+        "sender": 0,
+        "mode": "ready",
+        "bytes": 256,
+        "delay_ms": 0,
+        "gate_cycles": 5000000,
+        "sender_median_us": 21.503999829292297,
+        "sender_window_medians_us": [
+          21.503999829292297,
+          21.503999829292297,
+          21.503999829292297
+        ],
+        "sender_min_max_us": [
+          20.479999482631683,
+          22.52800017595291
+        ],
+        "receiver_occupancy_median_us": 3750.399947166443,
+        "host_api_median_us": 38.4585
+      },
+      {
+        "sender": 0,
+        "mode": "ready",
+        "bytes": 512,
+        "delay_ms": 0,
+        "gate_cycles": 5000000,
+        "sender_median_us": 21.503999829292297,
+        "sender_window_medians_us": [
+          21.503999829292297,
+          21.503999829292297,
+          21.503999829292297
+        ],
+        "sender_min_max_us": [
+          20.479999482631683,
+          22.52800017595291
+        ],
+        "receiver_occupancy_median_us": 3750.9119510650635,
+        "host_api_median_us": 41.306
+      },
+      {
+        "sender": 0,
+        "mode": "ready",
+        "bytes": 2048,
+        "delay_ms": 0,
+        "gate_cycles": 5000000,
+        "sender_median_us": 21.503999829292297,
+        "sender_window_medians_us": [
+          21.503999829292297,
+          21.503999829292297,
+          21.503999829292297
+        ],
+        "sender_min_max_us": [
+          21.503999829292297,
+          22.52800017595291
+        ],
+        "receiver_occupancy_median_us": 3757.0559978485107,
+        "host_api_median_us": 36.4845
+      },
+      {
+        "sender": 0,
+        "mode": "ready",
+        "bytes": 4096,
+        "delay_ms": 0,
+        "gate_cycles": 5000000,
+        "sender_median_us": 22.52800017595291,
+        "sender_window_medians_us": [
+          22.52800017595291,
+          22.52800017595291,
+          22.52800017595291
+        ],
+        "sender_min_max_us": [
+          21.503999829292297,
+          22.52800017595291
+        ],
+        "receiver_occupancy_median_us": 3759.104013442993,
+        "host_api_median_us": 38.727000000000004
+      },
+      {
+        "sender": 0,
+        "mode": "ready",
+        "bytes": 8192,
+        "delay_ms": 0,
+        "gate_cycles": 5000000,
+        "sender_median_us": 22.52800017595291,
+        "sender_window_medians_us": [
+          23.552000522613525,
+          22.52800017595291,
+          22.52800017595291
+        ],
+        "sender_min_max_us": [
+          21.503999829292297,
+          23.552000522613525
+        ],
+        "receiver_occupancy_median_us": 3764.224052429199,
+        "host_api_median_us": 40.4955
+      },
+      {
+        "sender": 0,
+        "mode": "ready",
+        "bytes": 65536,
+        "delay_ms": 0,
+        "gate_cycles": 5000000,
+        "sender_median_us": 24.57600086927414,
+        "sender_window_medians_us": [
+          24.57600086927414,
+          24.57600086927414,
+          25.088000111281872
+        ],
+        "sender_min_max_us": [
+          23.552000522613525,
+          30.719999223947525
+        ],
+        "receiver_occupancy_median_us": 3754.4959783554077,
+        "host_api_median_us": 41.132999999999996
+      },
+      {
+        "sender": 0,
+        "mode": "ready",
+        "bytes": 1048576,
+        "delay_ms": 0,
+        "gate_cycles": 5000000,
+        "sender_median_us": 52.22399905323982,
+        "sender_window_medians_us": [
+          51.19999870657921,
+          52.22399905323982,
+          52.22399905323982
+        ],
+        "sender_min_max_us": [
+          36.86400130391121,
+          54.27199974656105
+        ],
+        "receiver_occupancy_median_us": 3769.856095314026,
+        "host_api_median_us": 45.0895
+      },
+      {
+        "sender": 0,
+        "mode": "ready",
+        "bytes": 16777216,
+        "delay_ms": 0,
+        "gate_cycles": 5000000,
+        "sender_median_us": 139.26400244235992,
+        "sender_window_medians_us": [
+          147.45600521564484,
+          139.26400244235992,
+          138.2399946451187
+        ],
+        "sender_min_max_us": [
+          112.64000087976456,
+          150.52799880504608
+        ],
+        "receiver_occupancy_median_us": 3872.2559213638306,
+        "host_api_median_us": 39.353
+      },
+      {
+        "sender": 1,
+        "mode": "delayed",
+        "bytes": 4096,
+        "delay_ms": 0,
+        "gate_cycles": 0,
+        "sender_median_us": 293.88800263404846,
+        "sender_window_medians_us": [
+          293.37599873542786,
+          293.88800263404846,
+          307.71200358867645
+        ],
+        "sender_min_max_us": [
+          285.69599986076355,
+          359.42399501800537
+        ],
+        "receiver_occupancy_median_us": 43.007999658584595,
+        "host_api_median_us": 56.3845
+      },
+      {
+        "sender": 1,
+        "mode": "delayed",
+        "bytes": 4096,
+        "delay_ms": 5.0,
+        "gate_cycles": 0,
+        "sender_median_us": 5396.991968154907,
+        "sender_window_medians_us": [
+          5427.711963653564,
+          5396.991968154907,
+          5340.672016143799
+        ],
+        "sender_min_max_us": [
+          5278.719902038574,
+          5744.639873504639
+        ],
+        "receiver_occupancy_median_us": 87.0399996638298,
+        "host_api_median_us": 61.019999999999996
+      },
+      {
+        "sender": 1,
+        "mode": "delayed",
+        "bytes": 4096,
+        "delay_ms": 20.0,
+        "gate_cycles": 0,
+        "sender_median_us": 20637.184143066406,
+        "sender_window_medians_us": [
+          20710.399627685547,
+          20597.248077392578,
+          20637.184143066406
+        ],
+        "sender_min_max_us": [
+          20361.215591430664,
+          20884.479522705078
+        ],
+        "receiver_occupancy_median_us": 179.20000106096268,
+        "host_api_median_us": 76.226
+      },
+      {
+        "sender": 1,
+        "mode": "gate_check",
+        "bytes": 4096,
+        "delay_ms": 0,
+        "gate_cycles": 20000000,
+        "sender_median_us": 22.52800017595291,
+        "sender_window_medians_us": [
+          22.52800017595291,
+          22.52800017595291,
+          22.52800017595291
+        ],
+        "sender_min_max_us": [
+          21.503999829292297,
+          23.552000522613525
+        ],
+        "receiver_occupancy_median_us": 14546.43201828003,
+        "host_api_median_us": 59.9755
+      },
+      {
+        "sender": 1,
+        "mode": "ready",
+        "bytes": 32,
+        "delay_ms": 0,
+        "gate_cycles": 5000000,
+        "sender_median_us": 21.503999829292297,
+        "sender_window_medians_us": [
+          21.503999829292297,
+          21.503999829292297,
+          21.503999829292297
+        ],
+        "sender_min_max_us": [
+          20.479999482631683,
+          22.52800017595291
+        ],
+        "receiver_occupancy_median_us": 3786.7519855499268,
+        "host_api_median_us": 41.0355
+      },
+      {
+        "sender": 1,
+        "mode": "ready",
+        "bytes": 256,
+        "delay_ms": 0,
+        "gate_cycles": 5000000,
+        "sender_median_us": 21.503999829292297,
+        "sender_window_medians_us": [
+          21.503999829292297,
+          21.503999829292297,
+          21.503999829292297
+        ],
+        "sender_min_max_us": [
+          20.479999482631683,
+          22.52800017595291
+        ],
+        "receiver_occupancy_median_us": 3775.999903678894,
+        "host_api_median_us": 32.183
+      },
+      {
+        "sender": 1,
+        "mode": "ready",
+        "bytes": 512,
+        "delay_ms": 0,
+        "gate_cycles": 5000000,
+        "sender_median_us": 21.503999829292297,
+        "sender_window_medians_us": [
+          21.503999829292297,
+          21.503999829292297,
+          21.503999829292297
+        ],
+        "sender_min_max_us": [
+          20.479999482631683,
+          22.52800017595291
+        ],
+        "receiver_occupancy_median_us": 3755.519986152649,
+        "host_api_median_us": 36.9555
+      },
+      {
+        "sender": 1,
+        "mode": "ready",
+        "bytes": 2048,
+        "delay_ms": 0,
+        "gate_cycles": 5000000,
+        "sender_median_us": 21.503999829292297,
+        "sender_window_medians_us": [
+          21.503999829292297,
+          21.503999829292297,
+          21.503999829292297
+        ],
+        "sender_min_max_us": [
+          20.479999482631683,
+          28.672000393271446
+        ],
+        "receiver_occupancy_median_us": 3781.6319465637207,
+        "host_api_median_us": 35.195
+      },
+      {
+        "sender": 1,
+        "mode": "ready",
+        "bytes": 4096,
+        "delay_ms": 0,
+        "gate_cycles": 5000000,
+        "sender_median_us": 21.503999829292297,
+        "sender_window_medians_us": [
+          21.503999829292297,
+          22.52800017595291,
+          21.503999829292297
+        ],
+        "sender_min_max_us": [
+          21.503999829292297,
+          22.52800017595291
+        ],
+        "receiver_occupancy_median_us": 3816.447973251343,
+        "host_api_median_us": 59.174
+      },
+      {
+        "sender": 1,
+        "mode": "ready",
+        "bytes": 8192,
+        "delay_ms": 0,
+        "gate_cycles": 5000000,
+        "sender_median_us": 22.52800017595291,
+        "sender_window_medians_us": [
+          22.52800017595291,
+          22.52800017595291,
+          22.52800017595291
+        ],
+        "sender_min_max_us": [
+          22.52800017595291,
+          27.648000046610832
+        ],
+        "receiver_occupancy_median_us": 3798.01607131958,
+        "host_api_median_us": 40.765
+      },
+      {
+        "sender": 1,
+        "mode": "ready",
+        "bytes": 65536,
+        "delay_ms": 0,
+        "gate_cycles": 5000000,
+        "sender_median_us": 25.088000111281872,
+        "sender_window_medians_us": [
+          25.599999353289604,
+          24.57600086927414,
+          25.088000111281872
+        ],
+        "sender_min_max_us": [
+          23.552000522613525,
+          30.719999223947525
+        ],
+        "receiver_occupancy_median_us": 3810.3039264678955,
+        "host_api_median_us": 41.019000000000005
+      },
+      {
+        "sender": 1,
+        "mode": "ready",
+        "bytes": 1048576,
+        "delay_ms": 0,
+        "gate_cycles": 5000000,
+        "sender_median_us": 51.19999870657921,
+        "sender_window_medians_us": [
+          51.19999870657921,
+          51.19999870657921,
+          51.19999870657921
+        ],
+        "sender_min_max_us": [
+          36.86400130391121,
+          58.36800113320351
+        ],
+        "receiver_occupancy_median_us": 3793.9200401306152,
+        "host_api_median_us": 44.682
+      },
+      {
+        "sender": 1,
+        "mode": "ready",
+        "bytes": 16777216,
+        "delay_ms": 0,
+        "gate_cycles": 5000000,
+        "sender_median_us": 138.2399946451187,
+        "sender_window_medians_us": [
+          138.2399946451187,
+          138.75199854373932,
+          138.2399946451187
+        ],
+        "sender_min_max_us": [
+          113.66400122642517,
+          149.50400590896606
+        ],
+        "receiver_occupancy_median_us": 3917.8240299224854,
+        "host_api_median_us": 40.407
+      }
+    ],
+    "caveat": "Only ready sender device interval is service candidate; delay/receiver intervals contain wait. No fitted profile."
+  },
+  "engine_rerun": "not launched; automatic approval review rejected the additional full-engine run"
+}

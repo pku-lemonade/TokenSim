@@ -10,6 +10,8 @@ from TokenSim.errors import ConfigurationError
 
 
 class ModelAFExecutor(AFExecutor):
+    supports_sampled_token_readback = True
+
     def __init__(self, *args, model=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.model = model = model or getattr(self.compute_provider, "model", None)
@@ -17,6 +19,10 @@ class ModelAFExecutor(AFExecutor):
             raise ConfigurationError("whole-model AF execution requires a ModelSpec")
         if self.runtime_plan is None:
             raise ConfigurationError("whole-model AF execution requires a runtime plan")
+        if (self.overhead_profile is not None and any(name in self.overhead_profile.document['costs']
+                for name in ('engine_output_process_us','engine_runner_bookkeeping_us'))
+                and (self.operation_profile is None or 'sampled_token_readback' not in self.operation_profile.document['operations'])):
+            raise ConfigurationError('engine output processing requires sampled_token_readback completion')
         for domain in self.runtime_plan.domains:
             if (
                 domain.capability == "af_attention"
@@ -152,9 +158,16 @@ class ModelAFExecutor(AFExecutor):
                 if (
                     event.iteration_id == block.iteration_id
                     and event.block_id == block.block_id
-                    and not event.predecessor_ids
+                    and event.event_type != "host_prepare"
+                    and (not event.predecessor_ids or all(
+                        p.startswith(f"i{block.iteration_id}:prepare:")
+                        or p == f"i{block.iteration_id}:control:payload:transport"
+                        or p == f"i{block.iteration_id}:control:payload:host_submit"
+                        for p in event.predecessor_ids
+                    ))
                 ):
-                    self.trace.events[index] = replace(event, predecessor_ids=previous)
+                    self.trace.events[index] = replace(event, predecessor_ids=tuple(
+                        dict.fromkeys((*previous, *event.predecessor_ids))))
         return dag.terminal_node_ids
 
     def _run_block(self, block):
@@ -201,13 +214,37 @@ class ModelAFExecutor(AFExecutor):
         )
         if dag is not None:
             previous = yield from self._run_model_dag(block, -1, link, dag, previous)
-        yield from self._run_model_dag(
+        previous = yield from self._run_model_dag(
             block,
             -1,
             link,
             AFExecutionDAG(self._boundary_nodes(block, "token_selection")),
             previous,
         )
+        if self.operation_profile is not None and 'sampled_token_readback' in self.operation_profile.document['operations']:
+            # The native supported path is 1A1F, single in-flight decode.
+            # Sampling's device completion is a predecessor, never fitted into
+            # the ready-input readback constant. Iteration completion follows it.
+            identity = bindings[0].physical_identity
+            output = yield from self._control_stage(
+                block, self._boundary_nodes(block, 'token_selection')[0],
+                'sampled_token_readback', previous, identity, 0, device=True,
+                node_id=f'i{block.iteration_id}:output:sampled_token_readback')
+            previous = (output,)
+        bookkeeping_cost = self._host_cost_us('engine_runner_bookkeeping_us', block)
+        if bookkeeping_cost:
+            node_id=f'i{block.iteration_id}:output:bookkeeping'
+            yield from self._run_communication_host_stage(
+                block,-1,self._boundary_nodes(block,'token_selection')[0],node_id,
+                previous,(bindings[0].physical_identity,),bookkeeping_cost/1e6,'host_prepare',
+                details={'cost_field':'engine_runner_bookkeeping_us','cost_scope':'per_step_per_worker'})
+            previous=(node_id,)
+        output_cost = self._host_cost_us('engine_output_process_us', block)
+        if output_cost:
+            yield from self._run_communication_host_stage(
+                block,-1,self._boundary_nodes(block,'token_selection')[0],
+                f'i{block.iteration_id}:output:process',previous,(bindings[0].physical_identity,),
+                output_cost/1e6,'host_prepare',details={'cost_field':'engine_output_process_us','cost_scope':'per_step_per_worker'})
         self.active_iterations[block.iteration_id].block_completed_at[
             block.block_id
         ] = self.env.now

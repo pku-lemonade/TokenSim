@@ -974,7 +974,7 @@ class AFRuntimePlan:
                     "total does not match its components"
                 )
             if any(type(size) is not int or size < 0 for _, size in state.protocol_buffers):
-                raise ConfigurationError('invalid communication buffer reservation')
+                raise ConfigurationError('invalid native protocol buffer reservation')
             if state.model_bytes + state.protocol_buffer_bytes >= state.capacity_bytes:
                 raise ConfigurationError(
                     f"AF runtime physical state {state.physical_identity!r} exceeds "
@@ -1535,6 +1535,20 @@ def compile_af_runtime_plan(
         raise ConfigurationError(f"AF runtime plan requires a ModelSpec, got {type(model).__name__}")
     model_id = model.model_id
     moe_config = model.moe
+    if cluster_config.af.execution_protocol == "vllm_afd":
+        if ("qwen3" not in model_id.lower() or not moe_config.enabled
+                or moe_config.num_shared_experts
+                or moe_config.num_moe_layers != model.num_layers):
+            raise ConfigurationError("vllm_afd supports all-MoE Qwen3 without shared experts")
+        domains = tuple(cluster_config.execution_domains.values())
+        if len(domains) != 2 or any(
+            domain.parallel.tensor_parallel_size != 1
+            or domain.parallel.data_parallel_size != 1
+            or domain.parallel.pipeline_parallel_size != 1
+            or domain.parallel.expert_parallel_size != 1
+            for domain in domains
+        ):
+            raise ConfigurationError("vllm_afd supports 1A1F with TP=DP=PP=EP=1")
     try:
         model_dtype = canonicalize_dtype(dtype, role="activation_dtype")
     except ValueError as exc:
@@ -1556,6 +1570,12 @@ def compile_af_runtime_plan(
     effective_dtypes = next(
         effective for name, effective in link_dtypes if name == primary_link_name
     )
+    if cluster_config.af.execution_protocol == "vllm_afd" and any(
+        getattr(effective, role) != "bf16"
+        for _, effective in link_dtypes
+        for role in ("weight_dtype", "activation_dtype", "kv_cache_dtype", "a_to_f_dtype", "f_to_a_dtype")
+    ):
+        raise ConfigurationError("vllm_afd requires BF16 weights, activations, KV and transfers")
     weight_bytes = dtype_size_bytes(
         effective_dtypes.weight_dtype, role="weight_dtype"
     )
@@ -1798,6 +1818,22 @@ def compile_af_runtime_plan(
             workspace = (2 * cluster_config.af.af_block_size * max(hidden * routing_expansion, model.vocab_size)
                          * dtype_size_bytes(effective_dtypes.activation_dtype, role='activation_dtype'))
             buffers += (('communication_workspace', workspace),)
+        if (cluster_config.af.execution_protocol == 'vllm_afd'
+                and cluster_config.af.communication_timing.native_control_enabled):
+            from TokenSim.af.control import encode_eager_control
+            tokens = cluster_config.af.af_block_size
+            hidden_bytes = tokens * hidden * dtype_size_bytes(effective_dtypes.activation_dtype, role='activation_dtype')
+            roles = {item['domain'].capability for item in preliminary
+                     if item['mapping'].physical_worker.identity == physical}
+            # Dedicated logical protocol buffers for one eager iteration, reused
+            # across layers. Kernel workspaces/allocator fragmentation are separate.
+            if 'af_attention' in roles:
+                buffers += (('a_residual', hidden_bytes), ('a_send_hidden', hidden_bytes), ('a_return_hidden', hidden_bytes))
+            if 'af_ffn' in roles:
+                buffers += (('f_input_hidden', hidden_bytes), ('f_output_hidden', hidden_bytes),
+                            ('f_router_logits', tokens * moe_config.num_experts * 2),
+                            ('f_topk_ids_weights', tokens * moe_config.num_experts_per_tok * 8))
+            buffers += (('control_staging', 8 + len(encode_eager_control(tokens))),)
         required_bytes = model_bytes + sum(size for _, size in buffers)
         if required_bytes >= capacity_bytes:
             domains_and_ranks = ",".join(

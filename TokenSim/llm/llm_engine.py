@@ -685,7 +685,8 @@ class LLMEngine(Worker):
             )
             self.af_compute_provider = af_compute_provider
             self.af_transfer_provider = af_transfer_provider
-            executor_type = ModelAFExecutor if self.model_spec.attention_type == "mla" else AFExecutor
+            executor_type = (ModelAFExecutor if self.model_spec.attention_type == "mla"
+                             or cluster_config.af.execution_protocol == "vllm_afd" else AFExecutor)
             self.af_executor = executor_type(
                 env=env,
                 cluster_config=cluster_config,

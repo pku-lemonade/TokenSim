@@ -1,0 +1,363 @@
+{
+  "scope": "frozen_candidate_partial_calibration_decode_step_only",
+  "frozen_bundle_sha256": "7f2a460d7e299c2d9a702a707fecad48f01daa27edad4cca8b63ba60519b3126",
+  "implementation_hashes_verified": true,
+  "all_step_points_pass": true,
+  "full_alignment_passed": false,
+  "unmeasured": [
+    "exact native preposted receiver and stream ordering",
+    "CUDA API/launch costs after API exclusion",
+    "probe perturbation and same-window CPU/GPU association",
+    "native completion/buffer-allocation gaps"
+  ],
+  "results": [
+    {
+      "batch": 1,
+      "heldout": false,
+      "regression": false,
+      "native_mean_us": 2633.0237659712943,
+      "simulated_mean_us": 4259.360112595035,
+      "simulated_over_native": 1.6176686924144807,
+      "window_ratios": [
+        1.5959120286154362,
+        1.6436992080525188,
+        1.6141115163705
+      ],
+      "step_order_of_magnitude_pass": true,
+      "windows": [
+        {
+          "batch": 1,
+          "window": 0,
+          "samples": 5425,
+          "mean_us": 2668.9191109677417,
+          "p50_us": 2638.2659999999996,
+          "p95_us": 2781.39,
+          "output_sha256": "541c3915ee718cc2e049ec72dbc1ba2c43f6657d0cc0f30a786dfbb84e5fd6b1",
+          "profiler_enabled": false,
+          "hooks_enabled": false
+        },
+        {
+          "batch": 1,
+          "window": 1,
+          "samples": 5611,
+          "mean_us": 2591.325767955801,
+          "p50_us": 2576.7929999999997,
+          "p95_us": 2645.288,
+          "output_sha256": "541c3915ee718cc2e049ec72dbc1ba2c43f6657d0cc0f30a786dfbb84e5fd6b1",
+          "profiler_enabled": false,
+          "hooks_enabled": false
+        },
+        {
+          "batch": 1,
+          "window": 2,
+          "samples": 5487,
+          "mean_us": 2638.8264189903407,
+          "p50_us": 2610.214,
+          "p95_us": 2743.71,
+          "output_sha256": "541c3915ee718cc2e049ec72dbc1ba2c43f6657d0cc0f30a786dfbb84e5fd6b1",
+          "profiler_enabled": false,
+          "hooks_enabled": false
+        }
+      ],
+      "simulation_audit": {
+        "batch": 1,
+        "steps": 31,
+        "mean_step_us": 4259.360112595035,
+        "expected_calls_per_step": {
+          "control_encode_us": 1,
+          "control_decode_us": 1,
+          "engine_step_schedule_us": 1,
+          "engine_output_process_us": 1,
+          "send_torch_distributed_nccl_a_to_f_us": 2,
+          "receive_torch_distributed_nccl_a_to_f_us": 2,
+          "send_pynccl_a_to_f_us": 2,
+          "receive_pynccl_a_to_f_us": 2,
+          "send_pynccl_f_to_a_us": 2,
+          "receive_pynccl_f_to_a_us": 2,
+          "engine_runner_bookkeeping_us": 1,
+          "compute_a_embedding_us": 1,
+          "compute_a_final_norm_us": 1,
+          "compute_a_lm_head_us": 1,
+          "compute_a_token_selection_us": 1,
+          "compute_a_attention_us": 2,
+          "compute_a_post_norm_us": 2,
+          "compute_f_moe_block_us": 2
+        },
+        "all_profile_costs_materialized": true,
+        "critical_chain_us": {
+          "host_service": 3337.6959999999813,
+          "operation_service": 722.0685833333301,
+          "control_transport": 29.962650000002817,
+          "compute": 109.70199926171635,
+          "data_transport": 59.9308800000029
+        },
+        "remaining": [
+          "exact native preposted readiness",
+          "CUDA API/device launch calibration",
+          "same-window CPU/GPU correlation and probe perturbation"
+        ]
+      }
+    },
+    {
+      "batch": 8,
+      "heldout": false,
+      "regression": false,
+      "native_mean_us": 2768.3327764276255,
+      "simulated_mean_us": 4261.027181748979,
+      "simulated_over_native": 1.5392033855292464,
+      "window_ratios": [
+        1.5661036799009724,
+        1.5519194670617003,
+        1.5011194597492303
+      ],
+      "step_order_of_magnitude_pass": true,
+      "windows": [
+        {
+          "batch": 8,
+          "window": 0,
+          "samples": 5270,
+          "mean_us": 2720.782306072106,
+          "p50_us": 2689.9105,
+          "p95_us": 2814.441,
+          "output_sha256": "8d5616066cfa93e503c1788b6147c21b6a4f0f8e65ff4bc816b2756f45b4142c",
+          "profiler_enabled": false,
+          "hooks_enabled": false
+        },
+        {
+          "batch": 8,
+          "window": 1,
+          "samples": 5239,
+          "mean_us": 2745.649675892346,
+          "p50_us": 2720.161,
+          "p95_us": 2840.236,
+          "output_sha256": "8d5616066cfa93e503c1788b6147c21b6a4f0f8e65ff4bc816b2756f45b4142c",
+          "profiler_enabled": false,
+          "hooks_enabled": false
+        },
+        {
+          "batch": 8,
+          "window": 2,
+          "samples": 5053,
+          "mean_us": 2838.5663473184245,
+          "p50_us": 2765.895,
+          "p95_us": 3210.869,
+          "output_sha256": "8d5616066cfa93e503c1788b6147c21b6a4f0f8e65ff4bc816b2756f45b4142c",
+          "profiler_enabled": false,
+          "hooks_enabled": false
+        }
+      ],
+      "simulation_audit": {
+        "batch": 8,
+        "steps": 31,
+        "mean_step_us": 4261.027181748979,
+        "expected_calls_per_step": {
+          "control_encode_us": 1,
+          "control_decode_us": 1,
+          "engine_step_schedule_us": 1,
+          "engine_output_process_us": 1,
+          "send_torch_distributed_nccl_a_to_f_us": 2,
+          "receive_torch_distributed_nccl_a_to_f_us": 2,
+          "send_pynccl_a_to_f_us": 2,
+          "receive_pynccl_a_to_f_us": 2,
+          "send_pynccl_f_to_a_us": 2,
+          "receive_pynccl_f_to_a_us": 2,
+          "engine_runner_bookkeeping_us": 1,
+          "compute_a_embedding_us": 1,
+          "compute_a_final_norm_us": 1,
+          "compute_a_lm_head_us": 1,
+          "compute_a_token_selection_us": 1,
+          "compute_a_attention_us": 2,
+          "compute_a_post_norm_us": 2,
+          "compute_f_moe_block_us": 2
+        },
+        "all_profile_costs_materialized": true,
+        "critical_chain_us": {
+          "host_service": 3337.6959999999813,
+          "operation_service": 722.0685833333301,
+          "control_transport": 29.962650000002817,
+          "compute": 111.32128174899367,
+          "data_transport": 59.978666666668765
+        },
+        "remaining": [
+          "exact native preposted readiness",
+          "CUDA API/device launch calibration",
+          "same-window CPU/GPU correlation and probe perturbation"
+        ]
+      }
+    },
+    {
+      "batch": 4,
+      "heldout": false,
+      "regression": true,
+      "native_mean_us": 2728.264685703623,
+      "simulated_mean_us": 4260.313368789078,
+      "simulated_over_native": 1.5615469390171495,
+      "window_ratios": [
+        1.5422751002674049,
+        1.5580081114031024,
+        1.5849520850471894
+      ],
+      "step_order_of_magnitude_pass": true,
+      "windows": [
+        {
+          "batch": 4,
+          "window": 0,
+          "samples": 5239,
+          "mean_us": 2762.3563189539987,
+          "p50_us": 2710.331,
+          "p95_us": 3117.998,
+          "output_sha256": "fd25a3a8ac5936bf9a57dcb5f5f902468ba12f2ac46282e749638feb1a6ac16e",
+          "profiler_enabled": false,
+          "hooks_enabled": false
+        },
+        {
+          "batch": 4,
+          "window": 1,
+          "samples": 5270,
+          "mean_us": 2734.461610056926,
+          "p50_us": 2716.817,
+          "p95_us": 2796.112,
+          "output_sha256": "fd25a3a8ac5936bf9a57dcb5f5f902468ba12f2ac46282e749638feb1a6ac16e",
+          "profiler_enabled": false,
+          "hooks_enabled": false
+        },
+        {
+          "batch": 4,
+          "window": 2,
+          "samples": 5363,
+          "mean_us": 2687.976128099944,
+          "p50_us": 2665.3920000000003,
+          "p95_us": 2757.0389999999998,
+          "output_sha256": "fd25a3a8ac5936bf9a57dcb5f5f902468ba12f2ac46282e749638feb1a6ac16e",
+          "profiler_enabled": false,
+          "hooks_enabled": false
+        }
+      ],
+      "simulation_audit": {
+        "batch": 4,
+        "steps": 31,
+        "mean_step_us": 4260.313368789078,
+        "expected_calls_per_step": {
+          "control_encode_us": 1,
+          "control_decode_us": 1,
+          "engine_step_schedule_us": 1,
+          "engine_output_process_us": 1,
+          "send_torch_distributed_nccl_a_to_f_us": 2,
+          "receive_torch_distributed_nccl_a_to_f_us": 2,
+          "send_pynccl_a_to_f_us": 2,
+          "receive_pynccl_a_to_f_us": 2,
+          "send_pynccl_f_to_a_us": 2,
+          "receive_pynccl_f_to_a_us": 2,
+          "engine_runner_bookkeeping_us": 1,
+          "compute_a_embedding_us": 1,
+          "compute_a_final_norm_us": 1,
+          "compute_a_lm_head_us": 1,
+          "compute_a_token_selection_us": 1,
+          "compute_a_attention_us": 2,
+          "compute_a_post_norm_us": 2,
+          "compute_f_moe_block_us": 2
+        },
+        "all_profile_costs_materialized": true,
+        "critical_chain_us": {
+          "host_service": 3337.6959999999817,
+          "operation_service": 722.0685833333301,
+          "control_transport": 29.962650000002817,
+          "compute": 110.63477545576755,
+          "data_transport": 59.951359999992754
+        },
+        "remaining": [
+          "exact native preposted readiness",
+          "CUDA API/device launch calibration",
+          "same-window CPU/GPU correlation and probe perturbation"
+        ]
+      }
+    },
+    {
+      "batch": 2,
+      "heldout": true,
+      "regression": false,
+      "native_mean_us": 2737.622149554553,
+      "simulated_mean_us": 4259.8253575329545,
+      "simulated_over_native": 1.5560311558065396,
+      "window_ratios": [
+        1.4957319932337683,
+        1.5956419269916224,
+        1.5805129868931158
+      ],
+      "step_order_of_magnitude_pass": true,
+      "windows": [
+        {
+          "batch": 2,
+          "window": 0,
+          "samples": 5084,
+          "mean_us": 2847.9870570416992,
+          "p50_us": 2736.1345,
+          "p95_us": 3424.095,
+          "output_sha256": "fc5617578e50ca2bea359043bdc00428d98c5a3ff974ab7135ce721fe0f1ad9f",
+          "profiler_enabled": false,
+          "hooks_enabled": false
+        },
+        {
+          "batch": 2,
+          "window": 1,
+          "samples": 5425,
+          "mean_us": 2669.662463410138,
+          "p50_us": 2651.2980000000002,
+          "p95_us": 2727.68,
+          "output_sha256": "fc5617578e50ca2bea359043bdc00428d98c5a3ff974ab7135ce721fe0f1ad9f",
+          "profiler_enabled": false,
+          "hooks_enabled": false
+        },
+        {
+          "batch": 2,
+          "window": 2,
+          "samples": 5363,
+          "mean_us": 2695.2169282118216,
+          "p50_us": 2672.344,
+          "p95_us": 2782.976,
+          "output_sha256": "fc5617578e50ca2bea359043bdc00428d98c5a3ff974ab7135ce721fe0f1ad9f",
+          "profiler_enabled": false,
+          "hooks_enabled": false
+        }
+      ],
+      "simulation_audit": {
+        "batch": 2,
+        "steps": 31,
+        "mean_step_us": 4259.8253575329545,
+        "expected_calls_per_step": {
+          "control_encode_us": 1,
+          "control_decode_us": 1,
+          "engine_step_schedule_us": 1,
+          "engine_output_process_us": 1,
+          "send_torch_distributed_nccl_a_to_f_us": 2,
+          "receive_torch_distributed_nccl_a_to_f_us": 2,
+          "send_pynccl_a_to_f_us": 2,
+          "receive_pynccl_a_to_f_us": 2,
+          "send_pynccl_f_to_a_us": 2,
+          "receive_pynccl_f_to_a_us": 2,
+          "engine_runner_bookkeeping_us": 1,
+          "compute_a_embedding_us": 1,
+          "compute_a_final_norm_us": 1,
+          "compute_a_lm_head_us": 1,
+          "compute_a_token_selection_us": 1,
+          "compute_a_attention_us": 2,
+          "compute_a_post_norm_us": 2,
+          "compute_f_moe_block_us": 2
+        },
+        "all_profile_costs_materialized": true,
+        "critical_chain_us": {
+          "host_service": 3337.6959999999817,
+          "operation_service": 722.0685833333301,
+          "control_transport": 29.962650000002817,
+          "compute": 110.16041753296147,
+          "data_transport": 59.93770666667639
+        },
+        "remaining": [
+          "exact native preposted readiness",
+          "CUDA API/device launch calibration",
+          "same-window CPU/GPU correlation and probe perturbation"
+        ]
+      }
+    }
+  ]
+}
