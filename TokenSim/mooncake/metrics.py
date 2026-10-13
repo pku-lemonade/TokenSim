@@ -19,11 +19,11 @@ class MooncakeStats:
     store_miss_count: int = 0
     memory_tier_hit_count: int = 0
     disk_tier_hit_count: int = 0
-    hbf_tier_hit_count: int = 0
     ssd_read_blocks: int = 0
     ssd_read_bytes: int = 0
     ssd_write_blocks: int = 0
     ssd_write_bytes: int = 0
+    hbf_tier_hit_count: int = 0
     hbf_read_blocks: int = 0
     hbf_read_bytes: int = 0
     hbf_write_blocks: int = 0
@@ -36,6 +36,7 @@ class MooncakeStats:
     admission_rejection_count: int = 0
     eviction_count: int = 0
     pending_async_jobs: int = 0
+    cache_query_tokens: int = 0
     local_gpu_hit_tokens: int = 0
     mooncake_memory_hit_tokens: int = 0
     mooncake_disk_hit_tokens: int = 0
@@ -109,17 +110,17 @@ class MooncakeStats:
             "mooncake_store_miss_count": self.store_miss_count,
             "mooncake_memory_tier_hit_count": self.memory_tier_hit_count,
             "mooncake_disk_tier_hit_count": self.disk_tier_hit_count,
-            "mooncake_hbf_tier_hit_count": self.hbf_tier_hit_count,
             "mooncake_ssd_read_blocks": self.ssd_read_blocks,
             "mooncake_ssd_read_bytes": self.ssd_read_bytes,
             "mooncake_ssd_write_blocks": self.ssd_write_blocks,
             "mooncake_ssd_write_bytes": self.ssd_write_bytes,
+            "mooncake_hbf_tier_hit_count": self.hbf_tier_hit_count,
             "mooncake_hbf_read_blocks": self.hbf_read_blocks,
             "mooncake_hbf_read_bytes": self.hbf_read_bytes,
             "mooncake_hbf_write_blocks": self.hbf_write_blocks,
             "mooncake_hbf_write_bytes": self.hbf_write_bytes,
             "mooncake_transferred_bytes": self.transferred_bytes,
-            "mooncake_effective_transfer_bandwidth_gbps": bandwidth,
+            "mooncake_effective_transfer_bandwidth_gib_per_s": bandwidth,
             "mooncake_transfer_latency": self.transfer_latency,
             "mooncake_p2p_latency": self.p2p_latency,
             "mooncake_store_latency": self.store_latency,
@@ -127,6 +128,7 @@ class MooncakeStats:
             "mooncake_admission_rejection_count": self.admission_rejection_count,
             "mooncake_eviction_count": self.eviction_count,
             "mooncake_pending_async_jobs": self.pending_async_jobs,
+            "mooncake_cache_query_tokens": self.cache_query_tokens,
             "mooncake_local_gpu_hit_tokens": self.local_gpu_hit_tokens,
             "mooncake_memory_hit_tokens": self.mooncake_memory_hit_tokens,
             "mooncake_disk_hit_tokens": self.mooncake_disk_hit_tokens,

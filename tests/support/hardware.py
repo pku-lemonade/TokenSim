@@ -1,0 +1,156 @@
+"""In-memory hardware/model catalogs shared by the test suite.
+
+The catalog uses real dataclasses so cache accounting, operator pricing and
+communication exercise the production interfaces with small inputs.
+"""
+
+from __future__ import annotations
+
+from TokenSim.config.model_config import ModelSpec
+from TokenSim.hardware.context import HardwareContext
+from TokenSim.hardware.device import DeviceSpec
+from TokenSim.hardware.links import LinkClass
+from TokenSim.hardware.topology import TopologyLevel, TopologySpec
+from TokenSim.moe.config import MoEModelConfig
+
+GIB = 1 << 30
+
+
+def make_links() -> list[LinkClass]:
+    return [
+        LinkClass(
+            "nvlink-test",
+            "test NVLink",
+            100.0e9,
+            1.0,
+            source_id="test-fixture",
+            grade="D",
+            half_bandwidth_bytes=1 << 16,
+        ),
+        LinkClass(
+            "ethernet-test",
+            "test Ethernet",
+            10.0e9,
+            20.0,
+            source_id="test-fixture",
+            grade="D",
+            half_bandwidth_bytes=1 << 16,
+        ),
+    ]
+
+
+def make_topology(node_size: int = 8) -> TopologySpec:
+    return TopologySpec(
+        topology_id="test-topology",
+        levels=(
+            TopologyLevel("node", node_size, "nvlink-test", fabric="switched"),
+            TopologyLevel("cluster", None, "ethernet-test", fabric="fat_tree"),
+        ),
+        source_id="test-fixture",
+    )
+
+
+def make_device(
+    device_id: str = "TestGPU",
+    *,
+    memory_gib: float = 80.0,
+    peak_flops: float = 100e12,
+    bandwidth: float = 1.0e12,
+    family: str = "nvidia_gpu",
+    aliases: tuple[str, ...] = (),
+) -> DeviceSpec:
+    return DeviceSpec.simple(
+        device_id,
+        family=family,
+        peak_flops=peak_flops,
+        memory_capacity_bytes=memory_gib * GIB,
+        memory_bandwidth_bytes_per_s=bandwidth,
+        scale_up_link="nvlink-test",
+        host_link="ethernet-test",
+        aliases=aliases,
+    )
+
+
+def make_model(
+    model_id: str = "TestModel",
+    *,
+    hidden_size: int = 128,
+    intermediate_size: int = 256,
+    num_layers: int = 4,
+    num_attention_heads: int = 8,
+    num_key_value_heads: int | None = None,
+    vocab_size: int = 1024,
+    moe: MoEModelConfig | None = None,
+) -> ModelSpec:
+    if num_key_value_heads is None:
+        num_key_value_heads = num_attention_heads
+    return ModelSpec(
+        model_id=model_id,
+        hidden_size=hidden_size,
+        intermediate_size=intermediate_size,
+        num_layers=num_layers,
+        num_attention_heads=num_attention_heads,
+        num_key_value_heads=num_key_value_heads,
+        head_dim=hidden_size // num_attention_heads,
+        vocab_size=vocab_size,
+        activation="swiglu",
+        dtype="fp16",
+        kv_cache_dtype="fp16",
+        moe=moe or MoEModelConfig(),
+    )
+
+
+def moe_test_model() -> ModelSpec:
+    return make_model(
+        "MoEModel",
+        moe=MoEModelConfig(
+            is_moe_model=True,
+            num_experts=4,
+            num_experts_per_tok=2,
+            moe_intermediate_size=64,
+            num_shared_experts=1,
+            num_moe_layers=2,
+            first_k_dense_replace=1,
+            moe_layer_freq=1,
+            hidden_size=128,
+            intermediate_size=256,
+            num_attention_heads=8,
+            num_key_value_heads=8,
+        ),
+    )
+
+
+def make_hardware(
+    *devices: DeviceSpec, models: list[ModelSpec] | None = None
+) -> HardwareContext:
+    devices = devices or (make_device(),)
+    models = models or [make_model(), moe_test_model()]
+    return HardwareContext.in_memory(devices, models, make_links(), [make_topology()])
+
+
+def bundled_tables(device_id: str, backend: str, *tables: str):
+    """Selected tables of a bundled operator package, without loading the rest.
+
+    The full packages hold hundreds of thousands of rows; tests that exercise
+    one module table only need that table and the package's source metadata.
+    """
+    from pathlib import Path
+
+    import pyarrow.parquet as pq
+
+    from TokenSim.hardware._yaml import load_yaml_mapping
+    from TokenSim.operator_data.package import OperatorDataPackage, PackageMeta
+    from TokenSim.operator_data.schema import TABLE_SPECS
+
+    root = (
+        Path(__file__).resolve().parents[2] / "data/operator_data" / device_id / backend
+    )
+    meta_path = root / "generation_meta.yaml"
+    meta = PackageMeta.from_mapping(load_yaml_mapping(meta_path), meta_path)
+    return OperatorDataPackage.from_rows(
+        meta,
+        {
+            name: pq.read_table(root / TABLE_SPECS[name].perf_filename).to_pylist()
+            for name in tables
+        },
+    )

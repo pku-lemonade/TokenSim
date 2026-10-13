@@ -7,11 +7,8 @@ from dataclasses import dataclass, field
 from TokenSim.errors import ConfigurationError
 from TokenSim.mooncake.config import MooncakeConfig
 
-_GB = 1 << 30
-_KIB = 1 << 10
-_MIB = 1 << 20
-_RANDOM_IO_BYTES = 4 * _KIB
-_SEQUENTIAL_IO_BYTES = 10 * _MIB
+_RANDOM_IO_BYTES = 4 * (1 << 10)
+_SEQUENTIAL_IO_BYTES = 10 * (1 << 20)
 
 
 @dataclass
@@ -30,31 +27,24 @@ class OffloadTier:
     """Offload tier simulated at block-count granularity.
 
     Only per-key block counts are tracked; per-block offsets/addressing are
-    intentionally not simulated (no metric consumes them and they dominated
-    memory at HBF-scale capacities).
+    intentionally not simulated because no exported metric consumes them.
     """
 
     def __init__(self, config: MooncakeConfig, block_bytes: int):
         self.config = config
         self.tier = config.offload_tier
         self.block_bytes = max(1, int(block_bytes))
-        if self.tier == "ssd":
-            if config.ssd_capacity_blocks is not None:
-                self.capacity_blocks = int(config.ssd_capacity_blocks)
-            else:
-                self.capacity_blocks = int(config.ssd_capacity_gb * _GB / self.block_bytes)
+        capacity_blocks = getattr(config, f"{self.tier}_capacity_blocks")
+        if capacity_blocks is not None:
+            self.capacity_blocks = int(capacity_blocks)
         else:
-            if config.hbf_capacity_blocks is not None:
-                self.capacity_blocks = int(config.hbf_capacity_blocks)
-            elif config.hbf_capacity_gb > 0:
-                self.capacity_blocks = int(config.hbf_capacity_gb * _GB / self.block_bytes)
-            elif config.ssd_capacity_blocks is not None:
-                self.capacity_blocks = int(config.ssd_capacity_blocks)
-            else:
-                self.capacity_blocks = int(config.ssd_capacity_gb * _GB / self.block_bytes)
+            self.capacity_blocks = (
+                getattr(config, f"{self.tier}_capacity_bytes") // self.block_bytes
+            )
         self._blocks: dict[str, int] = {}
         self._lru: OrderedDict[str, None] = OrderedDict()
         self._used_blocks = 0
+        self._protected_until = {}
 
     def contains(self, key: str) -> bool:
         return key in self._blocks
@@ -71,7 +61,10 @@ class OffloadTier:
             latency=self._read_latency(bytes_),
         )
 
-    def write(self, key: str, blocks: int) -> OffloadOperation:
+    def pin(self, key: str, until: float) -> None:
+        self._protected_until[key] = max(self._protected_until.get(key, 0), until)
+
+    def write(self, key: str, blocks: int, *, now: float = 0) -> OffloadOperation:
         if self.capacity_blocks <= 0:
             raise ConfigurationError(
                 f"{self.tier.upper()} tier is not enabled or has zero capacity"
@@ -86,9 +79,16 @@ class OffloadTier:
                 evicted_keys=[key],
             )
         evicted: list[str] = []
-        while self.used_blocks + blocks > self.capacity_blocks and self._lru:
-            evicted.append(self._evict_lru())
-        if self.used_blocks + blocks > self.capacity_blocks:
+        extra = blocks - self._blocks.get(key, 0)
+        candidates, available = [], self.capacity_blocks - self.used_blocks
+        if extra > available:
+            for candidate in self._lru:
+                if candidate != key and self._protected_until.get(candidate, 0) <= now:
+                    candidates.append(candidate)
+                    available += self._blocks[candidate]
+                    if extra <= available:
+                        break
+        if extra > available:
             return OffloadOperation(
                 tier=self.tier,
                 blocks=0,
@@ -96,6 +96,9 @@ class OffloadTier:
                 latency=0.0,
                 evicted_keys=[key],
             )
+        for candidate in candidates:
+            self._remove_existing(candidate)
+            evicted.append(candidate)
         self._remove_existing(key)
         self._blocks[key] = blocks
         self._used_blocks += blocks
@@ -113,58 +116,51 @@ class OffloadTier:
     def used_blocks(self) -> int:
         return self._used_blocks
 
-    def _evict_lru(self) -> str:
-        key, _ = self._lru.popitem(last=False)
-        self._used_blocks -= self._blocks.pop(key, 0)
-        return key
-
     def _remove_existing(self, key: str) -> None:
         self._used_blocks -= self._blocks.pop(key, 0)
         self._lru.pop(key, None)
+        self._protected_until.pop(key, None)
 
     def _read_latency(self, bytes_: int) -> float:
         if bytes_ <= 0:
             return 0.0
         if self.tier == "hbf":
-            return self.config.hbf_read_latency_us / 1e6 + bytes_ / _GB / max(
-                1e-9,
-                self._hbf_bandwidth(bytes_, is_write=False),
+            return self.config.hbf_read_latency_us / 1e6 + bytes_ / self._hbf_bandwidth(
+                bytes_, is_write=False
             )
-        return self.config.ssd_read_latency_us / 1e6 + bytes_ / _GB / max(
-            1e-9,
-            self.config.ssd_read_bw_gbps,
+        return (
+            self.config.ssd_read_latency_us / 1e6
+            + bytes_ / self.config.ssd_read_bandwidth_bytes_per_s
         )
 
     def _write_latency(self, bytes_: int) -> float:
         if bytes_ <= 0:
             return 0.0
         if self.tier == "hbf":
-            return self.config.hbf_write_latency_us / 1e6 + bytes_ / _GB / max(
-                1e-9,
-                self._hbf_bandwidth(bytes_, is_write=True),
+            return (
+                self.config.hbf_write_latency_us / 1e6
+                + bytes_ / self._hbf_bandwidth(bytes_, is_write=True)
             )
-        return self.config.ssd_write_latency_us / 1e6 + bytes_ / _GB / max(
-            1e-9,
-            self.config.ssd_write_bw_gbps,
+        return (
+            self.config.ssd_write_latency_us / 1e6
+            + bytes_ / self.config.ssd_write_bandwidth_bytes_per_s
         )
 
     def _hbf_bandwidth(self, bytes_: int, *, is_write: bool) -> float:
-        random_bw = (
-            self.config.hbf_random_4k_write_bw_gbps
-            if is_write
-            else self.config.hbf_random_4k_read_bw_gbps
+        direction = "write" if is_write else "read"
+        random_bw = getattr(
+            self.config, f"hbf_random_4k_{direction}_bandwidth_bytes_per_s"
         )
-        sequential_bw = (
-            self.config.hbf_seq_write_bw_gbps
-            if is_write
-            else self.config.hbf_seq_read_bw_gbps
+        sequential_bw = getattr(
+            self.config, f"hbf_seq_{direction}_bandwidth_bytes_per_s"
         )
         if bytes_ <= _RANDOM_IO_BYTES:
             return float(random_bw)
         if bytes_ >= _SEQUENTIAL_IO_BYTES:
             return float(sequential_bw)
-        span = math.log(_SEQUENTIAL_IO_BYTES / _RANDOM_IO_BYTES)
-        position = math.log(bytes_ / _RANDOM_IO_BYTES) / span
+        position = math.log(bytes_ / _RANDOM_IO_BYTES) / math.log(
+            _SEQUENTIAL_IO_BYTES / _RANDOM_IO_BYTES
+        )
         return float(random_bw + (sequential_bw - random_bw) * position)
 
 

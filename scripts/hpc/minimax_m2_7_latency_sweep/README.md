@@ -1,5 +1,9 @@
 # MiniMax-M2.7-229B latency sweep
 
+These scripts use the historical PSLA and TransformerRoofline interfaces from the HBF snapshot, commit `0b8d751`.
+Run them from a checkout of that revision.
+See [current HBF examples](../../../docs/hbf.md) for the merged runtime and independent storage/device configurations.
+
 Launches 1,000 MiniMax-M2.7-229B full-trace simulations as four one-node c96
 Slurm array tasks. Each trace owns 250 simulations and uses all 96 cores: 58
 cores execute three sequential simulations and 38 execute two.

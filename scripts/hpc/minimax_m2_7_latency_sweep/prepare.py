@@ -170,7 +170,9 @@ def main() -> None:
     if any(variant.name.startswith("hbf1-r") for variant in variant_values):
         raise AssertionError("excluded HBF1 variants must not enter the manifest")
     if any("batched" in variant.name for variant in variant_values):
-        raise AssertionError("Mooncake SSD-batching variants must not enter the manifest")
+        raise AssertionError(
+            "Mooncake SSD-batching variants must not enter the manifest"
+        )
 
     generated_configs = {
         (gpu, variant.name): write_config(workdir, gpu, variant)
@@ -183,7 +185,9 @@ def main() -> None:
         if extra.get("offload_tier") == "ssd" and extra.get("ssd_io_model") != "legacy":
             raise AssertionError(f"SSD config is not legacy/non-batched: {config_path}")
 
-    all_rows: dict[str, list[dict[str, object]]] = {trace: [] for trace, _, _ in TRACE_DATA}
+    all_rows: dict[str, list[dict[str, object]]] = {
+        trace: [] for trace, _, _ in TRACE_DATA
+    }
     for trace, dataset, request_count in TRACE_DATA:
         for gpu, gpu_data in GPU_DATA.items():
             for variant in variant_values:
@@ -216,7 +220,12 @@ def main() -> None:
         "gpus": list(GPU_DATA),
         "traces": [trace for trace, _, _ in TRACE_DATA],
         "variants": [variant.name for variant in variant_values],
-        "excluded_variants": ["hbf1-r8-w80", "hbf1-r12-w120", "hbf1-r20-w200", "hbf1-r30-w300"],
+        "excluded_variants": [
+            "hbf1-r8-w80",
+            "hbf1-r12-w120",
+            "hbf1-r20-w200",
+            "hbf1-r30-w300",
+        ],
         "ssd_io_model": "legacy",
         "mooncake_ssd_batching_enabled": False,
         "qps_full": list(QPS_FULL),

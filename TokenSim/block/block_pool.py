@@ -9,7 +9,7 @@ class BlockPool:
     """Owns physical block objects and the free queue for one device.
 
     Block objects are materialized lazily: never-used blocks exist only as the
-    ``_next_fresh`` counter. At HBF-scale capacities (hundreds of thousands of
+    ``_next_fresh`` counter. At large capacities (hundreds of thousands of
     blocks per worker) eagerly building one Python object per block dominated
     startup time and added a large constant RSS term. Hand-out order matches
     the eager implementation: fresh ids in ascending order first, then

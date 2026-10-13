@@ -1,0 +1,20 @@
+{
+    "num_workers": 8,
+    "topology": "hgx_b200_8x_xdr",
+    "networks": {
+        "netw1": "ethernet800Gb"
+    },
+    "parallel_config": {
+        "tensor_parallel_size": 8,
+        "pipeline_parallel_size": 1,
+        "data_parallel_size": 1
+    },
+    "worker_groups": [
+        {
+            "role": "hybrid",
+            "hardware": "b200_sxm",
+            "num_workers": 8,
+            "network": "netw1"
+        }
+    ]
+}

@@ -1,57 +1,92 @@
-from typing import Any
+from __future__ import annotations
 
-from TokenSim.config.config import ParallelConfig, ParallelRankInfo
+from TokenSim.config.model_config import ModelSpec
+from TokenSim.config.parallel_config import ParallelConfig, ParallelRankInfo
 from TokenSim.errors import ConfigurationError
-from TokenSim.latency.base import LatencyBackend, backend_prefill_len
-from TokenSim.latency.llmcompass import LLMCompassLatencyBackend
-from TokenSim.latency.roofline import RooflineLatencyBackend
-from TokenSim.parallel import ParallelCommunicator
-from TokenSim.moe.config import MoEModelConfig
+from TokenSim.hardware.device import DeviceSpec
+from TokenSim.latency.base import LatencyBackend
+from TokenSim.latency.operator_table import (
+    FALLBACK_POLICIES,
+    OperatorStats,
+    OperatorTableLatencyBackend,
+)
 from TokenSim.moe.placement import ExpertPlacement
+from TokenSim.operator_data.coverage import MissingShapeReport
+from TokenSim.operator_data.package import OperatorDataPackage
+from TokenSim.parallel import ParallelCommunicator
+
+BACKEND_TYPES = ("operator_table", "analytical")
 
 
 def build_latency_backend(
     backend_type: str,
-    roofline: Any,
-    model: str,
-    hardware: str,
+    *,
+    device: DeviceSpec,
+    model: ModelSpec,
+    package: OperatorDataPackage | None = None,
     parallel_config: ParallelConfig | None = None,
     rank_info: ParallelRankInfo | None = None,
     communicator: ParallelCommunicator | None = None,
-    moe_config: MoEModelConfig | None = None,
     expert_placement: ExpertPlacement | None = None,
+    fallback: str = "table_first",
+    decode_context_bucket: int = 128,
     random_seed: int = 0,
-    wrapped_llmcompass_vars: tuple[Any, Any, Any] | None = None,
+    missing_report: MissingShapeReport | None = None,
+    moe_execution=None,
+    attention_backend: str = "generic",
+    mhc_backend: str = "generic",
+    expected_decode_query_len: int = 1,
+    max_num_seqs: int = 64,
 ) -> LatencyBackend:
-    roofline_backend = RooflineLatencyBackend(
-        roofline=roofline,
+    """Create the latency backend for one worker.
+
+    ``operator_table`` composes per-operator tables with analytical fallback
+    (``fallback`` selects ``table_first``, ``table_only`` or ``analytical_only``);
+    ``analytical`` is shorthand for ``operator_table`` with ``analytical_only``.
+    ``missing_report`` lets the worker share one missing-shape checklist between
+    this backend and its collective model.
+    """
+    if backend_type == "analytical":
+        backend_type, fallback = "operator_table", "analytical_only"
+    if backend_type not in BACKEND_TYPES:
+        raise ConfigurationError(
+            f"unsupported latency backend {backend_type!r}; expected one of {BACKEND_TYPES}"
+        )
+    if fallback not in FALLBACK_POLICIES:
+        raise ConfigurationError(
+            f"unsupported fallback policy {fallback!r}; expected one of {FALLBACK_POLICIES}"
+        )
+    return OperatorTableLatencyBackend(
+        device=device,
         model=model,
-        hardware=hardware,
         parallel_config=parallel_config,
         rank_info=rank_info,
         communicator=communicator,
-        moe_config=moe_config,
         expert_placement=expert_placement,
+        package=package,
+        fallback=fallback,
+        decode_context_bucket=decode_context_bucket,
         random_seed=random_seed,
+        missing_report=missing_report,
+        moe_execution=moe_execution,
+        attention_backend=attention_backend,
+        mhc_backend=mhc_backend,
+        expected_decode_query_len=expected_decode_query_len,
+        max_num_seqs=max_num_seqs,
     )
-    if backend_type == "roofline":
-        return roofline_backend
-    if backend_type == "llm_compass":
-        if wrapped_llmcompass_vars is None:
-            raise ConfigurationError(
-                "latency_backend='llm_compass' requires wrapped LLMCompass variables"
-            )
-        return LLMCompassLatencyBackend(
-            fallback_backend=roofline_backend,
-            wrapped_llmcompass_vars=wrapped_llmcompass_vars,
-        )
-    raise ConfigurationError(f"unsupported latency backend {backend_type!r}")
+
+
+def effective_fallback(backend_type: str, fallback: str) -> str:
+    """The table policy a worker actually runs under (``analytical`` forces formulas)."""
+    return "analytical_only" if backend_type == "analytical" else fallback
 
 
 __all__ = [
-    "LLMCompassLatencyBackend",
+    "BACKEND_TYPES",
+    "FALLBACK_POLICIES",
     "LatencyBackend",
-    "RooflineLatencyBackend",
-    "backend_prefill_len",
+    "OperatorStats",
+    "OperatorTableLatencyBackend",
     "build_latency_backend",
+    "effective_fallback",
 ]

@@ -1,0 +1,16 @@
+schema_version: 1
+topology_id: gb200_nvl72
+description: "GB200 NVL72 rack: 72 GPUs in one NVLink 5 domain (18 compute trays x 4 GPUs, 9 NVLink switch trays); 800 Gb/s ConnectX-8 per GPU to the scale-out fabric."
+source_id: nvidia-gb200-nvl72-page
+levels:
+  - name: nvlink_domain
+    size: 72
+    link: nvlink5
+    fabric: switched
+    collective_algorithm: auto
+  - name: cluster
+    size: null
+    link: ethernet800Gb
+    fabric: fat_tree
+    links_per_endpoint: 72
+    oversubscription: 1.0

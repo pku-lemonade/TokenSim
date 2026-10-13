@@ -73,9 +73,7 @@ class MoEModelConfig:
             "num_experts_per_tok",
         )
         if self.num_experts_per_tok > self.num_experts:
-            raise ConfigurationError(
-                "num_experts_per_tok cannot exceed num_experts"
-            )
+            raise ConfigurationError("num_experts_per_tok cannot exceed num_experts")
         self.num_moe_layers = _positive_int(self.num_moe_layers, "num_moe_layers")
         if self.moe_intermediate_size is not None:
             self.moe_intermediate_size = _positive_int(
@@ -110,41 +108,14 @@ class MoEModelConfig:
     def enabled(self) -> bool:
         return self.is_moe_model and self.num_moe_layers > 0
 
-    @classmethod
-    def from_model_config(cls, model_config: Any | None) -> "MoEModelConfig":
-        if model_config is None:
-            return cls()
-        existing = getattr(model_config, "moe_config", None)
-        if isinstance(existing, cls):
-            return existing
-        return cls(
-            is_moe_model=getattr(model_config, "is_moe_model", False),
-            num_experts=getattr(model_config, "num_experts", 0),
-            num_experts_per_tok=getattr(model_config, "num_experts_per_tok", 1),
-            moe_intermediate_size=getattr(model_config, "moe_intermediate_size", None),
-            num_shared_experts=getattr(model_config, "num_shared_experts", 0),
-            num_moe_layers=getattr(model_config, "num_moe_layers", 0),
-            first_k_dense_replace=getattr(model_config, "first_k_dense_replace", 0),
-            moe_layer_freq=getattr(model_config, "moe_layer_freq", 1),
-            interleave_moe_layer_step=getattr(
-                model_config,
-                "interleave_moe_layer_step",
-                1,
-            ),
-            routing=getattr(model_config, "moe_routing", None),
-            hidden_size=getattr(model_config, "hidden_size", None),
-            intermediate_size=getattr(model_config, "intermediate_size", None),
-            num_attention_heads=getattr(model_config, "num_attention_heads", None),
-            num_key_value_heads=getattr(model_config, "num_key_value_heads", None),
-        )
-
     def moe_layer_indices(self, total_layers: int | None = None) -> list[int]:
         if not self.enabled:
             return []
         start = self.first_k_dense_replace
-        limit = total_layers if total_layers is not None else start + self.num_moe_layers
-        indices = list(range(start, limit, self.moe_layer_freq))
-        return indices[: self.num_moe_layers]
+        limit = (
+            total_layers if total_layers is not None else start + self.num_moe_layers
+        )
+        return list(range(start, limit, self.moe_layer_freq))[: self.num_moe_layers]
 
     def count_moe_layers_in_stage(self, stage_layer_indices: range) -> int:
         stage_set = set(stage_layer_indices)
@@ -152,15 +123,17 @@ class MoEModelConfig:
 
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
-        data["routing"] = self.routing.to_dict() if self.routing else RoutingConfig().to_dict()
+        data["routing"] = (
+            self.routing.to_dict() if self.routing else RoutingConfig().to_dict()
+        )
         return data
 
     def _validate_layer_layout(self) -> None:
         if not self.enabled:
             return
-        last_index = self.first_k_dense_replace + (
-            self.num_moe_layers - 1
-        ) * self.moe_layer_freq
+        last_index = (
+            self.first_k_dense_replace + (self.num_moe_layers - 1) * self.moe_layer_freq
+        )
         if last_index < 0:
             raise ConfigurationError("invalid MoE layer layout")
 

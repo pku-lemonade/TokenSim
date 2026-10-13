@@ -1,0 +1,15 @@
+schema_version: 1
+topology_id: hgx_b200_8x_xdr
+description: "HGX B200 / HGX B300 node (8 GPUs on NVLink 5 NVSwitch) with one ConnectX-8 800 Gb/s NIC per GPU into a rail-optimized fat tree."
+source_id: nvidia-hgx-b200-datasheet
+levels:
+  - name: node
+    size: 8
+    link: nvlink5
+    fabric: switched
+  - name: cluster
+    size: null
+    link: ethernet800Gb
+    fabric: fat_tree
+    links_per_endpoint: 8
+    oversubscription: 1.0

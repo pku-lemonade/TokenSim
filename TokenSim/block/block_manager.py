@@ -93,6 +93,11 @@ class BlockAllocator:
 
 
 class BlockManager:
+    """Uniform paged KV blocks with prefix reuse and host swap space."""
+
+    # One block width for every layer; see HybridKVBlockManager for groups.
+    grouped_cache = False
+
     def __init__(
         self,
         block_size: int,
@@ -116,7 +121,6 @@ class BlockManager:
             kv_cache_manager=self.kv_cache_manager,
         )
         self.cpu_allocator = BlockAllocator(Device.CPU, block_size, num_cpu_blocks)
-        self._reserved_gpu_blocks: list[PhysicalTokenBlock] = []
 
     def can_allocate(self, req: Request) -> bool:
         plan = self.kv_cache_manager.plan_reuse(req)
@@ -142,6 +146,12 @@ class BlockManager:
         self.block_table.add_blocks(req.id, blocks)
         self._sync_request_blocks(req, blocks)
         self._mark_input_blocks_pending(req, blocks, plan)
+
+    def get_num_free_blocks(self):
+        return self.gpu_allocator.get_num_free_blocks()
+
+    def get_num_allocated_blocks(self):
+        return self.gpu_allocator.get_num_allocated_blocks()
 
     def get_gpu_status(self) -> Tuple[int, int, int]:
         return self.gpu_allocator.get_status()
@@ -189,33 +199,6 @@ class BlockManager:
 
     def get_request_block_counts(self, requests: list[Request]) -> dict[int, int]:
         return {req.id: self._num_blocks(req) for req in requests}
-
-    def reserve_gpu_blocks(self, num_blocks: int):
-        allocated: list[PhysicalTokenBlock] = []
-        for _ in range(num_blocks):
-            try:
-                block = self.gpu_allocator.allocate()
-            except Exception:
-                for block in allocated:
-                    self.gpu_allocator.free(block)
-                raise
-            allocated.append(block)
-        self._reserved_gpu_blocks.extend(allocated)
-
-    def release_reserved_blocks(self, num_blocks: int | None = None):
-        if num_blocks is None:
-            num_blocks = len(self._reserved_gpu_blocks)
-        if num_blocks < 0:
-            raise SimulationStateError(
-                f"cannot release a negative block count: {num_blocks}"
-            )
-        if num_blocks > len(self._reserved_gpu_blocks):
-            raise SimulationStateError(
-                f"cannot release {num_blocks} reserved GPU blocks; "
-                + f"only {len(self._reserved_gpu_blocks)} are reserved"
-            )
-        for _ in range(num_blocks):
-            self.gpu_allocator.free(self._reserved_gpu_blocks.pop(0))
 
     def _free_block(self, block: PhysicalTokenBlock) -> None:
         if block.device == Device.GPU:

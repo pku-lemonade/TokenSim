@@ -2,28 +2,42 @@ import json
 from pathlib import Path
 
 from pydantic.dataclasses import dataclass, Field
+from pydantic import ConfigDict
 
 from TokenSim.config.constants import WORKER_ROLE_PREFIXES, WORKER_ROLES
 from TokenSim.config.kv_transfer_config import KVTransferConfig
 from TokenSim.config.parallel_config import ParallelConfig, ParallelRankInfo
 from TokenSim.errors import ConfigurationError
+from TokenSim.config.validation import integer
 
 
-@dataclass
+@dataclass(config=ConfigDict(extra="forbid"))
 class WorkerConfig:
     role: str
     hardware: str
     network: str
     nettype: str
     rank_info: ParallelRankInfo | None = None
+    device_index: int | None = None
+    operator_backend: str | None = None
 
 
-@dataclass
+@dataclass(config=ConfigDict(extra="forbid"))
 class WorkerGroupConfig:
     role: str
     hardware: str
     num_workers: int
     network: str = "net1"
+    # Explicit topology device indices for the group's workers (optional).
+    device_indices: list[int] | None = None
+    # Which operator-data backend (e.g. trtllm, vllm, analytical) to use.
+    operator_backend: str | None = None
+
+    def __post_init__(self):
+        integer(self.num_workers, "worker group num_workers", minimum=1)
+        if self.device_indices is not None:
+            for index in self.device_indices:
+                integer(index, "device_index")
 
     def workers(self, networks):
         if self.role not in WORKER_ROLES:
@@ -31,9 +45,32 @@ class WorkerGroupConfig:
                 f"unsupported worker role {self.role!r}; expected one of "
                 + f"{sorted(WORKER_ROLES)}"
             )
+        if self.network not in networks:
+            raise ConfigurationError(
+                f"worker group {self.role!r} references unknown network {self.network!r}; "
+                + f"known networks: {sorted(networks)}"
+            )
+        if (
+            self.device_indices is not None
+            and len(self.device_indices) != self.num_workers
+        ):
+            raise ConfigurationError(
+                f"worker group {self.role!r}: device_indices must have num_workers entries"
+            )
         return [
-            WorkerConfig(self.role, self.hardware, self.network, networks[self.network])
-            for _ in range(self.num_workers)
+            WorkerConfig(
+                self.role,
+                self.hardware,
+                self.network,
+                networks[self.network],
+                device_index=(
+                    self.device_indices[index]
+                    if self.device_indices is not None
+                    else None
+                ),
+                operator_backend=self.operator_backend,
+            )
+            for index in range(self.num_workers)
         ]
 
     def __str__(self):
@@ -41,17 +78,52 @@ class WorkerGroupConfig:
         return f"{role_prefix}{self.num_workers:g}"
 
 
-@dataclass
+@dataclass(config=ConfigDict(extra="forbid"))
 class ClusterConfig:
     num_workers: int
     networks: dict[str, str]
     worker_groups: list[WorkerGroupConfig] = Field(default_factory=list)
     kv_transfer: KVTransferConfig | None = None
     parallel_config: ParallelConfig | None = None
+    # Optional explicit KV capacity.  A total capacity is divided across
+    # data-parallel replicas; a per-rank value takes precedence only when the
+    # total is omitted.
+    kv_cache_capacity_tokens_total: int | None = None
+    kv_cache_capacity_tokens_per_dp_rank: int | None = None
+    # Optional catalog topology id (data/topologies/*.yaml). When omitted a
+    # two-level topology is synthesized from ``networks``.
+    topology: str | None = None
+
+    def __post_init__(self) -> None:
+        integer(self.num_workers, "cluster num_workers", minimum=1)
+        if sum(group.num_workers for group in self.worker_groups) != self.num_workers:
+            raise ConfigurationError(
+                "cluster num_workers must equal the worker group total"
+            )
+        for field_name in (
+            "kv_cache_capacity_tokens_total",
+            "kv_cache_capacity_tokens_per_dp_rank",
+        ):
+            value = getattr(self, field_name)
+            if value is not None and value <= 0:
+                raise ConfigurationError(f"{field_name} must be positive when provided")
+        if (
+            self.kv_cache_capacity_tokens_total is not None
+            and self.kv_cache_capacity_tokens_per_dp_rank is not None
+        ):
+            raise ConfigurationError(
+                "kv_cache_capacity_tokens_total and "
+                "kv_cache_capacity_tokens_per_dp_rank are mutually exclusive"
+            )
 
     @classmethod
     def from_file(cls, filename):
-        return cls(**json.loads(Path(filename).read_text()))
+        try:
+            return cls(**json.loads(Path(filename).read_text()))
+        except (OSError, ValueError, TypeError) as error:
+            raise ConfigurationError(
+                f"invalid cluster configuration {filename}: {error}"
+            ) from error
 
     def effective_kv_transfer(
         self,
@@ -61,15 +133,26 @@ class ClusterConfig:
 
     def effective_parallel_config(
         self,
-        model_parallel_config: ParallelConfig | None = None,
         override: ParallelConfig | None = None,
     ) -> ParallelConfig:
-        return (
-            override
-            or self.parallel_config
-            or model_parallel_config
-            or ParallelConfig.default()
+        return override or self.parallel_config or ParallelConfig.default()
+
+    def effective_kv_cache_capacity_per_dp_rank(
+        self,
+        parallel_config: ParallelConfig,
+    ) -> int | None:
+        if self.kv_cache_capacity_tokens_per_dp_rank is not None:
+            return self.kv_cache_capacity_tokens_per_dp_rank
+        if self.kv_cache_capacity_tokens_total is None:
+            return None
+        capacity = (
+            self.kv_cache_capacity_tokens_total // parallel_config.data_parallel_size
         )
+        if capacity == 0:
+            raise ConfigurationError(
+                "total KV capacity must provide tokens to every DP rank"
+            )
+        return capacity
 
     def workers(self, parallel_config: ParallelConfig | None = None):
         workers = [
@@ -77,7 +160,9 @@ class ClusterConfig:
             for worker_group in self.worker_groups
             for worker in worker_group.workers(self.networks)
         ]
-        effective_config = parallel_config or self.parallel_config or ParallelConfig.default()
+        effective_config = (
+            parallel_config or self.parallel_config or ParallelConfig.default()
+        )
         validate_worker_count(len(workers), effective_config)
         for global_rank, worker in enumerate(workers):
             worker.rank_info = ParallelRankInfo.from_global_rank(

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from TokenSim.block.block import PhysicalTokenBlock
+
+
 class BlockTable:
     """Tracks request-to-physical-block mappings.
 

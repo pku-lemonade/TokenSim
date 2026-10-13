@@ -3,8 +3,9 @@ from __future__ import annotations
 import random
 from collections import Counter
 from dataclasses import replace
-from typing import Any
+from typing import Any, Mapping
 
+from TokenSim.utils import BoundedCache
 from TokenSim.errors import WorkloadValidationError
 from TokenSim.llm.llm_request import Request
 from TokenSim.moe.config import MoEModelConfig, RoutingConfig
@@ -25,12 +26,12 @@ def normalize_expert_histogram(
         if all(isinstance(item, int) for item in value):
             counter = Counter(int(item) for item in value)
             items = list(counter.items())
-        elif all(
-            isinstance(item, (list, tuple)) and len(item) == 2 for item in value
-        ):
+        elif all(isinstance(item, (list, tuple)) and len(item) == 2 for item in value):
             items = [(item[0], item[1]) for item in value]
         else:
-            raise _invalid_histogram(request_id, "must be a dict or [expert, count] list")
+            raise _invalid_histogram(
+                request_id, "must be a dict or [expert, count] list"
+            )
     else:
         raise _invalid_histogram(request_id, "must be a dict or list")
 
@@ -40,7 +41,9 @@ def normalize_expert_histogram(
             expert_id = int(expert_id_raw)
             count = int(count_raw)
         except (TypeError, ValueError) as exc:
-            raise _invalid_histogram(request_id, "expert ids and counts must be integers") from exc
+            raise _invalid_histogram(
+                request_id, "expert ids and counts must be integers"
+            ) from exc
         if expert_id < 0 or expert_id >= num_experts:
             raise _invalid_histogram(
                 request_id,
@@ -64,24 +67,67 @@ class ExpertRouting:
         *,
         seed: int = 0,
         routing_config: RoutingConfig | None = None,
+        rank_to_experts: Mapping[int, list[int]] | None = None,
     ) -> None:
         self.moe_config = moe_config
-        self.routing_config = replace(routing_config or moe_config.routing or RoutingConfig())
+        self.routing_config = replace(
+            routing_config or moe_config.routing or RoutingConfig()
+        )
         self.random = random.Random(seed)
-        self._synthetic_cache: dict[int, dict[int, int]] = {}
-        self._normalized_cache: dict[int, dict[int, int]] = {}
+        self._synthetic_cache = BoundedCache(self._SYNTHETIC_CACHE_LIMIT)
+        self._normalized_cache = BoundedCache(self._SYNTHETIC_CACHE_LIMIT)
+        count = self.moe_config.num_experts
+        if rank_to_experts:
+            # Distribute a partial round across EP ranks before giving a
+            # second route to a neighboring expert on the same rank.
+            groups = [rank_to_experts[r] for r in sorted(rank_to_experts)]
+            self.expert_order = tuple(
+                experts[i]
+                for i in range(max(map(len, groups), default=0))
+                for experts in groups
+                if i < len(experts)
+            )
+            if sorted(self.expert_order) != list(range(count)):
+                raise WorkloadValidationError(
+                    "expert placement must cover every expert once"
+                )
+        else:
+            self.expert_order = tuple(range(count))
+        # Continue the partial round across steps so small batches do not
+        # permanently favor the first ranks. This cursor affects stats only
+        # when the latency model uses a fixed measured workload distribution.
+        self._route_cursor = seed % count if count else 0
 
     def histogram_for_step(self, requests: list[Request]) -> dict[int, int]:
         histogram: dict[int, int] = {}
         if not self.moe_config.enabled or not requests:
             return histogram
+        synthetic_tokens = 0
         for request in requests:
+            if self._provided_histogram(request) is None:
+                synthetic_tokens += self._step_token_count(request)
+                continue
             request_histogram = self._request_histogram(request)
             for expert_id, count in request_histogram.items():
                 histogram[expert_id] = histogram.get(expert_id, 0) + count
+        if synthetic_tokens:
+            synthetic = self.synthetic_histogram(
+                synthetic_tokens, offset=self._route_cursor
+            )
+            if histogram:
+                for expert_id, count in synthetic.items():
+                    histogram[expert_id] = histogram.get(expert_id, 0) + count
+            else:
+                # Histograms are read-only; share the cached one.
+                histogram = synthetic
+            self._route_cursor = (
+                self._route_cursor
+                + synthetic_tokens * self.moe_config.num_experts_per_tok
+            ) % self.moe_config.num_experts
         return histogram
 
-    def _request_histogram(self, request: Request) -> dict[int, int]:
+    @staticmethod
+    def _provided_histogram(request: Request):
         provided = None
         if request.is_prefill:
             provided = getattr(request, "prefill_expert_histogram", None)
@@ -89,49 +135,69 @@ class ExpertRouting:
             provided = getattr(request, "decode_expert_histogram", None)
         if provided is None:
             provided = getattr(request, "expert_histogram", None)
+        return provided
+
+    def _request_histogram(self, request: Request) -> dict[int, int]:
+        provided = self._provided_histogram(request)
+        token_count = self._step_token_count(request)
         if provided is not None:
             # Decode re-reads the same trace-provided histogram every step;
             # normalize once per request. Callers must not mutate the result.
-            cached = self._normalized_cache.get(request.id)
+            identity = (
+                request.id,
+                "prefill" if request.is_prefill else "decode",
+                id(provided),
+            )
+            cached = self._normalized_cache.get(identity)
             if cached is None:
                 cached = normalize_expert_histogram(
                     provided,
                     num_experts=self.moe_config.num_experts,
                     request_id=request.id,
                 )
-                if len(self._normalized_cache) >= self._SYNTHETIC_CACHE_LIMIT:
-                    self._normalized_cache.clear()
-                self._normalized_cache[request.id] = cached
+                self._normalized_cache[identity] = cached
+            total = request.prefill_compute_len if request.is_prefill else 1
+            if 0 < token_count < total:
+                # A prefill chunk routes its share of the prompt's histogram.
+                return _scaled_histogram(cached, token_count / total)
             return cached
-        if getattr(request, "needs_recompute", False):
-            token_count = request.recompute_tokens
-        else:
-            token_count = request.prefill_compute_len if request.is_prefill else 1
         return self.synthetic_histogram(token_count)
 
-    def synthetic_histogram(self, token_count: int) -> dict[int, int]:
+    @staticmethod
+    def _step_token_count(request: Request) -> int:
+        """Tokens the request routes in this step (``Request.step_tokens``)."""
+        return int(request.step_tokens)
+
+    def synthetic_histogram(
+        self, token_count: int, *, offset: int = 0
+    ) -> dict[int, int]:
         route_count = max(0, int(token_count)) * self.moe_config.num_experts_per_tok
         if route_count == 0:
             return {}
-        cached = self._synthetic_cache.get(route_count)
+        distribution = self.routing_config.distribution
+        offset = (
+            offset % self.moe_config.num_experts if distribution == "uniform" else 0
+        )
+        identity = (route_count, offset)
+        cached = self._synthetic_cache.get(identity)
         if cached is None:
-            distribution = self.routing_config.distribution
             if distribution in {"skew", "hot", "burst"}:
                 cached = self._hot_histogram(route_count)
             else:
-                cached = self._uniform_histogram(route_count)
-            if len(self._synthetic_cache) >= self._SYNTHETIC_CACHE_LIMIT:
-                self._synthetic_cache.clear()
-            self._synthetic_cache[route_count] = cached
+                cached = self._uniform_histogram(route_count, offset)
+            self._synthetic_cache[identity] = cached
         # Callers treat histograms as read-only; returning the cached dict is safe.
         return cached
 
-    def _uniform_histogram(self, route_count: int) -> dict[int, int]:
-        histogram = {expert_id: 0 for expert_id in range(self.moe_config.num_experts)}
-        for index in range(route_count):
-            expert_id = index % self.moe_config.num_experts
-            histogram[expert_id] += 1
-        return {expert_id: count for expert_id, count in histogram.items() if count}
+    def _uniform_histogram(self, route_count: int, offset: int = 0) -> dict[int, int]:
+        base, remainder = divmod(route_count, self.moe_config.num_experts)
+        histogram = {expert_id: base for expert_id in self.expert_order} if base else {}
+        for index in range(remainder):
+            expert_id = self.expert_order[
+                (offset + index) % self.moe_config.num_experts
+            ]
+            histogram[expert_id] = base + 1
+        return histogram
 
     def _hot_histogram(self, route_count: int) -> dict[int, int]:
         hot_experts = self.routing_config.hot_experts or [0]
@@ -157,6 +223,13 @@ class ExpertRouting:
             expert_id = cold_experts[index % len(cold_experts)]
             histogram[expert_id] = histogram.get(expert_id, 0) + 1
         return histogram
+
+
+def _scaled_histogram(histogram: dict[int, int], share: float) -> dict[int, int]:
+    scaled = {
+        expert_id: int(round(count * share)) for expert_id, count in histogram.items()
+    }
+    return {expert_id: count for expert_id, count in scaled.items() if count > 0}
 
 
 def _invalid_histogram(request_id: int | None, detail: str) -> WorkloadValidationError:

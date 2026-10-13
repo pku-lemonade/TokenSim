@@ -3,7 +3,7 @@
 The previous implementation kept one deque mixing uncached (FIFO) and cached
 (sorted by ``last_accessed`` via linear scan + insert) blocks; membership
 checks, removals, and sorted inserts were all O(queue length), which dominated
-runtime at HBF-scale block counts. This structure keeps the same eviction
+runtime at large block counts. This structure keeps the same eviction
 intent — uncached blocks are handed out first, then cached blocks in
 least-recently-accessed order — with O(1)/O(log n) operations.
 

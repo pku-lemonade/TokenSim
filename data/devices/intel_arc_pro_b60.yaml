@@ -1,0 +1,36 @@
+schema_version: 1
+device_id: intel_arc_pro_b60
+family: generic
+display_name: Intel Arc Pro B60 (Battlemage, XPU)
+aliases: [B60, Arc-Pro-B60, intel_b60]
+sources:
+  intel-arc-pro-b60-brief:
+    grade: A
+    reference: https://www.intel.com/content/www/us/en/products/sku/241598/intel-arc-pro-b60-graphics/specifications.html
+    notes: 24 GB GDDR6 at 456 GB/s, 197 TOPS INT8 peak, PCIe 5.0 x8, 120-200 W total board power.
+  aiconfigurator-system-yaml:
+    grade: C
+    reference: https://github.com/ai-dynamo/aiconfigurator/blob/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/b60.yaml
+    notes: >
+      Upstream b60 system file: BF16 98.3 TFLOPS, INT8 197 TOPS, no native FP8 (falls back to BF16), memory bandwidth efficiency 0.5 measured on RMSNorm/SiLU/rotary kernels, 2 us PCIe p2p latency, 500 MiB runtime reserve. Upstream data exists for the vLLM XPU backend only (not imported: TokenSim currently imports TensorRT-LLM tables).
+peak_compute:
+  bf16: {value: 98.3e12, source_id: aiconfigurator-system-yaml, grade: C}
+  fp16: {value: 98.3e12, source_id: aiconfigurator-system-yaml, grade: C}
+  int8: {value: 197.0e12, source_id: intel-arc-pro-b60-brief}
+  fp32: {value: 12.28e12, source_id: aiconfigurator-system-yaml, grade: C}
+memory:
+  kind: gddr6
+  capacity_bytes: {value: 25769803776, source_id: intel-arc-pro-b60-brief}
+  bandwidth_bytes_per_s: {value: 456.0e9, source_id: intel-arc-pro-b60-brief}
+  reserved_bytes: {value: 524288000, source_id: aiconfigurator-system-yaml, grade: C}     # 500 MiB runtime reserve
+interconnect:
+  scale_up_link: null
+  host_link: pcie5_x8
+analytical:
+  source_id: aiconfigurator-system-yaml
+  grade: C
+  memory_efficiency: 0.5        # measured ~220 GB/s effective on memory-bound kernels
+  kernel_launch_us: 3.0
+  collective_launch_us: 2.0     # PCIe round-trip measured by GPU kernels
+step_overhead_us: {value: 0.0, source_id: aiconfigurator-system-yaml, grade: D}
+power: {tdp_w: 200}

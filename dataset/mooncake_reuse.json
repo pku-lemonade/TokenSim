@@ -1,0 +1,6 @@
+[
+    [32, 2, {"hash_ids": ["a", "b"], "reuse_group": "tenant-a"}],
+    [32, 2, {"hash_ids": ["a", "b"], "reuse_group": "tenant-a"}],
+    [32, 2, {"hash_ids": ["c", "d"], "reuse_group": "tenant-a"}],
+    [32, 2, {"hash_ids": ["a", "b"], "reuse_group": "tenant-a"}]
+]

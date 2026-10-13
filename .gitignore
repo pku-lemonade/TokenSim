@@ -1,23 +1,16 @@
-.vscode
-__pycache__
-
-# Local AI assistant configuration
-/.agents/
-/.claude/
+/.DS_Store
+/.vscode/
 /.codex/
-/AGENTS.md
-/CLAUDE.md
-
-# Private date-stamped research notes
-/july*.md
-
-# Local research and workflow material
-/dataset/
-/docs/
-/openspec/
-
-results
-img
-log
-tmp
-ref
+/.claude/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+/build/
+/dist/
+/results/
+/img/
+/log/
+/tmp/
+/dataset/agentx/
+*.log

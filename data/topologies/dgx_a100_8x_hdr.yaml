@@ -1,0 +1,16 @@
+schema_version: 1
+topology_id: dgx_a100_8x_hdr
+description: "DGX A100 style node (8 GPUs on NVSwitch) with one HDR200 NIC per GPU into a non-blocking fat tree."
+source_id: nvidia-dgx-a100-user-guide
+levels:
+  - name: node
+    size: 8
+    link: nvlink3
+    fabric: switched
+    collective_algorithm: auto
+  - name: cluster
+    size: null
+    link: ib_hdr200
+    fabric: fat_tree
+    links_per_endpoint: 8        # NICs per node
+    oversubscription: 1.0

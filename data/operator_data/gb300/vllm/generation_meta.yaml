@@ -1,0 +1,140 @@
+schema_version: 1
+latency_unit: us
+dataset_version: aiconfigurator-gb300-vllm-latest
+device_id: gb300
+backend: vllm
+framework_version: 0.24.0
+notes: 'Imported from NVIDIA AIConfigurator measured kernel database. Resolved versions:
+  {''gemm'': [''0.24.0''], ''context_attention'': [''0.24.0''], ''generation_attention'':
+  [''0.24.0''], ''moe'': [''0.24.0''], ''ep_all2all'': [''moe_a2a:0.24.0''], ''collective_nccl'':
+  [''2.29.2'', ''2.27''], ''collective_custom'': [''0.27.0'']}. Rows dropped (unsupported
+  dtype/kernel): {''collective'': 92}.'
+sources:
+- source_id: aiconfigurator:gb300:gemm:vllm:0.24.0
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/gb300/gemm/vllm/0.24.0
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: gb300
+  backend: vllm:0.24.0
+- source_id: aiconfigurator:gb300:attention:vllm:0.24.0
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/gb300/attention/vllm/0.24.0
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: gb300
+  backend: vllm:0.24.0
+- source_id: aiconfigurator:gb300:moe:vllm:0.24.0
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/gb300/moe/vllm/0.24.0
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: gb300
+  backend: vllm:0.24.0
+- source_id: aiconfigurator:gb300:comm:vllm:0.24.0
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/gb300/comm/vllm/0.24.0
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: gb300
+  backend: vllm:0.24.0
+- source_id: aiconfigurator:gb300:comm:nccl:2.29.2
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/gb300/comm/nccl/2.29.2
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: gb300
+  backend: nccl:2.29.2
+- source_id: aiconfigurator:gb300:comm:nccl:2.27
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/gb300/comm/nccl/2.27
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: gb300
+  backend: nccl:2.27
+- source_id: aiconfigurator:gb300:comm:vllm:0.27.0
+  grade: A
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/gb300/comm/vllm/0.27.0
+  notes: Measured kernel latencies collected by NVIDIA AIConfigurator (Apache-2.0);
+    converted ms -> us.
+  device: gb300
+  backend: vllm:0.27.0
+- source_id: aiconfigurator:gb300:mhc:vllm:0.24.0
+  grade: B
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/gb300/mhc/vllm/0.24.0
+  notes: mHC (hyper-connection residual mixing) pre/post module; each row covers the
+    recorded sites of one layer.
+  device: gb300
+  backend: vllm:0.24.0
+- source_id: aiconfigurator:gb300:dsv4_megamoe:sglang:0.5.10
+  grade: B
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/gb300/moe/sglang/0.5.10
+  notes: 'Fused expert-parallel MoE module (DeepGEMM MegaMoE, FP8 activations and
+    MXFP4 weights): routed dispatch, expert compute and combine under CUDA graphs.
+    Gate/top-k, buffer initialization and shared experts are excluded. Collector buffer
+    capacities are kept per row. Measured on gb300 with sglang and used for gb300
+    with vllm without a conversion factor.'
+  device: gb300
+  backend: sglang:0.5.10
+- source_id: aiconfigurator:gb300:dsv4_attention:vllm:0.24.0
+  grade: B
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/gb300/sparse_attention/vllm/0.24.0
+  notes: 'Complete compressed sparse-attention layer: input projections, compressor/indexer,
+    sparse attention and output projection, measured with the recorded kernel and
+    FP8 KV cache. Serving stacks with another sparse-attention kernel or cache layout
+    use these rows as an approximation.'
+  device: gb300
+  backend: vllm:0.24.0
+calibration: {}
+tables:
+  gemm:
+    rows: 142968
+  context_attention:
+    rows: 49776
+  generation_attention:
+    rows: 60738
+  moe:
+    rows: 63478
+  ep_all2all:
+    rows: 324
+  collective:
+    rows: 428
+  mhc:
+    rows: 140
+  dsv4_megamoe:
+    rows: 456
+  dsv4_attention:
+    rows: 14136
+aiconfigurator_system: gb300
+aiconfigurator_layout: database
+aiconfigurator_commit: f254959eb89e2f206b8f9a77051644d7c1cbdb89
+resolved_versions:
+  gemm:
+  - 0.24.0
+  context_attention:
+  - 0.24.0
+  generation_attention:
+  - 0.24.0
+  moe:
+  - 0.24.0
+  ep_all2all:
+  - moe_a2a:0.24.0
+  collective_nccl:
+  - 2.29.2
+  - '2.27'
+  collective_custom:
+  - 0.27.0
+dropped_rows:
+  collective: 92
+dropped_dtypes: {}
+license: Apache-2.0 (NVIDIA AIConfigurator); see data/operator_data/LICENSES.md

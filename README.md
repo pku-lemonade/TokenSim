@@ -1,213 +1,192 @@
-# TokenSim-HBF
+# TokenSim
 
-TokenSim-HBF is a research-oriented discrete-event simulator for studying large
-language model serving systems with heterogeneous memory and storage. It extends
-[TokenSim](https://arxiv.org/abs/2503.08415) with HBF/SSD KV-cache tiers,
-Mooncake-style transfer and storage models, prefix reuse, disaggregated
-prefill/decode deployments, and large-model parallelism.
+TokenSim is a deterministic discrete-event simulator for large language model (LLM) serving.
+It estimates request latency and throughput using model dimensions, hardware descriptions and operator measurements.
+The simulation includes batching, parallel execution, attention key/value (KV) caching and storage transfers.
+It runs on a CPU without requiring the simulated accelerators or model weights.
 
-The HBF extensions and their full-stack evaluation are described in
-[HBF Sucks? A Full-Stack Characterization of High-Bandwidth Flash for
-KV-Centric LLM Serving](https://arxiv.org/abs/2608.11668).
-
-The simulator predicts scheduling, transfer, cache, and latency behavior. It does
-not execute model kernels or access real HBF devices. Hardware constants and
-experimental configurations are modeling assumptions and should be reported with
-any published result.
+The project paper is [TokenSim: Enabling Hardware and Software Exploration for Large Language Model Inference Systems](https://arxiv.org/abs/2503.08415).
 
 ## Features
 
-- Static, dynamic, and paged-attention batching.
-- Synthetic, JSON pair, and timestamped Qwen JSONL workloads.
-- Block-level input prefix reuse and KV-cache preemption/recomputation.
-- Hybrid and disaggregated prefill/decode worker groups.
-- Pluggable KV-transfer models: no-op, P2P, Mooncake, Mooncake Store, and
-  multi-connector composition.
-- Mooncake Store memory pools with modeled SSD or HBF offload, capacity,
-  bandwidth, latency, admission, and eviction behavior.
-- Tensor, pipeline, data, and expert parallelism, including MoE routing and
-  communication statistics.
-- TransformerRoofline latency estimation by default, with optional LLMCompass
-  integration.
-- JSON export for latency, throughput, prefix reuse, transfer, Mooncake, MoE,
-  parallelism, preemption, and effective hardware-profile metrics.
-
-## Repository Layout
-
-| Path | Purpose |
-|---|---|
-| `benchmark.py` | Command-line simulation entry point |
-| `TokenSim/` | Engine, scheduler, cache, connector, Mooncake, MoE, and workload models |
-| `data/psla/` | Model and service-level objective configurations |
-| `data/clusters/` | Worker topology and hardware configurations |
-| `data/kv_transfer/` | P2P, Mooncake, SSD, and HBF transfer-tier configurations |
-| `TransformerRoofline/` | Default analytical latency model and hardware data |
-| `scripts/` | Example commands and experiment utilities |
-| `tests/` | Unit and regression tests |
+- TokenSim supports static, dynamic and paged-attention batching.
+  The paged scheduler follows vLLM V1 and shares a per-step token limit between prompt processing (prefill) and output token generation (decode).
+  It can process prompts in chunks, pause requests when memory is insufficient and recompute their context when they resume.
+- Requests can reuse cached prompt prefixes identified by recorded block hashes, including models with multiple cache groups and sliding-window layers.
+- Tensor parallelism divides work within layers, pipeline parallelism divides layers into stages, data parallelism handles separate request batches, and expert parallelism distributes expert networks across workers.
+  Workers can perform both prefill and decode or belong to separate pools, with synchronized data-parallel steps and routing that keeps conversations on a replica.
+- Operator latency estimates use measured kernel tables, interpolation between measurements and bounded extrapolation beyond the measured range.
+  The default fallback uses formulas for queries that tables cannot answer.
+  Measured vLLM, TensorRT-LLM and SGLang tables ship for A100, H100, H200, L40S, RTX PRO 6000, B200, B300, GB200 and GB300, and vLLM tables for the Intel Arc Pro B60.
+- Model configurations can select complete measured modules for compressed sparse attention, mixing residual streams through hyper-connections and fused mixture-of-experts (MoE) operations.
+- Multi-token prediction proposes draft tokens for the model to verify, with a configured average number of accepted tokens per step.
+- For MoE models, TokenSim models expert placement, token routing, communication between expert workers and the work assigned to each expert.
+- KV data can move directly between workers, be offloaded to CPU memory or use a Mooncake store with memory, SSD and optional high-bandwidth flash (HBF) tiers.
+  Experimental HBF1/HBF2 GPU memory variants are independent device examples.
+- Communication time follows the cluster's hierarchy of interconnects and combines fixed transfer latency with message size divided by effective bandwidth.
+- Workloads include generated request lengths, JSON and JSONL traces, and AgentX coding-agent traces whose requests follow their recorded dependencies.
 
 ## Installation
 
-Python 3.11 is the supported runtime. A dedicated conda environment is
-recommended:
+Python 3.12 is recommended.
 
 ```bash
-git clone https://github.com/Summerlemon233/TokenSim_HBF.git
-cd TokenSim_HBF
-
-conda create -n tokensim11 python=3.11 -y
-conda activate tokensim11
-python -m pip install "setuptools<81" -r requirements.txt
+git clone https://github.com/pku-lemonade/TokenSim.git
+cd TokenSim
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e '.[dev]'
 ```
 
-The default TransformerRoofline backend is included in the repository. Initialize
-LLMCompass only when using an LLMCompass architecture template:
+## Quick start
+
+The following command simulates 100 generated requests for Llama-7B on one A100 using formula-based latency estimates.
 
 ```bash
-git submodule update --init LLMCompass
+tokensim --latency_backend analytical \
+  --request_count 100 \
+  --results_path results/example
 ```
 
-Initialize the anonymized Qwen Bailian trace submodule for trace-driven runs:
+The following command runs Llama-3-70B on eight H100 GPUs with measured operator tables, paged attention and prompt processing in chunks.
 
 ```bash
-git submodule update --init qwen-bailian-usagetraces-anon
-```
-
-## Quick Start
-
-Run a small synthetic workload on one modeled A100:
-
-```bash
-conda activate tokensim11
-MPLCONFIGDIR=/tmp/tokensim11-mpl ./benchmark.py \
+tokensim --model data/models/llama-3-70b.yaml \
+  --cluster data/clusters/8_h100/tp8.json \
   --batching paged-attn \
   --block_size 16 \
-  --request_count 20 \
-  --prefill_mean_len 128 \
-  --decode_mean_len 32 \
+  --max_num_seqs 64 \
+  --max_num_batched_tokens 8192 \
+  --request_count 64 \
+  --qps 4 \
+  --verbose none \
+  --results_path results/llama-3-70b
+```
+
+The following command replays requests with recorded lengths and hashes identifying their prompt prefixes.
+
+```bash
+tokensim --model data/models/llama-7b.yaml \
   --cluster data/clusters/1_a100/h1.json \
-  --model data/psla/llama-7b.json \
-  --qps 10 \
-  --verbose simple
-```
-
-Run the first 20 requests from the Qwen Bailian `traceA` workload:
-
-```bash
-MPLCONFIGDIR=/tmp/tokensim11-mpl ./benchmark.py \
   --batching paged-attn \
   --block_size 16 \
-  --request_count 20 \
   --workload_type qwen_jsonl \
-  --dataset_path qwen-bailian-usagetraces-anon/qwen_traceA_blksz_16.jsonl \
-  --cluster data/clusters/1_a100/h1.json \
-  --model data/psla/llama-7b.json \
-  --qps 5.9807 \
-  --verbose simple
+  --dataset_path dataset/qwen_example.jsonl \
+  --qps 50 \
+  --verbose none \
+  --results_path results/trace
 ```
 
-Model an eight-GPU H100 system with an HBF1-backed Mooncake Store:
-
-```bash
-MPLCONFIGDIR=/tmp/tokensim11-mpl ./benchmark.py \
-  --batching paged-attn \
-  --block_size 16 \
-  --request_count 20 \
-  --prefill_mean_len 512 \
-  --decode_mean_len 32 \
-  --cluster data/clusters/8_h100/h8.json \
-  --kv_transfer_config data/kv_transfer/mooncake_store_h100_hbf1.json \
-  --model data/psla/qwen3-32b.json \
-  --tensor_parallel_size 8 \
-  --qps 10 \
-  --verbose simple
-```
-
-Use `./benchmark.py --help` for the complete CLI. The legacy argument name
-`--max_parallem_sum` is intentionally retained for compatibility.
-
-## Workloads
-
-The public trace workflow uses `--workload_type qwen_jsonl` with files from the
-`qwen-bailian-usagetraces-anon` submodule. Each line contains `input_length`,
-`output_length`, and optional `timestamp`, conversation IDs, block hashes, and
-expert histograms. The repository does not bundle a separate dataset directory.
-
-Synthetic workloads remain available for smoke tests: lengths are sampled from
-the model configuration and optional `--prefill_*` and `--decode_*` overrides.
-The `json_pairs` loader remains supported for external adapters, but no JSON-pair
-fixtures or example workflow are shipped.
-
-Timestamped traces use their recorded arrival times. Use
-`--trace_timestamp_scale` or `--trace_target_qps` to rescale them. Set
-`--random_seed` for reproducible synthetic workloads.
+`python benchmark.py` runs the same command line from a checkout.
+Run `tokensim --help` for every option.
 
 ## Configuration
 
-A simulation combines three independent configuration layers:
+| Input | Location | Contents |
+| --- | --- | --- |
+| Model | `data/models/*.yaml`, `--model` | Layer geometry, dtypes, MoE and attention components, operator-module bindings |
+| Devices | `data/devices/*.yaml` | Compute, memory and interconnect capabilities with source grades |
+| Topologies | `data/topologies/*.yaml` | Link classes and chip/node/rack/cluster hierarchies |
+| Cluster | `data/clusters/**/*.json`, `--cluster` | Worker roles, hardware, parallel layout, storage |
+| Operator data | `data/operator_data/<device>/<backend>/` | Measured or analytical operator tables |
+| KV transfer | `data/kv_transfer/*.json`, `--kv_transfer_config` | Connector and storage settings |
+| Workload | CLI options or `--workload_config` | Arrival rate and distribution, lengths, SLO targets |
 
-1. `--model`: model dimensions, default length distributions, and SLOs from
-   `data/psla/`.
-2. `--cluster`: worker roles, hardware, networks, and optional parallel or
-   connector defaults from `data/clusters/`.
-3. `--kv_transfer_config`: an optional connector override from
-   `data/kv_transfer/`.
+### Workload
 
-HBF presets currently include `HBF1`, `HBF1-48GiB`, and `HBF2`. The effective
-accelerator-memory profile is validated against the selected cluster and written
-to the result JSON.
+Request generation and latency targets are independent of the model.
+A workload file can set them as shown below, and explicit CLI values take precedence.
+Latency targets are also called service-level objectives (SLOs).
+
+```json
+{
+  "qps": 10,
+  "prefill_mean_len": 256,
+  "decode_mean_len": 64,
+  "first_token_latency": {
+    "max": 10
+  },
+  "decode_token_latency": {
+    "p99": 0.1
+  }
+}
+```
+
+Targets are optional and in seconds.
+`first_token_latency` applies to the time to first token and `decode_token_latency` to each request's mean inter-token latency.
+A `max` target sets a limit for every request.
+`p50` sets a limit for the median latency, and `p99` sets a limit for the 99th percentile.
+
+AgentX replays recorded coding-agent traces using their request lengths, prompt-prefix hashes and dependencies between the main agent and its subagents.
+Set `--workload_type agentx_weka` to select AgentX replay.
+Provide a trace file or directory with `--dataset_path`.
+The `agentx` extra adds the tools for downloading and parsing AgentX traces.
+Install the extra with `python -m pip install -e '.[agentx,dev]'`.
+See the [AgentX guide](docs/agentx.md) for trace downloads, warmup and replay options.
+
+Model, hardware and operator data are loaded from the checkout or installed package.
+Select another data directory with `--data_root` or `TOKENSIM_DATA_ROOT`.
 
 ## Results
 
-Without `--results_path`, output is written to:
+Results are written to `--results_path`, which defaults to `results/<model>/<cluster directory>/<cluster>`.
 
-```text
-results/<model>/<cluster-directory>/<cluster-name>/result_<qps>.json
-```
+- `result_<qps>.json`, or `agentx_c<concurrency>.json` for AgentX, summarizes latency, throughput, paused requests, recomputation, prefix reuse, KV transfers, parallel communication and MoE loads.
+  It records whether latency estimates come from measurements, interpolation, extrapolation or formulas.
+  With latency targets, `slo` reports which targets were met and goodput for requests meeting every `max` target.
+- `missing_shapes_<qps>.json` groups operator dimensions that tables could not answer, identifying what to measure in another profiling run.
+- `failure.json` records diagnostics for runs stopped before normal completion or with an error, alongside saved partial results.
+  `failed.txt` records the error message when the run fails.
 
-Use a dedicated `--results_path` for concurrent experiments. Each concurrent
-process should also receive a unique numeric `--program_id` and a separate stderr
-log. Runtime output directories are ignored by Git.
+## Documentation
 
-## Validation
+The [`docs/`](docs/) directory contains detailed feature descriptions, configuration examples and explanations of result metrics.
 
-Run the compile check and test suite in `tokensim11`:
+| Guide | Features covered |
+| --- | --- |
+| [Operator latency model](docs/operator-latency-model.md) | Operator tables, interpolation and extrapolation, formula-based fallback, communication timing, calibration and result provenance |
+| [Parallelism](docs/parallelism.md) | Worker roles, tensor/pipeline/data/expert parallelism, conversation routing, synchronized data-parallel steps and communication topology |
+| [Mixture-of-experts](docs/moe.md) | Expert placement, token routing distributions and trace histograms, load imbalance, dispatch/combine communication and fused expert modules |
+| [Prefix caching](docs/prefix-cache.md) | Prefix matching conditions, cache isolation, reuse of generated output and cache-hit metrics |
+| [Mooncake storage](docs/mooncake.md) | Connectors, direct transfers, shared storage, uniform/grouped cache layouts, memory/disk tiers and transfer timing |
+| [HBF examples](docs/hbf.md) | Optional flash storage, independent GPU memory variants, byte units and migration from the HBF snapshot |
+| [AgentX workloads](docs/agentx.md) | Trace downloads, request dependencies, warmup, concurrency, stopping and cancellation, replay logs and comparison with InferenceX measurements |
+| [AIConfigurator data](docs/aiconfigurator.md) | Importing measured tables, rebuilding data packages, selecting operator-module scopes, data sources and latency units |
+| [Data collection checklist](docs/data-collection-checklist.md) | Required measurements for each operator table, shape manifests, recording metadata and validation data |
+
+The [collection scripts](scripts/collect/README.md) provide commands for measuring hardware.
+The [hardware catalog](data/devices/README.md) and [source grades guide](TokenSim/hardware/README.md) describe device specifications and their evidence sources.
+
+## Testing
 
 ```bash
-conda activate tokensim11
-MPLCONFIGDIR=/tmp/tokensim11-mpl python -m compileall benchmark.py TokenSim util
-MPLCONFIGDIR=/tmp/tokensim11-mpl python -m unittest discover -s tests -v
+python -m unittest discover \
+  -s tests \
+  -t .
 ```
 
-Changes to scheduling, timing, cache management, or calibration constants can
-change experimental results. Compare fixed-seed outputs before and after such
-changes and record the exact model, cluster, connector, workload, and commit.
+Tests use small deterministic cases to check scheduling order, transfer and cache allocation accounting, request dependency timing, time limits, saved results and configuration validation.
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Citation
 
-If you use TokenSim-HBF in your research, cite the HBF paper and the original
-TokenSim paper:
+If you use TokenSim in your research, cite the following paper.
 
 ```bibtex
-@misc{li2026hbfsucks,
-  title         = {{HBF} Sucks? A Full-Stack Characterization of High-Bandwidth Flash for {KV}-Centric {LLM} Serving},
-  author        = {Li, Zhuoran and Bian, Zhuohang and Huang, Xin and Zhao, Yibo and Sun, Guangyu and Zhuo, Youwei},
-  year          = {2026},
-  eprint        = {2608.11668},
-  archivePrefix = {arXiv},
-  primaryClass  = {cs.AR},
-  url           = {https://arxiv.org/abs/2608.11668}
-}
-
-@misc{wu2025tokensim,
-  title         = {{TokenSim}: Enabling Hardware and Software Exploration for Large Language Model Inference Systems},
-  author        = {Wu, Feiyang and Bian, Zhuohang and Duan, Guoyang and Xu, Tianle and Wu, Junchi and Ma, Teng and Yao, Yongqiang and Gong, Ruihao and Zhuo, Youwei},
-  year          = {2025},
-  eprint        = {2503.08415},
-  archivePrefix = {arXiv},
-  primaryClass  = {cs.DC},
-  url           = {https://arxiv.org/abs/2503.08415}
+@misc{wu2025tokensimenablinghardwaresoftware,
+  title={TokenSim: Enabling Hardware and Software Exploration for Large Language Model Inference Systems},
+  author={Feiyang Wu and Zhuohang Bian and Guoyang Duan and Tianle Xu and Junchi Wu and Teng Ma and Yongqiang Yao and Ruihao Gong and Youwei Zhuo},
+  year={2025},
+  eprint={2503.08415},
+  archivePrefix={arXiv},
+  primaryClass={cs.DC},
+  url={https://arxiv.org/abs/2503.08415}
 }
 ```
 
-TokenSim-HBF is derived from TokenSim and also uses concepts and optional data
-from the LLMCompass, Mooncake, and Qwen usage-trace projects.
+## License and acknowledgments
+
+TokenSim is licensed under [Apache-2.0](LICENSE).
+It builds on SimPy.
+Measured kernel tables are imported from NVIDIA AIConfigurator, the AgentX trace parser adapts NVIDIA AIPerf, and the scheduler and KV-cache designs follow vLLM.
+Attribution and retained licenses are in [NOTICE](NOTICE), `third_party/licenses` and the [operator-data notices](data/operator_data/LICENSES.md).
