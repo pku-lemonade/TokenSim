@@ -1,6 +1,7 @@
 # Device catalog (`data/devices/`)
 
 Each YAML file describes one accelerator.
+The catalog loads YAML files recursively, including grouped device examples in subdirectories.
 Every number carries a `source_id` (declared in the file's `sources:` block) and an evidence grade: **A** official spec or first-party measurement, **B** public third-party benchmark, **C** calibrated or derived estimate, **D** project assumption.
 See [`TokenSim/hardware/README.md`](../../TokenSim/hardware/README.md) for the field definitions and [`docs/operator-latency-model.md`](../../docs/operator-latency-model.md) for how the values are used.
 
@@ -71,7 +72,7 @@ Devices without an upstream system file (H20, RTX 4090, V100) borrow the values 
 
 ## Adding a device
 
-Experimental HBF1/HBF2 memory variants are independent catalog entries with grade D memory assumptions and separate device IDs.
+Experimental HBF1/HBF2 memory variants in `hbf/` are independent catalog entries with grade D memory assumptions and separate device IDs.
 See [HBF examples](../../docs/hbf.md) for their parameters and storage selection.
 
 1. Copy the YAML for the closest device and change `device_id`, `display_name` and `aliases`.

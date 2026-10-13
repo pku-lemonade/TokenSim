@@ -8,7 +8,6 @@ version = "0.1.0"
 description = "An optional high-bandwidth flash storage backend for TokenSim"
 requires-python = ">=3.11"
 dependencies = ["tokensim>=0.1,<0.2"]
-license = {file = "LICENSE"}
 
 [tool.setuptools.packages.find]
 include = ["tokensim_hbf*"]

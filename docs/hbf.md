@@ -38,7 +38,7 @@ Reads from HBF occur when a reusable prefix has been evicted from the GPU cache.
 
 ## Independent GPU memory variants
 
-The device catalog contains experimental memory variants of H100, H200 and B200.
+The `data/devices/hbf/` directory contains experimental memory variants of H100, H200 and B200.
 Each entry preserves the base GPU's compute and interconnect specifications and changes its memory kind, capacity and bandwidth.
 Memory and analytical-efficiency assumptions carry evidence grade D.
 Base-device aliases such as `H100` continue to select the ordinary GPU.
