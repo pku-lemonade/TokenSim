@@ -8,6 +8,7 @@ silently producing a latency for an impossible placement.
 """
 
 from __future__ import annotations
+from TokenSim.dtypes import CAST_OPERATIONS
 
 from typing import Any, Mapping
 
@@ -64,7 +65,9 @@ class GroqTSPModel:
             dtype = str(key["dtype"])
             work = work_for_table(table, key)
             efficiency = 0.8
-            peak = device.peak_compute_for(dtype).value
+            peak = device.peak_compute_for(
+                "fp32" if key["op_name"] in CAST_OPERATIONS else dtype
+            ).value
         else:
             raise ValueError(
                 f"{self.family} analytical model does not cover table {table!r}"

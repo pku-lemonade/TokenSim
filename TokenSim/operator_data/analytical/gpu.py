@@ -6,6 +6,7 @@ replaces with fitted values per device and table.
 """
 
 from __future__ import annotations
+from TokenSim.dtypes import CAST_OPERATIONS
 
 from typing import Any, Mapping
 
@@ -76,10 +77,16 @@ class GPURooflineModel:
             )
         if table == "batched_gemm":
             work = work_for_table(table, key)
-            return roofline_estimate(work=work, peak_ops_per_s=device.peak_compute_for(str(key["dtype"])).value,
-                bandwidth_bytes_per_s=bandwidth, compute_efficiency=float(params.get("gemm_mfu", 0.7)),
-                memory_efficiency=float(params.get("memory_efficiency", 0.85)), overhead_us=launch_us,
-                calibration=calibration, source_id=source_id)
+            return roofline_estimate(
+                work=work,
+                peak_ops_per_s=device.peak_compute_for(str(key["dtype"])).value,
+                bandwidth_bytes_per_s=bandwidth,
+                compute_efficiency=float(params.get("gemm_mfu", 0.7)),
+                memory_efficiency=float(params.get("memory_efficiency", 0.85)),
+                overhead_us=launch_us,
+                calibration=calibration,
+                source_id=source_id,
+            )
         if table in {"moe", "routed_experts"}:
             work = work_for_table(table, key, gated=gated, imbalance=imbalance)
             dtype = str(key["dtype"])
@@ -102,6 +109,7 @@ class GPURooflineModel:
                 peak_ops_per_s=(
                     device.peak_compute_for("fp32").value
                     if "fp32" in device.peak_compute
+                    or key["op_name"] in CAST_OPERATIONS
                     else device.peak_compute_for(dtype).value
                 ),
                 bandwidth_bytes_per_s=bandwidth,

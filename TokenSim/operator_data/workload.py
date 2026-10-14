@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from typing import Any, Mapping
 
 from TokenSim.hardware.device import dtype_bytes, normalize_dtype
+from TokenSim.dtypes import CAST_OPERATIONS, dtype_size_bytes
 
 ACTIVATION_DTYPE_FOR_WEIGHT_ONLY = "fp16"
 
@@ -195,7 +196,10 @@ _ELEMENTWISE_FLOPS_PER_ELEMENT = {
     "gelu": 6.0,
     "data_reorder": 0.0,
     "other_residual": 1.0,
-    "embedding_lookup": 0.0, "argmax": 1.0, "topk": 8.0, "weighted_combine": 2.0,
+    "embedding_lookup": 0.0,
+    "argmax": 1.0,
+    "topk": 8.0,
+    "weighted_combine": 2.0,
 }
 
 _ELEMENTWISE_BYTES_PER_ELEMENT = {
@@ -208,7 +212,10 @@ _ELEMENTWISE_BYTES_PER_ELEMENT = {
     "gelu": 2.0,
     "data_reorder": 2.0,
     "other_residual": 2.0,
-    "embedding_lookup": 2.0, "argmax": 1.0, "topk": 2.0, "weighted_combine": 3.0,
+    "embedding_lookup": 2.0,
+    "argmax": 1.0,
+    "topk": 2.0,
+    "weighted_combine": 3.0,
 }
 
 
@@ -216,6 +223,17 @@ def elementwise_work(
     op_name: str, num_tokens: int, hidden_size: int, dtype: str
 ) -> OperatorWork:
     op = op_name.lower()
+    if op in CAST_OPERATIONS:
+        source, target = op.removeprefix("cast_").split("_to_")
+        if normalize_dtype(dtype) != target:
+            raise ValueError("cast table dtype must match its target dtype")
+        elements = float(num_tokens) * hidden_size
+        return OperatorWork(
+            flops=elements,
+            activation_bytes=elements
+            * (dtype_size_bytes(source) + dtype_size_bytes(target)),
+            details={"op_name": op, "source_dtype": source, "target_dtype": target},
+        )
     if op not in _ELEMENTWISE_FLOPS_PER_ELEMENT:
         raise ValueError(f"unsupported elementwise op {op_name!r}")
     elements = float(num_tokens) * hidden_size
@@ -238,24 +256,43 @@ def work_for_table(
     if table == "batched_gemm":
         base = gemm_work(int(key["m"]), int(key["n"]), int(key["k"]), str(key["dtype"]))
         g = int(key["groups"])
-        return OperatorWork(base.flops*g, base.weight_bytes*g, base.activation_bytes*g, details=dict(key))
+        return OperatorWork(
+            base.flops * g,
+            base.weight_bytes * g,
+            base.activation_bytes * g,
+            details=dict(key),
+        )
     if table == "routed_experts":
         counts = json.loads(str(key["expert_tokens"]))
         h, i = int(key["hidden_size"]), int(key["inter_size"])
         tokens, experts = sum(counts), len(counts)
         b = activation_bytes_for(str(key["dtype"]))
-        return OperatorWork(6.0*tokens*h*i + 4.0*tokens*i,
-            3.0*experts*h*i*dtype_bytes(str(key["dtype"])),
-            (2.0*tokens*h + 6.0*tokens*i)*b, details=dict(key))
+        return OperatorWork(
+            6.0 * tokens * h * i + 4.0 * tokens * i,
+            3.0 * experts * h * i * dtype_bytes(str(key["dtype"])),
+            (2.0 * tokens * h + 6.0 * tokens * i) * b,
+            details=dict(key),
+        )
     if table == "mla_attention":
         lengths = json.loads(str(key["context_lengths"]))
         b, heads = int(key["batch_size"]), int(key["num_heads"])
-        rank, rope, value = int(key["kv_lora_rank"]), int(key["rope_head_dim"]), int(key["v_head_dim"])
+        rank, rope, value = (
+            int(key["kv_lora_rank"]),
+            int(key["rope_head_dim"]),
+            int(key["v_head_dim"]),
+        )
         # Histogram contains (context length, relative count); interpolation may vary batch only.
-        mean_length = sum(length*weight for length, weight in lengths)
+        mean_length = sum(length * weight for length, weight in lengths)
         query = int(key["query_len"])
-        if key["phase"] == "decode" and key["execution_mode"] == "absorbed" and query == 1:
-            flops = 2.0*b*heads*mean_length*(2*rank+rope) + 5.0*b*heads*mean_length
+        if (
+            key["phase"] == "decode"
+            and key["execution_mode"] == "absorbed"
+            and query == 1
+        ):
+            flops = (
+                2.0 * b * heads * mean_length * (2 * rank + rope)
+                + 5.0 * b * heads * mean_length
+            )
             cache_element_bytes = dtype_bytes(str(key["kv_cache_dtype"]))
             # Decode reads the existing latent+RoPE cache and appends the
             # current token once.  The write is intentionally separate from
@@ -264,25 +301,47 @@ def work_for_table(
             cache_read = b * mean_length * (rank + rope) * cache_element_bytes
             cache_write = b * query * (rank + rope) * cache_element_bytes
             kv = cache_read + cache_write
-            activation = b*heads*(2*rank+rope)*dtype_bytes(str(key["attn_dtype"]))
-        elif key["phase"] == "prefill" and key["execution_mode"] == "expanded" and mean_length >= query:
+            activation = (
+                b * heads * (2 * rank + rope) * dtype_bytes(str(key["attn_dtype"]))
+            )
+        elif (
+            key["phase"] == "prefill"
+            and key["execution_mode"] == "expanded"
+            and mean_length >= query
+        ):
             cached = mean_length - query
-            pairs = b*(query*cached + query*(query+1)/2)
-            flops = 2.0*heads*pairs*(int(key["nope_head_dim"])+rope+value)+5.0*heads*pairs
+            pairs = b * (query * cached + query * (query + 1) / 2)
+            flops = (
+                2.0 * heads * pairs * (int(key["nope_head_dim"]) + rope + value)
+                + 5.0 * heads * pairs
+            )
             cache_element_bytes = dtype_bytes(str(key["kv_cache_dtype"]))
             # Prefill writes one latent+RoPE entry per token; the expanded
             # head representation is produced transiently by the attention
             # kernel and is not the persisted cache layout.
-            cache_read = b*cached*(rank + rope)*cache_element_bytes
-            cache_write = b*query*(rank + rope)*cache_element_bytes
+            cache_read = b * cached * (rank + rope) * cache_element_bytes
+            cache_write = b * query * (rank + rope) * cache_element_bytes
             kv = cache_read + cache_write
-            activation = b*query*heads*(int(key["nope_head_dim"])+rope+value)*dtype_bytes(str(key["attn_dtype"]))
+            activation = (
+                b
+                * query
+                * heads
+                * (int(key["nope_head_dim"]) + rope + value)
+                * dtype_bytes(str(key["attn_dtype"]))
+            )
         else:
             raise ValueError("Unsupported MLA phase/execution mode/query length")
-        return OperatorWork(flops, activation_bytes=activation, kv_bytes=kv,
-                            details={**key, "cache_layout": "latent_plus_rope_replicated_per_A_TP_rank",
-                                     "cache_read_bytes": locals().get("cache_read", 0.0),
-                                     "cache_write_bytes": locals().get("cache_write", kv)})
+        return OperatorWork(
+            flops,
+            activation_bytes=activation,
+            kv_bytes=kv,
+            details={
+                **key,
+                "cache_layout": "latent_plus_rope_replicated_per_A_TP_rank",
+                "cache_read_bytes": locals().get("cache_read", 0.0),
+                "cache_write_bytes": locals().get("cache_write", kv),
+            },
+        )
     if table == "gemm":
         return gemm_work(int(key["m"]), int(key["n"]), int(key["k"]), str(key["dtype"]))
     if table == "grouped_gemm":

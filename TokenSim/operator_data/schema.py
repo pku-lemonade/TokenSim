@@ -8,6 +8,7 @@ from functools import cached_property
 
 from TokenSim.config.validation import number
 from TokenSim.errors import ConfigurationError
+from TokenSim.dtypes import CAST_OPERATIONS
 
 SCHEMA_VERSION = 1
 LATENCY_UNIT = "us"
@@ -33,7 +34,7 @@ EP_ALL2ALL_MODES = (
 # How far past the measured sequence range attention queries may extrapolate
 # (LookupPolicy.max_extrapolation_ratio, 16x, applies to every other axis).
 ATTENTION_SEQ_EXTRAPOLATION_RATIO = 64.0
-ELEMENTWISE_OPS = (
+ELEMENTWISE_OPS = CAST_OPERATIONS + (
     "rmsnorm",
     "layernorm",
     "rope",

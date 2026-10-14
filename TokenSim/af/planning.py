@@ -2552,6 +2552,7 @@ class ParallelExecutionPlanner(ConfigurationOwner):
                         shape={
                             "tokens": 1,
                             "elements": copy.tensor_slice.element_count or 0,
+                            "hidden_size": copy.tensor_slice.element_count or 0,
                         },
                     )
                 )
@@ -2718,6 +2719,7 @@ class ParallelExecutionPlanner(ConfigurationOwner):
                             shape={
                                 "tokens": 1,
                                 "elements": copy.tensor_slice.element_count or 0,
+                                "hidden_size": copy.tensor_slice.element_count or 0,
                             },
                         )
                     )

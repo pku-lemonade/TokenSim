@@ -45,12 +45,14 @@ _SPECS = (
 DTYPE_REGISTRY: Mapping[str, DTypeSpec] = MappingProxyType(
     {spec.canonical_name: spec for spec in _SPECS}
 )
+CAST_OPERATIONS = tuple(
+    f"cast_{source}_to_{target}"
+    for source in DTYPE_REGISTRY
+    for target in DTYPE_REGISTRY
+    if source != target
+)
 _ALIAS_TO_CANONICAL: Mapping[str, str] = MappingProxyType(
-    {
-        alias: spec.canonical_name
-        for spec in _SPECS
-        for alias in spec.aliases
-    }
+    {alias: spec.canonical_name for spec in _SPECS for alias in spec.aliases}
 )
 
 

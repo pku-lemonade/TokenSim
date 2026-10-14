@@ -41,3 +41,10 @@ Attention queries use the effective KV-cache dtype, including overrides from AF 
 Requests in one AF block may have different generation positions.
 Routing snapshots retain each request's decode step and absolute token identity.
 External assignments are selected and validated against that request's step.
+
+## Transfer precision conversion
+
+Changing wire precision creates explicit encode and decode nodes on the producing and consuming compute resources.
+The elementwise operator name records both dtypes, such as `cast_bf16_to_fp8`, and the table dtype identifies the output format.
+The analytical fallback accounts for reads in the source format, writes in the target format, element conversion, and kernel submission overhead.
+Strict table lookup requires a matching conversion measurement.

@@ -280,7 +280,33 @@ class OperatorTableAFComputeProvider(ConfigurationOwner):
         resolver = self.resolver_for(query.device_type)
         dtype = normalize_dtype(query.dtype)
         weight_dtype = normalize_dtype(query.weight_dtype or dtype)
-        if query.stage == "layout" and query.operation in {
+        if query.stage in {"encode", "decode"}:
+            source = normalize_dtype(query.source_dtype)
+            target = normalize_dtype(query.target_dtype)
+            elements = query.local_shape.get("elements")
+            if (
+                type(elements) is not int
+                or elements < 1
+                or elements != tokens * query.local_shape["hidden_size"]
+            ):
+                raise ValueError(
+                    "dtype conversion requires an exact positive element count"
+                )
+            if source == target:
+                raise ValueError(
+                    "dtype conversion requires different source and target dtypes"
+                )
+            components = [
+                self._elementwise(
+                    resolver,
+                    query.operation,
+                    f"cast_{source}_to_{target}",
+                    tokens,
+                    elements // tokens,
+                    target,
+                )
+            ]
+        elif query.stage == "layout" and query.operation in {
             "embedding_lookup",
             "final_norm",
             "lm_head",
@@ -968,21 +994,31 @@ class OperatorTableAFComputeProvider(ConfigurationOwner):
                 f"does not match model hidden_size={self.model.hidden_size}; {context}"
             )
         expected_hidden = (
-            self.model.hidden_size
-            if query.stage
-            in {"router", "attention", "dense_ffn", "shared_expert", "routed_expert"}
-            or (
-                query.stage == "layout"
-                and query.operation
+            values["hidden_size"]
+            if query.stage in {"encode", "decode"}
+            else (
+                self.model.hidden_size
+                if query.stage
                 in {
-                    "post_attention_norm",
-                    "embedding_lookup",
-                    "final_norm",
-                    "lm_head",
-                    "token_selection",
+                    "router",
+                    "attention",
+                    "dense_ffn",
+                    "shared_expert",
+                    "routed_expert",
                 }
+                or (
+                    query.stage == "layout"
+                    and query.operation
+                    in {
+                        "post_attention_norm",
+                        "embedding_lookup",
+                        "final_norm",
+                        "lm_head",
+                        "token_selection",
+                    }
+                )
+                else math.ceil(self.model.hidden_size / values["tp_size"])
             )
-            else math.ceil(self.model.hidden_size / values["tp_size"])
         )
         if values["hidden_size"] != expected_hidden:
             raise ValueError(
