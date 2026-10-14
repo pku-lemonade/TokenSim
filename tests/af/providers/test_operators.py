@@ -293,7 +293,9 @@ class AFProviderCorrectnessTest(unittest.TestCase):
         for stage in ("router", "expert"):
             query = replace(_compute_query(stage, dtype="bf16"), weight_dtype="fp8")
             components = self.provider.estimate(query).details["components"]
-            weights = [c for c in components if c["table"] in {"gemm", "moe"}]
+            weights = [
+                c for c in components if c["table"] in {"gemm", "moe", "routed_experts"}
+            ]
             self.assertTrue(weights)
             self.assertTrue(all(c["key"]["dtype"] == "fp8" for c in weights))
 

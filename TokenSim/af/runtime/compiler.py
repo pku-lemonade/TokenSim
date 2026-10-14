@@ -290,6 +290,7 @@ def compile_af_runtime_plan(
                     expert_tp_rank=(
                         mapping.tp_rank if expert_view.mode == "expert_tp" else 0
                     ),
+                    ffn_projection_count=model.ffn_projection_count,
                 )
                 for component in components:
                     previous = component_by_id.get(component.component_id)

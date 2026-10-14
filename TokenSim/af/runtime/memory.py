@@ -31,6 +31,7 @@ def _components_for_binding(
     kv_partition: AFKVHeadPartition | None,
     expert_tp_size: int,
     expert_tp_rank: int,
+    ffn_projection_count: int,
 ) -> tuple[AFModelComponent, ...]:
     _ = dp_rank
     components: list[AFModelComponent] = []
@@ -112,10 +113,13 @@ def _components_for_binding(
                         f"layer.{layer.layer_id}.dense_ffn.tp{tp_rank}-of-{tp_size}"
                     ),
                     category="dense_ffn",
-                    bytes=3 * hidden * local_intermediate * weight_dtype_size,
+                    bytes=(ffn_projection_count + 1)
+                    * hidden
+                    * local_intermediate
+                    * weight_dtype_size,
                     formula=(
-                        "3 * hidden * local_intermediate * weight_dtype (SwiGLU "
-                        f"gate/up/down); intermediate_source={intermediate_source}"
+                        f"{ffn_projection_count + 1} * hidden * local_intermediate * weight_dtype; "
+                        f"intermediate_source={intermediate_source}"
                     ),
                     layer_id=layer.layer_id,
                     shape=(
@@ -135,10 +139,14 @@ def _components_for_binding(
                         f"tp{expert_tp_rank}-of-{expert_tp_size}"
                     ),
                     category="routed_expert",
-                    bytes=(3 * hidden * local_expert_intermediate * weight_dtype_size),
+                    bytes=(
+                        (ffn_projection_count + 1)
+                        * hidden
+                        * local_expert_intermediate
+                        * weight_dtype_size
+                    ),
                     formula=(
-                        "3 * hidden * local_expert_intermediate * weight_dtype "
-                        "(SwiGLU gate/up/down)"
+                        f"{ffn_projection_count + 1} * hidden * local_expert_intermediate * weight_dtype"
                     ),
                     layer_id=layer.layer_id,
                     shape=(
@@ -157,9 +165,14 @@ def _components_for_binding(
                         f"layer.{layer.layer_id}.shared_expert.tp{tp_rank}-of-{tp_size}"
                     ),
                     category="shared_expert",
-                    bytes=(3 * hidden * local_shared_intermediate * weight_dtype_size),
+                    bytes=(
+                        (ffn_projection_count + 1)
+                        * hidden
+                        * local_shared_intermediate
+                        * weight_dtype_size
+                    ),
                     formula=(
-                        "3 * hidden * local_shared_intermediate * weight_dtype "
+                        f"{ffn_projection_count + 1} * hidden * local_shared_intermediate * weight_dtype "
                         "for fused shared experts"
                     ),
                     layer_id=layer.layer_id,

@@ -183,12 +183,30 @@ class ComputeComponentsMixin:
                 "num_tokens": equivalent_tokens,
             }
             estimate = resolver.query_moe(base_key, self.moe_distributions)
+            table = "moe"
+            exact_key = {}
+            if estimate.match_type == "analytical":
+                # The runtime already knows the local histogram. Preserve its
+                # assignment and active-expert counts through analytical fallback.
+                table = "routed_experts"
+                exact_key = {
+                    "dtype": weight_dtype,
+                    "hidden_size": h,
+                    "inter_size": model.moe_intermediate_size // tp_size,
+                    "expert_tokens": json.dumps(
+                        sorted(count for _, count in workload), separators=(",", ":")
+                    ),
+                }
+                estimate = resolver.analytical_estimate(
+                    table, exact_key, gated=model.gated
+                )
             components.append(
                 OperatorComponent(
                     name="moe_expert",
-                    table="moe",
+                    table=table,
                     key={
                         **base_key,
+                        **exact_key,
                         "distribution": self.moe_distributions[0],
                         "routed_assignments": tokens,
                         "per_expert": [list(item) for item in workload],

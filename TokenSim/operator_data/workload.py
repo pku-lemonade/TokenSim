@@ -277,10 +277,11 @@ def work_for_table(
         h, i = int(key["hidden_size"]), int(key["inter_size"])
         tokens, experts = sum(counts), len(counts)
         b = activation_bytes_for(str(key["dtype"]))
+        projections = 3 if gated else 2
         return OperatorWork(
-            6.0 * tokens * h * i + 4.0 * tokens * i,
-            3.0 * experts * h * i * dtype_bytes(str(key["dtype"])),
-            (2.0 * tokens * h + 6.0 * tokens * i) * b,
+            2.0 * projections * tokens * h * i + (4.0 if gated else 1.0) * tokens * i,
+            float(projections) * experts * h * i * dtype_bytes(str(key["dtype"])),
+            (2.0 * tokens * h + 2.0 * projections * tokens * i) * b,
             details=dict(key),
         )
     if table == "mla_attention":

@@ -14,6 +14,7 @@ from TokenSim.af.trace.recorder import AFTraceRecorder
 from TokenSim.config.cluster_config import ClusterConfig
 from TokenSim.config.cluster_config import WorkerConfig
 from TokenSim.config.model_config import ModelSpec
+from TokenSim.errors import ConfigurationError
 from TokenSim.hardware import HardwareContext
 from TokenSim.hardware.placement import build_topology_placement
 from TokenSim.hardware.topology import TopologyPlacement
@@ -49,8 +50,29 @@ def simulate_decode(
     config, batch, context, *, steps=1, trace=True, fallback="table_first", seed=42
 ):
     """Exact fixed-batch decode; every token advances its own SimPy iteration."""
-    if batch < 1 or context < 1 or steps < 1:
+    if any(type(value) is not int or value < 1 for value in (batch, context, steps)):
         raise ValueError("batch, context and steps must be positive")
+    peak_context = context + steps
+    if peak_context > config.model.max_position_embeddings:
+        raise ConfigurationError("fixed-batch decode exceeds the model context limit")
+    # This helper submits every request to one decode A replica. It has no
+    # scheduler admission loop, so check the resident KV budget explicitly.
+    owner = next(
+        owner for owner in config.plan.request_owners if owner.phase == "decode"
+    )
+    leader = config.plan.binding(owner.domain, owner.leader_rank)
+    source_worker = next(
+        index
+        for index, worker in enumerate(config.workers)
+        if worker.physical_worker_ref.identity == leader.physical_identity
+    )
+    replica = config.plan.replica_for_instance(leader.domain, leader.instance)
+    required_blocks = batch * (-(-peak_context // config.plan.block_size))
+    if required_blocks > replica.logical_gpu_blocks:
+        raise ConfigurationError(
+            f"fixed-batch decode KV does not fit: required_blocks={required_blocks}, "
+            f"available_blocks={replica.logical_gpu_blocks}"
+        )
     env = simpy.Environment()
     compute, transfer = build_operator_table_af_providers(
         hardware=config.hardware,
@@ -89,7 +111,7 @@ def simulate_decode(
             )
             for i in range(batch)
         ]
-        iteration = executor.submit(0, requests, "decode")
+        iteration = executor.submit(source_worker, requests, "decode")
         env.process(executor.run_iteration(iteration))
         env.run()
         rows.append(

@@ -56,7 +56,7 @@ class GroqTSPModel:
             work = work_for_table(table, key)
             efficiency = float(params.get("attention_mfu", 0.6))
             peak = device.peak_compute_for(dtype).value
-        elif table == "moe":
+        elif table in {"moe", "routed_experts"}:
             dtype = str(key["dtype"])
             work = work_for_table(table, key, gated=gated, imbalance=imbalance)
             efficiency = float(params.get("moe_mfu", 0.7))

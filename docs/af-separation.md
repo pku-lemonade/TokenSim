@@ -72,6 +72,9 @@ Cross-domain activation and result legs carry the declared tensor ownership and 
 Routed dispatch/return traffic accounts for EP movement without duplicate internal dispatch charges.
 The graph owns post-attention normalization and the A-side residual addition.
 Router service includes projection and top-k selection; routed expert service excludes normalization, combination and residual work.
+Analytical routed-expert service uses the exact local assignment histogram and active-expert count.
+Measured aggregate MoE rows retain their balanced-equivalent batch interpretation.
+FFN weight accounting uses the model's projection count for gated and ungated activations.
 Combine and residual queries use the A rank's owned hidden interval.
 
 With `partial_return`, F ranks return expert outputs and A ranks perform weighted combination and residual addition.
@@ -126,6 +129,7 @@ The chunk completing a prompt produces one logits row per completed request.
 `af_runtime_state` reports topology, component bytes, KV partitions and capacities.
 `af_trace` reports dependency readiness, resource queueing, service time and provenance.
 `af_phase_fidelity` identifies AF and aggregate phases.
+The fixed-batch `simulate_decode` helper checks the selected A replica's resident KV capacity and model context limit before submitting work.
 
 `communication_timing` separates host submission, transport service and completion work.
 Optional host, operation and transport profiles validate their timing scope, runtime identity, environment and workload range before use.
