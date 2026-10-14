@@ -14,15 +14,3 @@ __pycache__/
 /tmp/
 /dataset/agentx/
 *.log
-
-# AF development and generated experiment artifacts
-.codex
-.claude
-.agents/
-tests/.codex-tmp/
-tests/.tmp/
-tests/tmp*/
-outputs/
-.codex-test-op/
-.tmp-op-runtime/
-.tmp-tests/

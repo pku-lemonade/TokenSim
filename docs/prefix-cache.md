@@ -95,12 +95,6 @@ Data parallelism or separate workers for prompt processing (prefill) and token g
 `--sticky_sessions` or `--router_policy consistent_hash` keep a conversation on one model replica, as described in [Parallelism](parallelism.md).
 Use `MooncakeStoreConnector` to share prefixes through an external store, as described in [Mooncake](mooncake.md).
 
-For AF with `A TP > 1`, "one worker" means one A DP replica's logical cache.
-The scheduler performs prefix lookup once on the leader, while every hit or
-miss maps to one local shard on each A TP rank. Reference counts, eviction,
-free, preemption, and swap remain aligned across the complete shard set. An F
-rank never owns prefix-cache blocks.
-
 ## Reusing Generated Output
 
 `output_hash_ids` lets completed decode blocks become part of a later prompt.

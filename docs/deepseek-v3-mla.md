@@ -54,7 +54,27 @@ Capacity checks account for weights, protocol buffers and padded KV blocks.
 
 The decode runner uses fixed concurrency with prefilled KV state.
 Use the standard serving CLI and `data/clusters/deepseek_v3/1a32f.json` to simulate request arrivals and prefill/decode scheduling.
-The [cluster guide](../data/clusters/deepseek_v3/README.md) provides the command.
+The serving cluster uses five eight-slot nodes, one A worker and 32 F workers on A100 SXM 80 GB devices.
+Host submission costs 5 microseconds per message and completion costs zero by configuration; these values are simulation assumptions.
+
+```bash
+python benchmark.py \
+  --cluster data/clusters/deepseek_v3/1a32f.json \
+  --model deepseek-v3-671b-mla \
+  --latency_backend operator_table \
+  --latency_fallback analytical_only \
+  --qps 1 \
+  --request_count 1 \
+  --prefill_mean_len 16 \
+  --prefill_range_len 0 \
+  --decode_mean_len 2 \
+  --decode_range_len 0 \
+  --batching paged-attn \
+  --distribution burst \
+  --block_size 16 \
+  --verbose none \
+  --results_path outputs/deepseek-v3-serving
+```
 
 Outputs include model and cluster metadata, the runtime plan, hardware assumptions, summary statistics and a Chrome/Perfetto trace.
 `avg_step_us` reports elapsed step latency; summed component service includes work on concurrent resources.

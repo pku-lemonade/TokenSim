@@ -131,29 +131,6 @@ EP adds time for distributing tokens to experts (dispatch), collecting expert re
 It requires a MoE model configuration.
 See [MoE](moe.md).
 
-### AF execution domains
-
-Attention–feed-forward network (AF) separation uses independent A and F execution domains.
-Each data-parallel (DP) replica contains `TP` tensor-parallel ranks, with pipeline parallelism fixed to one.
-Expert parallelism (EP) reuses F ranks and adds no physical workers.
-`EP=1` uses a TP-sharded expert set in each F replica.
-`EP=F_TP*F_DP` distributes experts across the existing F world with expert TP equal to one.
-Intermediate EP values are rejected.
-
-`AFRuntimePlan` supplies rank placement, exact tensor ownership, component memory and KV partitions to the engine and planner.
-Each A replica has one scheduler and request queue; every A TP rank owns its local KV state.
-A logical KV block maps atomically to all required local shards, and replica capacity is their minimum.
-Equivalent prefill/decode domains sharing physical ranks reuse that scheduler and cache.
-F ranks own their assigned dense, routed and shared FFN components.
-Router weights and work follow `af.router_location`.
-
-Routing assignments retain each request's token position, expert IDs and weights.
-Expert work uses assignment counts; shared experts and residuals use original token counts.
-Wire precision changes create explicit conversion nodes.
-Transfers and collectives contend on the configured physical node resources or shared fabric lanes.
-The result fields `af_runtime_state`, `af_trace` and `af_phase_fidelity` report the compiled topology, events and per-phase execution fidelity.
-See [AF separation](af-separation.md) for runnable configurations and restrictions.
-
 ## Configuration Precedence
 
 The effective parallel configuration follows this precedence order.

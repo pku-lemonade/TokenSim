@@ -59,7 +59,7 @@ The configurations `decode_tp2_dp2_ep1.json` and `decode_tp2_dp2_ep4_rank_reuse.
 
 Physical communication uses explicit eight-slot nodes, placement and node bandwidth budgets.
 Declare `af.communication_domains.node_count` and choose `manual`, `mixed` or `dedicated` placement.
-See [AF communication](af-communication.md) for contention, collective volumes and measurement scopes.
+The communication model below describes contention, collective volumes and measurement scopes.
 `flat_link` supports explicitly configured communication fabrics and lanes.
 Full duplex provides separate directional resources; half duplex shares one resource.
 Collectives share a fabric lane only when their configuration names that lane.
@@ -70,9 +70,13 @@ Every compiled layer contains attention work followed by the model's dense or Mo
 The graph includes required TP collectives, normalization, routing/top-k, precision conversions, weighted combination and residual addition.
 Cross-domain activation and result legs carry the declared tensor ownership and routing assignments.
 Routed dispatch/return traffic accounts for EP movement without duplicate internal dispatch charges.
+The graph owns post-attention normalization and the A-side residual addition.
+Router service includes projection and top-k selection; routed expert service excludes normalization, combination and residual work.
+Combine and residual queries use the A rank's owned hidden interval.
 
 With `partial_return`, F ranks return expert outputs and A ranks perform weighted combination and residual addition.
-An F-side router sends selected expert IDs and weights to all consumers that need them.
+An F-side router sends selected expert IDs and weights to all consumers that need them, including one-A/one-F deployments.
+Each token transmits one 32-bit expert ID and one 32-bit weight per selected expert.
 Native `vllm_afd` combines expert results on F and returns one hidden activation per original token.
 It supports all-MoE Qwen3 models without shared experts, BF16 precision and one A/F rank.
 Its eager control protocol permits one in-flight transaction.
@@ -82,18 +86,43 @@ Each logical KV block maps to local shards on all required A TP ranks.
 Allocation, swapping, forking and release update the shard set atomically.
 The replica's usable capacity is the minimum capacity across those ranks.
 Equivalent prefill/decode domains sharing physical ranks reuse one scheduler and cache.
+Prefix lookup occurs once on the A scheduler leader, and every logical hit or miss maps to local shards on each A TP rank.
+Reference counts, eviction, free, preemption and swap update the complete shard set.
+F ranks own no prefix-cache blocks.
 
 Memory accounting includes model components, declared protocol buffers and KV blocks.
 `gpu_memory_utilization` limits each physical worker's budget.
 An explicit KV limit caps the available memory calculation.
 A total KV limit is divided by A-domain DP replicas.
 Weight, activation, KV-cache and directional wire dtypes have independent roles.
-See [AF execution contracts](af-correctness.md) for precision, prefill, mixed batches and recomputation details.
+GEMM/expert queries use weight precision; normalization, rotary embeddings and residuals use activation precision; attention uses KV-cache precision.
+
+## Request geometry and execution contracts
+
+Routing snapshots retain each request's absolute token identity and decode step.
+External assignments are validated against that request's position, including requests at different decode positions in one block.
+Prefill records query lengths and available KV contexts separately for every request.
+Cached keys contribute attention FLOPs and KV reads when only a suffix is computed.
+Whole-prompt measurements used for cached prefill are scaled by an analytical growth ratio and labeled extrapolated.
+Uneven requests retain separate query shapes.
+
+Wire precision changes create encode/decode nodes on the producer and consumer compute resources.
+Conversion names record both formats, such as `cast_bf16_to_fp8`, and the table dtype identifies the output format.
+Analytical conversion estimates include source reads, target writes, conversion work and kernel overhead.
+Strict lookup requires a matching measurement.
+
+Mixed serving batches are partitioned by logical phase and whether they build context.
+AF groups run concurrently on shared physical resources and join at one serving-step completion barrier.
+Recomputation retains decode ownership while rebuilding context with prefill attention kernels.
+MLA prefill/recomputation require equal-length, whole contexts without cached prefixes or partial chunks.
+Unsupported MLA passes fail before ownership or iteration state changes.
+Failure or cancellation interrupts sibling groups and releases their resources.
 
 ## Results and calibration
 
 The engine includes embedding lookup, final normalization, language-model head and token selection in whole-model latency.
-Incomplete prefill chunks skip logits and sampling work.
+Incomplete prefill chunks skip logits, logits collectives and sampling work.
+The chunk completing a prompt produces one logits row per completed request.
 `af_runtime_state` reports topology, component bytes, KV partitions and capacities.
 `af_trace` reports dependency readiness, resource queueing, service time and provenance.
 `af_phase_fidelity` identifies AF and aggregate phases.
@@ -102,6 +131,80 @@ Incomplete prefill chunks skip logits and sampling work.
 Optional host, operation and transport profiles validate their timing scope, runtime identity, environment and workload range before use.
 Synthetic test profiles provide regression fixtures only.
 Changing runtime configuration requires a new provider/runtime; service and DAG caches retain static estimates without retaining resource availability or completion times.
+
+## Physical communication
+
+Physical AF communication uses the `node-domain-fifo-v1` model.
+Each node has eight GPU slots, one shared local communication resource, and independent inter-node transmit and receive resources.
+Empty slots remain part of the declared inventory.
+
+```json
+{
+  "transfer_topology_mode": "physical",
+  "communication_domains": {
+    "node_size": 8,
+    "node_count": 2,
+    "placement_strategy": "manual",
+    "device_indices": {
+      "a-pool:0": 0,
+      "f-pool:0": 8
+    },
+    "local_bandwidth_bytes_per_s": 300000000000,
+    "inter_tx_bandwidth_bytes_per_s": 50000000000,
+    "inter_rx_bandwidth_bytes_per_s": 50000000000,
+    "local_latency_us": 1,
+    "inter_latency_us": 5
+  }
+}
+```
+
+Place these fields inside the cluster's `af` object.
+Bandwidth is unidirectional bytes/s, with decimal GB units.
+The defaults above are simulator assumptions: 300 GB/s is a shared node budget.
+The physical mode reads these parameters independently of the catalog link name.
+`manual` supports explicit device indices; `dedicated` separates A/F nodes; `mixed` reserves the configured A slots within each node.
+Placement rejects duplicate slots, insufficient inventory and conflicting overrides before execution.
+
+A local transfer holds its node's local resource.
+A remote transfer atomically acquires the source transmit and target receive resources and uses their lower bandwidth.
+Requests sharing either resource queue in FIFO order; disjoint resources can run concurrently.
+Waiting transfers do not hold a subset of their resources.
+Cancellation releases reservations and queued requests.
+
+### Collective volumes
+
+Collective input `M` is the logical input bytes per rank, and `N` is the actual participant count.
+
+| Operation | Logical output per rank | Ring bytes sent per rank |
+| --- | --- | --- |
+| AllGather | `N*M` | `(N-1)*M` |
+| ReduceScatter | `M/N` | `(N-1)*M/N` |
+| AllReduce | `M` | `2*(N-1)*M/N` |
+
+Reduction shards must contain whole dtype elements.
+Hierarchical collectives require equally sized participating subgroups on each node.
+AllReduce executes local ReduceScatter, inter-node shard AllReduce and local AllGather.
+AllGather and ReduceScatter add local layout conversion when their input/output ordering requires it.
+These conversions occupy compute resources and send no network bytes.
+Each subgroup waits for its own producers; consumers wait for all required collective phases.
+
+All-to-All may use declared locality fractions and load imbalance in physical mode.
+Expected output bytes retain fractional statistical traffic, and total traffic is conserved.
+Flat All-to-All supports the uniform distribution with default imbalance and no destination redistribution.
+Unsupported statistical settings fail before no-op handling or cache lookup.
+
+### Service measurements and traces
+
+Analytical phase service is fixed latency plus wire bytes divided by effective bandwidth.
+Measured phase records require `timing_scope=transport_service` and matching model version, algorithm, operation, dtype, participants, node layout, wire schedule and domain parameters.
+Hardware/backend applicability and transport backend also participate in matching.
+A whole-collective measurement cannot be split into invented phase measurements.
+`table_only` rejects missing phase measurements; policies allowing fallback label analytical service explicitly.
+
+Caches retain static traffic plans and service estimates.
+Every invocation creates its own readiness events, resource reservations and queueing delays.
+Trace records keep dependency waiting, resource queueing and service duration separate.
+The node FIFO and coarse phase resource reservations are modeling approximations.
 
 ## Code layout
 
