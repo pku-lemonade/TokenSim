@@ -212,7 +212,7 @@ def point(
         while left:
             query = min(workload.prefill_chunk, left)
             yield from services[name].forward(
-                sessions, phase="prefill", query_tokens=query
+                sessions, phase="prefill", query_tokens=query, emit_logits=query == left
             )
             left -= query
 
@@ -268,6 +268,7 @@ def point(
                     tokens=len(bundle["target"]),
                     phase="prefill",
                     cohort=cohort,
+                    warmup=warm_turn,
                 )
             )
             while remaining and not stop.triggered:
@@ -339,6 +340,7 @@ def point(
                         tokens=committed * len(bundle["target"]),
                         phase="decode",
                         cohort=cohort,
+                        warmup=warm_turn,
                     )
                 )
                 decode_intervals.append(
@@ -348,6 +350,7 @@ def point(
                         tokens=committed,
                         clients=len(bundle["target"]),
                         cohort=cohort,
+                        warmup=warm_turn,
                     )
                 )
                 completed_steps += 1
@@ -432,11 +435,13 @@ def point(
         start=measurement["start"],
         end=measurement["end"],
         capacities=capacities,
+        include_end=True,
     )
     intervals = [
         row
         for row in decode_intervals
-        if measurement["start"] <= row["end"] < measurement["end"]
+        if not row["warmup"]
+        and measurement["start"] <= row["end"] <= measurement["end"]
     ]
     tokens = sum(row["tokens"] * row["clients"] for row in intervals)
     user_seconds = sum(
@@ -464,6 +469,7 @@ def point(
             "measurement_s": measurement["end"] - measurement["start"],
             "minimum_measurement_s": measurement_seconds,
             "minimum_complete_turns_per_cohort": measurement_turns,
+            "completed_token_boundary": "[start, end]; warmup explicitly excluded",
             "drain_s": env.now - measurement["end"],
         },
         services={name: service.summary() for name, service in services.items()},

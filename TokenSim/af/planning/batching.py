@@ -189,11 +189,15 @@ def request_work(request, phase):
         raise ConfigurationError(
             "AF scheduled queries must lie inside the request context"
         )
+    emit_logits = getattr(request, "emit_logits", True)
+    if type(emit_logits) is not bool:
+        raise ConfigurationError("AF emit_logits must be a boolean")
+    rows = int(offset + queries == context) if building else queries
     return AFRequestWork(
         queries,
         offset,
         offset + queries,
-        int(offset + queries == context) if building else queries,
+        rows if emit_logits else 0,
         "prefill" if building else phase,
     )
 

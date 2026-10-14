@@ -14,6 +14,26 @@ from TokenSim.af.communication.endpoints import EndpointResources
 
 
 class NativeLPXTest(unittest.TestCase):
+    def test_intermediate_prefill_extends_kv_without_unneeded_logits(self):
+        runtime = configuration(self.hardware, self.model, self.base, namespace="chunk")
+        env = simpy.Environment()
+        service = AFService(env, runtime)
+        session = service.admit(0, 0, maximum_context=24, current_context=16)
+        env.process(
+            service.forward(
+                [session], phase="prefill", query_tokens=2, emit_logits=False
+            )
+        )
+        env.run()
+        self.assertEqual(session.cached_context, 18)
+        self.assertFalse(any(e.operation == "lm_head" for e in service.trace.events))
+        env.process(service.forward([session], phase="prefill", query_tokens=2))
+        env.run()
+        self.assertEqual(session.cached_context, 20)
+        heads = [e for e in service.trace.events if e.operation == "lm_head"]
+        self.assertEqual(len(heads), 2)
+        self.assertEqual({e.local_work["token_count"] for e in heads}, {1})
+
     @classmethod
     def setUpClass(cls):
         cls.hardware = HardwareContext.load(
@@ -162,3 +182,20 @@ class NativeLPXTest(unittest.TestCase):
             env.process(service.forward([session]))
         env.run()
         self.assertEqual([s.cached_context for s in sessions], [17, 17])
+
+    def test_complete_turn_counts_exclude_warm_tokens_and_include_final_verification(
+        self,
+    ):
+        for acceptance in (0, 1):
+            case = Case("draft", "draft", self.base, draft=self.lpu)
+            result = point(
+                self.hardware,
+                self.model,
+                replace(self.workload, acceptance_probability=acceptance),
+                case,
+                1,
+                warmup_steps=1,
+                measurement_seconds=1e-9,
+            )
+            self.assertEqual(result["steady_state"]["output_tokens"], 8)
+            self.assertEqual(result["steady_state"]["decode_tokens"], 7)

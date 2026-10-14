@@ -14,6 +14,7 @@ Pipeline parallelism (PP) owns its stage's weights and KV layers and charges act
 Expert parallelism (EP) supports tensor-sharded experts with resolved physical collective groups.
 Colocated A/F domains share one physical compute and memory inventory.
 Large prefill graphs bypass the structural template cache above 32 query tokens to bound compilation cost and retained routing records.
+Intermediate prefill chunks extend KV without producing unused vocabulary logits; the final suffix chunk computes the prefill output token.
 Full traces undergo invariant validation before optional retention as compact timing records.
 The compact history produces the same serving metrics as the full history.
 Worker and host resource names include their service namespace when metrics are aggregated.
@@ -26,6 +27,8 @@ Increasing the number of measured turns reduces finite-window boundary effects.
 Setting the turn minimum to zero is available for fixed-window diagnostics and can produce a decode-dominated sample.
 In-flight work drains after measurement ends.
 Warm-up and drain tokens are excluded from steady-state output throughput.
+Native measurements explicitly tag warm-up tokens and include output completions at the closing timestamp.
+This boundary convention retains the final speculative token group without admitting the warm-up group that triggered measurement.
 
 ## Hardware and precision
 

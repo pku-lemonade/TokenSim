@@ -6,17 +6,20 @@ from TokenSim.config.validation import number
 from TokenSim.af.trace.occupancy import occupied_until
 
 
-def steady_metrics(events, traces, *, start, end, capacities=None):
+def steady_metrics(events, traces, *, start, end, capacities=None, include_end=False):
     number(start, "measurement start")
     number(end, "measurement end", minimum=start, positive=True)
     if end == start:
         raise ValueError("steady-state measurement must have positive duration")
-    output = sum(row["tokens"] for row in events if start <= row["time"] < end)
-    decode = sum(
-        row["tokens"]
+    selected = [
+        row
         for row in events
-        if start <= row["time"] < end and row["phase"] == "decode"
-    )
+        if not row.get("warmup", False)
+        and start <= row["time"]
+        and (row["time"] <= end if include_end else row["time"] < end)
+    ]
+    output = sum(row["tokens"] for row in selected)
+    decode = sum(row["tokens"] for row in selected if row["phase"] == "decode")
     busy, queue, counts = defaultdict(float), defaultdict(float), defaultdict(int)
     for event in traces:
         queued = max(0.0, min(end, event.start_at) - max(start, event.ready_at))

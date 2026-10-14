@@ -9,7 +9,7 @@ from TokenSim.af.runtime.admission import ResidentKV
 from TokenSim.af.trace.recorder import AFTraceRecorder
 from TokenSim.af.trace.metrics import AFTraceEvent
 from TokenSim.af.serving.timing import CompletedTiming
-from TokenSim.config.validation import integer
+from TokenSim.config.validation import integer, boolean
 from TokenSim.errors import ConfigurationError
 
 
@@ -116,8 +116,17 @@ class AFService:
         self.sessions[request_id] = session
         return session
 
-    def forward(self, sessions, *, phase="decode", query_tokens=1, context=None):
+    def forward(
+        self,
+        sessions,
+        *,
+        phase="decode",
+        query_tokens=1,
+        context=None,
+        emit_logits=True,
+    ):
         integer(query_tokens, "query tokens", minimum=1)
+        boolean(emit_logits, "emit logits")
         if not sessions or len({session.dp_rank for session in sessions}) != 1:
             raise ConfigurationError("an AF micro-batch requires one scheduler owner")
         owner = self.owners[(phase, sessions[0].dp_rank)]
@@ -149,6 +158,7 @@ class AFService:
                     scheduled_query_tokens=query_tokens,
                     scheduled_tokens=query_tokens,
                     generation_idx=session.generated,
+                    emit_logits=emit_logits,
                     af_a_owners=session.owners,
                 )
             )
