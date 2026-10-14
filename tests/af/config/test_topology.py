@@ -290,6 +290,7 @@ class AFDomainParallelConfigTest(unittest.TestCase):
         for ep_size, expected_mode, expected_expert_tp, expected_ep_ranks in (
             (1, "expert_tp", 2, [0, 0, 0, 0]),
             (4, "rank_reuse", 1, [0, 1, 2, 3]),
+            (2, "expert_sharded", 2, [0, 0, 1, 1]),
         ):
             with self.subTest(ep_size=ep_size):
                 cluster = ClusterConfig(**_explicit_decode_cluster_raw(f_ep=ep_size))
@@ -319,12 +320,12 @@ class AFDomainParallelConfigTest(unittest.TestCase):
                     4,
                 )
 
-    def test_intermediate_ep_size_is_rejected(self):
+    def test_nondivisible_ep_size_is_rejected(self):
         with self.assertRaisesRegex(
             ConfigurationError,
-            "f-domain.*expert_parallel_size=1.*TP\\*DP=4.*got 2",
+            "f-domain.*expert_parallel_size=3.*divide.*TP\\*DP=4",
         ):
-            ClusterConfig(**_explicit_decode_cluster_raw(f_ep=2))
+            ClusterConfig(**_explicit_decode_cluster_raw(f_ep=3))
 
 
 class AFCollectiveConfigTest(unittest.TestCase):

@@ -126,13 +126,27 @@ class RuntimeGeometryMixin:
                 {
                     "tp_size": expert_tp_size,
                     "expert_tp_size": expert_tp_size,
-                    "expert_tp_rank": (binding.tp_rank if expert_tp_size > 1 else 0),
+                    "expert_tp_rank": binding.tp_rank % expert_tp_size,
                     "intermediate_size": (
                         layer.routed_intermediate_size // expert_tp_size
                     ),
                 }
             )
         return shape
+
+    def expert_tp_group(self, binding: AFRankBinding) -> tuple[int, ...]:
+        domain = self.domain_runtime(binding.domain)
+        if domain.expert_parallel_mode == "expert_tp":
+            return binding.tp_group
+        return tuple(
+            sorted(
+                candidate.domain_rank
+                for candidate in self.rank_bindings
+                if candidate.domain == binding.domain
+                and candidate.pp_rank == binding.pp_rank
+                and candidate.ep_rank == binding.ep_rank
+            )
+        )
 
     def expert_execution(
         self, domain: str, expert_id: int, f_service_dp_rank: int

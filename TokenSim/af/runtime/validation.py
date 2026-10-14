@@ -118,6 +118,7 @@ class RuntimeValidationMixin:
             if domain.capability == "af_ffn" and domain.expert_parallel_mode not in {
                 "expert_tp",
                 "rank_reuse",
+                "expert_sharded",
             }:
                 raise ConfigurationError(
                     f"AF runtime domain={domain.name} has unsupported EP mode"
@@ -132,8 +133,15 @@ class RuntimeValidationMixin:
                 expected_ep_size = 1
                 expected_expert_tp = domain.tensor_parallel_size
             else:
-                expected_ep_size = expected_count
-                expected_expert_tp = 1
+                expected_ep_size = domain.expert_parallel_size
+                expected_expert_tp = expected_count // expected_ep_size
+                if (
+                    expected_count % expected_ep_size
+                    or domain.tensor_parallel_size % expected_expert_tp
+                ):
+                    raise ConfigurationError(
+                        "expert partition must divide stage world and base TP"
+                    )
             if domain.expert_parallel_size != expected_ep_size or (
                 domain.expert_tensor_parallel_size != expected_expert_tp
             ):
@@ -188,9 +196,10 @@ class RuntimeValidationMixin:
             expected_tp_group = tuple(item.domain_rank for item in bindings)
             for binding in bindings:
                 expected_ep_rank = (
-                    binding.dp_rank * domain.tensor_parallel_size + binding.tp_rank
+                    (binding.dp_rank * domain.tensor_parallel_size + binding.tp_rank)
+                    // domain.expert_tensor_parallel_size
                     if domain.capability == "af_ffn"
-                    and domain.expert_parallel_mode == "rank_reuse"
+                    and domain.expert_parallel_mode != "expert_tp"
                     else 0
                 )
                 if binding.ep_rank != expected_ep_rank:
@@ -258,7 +267,7 @@ class RuntimeValidationMixin:
         for domain in self.domains:
             if (
                 domain.capability != "af_ffn"
-                or domain.expert_parallel_mode != "rank_reuse"
+                or domain.expert_parallel_mode == "expert_tp"
                 or not self.num_experts
             ):
                 continue
@@ -278,10 +287,10 @@ class RuntimeValidationMixin:
                 owners = [
                     item for item in domain_bindings if expert_id in item.expert_ids
                 ]
-                if len(owners) != 1:
+                if len(owners) != domain.expert_tensor_parallel_size:
                     raise ConfigurationError(
                         f"rank-reuse F domain={domain.name}, expert={expert_id} must "
-                        f"resolve to one physical rank; got {len(owners)}"
+                        f"resolve to {domain.expert_tensor_parallel_size} physical ranks; got {len(owners)}"
                     )
 
         for domain in self.domains:
@@ -300,7 +309,7 @@ class RuntimeValidationMixin:
                 if domain.expert_parallel_mode == "expert_tp":
                     for expert_id in range(self.num_experts):
                         self.expert_execution(domain.name, expert_id, dp_rank)
-            if domain.expert_parallel_mode == "rank_reuse":
+            if domain.expert_parallel_mode != "expert_tp":
                 for expert_id in range(self.num_experts):
                     self.expert_execution(domain.name, expert_id, 0)
 

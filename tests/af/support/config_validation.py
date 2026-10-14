@@ -67,7 +67,9 @@ def _cluster(
     )
 
 
-def _domain_instances(group: str, tp: int, dp: int, *, rank_reuse: bool = False):
+def _domain_instances(
+    group: str, tp: int, dp: int, *, rank_reuse: bool = False, expert_tp=1
+):
     return [
         {
             "name": f"{group}-dp{dp_rank}",
@@ -77,7 +79,9 @@ def _domain_instances(group: str, tp: int, dp: int, *, rank_reuse: bool = False)
                     "tp_rank": tp_rank,
                     "pp_rank": 0,
                     "dp_rank": dp_rank,
-                    "ep_rank": dp_rank * tp + tp_rank if rank_reuse else 0,
+                    "ep_rank": (
+                        (dp_rank * tp + tp_rank) // expert_tp if rank_reuse else 0
+                    ),
                     "physical_worker": {
                         "group_name": group,
                         "worker_index": dp_rank * tp + tp_rank,
@@ -176,7 +180,11 @@ def _explicit_decode_cluster_raw(
                         "expert_parallel_size": f_ep,
                     },
                     "logical_instances": _domain_instances(
-                        "ffn", f_tp, f_dp, rank_reuse=f_ep > 1
+                        "ffn",
+                        f_tp,
+                        f_dp,
+                        rank_reuse=f_ep > 1,
+                        expert_tp=f_tp * f_dp // f_ep,
                     ),
                 },
             ],

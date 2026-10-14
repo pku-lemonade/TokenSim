@@ -73,7 +73,7 @@ class AFReplicaSelection:
     a_owner: LogicalInstanceConfig
     f_service: LogicalInstanceConfig
     routed_expert_instances: tuple[LogicalInstanceConfig, ...]
-    expert_parallel_mode: Literal["expert_tp", "rank_reuse"]
+    expert_parallel_mode: Literal["expert_tp", "rank_reuse", "expert_sharded"]
 
     @property
     def dense_ffn_instance(self) -> LogicalInstanceConfig:

@@ -333,7 +333,7 @@ class TensorCopyPlannerMixin:
         domain_plan = self.runtime_plan.domain_runtime(binding.domain)
         if (
             domain_plan.capability == "af_ffn"
-            and domain_plan.expert_parallel_mode == "rank_reuse"
+            and domain_plan.expert_parallel_mode != "expert_tp"
         ):
             for ownership in self.runtime_plan.tensor_ownerships:
                 if (

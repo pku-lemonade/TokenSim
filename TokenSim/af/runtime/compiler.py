@@ -256,7 +256,7 @@ def compile_af_runtime_plan(
                         f"AF runtime domain={domain.name}, rank={mapping.domain_rank} "
                         f"references missing physical worker {physical!r}"
                     )
-                if domain.capability == "af_ffn" and expert_view.mode == "rank_reuse":
+                if domain.capability == "af_ffn" and expert_view.mode != "expert_tp":
                     expert_ids = tuple(experts_by_rank.get(mapping.ep_rank, ()))
                     ep_group = tuple(item.domain_rank for item in domain_mappings)
                 elif domain.capability == "af_ffn":
@@ -288,7 +288,7 @@ def compile_af_runtime_plan(
                     kv_partition=kv_by_rank.get(rank_key),
                     expert_tp_size=expert_view.expert_tensor_parallel_size,
                     expert_tp_rank=(
-                        mapping.tp_rank if expert_view.mode == "expert_tp" else 0
+                        mapping.tp_rank % expert_view.expert_tensor_parallel_size
                     ),
                     ffn_projection_count=model.ffn_projection_count,
                 )

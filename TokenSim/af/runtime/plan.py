@@ -215,7 +215,7 @@ class AFRuntimePlan(RuntimeGeometryMixin, RuntimeValidationMixin):
         domain_plan = self.domain_runtime(domain)
         bindings = (
             tuple(binding for binding in self.rank_bindings if binding.domain == domain)
-            if domain_plan.expert_parallel_mode == "rank_reuse"
+            if domain_plan.expert_parallel_mode != "expert_tp"
             else self.bindings_for_instance(domain, instance)
         )
         for binding in bindings:
@@ -248,8 +248,7 @@ class AFRuntimePlan(RuntimeGeometryMixin, RuntimeValidationMixin):
         expected_tp_group = binding.tp_group
         if node.stage in {"expert", "routed_expert"}:
             domain_plan = self.domain_runtime(binding.domain)
-            if domain_plan.expert_parallel_mode == "rank_reuse":
-                expected_tp_group = (binding.domain_rank,)
+            expected_tp_group = self.expert_tp_group(binding)
         if node.tp_group and tuple(node.tp_group) != expected_tp_group:
             raise SimulationStateError(
                 f"runtime node {node.node_id!r} TP group mismatch for "

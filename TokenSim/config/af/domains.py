@@ -13,7 +13,7 @@ from TokenSim.errors import ConfigurationError
 
 @dataclass(frozen=True)
 class DomainExpertParallelView:
-    mode: Literal["expert_tp", "rank_reuse"]
+    mode: Literal["expert_tp", "rank_reuse", "expert_sharded"]
     expert_parallel_size: int
     expert_tensor_parallel_size: int
     base_world_size: int
@@ -33,7 +33,9 @@ class DomainExpertParallelView:
             )
         if self.mode == "expert_tp":
             return 0
-        return dp_rank * self.base_tensor_parallel_size + tp_rank
+        return (
+            dp_rank * self.base_tensor_parallel_size + tp_rank
+        ) // self.expert_tensor_parallel_size
 
 
 @dataclass(frozen=True)
@@ -113,21 +115,31 @@ class DomainParallelConfig:
                 base_world_size=self.world_size,
                 base_tensor_parallel_size=self.tensor_parallel_size,
             )
-        allowed = {1, self.world_size}
-        if self.expert_parallel_size not in allowed:
+        world = self.tensor_parallel_size * self.data_parallel_size
+        expert_tp = world // self.expert_parallel_size
+        if self.expert_parallel_size != 1 and (
+            world % self.expert_parallel_size
+            or not expert_tp
+            or self.tensor_parallel_size % expert_tp
+        ):
             raise ConfigurationError(
-                f"{context} only supports expert_parallel_size=1 or "
-                f"expert_parallel_size=TP*DP={self.world_size}; got "
-                f"{self.expert_parallel_size}"
+                f"{context} expert_parallel_size={self.expert_parallel_size} must divide "
+                f"TP*DP={world} and its Expert TP must divide base TP={self.tensor_parallel_size}"
             )
         rank_reuse = (
             self.expert_parallel_size == self.world_size and self.world_size > 1
         )
         return DomainExpertParallelView(
-            mode="rank_reuse" if rank_reuse else "expert_tp",
+            mode=(
+                "rank_reuse"
+                if rank_reuse
+                else "expert_tp" if self.expert_parallel_size == 1 else "expert_sharded"
+            ),
             expert_parallel_size=self.expert_parallel_size,
             expert_tensor_parallel_size=(
-                1 if rank_reuse else self.tensor_parallel_size
+                self.tensor_parallel_size
+                if self.expert_parallel_size == 1
+                else expert_tp
             ),
             base_world_size=self.world_size,
             base_tensor_parallel_size=self.tensor_parallel_size,

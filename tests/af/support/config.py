@@ -160,7 +160,7 @@ def _load_cluster(**overrides):
     return ClusterConfig(**_cluster_dict(**overrides))
 
 
-def _replica(group, name, dp_rank, tp_size, ep_size, worker_offset):
+def _replica(group, name, dp_rank, tp_size, ep_size, worker_offset, expert_tp=1):
     return {
         "name": name,
         "rank_mapping": [
@@ -169,7 +169,9 @@ def _replica(group, name, dp_rank, tp_size, ep_size, worker_offset):
                 "tp_rank": tp_rank,
                 "pp_rank": 0,
                 "dp_rank": dp_rank,
-                "ep_rank": dp_rank * tp_size + tp_rank if ep_size > 1 else 0,
+                "ep_rank": (
+                    (dp_rank * tp_size + tp_rank) // expert_tp if ep_size > 1 else 0
+                ),
                 "physical_worker": {
                     "group_name": group,
                     "worker_index": worker_offset + tp_rank,
@@ -187,6 +189,7 @@ def _cluster(
     f_dp=2,
     f_ep=None,
     expert_placement_strategy="linear",
+    placement_strategy="manual",
 ):
     f_ep = f_tp * f_dp if f_ep is None else f_ep
     a_workers = a_tp * a_dp
@@ -214,8 +217,12 @@ def _cluster(
             "enabled": True,
             "communication_domains": {
                 "node_size": 8,
-                "node_count": (a_workers + f_workers + 7) // 8,
-                "placement_strategy": "manual",
+                "node_count": (
+                    (a_workers + 7) // 8 + (f_workers + 7) // 8
+                    if placement_strategy == "dedicated"
+                    else (a_workers + f_workers + 7) // 8
+                ),
+                "placement_strategy": placement_strategy,
             },
             "phases": ["prefill", "decode"],
             "af_block_size": 1,
@@ -292,6 +299,7 @@ def _cluster(
                             f_tp,
                             f_ep,
                             rank * f_tp,
+                            f_tp * f_dp // f_ep,
                         )
                         for rank in range(f_dp)
                     ],

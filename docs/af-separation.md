@@ -54,7 +54,9 @@ Pipeline parallelism must be one, and generic `dp_lockstep` cannot be combined w
 Expert parallelism (EP) reuses the F domain's `TP*DP` physical ranks.
 `EP=1` gives each replica a TP-sharded expert set.
 `EP=TP*DP` distributes experts across that world with one rank per expert shard.
-Intermediate EP sizes fail validation.
+Intermediate EP sizes divide the `TP*DP` stage world and retain `Expert TP=(TP*DP)/EP` contiguous tensor shards per expert.
+Expert TP must divide base TP so one expert's shards fit within a base replica.
+The runtime resolves exact expert owners and scopes routed-expert collectives to those shards.
 The configurations `decode_tp2_dp2_ep1.json` and `decode_tp2_dp2_ep4_rank_reuse.json` demonstrate these layouts.
 
 Physical communication uses explicit eight-slot nodes, placement and node bandwidth budgets.

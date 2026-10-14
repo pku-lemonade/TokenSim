@@ -125,12 +125,8 @@ class ComputeNodePlannerMixin:
             tp_rank=binding.tp_rank,
             ep_rank=binding.ep_rank,
             tp_group=(
-                (binding.domain_rank,)
+                self.runtime_plan.expert_tp_group(binding)
                 if stage == "routed_expert"
-                and self.runtime_plan.domain_runtime(
-                    binding.domain
-                ).expert_parallel_mode
-                == "rank_reuse"
                 else binding.tp_group
             ),
             ep_group=binding.ep_group,
@@ -172,6 +168,22 @@ class ComputeNodePlannerMixin:
                     "collective plan is configured"
                 )
             return None
+        if (
+            after_stage == "expert_compute"
+            and domain.expert_parallel.mode == "expert_sharded"
+        ):
+            ranks = tuple(binding.domain_rank for binding in bindings)
+            if not set(ranks).issubset(plan.participant_ranks):
+                raise ConfigurationError(
+                    "expert collective template does not cover the expert TP group"
+                )
+            plan = replace(
+                plan,
+                participant_ranks=ranks,
+                physical_workers=tuple(
+                    binding.physical_identity for binding in bindings
+                ),
+            )
         by_rank = {binding.domain_rank: binding for binding in bindings}
         try:
             participants = tuple(by_rank[rank] for rank in plan.participant_ranks)

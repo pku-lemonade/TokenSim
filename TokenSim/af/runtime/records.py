@@ -380,7 +380,9 @@ class AFDomainRuntime:
     data_parallel_size: int
     expert_parallel_size: int
     expert_placement_strategy: str
-    expert_parallel_mode: Literal["expert_tp", "rank_reuse"] = "expert_tp"
+    expert_parallel_mode: Literal["expert_tp", "rank_reuse", "expert_sharded"] = (
+        "expert_tp"
+    )
     expert_tensor_parallel_size: int = 1
 
     def parallel_config(self) -> ParallelConfig:
