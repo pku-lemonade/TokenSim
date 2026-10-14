@@ -3,6 +3,7 @@
 from dataclasses import replace
 from pathlib import Path
 import unittest
+from unittest.mock import patch
 import simpy
 
 from TokenSim.hardware import HardwareContext
@@ -11,9 +12,25 @@ from scripts.lpx.native_simulation import point
 from scripts.lpx.native_config import configuration
 from TokenSim.af.serving.service import AFService
 from TokenSim.af.communication.endpoints import EndpointResources
+from TokenSim.af.factory import build_model_runtime
 
 
 class NativeLPXTest(unittest.TestCase):
+    def test_reference_planning_preserves_complete_native_point_results(self):
+        case = Case("base", "rubin", self.base)
+        settings = dict(warmup_steps=1, measurement_seconds=1e-9, trace=True)
+        reference = point(self.hardware, self.model, self.workload, case, 1, **settings)
+
+        def cached(doc, **kwargs):
+            doc["af"]["dag_template_cache"] = True
+            return build_model_runtime(doc, **kwargs)
+
+        with patch("scripts.lpx.native_config.build_model_runtime", cached):
+            compiled = point(
+                self.hardware, self.model, self.workload, case, 1, **settings
+            )
+        self.assertEqual(reference, compiled)
+
     def test_intermediate_prefill_extends_kv_without_unneeded_logits(self):
         runtime = configuration(self.hardware, self.model, self.base, namespace="chunk")
         env = simpy.Environment()

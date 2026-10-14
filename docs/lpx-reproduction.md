@@ -13,7 +13,9 @@ Independent request cohorts share physical compute resources, pipeline stages an
 Pipeline parallelism (PP) owns its stage's weights and KV layers and charges activation handoffs.
 Expert parallelism (EP) supports tensor-sharded experts with resolved physical collective groups.
 Colocated A/F domains share one physical compute and memory inventory.
-Large prefill graphs bypass the structural template cache above 32 query tokens to bound compilation cost and retained routing records.
+The native factory defaults to the reference planner because independently sampled routing rarely reuses an exact structural template.
+Factory callers can enable structural caching for repeated routes, with eligibility limited to at most 32 query tokens.
+Differential coverage compares complete native results and traces between reference and cached planning.
 Intermediate prefill chunks extend KV without producing unused vocabulary logits; the final suffix chunk computes the prefill output token.
 Full traces undergo invariant validation before optional retention as compact timing records.
 The compact history produces the same serving metrics as the full history.
