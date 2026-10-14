@@ -23,3 +23,9 @@ The runtime DAG owns post-attention normalization and the attention-side residua
 Its router service includes the routing projection and top-k selection.
 Routed expert service excludes normalization, combination, and residual addition.
 Combination and residual queries use the hidden interval owned by the attention rank.
+
+## MLA prefill
+
+The MLA adapter accepts equal-length, whole-prompt prefill without cached prefixes.
+Scheduled query tokens must cover the entire prompt, and the request must have no previously computed context.
+Unsupported partial passes fail before request ownership or iteration state changes.
