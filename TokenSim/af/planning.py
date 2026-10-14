@@ -233,10 +233,18 @@ class ExecutionNode:
             object.__setattr__(self, field_name, tuple(getattr(self, field_name)))
         if self.input_producer_ids:
             endpoints = tuple(endpoint for endpoint, _ in self.input_producer_ids)
-            if (self.kind != "communication" or endpoints != self.physical_workers
-                    or len(set(endpoints)) != len(endpoints)
-                    or any(producer not in self.predecessor_ids for _, producer in self.input_producer_ids)):
-                raise ConfigurationError("collective input bindings must uniquely cover endpoints in participant order and reference predecessors")
+            if (
+                self.kind != "communication"
+                or endpoints != self.physical_workers
+                or len(set(endpoints)) != len(endpoints)
+                or any(
+                    producer not in self.predecessor_ids
+                    for _, producer in self.input_producer_ids
+                )
+            ):
+                raise ConfigurationError(
+                    "collective input bindings must uniquely cover endpoints in participant order and reference predecessors"
+                )
         elif self.metadata.get("collective_input_binding_required"):
             raise ConfigurationError("collective is missing required input bindings")
 
@@ -303,7 +311,9 @@ class AFExecutionDAG:
         self.validate_runtime_semantics()
 
     def validate_runtime_semantics(self) -> None:
-        runtime_nodes = tuple(node for node in self.nodes if node.layer_type is not None)
+        runtime_nodes = tuple(
+            node for node in self.nodes if node.layer_type is not None
+        )
         if not runtime_nodes:
             return
         if len(runtime_nodes) != len(self.nodes):
@@ -349,7 +359,9 @@ class AFExecutionDAG:
                 )
         attention_ranks = {node.domain_ranks[0] for node in attention_nodes}
         residual_ranks = {node.domain_ranks[0] for node in residual_nodes}
-        if residual_ranks != attention_ranks or len(residual_nodes) != len(residual_ranks):
+        if residual_ranks != attention_ranks or len(residual_nodes) != len(
+            residual_ranks
+        ):
             raise ConfigurationError(
                 "AF runtime residual must execute exactly once on every A tensor owner rank"
             )
@@ -443,7 +455,9 @@ class AFExecutionDAG:
         expected_edges = tuple(router_work.routing_edges)
         expected_edge_set = set(expected_edges)
         if len(expected_edges) != len(expected_edge_set):
-            raise ConfigurationError("MoE Router contains duplicate routing assignments")
+            raise ConfigurationError(
+                "MoE Router contains duplicate routing assignments"
+            )
         if router_work.assignment_count != len(expected_edges):
             raise ConfigurationError(
                 "MoE Router assignment count does not match its routing edges"
@@ -485,7 +499,10 @@ class AFExecutionDAG:
                 )
             expected_ranks = set(next(iter(groups)))
             actual_ranks = [node.domain_ranks[0] for node in consumers]
-            if len(actual_ranks) != len(set(actual_ranks)) or set(actual_ranks) != expected_ranks:
+            if (
+                len(actual_ranks) != len(set(actual_ranks))
+                or set(actual_ranks) != expected_ranks
+            ):
                 raise ConfigurationError(
                     "routing assignment must be consumed once on every Expert TP "
                     f"rank: expert={edge.expert_id}, expected={sorted(expected_ranks)}, "
@@ -528,13 +545,17 @@ class AFExecutionDAG:
             )
         for node in combine_nodes:
             expected_domain = (
-                routers[0].source_domain if node.operation == "f_weighted_combine" else a_domain
+                routers[0].source_domain
+                if node.operation == "f_weighted_combine"
+                else a_domain
             )
             if node.source_domain != expected_domain:
                 raise ConfigurationError("MoE combine is on the wrong protocol domain")
             if node.operation == "f_weighted_combine":
                 if expected_domain == a_domain or len(combine_nodes) != 1:
-                    raise ConfigurationError("native combine requires exactly one F owner")
+                    raise ConfigurationError(
+                        "native combine requires exactly one F owner"
+                    )
                 for transfer in runtime_nodes:
                     if transfer.operation != "af_f_to_a":
                         continue
@@ -546,7 +567,9 @@ class AFExecutionDAG:
                             seen.add(parent)
                             pending.extend(by_id[parent].predecessor_ids)
                     if node.node_id not in seen:
-                        raise ConfigurationError("native hidden return must depend on F combine")
+                        raise ConfigurationError(
+                            "native hidden return must depend on F combine"
+                        )
         expected_input_edges = len(expected_edges) + (
             original_tokens if shared_nodes else 0
         )
@@ -683,12 +706,8 @@ class IndependentRoundRobinAFReplicaSelector:
         """Validate scheduler-owned A placement and independently select F service."""
         self._require_capability(a_domain, "af_attention", "A owner")
         self._require_capability(f_domain, "af_ffn", "F service")
-        a_replicas = GlobalRoundRobinReplicaSelector.ordered_replicas(
-            phase, a_domain
-        )
-        f_replicas = GlobalRoundRobinReplicaSelector.ordered_replicas(
-            phase, f_domain
-        )
+        a_replicas = GlobalRoundRobinReplicaSelector.ordered_replicas(phase, a_domain)
+        f_replicas = GlobalRoundRobinReplicaSelector.ordered_replicas(phase, f_domain)
         ep_view = f_domain.expert_parallel
 
         matching_a_replicas = tuple(
@@ -700,9 +719,7 @@ class IndependentRoundRobinAFReplicaSelector:
                 f"{a_domain.name!r} for phase {phase!r}"
             )
         f_service = self._f_service_selector.select(phase, f_domain)
-        routed_instances = (
-            (f_service,) if ep_view.mode == "expert_tp" else f_replicas
-        )
+        routed_instances = (f_service,) if ep_view.mode == "expert_tp" else f_replicas
         return AFReplicaSelection(
             phase=phase,
             a_owner=a_owner,
@@ -724,8 +741,12 @@ class IndependentRoundRobinAFReplicaSelector:
 
 class ParallelExecutionPlanner(ConfigurationOwner):
     _configuration_fields = (
-        "cluster_config", "runtime_plan", "hidden_size", "dtype_size_bytes",
-        "num_experts", "top_k",
+        "cluster_config",
+        "runtime_plan",
+        "hidden_size",
+        "dtype_size_bytes",
+        "num_experts",
+        "top_k",
     )
 
     def __init__(
@@ -745,6 +766,7 @@ class ParallelExecutionPlanner(ConfigurationOwner):
         self.top_k = max(1, top_k)
         self.runtime_plan = runtime_plan
         from TokenSim.af.templates import TemplateCache
+
         self.template_cache = TemplateCache()
         self._runtime_links = {link.name: link for link in self.cluster_config.af.links}
 
@@ -783,8 +805,11 @@ class ParallelExecutionPlanner(ConfigurationOwner):
         configured = self._runtime_links[link.name]
         if link is not configured:
             from TokenSim.af.estimate_cache import identity
+
             if identity(link) != identity(configured):
-                raise ConfigurationError("AF link configuration changed; create a new runtime")
+                raise ConfigurationError(
+                    "AF link configuration changed; create a new runtime"
+                )
             link = configured
         formal_runtime = (
             self.runtime_plan is not None
@@ -1016,9 +1041,7 @@ class ParallelExecutionPlanner(ConfigurationOwner):
                 f_service_bindings, key=lambda item: item.domain_rank
             ):
                 f_by_tp.setdefault(binding.tp_rank, binding)
-            f_base_bindings = tuple(
-                binding for _, binding in sorted(f_by_tp.items())
-            )
+            f_base_bindings = tuple(binding for _, binding in sorted(f_by_tp.items()))
         else:
             f_base_bindings = f_service_bindings
         prefix = f"i{block.iteration_id}:b{block.block_id}:l{layer_id}"
@@ -1156,9 +1179,7 @@ class ParallelExecutionPlanner(ConfigurationOwner):
             producer_ids=attention_ids,
             collective=a_collective,
             barrier_predecessor=None,
-            transfer_dtype=self.runtime_plan.dtypes_for_link(
-                link.name
-            ).a_to_f_dtype,
+            transfer_dtype=self.runtime_plan.dtypes_for_link(link.name).a_to_f_dtype,
         )
         arrivals = self._append_transfer_stage(
             nodes,
@@ -1218,9 +1239,7 @@ class ParallelExecutionPlanner(ConfigurationOwner):
             target_bindings=a_bindings,
             consumer_ids=residual_ids,
             tensor_layout="replicated",
-            transfer_dtype=self.runtime_plan.dtypes_for_link(
-                link.name
-            ).f_to_a_dtype,
+            transfer_dtype=self.runtime_plan.dtypes_for_link(link.name).f_to_a_dtype,
         )
         returned = self._append_transfer_stage(
             nodes,
@@ -1294,9 +1313,15 @@ class ParallelExecutionPlanner(ConfigurationOwner):
         tokens = tuple(snapshot.original_tokens)
         if self.cluster_config.af.execution_protocol == "vllm_afd":
             return self._build_native_moe_tail(
-                layer_id=layer_id, layer=layer, snapshot=snapshot, link=link,
-                prefix=prefix, nodes=nodes, a_bindings=a_bindings,
-                f_bindings=f_service_bindings, attention_ids=attention_ids,
+                layer_id=layer_id,
+                layer=layer,
+                snapshot=snapshot,
+                link=link,
+                prefix=prefix,
+                nodes=nodes,
+                a_bindings=a_bindings,
+                f_bindings=f_service_bindings,
+                attention_ids=attention_ids,
                 a_collective=a_collective,
             )
         a_leader = min(a_bindings, key=lambda item: item.tp_rank)
@@ -1311,30 +1336,36 @@ class ParallelExecutionPlanner(ConfigurationOwner):
         router_on_f = self.cluster_config.af.router_location == "f"
         if router_on_f and f_domain.parallel.data_parallel_size != 1:
             raise ConfigurationError("F-side leader Router requires one F DP replica")
-        if not router_on_f and self.cluster_config.af.transport_router_logits and (len(a_bindings) != 1 or len(f_service_bindings) != 1):
-            raise ConfigurationError("Transporting A-side Router logits requires one A rank and one F service rank")
+        if (
+            not router_on_f
+            and self.cluster_config.af.transport_router_logits
+            and (len(a_bindings) != 1 or len(f_service_bindings) != 1)
+        ):
+            raise ConfigurationError(
+                "Transporting A-side Router logits requires one A rank and one F service rank"
+            )
         router_binding = f_service_bindings[0] if router_on_f else a_leader
         router_node = self._runtime_compute_node(
-                node_id=router_id,
-                operation="router_topk",
-                stage="router",
-                predecessors=a_ready,
-                binding=router_binding,
-                layer_type="moe",
-                layer_id=layer_id,
-                token_count=len(tokens),
-                original_token_count=len(tokens),
-                assignment_count=len(snapshot.assignments),
-                output_token_count=len(tokens),
-                expert_ids=tuple(expert for expert, _ in snapshot.expert_histogram),
-                shape={
-                    "tokens": len(tokens),
-                    "hidden_size": self.hidden_size,
-                    "num_experts": layer.num_experts,
-                    "top_k": layer.top_k,
-                },
-                routing_edges=routing_edges,
-            )
+            node_id=router_id,
+            operation="router_topk",
+            stage="router",
+            predecessors=a_ready,
+            binding=router_binding,
+            layer_type="moe",
+            layer_id=layer_id,
+            token_count=len(tokens),
+            original_token_count=len(tokens),
+            assignment_count=len(snapshot.assignments),
+            output_token_count=len(tokens),
+            expert_ids=tuple(expert for expert, _ in snapshot.expert_histogram),
+            shape={
+                "tokens": len(tokens),
+                "hidden_size": self.hidden_size,
+                "num_experts": layer.num_experts,
+                "top_k": layer.top_k,
+            },
+            routing_edges=routing_edges,
+        )
         if not router_on_f:
             nodes.append(router_node)
 
@@ -1345,7 +1376,9 @@ class ParallelExecutionPlanner(ConfigurationOwner):
             )
         routed_specs: list[tuple[Any, str, tuple[tuple[int, int], ...]]] = []
         routed_edges_by_consumer: dict[str, tuple[AFRoutingEdge, ...]] = {}
-        routed_nodes: list[tuple[int, tuple[Any, ...], dict[int, str], tuple[Any, ...]]] = []
+        routed_nodes: list[
+            tuple[int, tuple[Any, ...], dict[int, str], tuple[Any, ...]]
+        ] = []
         for expert_id, assignments in sorted(assignments_by_expert.items()):
             bindings = self.runtime_plan.expert_execution(
                 f_domain.name,
@@ -1363,9 +1396,7 @@ class ParallelExecutionPlanner(ConfigurationOwner):
                 for assignment in assignments
             )
             for binding in bindings:
-                routed_specs.append(
-                    (binding, ids[binding.domain_rank], expert_tokens)
-                )
+                routed_specs.append((binding, ids[binding.domain_rank], expert_tokens))
                 routed_edges_by_consumer[ids[binding.domain_rank]] = tuple(
                     self._routing_edge(assignment) for assignment in assignments
                 )
@@ -1394,11 +1425,16 @@ class ParallelExecutionPlanner(ConfigurationOwner):
         # With an F-side leader Router, every F rank receives the full block
         # independently of the sampled routing. Selecting remote destinations
         # before the Router finishes would grant the scheduler free lookahead.
-        multi_f_router = router_on_f and (len(f_service_bindings) > 1 or len(a_bindings) > 1)
+        multi_f_router = router_on_f and (
+            len(f_service_bindings) > 1 or len(a_bindings) > 1
+        )
         activation_specs = (
-            tuple((binding, f"{prefix}:f_input:r{binding.domain_rank}", tokens)
-                  for binding in f_service_bindings)
-            if multi_f_router else tuple(routed_specs + shared_specs)
+            tuple(
+                (binding, f"{prefix}:f_input:r{binding.domain_rank}", tokens)
+                for binding in f_service_bindings
+            )
+            if multi_f_router
+            else tuple(routed_specs + shared_specs)
         )
         a_to_f_copies = self._activation_copies(
             tokens=tokens,
@@ -1407,10 +1443,10 @@ class ParallelExecutionPlanner(ConfigurationOwner):
             producer_ids=attention_ids,
             collective=a_collective,
             barrier_predecessor=None if router_on_f else router_id,
-            transfer_dtype=self.runtime_plan.dtypes_for_link(
-                link.name
-            ).a_to_f_dtype,
-            routing_edges_by_consumer=None if multi_f_router else routed_edges_by_consumer,
+            transfer_dtype=self.runtime_plan.dtypes_for_link(link.name).a_to_f_dtype,
+            routing_edges_by_consumer=(
+                None if multi_f_router else routed_edges_by_consumer
+            ),
         )
         arrivals = self._append_transfer_stage(
             nodes,
@@ -1428,70 +1464,131 @@ class ParallelExecutionPlanner(ConfigurationOwner):
             target = f_service_bindings[0]
             logits_copies = tuple(
                 _TransferCopy(
-                    source_binding=a_leader, target_binding=target,
+                    source_binding=a_leader,
+                    target_binding=target,
                     tensor_slice=AFTensorSlice(
                         tensor_item_id=f"request:{request}:token:{token}:router_logits",
-                        interval=(0, layer.num_experts), layout="replicated",
-                        owner_domain=a_leader.domain, owner_domain_rank=a_leader.domain_rank,
-                        owner_dp_rank=a_leader.dp_rank, owner_tp_rank=a_leader.tp_rank,
+                        interval=(0, layer.num_experts),
+                        layout="replicated",
+                        owner_domain=a_leader.domain,
+                        owner_domain_rank=a_leader.domain_rank,
+                        owner_dp_rank=a_leader.dp_rank,
+                        owner_tp_rank=a_leader.tp_rank,
                         owner_physical_worker=a_leader.physical_identity,
-                        canonical_producer=router_id, element_count=layer.num_experts,
-                        payload_bytes=layer.num_experts * dtype_size_bytes(dtype, role="a_to_f_dtype")),
-                    predecessor_id=router_id, consumer_id="expert_logits",
-                    source_layout="replicated", target_layout="replicated")
-                for request, token in tokens)
+                        canonical_producer=router_id,
+                        element_count=layer.num_experts,
+                        payload_bytes=layer.num_experts
+                        * dtype_size_bytes(dtype, role="a_to_f_dtype"),
+                    ),
+                    predecessor_id=router_id,
+                    consumer_id="expert_logits",
+                    source_layout="replicated",
+                    target_layout="replicated",
+                )
+                for request, token in tokens
+            )
             logits_arrivals = self._append_transfer_stage(
-                nodes, logical_stage_id=f"{prefix}:router_logits",
-                operation="af_router_logits", direction="a_to_f", copies=logits_copies,
-                link=link, layer_type="moe", layer_id=layer_id)
-            arrivals = {name: tuple(dict.fromkeys((*preds, *logits_arrivals["expert_logits"])))
-                        for name, preds in arrivals.items()}
+                nodes,
+                logical_stage_id=f"{prefix}:router_logits",
+                operation="af_router_logits",
+                direction="a_to_f",
+                copies=logits_copies,
+                link=link,
+                layer_type="moe",
+                layer_id=layer_id,
+            )
+            arrivals = {
+                name: tuple(dict.fromkeys((*preds, *logits_arrivals["expert_logits"])))
+                for name, preds in arrivals.items()
+            }
         combine_routing_ready = {}
         if router_on_f:
-            leader_arrivals = (arrivals[f"{prefix}:f_input:r{router_binding.domain_rank}"]
-                if multi_f_router else tuple(dict.fromkeys(
-                    pred for predecessors in arrivals.values() for pred in predecessors)))
+            leader_arrivals = (
+                arrivals[f"{prefix}:f_input:r{router_binding.domain_rank}"]
+                if multi_f_router
+                else tuple(
+                    dict.fromkeys(
+                        pred
+                        for predecessors in arrivals.values()
+                        for pred in predecessors
+                    )
+                )
+            )
             router_node = replace(router_node, predecessor_ids=leader_arrivals)
             nodes.append(router_node)
-            if multi_f_router:
-                routing_ready = {router_binding.domain_rank: router_id}
-                # A-side weighted Combine also needs the selected IDs/weights.
-                for binding in (*f_service_bindings, *a_bindings):
-                    if binding.domain == f_domain.name and binding.domain_rank == router_binding.domain_rank:
-                        continue
-                    node_id = f"{prefix}:routing_metadata:{binding.domain}:r{binding.domain_rank}"
-                    source = self._endpoint(router_binding)
-                    target = self._endpoint(binding)
-                    nodes.append(ExecutionNode(
-                        node_id=node_id, operation="af_router_metadata", kind="communication",
-                        predecessor_ids=(router_id,), stage=None,
-                        direction="f_to_f" if binding.domain == f_domain.name else "f_to_a",
-                        source_domain=f_domain.name, target_domain=binding.domain,
-                        logical_participants=(router_binding.instance, binding.instance),
+            routing_ready = {router_binding.domain_rank: router_id}
+            # A-side weighted Combine also needs the selected IDs/weights.
+            for binding in (*f_service_bindings, *a_bindings):
+                if (
+                    binding.domain == f_domain.name
+                    and binding.domain_rank == router_binding.domain_rank
+                ):
+                    continue
+                node_id = (
+                    f"{prefix}:routing_metadata:{binding.domain}:r{binding.domain_rank}"
+                )
+                source = self._endpoint(router_binding)
+                target = self._endpoint(binding)
+                nodes.append(
+                    ExecutionNode(
+                        node_id=node_id,
+                        operation="af_router_metadata",
+                        kind="communication",
+                        predecessor_ids=(router_id,),
+                        stage=None,
+                        direction=(
+                            "f_to_f" if binding.domain == f_domain.name else "f_to_a"
+                        ),
+                        source_domain=f_domain.name,
+                        target_domain=binding.domain,
+                        logical_participants=(
+                            router_binding.instance,
+                            binding.instance,
+                        ),
                         domain_ranks=(router_binding.domain_rank, binding.domain_rank),
-                        physical_workers=(router_binding.physical_identity, binding.physical_identity),
-                        dp_rank=binding.dp_rank, network=link.network,
+                        physical_workers=(
+                            router_binding.physical_identity,
+                            binding.physical_identity,
+                        ),
+                        dp_rank=binding.dp_rank,
+                        network=link.network,
                         resource_group=link.resource_group,
                         resource_lane="shared" if link.duplex == "half" else "f_to_a",
                         # Explicit protocol: int32 expert IDs + float32 weights.
                         payload_bytes=len(tokens) * layer.top_k * 8,
-                        layer_type="moe", logical_stage_id=f"{prefix}:routing_metadata",
-                        leg_id=node_id, source_endpoint=source, target_endpoint=target,
+                        layer_type="moe",
+                        logical_stage_id=f"{prefix}:routing_metadata",
+                        leg_id=node_id,
+                        source_endpoint=source,
+                        target_endpoint=target,
                         participant_endpoints=(source, target),
-                        metadata={"original_token_count": len(tokens),
-                                  "assignment_count": len(snapshot.assignments)},
-                    ))
-                    if binding.domain == f_domain.name:
-                        routing_ready[binding.domain_rank] = node_id
-                    else:
-                        combine_routing_ready[binding.domain_rank] = node_id
-                arrivals = {consumer: tuple(dict.fromkeys((
-                    *arrivals[f"{prefix}:f_input:r{binding.domain_rank}"],
-                    routing_ready[binding.domain_rank])))
-                    for binding, consumer, _ in routed_specs + shared_specs}
+                        metadata={
+                            "original_token_count": len(tokens),
+                            "assignment_count": len(snapshot.assignments),
+                        },
+                    )
+                )
+                if binding.domain == f_domain.name:
+                    routing_ready[binding.domain_rank] = node_id
+                else:
+                    combine_routing_ready[binding.domain_rank] = node_id
+            if multi_f_router:
+                arrivals = {
+                    consumer: tuple(
+                        dict.fromkeys(
+                            (
+                                *arrivals[f"{prefix}:f_input:r{binding.domain_rank}"],
+                                routing_ready[binding.domain_rank],
+                            )
+                        )
+                    )
+                    for binding, consumer, _ in routed_specs + shared_specs
+                }
             else:
-                arrivals = {name: tuple(dict.fromkeys((*preds, router_id)))
-                            for name, preds in arrivals.items()}
+                arrivals = {
+                    name: tuple(dict.fromkeys((*preds, router_id)))
+                    for name, preds in arrivals.items()
+                }
 
         routed_outputs: list[_TransferCopy] = []
         combine_ids = {
@@ -1522,8 +1619,7 @@ class ParallelExecutionPlanner(ConfigurationOwner):
                         expert_ids=(expert_id,),
                         expert_workload=((expert_id, len(assignments)),),
                         routing_edges=tuple(
-                            self._routing_edge(assignment)
-                            for assignment in assignments
+                            self._routing_edge(assignment) for assignment in assignments
                         ),
                     )
                 )
@@ -1540,8 +1636,7 @@ class ParallelExecutionPlanner(ConfigurationOwner):
                 required=len(bindings) > 1,
                 producer_layout="partial",
                 routing_edges=tuple(
-                    self._routing_edge(assignment)
-                    for assignment in assignments
+                    self._routing_edge(assignment) for assignment in assignments
                 ),
             )
             items = tuple(
@@ -1646,8 +1741,12 @@ class ParallelExecutionPlanner(ConfigurationOwner):
                     node_id=combine_id,
                     operation="weighted_combine",
                     stage="weighted_combine",
-                    predecessors=returned[combine_id] + ((combine_routing_ready[binding.domain_rank],)
-                        if binding.domain_rank in combine_routing_ready else ()),
+                    predecessors=returned[combine_id]
+                    + (
+                        (combine_routing_ready[binding.domain_rank],)
+                        if binding.domain_rank in combine_routing_ready
+                        else ()
+                    ),
                     binding=binding,
                     layer_type="moe",
                     layer_id=layer_id,
@@ -1702,8 +1801,18 @@ class ParallelExecutionPlanner(ConfigurationOwner):
         return AFExecutionDAG(tuple(nodes))
 
     def _build_native_moe_tail(
-        self, *, layer_id, layer, snapshot, link, prefix, nodes,
-        a_bindings, f_bindings, attention_ids, a_collective,
+        self,
+        *,
+        layer_id,
+        layer,
+        snapshot,
+        link,
+        prefix,
+        nodes,
+        a_bindings,
+        f_bindings,
+        attention_ids,
+        a_collective,
     ) -> AFExecutionDAG:
         """Single-rank Qwen AFD: send hidden, route/combine on F, return hidden.
 
@@ -1712,68 +1821,139 @@ class ParallelExecutionPlanner(ConfigurationOwner):
         can be elided. No communication time is inferred from expert count.
         """
         if len(a_bindings) != 1 or len(f_bindings) != 1 or layer.num_shared_experts:
-            raise ConfigurationError("native AFD MoE tail requires 1A1F without shared experts")
+            raise ConfigurationError(
+                "native AFD MoE tail requires 1A1F without shared experts"
+            )
         a, f = a_bindings[0], f_bindings[0]
         tokens = tuple(snapshot.original_tokens)
         edges = tuple(self._routing_edge(item) for item in snapshot.assignments)
         router_id, expert_id, combine_id, residual_id = (
-            f"{prefix}:{name}" for name in ("router", "grouped_experts", "f_combine", "residual")
+            f"{prefix}:{name}"
+            for name in ("router", "grouped_experts", "f_combine", "residual")
         )
         copies = self._activation_copies(
-            tokens=tokens, a_bindings=a_bindings,
-            target_specs=((f, router_id, tokens),), producer_ids=attention_ids,
-            collective=a_collective, barrier_predecessor=None,
+            tokens=tokens,
+            a_bindings=a_bindings,
+            target_specs=((f, router_id, tokens),),
+            producer_ids=attention_ids,
+            collective=a_collective,
+            barrier_predecessor=None,
             transfer_dtype=self.runtime_plan.dtypes_for_link(link.name).a_to_f_dtype,
         )
         arrivals = self._append_transfer_stage(
-            nodes, logical_stage_id=f"{prefix}:a_to_f", operation="af_a_to_f",
-            direction="a_to_f", copies=copies, link=link, layer_type="moe", layer_id=layer_id,
+            nodes,
+            logical_stage_id=f"{prefix}:a_to_f",
+            operation="af_a_to_f",
+            direction="a_to_f",
+            copies=copies,
+            link=link,
+            layer_type="moe",
+            layer_id=layer_id,
         )
-        nodes.append(self._runtime_compute_node(
-            node_id=router_id, operation="router_topk", stage="router",
-            predecessors=arrivals[router_id], binding=f, layer_type="moe", layer_id=layer_id,
-            token_count=len(tokens), original_token_count=len(tokens),
-            assignment_count=len(edges), output_token_count=len(tokens), routing_edges=edges,
-            expert_ids=tuple(e for e, _ in snapshot.expert_histogram),
-            shape={"tokens": len(tokens), "hidden_size": self.hidden_size,
-                   "num_experts": layer.num_experts, "top_k": layer.top_k},
-        ))
-        nodes.append(self._runtime_compute_node(
-            node_id=expert_id, operation="routed_expert", stage="routed_expert",
-            predecessors=(router_id,), binding=f, layer_type="moe", layer_id=layer_id,
-            token_count=len(edges), original_token_count=len(tokens),
-            assignment_count=len(edges), output_token_count=len(edges), routing_edges=edges,
-            expert_ids=tuple(e for e, _ in snapshot.expert_histogram),
-            expert_workload=tuple(snapshot.expert_histogram),
-        ))
-        nodes.append(self._runtime_compute_node(
-            node_id=combine_id, operation="f_weighted_combine", stage="weighted_combine",
-            predecessors=(expert_id,), binding=f, layer_type="moe", layer_id=layer_id,
-            token_count=len(tokens), original_token_count=len(tokens),
-            assignment_count=len(edges), input_edge_count=len(edges),
-            output_token_count=len(tokens), routing_edges=edges,
-            source_layout="partial", target_layout="replicated",
-            shape={"tokens": len(tokens), "hidden_size": self.hidden_size,
-                   "elements": len(tokens) * self.hidden_size},
-        ))
+        nodes.append(
+            self._runtime_compute_node(
+                node_id=router_id,
+                operation="router_topk",
+                stage="router",
+                predecessors=arrivals[router_id],
+                binding=f,
+                layer_type="moe",
+                layer_id=layer_id,
+                token_count=len(tokens),
+                original_token_count=len(tokens),
+                assignment_count=len(edges),
+                output_token_count=len(tokens),
+                routing_edges=edges,
+                expert_ids=tuple(e for e, _ in snapshot.expert_histogram),
+                shape={
+                    "tokens": len(tokens),
+                    "hidden_size": self.hidden_size,
+                    "num_experts": layer.num_experts,
+                    "top_k": layer.top_k,
+                },
+            )
+        )
+        nodes.append(
+            self._runtime_compute_node(
+                node_id=expert_id,
+                operation="routed_expert",
+                stage="routed_expert",
+                predecessors=(router_id,),
+                binding=f,
+                layer_type="moe",
+                layer_id=layer_id,
+                token_count=len(edges),
+                original_token_count=len(tokens),
+                assignment_count=len(edges),
+                output_token_count=len(edges),
+                routing_edges=edges,
+                expert_ids=tuple(e for e, _ in snapshot.expert_histogram),
+                expert_workload=tuple(snapshot.expert_histogram),
+            )
+        )
+        nodes.append(
+            self._runtime_compute_node(
+                node_id=combine_id,
+                operation="f_weighted_combine",
+                stage="weighted_combine",
+                predecessors=(expert_id,),
+                binding=f,
+                layer_type="moe",
+                layer_id=layer_id,
+                token_count=len(tokens),
+                original_token_count=len(tokens),
+                assignment_count=len(edges),
+                input_edge_count=len(edges),
+                output_token_count=len(tokens),
+                routing_edges=edges,
+                source_layout="partial",
+                target_layout="replicated",
+                shape={
+                    "tokens": len(tokens),
+                    "hidden_size": self.hidden_size,
+                    "elements": len(tokens) * self.hidden_size,
+                },
+            )
+        )
         copies = self._output_copies(
-            items=tuple((token, f"request:{token[0]}:token:{token[1]}:combined", None, None)
-                        for token in tokens),
-            source_bindings=f_bindings, producer_ids={f.domain_rank: combine_id},
-            collective=None, target_bindings=a_bindings,
-            consumer_ids={a.domain_rank: residual_id}, tensor_layout="replicated",
+            items=tuple(
+                (token, f"request:{token[0]}:token:{token[1]}:combined", None, None)
+                for token in tokens
+            ),
+            source_bindings=f_bindings,
+            producer_ids={f.domain_rank: combine_id},
+            collective=None,
+            target_bindings=a_bindings,
+            consumer_ids={a.domain_rank: residual_id},
+            tensor_layout="replicated",
             transfer_dtype=self.runtime_plan.dtypes_for_link(link.name).f_to_a_dtype,
         )
         returned = self._append_transfer_stage(
-            nodes, logical_stage_id=f"{prefix}:f_to_a", operation="af_f_to_a",
-            direction="f_to_a", copies=copies, link=link, layer_type="moe", layer_id=layer_id,
+            nodes,
+            logical_stage_id=f"{prefix}:f_to_a",
+            operation="af_f_to_a",
+            direction="f_to_a",
+            copies=copies,
+            link=link,
+            layer_type="moe",
+            layer_id=layer_id,
         )
-        nodes.append(self._runtime_compute_node(
-            node_id=residual_id, operation="residual", stage="residual",
-            predecessors=returned[residual_id], binding=a, layer_type="moe", layer_id=layer_id,
-            token_count=len(tokens), original_token_count=len(tokens), output_token_count=len(tokens),
-            source_layout="replicated", target_layout="replicated",
-        ))
+        nodes.append(
+            self._runtime_compute_node(
+                node_id=residual_id,
+                operation="residual",
+                stage="residual",
+                predecessors=returned[residual_id],
+                binding=a,
+                layer_type="moe",
+                layer_id=layer_id,
+                token_count=len(tokens),
+                original_token_count=len(tokens),
+                output_token_count=len(tokens),
+                source_layout="replicated",
+                target_layout="replicated",
+            )
+        )
         return AFExecutionDAG(tuple(nodes))
 
     def _runtime_compute_node(
@@ -1841,7 +2021,11 @@ class ParallelExecutionPlanner(ConfigurationOwner):
                     binding.domain,
                     binding.domain_rank,
                     layer_id,
-                    "attention" if binding.capability == "af_attention" else "dense_ffn",
+                    (
+                        "attention"
+                        if binding.capability == "af_attention"
+                        else "dense_ffn"
+                    ),
                 )["hidden_size"],
             }
         local_shape.setdefault("global_hidden_size", self.hidden_size)
@@ -1881,7 +2065,9 @@ class ParallelExecutionPlanner(ConfigurationOwner):
             tp_group=(
                 (binding.domain_rank,)
                 if stage == "routed_expert"
-                and self.runtime_plan.domain_runtime(binding.domain).expert_parallel_mode
+                and self.runtime_plan.domain_runtime(
+                    binding.domain
+                ).expert_parallel_mode
                 == "rank_reuse"
                 else binding.tp_group
             ),
@@ -1980,13 +2166,20 @@ class ParallelExecutionPlanner(ConfigurationOwner):
             node_id=node_id,
             operation=plan.operation,
             kind="communication",
-            predecessor_ids=tuple(producer_ids[item.domain_rank] for item in participants),
-            input_producer_ids=tuple((item.physical_identity, producer_ids[item.domain_rank]) for item in participants),
+            predecessor_ids=tuple(
+                producer_ids[item.domain_rank] for item in participants
+            ),
+            input_producer_ids=tuple(
+                (item.physical_identity, producer_ids[item.domain_rank])
+                for item in participants
+            ),
             stage=None,
             direction=plan.operation,
             source_domain=domain.name,
             target_domain=domain.name,
-            logical_participants=tuple(dict.fromkeys(item.instance for item in participants)),
+            logical_participants=tuple(
+                dict.fromkeys(item.instance for item in participants)
+            ),
             domain_ranks=plan.participant_ranks,
             physical_workers=plan.physical_workers,
             dp_rank=dp_rank,
@@ -1994,7 +2187,9 @@ class ParallelExecutionPlanner(ConfigurationOwner):
             network=plan.network,
             resource_group=plan.resource_group,
             resource_lane=plan.resource_lane,
-            payload_bytes=plan.payload_bytes if plan.payload_bytes is not None else input_bytes,
+            payload_bytes=(
+                plan.payload_bytes if plan.payload_bytes is not None else input_bytes
+            ),
             logical_input_bytes_per_rank=tuple(
                 (item.domain_rank, input_bytes) for item in participants
             ),
@@ -2010,18 +2205,11 @@ class ParallelExecutionPlanner(ConfigurationOwner):
                 "after_stage": after_stage,
                 "collective_input_binding_required": True,
                 "original_token_count": (
-                    len(
-                        {
-                            (edge.request_id, edge.token_id)
-                            for edge in routing_edges
-                        }
-                    )
+                    len({(edge.request_id, edge.token_id) for edge in routing_edges})
                     if routing_edges
                     else token_count
                 ),
-                "assignment_count": (
-                    len(routing_edges) if routing_edges else None
-                ),
+                "assignment_count": (len(routing_edges) if routing_edges else None),
             },
             routing_edges=routing_edges,
         )
@@ -2038,9 +2226,9 @@ class ParallelExecutionPlanner(ConfigurationOwner):
         collective: ExecutionNode | None,
         barrier_predecessor: str | None,
         transfer_dtype: str,
-        routing_edges_by_consumer: Mapping[
-            str, tuple[AFRoutingEdge, ...]
-        ] | None = None,
+        routing_edges_by_consumer: (
+            Mapping[str, tuple[AFRoutingEdge, ...]] | None
+        ) = None,
     ) -> tuple[_TransferCopy, ...]:
         a_ownerships = self.runtime_plan.ownerships_for_replica(
             a_bindings[0].domain, a_bindings[0].dp_rank
@@ -2090,26 +2278,27 @@ class ParallelExecutionPlanner(ConfigurationOwner):
                 )
                 source_parts = (
                     (
-                        canonical,
-                        ownership_by_rank[canonical.domain_rank],
-                        (0, self.hidden_size),
-                    ),
-                ) if replicated else tuple(
-                    (
-                        source_by_rank[a_owner.domain_rank],
-                        a_owner,
-                        (a_owner.interval.start, a_owner.interval.end),
+                        (
+                            canonical,
+                            ownership_by_rank[canonical.domain_rank],
+                            (0, self.hidden_size),
+                        ),
                     )
-                    for a_owner in sharded_owners
+                    if replicated
+                    else tuple(
+                        (
+                            source_by_rank[a_owner.domain_rank],
+                            a_owner,
+                            (a_owner.interval.start, a_owner.interval.end),
+                        )
+                        for a_owner in sharded_owners
+                    )
                 )
                 for source, a_owner, interval in source_parts:
-                    predecessor = (
-                        barrier_predecessor
-                        or (
-                            collective.node_id
-                            if collective is not None
-                            else producer_ids[source.domain_rank]
-                        )
+                    predecessor = barrier_predecessor or (
+                        collective.node_id
+                        if collective is not None
+                        else producer_ids[source.domain_rank]
                     )
                     tensor_slice = AFTensorSlice(
                         tensor_item_id=f"request:{token[0]}:token:{token[1]}:activation",
@@ -2146,8 +2335,7 @@ class ParallelExecutionPlanner(ConfigurationOwner):
                     target.domain_rank,
                     f"request:{token[0]}:token:{token[1]}:activation",
                     None,
-                ):
-                (0, self.hidden_size)
+                ): (0, self.hidden_size)
                 for target, consumer_id, consumer_tokens in target_specs
                 for token in consumer_tokens
             },
@@ -2182,9 +2370,7 @@ class ParallelExecutionPlanner(ConfigurationOwner):
             if collective is None or item.domain_rank in collective.domain_ranks
         )
         canonical_candidates = (
-            eligible_sources
-            if collective is not None
-            else source_bindings
+            eligible_sources if collective is not None else source_bindings
         )
         if not canonical_candidates:
             raise ConfigurationError("AF output has no canonical source candidate")
@@ -2203,9 +2389,9 @@ class ParallelExecutionPlanner(ConfigurationOwner):
                 for source in sources:
                     interval = target_owner.interval
                     if source_layout == "sharded":
-                        interval = source_owners[source.domain_rank].interval.intersection(
-                            target_owner.interval
-                        )
+                        interval = source_owners[
+                            source.domain_rank
+                        ].interval.intersection(target_owner.interval)
                         if interval is None:
                             continue
                     predecessor = (
@@ -2327,9 +2513,7 @@ class ParallelExecutionPlanner(ConfigurationOwner):
                     transfer_dtype,
                 )
                 encode_groups.setdefault(encode_key, []).append(record)
-            for index, (encode_key, encode_records) in enumerate(
-                encode_groups.items()
-            ):
+            for index, (encode_key, encode_records) in enumerate(encode_groups.items()):
                 record = encode_records[0]
                 copy = record["copy"]
                 node_id = f"{logical_stage_id}:encode:{index}"
@@ -2372,7 +2556,9 @@ class ParallelExecutionPlanner(ConfigurationOwner):
                     )
                 )
 
-        grouped: dict[tuple[object, ...], list[tuple[tuple[object, ...], dict[str, object]]]] = {}
+        grouped: dict[
+            tuple[object, ...], list[tuple[tuple[object, ...], dict[str, object]]]
+        ] = {}
         record_predecessors: dict[tuple[object, ...], tuple[str, ...]] = {}
         for record_key, record in records.items():
             copy = record["copy"]
@@ -2417,9 +2603,7 @@ class ParallelExecutionPlanner(ConfigurationOwner):
             slices = tuple(record["copy"].tensor_slice for _, record in group)
             routing_edges = tuple(
                 dict.fromkeys(
-                    edge
-                    for _, record in group
-                    for edge in record["routing_edges"]
+                    edge for _, record in group for edge in record["routing_edges"]
                 )
             )
             predecessors = record_predecessors[group[0][0]]
@@ -2454,9 +2638,7 @@ class ParallelExecutionPlanner(ConfigurationOwner):
                     ep_rank=first.target_binding.ep_rank,
                     network=link.network,
                     resource_group=link.resource_group,
-                    resource_lane=(
-                        "shared" if link.duplex == "half" else direction
-                    ),
+                    resource_lane=("shared" if link.duplex == "half" else direction),
                     payload_bytes=sum(item.payload_bytes or 0 for item in slices),
                     layer_type=layer_type,
                     logical_stage_id=logical_stage_id,
@@ -2469,12 +2651,16 @@ class ParallelExecutionPlanner(ConfigurationOwner):
                     target_layout=first.target_layout,
                     routing_edges=routing_edges,
                     metadata={
-                        "original_token_count": len(
-                            {
-                                (edge.request_id, edge.token_id)
-                                for edge in routing_edges
-                            }
-                        ) if routing_edges else None,
+                        "original_token_count": (
+                            len(
+                                {
+                                    (edge.request_id, edge.token_id)
+                                    for edge in routing_edges
+                                }
+                            )
+                            if routing_edges
+                            else None
+                        ),
                         "assignment_count": (
                             len(routing_edges) if routing_edges else None
                         ),
@@ -2487,7 +2673,7 @@ class ParallelExecutionPlanner(ConfigurationOwner):
                                 "payload_bytes": item.payload_bytes,
                             }
                             for item in slices
-                        )
+                        ),
                     },
                 )
             )
@@ -2526,9 +2712,7 @@ class ParallelExecutionPlanner(ConfigurationOwner):
                             tensor_slices=(copy.tensor_slice,),
                             source_layout=copy.target_layout,
                             target_layout=copy.target_layout,
-                            routing_edges=tuple(
-                                dict.fromkeys(record["routing_edges"])
-                            ),
+                            routing_edges=tuple(dict.fromkeys(record["routing_edges"])),
                             source_dtype=transfer_dtype,
                             target_dtype=activation_dtype,
                             shape={
@@ -2767,11 +2951,11 @@ class ParallelExecutionPlanner(ConfigurationOwner):
             or link.resource_group,
             resource_lane=(
                 (profile.resource_lane if profile is not None else None)
-                or ("shared"
-                if link.duplex == "half"
-                else "a_to_f"
-                if domain.capability == "af_attention"
-                else "f_to_a")
+                or (
+                    "shared"
+                    if link.duplex == "half"
+                    else "a_to_f" if domain.capability == "af_attention" else "f_to_a"
+                )
             ),
             payload_bytes=payload,
             metadata={
@@ -3029,7 +3213,9 @@ AFExecutionStep = ExecutionNode
 AFExecutionPlanBuilder = ParallelExecutionPlanner
 
 
-def group_routed_expert_nodes(nodes: tuple[ExecutionNode, ...]) -> tuple[ExecutionNode, ...]:
+def group_routed_expert_nodes(
+    nodes: tuple[ExecutionNode, ...]
+) -> tuple[ExecutionNode, ...]:
     """Group the independent expert branches of one block/layer runtime DAG.
 
     Keep every routing edge and output transfer/collective. Only the compute
@@ -3044,12 +3230,25 @@ def group_routed_expert_nodes(nodes: tuple[ExecutionNode, ...]) -> tuple[Executi
             raise ConfigurationError("routed expert missing local work")
         # The prefix encodes iteration/block/layer. Domain/rank and layouts are
         # included even if two logical workers share a physical GPU.
-        key = (node.node_id.split(":routed:")[0], node.physical_workers,
-               node.source_domain, node.target_domain, node.domain_ranks,
-               node.dp_rank, node.tp_rank, node.ep_rank, node.tp_group, node.ep_group,
-               node.layer_type, node.logical_participants,
-               work.source_dtype, work.target_dtype, work.source_layout, work.target_layout,
-               tuple((k, v) for k, v in work.tensor_shape if k != "tokens"))
+        key = (
+            node.node_id.split(":routed:")[0],
+            node.physical_workers,
+            node.source_domain,
+            node.target_domain,
+            node.domain_ranks,
+            node.dp_rank,
+            node.tp_rank,
+            node.ep_rank,
+            node.tp_group,
+            node.ep_group,
+            node.layer_type,
+            node.logical_participants,
+            work.source_dtype,
+            work.target_dtype,
+            work.source_layout,
+            work.target_layout,
+            tuple((k, v) for k, v in work.tensor_shape if k != "tokens"),
+        )
         groups.setdefault(key, []).append(node)
     aliases = {}
     replacements = {}
@@ -3069,32 +3268,64 @@ def group_routed_expert_nodes(nodes: tuple[ExecutionNode, ...]) -> tuple[Executi
                 pending.extend(by_id[pred].predecessor_ids)
         first = group[0]
         edges = tuple(edge for node in group for edge in node.local_work.routing_edges)
-        workload = tuple(sorted(pair for node in group for pair in node.local_work.expert_workload))
+        workload = tuple(
+            sorted(pair for node in group for pair in node.local_work.expert_workload)
+        )
         if len({expert for expert, _ in workload}) != len(workload):
             raise ConfigurationError("expert group contains duplicate expert workloads")
         count = sum(value for _, value in workload)
         shape = dict(first.local_work.tensor_shape)
         shape["tokens"] = count
-        work = replace(first.local_work, token_count=count,
-                       tensor_shape=tuple(sorted(shape.items())),
-                       expert_ids=tuple(expert for expert, _ in workload),
-                       expert_workload=workload, assignment_count=count,
-                       original_token_count=len({(edge.request_id, edge.token_id) for edge in edges}),
-                       output_token_count=count, routing_edges=edges,
-                       tensor_slices=tuple(item for node in group for item in node.local_work.tensor_slices))
-        group_id = first.node_id.split(":routed:")[0] + ":routed:group:" + first.node_id.split(":routed:")[1]
+        work = replace(
+            first.local_work,
+            token_count=count,
+            tensor_shape=tuple(sorted(shape.items())),
+            expert_ids=tuple(expert for expert, _ in workload),
+            expert_workload=workload,
+            assignment_count=count,
+            original_token_count=len(
+                {(edge.request_id, edge.token_id) for edge in edges}
+            ),
+            output_token_count=count,
+            routing_edges=edges,
+            tensor_slices=tuple(
+                item for node in group for item in node.local_work.tensor_slices
+            ),
+        )
+        group_id = (
+            first.node_id.split(":routed:")[0]
+            + ":routed:group:"
+            + first.node_id.split(":routed:")[1]
+        )
         aliases.update({node.node_id: group_id for node in group})
         replacements[first.node_id] = replace(
-            first, node_id=group_id, local_work=work, routing_edges=edges,
+            first,
+            node_id=group_id,
+            local_work=work,
+            routing_edges=edges,
             tensor_slices=tuple(item for node in group for item in node.tensor_slices),
-            predecessor_ids=tuple(dict.fromkeys(pred for node in group for pred in node.predecessor_ids)),
-            metadata={**first.metadata, "execution_unit": "expert_group",
-                      "member_node_ids": tuple(node.node_id for node in group)})
+            predecessor_ids=tuple(
+                dict.fromkeys(pred for node in group for pred in node.predecessor_ids)
+            ),
+            metadata={
+                **first.metadata,
+                "execution_unit": "expert_group",
+                "member_node_ids": tuple(node.node_id for node in group),
+            },
+        )
     result = []
     for node in nodes:
         if node.node_id in aliases and node.node_id not in replacements:
             continue
         node = replacements.get(node.node_id, node)
-        result.append(replace(node, predecessor_ids=tuple(dict.fromkeys(
-            aliases.get(pred, pred) for pred in node.predecessor_ids))))
+        result.append(
+            replace(
+                node,
+                predecessor_ids=tuple(
+                    dict.fromkeys(
+                        aliases.get(pred, pred) for pred in node.predecessor_ids
+                    )
+                ),
+            )
+        )
     return tuple(result)
