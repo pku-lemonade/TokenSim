@@ -104,12 +104,12 @@ The store sums these contributions and the clients' transfer buffers using each 
 A standalone store has one shared capacity limit and an additional transfer buffer for each client.
 Clients can use different write admission rules, save policies, asynchronous settings, cache namespaces and buffer sizes within the same store.
 Transfer settings can also differ, except for standalone grouped stores, where those settings define one shared network queue.
-Clients sharing a store must agree on its mode, cache layout, eviction policy, `memory_capacity_blocks`, standalone capacity, replica count, SSD settings and host memory limit.
+Clients sharing a store must agree on its mode, cache layout, eviction policy, `memory_capacity_blocks`, standalone capacity, replica count, offload media settings and host memory limit.
 Separate environments start with fresh stores.
 
 A cache hit requires matching model dimensions, data layout, model partition, tenant, prefix and block hashes.
 Uniform stores require one byte layout for all pages and reject incompatible layouts or settings.
-A uniform cache object becomes available for reuse after its transfer and any required SSD write finish.
+A uniform cache object becomes available for reuse after its transfer and any required offload-media write finish.
 Reads and writes protect the objects they are using from eviction until the modeled transfer completes.
 Both layouts include model dimensions and precision in cache identifiers.
 Changing operator timing tables leaves those identifiers unchanged.
@@ -140,6 +140,11 @@ When `host_available_bytes` is supplied, the store and all clients' transfer buf
 Integer size fields count bytes, and the `global_segment_size_gb` and `local_buffer_size_gb` aliases count gibibytes (GiB), where 1 GiB = 2^30 bytes.
 
 ## Memory and SSD Tiers
+
+Uniform stores support optional storage backend plugins through the generic `offload` object.
+See [storage backend plugins](storage-backends.md) for the interface and configuration.
+The [optional high-bandwidth flash (HBF) package](../examples/storage/hbf/) shares the store's admission, eviction, readiness and prefix-matching rules with SSD.
+Its media model and independent GPU memory examples are documented in [HBF examples](hbf.md).
 
 With `eviction_policy: "lru"`, memory pressure evicts the least recently used object that no transfer is using.
 With the SSD tier enabled, every accepted object is also written to SSD, and that persistence write must finish before the operation completes.
@@ -221,7 +226,8 @@ The following table describes the fields of `kv_connector_extra_config`.
 | `transfer_utilization` | 1.0 | Fraction of peak transfer bandwidth, in `(0, 1]`; the bundled grouped example uses 0.75 |
 | `preferred_segment` | unset | Segment label stored with admitted objects (uniform only) |
 | `group_id`, `pcp_rank`, `dcp_rank` | 0 | Additional pool-key namespaces |
-| `enable_offload`, `offload_tier` | `false`, `ssd` | SSD tier switch; `ssd` is the only tier |
+| `offload` | unset | Optional backend reference, instance name and plugin-owned configuration |
+| `enable_offload`, `offload_tier` | `false`, `ssd` | Legacy SSD offload switch and tier |
 | `ssd_capacity_blocks`, `ssd_capacity_bytes` | unset, 0 | SSD capacity; blocks take precedence |
 | `ssd_read_bandwidth_bytes_per_s`, `ssd_write_bandwidth_bytes_per_s` | 7 GiB/s, 3 GiB/s | SSD bandwidth |
 | `ssd_read_latency_us`, `ssd_write_latency_us` | 100, 200 | SSD fixed latency |
@@ -259,8 +265,9 @@ Grouped storage is unsupported inside `MultiConnector`.
 ## Metrics
 
 Fields beginning with `connector_` report transfer counts, blocks, bytes and time spent waiting.
-Fields beginning with `mooncake_` report store reads and writes, hits and misses, memory and SSD hit counts, SSD operations, transfer and store latency, and effective bandwidth.
-They also record accepted and rejected writes, evictions, pending asynchronous jobs, hit tokens from GPU, memory and disk, sampled cache keys and the effective SSD configuration.
+Fields beginning with `mooncake_` report store reads and writes, hits and misses, memory and offload hit counts, legacy SSD operations, transfer and store latency, and effective bandwidth.
+`storage_metrics` reports media operations for every backend, grouped by shared master and storage instance.
+They also record accepted and rejected writes, evictions, pending asynchronous jobs, hit tokens from GPU, memory and disk, sampled cache keys and the effective offload configuration.
 
 Operation counters belong to each connector, even when its store is shared.
 Exporting or resetting one engine's profile does not include or clear another engine's operations.

@@ -117,6 +117,7 @@ class LLMResult:
     moe_straggler_latency: float = 0
     moe_all2all_event_count: int = 0
     moe_routed_token_count: int = 0
+    storage_metrics: dict[str, dict[str, Any]] | None = None
     mooncake_get_count: int = 0
     mooncake_put_count: int = 0
     mooncake_store_hit_count: int = 0

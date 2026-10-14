@@ -6,6 +6,8 @@ from numbers import Integral, Real
 import math
 
 from TokenSim.errors import ConfigurationError
+from TokenSim.storage import BackendSpec, StorageBackendFactory
+from TokenSim.storage.ssd import validate_plugin_selection
 
 
 SUPPORTED_CONNECTORS = {
@@ -15,7 +17,6 @@ SUPPORTED_CONNECTORS = {
 }
 SUPPORTED_MODES = {"embedded", "standalone-store"}
 SUPPORTED_PROTOCOLS = {"tcp", "rdma", "nvlink", "nvmeof"}
-SUPPORTED_OFFLOAD_TIERS = {"ssd"}
 SUPPORTED_ADMISSION_POLICIES = {"always", "never"}
 SUPPORTED_EVICTION_POLICIES = {"lru", "none"}
 SUPPORTED_SAVE_POLICIES = {"mooncake", "every_step", "once"}
@@ -33,6 +34,7 @@ class MooncakeConfig:
     protocol: str = "rdma"
     global_segment_size: int = 8 * _GB
     local_buffer_size: int = 1 * _GB
+    offload: BackendSpec | dict[str, Any] | None = None
     enable_offload: bool = False
     offload_tier: str = "ssd"
     ssd_capacity_bytes: int = 0
@@ -83,11 +85,21 @@ class MooncakeConfig:
                 f"unsupported Mooncake protocol {self.protocol!r}; expected one of "
                 + f"{sorted(SUPPORTED_PROTOCOLS)}"
             )
-        if self.offload_tier not in SUPPORTED_OFFLOAD_TIERS:
+        if self.offload_tier != "ssd":
             raise ConfigurationError(
-                f"unsupported Mooncake offload_tier {self.offload_tier!r}; "
-                + f"expected one of {sorted(SUPPORTED_OFFLOAD_TIERS)}"
+                "legacy offload_tier must be ssd; select plugins with offload.backend"
             )
+        if self.offload is not None:
+            if not isinstance(self.enable_offload, bool):
+                raise ConfigurationError("enable_offload must be a boolean")
+            validate_plugin_selection(self)
+            self.offload = BackendSpec.from_mapping(self.offload)
+            backend = StorageBackendFactory.create(self.offload)
+            if backend.capacity_bytes <= 0:
+                raise ConfigurationError(
+                    "enabled storage backend needs positive capacity_bytes"
+                )
+            self.enable_offload = True
         if self.admission_policy not in SUPPORTED_ADMISSION_POLICIES:
             raise ConfigurationError(
                 "unsupported Mooncake admission_policy "
@@ -164,10 +176,14 @@ class MooncakeConfig:
         _finite_number(self.transfer_utilization, "transfer_utilization", positive=True)
         if self.transfer_utilization > 1:
             raise ConfigurationError("transfer_utilization must be in (0, 1]")
-        if self.enable_offload and (
-            self.ssd_capacity_blocks == 0
-            or self.ssd_capacity_blocks is None
-            and self.ssd_capacity_bytes == 0
+        if (
+            self.enable_offload
+            and self.offload is None
+            and (
+                self.ssd_capacity_blocks == 0
+                or self.ssd_capacity_blocks is None
+                and self.ssd_capacity_bytes == 0
+            )
         ):
             raise ConfigurationError(
                 "enabled SSD offload needs a positive SSD capacity"
@@ -176,6 +192,18 @@ class MooncakeConfig:
 
 def parse_mooncake_config(value: dict[str, Any] | None = None) -> MooncakeConfig:
     raw = dict(value or {})
+    if raw.get("offload") is not None:
+        if (
+            any(name.startswith("ssd_") for name in raw)
+            or raw.get("offload_tier", "ssd") != "ssd"
+        ):
+            raise ConfigurationError(
+                "offload plugins and legacy SSD options cannot be combined"
+            )
+        if raw.get("enable_offload") is False:
+            raise ConfigurationError(
+                "offload selects an enabled backend; remove enable_offload=false"
+            )
     _normalize_size(raw, "global_segment_size", "global_segment_size_gb")
     _normalize_size(raw, "local_buffer_size", "local_buffer_size_gb")
     try:

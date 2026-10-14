@@ -23,7 +23,7 @@ class BlockTransferPlans:
         tier = load_info.get("tier") or "memory"
         transfer = self.transfer_engine.create_transfer(
             source_segment=Segment(
-                name=f"store-{tier}", tier="ssd" if tier == "ssd" else "dram"
+                name=f"store-{tier}", tier="dram" if tier == "memory" else tier
             ),
             target_segment=Segment(name=f"worker-{self.config.kv_rank}", tier="vram"),
             blocks=blocks,
@@ -160,9 +160,11 @@ class BlockTransferPlans:
     def _own_plans(
         self, plans: list[ConnectorTransferPlan]
     ) -> list[ConnectorTransferPlan]:
+        offload = self.service.store.offload
         return [
             plan
             for plan in plans
             if plan.extra.get("connector") == self.name
-            or plan.tier in {"memory", "ssd"}
+            or plan.tier == "memory"
+            or (offload is not None and plan.tier == offload.tier)
         ]

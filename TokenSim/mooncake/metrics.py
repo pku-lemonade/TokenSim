@@ -4,6 +4,8 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
+from TokenSim.storage.metrics import StorageMetrics
+
 _GB = 1 << 30
 
 # Result export only surfaces a small sample of pool keys; keeping more than
@@ -13,6 +15,7 @@ POOL_KEY_SAMPLE_LIMIT = 64
 
 @dataclass
 class MooncakeStats:
+    storage_metrics: StorageMetrics = field(default_factory=StorageMetrics)
     get_count: int = 0
     put_count: int = 0
     store_hit_count: int = 0
@@ -46,7 +49,9 @@ class MooncakeStats:
         for field_name in self.__dataclass_fields__:
             left = getattr(self, field_name)
             right = getattr(other, field_name)
-            if isinstance(left, list):
+            if isinstance(left, StorageMetrics):
+                result.storage_metrics = left.aggregate(right)
+            elif isinstance(left, list):
                 setattr(result, field_name, [*left, *right][:POOL_KEY_SAMPLE_LIMIT])
             else:
                 setattr(result, field_name, left + right)
@@ -99,6 +104,7 @@ class MooncakeStats:
             seen_profiles.add(fingerprint)
             offload_profiles.append(profile)
         return {
+            "storage_metrics": self.storage_metrics.as_dict(),
             "mooncake_get_count": self.get_count,
             "mooncake_put_count": self.put_count,
             "mooncake_store_hit_count": self.store_hit_count,

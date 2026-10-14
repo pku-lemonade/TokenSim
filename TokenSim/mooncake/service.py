@@ -8,6 +8,7 @@ from TokenSim.config.kv_transfer_config import KVTransferConfig
 from TokenSim.mooncake.config import MooncakeConfig, parse_mooncake_config
 from TokenSim.mooncake.store import MooncakeStore
 from TokenSim.errors import ConfigurationError
+from TokenSim.storage import StorageBackendFactory
 
 
 class MooncakeService:
@@ -100,6 +101,10 @@ def get_mooncake_service(
 
 def _config_fingerprint(config: MooncakeConfig) -> str:
     payload = asdict(config)
+    if config.offload is not None:
+        payload["offload"]["config"] = StorageBackendFactory.create(
+            config.offload
+        ).describe()
     client_fields = [
         "tenant_id",
         "cache_prefix",

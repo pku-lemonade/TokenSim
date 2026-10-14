@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from collections import OrderedDict
+from copy import deepcopy
 from dataclasses import dataclass, field
 
-from TokenSim.errors import ConfigurationError
+from TokenSim.errors import ConfigurationError, SimulationStateError
+from TokenSim.storage import IOCost, IORequest, StorageBackendFactory
+from TokenSim.storage.ssd import legacy_ssd_backend, legacy_ssd_profile
 from TokenSim.mooncake.config import MooncakeConfig
 
 
@@ -28,12 +31,17 @@ class OffloadTier:
 
     def __init__(self, config: MooncakeConfig, block_bytes: int):
         self.config = config
-        self.tier = config.offload_tier
         self.block_bytes = max(1, int(block_bytes))
-        if config.ssd_capacity_blocks is not None:
-            self.capacity_blocks = int(config.ssd_capacity_blocks)
-        else:
-            self.capacity_blocks = config.ssd_capacity_bytes // self.block_bytes
+        self.legacy_ssd = config.offload is None
+        self.tier = "ssd" if self.legacy_ssd else config.offload.name
+        self.reference = "ssd" if self.legacy_ssd else config.offload.backend
+        self.backend = (
+            legacy_ssd_backend(config, self.block_bytes)
+            if self.legacy_ssd
+            else StorageBackendFactory.create(config.offload)
+        )
+        self.capacity_blocks = self.backend.capacity_bytes // self.block_bytes
+        self.profile = deepcopy(self.backend.describe())
         self._blocks: dict[str, int] = {}
         self._lru: OrderedDict[str, None] = OrderedDict()
         self._used_blocks = 0
@@ -89,6 +97,8 @@ class OffloadTier:
                 latency=0.0,
                 evicted_keys=[key],
             )
+        bytes_ = blocks * self.block_bytes
+        latency = self._write_latency(bytes_)
         for candidate in candidates:
             self._remove_existing(candidate)
             evicted.append(candidate)
@@ -96,12 +106,11 @@ class OffloadTier:
         self._blocks[key] = blocks
         self._used_blocks += blocks
         self._lru[key] = None
-        bytes_ = blocks * self.block_bytes
         return OffloadOperation(
             tier=self.tier,
             blocks=blocks,
             bytes=bytes_,
-            latency=self._write_latency(bytes_),
+            latency=latency,
             evicted_keys=evicted,
         )
 
@@ -115,20 +124,31 @@ class OffloadTier:
         self._protected_until.pop(key, None)
 
     def _read_latency(self, bytes_: int) -> float:
-        if bytes_ <= 0:
-            return 0.0
-        return (
-            self.config.ssd_read_latency_us / 1e6
-            + bytes_ / self.config.ssd_read_bandwidth_bytes_per_s
-        )
+        return self._latency("read", bytes_)
 
     def _write_latency(self, bytes_: int) -> float:
-        if bytes_ <= 0:
+        return self._latency("write", bytes_)
+
+    def _latency(self, operation, nbytes):
+        if nbytes <= 0:
             return 0.0
-        return (
-            self.config.ssd_write_latency_us / 1e6
-            + bytes_ / self.config.ssd_write_bandwidth_bytes_per_s
-        )
+        cost = self.backend.estimate_io(IORequest(operation, nbytes))
+        if not isinstance(cost, IOCost):
+            raise SimulationStateError("storage backend estimate_io must return IOCost")
+        return float(cost.service_seconds)
+
+    def describe(self):
+        if self.legacy_ssd:
+            return legacy_ssd_profile(self.config)
+        return {
+            "tier": self.tier,
+            "backend": self.reference,
+            "memory_capacity_blocks": self.config.memory_capacity_blocks,
+            "capacity_blocks": self.capacity_blocks,
+            "profile": deepcopy(self.profile),
+            "write_blocking": True,
+            "write_persistence": "blocking",
+        }
 
 
 SSDTier = OffloadTier

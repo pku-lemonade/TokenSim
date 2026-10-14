@@ -79,11 +79,7 @@ class BlockStore(BlockTransferPlans, BaseKVConnector):
             ranks=world_size,
         )
         self.mooncake_stats = MooncakeStats()
-        if self.service.store.offload is not None:
-            self.mooncake_stats.record_offload_tier(self.service.store.offload.tier)
-            self.mooncake_stats.record_offload_profile(
-                self.service.store._offload_profile()
-            )
+        self.service.store.register_storage_stats(self.mooncake_stats)
 
     def bind_runtime(self, worker):
         self._bind_service(len(worker.engine.workers), worker.env, worker.engine)
@@ -150,7 +146,7 @@ class BlockStore(BlockTransferPlans, BaseKVConnector):
             return 0
         external_blocks = external_tokens // self.block_size
         hit_keys = hit_keys[:external_blocks]
-        if hit.tier == "ssd":
+        if hit.tier != "memory":
             self.mooncake_stats.mooncake_disk_hit_tokens += external_tokens
         else:
             self.mooncake_stats.mooncake_memory_hit_tokens += external_tokens
