@@ -240,6 +240,3 @@ class ExecutionNode:
                 )
         elif self.metadata.get("collective_input_binding_required"):
             raise ConfigurationError("collective is missing required input bindings")
-
-
-AFExecutionStep = ExecutionNode

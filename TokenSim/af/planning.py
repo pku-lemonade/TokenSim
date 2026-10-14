@@ -19,7 +19,6 @@ from TokenSim.af.planner_transfer import TransferStagePlannerMixin
 from TokenSim.af.planning_dag import AFExecutionDAG
 from TokenSim.af.planning_grouping import group_routed_expert_nodes
 from TokenSim.af.planning_nodes import (
-    AFExecutionStep,
     ExecutionNode,
     ExecutionStage,
     NodeKind,
@@ -323,6 +322,3 @@ class ParallelExecutionPlanner(
     @staticmethod
     def instance_dp_rank(instance: LogicalInstanceConfig) -> int:
         return GlobalRoundRobinReplicaSelector._instance_dp_rank(instance)
-
-
-AFExecutionPlanBuilder = ParallelExecutionPlanner

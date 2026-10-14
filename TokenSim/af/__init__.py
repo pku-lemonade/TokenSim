@@ -17,8 +17,6 @@ from TokenSim.af.operator_provider import (
 )
 from TokenSim.af.planning import (
     AFExecutionDAG,
-    AFExecutionPlanBuilder,
-    AFExecutionStep,
     ExecutionNode,
     GlobalRoundRobinReplicaSelector,
     ParallelExecutionPlanner,
@@ -50,8 +48,6 @@ __all__ = [
     "AFCacheConfig",
     "AFDomainRuntime",
     "AFExecutor",
-    "AFExecutionPlanBuilder",
-    "AFExecutionStep",
     "AFExecutionDAG",
     "AFIteration",
     "AFKVHeadPartition",

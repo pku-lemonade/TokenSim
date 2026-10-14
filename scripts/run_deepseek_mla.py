@@ -14,7 +14,6 @@ if str(ROOT) not in sys.path:
 from scripts.deepseek_v3_runtime import (
     MODEL_ID,
     configuration,
-    load_assumptions,
     simulate,
     write_profile,
 )
@@ -56,10 +55,6 @@ def run(args):
         "virtual_capacity_only": args.hypothetical_f_memory_gib is not None,
         "note": "F capacity override changes storage only; compute and memory bandwidth remain those of the base device.",
     }
-    if args.assumptions:
-        raise ValueError(
-            "Legacy --assumptions JSON is not used by this backend; use --data-root/device/network instead"
-        )
     write_json(output / "hardware-assumptions.json", assumptions)
     rows = []
     for batch in args.batches:
@@ -118,60 +113,22 @@ def run(args):
             ],
         },
     )
-    write_json(
-        output / "coverage-backlog.json",
-        {
-            "model": MODEL_ID,
-            "layers": config.plan.total_layers,
-            "operator_backend": "operator_table",
-            "results": [
-                {
-                    "batch_size": row["batch_size"],
-                    "operator_query_count": row["operator_stats"][
-                        "operator_query_count"
-                    ],
-                    "match_type_counts": row["operator_stats"][
-                        "operator_match_type_counts"
-                    ],
-                    "missing_shape_count": row["operator_stats"][
-                        "operator_missing_shape_count"
-                    ],
-                    "missing_shapes": row["operator_stats"].get(
-                        "operator_missing_shapes", []
-                    ),
-                }
-                for row in rows
-            ],
-            "interpretation": {
-                "exact": "operator package row matched directly",
-                "interpolated": "operator package shape interpolated within policy",
-                "extrapolated": "boundary row scaled beyond measured range",
-                "analytical": "device-family roofline or workload formula",
-            },
-        },
-    )
     return rows
 
 
-def build_parser(full_default=False):
+def build_parser():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--output", type=Path, default=ROOT / "outputs/deepseek-v3-operator-table"
     )
-    parser.add_argument("--full-model", action="store_true", default=full_default)
+    parser.add_argument("--full-model", action="store_true")
     parser.add_argument("--batches", type=int, nargs="+", default=[1, 4, 16, 32])
     parser.add_argument("--context", type=int, default=2048)
     parser.add_argument("--steps", type=int, default=1)
-    parser.add_argument("--phase", choices=("decode", "prefill"), default="decode")
-    parser.add_argument("--checkpoint", type=Path)
-    parser.add_argument("--mtp", action="store_true")
     parser.add_argument("--a-tp", type=int, default=1)
     parser.add_argument("--f-tp", type=int)
     parser.add_argument("--af-batch-size", type=int, default=32)
     parser.add_argument("--data-root", type=Path, default=ROOT / "data")
-    parser.add_argument(
-        "--assumptions", type=Path, help="Deprecated legacy JSON; rejected explicitly"
-    )
     parser.add_argument("--device", default="a100_sxm_80g")
     parser.add_argument("--network", default="nvlink3")
     parser.add_argument("--hypothetical-f-memory-gib", type=int)
@@ -183,22 +140,8 @@ def build_parser(full_default=False):
     return parser
 
 
-def main(argv=None, *, full_default=False):
-    args = build_parser(full_default).parse_args(argv)
-    if args.phase != "decode":
-        raise SystemExit(
-            "DeepSeek-V3 operator-table entry currently supports decode only; "
-            "prefill serving latency is not implemented."
-        )
-    if args.checkpoint:
-        raise SystemExit(
-            "DeepSeek-V3 checkpoint loading is not supported by the architectural "
-            "simulator; provide model metadata only."
-        )
-    if args.mtp:
-        raise SystemExit(
-            "DeepSeek-V3 MTP execution is not supported by this entry point."
-        )
+def main(argv=None):
+    args = build_parser().parse_args(argv)
     if (
         min(
             *args.batches,

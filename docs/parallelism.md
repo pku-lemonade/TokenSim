@@ -133,59 +133,26 @@ See [MoE](moe.md).
 
 ### AF execution domains
 
-AF uses a stricter topology than the non-AF path. One logical instance is one
-DP replica, and every A or F replica contains `TP` base ranks. EP never adds
-physical ranks. With `EP=1`, each F DP replica holds a TP-sharded copy of the
-Expert set and Expert TP equals F TP. With rank reuse
-`EP=F_TP*F_DP`, Experts are placed across the existing F world and Expert TP is
-one; the stable identity is `ep_rank=dp_rank*F_TP+tp_rank`. Intermediate EP
-values are rejected. The AF planner executes rank-local work and explicit
-collectives; these sizes are not configuration-only metadata.
+Attention–feed-forward network (AF) separation uses independent A and F execution domains.
+Each data-parallel (DP) replica contains `TP` tensor-parallel ranks, with pipeline parallelism fixed to one.
+Expert parallelism (EP) reuses F ranks and adds no physical workers.
+`EP=1` uses a TP-sharded expert set in each F replica.
+`EP=F_TP*F_DP` distributes experts across the existing F world with expert TP equal to one.
+Intermediate EP values are rejected.
 
-Decode AF uses immutable per-layer routing assignments as execution facts. An
-Expert histogram is only their derived statistic, with total
-`source_tokens * top_k`; it cannot reconstruct token owners or routing weights.
-Expert compute consumes assignment counts directly and never multiplies by
-`top_k` again. Shared Expert, weighted combine, residual, and the next layer use
-the original token count. F-domain TP shards the Expert or dense FFN
-intermediate dimension exactly; non-divisible shard axes fail before planning.
+`AFRuntimePlan` supplies rank placement, exact tensor ownership, component memory and KV partitions to the engine and planner.
+Each A replica has one scheduler and request queue; every A TP rank owns its local KV state.
+A logical KV block maps atomically to all required local shards, and replica capacity is their minimum.
+Equivalent prefill/decode domains sharing physical ranks reuse that scheduler and cache.
+F ranks own their assigned dense, routed and shared FFN components.
+Router weights and work follow `af.router_location`.
 
-AF currently requires `PP=1` in both domains because pipeline stages,
-activation send/receive and bubble scheduling are not implemented for the
-Attention-FFN split. See [AF separation](af-separation.md) and the executable
-`data/clusters/af/decode_tp2_dp2_ep1.json` and
-`data/clusters/af/decode_tp2_dp2_ep4_rank_reuse.json` examples.
-
-When AF is enabled, domain-local parallel values override the unrelated global
-`parallel_config` for AF ranks. `AFRuntimePlan` is compiled once and shared by
-the Engine, Planner, memory accounting, and validation. Each A DP replica has
-one scheduler leader and one logical request queue, while every A TP rank owns
-its own model and KV shard state. F ranks own only the Expert/FFN components
-selected by their EP placement. Each A DP replica's `tp_rank=0, ep_rank=0`
-leader additionally owns Router; F ranks do not own Router weights.
-
-One logical A KV block maps atomically to one local shard on every required TP
-rank. The replica capacity is the minimum rank-local capacity, not the leader
-capacity and not the sum across TP ranks. KV-head partitioning also uses the A
-domain TP size; small MQA/GQA head counts are explicitly replicated when the
-replication groups divide evenly.
-
-Separate Prefill and Decode A domains may share one physical TP group when
-their TP/DP sizes and rank-to-worker mappings are identical. The aliases then
-share one scheduler, request queue, and KV state. Non-equivalent aliases fail
-at startup instead of creating conflicting logical state on the same devices.
-
-The result field `af_runtime_state` reports the compiled topology, component
-bytes, local KV bytes/capacity/usage, and replica logical capacity/usage. It is
-the memory counterpart to the compute/communication events in `af_trace`.
-`af_phase_fidelity` reports whether each phase used Decode rank-local AF,
-Prefill aggregate execution, or the retained AF-Prefill compatibility path.
-
-AF keeps weight, activation, KV-cache, A-to-F, and F-to-A dtypes as separate
-roles. Cross-domain format changes are explicit encode/decode compute nodes.
-AF endpoint legs and TP collectives resolve to an exact communication fabric
-and lane; collectives only contend with AF traffic when the configuration
-explicitly shares that lane.
+Routing assignments retain each request's token position, expert IDs and weights.
+Expert work uses assignment counts; shared experts and residuals use original token counts.
+Wire precision changes create explicit conversion nodes.
+Transfers and collectives contend on the configured physical node resources or shared fabric lanes.
+The result fields `af_runtime_state`, `af_trace` and `af_phase_fidelity` report the compiled topology, events and per-phase execution fidelity.
+See [AF separation](af-separation.md) for runnable configurations and restrictions.
 
 ## Configuration Precedence
 

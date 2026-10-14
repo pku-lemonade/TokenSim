@@ -519,6 +519,11 @@
       "host_resource_scope": "per_worker"
     },
     "latency_fallback": "analytical_only",
-    "transfer_topology_mode": "physical"
+    "transfer_topology_mode": "physical",
+    "communication_domains": {
+      "node_size": 8,
+      "node_count": 5,
+      "placement_strategy": "dedicated"
+    }
   }
 }

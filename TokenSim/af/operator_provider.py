@@ -13,7 +13,6 @@ from TokenSim.af.operator_validation import ComputeValidationMixin
 from TokenSim.af.snapshot import ConfigurationOwner, HardwareSnapshot, snapshot
 from TokenSim.af.transfer_collective import TransferCollectiveMixin
 from TokenSim.af.transfer_estimate import TransferEstimateMixin
-from TokenSim.af.transfer_operations import TRANSFER_OPERATIONS
 from TokenSim.af.transfer_plan import TransferPlanMixin
 from TokenSim.af.transfer_setup import TransferSetupMixin
 from TokenSim.config.model_config import ModelSpec

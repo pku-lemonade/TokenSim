@@ -12,9 +12,24 @@ from TokenSim.af.operator_composition import (
     _compose_source_id,
     _worst_match,
 )
-from TokenSim.af.transfer_operations import TRANSFER_OPERATIONS
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.domains import MODEL_VERSION
+
+
+TRANSFER_OPERATIONS = (
+    "af_a_to_f",
+    "af_f_to_a",
+    "af_control_length",
+    "af_control_payload",
+    "af_router_metadata",
+    "ep_dispatch",
+    "ep_combine",
+    "tp_collective",
+    "all_reduce",
+    "all_gather",
+    "reduce_scatter",
+    "all_to_all",
+)
 
 
 class TransferEstimateMixin:

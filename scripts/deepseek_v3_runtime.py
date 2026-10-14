@@ -17,13 +17,6 @@ MODEL_ID = "deepseek-v3-671b-mla"
 _ASSUMED_DEVICE = "a100_sxm_80g"
 
 
-def load_assumptions(path: str | Path | None = None) -> dict[str, Any]:
-    filename = (
-        Path(path) if path else ROOT / "data/operator_data/deepseek-v3-theoretical.json"
-    )
-    return json.loads(filename.read_text(encoding="utf-8"))
-
-
 def configuration(
     *,
     full_model: bool = False,
