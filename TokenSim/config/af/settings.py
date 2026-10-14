@@ -66,6 +66,10 @@ class AFConfig:
     service_estimate_cache: bool = True
     dag_template_cache: bool = True
     execution_protocol: str = "partial_return"
+    compute_execution_mode: str = "eager"
+    graph_submit_us: float = 4.0
+    graph_device_kernel_us: float = 0.2
+    coalesce_ready_transfers: bool = False
     operation_service_profile: dict[str, Any] | None = None
     transport_service_profile: dict[str, Any] | None = None
     engine_overhead_profile: dict[str, Any] | None = None
@@ -105,6 +109,7 @@ class AFConfig:
         "trace_enabled",
         "service_estimate_cache",
         "dag_template_cache",
+        "coalesce_ready_transfers",
         mode="before",
     )
     @classmethod
@@ -147,6 +152,14 @@ class AFConfig:
             raise ConfigurationError(
                 "af.execution_protocol must be partial_return or vllm_afd"
             )
+        from TokenSim.config.validation import number
+
+        if self.compute_execution_mode not in {"eager", "cuda_graph"}:
+            raise ConfigurationError(
+                "compute_execution_mode must be eager or cuda_graph"
+            )
+        number(self.graph_submit_us, "graph submit cost")
+        number(self.graph_device_kernel_us, "graph device kernel cost")
         timing = self.communication_timing
         if timing.native_call_order_enabled and not timing.native_control_enabled:
             raise ConfigurationError(

@@ -463,6 +463,10 @@ def group_routed_expert_nodes(
                         aliases.get(pred, pred) for pred in node.predecessor_ids
                     )
                 ),
+                input_producer_ids=tuple(
+                    (endpoint, aliases.get(producer, producer))
+                    for endpoint, producer in node.input_producer_ids
+                ),
             )
         )
     return tuple(result)

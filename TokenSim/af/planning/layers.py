@@ -160,6 +160,10 @@ class RuntimeLayerPlannerMixin:
                 attention_ids=post_attention_ids,
                 a_collective=a_collective,
             )
+        if self.cluster_config.af.coalesce_ready_transfers:
+            from TokenSim.af.planning.coalesce import coalesce_ready_transfers
+
+            dag = AFExecutionDAG(coalesce_ready_transfers(dag.nodes))
         for node in dag.nodes:
             self.runtime_plan.validate_execution_node(node)
         return dag

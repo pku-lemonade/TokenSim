@@ -109,6 +109,55 @@ class PipelineRuntimeTest(unittest.TestCase):
         self.assertTrue(handoffs)
         self.assertTrue(all(event.match_type == "analytical" for event in handoffs))
 
+    def test_uniform_moe_template_does_not_reuse_another_pipeline_stage(self):
+        cluster = pipeline_cluster()
+        hardware = _runtime_hardware()
+        moe = replace(_moe(top_k=1), num_experts=1, num_moe_layers=2)
+        model = replace(hardware.model("TestModel"), moe=moe)
+        plan = compile_af_runtime_plan(
+            cluster_config=cluster,
+            worker_configs=cluster.workers(),
+            hardware=hardware,
+            model=model,
+            block_size=4,
+        )
+        env = simpy.Environment()
+        transfer = FixedTransferProvider(0, 0)
+        transfer.operation_durations["af_pipeline_handoff"] = 0
+        transfer.placement = build_topology_placement(
+            cluster, cluster.workers(), hardware
+        )
+        trace = AFTraceRecorder(True)
+        executor = ModelAFExecutor(
+            env,
+            cluster,
+            cluster.workers(),
+            FixedComputeProvider(1, 1),
+            transfer,
+            model.model_id,
+            model.dtype,
+            2,
+            model.hidden_size,
+            runtime_plan=plan,
+            model=model,
+            moe_config=moe,
+            trace_recorder=trace,
+        )
+        iteration = executor.submit(0, [decode_request(1)], "decode")
+        env.process(executor.run_iteration(iteration))
+        env.run()
+        stage_zero = {
+            event.worker_id
+            for event in trace.events
+            if event.stage == "attention" and event.layer_id == 0
+        }
+        stage_one = {
+            event.worker_id
+            for event in trace.events
+            if event.stage == "attention" and event.layer_id == 1
+        }
+        self.assertTrue(stage_zero.isdisjoint(stage_one))
+
     def simulate(self, parallel):
         cluster, model, plan = self.runtime()
         env = simpy.Environment()

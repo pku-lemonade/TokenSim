@@ -59,9 +59,18 @@ class ClusterTopologyMixin:
                 raise ConfigurationError(
                     f"AF link {link.name!r} references unknown network {link.network!r}"
                 )
-            if link.attention_group == link.ffn_group:
+            if link.attention_group == link.ffn_group and not link.colocated:
                 raise ConfigurationError(
                     f"AF link {link.name!r} attention_group and ffn_group must differ"
+                )
+            if link.colocated and (
+                link.attention_group != link.ffn_group
+                or not link.attention_domain
+                or not link.ffn_domain
+                or link.attention_domain == link.ffn_domain
+            ):
+                raise ConfigurationError(
+                    "colocated execution needs one worker group and distinct explicit A/F domains"
                 )
             for endpoint_field, required_capability in (
                 ("attention_group", "af_attention"),

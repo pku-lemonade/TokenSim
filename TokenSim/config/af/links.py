@@ -71,6 +71,7 @@ class AFLinkConfig:
     half_duplex_capacity: int | None = None
     attention_domain: str | None = None
     ffn_domain: str | None = None
+    colocated: bool = False
     a_to_f_dtype: str | None = None
     f_to_a_dtype: str | None = None
     dtype_presence_input: InitVar[tuple[str, ...]] = ()
@@ -113,6 +114,8 @@ class AFLinkConfig:
         return value
 
     def __post_init__(self, dtype_presence_input: tuple[str, ...]) -> None:
+        if type(self.colocated) is not bool:
+            raise ConfigurationError("AF colocated flag must be a boolean")
         self._explicit_dtype_fields = frozenset(dtype_presence_input)
         self.dtype_presence_input = tuple(sorted(self._explicit_dtype_fields))
         for field_name in (

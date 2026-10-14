@@ -7,6 +7,7 @@ from TokenSim.af.execution.model import ModelAFExecutor
 from TokenSim.af.providers.operator_table import build_operator_table_af_providers
 from TokenSim.af.runtime.admission import ResidentKV
 from TokenSim.af.trace.recorder import AFTraceRecorder
+from TokenSim.af.trace.metrics import AFTraceEvent
 from TokenSim.config.validation import integer
 from TokenSim.errors import ConfigurationError
 
@@ -130,9 +131,55 @@ class AFService:
                 )
             )
         start = self.env.now
+        graph_timing = None
+        if self.runtime.cluster.af.compute_execution_mode == "cuda_graph":
+            resources = self.executor.resources.host_resources_for(
+                (owner.physical_worker,)
+            )
+            host_requests = [resource.request() for _, resource in resources]
+            try:
+                yield self.env.all_of(host_requests)
+                graph_started = self.env.now
+                yield self.env.timeout(self.runtime.cluster.af.graph_submit_us / 1e6)
+                graph_timing = (
+                    graph_started,
+                    self.env.now,
+                    tuple(key for key, _ in resources),
+                )
+            finally:
+                for (_, resource), request in zip(resources, host_requests):
+                    if request.triggered:
+                        resource.release(request)
+                    else:
+                        request.cancel()
         iteration = self.executor.submit(
             self.worker_ids[owner.physical_worker], requests, phase
         )
+        if graph_timing is not None and self.trace.enabled:
+            submitted, finished, resource_ids = graph_timing
+            self.trace.record(
+                AFTraceEvent(
+                    iteration_id=iteration.iteration_id,
+                    block_id=-1,
+                    layer_id=-1,
+                    phase=phase,
+                    event_type="host_submit",
+                    operation="cuda_graph_submit",
+                    resource_id=resource_ids[0],
+                    resource_ids=resource_ids,
+                    ready_at=start,
+                    start_at=submitted,
+                    end_at=finished,
+                    queue_duration=submitted - start,
+                    service_duration=finished - submitted,
+                    request_count=len(sessions),
+                    token_count=query_tokens * len(sessions),
+                    source_id="assumption:cuda_graph_submit",
+                    match_type="analytical",
+                    node_id=f"i{iteration.iteration_id}:cuda_graph_submit",
+                    details={"timing_scope": "host_submission"},
+                )
+            )
         yield self.env.process(self.executor.run_iteration(iteration))
         for session, request in zip(sessions, requests):
             session.cached_context = request.context_len

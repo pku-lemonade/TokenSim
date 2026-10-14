@@ -189,6 +189,8 @@ class TemplateCache:
                 self._layer_fingerprints[layer_id],
                 self._configuration_fingerprint,
                 self._link_fingerprints[link.name],
+                planner.runtime_plan.pipeline_stage(block.placement.a_domain, layer_id),
+                planner.runtime_plan.pipeline_stage(block.placement.f_domain, layer_id),
             )
             # Intern with full equality once. Hot keys hash only this small
             # integer; unlike a bare hash, interning cannot alias collisions.

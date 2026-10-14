@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any, Mapping, Sequence
+from dataclasses import replace
 
 from TokenSim.af.caching.estimates import (
     ConfigurationOwner,
@@ -49,6 +50,7 @@ class OperatorTableAFComputeProvider(
         "dtype",
         "execution_protocol",
         "require_device_scope",
+        "graph_device_kernel_us",
     )
 
     def __init__(
@@ -63,6 +65,7 @@ class OperatorTableAFComputeProvider(
         cache_enabled: bool = True,
         execution_protocol: str = "partial_return",
         require_device_scope: bool = False,
+        graph_device_kernel_us: float | None = None,
     ) -> None:
         if fallback not in FALLBACK_POLICIES:
             raise ConfigurationError(
@@ -78,7 +81,15 @@ class OperatorTableAFComputeProvider(
         self.fallback = fallback
         self.lookup_policy = snapshot(lookup_policy)
         self.execution_protocol = execution_protocol
+        self.graph_device_kernel_us = graph_device_kernel_us
+        if graph_device_kernel_us is not None and fallback != "analytical_only":
+            raise ConfigurationError(
+                "analytical graph execution requires analytical_only; measured graph profiles must declare their scope"
+            )
         initialize_cache(self, cache_enabled)
+        self._estimate_namespace += (
+            ("graph_device_kernel_us", graph_device_kernel_us),
+        )
         self._resolvers: dict[str, OperatorResolver] = {}
         routing = model.moe.routing.distribution if model.moe.routing else "uniform"
         self.moe_distributions = _MOE_DISTRIBUTION_CANDIDATES.get(
@@ -91,6 +102,14 @@ class OperatorTableAFComputeProvider(
         if resolver is not None:
             return resolver
         device = self.hardware.device(device_type)
+        if self.graph_device_kernel_us is not None and device.family == "nvidia_gpu":
+            device = replace(
+                device,
+                analytical={
+                    **device.analytical,
+                    "kernel_launch_us": self.graph_device_kernel_us,
+                },
+            )
         backend = self.backend_by_device.get(device_type, self.operator_backend)
         package = None
         if self.fallback != "analytical_only":
@@ -132,6 +151,7 @@ class OperatorTableAFComputeProvider(
             "model_id": self.model.model_id,
             "execution_protocol": self.execution_protocol,
             "fallback": self.fallback,
+            "graph_device_kernel_us_assumption": self.graph_device_kernel_us,
             "devices": {
                 device_type: {
                     "device_id": resolver.device.device_id,
@@ -255,6 +275,11 @@ def build_operator_table_af_providers(
         cache_enabled=cluster_config.af.service_estimate_cache,
         execution_protocol=cluster_config.af.execution_protocol,
         require_device_scope=cluster_config.af.engine_overhead_profile is not None,
+        graph_device_kernel_us=(
+            cluster_config.af.graph_device_kernel_us
+            if cluster_config.af.compute_execution_mode == "cuda_graph"
+            else None
+        ),
     )
     transfer = TopologyAFTransferProvider(
         hardware,

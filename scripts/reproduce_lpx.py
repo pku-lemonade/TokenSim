@@ -16,7 +16,8 @@ from TokenSim.errors import ConfigurationError
 from TokenSim.hardware import HardwareContext
 from scripts.lpx.audit import run_audit
 from scripts.lpx.config import load_cases
-from scripts.lpx.simulator import pareto, point
+from scripts.lpx.simulator import pareto
+from scripts.lpx.native_simulation import point
 
 
 def write_json(path, value):
@@ -29,10 +30,11 @@ def parser():
         "--config", type=Path, default=ROOT / "experiments/lpx/sweep.json"
     )
     result.add_argument(
-        "--output", type=Path, default=ROOT / "outputs/lpx-reproduction"
+        "--output", type=Path, default=ROOT / "outputs/lpx-native-reproduction"
     )
     result.add_argument("--batches", type=int, nargs="+")
     result.add_argument("--output-tokens", type=int)
+    result.add_argument("--new-tokens", type=int)
     result.add_argument("--context-samples", type=int)
     result.add_argument("--acceptance", type=float)
     result.add_argument("--rubin-watts", type=float)
@@ -42,6 +44,18 @@ def parser():
     result.add_argument("--plot", action="store_true")
     result.add_argument("--audit-only", action="store_true")
     result.add_argument("--skip-audit", action="store_true")
+    result.add_argument("--model", default="gpt-oss-2t-proxy")
+    result.add_argument("--micro-batch", type=int, default=1)
+    result.add_argument("--a-replicas", type=int, default=1)
+    result.add_argument("--warmup-steps", type=int, default=2)
+    result.add_argument("--measurement-seconds", type=float, default=0.05)
+    result.add_argument(
+        "--execution-mode", choices=("eager", "cuda_graph"), default="cuda_graph"
+    )
+    result.add_argument("--graph-kernel-us", type=float, default=0.2)
+    result.add_argument(
+        "--handoff-mode", choices=("full", "incremental"), default="incremental"
+    )
     return result
 
 
@@ -53,6 +67,7 @@ def main(argv=None):
             name: value
             for name, value in (
                 ("output_tokens", args.output_tokens),
+                ("new_tokens", args.new_tokens),
                 ("context_samples", args.context_samples),
                 ("acceptance_probability", args.acceptance),
             )
@@ -77,7 +92,7 @@ def main(argv=None):
         if args.audit_only and args.skip_audit:
             raise ConfigurationError("audit-only and skip-audit are mutually exclusive")
         hardware = HardwareContext.load(ROOT / "data")
-        target = hardware.model("gpt-oss-2t-proxy")
+        target = hardware.model(args.model)
         args.output.mkdir(parents=True, exist_ok=True)
         if not args.skip_audit:
             print("Run production AF layer audit", flush=True)
@@ -98,6 +113,13 @@ def main(argv=None):
                         power_overrides=power,
                         facility_watts=args.facility_watts,
                         trace=args.trace and batch == 1,
+                        micro_batch=args.micro_batch,
+                        a_dp=args.a_replicas,
+                        warmup_steps=args.warmup_steps,
+                        measurement_seconds=args.measurement_seconds,
+                        execution_mode=args.execution_mode,
+                        graph_kernel_us=args.graph_kernel_us,
+                        handoff_mode=args.handoff_mode,
                     )
                 except ConfigurationError as exc:
                     # Capacity failures remain visible and are excluded from the frontier.
@@ -156,7 +178,8 @@ def main(argv=None):
         )
         payload = {
             "schema": "tokensim.lpx_projection",
-            "version": 1,
+            "version": 2,
+            "executor": "production_ModelAFExecutor",
             "git_revision": revision,
             "git_worktree_dirty": dirty,
             "workload": asdict(workload),
@@ -172,15 +195,16 @@ def main(argv=None):
             "frontiers": frontiers,
             "results": rows,
             "limitations": [
-                "Analytical projection using TokenSim AF operator composition, exact local expert workloads, collective models and SimPy resources.",
+                "Production whole-model AF DAGs, physical rank ownership, independent serving cohorts and endpoint injection reservations.",
                 "Independent model/topology/precision/power assumptions; NVIDIA's undisclosed projection cannot be numerically reproduced.",
-                "Layer pipeline and context partitions are experiment compositions; production AF supports PP=1 and EP=1 or TP*DP.",
-                "Fixed synchronous batches; no overlap between model passes or compiler vector transfers; pool-wide reservations are conservative.",
-                "Decode latency integrates sampled contexts and routing histograms; prefill uses a balanced conserved histogram.",
+                "Native PP and combined expert/tensor groups are validated; unimplemented context-parallel layouts fail configuration.",
+                "Warm-up and drain are excluded from steady-state throughput; queue delays and per-resource utilization are exported.",
+                "Layer windows and packed expert weights are executed with native per-request routing and KV byte admission.",
                 "Warm prefixes are resident; prefix creation, checkpoint loading and model quality are outside the simulation.",
                 "Output throughput includes new-suffix prefill, cache handoff and draft service; per-user interactivity excludes TTFT.",
                 "Assumed processor TDP plus supplied facility watts; no automatic rack power or cooling estimate.",
-                "External draft acceptance is an independent expectation; full gamma+1 verification width is always charged.",
+                "External draft acceptance uses a seeded Bernoulli prefix; full gamma+1 verification positions and rollback are charged.",
+                "Graph host/device costs are explicit analytical assumptions; no measured graph or compiler-vector-overlap calibration is supplied.",
             ],
         }
         write_json(args.output / "summary.json", payload)

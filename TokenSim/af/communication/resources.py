@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import math
+import heapq
 
 import simpy
 
@@ -34,7 +35,10 @@ class DomainScheduler:
         self.env = env
         self.resource_ids = frozenset(resource_ids)
         self.owners = {}
-        self.waiters = []
+        self._waiters = {}
+        self._priorities = set()
+        self._resource_queues = {}
+        self._serial = 0
         self._scheduled = False
 
     def request(self, keys, identity):
@@ -47,11 +51,18 @@ class DomainScheduler:
             )
         stable_identity = tuple((type(part).__name__, part) for part in identity)
         request = DomainRequest(keys, (self.env.now, stable_identity), self.env.event())
-        if any(item.priority == request.priority for item in self.waiters):
+        if request.priority in self._priorities:
             raise ConfigurationError(
                 "concurrent domain requests need unique stable logical identities"
             )
-        self.waiters.append(request)
+        self._waiters[id(request)] = request
+        self._priorities.add(request.priority)
+        self._serial += 1
+        for key in keys:
+            heapq.heappush(
+                self._resource_queues.setdefault(key, []),
+                (request.priority, self._serial, request),
+            )
         self._wake()
         return request
 
@@ -67,22 +78,34 @@ class DomainScheduler:
 
     def _arbitrate(self):
         self._scheduled = False
-        blocked = set()
-        remaining = []
-        for request in sorted(self.waiters, key=lambda item: item.priority):
-            if request.cancelled:
-                continue
-            if blocked.intersection(request.keys) or any(
-                key in self.owners for key in request.keys
+        candidates = {
+            id(request): request
+            for key in self._resource_queues
+            if (request := self._front(key)) is not None
+        }
+        for request in sorted(candidates.values(), key=lambda item: item.priority):
+            if any(
+                key in self.owners or self._front(key) is not request
+                for key in request.keys
             ):
-                blocked.update(request.keys)
-                remaining.append(request)
                 continue
             request.acquired = True
+            self._waiters.pop(id(request))
+            self._priorities.remove(request.priority)
             for key in request.keys:
                 self.owners[key] = request
+                heapq.heappop(self._resource_queues[key])
             request.event.succeed()
-        self.waiters = remaining
+
+    def _front(self, key):
+        queue = self._resource_queues[key]
+        while queue and queue[0][2].cancelled:
+            heapq.heappop(queue)
+        return queue[0][2] if queue else None
+
+    @property
+    def waiters(self):
+        return sorted(self._waiters.values(), key=lambda item: item.priority)
 
     def release(self, request):
         if request.acquired:
@@ -92,7 +115,8 @@ class DomainScheduler:
             request.acquired = False
         else:
             request.cancelled = True
-            self.waiters = [item for item in self.waiters if item is not request]
+            self._waiters.pop(id(request), None)
+            self._priorities.discard(request.priority)
         self._wake()
 
     def run(self, keys, duration, identity):
@@ -167,6 +191,7 @@ class AFResourceRegistry:
         self.host_submission_slots = (
             {key: simpy.Resource(env, capacity=1) for key in host_keys}
             if timing.enabled
+            or cluster_config.af.compute_execution_mode == "cuda_graph"
             else {}
         )
         self.group_worker_ids: dict[str, tuple[int, ...]] = {}

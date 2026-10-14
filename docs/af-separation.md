@@ -234,6 +234,16 @@ KV handoffs verify model/cache identity and source coverage before scheduling co
 Incremental mode sends only positions absent from the declared warm destination.
 Local layers send their retained window tail, and replicated KV heads receive a cross-pool canonical copy followed by destination-local replication.
 Cancellation releases every endpoint reservation and leaves destination validity unchanged.
+`compute_execution_mode: cuda_graph` selects an analytical GPU device-kernel overhead and charges one host submission per cohort forward in `AFService`.
+`graph_submit_us` defaults to 4 microseconds and `graph_device_kernel_us` defaults to 0.2 microseconds.
+These costs have no measured calibration and are explicit sensitivity inputs.
+Graph overrides require analytical-only operator fallback to avoid rewriting measured timing scopes.
+LP30 device service remains unchanged by the GPU graph setting.
+`coalesce_ready_transfers: true` batches matching endpoint messages and collectives while retaining payload bytes, tensor slices and producer dependencies.
+Endpoint batches wait for all their declared producers.
+The default disables batching; the LPX native experiment enables it explicitly.
+Explicit A/F domains can share physical workers when their link declares `colocated: true`.
+Those workers retain one compute resource and one memory capacity across both capabilities.
 
 ## Code layout
 

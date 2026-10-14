@@ -151,7 +151,11 @@ class TransferStagePlannerMixin:
                 copy.target_binding.domain_rank,
                 copy.source_layout,
                 copy.target_layout,
-                actual_predecessors,
+                (
+                    ()
+                    if self.cluster_config.af.coalesce_ready_transfers
+                    else actual_predecessors
+                ),
             )
             grouped.setdefault(endpoint_key, []).append((record_key, record))
 
@@ -165,7 +169,13 @@ class TransferStagePlannerMixin:
                     edge for _, record in group for edge in record["routing_edges"]
                 )
             )
-            predecessors = record_predecessors[group[0][0]]
+            predecessors = tuple(
+                dict.fromkeys(
+                    predecessor
+                    for record_key, _ in group
+                    for predecessor in record_predecessors[record_key]
+                )
+            )
             for record_key, _record in group:
                 leg_for_record[record_key] = leg_id
             source_endpoint = self._endpoint(first.source_binding)

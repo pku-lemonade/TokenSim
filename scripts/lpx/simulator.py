@@ -23,6 +23,7 @@ def draft_model(target):
         target,
         model_id="gpt-oss-draft-proxy",
         num_layers=4,
+        attention_windows=target.attention_windows[:4],
         moe=replace(target.moe, num_experts=128, num_moe_layers=4),
         sources={
             "assumption-draft": {
