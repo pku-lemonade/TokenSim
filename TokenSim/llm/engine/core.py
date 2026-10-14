@@ -45,6 +45,11 @@ class LLMEngine(AFEngineMixin, Worker):
         af_dtype: str | None = None,
     ):
         config = config or SimulationConfig()
+        if config.dp_lockstep and cluster_config.af.enabled:
+            raise ConfigurationError(
+                "dp_lockstep cannot be combined with AF execution; "
+                "AF replicas synchronize through their execution DAG"
+            )
         self.config = config
         self.workload_config = workload_config or WorkloadConfig()
         from TokenSim.timing import TimingRecorder
