@@ -4,6 +4,7 @@ from dataclasses import replace
 import unittest
 
 from TokenSim.af.operator_provider import OperatorTableAFComputeProvider
+from TokenSim.hardware.device import DeviceCatalog
 from tests.test_af_executor import af_test_hardware
 from tests.test_af_operator_provider import _moe, _compute_query
 
@@ -11,6 +12,21 @@ from tests.test_af_operator_provider import _moe, _compute_query
 class AFProviderCorrectnessTest(unittest.TestCase):
     def setUp(self):
         hardware = af_test_hardware(moe=_moe())
+        hardware = replace(
+            hardware,
+            devices=DeviceCatalog(
+                [
+                    replace(
+                        device,
+                        peak_compute={
+                            **device.peak_compute,
+                            "fp8": device.peak_compute["fp16"],
+                        },
+                    )
+                    for device in hardware.devices
+                ]
+            ),
+        )
         self.provider = OperatorTableAFComputeProvider(
             hardware, hardware.model("TestModel"), fallback="analytical_only"
         )
@@ -39,3 +55,30 @@ class AFProviderCorrectnessTest(unittest.TestCase):
             components = self.provider.estimate(query).details["components"]
             self.assertEqual(len(components), 1)
             self.assertEqual(components[0]["key"]["hidden_size"], 8)
+
+    def test_weight_and_kv_dtypes_are_independent_of_activations(self):
+        query = replace(
+            _compute_query("a", dtype="bf16", context=(8192,)),
+            weight_dtype="fp8",
+            activation_dtype="bf16",
+            kv_cache_dtype="fp32",
+        )
+        estimate = self.provider.estimate(query)
+        components = estimate.details["components"]
+        for component in components:
+            if component["table"] == "gemm":
+                self.assertEqual(component["key"]["dtype"], "fp8")
+            elif component["table"] == "elementwise":
+                self.assertEqual(component["key"]["dtype"], "bf16")
+            elif component["table"] == "generation_attention":
+                self.assertEqual(component["key"]["kv_cache_dtype"], "fp32")
+        smaller_kv = self.provider.estimate(replace(query, kv_cache_dtype="fp16"))
+        self.assertGreater(estimate.service_duration, smaller_kv.service_duration)
+
+    def test_router_and_expert_queries_use_weight_precision(self):
+        for stage in ("router", "expert"):
+            query = replace(_compute_query(stage, dtype="bf16"), weight_dtype="fp8")
+            components = self.provider.estimate(query).details["components"]
+            weights = [c for c in components if c["table"] in {"gemm", "moe"}]
+            self.assertTrue(weights)
+            self.assertTrue(all(c["key"]["dtype"] == "fp8" for c in weights))

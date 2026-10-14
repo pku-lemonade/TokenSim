@@ -279,6 +279,7 @@ class OperatorTableAFComputeProvider(ConfigurationOwner):
         tokens, tp_size = self._validate_local_work(query)
         resolver = self.resolver_for(query.device_type)
         dtype = normalize_dtype(query.dtype)
+        weight_dtype = normalize_dtype(query.weight_dtype or dtype)
         if query.stage == "layout" and query.operation in {
             "embedding_lookup",
             "final_norm",
@@ -295,7 +296,7 @@ class OperatorTableAFComputeProvider(ConfigurationOwner):
                         tokens,
                         self.model.vocab_size // tp_size,
                         self.model.hidden_size,
-                        dtype,
+                        weight_dtype,
                     )
                 ]
             else:
@@ -358,7 +359,7 @@ class OperatorTableAFComputeProvider(ConfigurationOwner):
                     tokens,
                     self.model.ffn_projection_count * local_width,
                     self.model.hidden_size,
-                    dtype,
+                    weight_dtype,
                 )
             ]
             if self.model.gated:
@@ -369,7 +370,12 @@ class OperatorTableAFComputeProvider(ConfigurationOwner):
                 )
             components.append(
                 self._gemm(
-                    resolver, "down", tokens, self.model.hidden_size, local_width, dtype
+                    resolver,
+                    "down",
+                    tokens,
+                    self.model.hidden_size,
+                    local_width,
+                    weight_dtype,
                 )
             )
         elif query.stage == "layout" and query.operation == "post_attention_norm":
@@ -604,7 +610,9 @@ class OperatorTableAFComputeProvider(ConfigurationOwner):
         histogram = Counter(lengths)
         key = dict(
             attn_dtype=dtype,
-            kv_cache_dtype=model.kv_cache_dtype,
+            kv_cache_dtype=normalize_dtype(
+                query.kv_cache_dtype or model.kv_cache_dtype
+            ),
             phase=query.phase,
             execution_mode=mode,
             batch_size=len(lengths),
@@ -637,6 +645,7 @@ class OperatorTableAFComputeProvider(ConfigurationOwner):
         dtype: str,
     ) -> list[OperatorComponent]:
         model = self.model
+        weight_dtype = normalize_dtype(query.weight_dtype or dtype)
         h = model.hidden_size
         heads_local = math.ceil(model.num_attention_heads / tp_size)
         kv_heads_local = local_kv_heads(model.num_key_value_heads, tp_size)
@@ -645,7 +654,12 @@ class OperatorTableAFComputeProvider(ConfigurationOwner):
         components = [
             self._elementwise(resolver, "a_rmsnorm", "rmsnorm", tokens, h, dtype),
             self._gemm(
-                resolver, "qkv_projection", tokens, q_local + 2 * kv_local, h, dtype
+                resolver,
+                "qkv_projection",
+                tokens,
+                q_local + 2 * kv_local,
+                h,
+                weight_dtype,
             ),
             self._elementwise(
                 resolver, "rope", "rope", tokens, q_local + kv_local, dtype
@@ -676,7 +690,7 @@ class OperatorTableAFComputeProvider(ConfigurationOwner):
             )
         )
         components.append(
-            self._gemm(resolver, "output_projection", tokens, h, q_local, dtype)
+            self._gemm(resolver, "output_projection", tokens, h, q_local, weight_dtype)
         )
         components.append(
             self._elementwise(
@@ -697,7 +711,9 @@ class OperatorTableAFComputeProvider(ConfigurationOwner):
         model = self.model
         common = {
             "attn_dtype": dtype,
-            "kv_cache_dtype": model.kv_cache_dtype,
+            "kv_cache_dtype": normalize_dtype(
+                query.kv_cache_dtype or model.kv_cache_dtype
+            ),
             "num_heads": heads_local,
             "num_kv_heads": kv_heads_local,
             "head_dim": model.head_dim,
@@ -739,6 +755,7 @@ class OperatorTableAFComputeProvider(ConfigurationOwner):
         dtype: str,
     ) -> list[OperatorComponent]:
         model = self.model
+        weight_dtype = normalize_dtype(query.weight_dtype or dtype)
         h = model.hidden_size
         components = (
             []
@@ -747,7 +764,9 @@ class OperatorTableAFComputeProvider(ConfigurationOwner):
         )
         if model.is_moe:
             components.append(
-                self._gemm(resolver, "router", tokens, model.moe.num_experts, h, dtype)
+                self._gemm(
+                    resolver, "router", tokens, model.moe.num_experts, h, weight_dtype
+                )
             )
             if query.layer_type is not None:
                 components.append(
@@ -771,6 +790,7 @@ class OperatorTableAFComputeProvider(ConfigurationOwner):
         dtype: str,
     ) -> list[OperatorComponent]:
         model = self.model
+        weight_dtype = normalize_dtype(query.weight_dtype or dtype)
         h = model.hidden_size
         components: list[OperatorComponent | None] = []
         if model.is_moe:
@@ -785,7 +805,7 @@ class OperatorTableAFComputeProvider(ConfigurationOwner):
             # fed with tokens * ep_size / top_k input tokens.
             equivalent_tokens = max(1, int(round(tokens * ep_size / top_k)))
             base_key = {
-                "dtype": dtype,
+                "dtype": weight_dtype,
                 "hidden_size": h,
                 "inter_size": model.moe_intermediate_size,
                 "top_k": top_k,
@@ -820,7 +840,7 @@ class OperatorTableAFComputeProvider(ConfigurationOwner):
                     tokens,
                     model.ffn_projection_count * inter_local,
                     h,
-                    dtype,
+                    weight_dtype,
                 )
             )
             if model.gated:
@@ -830,7 +850,7 @@ class OperatorTableAFComputeProvider(ConfigurationOwner):
                     )
                 )
             components.append(
-                self._gemm(resolver, "dense_down", tokens, h, inter_local, dtype)
+                self._gemm(resolver, "dense_down", tokens, h, inter_local, weight_dtype)
             )
         if query.stage == "expert":
             components.append(

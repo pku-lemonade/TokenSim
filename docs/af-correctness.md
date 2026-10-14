@@ -29,3 +29,9 @@ Combination and residual queries use the hidden interval owned by the attention 
 The MLA adapter accepts equal-length, whole-prompt prefill without cached prefixes.
 Scheduled query tokens must cover the entire prompt, and the request must have no previously computed context.
 Unsupported partial passes fail before request ownership or iteration state changes.
+
+## Precision
+
+GEMM and expert-table queries use the effective weight dtype.
+Normalization, rotary embeddings, residuals, and communication use their activation or transfer dtypes.
+Attention queries use the effective KV-cache dtype, including overrides from AF configuration.
