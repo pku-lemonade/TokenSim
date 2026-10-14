@@ -1,0 +1,83 @@
+schema_version: 1
+device_id: h100_sxm_hbf2
+family: nvidia_gpu
+display_name: H100 compute with HBF2 experimental 48 GiB HBM3e memory
+aliases: []
+sources:
+  aiconfigurator-system-yaml:
+    grade: C
+    reference: https://github.com/ai-dynamo/aiconfigurator/blob/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/h100_sxm.yaml
+    notes: 'Empirical corrections NVIDIA recorded while validating AIConfigurator
+      against TensorRT-LLM deployments: memory bandwidth efficiency 0.8, 3 us constant
+      memory latency per kernel, 10 us point-to-point latency for collectives, and
+      a runtime memory reserve of 392 MB NCCL buffers plus 3.5 GB framework workspace.
+
+      '
+  nvidia-h100-datasheet:
+    grade: A
+    reference: https://resources.nvidia.com/en-us-tensor-core/nvidia-tensor-core-gpu-datasheet
+    notes: H100 SXM column. Datasheet lists sparsity figures (1,979 TFLOPS FP16);
+      dense is half.
+  assumption-gpu-analytical-v1:
+    grade: D
+    reference: docs/operator-latency-model.md#analytical-defaults
+  hbf-memory-assumption:
+    grade: D
+    reference: https://arxiv.org/abs/2608.11668
+    notes: Experimental GPU-memory parameters carried from the HBF snapshot (0b8d751);
+      these are simulation assumptions.
+peak_compute:
+  fp16:
+    value: 989.4e12
+    source_id: nvidia-h100-datasheet
+  bf16:
+    value: 989.4e12
+    source_id: nvidia-h100-datasheet
+  fp8:
+    value: 1978.9e12
+    source_id: nvidia-h100-datasheet
+  int8:
+    value: 1978.9e12
+    source_id: nvidia-h100-datasheet
+  tf32:
+    value: 494.7e12
+    source_id: nvidia-h100-datasheet
+  fp32:
+    value: 67.0e12
+    source_id: nvidia-h100-datasheet
+memory:
+  kind: HBM3e
+  capacity_bytes:
+    value: 51539607552
+    source_id: hbf-memory-assumption
+    grade: D
+  bandwidth_bytes_per_s:
+    value: 1500000000000.0
+    source_id: hbf-memory-assumption
+    grade: D
+  reserved_bytes:
+    value: 4169138176
+    source_id: aiconfigurator-system-yaml
+    grade: C
+on_chip_memory:
+  capacity_bytes:
+    value: 52428800
+    source_id: nvidia-h100-datasheet
+interconnect:
+  scale_up_link: nvlink4
+  scale_up_ports: 18
+  host_link: pcie5_x16
+analytical:
+  source_id: hbf-memory-assumption
+  grade: D
+  memory_efficiency: 0.8
+  kernel_launch_us: 3.0
+  collective_launch_us: 10.0
+  notes: Efficiency and launch parameters are carried from the base GPU and have not
+    been calibrated for this memory variant.
+step_overhead_us:
+  value: 0.0
+  source_id: assumption-gpu-analytical-v1
+  grade: D
+power:
+  tdp_w: 700

@@ -220,6 +220,7 @@ class LLMEngine(Worker):
                     offload_tiers=preserved_tiers,
                     offload_profiles=preserved_profiles,
                     pending_async_jobs=mooncake_stats.pending_async_jobs,
+                    storage_metrics=mooncake_stats.storage_metrics.reset(),
                 )
                 for field_name in fresh_stats.__dataclass_fields__:
                     setattr(

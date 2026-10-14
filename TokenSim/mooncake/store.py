@@ -61,9 +61,7 @@ class MooncakeStore:
             OffloadTier(config, self.block_bytes) if config.enable_offload else None
         )
         self.ssd = self.offload
-        if self.offload is not None:
-            self.stats.record_offload_tier(self.offload.tier)
-            self.stats.record_offload_profile(self._offload_profile())
+        self.register_storage_stats(self.stats)
         self._access_counter = 0
 
     def lookup(self, keys: list[PoolKey], *, now: float = 0.0, stats=None) -> StoreHit:
@@ -91,6 +89,7 @@ class MooncakeStore:
             stats.store_hit_count += 1
             if self._is_offload_tier(slowest_tier):
                 stats.disk_tier_hit_count += 1
+                self._backend_stats(stats).hit_count += 1
             else:
                 stats.memory_tier_hit_count += 1
         else:
@@ -145,7 +144,7 @@ class MooncakeStore:
                 latency += op.latency
         for obj in objects:
             obj.in_use_until = max(obj.in_use_until, now + initial_delay + latency)
-            if obj.tier == "ssd":
+            if self._is_offload_tier(obj.tier):
                 self.offload.pin(obj.key, obj.in_use_until)
         return latency
 
@@ -346,34 +345,40 @@ class MooncakeStore:
         )
 
     def _record_offload_read(self, op, stats) -> None:
-        stats.ssd_read_blocks += op.blocks
-        stats.ssd_read_bytes += op.bytes
+        self._backend_stats(stats).record_io("read", op.blocks, op.bytes, op.latency)
+        if self.offload.legacy_ssd:
+            stats.ssd_read_blocks += op.blocks
+            stats.ssd_read_bytes += op.bytes
 
     def _record_offload_write(self, op, stats) -> None:
-        stats.ssd_write_blocks += op.blocks
-        stats.ssd_write_bytes += op.bytes
+        self._backend_stats(stats).record_io("write", op.blocks, op.bytes, op.latency)
+        if self.offload.legacy_ssd:
+            stats.ssd_write_blocks += op.blocks
+            stats.ssd_write_bytes += op.bytes
         for key in op.evicted_keys:
             obj = self.objects.get(key)
             if obj is not None:
                 obj.persisted = False
-                if obj.tier == "ssd":
+                if self._is_offload_tier(obj.tier):
                     self.objects.pop(key)
                     stats.eviction_count += 1
 
-    @staticmethod
-    def _is_offload_tier(tier: str | None) -> bool:
-        return tier == "ssd"
+    def _is_offload_tier(self, tier: str | None) -> bool:
+        return self.offload is not None and tier == self.offload.tier
+
+    def _backend_stats(self, stats):
+        return stats.storage_metrics.instance(
+            self.config.master_server_address,
+            self.offload.tier,
+            self.offload.reference,
+            self.offload.profile,
+        )
+
+    def register_storage_stats(self, stats):
+        if self.offload is not None:
+            stats.record_offload_tier(self.offload.tier)
+            stats.record_offload_profile(self._offload_profile())
+            self._backend_stats(stats)
 
     def _offload_profile(self) -> dict[str, object]:
-        return {
-            "tier": self.offload.tier if self.offload is not None else None,
-            "memory_capacity_blocks": self.config.memory_capacity_blocks,
-            "ssd_capacity_blocks": self.config.ssd_capacity_blocks,
-            "ssd_capacity_bytes": self.config.ssd_capacity_bytes,
-            "ssd_read_bandwidth_bytes_per_s": self.config.ssd_read_bandwidth_bytes_per_s,
-            "ssd_write_bandwidth_bytes_per_s": self.config.ssd_write_bandwidth_bytes_per_s,
-            "ssd_read_latency_us": self.config.ssd_read_latency_us,
-            "ssd_write_latency_us": self.config.ssd_write_latency_us,
-            "write_blocking": True,
-            "write_persistence": "blocking",
-        }
+        return self.offload.describe()
