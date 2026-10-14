@@ -155,14 +155,7 @@ class ParallelExecutionPlannerTest(unittest.TestCase):
             num_key_value_heads=8,
         )
         runtime_plan = _formal_runtime_plan(cluster, moe_config)
-        planner = ParallelExecutionPlanner(
-            cluster,
-            hidden_size=16,
-            dtype_size_bytes=2,
-            num_experts=4,
-            top_k=2,
-            runtime_plan=runtime_plan,
-        )
+        planner = ParallelExecutionPlanner(cluster, runtime_plan=runtime_plan)
         placement = planner.placement(
             "decode",
             "a-pool:0",

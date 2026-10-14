@@ -50,7 +50,9 @@ class AFExecutorEndToEndTest(unittest.TestCase):
         env.process(executor.run_iteration(iteration))
         env.run()
 
-        a_event = next(event for event in executor.trace.events if event.stage == "a")
+        a_event = next(
+            event for event in executor.trace.events if event.stage == "attention"
+        )
         self.assertAlmostEqual(a_event.ready_at, 0.0)
         self.assertAlmostEqual(a_event.start_at, 0.005)
         self.assertAlmostEqual(a_event.queue_duration, 0.005)
@@ -71,11 +73,12 @@ class AFExecutorEndToEndTest(unittest.TestCase):
         self.assertEqual(
             [event.stage or event.operation for event in events],
             [
-                "a",
-                "router",
+                "attention",
+                "layout",
                 "af_a_to_f",
-                "expert",
+                "dense_ffn",
                 "af_f_to_a",
+                "residual",
             ],
         )
         self.assertTrue(all(event.queue_duration == 0 for event in events))
@@ -100,7 +103,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
             ["af_a_to_f", "af_f_to_a"],
         )
 
-    def test_two_block_oracle_forms_eleven_millisecond_pipeline(self):
+    def test_two_block_oracle_forms_ten_millisecond_pipeline(self):
         cluster = _load_cluster()
         env = simpy.Environment()
         executor = _executor(
@@ -114,20 +117,24 @@ class AFExecutorEndToEndTest(unittest.TestCase):
         env.process(executor.run_iteration(iteration))
         env.run()
 
-        self.assertAlmostEqual(iteration.makespan, 0.011)
+        self.assertAlmostEqual(iteration.makespan, 0.010)
         events = executor.trace.events_for(iteration.iteration_id)
         block_zero_expert = next(
-            event for event in events if event.block_id == 0 and event.stage == "expert"
+            event
+            for event in events
+            if event.block_id == 0 and event.stage == "dense_ffn"
         )
         block_one_a = next(
-            event for event in events if event.block_id == 1 and event.stage == "a"
+            event
+            for event in events
+            if event.block_id == 1 and event.stage == "attention"
         )
         self.assertLess(block_one_a.start_at, block_zero_expert.end_at)
         self.assertEqual(iteration.barrier_wait[1], 0.0)
         self.assertGreater(iteration.barrier_wait[0], 0.0)
         summary = executor.trace.summarize(iteration)
-        self.assertAlmostEqual(summary["resource_utilization"]["worker:0"], 6 / 11)
-        self.assertAlmostEqual(summary["resource_utilization"]["worker:1"], 4 / 11)
+        self.assertAlmostEqual(summary["resource_utilization"]["worker:0"], 4 / 10)
+        self.assertAlmostEqual(summary["resource_utilization"]["worker:1"], 6 / 10)
 
     def test_same_resource_group_contends_across_phase_links(self):
         makespans = {}
@@ -172,11 +179,11 @@ class AFExecutorEndToEndTest(unittest.TestCase):
                 stage: sum(
                     event.queue_duration for event in events if event.stage == stage
                 )
-                for stage in ("a", "router", "expert")
+                for stage in ("attention", "router", "dense_ffn")
             }
 
-        self.assertGreater(queue_totals["a-slow"]["a"], 0)
-        self.assertGreater(queue_totals["f-slow"]["expert"], 0)
+        self.assertGreater(queue_totals["a-slow"]["attention"], 0)
+        self.assertGreater(queue_totals["f-slow"]["dense_ffn"], 0)
 
     def test_multiple_layers_wait_for_previous_return(self):
         cluster = _load_cluster()
@@ -202,7 +209,9 @@ class AFExecutorEndToEndTest(unittest.TestCase):
             and event.operation == "af_f_to_a"
         )
         layer_one_a = next(
-            event for event in events if event.layer_id == 1 and event.stage == "a"
+            event
+            for event in events
+            if event.layer_id == 1 and event.stage == "attention"
         )
         self.assertEqual(layer_one_a.ready_at, layer_zero_return.end_at)
         self.assertAlmostEqual(iteration.makespan, 0.014)

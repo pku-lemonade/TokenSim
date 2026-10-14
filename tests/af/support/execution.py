@@ -56,5 +56,20 @@ def _executor(
         dtype="fp16",
         total_layers=layers,
         hidden_size=16,
+        runtime_plan=execution_plan(cluster, layers=layers, dtype="fp16"),
         resources=af_test_resources(env, cluster, cluster.workers()),
+    )
+
+
+def execution_plan(cluster, *, layers=1, moe=None, dtype="bf16"):
+    from TokenSim.af.runtime.compiler import compile_af_runtime_plan
+
+    hardware = af_test_hardware(layers=layers, capacity_gib=0.1, moe=moe)
+    return compile_af_runtime_plan(
+        cluster_config=cluster,
+        worker_configs=cluster.workers(),
+        hardware=hardware,
+        model=hardware.model("TestModel"),
+        block_size=4,
+        dtype=dtype,
     )

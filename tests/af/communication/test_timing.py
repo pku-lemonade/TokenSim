@@ -7,7 +7,7 @@ from TokenSim.af.execution.executor import AFExecutor
 from TokenSim.af.providers.queries import AFServiceEstimate
 from TokenSim.config.af.communication import AFCommunicationTimingConfig
 from TokenSim.errors import ConfigurationError, SimulationStateError
-from tests.af.support.execution import af_test_resources
+from tests.af.support.execution import af_test_resources, execution_plan
 from tests.af.support.parallel import _cluster
 
 
@@ -70,6 +70,7 @@ def run_case(
         "bf16",
         total_layers=1,
         hidden_size=16,
+        runtime_plan=execution_plan(cluster),
         resources=af_test_resources(env, cluster, cluster.workers()),
     )
     requests = [

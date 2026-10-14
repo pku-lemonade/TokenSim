@@ -31,9 +31,7 @@ class TemplateTest(unittest.TestCase):
                 num_key_value_heads=8,
             )
             plan = _formal_runtime_plan(cluster, moe)
-            planner = ParallelExecutionPlanner(
-                cluster, hidden_size=16, num_experts=4, runtime_plan=plan
-            )
+            planner = ParallelExecutionPlanner(cluster, runtime_plan=plan)
             for replica in (0, 1, 0):
                 placement = planner.placement(
                     "decode",

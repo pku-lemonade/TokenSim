@@ -17,6 +17,8 @@ class ExecutorSubmissionMixin:
         requests: Sequence[Any],
         phase: AFPhase | None = None,
     ) -> AFIteration:
+        if self.plan_builder is None:
+            raise ConfigurationError("AF submission requires a compiled runtime plan")
         resolved_phase = phase or phase_for_requests(requests)
         if self.operation_profile is not None:
             self.operation_profile.validate_workload(requests, resolved_phase)
@@ -58,8 +60,7 @@ class ExecutorSubmissionMixin:
         iteration_id = self._next_iteration_id
         self._next_iteration_id += 1
         runtime_layer_types = self._runtime_layer_types()
-        formal_routing = self.runtime_plan is not None
-        layer_types = runtime_layer_types if formal_routing else None
+        layer_types = runtime_layer_types
 
         def placement_factory(_block_id, _block_requests):
             selection = self.replica_selector.select_for_preselected_a(
@@ -78,15 +79,6 @@ class ExecutorSubmissionMixin:
                     f"actual={placement.a_instance!r}"
                 )
             return placement
-
-        def histogram_factory(block_requests):
-            if self.expert_routing is None:
-                return {}
-            return self.expert_routing.histogram_for_step(
-                list(block_requests),
-                phase=resolved_phase,
-                decode_step=self._routing_step(resolved_phase, block_requests),
-            )
 
         def routing_snapshot_factory(
             snapshot_iteration_id,
@@ -125,18 +117,13 @@ class ExecutorSubmissionMixin:
             link=link,
             phase=resolved_phase,
             placement_factory=placement_factory,
-            histogram_factory=None if formal_routing else histogram_factory,
             layer_types=layer_types,
             routing_snapshot_factory=(
-                routing_snapshot_factory
-                if formal_routing and "moe" in layer_types.values()
-                else None
+                routing_snapshot_factory if "moe" in layer_types.values() else None
             ),
         )
 
-    def _runtime_layer_types(self) -> dict[int, str] | None:
-        if self.runtime_plan is None:
-            return None
+    def _runtime_layer_types(self) -> dict[int, str]:
         layer_types = {
             layer.layer_id: layer.layer_type for layer in self.runtime_plan.layers
         }

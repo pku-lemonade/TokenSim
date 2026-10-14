@@ -228,13 +228,10 @@ class AFExecutor(
             if moe_config is not None and moe_config.enabled
             else None
         )
-        self.plan_builder = ParallelExecutionPlanner(
-            cluster_config,
-            hidden_size=hidden_size,
-            dtype_size_bytes=dtype_size_bytes(self.dtype, role="activation_dtype"),
-            num_experts=(moe_config.num_experts if moe_config is not None else 0),
-            top_k=(moe_config.num_experts_per_tok if moe_config is not None else 1),
-            runtime_plan=runtime_plan,
+        self.plan_builder = (
+            ParallelExecutionPlanner(cluster_config, runtime_plan=runtime_plan)
+            if runtime_plan is not None
+            else None
         )
         self._links = {link.name: link for link in cluster_config.af.links}
         self._next_iteration_id = 0

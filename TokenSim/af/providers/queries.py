@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import math
-from pathlib import Path
 from typing import Literal, Mapping, Protocol
 
 from TokenSim.af.planning.batches import AFPhase
@@ -278,7 +277,6 @@ class AFTransferLatencyProvider(Protocol):
 
 def resolve_af_latency_providers(
     af_config,
-    cluster_path: str | Path | None = None,
     compute_provider: AFComputeLatencyProvider | None = None,
     transfer_provider: AFTransferLatencyProvider | None = None,
 ) -> tuple[AFComputeLatencyProvider | None, AFTransferLatencyProvider | None]:
@@ -290,7 +288,6 @@ def resolve_af_latency_providers(
     :class:`TokenSim.llm.llm_engine.LLMEngine` builds them via
     :func:`TokenSim.af.providers.operator_table.build_operator_table_af_providers`.
     """
-    del cluster_path  # kept for call-site compatibility; paths are no longer needed
     if af_config.latency_provider == "injected":
         return compute_provider, transfer_provider
     if af_config.latency_provider != "operator_table":

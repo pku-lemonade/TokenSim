@@ -153,11 +153,7 @@ class CacheFastPathTest(unittest.TestCase):
 
     def test_configuration_snapshot_rejects_updates_and_detaches_source(self):
         config = configuration()
-        planner = ParallelExecutionPlanner(
-            config.cluster,
-            hidden_size=config.model.hidden_size,
-            runtime_plan=config.plan,
-        )
+        planner = ParallelExecutionPlanner(config.cluster, runtime_plan=config.plan)
         original = planner.cluster_config.af.router_location
         config.cluster.af.router_location = "f" if original == "a" else "a"
         self.assertEqual(planner.cluster_config.af.router_location, original)

@@ -10,7 +10,7 @@ from TokenSim.errors import ConfigurationError
 from TokenSim.llm.llm_engine import LLMEngine
 from TokenSim.moe.config import MoEModelConfig
 from TokenSim.placement import BalancedLoadWorkerPool, DataParallelWorkerPool
-from tests.af.support.execution import af_test_resources
+from tests.af.support.execution import af_test_resources, execution_plan
 from tests.af.support.parallel import _cluster
 
 
@@ -24,6 +24,10 @@ class WorkloadComputeProvider:
             "a": 1.0,
             "router": 0.25,
             "expert": query.local_token_count * 0.1,
+            "attention": 1.0,
+            "dense_ffn": query.local_token_count * 0.1,
+            "layout": 0.0,
+            "residual": 0.0,
         }[query.stage]
         return AFServiceEstimate(duration, "workload-stub")
 
@@ -51,7 +55,7 @@ class TypedTransferProvider:
 
 class ReplicaSkewComputeProvider:
     def estimate(self, query):
-        if query.stage == "a":
+        if query.stage == "attention":
             duration = 2.0 if query.dp_rank == 0 else 0.1
         else:
             duration = 0.0
@@ -97,6 +101,7 @@ def _executor(env):
         "bf16",
         total_layers=1,
         hidden_size=16,
+        runtime_plan=execution_plan(cluster),
         moe_config=moe,
         resources=af_test_resources(env, cluster, cluster.workers()),
     )
@@ -120,55 +125,6 @@ class AFParallelExecutionOracleTest(unittest.TestCase):
         )
         self.assertIsInstance(pool, DataParallelWorkerPool)
         self.assertEqual([pool.schedule().dp_rank for _ in range(4)], [0, 1, 0, 1])
-
-    def test_combined_tp_dp_ep_flow_and_makespan(self):
-        env = simpy.Environment()
-        executor, compute, transfer = _executor(env)
-        request = _request(1, histogram={0: 10, 2: 2})
-        iteration = executor.submit(2, [request], "prefill")
-        env.process(executor.run_iteration(iteration))
-        env.run()
-
-        events = executor.trace.events_for(iteration.iteration_id)
-        operations = [event.operation for event in events]
-        self.assertEqual(operations.count("af_a_to_f"), 1)
-        self.assertEqual(operations.count("af_f_to_a"), 1)
-        self.assertEqual(operations.count("ep_dispatch"), 0)
-        self.assertEqual(operations.count("ep_combine"), 0)
-        # Rank-reuse EP uses Expert TP=1, so only the A TP reduction remains.
-        self.assertEqual(operations.count("tp_collective"), 1)
-        self.assertEqual(request.af_a_owners, {"a-domain": "a1"})
-        self.assertEqual(iteration.blocks[0].placement.f_instance, "f0")
-
-        a_queries = [query for query in compute.queries if query.stage == "a"]
-        self.assertEqual(
-            [query.local_shape["hidden_size"] for query in a_queries], [8, 8]
-        )
-        expert_queries = [query for query in compute.queries if query.stage == "expert"]
-        self.assertEqual(
-            {(query.ep_rank, query.local_token_count) for query in expert_queries},
-            {(0, 10), (2, 2)},
-        )
-        combine = next(event for event in events if event.operation == "af_f_to_a")
-        predecessors = {
-            event.node_id: event
-            for event in events
-            if event.node_id in combine.predecessor_ids
-        }
-        self.assertEqual(
-            combine.ready_at, max(event.end_at for event in predecessors.values())
-        )
-        self.assertAlmostEqual(iteration.makespan, 3.75)
-        executor.trace.validate_invariants(iteration.iteration_id)
-
-        self.assertEqual(
-            [query.operation for query in transfer.queries],
-            [
-                "tp_collective",
-                "af_a_to_f",
-                "af_f_to_a",
-            ],
-        )
 
     def test_dp_placement_is_deterministic_and_a_owner_cannot_move(self):
         env = simpy.Environment()
@@ -221,6 +177,7 @@ class AFParallelExecutionOracleTest(unittest.TestCase):
             "bf16",
             total_layers=1,
             hidden_size=16,
+            runtime_plan=execution_plan(cluster),
             moe_config=moe,
             resources=af_test_resources(env, cluster, cluster.workers()),
         )
@@ -235,12 +192,12 @@ class AFParallelExecutionOracleTest(unittest.TestCase):
         fast_a = next(
             event
             for event in executor.trace.events_for(fast.iteration_id)
-            if event.operation == "a_rank_compute"
+            if event.operation == "attention"
         )
         slow_a = next(
             event
             for event in executor.trace.events_for(slow.iteration_id)
-            if event.operation == "a_rank_compute"
+            if event.operation == "attention"
         )
         self.assertLess(fast_a.end_at, slow_a.end_at)
 

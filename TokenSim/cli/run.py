@@ -40,7 +40,6 @@ def main(args, preloaded_agentx_traces=None):
     af_compute_provider, af_transfer_provider = (
         resolve_af_latency_providers(
             cluster.af,
-            args.cluster,
             getattr(args, "af_compute_provider", None),
             getattr(args, "af_transfer_provider", None),
         )
