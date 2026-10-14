@@ -96,7 +96,9 @@ class TopologySpec:
 
     def __post_init__(self) -> None:
         if not self.levels:
-            raise ConfigurationError(f"topology {self.topology_id!r} needs at least one level")
+            raise ConfigurationError(
+                f"topology {self.topology_id!r} needs at least one level"
+            )
         for level in self.levels[:-1]:
             if level.size is None:
                 raise ConfigurationError(
@@ -104,19 +106,30 @@ class TopologySpec:
                 )
         names = [level.name for level in self.levels]
         if len(set(names)) != len(names):
-            raise ConfigurationError(f"topology {self.topology_id!r}: level names must be unique")
+            raise ConfigurationError(
+                f"topology {self.topology_id!r}: level names must be unique"
+            )
 
     @classmethod
-    def from_mapping(cls, raw: Mapping[str, Any], context: str = "topology") -> "TopologySpec":
+    def from_mapping(
+        cls, raw: Mapping[str, Any], context: str = "topology"
+    ) -> "TopologySpec":
         topology_id = str(require(raw, "topology_id", context))
         if raw.get("schema_version", 1) != 1:
-            raise ConfigurationError(f"topology {topology_id!r}: unsupported schema_version")
+            raise ConfigurationError(
+                f"topology {topology_id!r}: unsupported schema_version"
+            )
         levels_raw = require(raw, "levels", f"topology {topology_id!r}")
         if not isinstance(levels_raw, Sequence) or not levels_raw:
-            raise ConfigurationError(f"topology {topology_id!r}: levels must be a non-empty list")
+            raise ConfigurationError(
+                f"topology {topology_id!r}: levels must be a non-empty list"
+            )
         return cls(
             topology_id=topology_id,
-            levels=tuple(TopologyLevel.from_mapping(item, f"topology {topology_id!r}") for item in levels_raw),
+            levels=tuple(
+                TopologyLevel.from_mapping(item, f"topology {topology_id!r}")
+                for item in levels_raw
+            ),
             description=str(raw.get("description", "")),
             source_id=str(raw.get("source_id", "unspecified")),
             collective_table_scope=raw.get("collective_table_scope"),
@@ -200,7 +213,9 @@ class TopologySpec:
             raise ConfigurationError("group layout requires at least one rank")
         common = self.lowest_common_level(unique)
         if common < 0:
-            return GroupLayout(ranks=ranks, fan=(1,) * len(self.levels), lowest_common_level=-1)
+            return GroupLayout(
+                ranks=ranks, fan=(1,) * len(self.levels), lowest_common_level=-1
+            )
         coords = [self.coordinates(index) for index in unique]
         fan: list[int] = []
         for level_index in range(len(self.levels)):
@@ -263,7 +278,9 @@ class TopologyPlacement:
         return self.topology.group_layout([self.device_index(w) for w in worker_ids])
 
     def lowest_common_level(self, worker_ids: Sequence[int]) -> int:
-        return self.topology.lowest_common_level([self.device_index(w) for w in worker_ids])
+        return self.topology.lowest_common_level(
+            [self.device_index(w) for w in worker_ids]
+        )
 
     def level_name(self, level_index: int) -> str:
         if level_index < 0:
@@ -286,7 +303,9 @@ class TopologyCatalog:
     def load(cls, directory: str | Path) -> "TopologyCatalog":
         directory = Path(directory)
         if not directory.is_dir():
-            raise ConfigurationError(f"topology catalog directory not found: {directory}")
+            raise ConfigurationError(
+                f"topology catalog directory not found: {directory}"
+            )
         catalog = cls()
         for path in sorted(directory.glob("*.yaml")):
             document = load_yaml_mapping(path)

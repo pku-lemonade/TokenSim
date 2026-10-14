@@ -7,6 +7,7 @@ from typing import Any, Literal, Mapping
 from pydantic import field_validator, model_validator
 from pydantic.dataclasses import dataclass, Field
 from pydantic_core import ArgsKwargs
+from pydantic import ConfigDict
 
 from TokenSim.config.constants import (
     AF_PHASE_ORDER,
@@ -37,9 +38,7 @@ _NEW_DTYPE_FIELDS = frozenset(
         "f_to_a_dtype",
     }
 )
-_COLLECTIVE_OPERATIONS = frozenset(
-    {"all_reduce", "all_gather", "reduce_scatter"}
-)
+_COLLECTIVE_OPERATIONS = frozenset({"all_reduce", "all_gather", "reduce_scatter"})
 
 
 def _capture_explicit_fields(
@@ -54,9 +53,7 @@ def _capture_explicit_fields(
         args = tuple(value.args or ())
         kwargs = dict(value.kwargs or {})
         if init_var_name in kwargs:
-            explicit = {
-                name for name in field_names if kwargs.get(name) is not None
-            }
+            explicit = {name for name in field_names if kwargs.get(name) is not None}
         else:
             explicit = {
                 positional_names[index]
@@ -84,7 +81,10 @@ def _canonical_config_dtype(value: str, role: str) -> str:
         raise ConfigurationError(message) from exc
 
 
-@dataclass
+from TokenSim.config.validation import integer
+
+
+@dataclass(config=ConfigDict(extra="forbid"))
 class WorkerConfig:
     role: str | None
     hardware: str
@@ -100,7 +100,7 @@ class WorkerConfig:
     operator_backend: str | None = None
 
 
-@dataclass
+@dataclass(config=ConfigDict(extra="forbid"))
 class WorkerGroupConfig:
     role: str | None = None
     hardware: str = ""
@@ -137,14 +137,23 @@ class WorkerGroupConfig:
             raise ConfigurationError(f"{context} hardware must be a non-empty string")
         if not isinstance(self.network, str) or not self.network.strip():
             raise ConfigurationError(f"{context} network must be a non-empty string")
-        if self.device_indices is not None and len(self.device_indices) != self.num_workers:
+        if (
+            self.device_indices is not None
+            and len(self.device_indices) != self.num_workers
+        ):
             raise ConfigurationError(
                 f"{context} device_indices must have num_workers entries"
             )
         if self.operator_backend is not None and (
-            not isinstance(self.operator_backend, str) or not self.operator_backend.strip()
+            not isinstance(self.operator_backend, str)
+            or not self.operator_backend.strip()
         ):
-            raise ConfigurationError(f"{context} operator_backend must be a non-empty string")
+            raise ConfigurationError(
+                f"{context} operator_backend must be a non-empty string"
+            )
+
+        for index in self.device_indices or ():
+            integer(index, "device_index")
 
         declared = tuple(self.capabilities)
         if len(declared) != len(set(declared)):
@@ -333,9 +342,7 @@ class AFEffectiveDTypes:
         return dict(self.sources)
 
     def as_dict(self) -> dict[str, object]:
-        return {
-            role: getattr(self, role) for role in sorted(_NEW_DTYPE_FIELDS)
-        } | {
+        return {role: getattr(self, role) for role in sorted(_NEW_DTYPE_FIELDS)} | {
             "bytes_per_element": {
                 role: dtype_size_bytes(getattr(self, role), role=role)
                 for role in sorted(_NEW_DTYPE_FIELDS)
@@ -368,29 +375,60 @@ class AFCommunicationTimingConfig:
     @model_validator(mode="before")
     @classmethod
     def _capture_cost_presence(cls, value):
-        names = ("enabled", "host_submit_us", "host_completion_us", "host_resource_scope",
-                 "a_step_prepare_us", "f_step_prepare_us", "compute_submit_us",
-                 "host_receive_submit_us", "native_control_enabled", "control_encode_us",
-                 "control_h2d_us", "control_length_readback_us", "control_payload_readback_us",
-                 "control_decode_us", "native_call_order_enabled")
-        return _capture_explicit_fields(value, field_names=frozenset(n for n in names if n.endswith("_us")),
-                                        positional_names=names, init_var_name="cost_presence_input")
+        names = (
+            "enabled",
+            "host_submit_us",
+            "host_completion_us",
+            "host_resource_scope",
+            "a_step_prepare_us",
+            "f_step_prepare_us",
+            "compute_submit_us",
+            "host_receive_submit_us",
+            "native_control_enabled",
+            "control_encode_us",
+            "control_h2d_us",
+            "control_length_readback_us",
+            "control_payload_readback_us",
+            "control_decode_us",
+            "native_call_order_enabled",
+        )
+        return _capture_explicit_fields(
+            value,
+            field_names=frozenset(n for n in names if n.endswith("_us")),
+            positional_names=names,
+            init_var_name="cost_presence_input",
+        )
 
     def __post_init__(self, cost_presence_input):
-        object.__setattr__(self, "_explicit_cost_fields", frozenset(cost_presence_input))
+        object.__setattr__(
+            self, "_explicit_cost_fields", frozenset(cost_presence_input)
+        )
 
-    @field_validator("enabled", "native_control_enabled", "native_call_order_enabled", mode="before")
+    @field_validator(
+        "enabled", "native_control_enabled", "native_call_order_enabled", mode="before"
+    )
     @classmethod
     def _validate_enabled(cls, value, info):
         if type(value) is not bool:
-            raise ConfigurationError(f"communication_timing.{info.field_name} must be boolean")
+            raise ConfigurationError(
+                f"communication_timing.{info.field_name} must be boolean"
+            )
         return value
 
-    @field_validator("host_submit_us", "host_completion_us", "a_step_prepare_us",
-                     "f_step_prepare_us", "compute_submit_us", "host_receive_submit_us",
-                     "control_encode_us", "control_h2d_us", "control_length_readback_us",
-                     "control_payload_readback_us", "control_decode_us",
-                     mode="before")
+    @field_validator(
+        "host_submit_us",
+        "host_completion_us",
+        "a_step_prepare_us",
+        "f_step_prepare_us",
+        "compute_submit_us",
+        "host_receive_submit_us",
+        "control_encode_us",
+        "control_h2d_us",
+        "control_length_readback_us",
+        "control_payload_readback_us",
+        "control_decode_us",
+        mode="before",
+    )
     @classmethod
     def _validate_duration(cls, value, info):
         if (
@@ -609,9 +647,7 @@ class DomainCollectiveConfig:
             )
         for field_name in ("resource_group", "resource_lane", "network"):
             value = getattr(self, field_name)
-            if value is not None and (
-                not isinstance(value, str) or not value.strip()
-            ):
+            if value is not None and (not isinstance(value, str) or not value.strip()):
                 raise ConfigurationError(
                     f"domain collective {self.operation!r} {field_name} must be a "
                     "non-empty string when provided"
@@ -654,7 +690,8 @@ class ExecutionDomainConfig:
     ) -> tuple[int, ...]:
         instance = next(
             (
-                item for item in self.logical_instances
+                item
+                for item in self.logical_instances
                 if {mapping.dp_rank for mapping in item.rank_mapping} == {dp_rank}
             ),
             None,
@@ -841,12 +878,8 @@ class AFLinkConfig:
             )
         else:
             lanes = (
-                AFCommunicationLaneConfig(
-                    name="a_to_f", capacity=self.a_to_f_capacity
-                ),
-                AFCommunicationLaneConfig(
-                    name="f_to_a", capacity=self.f_to_a_capacity
-                ),
+                AFCommunicationLaneConfig(name="a_to_f", capacity=self.a_to_f_capacity),
+                AFCommunicationLaneConfig(name="f_to_a", capacity=self.f_to_a_capacity),
             )
         return AFCommunicationFabricConfig(
             resource_group=self.resource_group,
@@ -1011,7 +1044,10 @@ class AFConfig:
         )
 
     @field_validator(
-        "enabled", "trace_enabled", "service_estimate_cache", "dag_template_cache",
+        "enabled",
+        "trace_enabled",
+        "service_estimate_cache",
+        "dag_template_cache",
         mode="before",
     )
     @classmethod
@@ -1030,7 +1066,9 @@ class AFConfig:
     def __post_init__(self, dtype_presence_input: tuple[str, ...]) -> None:
         self._explicit_dtype_fields = frozenset(dtype_presence_input)
         if self.transfer_topology_mode not in {"physical", "flat_link"}:
-            raise ConfigurationError("af.transfer_topology_mode must be physical or flat_link")
+            raise ConfigurationError(
+                "af.transfer_topology_mode must be physical or flat_link"
+            )
         self.dtype_presence_input = tuple(sorted(self._explicit_dtype_fields))
         if type(self.enabled) is not bool:
             raise ConfigurationError("af.enabled must be a boolean")
@@ -1038,36 +1076,69 @@ class AFConfig:
             raise ConfigurationError("af.trace_enabled must be a boolean")
         self.phases = _normalize_phases(self.phases, "af.phases")
         if self.execution_protocol not in {"partial_return", "vllm_afd"}:
-            raise ConfigurationError("af.execution_protocol must be partial_return or vllm_afd")
+            raise ConfigurationError(
+                "af.execution_protocol must be partial_return or vllm_afd"
+            )
         timing = self.communication_timing
         if timing.native_call_order_enabled and not timing.native_control_enabled:
-            raise ConfigurationError("native call order requires native_control_enabled=true")
-        if self.engine_overhead_profile is not None or self.routing_replay is not None or self.operation_service_profile is not None or self.transport_service_profile is not None:
-            if self.execution_protocol != "vllm_afd" or not timing.enabled or not timing.native_control_enabled:
-                raise ConfigurationError("native profile/replay requires vllm_afd with separated timing and native control")
-        control_costs = (timing.control_encode_us, timing.control_h2d_us,
-                         timing.control_length_readback_us, timing.control_payload_readback_us,
-                         timing.control_decode_us)
-        if any(control_costs) and not timing.native_control_enabled:
-            raise ConfigurationError("control costs require native_control_enabled=true")
-        if any((timing.a_step_prepare_us, timing.f_step_prepare_us,
-                timing.compute_submit_us, timing.host_receive_submit_us,
-                timing.native_control_enabled)) and (
-            not timing.enabled or self.execution_protocol != "vllm_afd"
+            raise ConfigurationError(
+                "native call order requires native_control_enabled=true"
+            )
+        if (
+            self.engine_overhead_profile is not None
+            or self.routing_replay is not None
+            or self.operation_service_profile is not None
+            or self.transport_service_profile is not None
         ):
-            raise ConfigurationError("fixed host preparation requires vllm_afd and separated timing")
+            if (
+                self.execution_protocol != "vllm_afd"
+                or not timing.enabled
+                or not timing.native_control_enabled
+            ):
+                raise ConfigurationError(
+                    "native profile/replay requires vllm_afd with separated timing and native control"
+                )
+        control_costs = (
+            timing.control_encode_us,
+            timing.control_h2d_us,
+            timing.control_length_readback_us,
+            timing.control_payload_readback_us,
+            timing.control_decode_us,
+        )
+        if any(control_costs) and not timing.native_control_enabled:
+            raise ConfigurationError(
+                "control costs require native_control_enabled=true"
+            )
+        if any(
+            (
+                timing.a_step_prepare_us,
+                timing.f_step_prepare_us,
+                timing.compute_submit_us,
+                timing.host_receive_submit_us,
+                timing.native_control_enabled,
+            )
+        ) and (not timing.enabled or self.execution_protocol != "vllm_afd"):
+            raise ConfigurationError(
+                "fixed host preparation requires vllm_afd and separated timing"
+            )
         if self.execution_protocol == "vllm_afd":
             if set(self.phases) != {"decode"}:
-                raise ConfigurationError("vllm_afd supports decode-only AF; prefill is not calibrated")
+                raise ConfigurationError(
+                    "vllm_afd supports decode-only AF; prefill is not calibrated"
+                )
             # The measured Qwen3 plugin owns gate, experts and combine on F.
             # Router placement is a protocol property, not a sweep parameter.
             self.router_location = "f"
             if self.transport_router_logits:
-                raise ConfigurationError("vllm_afd does not transport A-side router logits")
+                raise ConfigurationError(
+                    "vllm_afd does not transport A-side router logits"
+                )
             if self.routed_expert_execution != "grouped":
                 raise ConfigurationError("vllm_afd requires grouped expert execution")
             if not self.communication_timing.enabled:
-                raise ConfigurationError("vllm_afd requires communication_timing.enabled=true")
+                raise ConfigurationError(
+                    "vllm_afd requires communication_timing.enabled=true"
+                )
         if self.af_block_size < 1:
             raise ConfigurationError("af_block_size must be a positive integer")
         if self.latency_provider not in AF_LATENCY_PROVIDERS:
@@ -1075,17 +1146,23 @@ class AFConfig:
                 "af.latency_provider must be one of " + ", ".join(AF_LATENCY_PROVIDERS)
             )
         if self.operator_backend is not None and (
-            not isinstance(self.operator_backend, str) or not self.operator_backend.strip()
+            not isinstance(self.operator_backend, str)
+            or not self.operator_backend.strip()
         ):
             raise ConfigurationError("af.operator_backend must be a non-empty string")
-        if self.latency_fallback is not None and self.latency_fallback not in AF_LATENCY_FALLBACKS:
+        if (
+            self.latency_fallback is not None
+            and self.latency_fallback not in AF_LATENCY_FALLBACKS
+        ):
             raise ConfigurationError(
                 "af.latency_fallback must be one of " + ", ".join(AF_LATENCY_FALLBACKS)
             )
         if self.router_location not in {"a", "f"}:
             raise ConfigurationError("af.router_location must be 'a' or 'f'")
         if self.routed_expert_execution not in {"grouped", "per_expert"}:
-            raise ConfigurationError("af.routed_expert_execution must be 'grouped' or 'per_expert'")
+            raise ConfigurationError(
+                "af.routed_expert_execution must be 'grouped' or 'per_expert'"
+            )
         if type(self.transport_router_logits) is not bool:
             raise ConfigurationError("af.transport_router_logits must be a boolean")
         for field_name in self._explicit_dtype_fields:
@@ -1101,9 +1178,7 @@ class AFConfig:
         return self._explicit_dtype_fields
 
     def validate_dtype_style(self) -> None:
-        explicit_new = set(self._explicit_dtype_fields).intersection(
-            _NEW_DTYPE_FIELDS
-        )
+        explicit_new = set(self._explicit_dtype_fields).intersection(_NEW_DTYPE_FIELDS)
         for link in self.links:
             explicit_new.update(link.explicit_dtype_fields)
         if "af_dtype" in self._explicit_dtype_fields and explicit_new:
@@ -1142,9 +1217,7 @@ class AFConfig:
             kv_cache = self.kv_cache_dtype
             kv_source = "af.kv_cache_dtype"
         elif model_kv_cache_dtype is not None:
-            kv_cache = _canonical_config_dtype(
-                model_kv_cache_dtype, "kv_cache_dtype"
-            )
+            kv_cache = _canonical_config_dtype(model_kv_cache_dtype, "kv_cache_dtype")
             kv_source = "model.kv_cache_dtype"
         else:
             kv_cache = activation
@@ -1173,14 +1246,12 @@ class AFConfig:
             "kv_cache_dtype": kv_source,
             "a_to_f_dtype": (
                 "af.link.a_to_f_dtype"
-                if link is not None
-                and "a_to_f_dtype" in link.explicit_dtype_fields
+                if link is not None and "a_to_f_dtype" in link.explicit_dtype_fields
                 else "af.activation_dtype"
             ),
             "f_to_a_dtype": (
                 "af.link.f_to_a_dtype"
-                if link is not None
-                and "f_to_a_dtype" in link.explicit_dtype_fields
+                if link is not None and "f_to_a_dtype" in link.explicit_dtype_fields
                 else "af.activation_dtype"
             ),
         }
@@ -1211,13 +1282,18 @@ def _normalize_phases(phases: tuple[str, ...], context: str) -> tuple[str, ...]:
     return tuple(phase for phase in AF_PHASE_ORDER if phase in values)
 
 
-@dataclass
+@dataclass(config=ConfigDict(extra="forbid"))
 class ClusterConfig:
     num_workers: int
     networks: dict[str, str]
     worker_groups: list[WorkerGroupConfig] = Field(default_factory=list)
     kv_transfer: KVTransferConfig | None = None
     parallel_config: ParallelConfig | None = None
+    # Optional explicit KV capacity.  A total capacity is divided across
+    # data-parallel replicas; a per-rank value takes precedence only when the
+    # total is omitted.
+    kv_cache_capacity_tokens_total: int | None = None
+    kv_cache_capacity_tokens_per_dp_rank: int | None = None
     # Optional catalog topology id (data/topologies/*.yaml). When omitted a
     # two-level topology is synthesized from ``networks``.
     topology: str | None = None
@@ -1241,6 +1317,7 @@ class ClusterConfig:
             self._normalize_communication_fabrics()
             self._validate_af_topology()
             self._validate_execution_domains()
+        self._validate_cache_capacity()
 
     def _normalize_group_names(self) -> None:
         role_indexes: dict[str, int] = {}
@@ -1775,9 +1852,36 @@ class ClusterConfig:
                 resources[resource.resource_key] = resource
         return resources
 
+    def _validate_cache_capacity(self) -> None:
+        integer(self.num_workers, "cluster num_workers")
+        if sum(group.num_workers for group in self.worker_groups) != self.num_workers:
+            raise ConfigurationError(
+                "cluster num_workers must equal the worker group total"
+            )
+        for field_name in (
+            "kv_cache_capacity_tokens_total",
+            "kv_cache_capacity_tokens_per_dp_rank",
+        ):
+            value = getattr(self, field_name)
+            if value is not None and value <= 0:
+                raise ConfigurationError(f"{field_name} must be positive when provided")
+        if (
+            self.kv_cache_capacity_tokens_total is not None
+            and self.kv_cache_capacity_tokens_per_dp_rank is not None
+        ):
+            raise ConfigurationError(
+                "kv_cache_capacity_tokens_total and "
+                "kv_cache_capacity_tokens_per_dp_rank are mutually exclusive"
+            )
+
     @classmethod
     def from_file(cls, filename):
-        return cls(**json.loads(Path(filename).read_text()))
+        try:
+            return cls(**json.loads(Path(filename).read_text()))
+        except (OSError, ValueError, TypeError) as error:
+            raise ConfigurationError(
+                f"invalid cluster configuration {filename}: {error}"
+            ) from error
 
     def effective_kv_transfer(
         self,
@@ -1787,15 +1891,26 @@ class ClusterConfig:
 
     def effective_parallel_config(
         self,
-        model_parallel_config: ParallelConfig | None = None,
         override: ParallelConfig | None = None,
     ) -> ParallelConfig:
-        return (
-            override
-            or self.parallel_config
-            or model_parallel_config
-            or ParallelConfig.default()
+        return override or self.parallel_config or ParallelConfig.default()
+
+    def effective_kv_cache_capacity_per_dp_rank(
+        self,
+        parallel_config: ParallelConfig,
+    ) -> int | None:
+        if self.kv_cache_capacity_tokens_per_dp_rank is not None:
+            return self.kv_cache_capacity_tokens_per_dp_rank
+        if self.kv_cache_capacity_tokens_total is None:
+            return None
+        capacity = (
+            self.kv_cache_capacity_tokens_total // parallel_config.data_parallel_size
         )
+        if capacity == 0:
+            raise ConfigurationError(
+                "total KV capacity must provide tokens to every DP rank"
+            )
+        return capacity
 
     def workers(self, parallel_config: ParallelConfig | None = None):
         workers = [

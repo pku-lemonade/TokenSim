@@ -25,6 +25,13 @@ class CacheConfig:
         rank_info: ParallelRankInfo | None = None,
         expert_placement: ExpertPlacement | None = None,
         usable_memory_fraction: float = 1.0,
+        kv_cache_capacity_tokens_per_dp_rank: int | None = None,
+        max_num_batched_tokens: int = 8192,
+        max_num_seqs: int = 64,
+        speculative_tokens: int = 0,
+        max_concurrent_batches: int = 2,
+        moe_execution=None,
+        attention_backend: str = "generic",
     ):
         self.block_size: int = block_size
         self.device = device
@@ -34,6 +41,13 @@ class CacheConfig:
         self.rank_info = rank_info or ParallelRankInfo()
         self.expert_placement = expert_placement
         self.moe_config = model.moe
+        if (
+            model.components is not None
+            and kv_cache_capacity_tokens_per_dp_rank is not None
+        ):
+            raise ConfigurationError(
+                "compressed transformer cache capacity must be calculated from hardware and model, not overridden"
+            )
 
         self.total_num_layers = model.num_layers
         self.num_layers_per_rank = stage_layer_count(
@@ -51,42 +65,123 @@ class CacheConfig:
         self.size_per_token_unsharded = int(
             model.kv_elements_per_token() * kv_bytes * model.num_layers
         )
-        self.size_per_token = int(
-            self.local_kv_heads * self.head_dim * 2 * kv_bytes * self.num_layers_per_rank
-        )
-
         if model.attention_type == "mla":
             model.validate_mla_tp(self.parallel_config.tensor_parallel_size)
             self.local_kv_heads = 1
-            self.size_per_token = int(model.kv_dim * kv_bytes * self.num_layers_per_rank)
-
-        weight_bytes = dtype_bytes(model.dtype)
-        self.model_param_size_unsharded = model.total_params() * weight_bytes
-        self.model_param_size = self._rank_params() * weight_bytes
-        if model.attention_type == "mla":
-            tp = self.parallel_config.tensor_parallel_size
-            replicated = model.mla_dimensions.weight_elements(0, model.hidden_size)
-            self.model_param_size += self.num_layers_per_rank * replicated * (1 - 1 / tp) * weight_bytes
-
-        # Runtime reserves (NCCL buffers, CUDA context, framework workspace)
-        # come off the top before the optional usable fraction is applied.
-        self.reserved_bytes = device.memory_reserved_bytes.value
-        capacity = max(0.0, device.memory_capacity_bytes.value - self.reserved_bytes) * usable_memory_fraction
-        self.usable_memory_bytes = capacity
-        if capacity <= self.model_param_size:
-            raise ConfigurationError(
-                f"model {model.model_id!r} does not fit on device {device.device_id!r}: "
-                + f"model_param_size={self.model_param_size:.3e}, usable_memory={capacity:.3e} "
-                + f"(capacity={device.memory_capacity_bytes.value:.3e}, reserved={self.reserved_bytes:.3e})"
+            self.size_per_token = int(
+                model.kv_dim * kv_bytes * self.num_layers_per_rank
             )
-        # FIXME: actual host memory can reach terabytes; it only serves as swap
-        # space here, and a huge swap hides preemption effects, so it is bounded.
-        self.num_cpu_blocks: int = int(
-            min(32768, _HOST_SWAP_BYTES / self.size_per_token // self.block_size)
-        )
-        self.num_gpu_blocks: int = int(
-            (capacity - self.model_param_size) / self.size_per_token // self.block_size
-        )
+        elif model.kv_cache_dim is not None:
+            if model.kv_dim % self.parallel_config.tensor_parallel_size != 0:
+                raise ConfigurationError(
+                    f"model {model.model_id!r}: kv_cache_dim must be divisible by "
+                    f"tensor_parallel_size {self.parallel_config.tensor_parallel_size}"
+                )
+            local_kv_dim = model.kv_dim // self.parallel_config.tensor_parallel_size
+            self.size_per_token = int(
+                local_kv_dim * 2 * kv_bytes * self.num_layers_per_rank
+            )
+        else:
+            self.size_per_token = int(
+                self.local_kv_heads
+                * self.head_dim
+                * 2
+                * kv_bytes
+                * self.num_layers_per_rank
+            )
+
+        self.weight_memory_report = None
+        self.hybrid_layout = None
+        self.memory_budget = None
+        if model.components is not None:
+            from TokenSim.config.weight_memory import packed_weight_memory
+
+            self.weight_memory_report = packed_weight_memory(
+                model,
+                self.parallel_config,
+                self.rank_info,
+                self.expert_placement,
+                include_mtp=speculative_tokens > 0,
+            )
+            self.model_param_size_unsharded = packed_weight_memory(
+                model, include_mtp=speculative_tokens > 0
+            )["total_bytes"]
+            self.model_param_size = self.weight_memory_report["total_bytes"]
+            from TokenSim.block.hybrid.kv_layout import hybrid_kv_layout
+            from TokenSim.block.hybrid.memory_budget import hybrid_memory_budget
+
+            self.hybrid_layout = hybrid_kv_layout(
+                model,
+                block_size=block_size,
+                max_num_batched_tokens=max_num_batched_tokens,
+                max_concurrent_batches=max_concurrent_batches,
+                speculative_tokens=speculative_tokens,
+                include_mtp=speculative_tokens > 0,
+            )
+            self.memory_budget = hybrid_memory_budget(
+                model,
+                device,
+                self.model_param_size,
+                self.parallel_config,
+                utilization=usable_memory_fraction,
+                max_num_batched_tokens=max_num_batched_tokens,
+                max_num_seqs=max_num_seqs,
+                speculative_tokens=speculative_tokens,
+                moe_execution=moe_execution,
+                attention_backend=attention_backend,
+            )
+        else:
+            weight_bytes = dtype_bytes(model.dtype)
+            self.model_param_size_unsharded = model.total_params() * weight_bytes
+            self.model_param_size = self._rank_params() * weight_bytes
+            if model.attention_type == "mla":
+                tp = self.parallel_config.tensor_parallel_size
+                replicated = model.mla_dimensions.weight_elements(0, model.hidden_size)
+                self.model_param_size += (
+                    self.num_layers_per_rank * replicated * (1 - 1 / tp) * weight_bytes
+                )
+
+        self.reserved_bytes = device.memory_reserved_bytes.value
+        if self.hybrid_layout is not None:
+            self.physical_slot_bytes = self.hybrid_layout.physical_slot_bytes
+            self.num_gpu_blocks = (
+                self.memory_budget["available_kv_bytes"] // self.physical_slot_bytes
+            )
+            # This storage-equivalent value only supports legacy byte-reporting
+            # interfaces. Allocation uses group slots and physical_slot_bytes.
+            self.size_per_token = self.physical_slot_bytes // self.block_size
+            self.size_per_token_unsharded = self.size_per_token
+            self.num_cpu_blocks = 0
+            self.usable_memory_bytes = self.memory_budget["hardware_budget_bytes"]
+        else:
+            # Preserve the generic model's existing runtime-reserve convention.
+            capacity = (
+                max(0.0, device.memory_capacity_bytes.value - self.reserved_bytes)
+                * usable_memory_fraction
+            )
+            self.usable_memory_bytes = capacity
+            if capacity <= self.model_param_size:
+                raise ConfigurationError(
+                    f"model {model.model_id!r} does not fit on device {device.device_id!r}: "
+                    + f"model_param_size={self.model_param_size:.3e}, usable_memory={capacity:.3e} "
+                    + f"(capacity={device.memory_capacity_bytes.value:.3e}, reserved={self.reserved_bytes:.3e})"
+                )
+            # Host swap remains bounded; native offload has a separate budget.
+            self.num_cpu_blocks = int(
+                min(32768, _HOST_SWAP_BYTES / self.size_per_token // self.block_size)
+            )
+            self.num_gpu_blocks = int(
+                (capacity - self.model_param_size)
+                / self.size_per_token
+                // self.block_size
+            )
+            self.physical_slot_bytes = int(self.size_per_token * self.block_size)
+        if kv_cache_capacity_tokens_per_dp_rank is not None:
+            if kv_cache_capacity_tokens_per_dp_rank <= 0:
+                raise ConfigurationError("KV cache capacity override must be positive")
+            self.num_gpu_blocks = (
+                kv_cache_capacity_tokens_per_dp_rank // self.block_size
+            )
 
     # -- parameter sharding ----------------------------------------------------
 
@@ -100,14 +195,27 @@ class CacheConfig:
             self.expert_placement.moe_layers_for_pp_rank(self.rank_info.pp_rank)
         )
         dense_layers = max(0, self.num_layers_per_rank - owned_moe_layers)
-        params = self.num_layers_per_rank * model.attention_params_per_layer()
-        params += dense_layers * model.dense_ffn_params_per_layer()
-        params += owned_moe_layers * model.moe.num_shared_experts * model.expert_params()
-        params += owned_moe_layers * model.hidden_size * model.moe.num_experts  # router
-        owned_experts = len(self.expert_placement.experts_for_rank(self.rank_info))
-        params += owned_moe_layers * owned_experts * model.expert_params()
-        params += model.embedding_params() / pp
-        return params / tp
+        sharded = self.num_layers_per_rank * model.attention_params_per_layer()
+        sharded += dense_layers * model.dense_ffn_params_per_layer()
+        sharded += model.embedding_params() / pp
+        # The router is replicated. Shared experts are too when MoE layers
+        # shard tokens over TP ranks (sequence parallel); otherwise they are
+        # TP-sharded like a dense FFN.
+        whole = owned_moe_layers * model.hidden_size * model.moe.num_experts
+        shared = owned_moe_layers * model.moe.num_shared_experts * model.expert_params()
+        if self.parallel_config.sequence_parallel_moe(False):
+            whole += shared
+        else:
+            sharded += shared
+        # Expert parallelism places whole experts on each rank; without it the
+        # single placement group holds every expert as TP shards.
+        experts = len(self.expert_placement.experts_for_rank(self.rank_info))
+        experts *= owned_moe_layers * model.expert_params()
+        if self.parallel_config.enable_expert_parallel:
+            whole += experts
+        else:
+            sharded += experts
+        return sharded / tp + whole
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -120,6 +228,19 @@ class CacheConfig:
             "usable_memory_bytes": self.usable_memory_bytes,
             "local_kv_heads": self.local_kv_heads,
             "num_layers_per_rank": self.num_layers_per_rank,
+            "weight_memory": self.weight_memory_report,
+            "kv_layout": (
+                self.hybrid_layout.to_dict()
+                if self.model_spec.components
+                else "uniform"
+            ),
+            "physical_slot_bytes": self.physical_slot_bytes,
+            "memory_budget": self.memory_budget,
+            "logged_equivalent_tokens_computed": (
+                self.hybrid_layout.equivalent_tokens(self.num_gpu_blocks)
+                if self.hybrid_layout
+                else None
+            ),
         }
 
 

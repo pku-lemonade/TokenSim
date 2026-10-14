@@ -41,6 +41,18 @@ class ParallelConfig:
     expert_placement_strategy: str = "linear"
     all2all_backend: str = "allgather_reducescatter"
 
+    def sequence_parallel_moe(self, fused_moe: bool) -> bool:
+        """Whether MoE layers shard tokens over the TP ranks (vLLM sequence parallel).
+
+        Applies under expert parallelism with TP > 1 when a fused MoE kernel
+        runs or several DP replicas share the experts.
+        """
+        return bool(
+            self.enable_expert_parallel
+            and self.tensor_parallel_size > 1
+            and (fused_moe or self.data_parallel_size > 1)
+        )
+
     def __post_init__(self) -> None:
         for field_name in (
             "tensor_parallel_size",
@@ -152,11 +164,15 @@ class ParallelConfig:
         group index equals ``dp_rank``; with ``global`` (full scope) every
         rank of the stage is in group 0.
         """
-        return (dp_rank * self.tensor_parallel_size + tp_rank) // self.expert_parallel_group_size
+        return (
+            dp_rank * self.tensor_parallel_size + tp_rank
+        ) // self.expert_parallel_group_size
 
     def expert_parallel_rank(self, dp_rank: int, tp_rank: int) -> int:
         """Position of rank ``(dp_rank, tp_rank)`` inside its expert-parallel group."""
-        return (dp_rank * self.tensor_parallel_size + tp_rank) % self.expert_parallel_group_size
+        return (
+            dp_rank * self.tensor_parallel_size + tp_rank
+        ) % self.expert_parallel_group_size
 
     # -- construction ------------------------------------------------------------
 

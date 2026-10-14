@@ -1,0 +1,387 @@
+"""Uniform Mooncake block-store runtime and connector lifecycle."""
+
+from __future__ import annotations
+
+from typing import Any
+from TokenSim.config.config import CacheConfig, KVTransferConfig
+from TokenSim.llm.llm_request import Request
+from TokenSim.mooncake import PoolKey
+from TokenSim.mooncake.service import get_mooncake_service
+from TokenSim.mooncake.config import parse_mooncake_config
+from TokenSim.mooncake.metrics import MooncakeStats
+from TokenSim.mooncake.transfer_engine import TransferEngineSimulator
+from TokenSim.errors import ConfigurationError
+from ..base import BaseKVConnector
+from ..metadata import (
+    ConnectorTransferPlan,
+    KVConnectorMetadata,
+    KVConnectorWorkerMetadata,
+)
+from .plans import BlockTransferPlans
+
+
+class BlockStore(BlockTransferPlans, BaseKVConnector):
+    """Uniform Mooncake block-store runtime and connector lifecycle."""
+
+    name = "MooncakeStoreConnector"
+
+    def __init__(
+        self,
+        config: KVTransferConfig,
+        cache_config: CacheConfig | None = None,
+    ) -> None:
+        super().__init__(config, cache_config)
+        self.block_bytes = 1
+        self.block_size = 1
+        self.model_name = "unknown"
+        self.rank_info = None
+        if cache_config is not None:
+            self.block_size = int(cache_config.block_size)
+            self.block_bytes = int(
+                cache_config.block_size * cache_config.size_per_token
+            )
+            self.model_name = cache_config.model
+            self.rank_info = getattr(cache_config, "rank_info", None)
+        self.options = parse_mooncake_config(config.kv_connector_extra_config)
+        self.transfer_engine = TransferEngineSimulator(self.options)
+        if self.options.replica_num != 1:
+            raise ConfigurationError(
+                "uniform Mooncake storage supports a single replica"
+            )
+        if self.options.transfer_overlap:
+            raise ConfigurationError(
+                "uniform metadata timing does not support transfer_overlap; it waits for I/O completion"
+            )
+        self.host_link = self.network_link = None
+        parallel = getattr(cache_config, "parallel_config", None)
+        world_size = parallel.world_size if parallel is not None else 1
+        self._bind_service(world_size)
+        # "mooncake" mirrors the reference vLLM MooncakeStoreConnector
+        # (ref/vllm .../kv_connector/v1/mooncake/store/); "every_step" keeps
+        # the historical TokenSim behavior.
+        self._aligned = self.options.save_policy == "mooncake"
+        self._pending_loads: dict[int, dict[str, Any]] = {}
+        self._request_keys: dict[int, list[PoolKey]] = {}
+        # Per-request key chain and its string form, both computed exactly once.
+        self._keys_cache: dict[int, tuple[list[PoolKey], list[str]]] = {}
+        self._saved_request_ids: set[int] = set()
+        self._pending_async_loads: set[int] = set()
+        self._pending_async_puts: set[int] = set()
+        self._delayed_releases: dict[int, tuple[Request, list[int]]] = {}
+        self._block_releaser: Any | None = None
+
+    def _bind_service(self, world_size, owner=None, contributor=None):
+        self.service = get_mooncake_service(
+            self.config,
+            block_bytes=self.block_bytes,
+            owner=owner,
+            contributor=contributor,
+            ranks=world_size,
+        )
+        self.mooncake_stats = MooncakeStats()
+        self.service.store.register_storage_stats(self.mooncake_stats)
+
+    def bind_runtime(self, worker):
+        self._bind_service(len(worker.engine.workers), worker.env, worker.engine)
+        self.host_link = worker.hardware_context.link(worker.device.host_link)
+        self.network_link = worker.hardware_context.link(worker.nettype)
+
+    def _transfer_latency(self, transfer):
+        if self.host_link is None:
+            return transfer.latency
+        host = self.host_link.latency_us / 1e6 + transfer.bytes / (
+            self.host_link.bandwidth_per_direction_bytes_per_s
+            * self.options.transfer_utilization
+        )
+        if self.options.mode == "embedded":
+            return host
+        transfer.bandwidth_bytes_per_s = min(
+            transfer.bandwidth_bytes_per_s * transfer.parallel_paths,
+            self.network_link.bandwidth_per_direction_bytes_per_s
+            * self.options.transfer_utilization,
+        )
+        transfer.parallel_paths = 1
+        return transfer.latency + host
+
+    def get_num_new_matched_tokens(
+        self,
+        req: Request,
+        num_computed_tokens: int,
+    ) -> int:
+        if self.config.kv_role == "kv_producer":
+            return 0
+        keys = self._keys_for_request(req)
+        self._request_keys[req.id] = keys
+        if not keys:
+            return 0
+        self.mooncake_stats.cache_query_tokens += len(keys) * self.block_size
+        local_gpu_tokens = max(0, int(num_computed_tokens))
+        if local_gpu_tokens:
+            self.mooncake_stats.local_gpu_hit_tokens += local_gpu_tokens
+        local_gpu_blocks = min(len(keys), local_gpu_tokens // self.block_size)
+        hit = self.service.store.lookup(
+            keys[local_gpu_blocks:],
+            now=self.simulation_time,
+            stats=self.mooncake_stats,
+        )
+        if hit.hit_blocks <= 0:
+            return 0
+        hit_keys = list(hit.keys)
+        hit_tokens = hit.hit_blocks * self.block_size
+        if self._aligned and local_gpu_tokens + hit_tokens >= req.prefill_len:
+            # Reference behavior: on a full-prompt hit, leave the trailing
+            # block uncomputed-from-cache so prefill still computes tokens.
+            capped_total_blocks = max(0, (req.prefill_len - 1) // self.block_size)
+            capped_external_blocks = max(
+                0,
+                capped_total_blocks - local_gpu_blocks,
+            )
+            hit_keys = hit_keys[:capped_external_blocks]
+            hit_tokens = capped_external_blocks * self.block_size
+        external_tokens = min(
+            hit_tokens,
+            max(0, req.prefill_len - local_gpu_tokens),
+        )
+        if external_tokens <= 0:
+            return 0
+        external_blocks = external_tokens // self.block_size
+        hit_keys = hit_keys[:external_blocks]
+        if hit.tier != "memory":
+            self.mooncake_stats.mooncake_disk_hit_tokens += external_tokens
+        else:
+            self.mooncake_stats.mooncake_memory_hit_tokens += external_tokens
+        self._pending_loads[req.id] = {
+            "keys": hit_keys,
+            "tier": hit.tier,
+            "tokens": external_tokens,
+            "blocks": external_blocks,
+        }
+        return external_tokens
+
+    def set_block_releaser(self, releaser) -> None:
+        self._block_releaser = releaser
+
+    def discard_load(self, req: Request) -> None:
+        self._pending_loads.pop(req.id, None)
+
+    def update_state_after_alloc(
+        self,
+        req: Request,
+        blocks: list[Any],
+        num_external_tokens: int,
+    ) -> None:
+        if num_external_tokens:
+            req.cached_prefill_tokens = min(
+                req.prefill_len,
+                req.cached_prefill_tokens + num_external_tokens,
+            )
+            req.cached_prefill_blocks = min(
+                req.prefill_len // self.block_size,
+                req.cached_prefill_blocks + num_external_tokens // self.block_size,
+            )
+            req.effective_prefill_tokens = max(
+                0,
+                req.prefill_len - req.cached_prefill_tokens,
+            )
+            req.reuse_hit_blocks = req.cached_prefill_blocks
+            req.reuse_miss_blocks = max(
+                0,
+                req.prefill_len // self.block_size - req.reuse_hit_blocks,
+            )
+
+    def build_connector_meta(self, scheduler_output: Any) -> KVConnectorMetadata:
+        loads: list[ConnectorTransferPlan] = []
+        saves: list[ConnectorTransferPlan] = []
+        can_save = self.config.kv_role in {"kv_producer", "kv_both", None}
+        # ``scheduled`` on paged outputs contains newly admitted requests;
+        # existing requests can still compute another prefill chunk this step.
+        requests = getattr(
+            scheduler_output, "running", getattr(scheduler_output, "scheduled", [])
+        )
+        for req in requests or []:
+            load_info = self._pending_loads.pop(req.id, None)
+            if load_info is not None:
+                load_plan = self._build_load_plan(req, load_info)
+                loads.append(load_plan)
+                if load_plan.async_transfer:
+                    self._pending_async_loads.update(load_plan.request_ids)
+            if not can_save:
+                continue
+            if self.options.admission_policy == "never":
+                continue
+            if self.options.save_policy in {"mooncake", "once"}:
+                # Reference semantics: saves happen only within the prefill
+                # range (decode steps never save), each request saves at most
+                # once, and a step that loads from the store skips its save.
+                if not req.is_prefill or req.id in self._saved_request_ids:
+                    continue
+                if req.num_computed_tokens + req.step_tokens < req.prefill_len:
+                    continue
+                if load_info is not None:
+                    continue
+            save_keys = self._keys_for_request(req)
+            if not save_keys:
+                continue
+            plan = self._build_save_plan(req, save_keys)
+            if plan is None:
+                continue
+            self._saved_request_ids.add(req.id)
+            saves.append(plan)
+            if plan.async_transfer:
+                self._pending_async_puts.update(plan.request_ids)
+        preempted = [req.id for req in getattr(scheduler_output, "preempted", []) or []]
+        return KVConnectorMetadata(
+            connector_name=self.name,
+            loads=loads,
+            saves=saves,
+            preempted_request_ids=preempted,
+        )
+
+    def start_load_kv(self) -> float:
+        latency = 0.0
+        for plan in self._own_plans(self._metadata.loads):
+            keys = self._pool_keys_from_plan(plan)
+            disk_latency = self.service.store.get(
+                keys,
+                plan.tier,
+                now=self.simulation_time,
+                initial_delay=latency + plan.latency,
+                stats=self.mooncake_stats,
+            )
+            latency += plan.latency + disk_latency
+            self.stats.record_transfer(
+                blocks=plan.blocks,
+                bytes_=plan.bytes,
+                latency=plan.latency + disk_latency,
+                kind="load",
+            )
+            self.mooncake_stats.record_transfer(
+                bytes_=plan.bytes,
+                latency=plan.latency + disk_latency,
+                kind="store_load",
+                blocking_latency=(
+                    0.0
+                    if plan.async_transfer and self.options.transfer_overlap
+                    else plan.latency + disk_latency
+                ),
+            )
+            self.mooncake_stats.record_pool_keys(plan.keys)
+        if self.options.load_async and self.options.transfer_overlap:
+            self.mooncake_stats.pending_async_jobs += len(self._metadata.loads)
+            return 0.0
+        return latency
+
+    def wait_for_save(self) -> float:
+        latency = 0.0
+        for plan in self._own_plans(self._metadata.saves):
+            request = plan.extra.get("request")
+            if request is not None and request.cancel_requested:
+                continue
+            keys = self._pool_keys_from_plan(plan)
+            store_timing = self.service.store.put_with_timing(
+                keys,
+                blocks=plan.blocks,
+                now=self.simulation_time,
+                initial_delay=latency + plan.latency,
+                stats=self.mooncake_stats,
+                admission_policy=self.options.admission_policy,
+            )
+            total_latency = plan.latency + store_timing.accounting_latency
+            blocking_latency = plan.latency + store_timing.blocking_latency
+            latency += blocking_latency
+            self.stats.record_transfer(
+                blocks=plan.blocks,
+                bytes_=plan.bytes,
+                latency=total_latency,
+                kind="save",
+                blocking_latency=blocking_latency,
+            )
+            self.mooncake_stats.record_transfer(
+                bytes_=plan.bytes,
+                latency=total_latency,
+                kind="store_save",
+                blocking_latency=(
+                    0.0
+                    if plan.async_transfer and self.options.transfer_overlap
+                    else blocking_latency
+                ),
+            )
+            self.mooncake_stats.record_pool_keys(plan.keys)
+        if self.options.load_async and self.options.transfer_overlap:
+            self.mooncake_stats.pending_async_jobs += len(self._metadata.saves)
+            return 0.0
+        return latency
+
+    def request_finished(
+        self,
+        req: Request,
+        block_ids: list[int],
+    ) -> tuple[bool, dict[str, Any] | None]:
+        if req.id in self._pending_async_puts:
+            self._delayed_releases[req.id] = (req, list(block_ids))
+            return True, {"pending_async_put": True}
+        self._forget_request(req.id)
+        return False, None
+
+    def get_finished(
+        self,
+        finished_req_ids: set[int],
+    ) -> tuple[set[int], set[int]]:
+        finished_sending = set(finished_req_ids) & self._pending_async_puts
+        finished_recving = set(finished_req_ids) & self._pending_async_loads
+        return finished_sending, finished_recving
+
+    def build_connector_worker_meta(self) -> KVConnectorWorkerMetadata:
+        meta = super().build_connector_worker_meta()
+        if self._pending_async_loads:
+            meta.finished_recving.update(self._pending_async_loads)
+        if self._pending_async_puts:
+            meta.finished_sending.update(self._pending_async_puts)
+        return meta
+
+    def update_connector_output(
+        self,
+        worker_output: KVConnectorWorkerMetadata,
+    ) -> None:
+        completed_loads = self._pending_async_loads.intersection(
+            worker_output.finished_recving
+        )
+        releasable = self._pending_async_puts.intersection(
+            worker_output.finished_sending
+        )
+        self._pending_async_loads.difference_update(completed_loads)
+        self._pending_async_puts.difference_update(releasable)
+        self.mooncake_stats.pending_async_jobs = max(
+            0,
+            self.mooncake_stats.pending_async_jobs
+            - len(completed_loads)
+            - len(releasable),
+        )
+        for req_id in releasable:
+            delayed = self._delayed_releases.pop(req_id, None)
+            if delayed is None or self._block_releaser is None:
+                self._forget_request(req_id)
+                continue
+            req, block_ids = delayed
+            self._block_releaser(req, block_ids)
+            self._forget_request(req_id)
+        super().update_connector_output(worker_output)
+
+    def handle_preemptions(self, meta: KVConnectorMetadata) -> None:
+        super().handle_preemptions(meta)
+        # Recomputed requests rebuild connector state when they are admitted again.
+        for req_id in meta.preempted_request_ids:
+            self._forget_request(req_id)
+
+    def on_request_released(self, req: Request) -> None:
+        if req.id in self._pending_async_puts:
+            # An async save is still in flight; the delayed-release path in
+            # update_connector_output() cleans up once it completes.
+            return
+        self._forget_request(req.id)
+
+    def _forget_request(self, req_id: int) -> None:
+        self._keys_cache.pop(req_id, None)
+        self._request_keys.pop(req_id, None)
+        self._pending_loads.pop(req_id, None)
+        self._saved_request_ids.discard(req_id)

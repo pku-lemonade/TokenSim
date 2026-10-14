@@ -51,13 +51,21 @@ class SourcedValue:
             try:
                 value = float(require(raw, "value", context))
             except (TypeError, ValueError) as exc:
-                raise ConfigurationError(f"{context}: {field_name} must be numeric") from exc
+                raise ConfigurationError(
+                    f"{context}: {field_name} must be numeric"
+                ) from exc
             if value < 0:
-                raise ConfigurationError(f"{context}: {field_name} must be non-negative")
+                raise ConfigurationError(
+                    f"{context}: {field_name} must be non-negative"
+                )
             grade = str(raw.get("grade", "D")).upper()
             if grade not in EVIDENCE_GRADES:
                 raise ConfigurationError(
                     f"{context}: {field_name} grade must be one of {EVIDENCE_GRADES}"
                 )
-            return cls(value=value, source_id=str(require(raw, "source_id", context)), grade=grade)
+            return cls(
+                value=value,
+                source_id=str(require(raw, "source_id", context)),
+                grade=grade,
+            )
         raise ConfigurationError(f"{context}: {field_name} must be a mapping")

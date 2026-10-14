@@ -56,6 +56,26 @@ def gemm_work(m: int, n: int, k: int, dtype: str) -> OperatorWork:
     )
 
 
+def grouped_gemm_work(
+    batch_size: int, m: int, n: int, k: int, dtype: str, out_dtype: str
+) -> OperatorWork:
+    return OperatorWork(
+        flops=2.0 * batch_size * m * n * k,
+        weight_bytes=float(batch_size) * n * k * dtype_bytes(dtype),
+        activation_bytes=float(batch_size)
+        * m
+        * (k * activation_bytes_for(dtype) + n * dtype_bytes(out_dtype)),
+        details={
+            "batch_size": batch_size,
+            "m": m,
+            "n": n,
+            "k": k,
+            "dtype": normalize_dtype(dtype),
+            "out_dtype": normalize_dtype(out_dtype),
+        },
+    )
+
+
 def context_attention_work(
     batch_size: int,
     input_seq_len: int,
@@ -192,21 +212,28 @@ _ELEMENTWISE_BYTES_PER_ELEMENT = {
 }
 
 
-def elementwise_work(op_name: str, num_tokens: int, hidden_size: int, dtype: str) -> OperatorWork:
+def elementwise_work(
+    op_name: str, num_tokens: int, hidden_size: int, dtype: str
+) -> OperatorWork:
     op = op_name.lower()
     if op not in _ELEMENTWISE_FLOPS_PER_ELEMENT:
         raise ValueError(f"unsupported elementwise op {op_name!r}")
     elements = float(num_tokens) * hidden_size
     b = activation_bytes_for(dtype)
-    extra_bytes = hidden_size * b if op in {"rmsnorm", "layernorm"} else 0.0  # weight vector
+    extra_bytes = (
+        hidden_size * b if op in {"rmsnorm", "layernorm"} else 0.0
+    )  # weight vector
     return OperatorWork(
         flops=_ELEMENTWISE_FLOPS_PER_ELEMENT[op] * elements,
-        activation_bytes=_ELEMENTWISE_BYTES_PER_ELEMENT[op] * elements * b + extra_bytes,
+        activation_bytes=_ELEMENTWISE_BYTES_PER_ELEMENT[op] * elements * b
+        + extra_bytes,
         details={"op_name": op, "num_tokens": num_tokens, "hidden_size": hidden_size},
     )
 
 
-def work_for_table(table: str, key: Mapping[str, Any], *, gated: bool = True, imbalance: float = 1.0) -> OperatorWork:
+def work_for_table(
+    table: str, key: Mapping[str, Any], *, gated: bool = True, imbalance: float = 1.0
+) -> OperatorWork:
     """Dispatch a table query key to the matching work formula."""
     if table == "batched_gemm":
         base = gemm_work(int(key["m"]), int(key["n"]), int(key["k"]), str(key["dtype"]))
@@ -258,6 +285,15 @@ def work_for_table(table: str, key: Mapping[str, Any], *, gated: bool = True, im
                                      "cache_write_bytes": locals().get("cache_write", kv)})
     if table == "gemm":
         return gemm_work(int(key["m"]), int(key["n"]), int(key["k"]), str(key["dtype"]))
+    if table == "grouped_gemm":
+        return grouped_gemm_work(
+            int(key["batch_size"]),
+            int(key["m"]),
+            int(key["n"]),
+            int(key["k"]),
+            str(key["dtype"]),
+            str(key["out_dtype"]),
+        )
     if table == "context_attention":
         return context_attention_work(
             int(key["batch_size"]),
@@ -294,5 +330,10 @@ def work_for_table(table: str, key: Mapping[str, Any], *, gated: bool = True, im
             imbalance=imbalance,
         )
     if table == "elementwise":
-        return elementwise_work(str(key["op_name"]), int(key["num_tokens"]), int(key["hidden_size"]), str(key["dtype"]))
+        return elementwise_work(
+            str(key["op_name"]),
+            int(key["num_tokens"]),
+            int(key["hidden_size"]),
+            str(key["dtype"]),
+        )
     raise ValueError(f"no work formula for table {table!r}")

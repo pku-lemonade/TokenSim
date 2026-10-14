@@ -38,10 +38,14 @@ class DeviceCatalog:
         if not directory.is_dir():
             raise ConfigurationError(f"device catalog directory not found: {directory}")
         catalog = cls()
-        for path in sorted(directory.glob("*.yaml")):
-            catalog.add(DeviceSpec.from_mapping(load_yaml_mapping(path), context=str(path)))
+        for path in sorted(directory.rglob("*.yaml")):
+            catalog.add(
+                DeviceSpec.from_mapping(load_yaml_mapping(path), context=str(path))
+            )
         if not catalog:
-            raise ConfigurationError(f"device catalog {directory} has no *.yaml entries")
+            raise ConfigurationError(
+                f"device catalog {directory} has no *.yaml entries"
+            )
         return catalog
 
     def get(self, name: str) -> DeviceSpec:

@@ -1,0 +1,35 @@
+{
+    "num_workers": 64,
+    "kv_cache_capacity_tokens_total": 43335400,
+    "networks": {
+        "node0": "ethernet800Gb",
+        "node1": "ethernet800Gb",
+        "node2": "ethernet800Gb",
+        "node3": "ethernet800Gb",
+        "node4": "ethernet800Gb",
+        "node5": "ethernet800Gb",
+        "node6": "ethernet800Gb",
+        "node7": "ethernet800Gb"
+    },
+    "parallel_config": {
+        "tensor_parallel_size": 8,
+        "pipeline_parallel_size": 1,
+        "data_parallel_size": 8,
+        "data_parallel_size_local": 1,
+        "enable_expert_parallel": true,
+        "expert_parallel_scope": "per_dp",
+        "expert_parallel_size": 8,
+        "expert_placement_strategy": "linear",
+        "all2all_backend": "deepep_high_throughput"
+    },
+    "worker_groups": [
+        {"role": "hybrid", "hardware": "b300_sxm", "num_workers": 8, "network": "node0"},
+        {"role": "hybrid", "hardware": "b300_sxm", "num_workers": 8, "network": "node1"},
+        {"role": "hybrid", "hardware": "b300_sxm", "num_workers": 8, "network": "node2"},
+        {"role": "hybrid", "hardware": "b300_sxm", "num_workers": 8, "network": "node3"},
+        {"role": "hybrid", "hardware": "b300_sxm", "num_workers": 8, "network": "node4"},
+        {"role": "hybrid", "hardware": "b300_sxm", "num_workers": 8, "network": "node5"},
+        {"role": "hybrid", "hardware": "b300_sxm", "num_workers": 8, "network": "node6"},
+        {"role": "hybrid", "hardware": "b300_sxm", "num_workers": 8, "network": "node7"}
+    ]
+}

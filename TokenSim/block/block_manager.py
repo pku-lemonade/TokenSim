@@ -93,6 +93,11 @@ class BlockAllocator:
 
 
 class BlockManager:
+    """Uniform paged KV blocks with prefix reuse and host swap space."""
+
+    # One block width for every layer; see HybridKVBlockManager for groups.
+    grouped_cache = False
+
     def __init__(
         self,
         block_size: int,
@@ -105,6 +110,7 @@ class BlockManager:
         self.num_total_gpu_blocks = num_gpu_blocks
         self.num_total_cpu_blocks = num_cpu_blocks
 
+        self._reserved_gpu_blocks: list[PhysicalTokenBlock] = []
         self.block_table = BlockTable()
         self.kv_cache_manager = KVCacheManager(block_size=block_size, model=model)
 
@@ -116,7 +122,6 @@ class BlockManager:
             kv_cache_manager=self.kv_cache_manager,
         )
         self.cpu_allocator = BlockAllocator(Device.CPU, block_size, num_cpu_blocks)
-        self._reserved_gpu_blocks: list[PhysicalTokenBlock] = []
 
     def can_allocate(self, req: Request) -> bool:
         plan = self.kv_cache_manager.plan_reuse(req)
@@ -149,6 +154,12 @@ class BlockManager:
         self.block_table.add_blocks(req.id, blocks)
         self._sync_request_blocks(req, blocks)
         self._mark_input_blocks_pending(req, blocks, plan)
+
+    def get_num_free_blocks(self):
+        return self.gpu_allocator.get_num_free_blocks()
+
+    def get_num_allocated_blocks(self):
+        return self.gpu_allocator.get_num_allocated_blocks()
 
     def get_gpu_status(self) -> Tuple[int, int, int]:
         return self.gpu_allocator.get_status()

@@ -1,25 +1,27 @@
-.DS_Store
-.vscode
-
+/.DS_Store
+/.vscode/
+/.codex/
+/.claude/
 __pycache__/
 *.py[cod]
 .pytest_cache/
+*.egg-info/
+/build/
+/dist/
+/results/
+/img/
+/log/
+/tmp/
+/dataset/agentx/
+*.log
 
-results
-img
-log
-tmp
-
+# AF development and generated experiment artifacts
 .codex
 .claude
 .agents/
-
 tests/.codex-tmp/
 tests/.tmp/
 tests/tmp*/
-
-# generated experiment artifacts
-*.egg-info
 outputs/
 .codex-test-op/
 .tmp-op-runtime/

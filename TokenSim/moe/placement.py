@@ -31,10 +31,14 @@ class ExpertPlacement:
         return self.rank_to_experts.get(self.ep_rank_for_rank_info(rank_info), [])
 
     def ep_rank_for_rank_info(self, rank_info: ParallelRankInfo) -> int:
-        return self.parallel_config.expert_parallel_rank(rank_info.dp_rank, rank_info.tp_rank)
+        return self.parallel_config.expert_parallel_rank(
+            rank_info.dp_rank, rank_info.tp_rank
+        )
 
     def ep_group_for_rank_info(self, rank_info: ParallelRankInfo) -> int:
-        return self.parallel_config.expert_parallel_group(rank_info.dp_rank, rank_info.tp_rank)
+        return self.parallel_config.expert_parallel_group(
+            rank_info.dp_rank, rank_info.tp_rank
+        )
 
     def moe_layers_for_pp_rank(self, pp_rank: int) -> list[int]:
         return self.pp_stage_to_moe_layers.get(pp_rank, [])
@@ -51,7 +55,8 @@ class ExpertPlacement:
             "tensor_parallel_size": self.tensor_parallel_size,
             "num_experts": self.num_experts,
             "rank_to_experts": {
-                str(rank): experts for rank, experts in sorted(self.rank_to_experts.items())
+                str(rank): experts
+                for rank, experts in sorted(self.rank_to_experts.items())
             },
             "pp_stage_to_moe_layers": {
                 str(rank): layers
@@ -121,7 +126,9 @@ def _assign_moe_layers(
     parallel_config: ParallelConfig,
     total_layers: int | None,
 ) -> dict[int, list[int]]:
-    result: dict[int, list[int]] = {rank: [] for rank in range(parallel_config.pipeline_parallel_size)}
+    result: dict[int, list[int]] = {
+        rank: [] for rank in range(parallel_config.pipeline_parallel_size)
+    }
     if not moe_config.enabled:
         return result
     for layer_id in moe_config.moe_layer_indices(total_layers):

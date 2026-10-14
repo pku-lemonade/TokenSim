@@ -45,6 +45,8 @@ class LogicalKVBlockMapping:
 class ReplicaKVBlockManager:
     """One scheduler-visible KV cache backed by one local pool per A TP rank."""
 
+    grouped_cache = False
+
     def __init__(
         self,
         *,
@@ -438,6 +440,8 @@ class ReplicaKVBlockManager:
             raise SimulationStateError(
                 f"request {req.id} has no KV shards in AF replica {self.replica_key}"
             )
+        for view in views.values():
+            view._logical_tokens = req._logical_tokens
         return views
 
     def _view(self, rank_key: RankKey, req: Request, *, create: bool) -> Request:

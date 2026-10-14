@@ -4,8 +4,6 @@ from dataclasses import dataclass
 
 from TokenSim.mooncake.config import MooncakeConfig
 
-_GB = 1 << 30
-
 
 @dataclass(frozen=True)
 class Segment:
@@ -24,7 +22,7 @@ class BatchTransfer:
     bytes: int
     protocol: str
     fixed_latency: float
-    bandwidth_gbps: float
+    bandwidth_bytes_per_s: float
     parallel_paths: int = 1
     topology: str = "local"
     kind: str = "transfer"
@@ -33,8 +31,8 @@ class BatchTransfer:
     def latency(self) -> float:
         if self.bytes <= 0:
             return 0.0
-        bandwidth = max(1e-9, self.bandwidth_gbps * max(1, self.parallel_paths))
-        return self.fixed_latency + self.bytes / _GB / bandwidth
+        bandwidth = self.bandwidth_bytes_per_s * max(1, self.parallel_paths)
+        return self.fixed_latency + self.bytes / bandwidth
 
 
 @dataclass
@@ -79,7 +77,8 @@ class TransferEngineSimulator:
             bytes=bytes_,
             protocol=protocol,
             fixed_latency=self._fixed_latency(protocol, topology),
-            bandwidth_gbps=self._bandwidth(protocol),
+            bandwidth_bytes_per_s=self._bandwidth(protocol)
+            * self.config.transfer_utilization,
             parallel_paths=max(self.config.parallel_paths, self.config.num_nics),
             topology=topology,
             kind=kind,
@@ -123,14 +122,14 @@ class TransferEngineSimulator:
         return latency_us / 1e6
 
     def _bandwidth(self, protocol: str) -> float:
-        if self.config.bandwidth_gbps is not None:
-            return self.config.bandwidth_gbps
-        return self.config.protocol_bandwidth_gbps.get(
+        if self.config.bandwidth_bytes_per_s is not None:
+            return self.config.bandwidth_bytes_per_s
+        return self.config.protocol_bandwidth_bytes_per_s.get(
             protocol,
             {
-                "tcp": 12.5,
-                "rdma": 50.0,
-                "nvlink": 300.0,
-                "nvmeof": 7.0,
-            }.get(protocol, 12.5),
+                "tcp": 12.5 * 2**30,
+                "rdma": 50.0 * 2**30,
+                "nvlink": 300.0 * 2**30,
+                "nvmeof": 7.0 * 2**30,
+            }.get(protocol, 12.5 * 2**30),
         )

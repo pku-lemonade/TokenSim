@@ -4,6 +4,8 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
+from TokenSim.storage.metrics import StorageMetrics
+
 _GB = 1 << 30
 
 # Result export only surfaces a small sample of pool keys; keeping more than
@@ -13,6 +15,7 @@ POOL_KEY_SAMPLE_LIMIT = 64
 
 @dataclass
 class MooncakeStats:
+    storage_metrics: StorageMetrics = field(default_factory=StorageMetrics)
     get_count: int = 0
     put_count: int = 0
     store_hit_count: int = 0
@@ -31,6 +34,7 @@ class MooncakeStats:
     admission_rejection_count: int = 0
     eviction_count: int = 0
     pending_async_jobs: int = 0
+    cache_query_tokens: int = 0
     local_gpu_hit_tokens: int = 0
     mooncake_memory_hit_tokens: int = 0
     mooncake_disk_hit_tokens: int = 0
@@ -45,7 +49,9 @@ class MooncakeStats:
         for field_name in self.__dataclass_fields__:
             left = getattr(self, field_name)
             right = getattr(other, field_name)
-            if isinstance(left, list):
+            if isinstance(left, StorageMetrics):
+                result.storage_metrics = left.aggregate(right)
+            elif isinstance(left, list):
                 setattr(result, field_name, [*left, *right][:POOL_KEY_SAMPLE_LIMIT])
             else:
                 setattr(result, field_name, left + right)
@@ -98,6 +104,7 @@ class MooncakeStats:
             seen_profiles.add(fingerprint)
             offload_profiles.append(profile)
         return {
+            "storage_metrics": self.storage_metrics.as_dict(),
             "mooncake_get_count": self.get_count,
             "mooncake_put_count": self.put_count,
             "mooncake_store_hit_count": self.store_hit_count,
@@ -109,7 +116,7 @@ class MooncakeStats:
             "mooncake_ssd_write_blocks": self.ssd_write_blocks,
             "mooncake_ssd_write_bytes": self.ssd_write_bytes,
             "mooncake_transferred_bytes": self.transferred_bytes,
-            "mooncake_effective_transfer_bandwidth_gbps": bandwidth,
+            "mooncake_effective_transfer_bandwidth_gib_per_s": bandwidth,
             "mooncake_transfer_latency": self.transfer_latency,
             "mooncake_p2p_latency": self.p2p_latency,
             "mooncake_store_latency": self.store_latency,
@@ -117,6 +124,7 @@ class MooncakeStats:
             "mooncake_admission_rejection_count": self.admission_rejection_count,
             "mooncake_eviction_count": self.eviction_count,
             "mooncake_pending_async_jobs": self.pending_async_jobs,
+            "mooncake_cache_query_tokens": self.cache_query_tokens,
             "mooncake_local_gpu_hit_tokens": self.local_gpu_hit_tokens,
             "mooncake_memory_hit_tokens": self.mooncake_memory_hit_tokens,
             "mooncake_disk_hit_tokens": self.mooncake_disk_hit_tokens,

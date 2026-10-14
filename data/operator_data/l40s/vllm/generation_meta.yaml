@@ -49,6 +49,14 @@ sources:
     converted ms -> us.
   device: l40s
   backend: vllm:0.22.0
+- source_id: aiconfigurator:l40s:mhc:vllm:0.24.0
+  grade: B
+  method: imported
+  reference: https://github.com/ai-dynamo/aiconfigurator/tree/f254959eb89e2f206b8f9a77051644d7c1cbdb89/aic-core/src/aiconfigurator_core/systems/data/l40s/mhc/vllm/0.24.0
+  notes: mHC (hyper-connection residual mixing) pre/post module; each row covers the
+    recorded sites of one layer.
+  device: l40s
+  backend: vllm:0.24.0
 calibration: {}
 tables:
   gemm:
@@ -61,6 +69,8 @@ tables:
     rows: 48317
   collective:
     rows: 573
+  mhc:
+    rows: 136
 aiconfigurator_system: l40s
 aiconfigurator_layout: database
 aiconfigurator_commit: f254959eb89e2f206b8f9a77051644d7c1cbdb89

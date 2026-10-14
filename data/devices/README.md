@@ -1,23 +1,17 @@
 # Device catalog (`data/devices/`)
 
-One YAML per accelerator. Every number carries a `source_id` (declared in the
-file's `sources:` block) and an evidence grade: **A** official spec or
-first-party measurement, **B** public third-party benchmark, **C** calibrated
-or derived estimate, **D** project assumption. See
-[`TokenSim/hardware/README.md`](../../TokenSim/hardware/README.md) for the
-field definitions and
-[`docs/operator-latency-model.md`](../../docs/operator-latency-model.md) for how
-the values are used.
+Each YAML file describes one accelerator.
+The catalog loads YAML files recursively, including grouped device examples in subdirectories.
+Every number carries a `source_id` (declared in the file's `sources:` block) and an evidence grade: **A** official spec or first-party measurement, **B** public third-party benchmark, **C** calibrated or derived estimate, **D** project assumption.
+See [`TokenSim/hardware/README.md`](../../TokenSim/hardware/README.md) for the field definitions and [`docs/operator-latency-model.md`](../../docs/operator-latency-model.md) for how the values are used.
 
 ## Devices and available operator data
 
-Operator tables come from NVIDIA AIConfigurator's measured kernel database
-(commit `f254959eb89e2f206b8f9a77051644d7c1cbdb89`, Apache-2.0, see
-[`../operator_data/LICENSES.md`](../operator_data/LICENSES.md)). Every system
-that has upstream data is imported for **all three serving stacks**: `vllm`
-(project default when a cluster names no `operator_backend`), `trtllm` and
-`sglang`. Select one per worker group with `"operator_backend": "<name>"` or
-globally with `--operator_backend`.
+Operator tables come from NVIDIA AIConfigurator's measured kernel database (commit `f254959eb89e2f206b8f9a77051644d7c1cbdb89`, Apache-2.0, see [`../operator_data/LICENSES.md`](../operator_data/LICENSES.md)).
+Available upstream measurements are imported for the `vllm`, `trtllm` and `sglang` inference frameworks, as listed in the table below.
+`vllm` is the project default when the cluster does not specify `operator_backend`.
+Select one per worker group with `"operator_backend": "<name>"` or globally with `--operator_backend`.
+The table uses GEMM for matrix multiplication, MoE for mixture-of-experts computation and collectives for communication involving a group of GPU workers.
 
 | device_id | Device | Family | Spec grade | AIConfigurator system | Imported backends (framework versions) | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -41,36 +35,28 @@ globally with `--operator_backend`.
 | `groqchip_v1` | Groq GroqChip v1 (TSP / LPU) | groq_tsp | A (product brief, ISCA papers) | — | `analytical` only (grade D formulas) | no measured kernels; see docs/data-collection-checklist.md §4 |
 | `intel_arc_pro_b60` | Intel Arc Pro B60 (XPU) | generic | A memory / C compute | `b60` | vllm 0.26.0 (+0.20.0); oneCCL 2021.17.2 collectives | only vLLM XPU exists upstream; analytical family `generic` |
 
-"none" means the `operator_table` backend falls back to the analytical model
-for that device (reported as `match_type = analytical` in results). Priority for
-local measurement is documented in
-[`docs/data-collection-checklist.md`](../../docs/data-collection-checklist.md).
+With the default `table_first` fallback policy, "none" means operator times for that device are estimated by formulas and reported as `match_type = analytical`.
+Priority for local measurement is documented in [`docs/data-collection-checklist.md`](../../docs/data-collection-checklist.md).
 
 ### Why versions differ between systems
 
-Each `(system, framework)` pair upstream is pinned to the framework version that
-was current when NVIDIA last ran a full collection campaign on that hardware
-(`aic-core/src/aiconfigurator_core/systems/query_versions.yaml`). Hopper and
-Blackwell systems are re-collected regularly (TensorRT-LLM 1.3.0rc20, vLLM
-0.24.0, SGLang 0.5.14); the A100 was frozen at TensorRT-LLM 1.0.0 / vLLM 0.14.0
-/ SGLang 0.5.10 because newer releases stopped adding Ampere kernels. Newer
-directories such as `1.3.0rc23` hold only the shapes that changed (MXFP4 MoE)
-and rely on the previous full collection for everything else; the importer
-merges them the same way (newest version wins per key, older versions backfill).
+Each upstream `(system, framework)` pair records the framework version used for the last complete profiling run on that hardware in `aic-core/src/aiconfigurator_core/systems/query_versions.yaml`.
+Regular collections for Hopper and Blackwell use TensorRT-LLM 1.3.0rc20, vLLM 0.24.0 and SGLang 0.5.14 in the bundled revision.
+The A100 collection remains at TensorRT-LLM 1.0.0, vLLM 0.14.0 and SGLang 0.5.10 because newer releases stopped adding Ampere kernels.
+Directories such as `1.3.0rc23` contain measurements only for changed operator dimensions, such as MXFP4 MoE, and use the last complete collection for other entries.
+The importer keeps the newest row for each key and fills missing keys from older versions.
 
 ### Why the same shape differs between backends
 
-The three stacks pick different kernels for the same GEMM or attention shape
-(cuBLAS/CUTLASS heuristics vs FlashInfer vs Triton, FlashAttention-2/3/4 vs
-TRT-LLM fused MHA/XQA), support different quantization formats on the same GPU,
-and fuse operators differently. The `kernel` column of every imported row keeps
-the upstream `kernel_source` so the difference can be traced.
+The frameworks can select different matrix multiplication (GEMM) or attention kernels for identical dimensions.
+Examples include cuBLAS/CUTLASS, FlashInfer and Triton for GEMM, and FlashAttention-2/3/4 or TensorRT-LLM fused MHA/XQA for attention.
+They also support different quantization formats and combine different operations into fused kernels.
+Each imported row preserves `kernel_source` in its `kernel` column to identify the implementation measured.
 
 ## Analytical defaults shared with AIConfigurator (grade C)
 
-Every NVIDIA GPU file overrides the family defaults with the empirical
-corrections NVIDIA recorded in its `systems/<system>.yaml` files while
-validating AIConfigurator against TensorRT-LLM deployments:
+Every NVIDIA GPU file overrides the family defaults with corrections recorded in NVIDIA's `systems/<system>.yaml` files during validation against TensorRT-LLM deployments.
+The following table lists those corrections.
 
 | Field | Value | Upstream key |
 | --- | --- | --- |
@@ -79,24 +65,27 @@ validating AIConfigurator against TensorRT-LLM deployments:
 | `analytical.collective_launch_us` | 10.0 | `node.p2p_latency` (10 µs) |
 | `memory.reserved_bytes` | 4,169,138,176 (392 MB NCCL buffers + 3.5 GB runtime reserve) | `misc.nccl_mem[8] + misc.other_mem` |
 
-The Intel B60 file uses the upstream B60 values instead (memory efficiency 0.5,
-2 µs p2p latency, 500 MiB reserve). Devices without an upstream system file
-(H20, RTX 4090, V100) borrow the values of the closest architecture and say so
-in their `sources` notes. `CacheConfig` subtracts `reserved_bytes` before
-computing KV-cache blocks; `operator_data.cli calibrate` can replace the
-analytical values with device-specific fits.
+The Intel B60 file uses its upstream values: memory efficiency 0.5, point-to-point transfer latency 2 µs and reserved memory 500 MiB.
+Devices without an upstream system file (H20, RTX 4090, V100) borrow the values of the closest architecture and say so in their `sources` notes.
+`CacheConfig` subtracts `reserved_bytes` before sizing the attention key/value (KV) cache.
+`operator_data.cli calibrate` can fit the analytical parameters to measurements from the target device.
 
 ## Adding a device
 
-1. Copy the closest YAML, change `device_id`, `display_name`, `aliases`.
-   Plain product numbers (`B200`, `B300`, `H100`) are aliases of the SXM/HGX
-   part; superchip entries (`gb200`, `gb300`) only claim `GB...` names, so a
-   cluster that says `B300` never resolves to the NVL72 superchip.
-2. Fill `peak_compute` per dtype (dense figures; halve NVIDIA sparsity numbers),
-   `memory`, optional `on_chip_memory`, `interconnect` (link ids from
-   `data/topologies/links.yaml`), `power`.
+Experimental HBF1/HBF2 memory variants in `hbf/` are independent catalog entries with grade D memory assumptions and separate device IDs.
+See [HBF examples](../../docs/hbf.md) for their parameters and storage selection.
+
+1. Copy the YAML for the closest device and change `device_id`, `display_name` and `aliases`.
+   Names such as `B200`, `B300` and `H100` identify the SXM/HGX devices.
+   Superchip entries (`gb200`, `gb300`) use only `GB...` aliases, keeping `B300` distinct from the NVL72 superchip.
+2. Fill `peak_compute` for each data type using dense compute figures, dividing NVIDIA sparse figures by two.
+   Fill `memory`, optional `on_chip_memory`, `interconnect` using link IDs from `data/topologies/links.yaml`, and `power`.
 3. Declare every `source_id` in `sources:` with a grade and a reference.
-4. Import or collect operator data into `data/operator_data/<device_id>/<backend>/`
-   (see `scripts/collect/README.md`), or leave it to the analytical fallback.
-5. Run `python -m unittest tests.test_hardware_catalog` — the catalog test loads
-   every file and checks aliases and link references.
+4. Import or collect operator data into `data/operator_data/<device_id>/<backend>/` (see `scripts/collect/README.md`), or leave it to the analytical fallback.
+5. Run the core tests with the following command to check the new device entry.
+
+   ```bash
+   python -m unittest discover \
+       -s tests \
+       -t .
+   ```

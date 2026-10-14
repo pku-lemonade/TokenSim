@@ -4,12 +4,22 @@ from dataclasses import dataclass
 from typing import Any, Mapping
 import json
 import math
+from functools import cached_property
+
+from TokenSim.config.validation import number
+from TokenSim.errors import ConfigurationError
 
 SCHEMA_VERSION = 1
 LATENCY_UNIT = "us"
 VALUE_FIELDS = ("latency_us", "source_id")
 
-COLLECTIVE_OPERATIONS = ("all_reduce", "all_gather", "reduce_scatter", "all_to_all", "send_recv")
+COLLECTIVE_OPERATIONS = (
+    "all_reduce",
+    "all_gather",
+    "reduce_scatter",
+    "all_to_all",
+    "send_recv",
+)
 EP_ALL2ALL_PHASES = ("dispatch", "combine")
 # Names of the expert-parallel all-to-all implementations. The first two map to
 # ParallelConfig.all2all_backend; the ``deepep_v2_*`` names are vLLM's split
@@ -32,7 +42,11 @@ ELEMENTWISE_OPS = (
     "gelu",
     "data_reorder",
     "other_residual",
-    "embedding_lookup", "argmax", "topk", "weighted_combine", "post_attention_norm",
+    "embedding_lookup",
+    "argmax",
+    "topk",
+    "weighted_combine",
+    "post_attention_norm",
 )
 
 
@@ -48,7 +62,9 @@ def canonical_histogram(value: Any, *, field: str) -> str:
         try:
             raw = json.loads(raw)
         except json.JSONDecodeError as exc:
-            raise ValueError(f"{field} must be a JSON list of [value,count] pairs") from exc
+            raise ValueError(
+                f"{field} must be a JSON list of [value,count] pairs"
+            ) from exc
     if not isinstance(raw, (list, tuple)) or not raw:
         raise ValueError(f"{field} must be a non-empty list of [value,count] pairs")
     pairs: list[tuple[int, float]] = []
@@ -76,7 +92,9 @@ def normalize_table_key_value(table: str, field: str, value: Any) -> Any:
             try:
                 raw = json.loads(raw)
             except json.JSONDecodeError as exc:
-                raise ValueError(f"{field} must be a JSON list of positive counts") from exc
+                raise ValueError(
+                    f"{field} must be a JSON list of positive counts"
+                ) from exc
         if not isinstance(raw, (list, tuple)) or not raw:
             raise ValueError(f"{field} must be a non-empty list of positive counts")
         counts: list[int] = []
@@ -108,9 +126,13 @@ class AxisSpec:
 
     def __post_init__(self) -> None:
         if self.scale not in {"log", "linear"}:
-            raise ValueError(f"axis {self.name!r}: scale must be log or linear")
-        if self.max_extrapolation_ratio is not None and self.max_extrapolation_ratio < 1.0:
-            raise ValueError(f"axis {self.name!r}: max_extrapolation_ratio must be >= 1")
+            raise ConfigurationError(f"axis {self.name!r}: scale must be log or linear")
+        if self.max_extrapolation_ratio is not None:
+            number(
+                self.max_extrapolation_ratio,
+                f"axis {self.name!r}: max_extrapolation_ratio",
+                minimum=1,
+            )
 
 
 @dataclass(frozen=True)
@@ -120,16 +142,19 @@ class TableSpec:
     axes: tuple[AxisSpec, ...]
     dtype_fields: tuple[str, ...]
     description: str
+    metadata_fields: tuple[str, ...] = ()
 
-    @property
+    # Specs are immutable; derived field lists are computed once.
+
+    @cached_property
     def axis_names(self) -> tuple[str, ...]:
         return tuple(axis.name for axis in self.axes)
 
-    @property
+    @cached_property
     def discrete_fields(self) -> tuple[str, ...]:
         return tuple(field for field in self.key_fields if field not in self.axis_names)
 
-    @property
+    @cached_property
     def required_fields(self) -> tuple[str, ...]:
         return self.key_fields + VALUE_FIELDS
 
@@ -144,20 +169,122 @@ class TableSpec:
 
 TABLE_SPECS: Mapping[str, TableSpec] = {
     "batched_gemm": TableSpec(
-        name="batched_gemm", key_fields=("dtype", "groups", "m", "n", "k"),
-        axes=(AxisSpec("m"),), dtype_fields=("dtype",),
-        description="One grouped launch of equally shaped independent GEMMs."),
+        name="batched_gemm",
+        key_fields=("dtype", "groups", "m", "n", "k"),
+        axes=(AxisSpec("m"),),
+        dtype_fields=("dtype",),
+        description="One grouped launch of equally shaped independent GEMMs.",
+    ),
     "mla_attention": TableSpec(
         name="mla_attention",
-        key_fields=("attn_dtype", "kv_cache_dtype", "phase", "execution_mode", "batch_size",
-                    "query_len", "context_lengths", "num_heads", "kv_lora_rank", "rope_head_dim",
-                    "nope_head_dim", "v_head_dim"),
-        axes=(AxisSpec("batch_size"),), dtype_fields=("attn_dtype", "kv_cache_dtype"),
-        description="MLA core; context_lengths is a sorted context-length histogram normalized per request."),
+        key_fields=(
+            "attn_dtype",
+            "kv_cache_dtype",
+            "phase",
+            "execution_mode",
+            "batch_size",
+            "query_len",
+            "context_lengths",
+            "num_heads",
+            "kv_lora_rank",
+            "rope_head_dim",
+            "nope_head_dim",
+            "v_head_dim",
+        ),
+        axes=(AxisSpec("batch_size"),),
+        dtype_fields=("attn_dtype", "kv_cache_dtype"),
+        description="MLA core; context_lengths is a sorted context-length histogram normalized per request.",
+    ),
     "routed_experts": TableSpec(
-        name="routed_experts", key_fields=("dtype", "hidden_size", "inter_size", "expert_tokens"),
-        axes=(), dtype_fields=("dtype",),
-        description="One grouped SwiGLU branch for an exact per-expert assignment histogram; excludes router/shared/combine."),
+        name="routed_experts",
+        key_fields=("dtype", "hidden_size", "inter_size", "expert_tokens"),
+        axes=(),
+        dtype_fields=("dtype",),
+        description="One grouped SwiGLU branch for an exact per-expert assignment histogram; excludes router/shared/combine.",
+    ),
+    "mhc": TableSpec(
+        name="mhc",
+        key_fields=(
+            "op_name",
+            "architecture",
+            "kernel_source",
+            "hidden_size",
+            "hc_mult",
+            "num_sites",
+            "sinkhorn_iters",
+            "num_tokens",
+        ),
+        axes=(AxisSpec("num_tokens"),),
+        dtype_fields=(),
+        description="Measured compressed attention mHC pre/post TileLang module; residual BF16 with FP32 parameters.",
+        metadata_fields=("source_hardware", "source_version", "source_framework"),
+    ),
+    "dsv4_attention": TableSpec(
+        name="dsv4_attention",
+        key_fields=(
+            "layer_kind",
+            "phase",
+            "mla_dtype",
+            "kv_cache_dtype",
+            "kernel_source",
+            "kernel_dtype",
+            "model",
+            "architecture",
+            "num_heads",
+            "tp_size",
+            "batch_size",
+            "input_seq_len",
+            "context_len",
+            "compress_ratio",
+        ),
+        axes=(
+            AxisSpec("batch_size"),
+            AxisSpec("input_seq_len", "linear", ATTENTION_SEQ_EXTRAPOLATION_RATIO),
+            AxisSpec("context_len", "linear", ATTENTION_SEQ_EXTRAPOLATION_RATIO),
+        ),
+        dtype_fields=("mla_dtype", "kv_cache_dtype", "kernel_dtype"),
+        description=(
+            "Complete compressed attention CSA/HCA attention module including input projections, "
+            "compressor/indexer, sparse attention and output projection."
+        ),
+        metadata_fields=("source_hardware", "source_version", "source_model"),
+    ),
+    "dsv4_megamoe": TableSpec(
+        name="dsv4_megamoe",
+        key_fields=(
+            "dtype",
+            "phase",
+            "kernel_source",
+            "kernel_dtype",
+            "distribution",
+            "pre_dispatch",
+            "source_policy",
+            "num_tokens",
+            "hidden_size",
+            "inter_size",
+            "top_k",
+            "num_experts",
+            "num_fused_shared_experts",
+            "tp_size",
+            "ep_size",
+        ),
+        axes=(AxisSpec("num_tokens", "linear"),),
+        dtype_fields=("dtype",),
+        description="compressed attention routed MegaMoE incl pre-dispatch/dispatch/combine; rank-local tokens, gate/top-k and shared MLP excluded.",
+        metadata_fields=(
+            "num_max_tokens_per_rank",
+            "effective_num_max_tokens_per_rank",
+            "global_num_tokens",
+            "routed_scaling_factor",
+            "includes_gate_topk",
+            "includes_buffer_init",
+            "includes_routed_scale",
+            "used_cuda_graph",
+            "recorded_framework_version",
+            "collection_version",
+            "source_hardware",
+        ),
+    ),
     "gemm": TableSpec(
         name="gemm",
         key_fields=("dtype", "m", "n", "k"),
@@ -165,6 +292,13 @@ TABLE_SPECS: Mapping[str, TableSpec] = {
         axes=(AxisSpec("k"), AxisSpec("n"), AxisSpec("m")),
         dtype_fields=("dtype",),
         description="C[m,n] = A[m,k] x B[k,n]; dtype is the weight/storage dtype (e.g. fp16, fp8, int8_wo).",
+    ),
+    "grouped_gemm": TableSpec(
+        name="grouped_gemm",
+        key_fields=("dtype", "out_dtype", "batch_size", "m", "n", "k"),
+        axes=(AxisSpec("batch_size"), AxisSpec("k"), AxisSpec("n"), AxisSpec("m")),
+        dtype_fields=("dtype", "out_dtype"),
+        description="One grouped/batched matrix kernel, independent weights per group; C[g,m,n] = A[g,m,k] B[g,k,n].",
     ),
     # Attention sequence axes may be extrapolated 64x past the measured range
     # (AIConfigurator's own tables stop at 16k prefill / 128k decode tokens
@@ -188,7 +322,10 @@ TABLE_SPECS: Mapping[str, TableSpec] = {
         axes=(
             AxisSpec("num_heads", "linear"),
             AxisSpec("batch_size"),
-            AxisSpec("input_seq_len", max_extrapolation_ratio=ATTENTION_SEQ_EXTRAPOLATION_RATIO),
+            AxisSpec(
+                "input_seq_len",
+                max_extrapolation_ratio=ATTENTION_SEQ_EXTRAPOLATION_RATIO,
+            ),
         ),
         dtype_fields=("attn_dtype", "kv_cache_dtype"),
         description="Prefill attention core (QK^T, softmax, PV) for batch_size sequences padded to input_seq_len.",
@@ -209,7 +346,9 @@ TABLE_SPECS: Mapping[str, TableSpec] = {
         axes=(
             AxisSpec("num_heads", "linear"),
             AxisSpec("batch_size"),
-            AxisSpec("context_len", max_extrapolation_ratio=ATTENTION_SEQ_EXTRAPOLATION_RATIO),
+            AxisSpec(
+                "context_len", max_extrapolation_ratio=ATTENTION_SEQ_EXTRAPOLATION_RATIO
+            ),
         ),
         dtype_fields=("attn_dtype", "kv_cache_dtype"),
         description="Decode attention core for batch_size single-token queries against context_len cached tokens each.",
@@ -287,7 +426,12 @@ TABLE_SPECS: Mapping[str, TableSpec] = {
 
 INTEGER_FIELDS = frozenset(
     {
-        "groups", "query_len", "kv_lora_rank", "rope_head_dim", "nope_head_dim", "v_head_dim",
+        "groups",
+        "query_len",
+        "kv_lora_rank",
+        "rope_head_dim",
+        "nope_head_dim",
+        "v_head_dim",
         "m",
         "n",
         "k",
@@ -305,6 +449,11 @@ INTEGER_FIELDS = frozenset(
         "num_experts",
         "tp_size",
         "ep_size",
+        "num_fused_shared_experts",
+        "compress_ratio",
+        "hc_mult",
+        "num_sites",
+        "sinkhorn_iters",
         "group_size",
         "nodes",
         "message_bytes",
@@ -323,4 +472,6 @@ def table_spec(name: str) -> TableSpec:
     try:
         return TABLE_SPECS[name]
     except KeyError as exc:
-        raise KeyError(f"unknown operator table {name!r}; known: {sorted(TABLE_SPECS)}") from exc
+        raise KeyError(
+            f"unknown operator table {name!r}; known: {sorted(TABLE_SPECS)}"
+        ) from exc

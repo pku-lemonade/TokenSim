@@ -4,7 +4,7 @@ from TokenSim.config.model_config import ModelSpec
 from TokenSim.config.parallel_config import ParallelConfig, ParallelRankInfo
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.device import DeviceSpec
-from TokenSim.latency.base import LatencyBackend, backend_prefill_len
+from TokenSim.latency.base import LatencyBackend
 from TokenSim.latency.operator_table import (
     FALLBACK_POLICIES,
     OperatorStats,
@@ -32,6 +32,11 @@ def build_latency_backend(
     decode_context_bucket: int = 128,
     random_seed: int = 0,
     missing_report: MissingShapeReport | None = None,
+    moe_execution=None,
+    attention_backend: str = "generic",
+    mhc_backend: str = "generic",
+    expected_decode_query_len: int = 1,
+    max_num_seqs: int = 64,
 ) -> LatencyBackend:
     """Create the latency backend for one worker.
 
@@ -48,7 +53,9 @@ def build_latency_backend(
             f"unsupported latency backend {backend_type!r}; expected one of {BACKEND_TYPES}"
         )
     if fallback not in FALLBACK_POLICIES:
-        raise ConfigurationError(f"unsupported fallback policy {fallback!r}; expected one of {FALLBACK_POLICIES}")
+        raise ConfigurationError(
+            f"unsupported fallback policy {fallback!r}; expected one of {FALLBACK_POLICIES}"
+        )
     return OperatorTableLatencyBackend(
         device=device,
         model=model,
@@ -61,6 +68,11 @@ def build_latency_backend(
         decode_context_bucket=decode_context_bucket,
         random_seed=random_seed,
         missing_report=missing_report,
+        moe_execution=moe_execution,
+        attention_backend=attention_backend,
+        mhc_backend=mhc_backend,
+        expected_decode_query_len=expected_decode_query_len,
+        max_num_seqs=max_num_seqs,
     )
 
 
@@ -75,7 +87,6 @@ __all__ = [
     "LatencyBackend",
     "OperatorStats",
     "OperatorTableLatencyBackend",
-    "backend_prefill_len",
     "build_latency_backend",
     "effective_fallback",
 ]

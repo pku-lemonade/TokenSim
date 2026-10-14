@@ -3,7 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Sequence
 
-from TokenSim.comm.collectives import CollectiveEstimate, CollectiveModel, CollectiveQuery, EPAllToAllQuery
+from TokenSim.comm.collectives import (
+    CollectiveEstimate,
+    CollectiveModel,
+    CollectiveQuery,
+    EPAllToAllQuery,
+)
 from TokenSim.config.parallel_config import ParallelConfig, ParallelRankInfo
 from TokenSim.hardware.topology import TopologyPlacement
 
@@ -54,7 +59,9 @@ class ParallelStats:
     def record_event(self, event: ParallelSyncEvent) -> None:
         self.sync_event_count += 1
         self.latency_total += event.latency
-        self.link_type_counts[event.link_type] = self.link_type_counts.get(event.link_type, 0) + 1
+        self.link_type_counts[event.link_type] = (
+            self.link_type_counts.get(event.link_type, 0) + 1
+        )
         self.match_type_counts[event.match_type] = (
             self.match_type_counts.get(event.match_type, 0) + 1
         )
@@ -77,7 +84,8 @@ class ParallelStats:
             match_type_counts[match_type] = match_type_counts.get(match_type, 0) + count
         return ParallelStats(
             latency_total=self.latency_total + other.latency_total,
-            tp_collective_latency=self.tp_collective_latency + other.tp_collective_latency,
+            tp_collective_latency=self.tp_collective_latency
+            + other.tp_collective_latency,
             pp_transfer_latency=self.pp_transfer_latency + other.pp_transfer_latency,
             ep_all2all_latency=self.ep_all2all_latency + other.ep_all2all_latency,
             sync_event_count=self.sync_event_count + other.sync_event_count,
@@ -144,7 +152,9 @@ class ParallelCommunicator:
             pp = getattr(worker, "pp_rank", None)
             if kind == "tp" and dp == me.dp_rank and pp == me.pp_rank:
                 ids.append(worker.id)
-            elif kind == "ep" and pp == me.pp_rank and dp is not None and tp is not None:
+            elif (
+                kind == "ep" and pp == me.pp_rank and dp is not None and tp is not None
+            ):
                 # Only ranks that share this rank's copy of the experts take
                 # part in dispatch/combine (per_dp: the replica's TP ranks;
                 # global: every rank of the stage).
@@ -175,7 +185,9 @@ class ParallelCommunicator:
 
     # -- estimates ------------------------------------------------------------
 
-    def estimate_tp_collective(self, bytes_: int, operation: str = "all_reduce", count: int = 1) -> float:
+    def estimate_tp_collective(
+        self, bytes_: int, operation: str = "all_reduce", count: int = 1
+    ) -> float:
         """Latency (seconds) of ``count`` identical collectives over the TP group."""
         if self.parallel_config.tensor_parallel_size <= 1 or bytes_ <= 0 or count <= 0:
             return 0.0
@@ -183,19 +195,40 @@ class ParallelCommunicator:
         if len(group) <= 1:
             return 0.0
         estimate = self._collective(operation, bytes_, group)
-        latency = estimate.latency_s * count * self.parallel_config.tensor_parallel_collective_latency_scale
+        latency = (
+            estimate.latency_s
+            * count
+            * self.parallel_config.tensor_parallel_collective_latency_scale
+        )
         self._record("tp_collective", None, bytes_ * count, latency, group, estimate)
         return latency
 
     def estimate_pp_stage_transfer(self, bytes_: int, count: int = 1) -> float:
-        if self.parallel_config.pipeline_parallel_size <= 1 or bytes_ <= 0 or count <= 0:
+        if (
+            self.parallel_config.pipeline_parallel_size <= 1
+            or bytes_ <= 0
+            or count <= 0
+        ):
             return 0.0
         target = self.pp_next_worker()
         if target is None or target == self.worker_id:
             return 0.0
-        estimate = self.collective_model.point_to_point(bytes_, self.placement.layout([self.worker_id, target]))
-        latency = estimate.latency_s * count * self.parallel_config.pipeline_parallel_activation_latency_scale
-        self._record("pp_stage_transfer", target, bytes_ * count, latency, (self.worker_id, target), estimate)
+        estimate = self.collective_model.point_to_point(
+            bytes_, self.placement.layout([self.worker_id, target])
+        )
+        latency = (
+            estimate.latency_s
+            * count
+            * self.parallel_config.pipeline_parallel_activation_latency_scale
+        )
+        self._record(
+            "pp_stage_transfer",
+            target,
+            bytes_ * count,
+            latency,
+            (self.worker_id, target),
+            estimate,
+        )
         return latency
 
     def estimate_ep_all2all(
@@ -277,10 +310,17 @@ class ParallelCommunicator:
 
     # -- internals ---------------------------------------------------------------
 
-    def _collective(self, operation: str, bytes_: int, group: Sequence[int]) -> CollectiveEstimate:
+    def _collective(
+        self, operation: str, bytes_: int, group: Sequence[int]
+    ) -> CollectiveEstimate:
         layout = self.placement.layout(group)
         return self.collective_model.estimate(
-            CollectiveQuery(operation=operation, message_bytes=float(bytes_), layout=layout, dtype=self.dtype)
+            CollectiveQuery(
+                operation=operation,
+                message_bytes=float(bytes_),
+                layout=layout,
+                dtype=self.dtype,
+            )
         )
 
     def _record(
