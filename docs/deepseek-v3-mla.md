@@ -1,6 +1,8 @@
 # DeepSeek-V3 MLA 理论模拟
 
-实现沿用 TokenSim 的流程：**拆分算子 → 离线 Roofline 生成数据 → 运行时查表 → AF 资源和依赖调度**。不下载权重，不执行真实 GPU 推理。本文描述早期理论入口；后续已有 A800 算子测量。包含输入/输出算子、复用实测并显式列出理论补足项的整模型入口见 [完整 V3 decode 仿真](deepseek-v3-full-decode.md)。
+The DeepSeek V3 runner decomposes the model into operators and schedules their service estimates on AF resources.
+It simulates the complete model without loading checkpoints or executing GPU inference.
+Use `scripts/run_deepseek_mla.py` with `--operator-fallback analytical_only` for analytical estimates, or provide compatible operator packages for table lookups.
 
 ## 结构与边界
 

@@ -83,21 +83,15 @@ collective 输入是每 rank 的逻辑输入 M，实际 participants 必须与 g
 
 ## 验证与限制
 
-在仓库根目录运行 `python -B -m unittest TokenSim.validation.test_communication_domains TokenSim.validation.test_communication_correctness TokenSim.validation.test_placement_correctness`。基线在 `TokenSim/validation/communication_baseline_before.json`，它记录提交、源码指纹、配置和最小时间线，属于合成对照。固定 8 卡补充修复的场景与最新证据见 [placement_correctness_review.md](../validation/placement_correctness_review.md)，与原 17 项修复的历史记录分开保存。
 
-可运行配置位于 `TokenSim/validation/configs/dsv3-{compact,dedicated,mixed}.json`。compact 为 5 节点库存、33 卡活跃；另两份均为 9 节点库存、33 卡活跃，32F 的卡位完全一致，仅将 A 从第九节点移动到第一个 F 节点的空槽。这组受控 mixed 使用 manual 映射，不应与固定角色槽位的自动 mixed 策略混淆。配置仍需通过 `build_model_runtime` 加载目录中的完整 DSV3 ModelSpec。
 
-专项验证命令为 `python -B -m TokenSim.validation.communication_experiments --suite micro`，其他 suite 为 decode、service、hot-service、supplement、profile。decode 的三个重复样本使用独立子进程和系统峰值工作集，profile 单独归因 CPU 开销。结果单独写到 `TokenSim/validation/results`，不覆盖用户实验。service 明确采用单请求准入 FIFO 服务器，完整执行 61 层 prefill→decode，再回放固定到达序列；请求准入等待与网络域排队分列。2048-token 服务样本显式关闭既有 DAG 模板缓存以避免保留一次性大形状，通信服务/计划缓存保持开启，模型和任务不缩减。这些实验的结论适用于声明的准入策略。
 
 域级独占 FIFO 省略硬件实际多流共享；粗 phase 持有资源并集直到完成，可能延迟内部已空闲资源的释放。结果用于系统级趋势和瓶颈分析；需用固定路由和相同库存做敏感性对照，不能由 OpenSpec 校验或手算自洽宣称绝对硬件精度。
 
-验证套件运行后会在 `validation/results` 生成实施验证汇总、FIFO 与粗阶段偏差、公式迁移差异及原始 JSON。本提交保留独立通信快照的 [回归日志](../validation/results/communication_commit_regression.log)；此前包含其他 AFD 工作区改动的实验输出保留在本地，不作为本次提交的独立验证证据。
 
-实施后复查发现的 subgroup 全局输入等待、阶段测量的硬件适用范围以及 flat All-to-All 参数校验问题，已由 `fix-af-communication-correctness` 修复。原反例、修复状态及验证范围见 [known_communication_issues.md](../validation/known_communication_issues.md)。
 
 ## 通信纠错契约
 
-`fix-af-communication-correctness` 为正式 collective 保存按参与 endpoint 顺序排列的输入 producer 绑定。physical 模式下，入口子组只等待自己的输入，后续阶段等待相应 phase 完成；逻辑 collective 输出仍在全部阶段和本地重排完成后可用。输入事件、控制/host 依赖和 FIFO 排队均按调用创建，不进入静态缓存。单阶段 trace 也保留输入前驱；旧接口没有输入绑定时仍使用完整输入 barrier。
 
 flat All-to-All 仅支持 `local_fraction=null`、`remote_fraction=null`、`load_imbalance=1`、`destination_redistribution=false`。显式 fractions（即使数值恰好为均匀比例）、非默认 imbalance 和目标分发配置会报错并提示迁移至 physical。payload 表示每 rank 输入 M，wire bytes 标注为 per-rank 的 `M*(N-1)/N`；两模式均先检查整数 payload、dtype 对齐和统计参数，再处理 no-op 或缓存结果。合法零数据/单 rank 不申请网络资源。
 
@@ -116,5 +110,3 @@ flat All-to-All 仅支持 `local_fraction=null`、`remote_fraction=null`、`load
 适用组合按阶段 participants 顺序排列，设备别名先解析为真实 device_id。缺少 `participant_hardware_backends` 的旧记录仅从所属设备包推导同质范围，不能匹配异构阶段。测量来源设备/backend 和适用组合分别保留；来源相同的重复记录去重，不同来源的同时命中记录报冲突。
 
 数据包 backend 来自实际加载包的元数据，不等同于 NCCL/DeepEP 等 transport backend。旧记录缺少 transport 字段时仅匹配运行时也未声明 transport backend 的查询，输出 `transport_backend=unspecified`，不能据此声称匹配了具体传输库。table-only 缺少适用记录会报错，其他允许回退的模式使用解析估值。适用范围、传输 backend 和测量内容参与缓存身份。
-
-新增回归见 [test_communication_correctness.py](../validation/test_communication_correctness.py)，验收范围与场景映射见 [communication_correctness_review.md](../validation/communication_correctness_review.md)。域级 FIFO 和粗 phase 持有资源并集仍是模型近似。

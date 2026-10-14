@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "profile_id": "synthetic-control-operations",
+  "timing_scope": "operation_service",
+  "unit": "us",
+  "runtime_fingerprint": "filled-by-test",
+  "environment": {
+    "execution_mode": "eager",
+    "software_sha256": "test-software"
+  },
+  "batch_range": [
+    1,
+    8
+  ],
+  "context_range": [
+    129,
+    159
+  ],
+  "payload_bytes": 179,
+  "operations": {
+    "h2d": {
+      "fixed_us": 11,
+      "coverage": [
+        "control_staging"
+      ],
+      "input_ready": "prior_device_work_complete",
+      "completion": "cpu_api_return_data_ready",
+      "resource_model": "calling_thread_single_inflight"
+    },
+    "length_readback": {
+      "fixed_us": 11,
+      "coverage": [
+        "control_length_readback"
+      ],
+      "input_ready": "prior_device_work_complete",
+      "completion": "cpu_api_return_data_ready",
+      "resource_model": "calling_thread_single_inflight"
+    },
+    "payload_readback": {
+      "fixed_us": 11,
+      "coverage": [
+        "control_payload_readback"
+      ],
+      "input_ready": "prior_device_work_complete",
+      "completion": "cpu_api_return_data_ready",
+      "resource_model": "calling_thread_single_inflight"
+    }
+  },
+  "evidence": {
+    "source": "synthetic-operation-services",
+    "kind": "synthetic_test",
+    "external_wait_excluded": true,
+    "method": "equal_window_medians",
+    "windows": 3,
+    "training_batches": [
+      1,
+      8
+    ],
+    "heldout_batches": [
+      4
+    ],
+    "validation_status": "pending",
+    "statistics": {
+      "h2d": {
+        "p50_us": 11,
+        "p95_us": 11,
+        "samples": 200
+      },
+      "length_readback": {
+        "p50_us": 11,
+        "p95_us": 11,
+        "samples": 200
+      },
+      "payload_readback": {
+        "p50_us": 11,
+        "p95_us": 11,
+        "samples": 200
+      }
+    },
+    "audit": "Synthetic ready-input operation fixture."
+  }
+}

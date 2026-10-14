@@ -4,71 +4,7 @@ from dataclasses import replace
 from TokenSim.af.latency import AFEndpoint, AFTensorSlice
 from TokenSim.af.trace import AFTraceEvent, AFTraceRecorder
 from TokenSim.errors import SimulationStateError
-
-
-def _event(
-    node_id,
-    operation,
-    ready,
-    start,
-    end,
-    *,
-    predecessors=(),
-    resource="worker:0",
-    payload=None,
-    details=None,
-):
-    return AFTraceEvent(
-        iteration_id=7,
-        block_id=0,
-        layer_id=0,
-        phase="decode",
-        event_type="compute" if operation.startswith("compute") else "transfer",
-        operation=operation,
-        resource_id=resource,
-        resource_ids=(resource,),
-        ready_at=ready,
-        start_at=start,
-        end_at=end,
-        queue_duration=start - ready,
-        service_duration=end - start,
-        request_count=1,
-        token_count=1,
-        source_id="test",
-        node_id=node_id,
-        predecessor_ids=predecessors,
-        payload_bytes=payload,
-        details=details or {},
-    )
-
-
-def _valid_events():
-    return (
-        _event("c0", "compute_a", 0.0, 0.0, 1.0, resource="worker:0"),
-        _event("c1", "compute_a", 0.0, 0.0, 2.0, resource="worker:1"),
-        _event(
-            "send",
-            "af_a_to_f",
-            2.0,
-            2.0,
-            3.0,
-            predecessors=("c0", "c1"),
-            resource="link:a_to_f",
-            payload=32,
-            details={"payload_bytes": 32},
-        ),
-        _event(
-            "return",
-            "af_f_to_a",
-            3.0,
-            3.0,
-            4.0,
-            predecessors=("send",),
-            resource="link:f_to_a",
-            payload=16,
-            details={"payload_bytes": 16},
-        ),
-    )
+from tests.support.af_trace import _event, _valid_events
 
 
 class AFTraceInvariantTest(unittest.TestCase):
@@ -154,23 +90,17 @@ class AFTraceInvariantTest(unittest.TestCase):
             predecessor_ids=("send", "send-1"),
         )
 
-        self._recorder(
-            events, {"link:a_to_f": 2}
-        ).validate_invariants(7)
+        self._recorder(events, {"link:a_to_f": 2}).validate_invariants(7)
 
         events[3] = replace(events[3], logical_stage_id="duplicate-a-to-f")
         with self.assertRaisesRegex(SimulationStateError, "one af_a_to_f logical"):
-            self._recorder(
-                events, {"link:a_to_f": 2}
-            ).validate_invariants(7)
+            self._recorder(events, {"link:a_to_f": 2}).validate_invariants(7)
 
     def test_duplicate_tensor_copy_and_f_residual_are_rejected(self):
         events = list(_valid_events())
         source = AFEndpoint("a-domain", 0, "a:0", "a-device")
         target = AFEndpoint("f-domain", 0, "f:0", "f-device")
-        tensor_slice = AFTensorSlice(
-            "token0", (0, 8), "sharded", payload_bytes=16
-        )
+        tensor_slice = AFTensorSlice("token0", (0, 8), "sharded", payload_bytes=16)
         events[2] = replace(
             events[2],
             logical_stage_id="send-stage",
@@ -188,9 +118,7 @@ class AFTraceInvariantTest(unittest.TestCase):
                 leg_id="copy",
             ),
         )
-        events[4] = replace(
-            events[4], predecessor_ids=("send", "send-copy")
-        )
+        events[4] = replace(events[4], predecessor_ids=("send", "send-copy"))
         with self.assertRaisesRegex(SimulationStateError, "duplicate physical tensor"):
             self._recorder(events).validate_invariants(7)
 
