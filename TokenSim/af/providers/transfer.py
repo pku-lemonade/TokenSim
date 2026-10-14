@@ -6,7 +6,7 @@ from collections import Counter
 import math
 
 from TokenSim.af.caching.estimates import cached_estimate, cached_phase_estimate
-from TokenSim.af.providers.composition import (
+from TokenSim.af.providers.compute import (
     _compose_dataset_version,
     _compose_source_id,
     _worst_match,

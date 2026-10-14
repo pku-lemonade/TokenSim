@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 import math
 from typing import Literal, Mapping, Protocol
 
-from TokenSim.af.planning.batches import AFPhase
+from TokenSim.af.planning.batching import AFPhase
 
 
 # How a provider answered: measured row, interpolated between rows, extrapolated

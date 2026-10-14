@@ -1,20 +1,147 @@
-"""Operator estimate."""
+"""Compute-query validation, component provenance and service composition."""
 
 from __future__ import annotations
 
+from collections import Counter
+from dataclasses import dataclass, replace
 import math
+from typing import Any, Iterable, Mapping
 
 from TokenSim.af.caching.estimates import cached_estimate
-from TokenSim.af.providers.composition import (
-    _compose_dataset_version,
-    _compose_source_id,
-    _worst_match,
+from TokenSim.af.providers.queries import (
+    AFComputeQuery,
+    AFServiceEstimate,
+    AF_MATCH_TYPES,
 )
-from TokenSim.af.providers.queries import AFComputeQuery, AFServiceEstimate
 from TokenSim.comm.traffic import validated_bytes
 from TokenSim.dtypes import dtype_size_bytes
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.device import normalize_dtype
+from TokenSim.latency.operator_table import OperatorEstimate, OperatorResolver
+
+
+_MATCH_RANK = {name: rank for rank, name in enumerate(AF_MATCH_TYPES)}
+
+
+_COLLECTIVE_MATCH = {"measured": "exact"}
+
+
+def _worst_match(match_types: Iterable[str]) -> str:
+    """The least trustworthy match type of a composition (exact < ... < analytical)."""
+    worst = "exact"
+    for match_type in match_types:
+        if _MATCH_RANK.get(match_type, len(AF_MATCH_TYPES)) > _MATCH_RANK[worst]:
+            worst = match_type if match_type in _MATCH_RANK else "analytical"
+    return worst
+
+
+def _compose_source_id(source_ids: Iterable[str]) -> str:
+    unique = tuple(dict.fromkeys(source_ids))
+    if not unique:
+        return "composition:empty"
+    if len(unique) == 1:
+        return unique[0]
+    return "compose:" + ":".join(unique)
+
+
+def _compose_dataset_version(versions: Iterable[str]) -> str:
+    unique = tuple(dict.fromkeys(v for v in versions if v))
+    if not unique:
+        return "unknown"
+    if len(unique) == 1:
+        return unique[0]
+    return "compose:" + ":".join(unique)
+
+
+def _estimate_dataset_version(
+    resolver: OperatorResolver, estimate: OperatorEstimate
+) -> str:
+    """Label analytical estimates separately from a package row."""
+    if estimate.match_type == "analytical":
+        return f"analytical:{resolver.device.device_id}"
+    return resolver.dataset_version or f"unknown:{resolver.device.device_id}"
+
+
+@dataclass(frozen=True)
+class OperatorComponent:
+    """One operator of an AF stage and how it was priced."""
+
+    name: str
+    table: str
+    key: Mapping[str, Any]
+    latency_us: float
+    match_type: str
+    source_id: str
+    dataset_version: str = ""
+    covered_operations: tuple[str, ...] = ()
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "table": self.table,
+            "key": dict(self.key),
+            "latency_us": self.latency_us,
+            "match_type": self.match_type,
+            "source_id": self.source_id,
+            "dataset_version": self.dataset_version,
+            "covered_operations": self.covered_operations,
+        }
+
+
+def prefill_components(provider, resolver, query, tokens, common):
+    lengths = tuple(query.context_lengths) or (tokens,)
+    queries = tuple(query.query_lengths)
+    if not queries:
+        if sum(lengths) == tokens:
+            queries = lengths
+        elif tokens % len(lengths) == 0:
+            queries = (tokens // len(lengths),) * len(lengths)
+        else:
+            raise ValueError("uneven prefill requires per-request query_lengths")
+    if (
+        len(queries) != len(lengths)
+        or sum(queries) != tokens
+        or any(
+            type(q) is not int or q < 1 or type(k) is not int or k < q
+            for q, k in zip(queries, lengths)
+        )
+    ):
+        raise ValueError("prefill query lengths must fit their per-request KV contexts")
+    components = []
+    for (q, k), count in sorted(Counter(zip(queries, lengths)).items()):
+        key = {**common, "batch_size": count, "input_seq_len": q}
+        if k > q:
+            key["context_len"] = k
+        component = provider._component(
+            resolver, "attention_core", "context_attention", key
+        )
+        if k > q and component.match_type != "analytical":
+            base = resolver.analytical_reference_us(
+                "context_attention",
+                {name: value for name, value in key.items() if name != "context_len"},
+            )
+            full = resolver.analytical_reference_us("context_attention", key)
+            if base is None or full is None or base <= 0:
+                raise ConfigurationError(
+                    "cached prefill requires an analytical growth reference"
+                )
+            previous = component.match_type
+            for counter in (
+                resolver.stats.match_type_counts,
+                resolver.stats.table_match_counts["context_attention"],
+            ):
+                counter[previous] -= 1
+                if counter[previous] == 0:
+                    del counter[previous]
+            resolver.stats.record("context_attention", "extrapolated")
+            component = replace(
+                component,
+                latency_us=component.latency_us * max(1.0, full / base),
+                match_type="extrapolated",
+                source_id=f"prefix_scaled:{component.source_id}",
+            )
+        components.append(component)
+    return components
 
 
 class ComputeEstimateMixin:
@@ -233,3 +360,109 @@ class ComputeEstimateMixin:
                 ),
             },
         )
+
+    def _validate_local_work(self, query: AFComputeQuery) -> tuple[int, int]:
+        context = (
+            f"operation={query.operation!r}, stage={query.stage!r}, "
+            f"domain={query.source_domain!r}, dp_rank={query.dp_rank}, "
+            f"tp_rank={query.tp_rank}, ep_rank={query.ep_rank}"
+        )
+        if query.local_token_count is None or query.local_token_count < 1:
+            raise ValueError(
+                f"AF compute query missing positive local_token_count; {context}"
+            )
+        if query.token_count != query.local_token_count:
+            raise ValueError(
+                f"AF compute query token_count={query.token_count} does not match "
+                f"local_token_count={query.local_token_count}; {context}"
+            )
+        shape = query.local_shape
+        required = ("tokens", "hidden_size", "global_hidden_size", "tp_size")
+        missing = sorted(set(required) - set(shape))
+        if missing:
+            raise ValueError(
+                f"AF compute query missing local_shape fields {missing}; {context}"
+            )
+        values = {name: shape[name] for name in required}
+        if any(type(value) is not int or value < 1 for value in values.values()):
+            raise ValueError(
+                f"AF compute query local_shape must contain positive integers; "
+                f"local_shape={dict(shape)!r}; {context}"
+            )
+        if values["tokens"] != query.local_token_count:
+            raise ValueError(
+                f"AF compute query local_shape tokens={values['tokens']} does not "
+                f"match local_token_count={query.local_token_count}; {context}"
+            )
+        if values["global_hidden_size"] != self.model.hidden_size:
+            raise ValueError(
+                f"AF compute query global_hidden_size={values['global_hidden_size']} "
+                f"does not match model hidden_size={self.model.hidden_size}; {context}"
+            )
+        expected_hidden = (
+            values["hidden_size"]
+            if query.stage in {"encode", "decode"}
+            else (
+                self.model.hidden_size
+                if query.stage
+                in {
+                    "router",
+                    "attention",
+                    "dense_ffn",
+                    "shared_expert",
+                    "routed_expert",
+                }
+                or (
+                    query.stage == "layout"
+                    and query.operation
+                    in {
+                        "post_attention_norm",
+                        "embedding_lookup",
+                        "final_norm",
+                        "lm_head",
+                        "token_selection",
+                    }
+                )
+                else math.ceil(self.model.hidden_size / values["tp_size"])
+            )
+        )
+        if values["hidden_size"] != expected_hidden:
+            raise ValueError(
+                f"AF compute query local hidden_size={values['hidden_size']} does not "
+                f"match expected={expected_hidden}; {context}"
+            )
+        return query.local_token_count, values["tp_size"]
+
+    @staticmethod
+    def _validate_expert_workload(
+        query: AFComputeQuery, tokens: int, num_experts: int
+    ) -> tuple[tuple[int, int], ...]:
+        workload = tuple(query.expert_workload)
+        if not workload:
+            raise ValueError(
+                "MoE expert_rank_compute requires non-empty expert_workload; "
+                f"domain={query.source_domain!r}, ep_rank={query.ep_rank}, "
+                f"local_token_count={tokens}"
+            )
+        expert_ids = [expert_id for expert_id, _ in workload]
+        if len(expert_ids) != len(set(expert_ids)):
+            raise ValueError("expert_workload contains duplicate expert ids")
+        if any(expert_id < 0 or count < 1 for expert_id, count in workload):
+            raise ValueError(
+                "expert_workload requires non-negative ids and positive counts"
+            )
+        if any(expert_id >= num_experts for expert_id in expert_ids):
+            raise ValueError(
+                f"expert_workload contains expert id outside model range [0, {num_experts})"
+            )
+        if tuple(query.expert_ids) != tuple(expert_ids):
+            raise ValueError(
+                f"expert_ids={tuple(query.expert_ids)!r} does not match "
+                f"expert_workload ids={tuple(expert_ids)!r}"
+            )
+        workload_tokens = sum(count for _, count in workload)
+        if workload_tokens != tokens:
+            raise ValueError(
+                f"expert_workload total={workload_tokens} does not match local_token_count={tokens}"
+            )
+        return workload

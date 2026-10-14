@@ -5,7 +5,7 @@ import unittest
 import simpy
 
 from TokenSim.af.execution.executor import AFExecutor
-from TokenSim.af.execution.readiness import TransferReadiness
+from TokenSim.af.execution.communication import TransferReadiness
 from TokenSim.af.factory import build_model_runtime, simulate_decode
 from TokenSim.af.providers.queries import AFServiceEstimate
 from TokenSim.errors import ConfigurationError

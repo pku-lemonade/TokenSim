@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from TokenSim.af.runtime.cache import kv_head_partitions
+from TokenSim.af.runtime.topology import kv_head_partitions
 from TokenSim.errors import ConfigurationError
 
 

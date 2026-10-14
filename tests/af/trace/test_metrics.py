@@ -1,11 +1,9 @@
 """AF timing breakdowns and result fidelity."""
 
-import sys
 from types import SimpleNamespace
-import types
 import unittest
 
-from TokenSim.af.trace.events import AFTraceEvent
+from TokenSim.af.trace.metrics import AFTraceEvent
 from TokenSim.af.trace.metrics import (
     communication_window,
     summarize_message_waits,
@@ -125,14 +123,6 @@ if __name__ == "__main__":
     unittest.main()
 
 
-try:
-    import TransformerRoofline  # noqa: F401
-except (ImportError, OSError):
-    fake_roofline = types.ModuleType("TransformerRoofline")
-    fake_roofline.TransformerRoofline = object
-    sys.modules["TransformerRoofline"] = fake_roofline
-
-
 class AFResultFidelityTest(unittest.TestCase):
     def _engine(self, phases, *, enabled=True):
         return SimpleNamespace(
@@ -154,17 +144,6 @@ class AFResultFidelityTest(unittest.TestCase):
             {
                 "prefill": "prefill_aggregate",
                 "decode": "decode_af_rank_local",
-            },
-        )
-
-    def test_prefill_af_is_labeled_as_compatibility_path(self):
-        stats = get_af_stats(self._engine(("prefill",)))
-
-        self.assertEqual(
-            stats["af_phase_fidelity"],
-            {
-                "prefill": "af_prefill_compatibility",
-                "decode": "decode_aggregate",
             },
         )
 

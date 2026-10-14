@@ -1,10 +1,16 @@
-"""Planner compute."""
+"""Rank-local compute nodes, expert grouping and router-logit transfers."""
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any, Mapping
 
-from TokenSim.af.planning.nodes import ExecutionNode, ExecutionStage, RankLocalWork
+from TokenSim.af.planning.nodes import (
+    ExecutionNode,
+    ExecutionStage,
+    RankLocalWork,
+    _TransferCopy,
+)
 from TokenSim.af.providers.queries import AFRoutingEdge, AFTensorLayout, AFTensorSlice
 from TokenSim.config.af.domains import ExecutionDomainConfig
 from TokenSim.dtypes import dtype_size_bytes
@@ -271,3 +277,178 @@ class ComputeNodePlannerMixin:
         )
         nodes.append(node)
         return node
+
+    def _append_router_logits(
+        self,
+        *,
+        nodes,
+        tokens,
+        a_leader,
+        f_service_bindings,
+        router_id,
+        layer,
+        link,
+        prefix,
+        layer_id,
+        arrivals,
+    ):
+        dtype = self.runtime_plan.dtypes_for_link(link.name).a_to_f_dtype
+        target = f_service_bindings[0]
+        logits_copies = tuple(
+            _TransferCopy(
+                source_binding=a_leader,
+                target_binding=target,
+                tensor_slice=AFTensorSlice(
+                    tensor_item_id=f"request:{request}:token:{token}:router_logits",
+                    interval=(0, layer.num_experts),
+                    layout="replicated",
+                    owner_domain=a_leader.domain,
+                    owner_domain_rank=a_leader.domain_rank,
+                    owner_dp_rank=a_leader.dp_rank,
+                    owner_tp_rank=a_leader.tp_rank,
+                    owner_physical_worker=a_leader.physical_identity,
+                    canonical_producer=router_id,
+                    element_count=layer.num_experts,
+                    payload_bytes=layer.num_experts
+                    * dtype_size_bytes(dtype, role="a_to_f_dtype"),
+                ),
+                predecessor_id=router_id,
+                consumer_id="expert_logits",
+                source_layout="replicated",
+                target_layout="replicated",
+            )
+            for request, token in tokens
+        )
+        logits_arrivals = self._append_transfer_stage(
+            nodes,
+            logical_stage_id=f"{prefix}:router_logits",
+            operation="af_router_logits",
+            direction="a_to_f",
+            copies=logits_copies,
+            link=link,
+            layer_type="moe",
+            layer_id=layer_id,
+        )
+        arrivals = {
+            name: tuple(dict.fromkeys((*preds, *logits_arrivals["expert_logits"])))
+            for name, preds in arrivals.items()
+        }
+        return arrivals
+
+
+def group_routed_expert_nodes(
+    nodes: tuple[ExecutionNode, ...]
+) -> tuple[ExecutionNode, ...]:
+    """Group the independent expert branches of one block/layer runtime DAG.
+
+    Keep every routing edge and output transfer/collective. Only the compute
+    execution boundary changes; the group waits for all of its inputs.
+    """
+    groups: dict[tuple, list[ExecutionNode]] = {}
+    for node in nodes:
+        if node.stage != "routed_expert" or node.kind != "compute":
+            continue
+        work = node.local_work
+        if work is None:
+            raise ConfigurationError("routed expert missing local work")
+        # The prefix encodes iteration/block/layer. Domain/rank and layouts are
+        # included even if two logical workers share a physical GPU.
+        key = (
+            node.node_id.split(":routed:")[0],
+            node.physical_workers,
+            node.source_domain,
+            node.target_domain,
+            node.domain_ranks,
+            node.dp_rank,
+            node.tp_rank,
+            node.ep_rank,
+            node.tp_group,
+            node.ep_group,
+            node.layer_type,
+            node.logical_participants,
+            work.source_dtype,
+            work.target_dtype,
+            work.source_layout,
+            work.target_layout,
+            tuple((k, v) for k, v in work.tensor_shape if k != "tokens"),
+        )
+        groups.setdefault(key, []).append(node)
+    aliases = {}
+    replacements = {}
+    by_id = {node.node_id: node for node in nodes}
+    for group in groups.values():
+        if len(group) < 2:
+            continue
+        member_ids = {node.node_id for node in group}
+        pending = [pred for node in group for pred in node.predecessor_ids]
+        visited = set()
+        while pending:
+            pred = pending.pop()
+            if pred in member_ids:
+                raise ConfigurationError("cannot group dependent routed expert nodes")
+            if pred not in visited:
+                visited.add(pred)
+                pending.extend(by_id[pred].predecessor_ids)
+        first = group[0]
+        edges = tuple(edge for node in group for edge in node.local_work.routing_edges)
+        workload = tuple(
+            sorted(pair for node in group for pair in node.local_work.expert_workload)
+        )
+        if len({expert for expert, _ in workload}) != len(workload):
+            raise ConfigurationError("expert group contains duplicate expert workloads")
+        count = sum(value for _, value in workload)
+        shape = dict(first.local_work.tensor_shape)
+        shape["tokens"] = count
+        work = replace(
+            first.local_work,
+            token_count=count,
+            tensor_shape=tuple(sorted(shape.items())),
+            expert_ids=tuple(expert for expert, _ in workload),
+            expert_workload=workload,
+            assignment_count=count,
+            original_token_count=len(
+                {(edge.request_id, edge.token_id) for edge in edges}
+            ),
+            output_token_count=count,
+            routing_edges=edges,
+            tensor_slices=tuple(
+                item for node in group for item in node.local_work.tensor_slices
+            ),
+        )
+        group_id = (
+            first.node_id.split(":routed:")[0]
+            + ":routed:group:"
+            + first.node_id.split(":routed:")[1]
+        )
+        aliases.update({node.node_id: group_id for node in group})
+        replacements[first.node_id] = replace(
+            first,
+            node_id=group_id,
+            local_work=work,
+            routing_edges=edges,
+            tensor_slices=tuple(item for node in group for item in node.tensor_slices),
+            predecessor_ids=tuple(
+                dict.fromkeys(pred for node in group for pred in node.predecessor_ids)
+            ),
+            metadata={
+                **first.metadata,
+                "execution_unit": "expert_group",
+                "member_node_ids": tuple(node.node_id for node in group),
+            },
+        )
+    result = []
+    for node in nodes:
+        if node.node_id in aliases and node.node_id not in replacements:
+            continue
+        node = replacements.get(node.node_id, node)
+        result.append(
+            replace(
+                node,
+                predecessor_ids=tuple(
+                    dict.fromkeys(
+                        aliases.get(pred, pred) for pred in node.predecessor_ids
+                    )
+                ),
+            )
+        )
+    return tuple(result)

@@ -5,7 +5,7 @@ import unittest
 
 from TokenSim.af.providers.operator_table import OperatorTableAFComputeProvider
 from TokenSim.af.providers.queries import AFComputeQuery
-from TokenSim.af.runtime.cache import kv_head_partitions
+from TokenSim.af.runtime.topology import kv_head_partitions
 from TokenSim.errors import ConfigurationError
 from TokenSim.operator_data.analytical import Calibration, analytical_model_for
 from TokenSim.operator_data.lookup import (

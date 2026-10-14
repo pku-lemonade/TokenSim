@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import replace
 import unittest
 
-from TokenSim.af.runtime.cache import kv_head_partitions
+from TokenSim.af.runtime.topology import kv_head_partitions
 from TokenSim.errors import ConfigurationError
 from tests.af.support.parallel import _cluster
 from tests.af.support.runtime import _moe_config, _runtime_hardware, _runtime_plan

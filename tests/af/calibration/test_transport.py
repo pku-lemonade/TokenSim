@@ -2,7 +2,7 @@ import copy
 from dataclasses import asdict
 import unittest
 
-from TokenSim.af.calibration.transport import TransportServiceProfile
+from TokenSim.af.calibration.services import TransportServiceProfile
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.domains import CommunicationDomainConfig, MODEL_VERSION
 from tests.af.support.native_fixture import NativeFixture

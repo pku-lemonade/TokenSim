@@ -3,7 +3,7 @@
 from dataclasses import replace
 
 from TokenSim.af.execution.executor import AFExecutor
-from TokenSim.af.execution.request_work import request_work
+from TokenSim.af.planning.batching import request_work
 from TokenSim.af.planning.dag import AFExecutionDAG
 from TokenSim.af.planning.nodes import ExecutionNode, RankLocalWork
 from TokenSim.af.providers.queries import AFEndpoint

@@ -5,8 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from TokenSim.af.planning.batches import AFIteration, AFPhase
-from TokenSim.af.planning.batching import phase_for_requests
+from TokenSim.af.planning.batching import AFIteration, AFPhase, phase_for_requests
 from TokenSim.errors import ConfigurationError
 
 

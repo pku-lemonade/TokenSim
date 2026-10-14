@@ -3,7 +3,7 @@ import unittest
 from unittest.mock import patch
 
 from TokenSim.af.factory import build_model_runtime
-from TokenSim.af.planning.batches import AFBlock
+from TokenSim.af.planning.batching import AFBlock
 from TokenSim.af.planning.dag import AFExecutionDAG
 from TokenSim.af.planning.planner import ParallelExecutionPlanner
 from TokenSim.moe.config import MoEModelConfig

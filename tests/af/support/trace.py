@@ -2,8 +2,8 @@
 
 from dataclasses import replace
 
-from TokenSim.af.planning.batches import AFIteration
-from TokenSim.af.trace.events import AFTraceEvent
+from TokenSim.af.planning.batching import AFIteration
+from TokenSim.af.trace.metrics import AFTraceEvent
 from TokenSim.af.trace.recorder import AFTraceRecorder
 
 

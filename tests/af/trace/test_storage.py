@@ -7,8 +7,8 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
-from TokenSim.af.planning.batches import AFIteration
-from TokenSim.af.trace.events import AFTraceEvent
+from TokenSim.af.planning.batching import AFIteration
+from TokenSim.af.trace.metrics import AFTraceEvent
 from TokenSim.af.trace.recorder import AFTraceRecorder
 from TokenSim.errors import SimulationStateError
 from TokenSim.reporting import get_af_stats

@@ -5,7 +5,7 @@ from __future__ import annotations
 import simpy
 
 from TokenSim.af.providers.queries import AFComputeQuery
-from TokenSim.af.trace.events import AFTraceEvent
+from TokenSim.af.trace.metrics import AFTraceEvent
 from TokenSim.errors import SimulationStateError
 
 

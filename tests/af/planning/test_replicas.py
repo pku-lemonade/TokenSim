@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from TokenSim.af.planning.replicas import IndependentRoundRobinAFReplicaSelector
+from TokenSim.af.planning.planner import IndependentRoundRobinAFReplicaSelector
 from TokenSim.config.af.domains import (
     DomainParallelConfig,
     DomainRankMapping,

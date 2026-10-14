@@ -4,7 +4,7 @@ from collections import Counter
 from dataclasses import replace
 import unittest
 
-from TokenSim.af.planning.batches import AFBlock
+from TokenSim.af.planning.batching import AFBlock
 from TokenSim.af.planning.dag import AFExecutionDAG
 from TokenSim.af.planning.nodes import ExecutionNode, RankLocalWork
 from TokenSim.af.planning.planner import ParallelExecutionPlanner

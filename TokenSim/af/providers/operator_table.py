@@ -4,17 +4,17 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Sequence
 
-from TokenSim.af.caching.estimates import initialize_cache, traffic_feature_fingerprint
-from TokenSim.af.caching.snapshots import ConfigurationOwner, HardwareSnapshot, snapshot
-from TokenSim.af.providers.collectives import TransferCollectiveMixin
+from TokenSim.af.caching.estimates import (
+    ConfigurationOwner,
+    HardwareSnapshot,
+    initialize_cache,
+    snapshot,
+    traffic_feature_fingerprint,
+)
 from TokenSim.af.providers.components import ComputeComponentsMixin
-from TokenSim.af.providers.composition import OperatorComponent
 from TokenSim.af.providers.compute import ComputeEstimateMixin
-from TokenSim.af.providers.mla import MLAComputeMixin
-from TokenSim.af.providers.setup import TransferSetupMixin
 from TokenSim.af.providers.traffic import TransferPlanMixin
 from TokenSim.af.providers.transfer import TransferEstimateMixin
-from TokenSim.af.providers.validation import ComputeValidationMixin
 from TokenSim.config.model_config import ModelSpec
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.domains import MODEL_VERSION
@@ -29,11 +29,7 @@ from TokenSim.operator_data.lookup import LookupPolicy
 
 
 class OperatorTableAFComputeProvider(
-    ComputeEstimateMixin,
-    MLAComputeMixin,
-    ComputeComponentsMixin,
-    ComputeValidationMixin,
-    ConfigurationOwner,
+    ComputeEstimateMixin, ComputeComponentsMixin, ConfigurationOwner
 ):
     """Compose rank-local attention, FFN and model-boundary operator estimates.
 
@@ -143,11 +139,7 @@ class OperatorTableAFComputeProvider(
 
 
 class TopologyAFTransferProvider(
-    TransferSetupMixin,
-    TransferPlanMixin,
-    TransferEstimateMixin,
-    TransferCollectiveMixin,
-    ConfigurationOwner,
+    TransferPlanMixin, TransferEstimateMixin, ConfigurationOwner
 ):
     """Price static AF traffic with node domains or flat alpha-beta links.
 

@@ -7,25 +7,23 @@ from typing import Any
 
 import simpy
 
-from TokenSim.af.caching.estimates import FrozenDict
-from TokenSim.af.caching.snapshots import ConfigurationOwner, snapshot
+from TokenSim.af.caching.estimates import ConfigurationOwner, FrozenDict, snapshot
 from TokenSim.af.calibration.host import HostOverheadProfile, runtime_fingerprint
-from TokenSim.af.calibration.operation import OperationServiceProfile
 from TokenSim.af.calibration.routing import RoutingReplay
+from TokenSim.af.calibration.services import OperationServiceProfile
 from TokenSim.af.communication.resources import AFResourceRegistry
 from TokenSim.af.execution.communication import ExecutorCommunicationMixin
 from TokenSim.af.execution.compute import ExecutorComputeMixin
 from TokenSim.af.execution.control import NativeControlMixin
-from TokenSim.af.execution.host import ExecutorHostMixin
 from TokenSim.af.execution.iteration import ExecutorIterationMixin
-from TokenSim.af.execution.native_order import NativeOrderMixin
-from TokenSim.af.execution.stages import ExecutorResourcesMixin
+from TokenSim.af.execution.services import ExecutorHostMixin
 from TokenSim.af.execution.submission import ExecutorSubmissionMixin
 from TokenSim.af.execution.transport import ExecutorTransportMixin
-from TokenSim.af.planning.batches import AFBlock, AFIteration
-from TokenSim.af.planning.batching import AFBlockBuilder
-from TokenSim.af.planning.planner import ParallelExecutionPlanner
-from TokenSim.af.planning.replicas import IndependentRoundRobinAFReplicaSelector
+from TokenSim.af.planning.batching import AFBlock, AFBlockBuilder, AFIteration
+from TokenSim.af.planning.planner import (
+    IndependentRoundRobinAFReplicaSelector,
+    ParallelExecutionPlanner,
+)
 from TokenSim.af.providers.queries import (
     AFComputeLatencyProvider,
     AFServiceEstimate,
@@ -34,9 +32,7 @@ from TokenSim.af.providers.queries import (
 )
 from TokenSim.af.runtime.plan import AFRuntimePlan
 from TokenSim.af.trace.recorder import AFTraceRecorder
-from TokenSim.config.cluster_config import ClusterConfig
-from TokenSim.config.cluster_config import WorkerConfig
-from TokenSim.dtypes import dtype_size_bytes
+from TokenSim.config.cluster_config import ClusterConfig, WorkerConfig
 from TokenSim.errors import ConfigurationError, SimulationStateError
 from TokenSim.moe.routing import ExpertRouting
 
@@ -48,8 +44,6 @@ class AFExecutor(
     ExecutorComputeMixin,
     ExecutorCommunicationMixin,
     ExecutorTransportMixin,
-    ExecutorResourcesMixin,
-    NativeOrderMixin,
     NativeControlMixin,
     ConfigurationOwner,
 ):

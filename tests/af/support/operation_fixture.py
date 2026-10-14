@@ -8,7 +8,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 from TokenSim.af.calibration.host import runtime_fingerprint
-from TokenSim.af.calibration.operation import OperationServiceProfile
+from TokenSim.af.calibration.services import OperationServiceProfile
 from TokenSim.af.factory import build_model_runtime
 from tests.af.support import host_fixture as fixed, profile_fixture as host
 

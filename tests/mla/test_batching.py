@@ -2,7 +2,7 @@ from dataclasses import replace
 from tempfile import TemporaryDirectory
 import unittest
 
-from TokenSim.af.planning.grouping import group_routed_expert_nodes
+from TokenSim.af.planning.compute import group_routed_expert_nodes
 from TokenSim.af.planning.nodes import ExecutionNode, RankLocalWork
 from TokenSim.af.providers.queries import AFRoutingEdge
 from TokenSim.errors import ConfigurationError

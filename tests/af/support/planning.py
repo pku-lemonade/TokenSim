@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from TokenSim.af.planning.batches import AFBlock, AFBlockPlacement
+from TokenSim.af.planning.batching import AFBlock
+from TokenSim.af.planning.batching import AFBlockPlacement
 from TokenSim.af.planning.planner import ParallelExecutionPlanner
 from TokenSim.af.runtime.compiler import compile_af_runtime_plan
 from TokenSim.moe.config import MoEModelConfig

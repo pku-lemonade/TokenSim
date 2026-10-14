@@ -5,10 +5,10 @@ from __future__ import annotations
 from dataclasses import replace
 
 from TokenSim.af.caching.estimates import prepare_query
-from TokenSim.af.planning.batches import AFBlock
+from TokenSim.af.planning.batching import AFBlock
 from TokenSim.af.planning.nodes import ExecutionNode
 from TokenSim.af.providers.queries import AFComputeQuery, AFServiceEstimate
-from TokenSim.af.trace.events import AFTraceEvent
+from TokenSim.af.trace.metrics import AFTraceEvent
 from TokenSim.errors import SimulationStateError
 
 

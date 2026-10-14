@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
-from TokenSim.af.planning.batches import AFBlock
+from TokenSim.af.planning.batching import AFBlock
 from TokenSim.af.planning.nodes import ExecutionNode, _TransferCopy
 from TokenSim.af.providers.queries import AFEndpoint, AFRoutingEdge, AFTensorSlice
 from TokenSim.dtypes import dtype_size_bytes

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import simpy
 
-from TokenSim.af.planning.batches import AFBlock, AFIteration
+from TokenSim.af.planning.batching import AFBlock, AFIteration
 from TokenSim.af.planning.dag import AFExecutionDAG
 from TokenSim.af.planning.nodes import ExecutionNode
 from TokenSim.config.af.links import AFLinkConfig

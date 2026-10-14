@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from typing import Any
-from TokenSim.af.runtime.cache import AFCacheConfig
+from TokenSim.af.runtime.topology import AFCacheConfig
 from TokenSim.af.providers.queries import AFComputeLatencyProvider
 from TokenSim.af.providers.queries import AFTransferLatencyProvider
 from TokenSim.af.execution.executor import AFExecutor
-from TokenSim.af.planning.batches import AFIteration
+from TokenSim.af.planning.batching import AFIteration
 from TokenSim.af.communication.resources import AFResourceRegistry
 from TokenSim.af.runtime.plan import AFRuntimePlan
 from TokenSim.af.runtime.compiler import compile_af_runtime_plan

@@ -3,7 +3,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 import unittest
 
-from TokenSim.af.planning.batches import AFBlock
+from TokenSim.af.planning.batching import AFBlock
 from TokenSim.af.planning.batching import AFBlockBuilder
 from TokenSim.af.planning.dag import AFExecutionDAG
 from TokenSim.af.planning.nodes import ExecutionNode, RankLocalWork

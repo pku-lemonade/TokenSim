@@ -4,7 +4,7 @@ import unittest
 
 import simpy
 
-from TokenSim.af.communication.scheduler import DomainScheduler
+from TokenSim.af.communication.resources import DomainScheduler
 from TokenSim.comm.traffic import collective_plan, ring_volume
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.domains import CommunicationDomainConfig, transmission_service

@@ -5,7 +5,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 import unittest
 
-from TokenSim.af.runtime.cache import AFCacheConfig
+from TokenSim.af.runtime.topology import AFCacheConfig
 from TokenSim.block.block import Device
 from TokenSim.block.replica_kv import ReplicaKVBlockManager
 from TokenSim.config.config import KVTransferConfig

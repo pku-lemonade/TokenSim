@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
-from TokenSim.af.caching.snapshots import snapshot
-from TokenSim.af.planning.batches import AFBlock
+from TokenSim.af.planning.batching import AFBlock
 from TokenSim.af.planning.dag import AFExecutionDAG
 from TokenSim.af.planning.nodes import ExecutionNode
 from TokenSim.config.af.domains import ExecutionDomainConfig

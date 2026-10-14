@@ -5,10 +5,9 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import Any, Mapping
 
-from TokenSim.af.caching.snapshots import snapshot
-from TokenSim.af.planning.batches import AFBlock
+from TokenSim.af.planning.batching import AFBlock
+from TokenSim.af.planning.compute import group_routed_expert_nodes
 from TokenSim.af.planning.dag import AFExecutionDAG
-from TokenSim.af.planning.grouping import group_routed_expert_nodes
 from TokenSim.af.planning.nodes import ExecutionNode, _TransferCopy
 from TokenSim.af.providers.queries import AFRoutingEdge
 from TokenSim.config.af.domains import ExecutionDomainConfig

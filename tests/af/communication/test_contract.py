@@ -8,7 +8,7 @@ from unittest.mock import patch
 import simpy
 
 from TokenSim.af.execution.executor import AFExecutor
-from TokenSim.af.planning.batches import AFBlock
+from TokenSim.af.planning.batching import AFBlock
 from TokenSim.af.planning.dag import AFExecutionDAG
 from TokenSim.af.planning.nodes import ExecutionNode, RankLocalWork
 from TokenSim.af.providers.operator_table import TopologyAFTransferProvider
