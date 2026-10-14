@@ -38,6 +38,7 @@ class DomainScheduler:
         self._waiters = {}
         self._priorities = set()
         self._resource_queues = {}
+        self._active_queue_keys = set()
         self._serial = 0
         self._scheduled = False
 
@@ -59,6 +60,7 @@ class DomainScheduler:
         self._priorities.add(request.priority)
         self._serial += 1
         for key in keys:
+            self._active_queue_keys.add(key)
             heapq.heappush(
                 self._resource_queues.setdefault(key, []),
                 (request.priority, self._serial, request),
@@ -80,7 +82,7 @@ class DomainScheduler:
         self._scheduled = False
         candidates = {
             id(request): request
-            for key in self._resource_queues
+            for key in tuple(self._active_queue_keys)
             if (request := self._front(key)) is not None
         }
         for request in sorted(candidates.values(), key=lambda item: item.priority):
@@ -95,12 +97,16 @@ class DomainScheduler:
             for key in request.keys:
                 self.owners[key] = request
                 heapq.heappop(self._resource_queues[key])
+                if not self._resource_queues[key]:
+                    self._active_queue_keys.discard(key)
             request.event.succeed()
 
     def _front(self, key):
         queue = self._resource_queues[key]
         while queue and queue[0][2].cancelled:
             heapq.heappop(queue)
+        if not queue:
+            self._active_queue_keys.discard(key)
         return queue[0][2] if queue else None
 
     @property

@@ -78,6 +78,11 @@ Both corrected candidates have an assumed 1M context limit.
 Neither corrected architecture is identified as NVIDIA's scaled GPT-OSS deployment.
 The independent four-layer `gpt-oss-draft-proxy` retains public GPT-OSS width and precision instead of inheriting the target's widened geometry.
 Draft quality and acceptance require external measurements.
+Corrected candidates use seeded, stateless uniform top-k sampling without replacement.
+The generic routing default remains cyclic for historical reproducibility.
+Consecutive cyclic experts can share a contiguous EP owner and impose correlated single-token load.
+`--routing-selection cyclic` provides that placement-sensitive comparison.
+Real router correlations and expert hotness are unmeasured.
 
 ## Run and inspect
 
@@ -87,6 +92,8 @@ The default sweep declares eight topologies and three client counts in `experime
 FFN stages remain shared across those request streams.
 Capacity failures are exported and excluded from Pareto frontiers.
 The whole-model CPU simulation can take substantial time because routing, physical dependencies and trace invariants are evaluated explicitly.
+`--jobs` runs independent points in isolated processes and does not change their simulated resource sharing or power.
+Sequential and parallel point results have deterministic-equivalence coverage.
 
 ```bash
 python scripts/reproduce_lpx.py \
@@ -94,6 +101,7 @@ python scripts/reproduce_lpx.py \
   --cases rubin-tp8 af-tp8 pd-tp16 draft-tp8 \
   --batches 1 \
   --measurement-turns 1 \
+  --jobs 4 \
   --plot \
   --output outputs/lpx-native-reproduction
 ```
@@ -126,6 +134,7 @@ python scripts/reproduce_lpx.py \
 
 `--cached-tokens`, `--new-tokens`, `--output-tokens`, `--prefill-chunk` and `--acceptance` override workload inputs.
 `--config`, `--model`, `--draft-model` and `--cases` select explicit configurations.
+`--routing-selection` overrides the uniform selection rule on both target and drafter.
 `--trace` retains complete native events for client-count-one points.
 `--audit-only` checks one resident full-attention layer and a rejected whole-model placement on 8 Rubin GPUs and 256 LP30 chips.
 `--rubin-watts` and `--lp30-watts` override processor power.

@@ -33,5 +33,6 @@ def describe_model(model):
         "nonexpert_weight_dtype": model.dtype,
         "activation_dtype": model.activation_dtype,
         "kv_cache_dtype": model.kv_cache_dtype,
+        "uniform_expert_selection": model.moe.routing.uniform_selection,
         "architecture_assumption": model.sources.get("assumption-scaled-gpt-oss", {}),
     }

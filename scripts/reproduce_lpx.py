@@ -17,7 +17,7 @@ from TokenSim.hardware import HardwareContext
 from scripts.lpx.audit import run_audit
 from scripts.lpx.config import load_cases
 from scripts.lpx.simulator import pareto
-from scripts.lpx.native_simulation import point
+from scripts.lpx.runner import evaluate_jobs
 from scripts.lpx.architecture import describe_model
 
 
@@ -46,6 +46,10 @@ def parser():
     result.add_argument("--audit-only", action="store_true")
     result.add_argument("--skip-audit", action="store_true")
     result.add_argument("--model", default="gpt-oss-2t-wide-proxy")
+    result.add_argument("--jobs", type=int, default=1)
+    result.add_argument(
+        "--routing-selection", choices=("cyclic", "random_without_replacement")
+    )
     result.add_argument("--draft-model", default="gpt-oss-draft-proxy")
     result.add_argument("--cases", nargs="+")
     result.add_argument("--cached-tokens", type=int)
@@ -93,6 +97,7 @@ def main(argv=None):
             (args.micro_batch, "micro-batch"),
             (args.a_replicas, "A replicas"),
             (args.warmup_steps, "warm-up steps"),
+            (args.jobs, "jobs"),
         ):
             integer(value, name, minimum=1)
         number(args.measurement_seconds, "measurement interval", positive=True)
@@ -119,57 +124,76 @@ def main(argv=None):
         hardware = HardwareContext.load(ROOT / "data")
         target = hardware.model(args.model)
         draft = hardware.model(args.draft_model)
+        if args.routing_selection:
+            target = replace(
+                target,
+                moe=replace(
+                    target.moe,
+                    routing=replace(
+                        target.moe.routing, uniform_selection=args.routing_selection
+                    ),
+                ),
+            )
+            draft = replace(
+                draft,
+                moe=replace(
+                    draft.moe,
+                    routing=replace(
+                        draft.moe.routing, uniform_selection=args.routing_selection
+                    ),
+                ),
+            )
         args.output.mkdir(parents=True, exist_ok=True)
         if not args.skip_audit:
             print("Run production AF layer audit", flush=True)
             write_json(args.output / "af-audit.json", run_audit(hardware, target))
         if args.audit_only:
             return 0
-        rows = []
+        jobs = []
         for case in cases:
             for batch in args.batches or raw["batches"]:
-                print(f"Run {case.name}, batch={batch}", flush=True)
-                try:
-                    row = point(
-                        hardware,
+                print(f"Queue {case.name}, clients={batch}", flush=True)
+                jobs.append(
+                    (
                         target,
                         workload,
                         case,
                         batch,
-                        power_overrides=power,
-                        facility_watts=args.facility_watts,
-                        trace=args.trace and batch == 1,
-                        micro_batch=args.micro_batch,
-                        a_dp=args.a_replicas,
-                        warmup_steps=args.warmup_steps,
-                        measurement_seconds=args.measurement_seconds,
-                        measurement_turns=args.measurement_turns,
-                        execution_mode=args.execution_mode,
-                        graph_kernel_us=args.graph_kernel_us,
-                        endpoint_transfer_occupancy=args.endpoint_transfer_occupancy,
-                        handoff_mode=args.handoff_mode,
-                        draft_spec=draft,
+                        dict(
+                            power_overrides=power,
+                            facility_watts=args.facility_watts,
+                            trace=args.trace and batch == 1,
+                            micro_batch=args.micro_batch,
+                            a_dp=args.a_replicas,
+                            warmup_steps=args.warmup_steps,
+                            measurement_seconds=args.measurement_seconds,
+                            measurement_turns=args.measurement_turns,
+                            execution_mode=args.execution_mode,
+                            graph_kernel_us=args.graph_kernel_us,
+                            endpoint_transfer_occupancy=args.endpoint_transfer_occupancy,
+                            handoff_mode=args.handoff_mode,
+                            draft_spec=draft,
+                        ),
                     )
-                except ConfigurationError as exc:
-                    # Capacity failures remain visible and are excluded from the frontier.
-                    row = {
-                        "case": case.name,
-                        "mode": case.mode,
-                        "batch": batch,
-                        "status": "infeasible",
-                        "reason": str(exc),
-                    }
-                rows.append(row)
-                write_json(args.output / "partial-results.json", rows)
-                if row["status"] == "ok":
-                    print(
-                        f"  {row['tokens_per_s_per_user']:.1f} TPS/user; "
-                        f"{row['output_tokens_per_s']:.1f} output TPS; "
-                        f"{row['power_watts'] / 1000:.1f} kW",
-                        flush=True,
-                    )
-                else:
-                    print(f"  Infeasible: {row['reason']}", flush=True)
+                )
+        completed = {}
+        for index, row in evaluate_jobs(jobs, processes=args.jobs):
+            completed[index] = row
+            rows = [completed[key] for key in sorted(completed)]
+            write_json(args.output / "partial-results.json", rows)
+            if row["status"] == "ok":
+                print(
+                    f"Done {row['case']}, clients={row['batch']}: "
+                    f"{row['tokens_per_s_per_user']:.1f} TPS/user; "
+                    f"{row['output_tokens_per_s']:.1f} output TPS; "
+                    f"{row['power_watts'] / 1000:.1f} kW",
+                    flush=True,
+                )
+            else:
+                print(
+                    f"Infeasible {row['case']}, clients={row['batch']}: {row['reason']}",
+                    flush=True,
+                )
         if not any(row["status"] == "ok" for row in rows):
             raise ConfigurationError("no feasible experiment points")
         if not any(row["status"] == "ok" and row["mode"] == "rubin" for row in rows):
@@ -227,6 +251,8 @@ def main(argv=None):
             "architecture": describe_model(target),
             "run_settings": {
                 "micro_batch": args.micro_batch,
+                "simulation_processes": args.jobs,
+                "routing_selection": target.moe.routing.uniform_selection,
                 "a_replicas": args.a_replicas,
                 "warmup_steps": args.warmup_steps,
                 "measurement_seconds": args.measurement_seconds,

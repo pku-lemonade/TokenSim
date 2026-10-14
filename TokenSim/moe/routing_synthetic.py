@@ -99,6 +99,11 @@ class SyntheticRoutingMixin:
         count = self.moe_config.num_experts
         top_k = self.moe_config.num_experts_per_tok
         if self.routing_config.distribution == "uniform":
+            if self.routing_config.uniform_selection == "random_without_replacement":
+                rng = random.Random(
+                    f"{self.seed}:{phase}:{layer_id}:{request_id}:{token_id}"
+                )
+                return tuple(rng.sample(range(count), top_k))
             # Consecutive request IDs at the same token position cover experts
             # cyclically, independently of how those requests are partitioned.
             start = (

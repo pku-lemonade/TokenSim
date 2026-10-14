@@ -13,6 +13,25 @@ from TokenSim.moe.config import RoutingConfig
 
 
 class SyntheticPartitionTest(unittest.TestCase):
+    def test_random_uniform_top_k_is_unique_stateless_and_not_adjacent(self):
+        config = RoutingConfig(uniform_selection="random_without_replacement")
+        router = ExpertRouting(
+            _moe(num_experts=128, top_k=4), seed=17, routing_config=config
+        )
+        selected = {i: router._experts_for_token(i, 7, "decode", 2) for i in range(100)}
+        repeated = {
+            i: router._experts_for_token(i, 7, "decode", 2)
+            for i in reversed(range(100))
+        }
+        self.assertEqual(selected, repeated)
+        for experts in selected.values():
+            self.assertEqual(len(set(experts)), 4)
+            self.assertTrue(all(0 <= expert < 128 for expert in experts))
+        # Contiguous EP ownership must not force every top-k onto one rank.
+        self.assertGreater(
+            sum(len({e // 16 for e in row}) > 1 for row in selected.values()), 90
+        )
+
     def test_routes_ignore_partition_order_iteration_and_batch_members(self):
         tokens = {request: (7, 8, 11) for request in (1, 9, 23, 41)}
         owners = {request: (0, 0) for request in tokens}
