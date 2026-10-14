@@ -171,12 +171,7 @@ class AFEngineMixin:
             )
             self.af_compute_provider = af_compute_provider
             self.af_transfer_provider = af_transfer_provider
-            executor_type = (
-                ModelAFExecutor
-                if self.model_spec.attention_type == "mla"
-                or cluster_config.af.execution_protocol == "vllm_afd"
-                else AFExecutor
-            )
+            executor_type = ModelAFExecutor
             self.af_executor = executor_type(
                 env=env,
                 cluster_config=cluster_config,
@@ -191,11 +186,7 @@ class AFEngineMixin:
                 moe_config=self.moe_config,
                 random_seed=random_seed,
                 runtime_plan=self.af_runtime_plan,
-                **(
-                    {"model": self.model_spec}
-                    if executor_type is ModelAFExecutor
-                    else {}
-                ),
+                model=self.model_spec,
             )
 
     def _resolve_af_providers(

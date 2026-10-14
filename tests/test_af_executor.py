@@ -629,7 +629,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
         )
         self.assertIsInstance(engine.workers[4], AFComputeWorker)
         self.assertFalse(hasattr(engine.workers[4], "scheduler"))
-        self.assertEqual(len(compute.queries), 8)
+        self.assertEqual(len(compute.queries), 16)
         self.assertEqual(len(transfer.queries), 4)
         af_stats = get_af_stats(engine)
         self.assertTrue(af_stats["af_enabled"])
@@ -664,7 +664,9 @@ class AFExecutorEndToEndTest(unittest.TestCase):
         result = dump.call_args.args[0]
         self.assertTrue(result["af_enabled"])
         self.assertEqual(result["af_iteration_count"], 2)
-        self.assertEqual(result["af_trace"][0]["events"][0]["stage"], "attention")
+        self.assertEqual(
+            result["af_trace"][0]["events"][0]["operation"], "embedding_lookup"
+        )
 
     def test_multiblock_multilayer_engine_advances_each_request_once_per_iteration(
         self,

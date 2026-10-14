@@ -62,16 +62,24 @@ class ModelAFExecutor(AFExecutor):
                 )
         return super().submit(source_a_worker_id, requests, phase)
 
+    @staticmethod
+    def _logits_rows(block):
+        if block.logits_rows is not None:
+            return block.logits_rows
+        return block.request_count if block.phase == "prefill" else block.token_count
+
     def _boundary_nodes(self, block, operation):
         bindings = self.runtime_plan.bindings_for_instance(
             block.placement.a_domain, block.placement.a_instance
         )
         tp = len(bindings)
         tokens = (
-            block.request_count
-            if block.phase == "prefill" and operation in {"lm_head", "token_selection"}
+            self._logits_rows(block)
+            if operation in {"lm_head", "token_selection"}
             else block.token_count
         )
+        if tokens == 0:
+            return ()
         shape = (
             ("tokens", tokens),
             ("hidden_size", self.hidden_size),
@@ -218,32 +226,38 @@ class ModelAFExecutor(AFExecutor):
             dag = self.plan_builder.build_layer(block, layer, link)
             previous = yield from self._run_model_dag(block, layer, link, dag, previous)
         for operation in ("final_norm", "lm_head"):
+            nodes = self._boundary_nodes(block, operation)
+            if nodes:
+                previous = yield from self._run_model_dag(
+                    block, -1, link, AFExecutionDAG(nodes), previous
+                )
+        tokens = self._logits_rows(block)
+        if tokens:
+            dag = self._boundary_collective(
+                block,
+                "logits_gather",
+                "all_gather",
+                "residual",
+                tokens * (self.model.vocab_size // len(bindings)) * bytes_per_element,
+            )
+            if dag is not None:
+                previous = yield from self._run_model_dag(
+                    block, -1, link, dag, previous
+                )
             previous = yield from self._run_model_dag(
                 block,
                 -1,
                 link,
-                AFExecutionDAG(self._boundary_nodes(block, operation)),
+                AFExecutionDAG(self._boundary_nodes(block, "token_selection")),
                 previous,
             )
-        tokens = block.request_count if block.phase == "prefill" else block.token_count
-        dag = self._boundary_collective(
-            block,
-            "logits_gather",
-            "all_gather",
-            "residual",
-            tokens * (self.model.vocab_size // len(bindings)) * bytes_per_element,
-        )
-        if dag is not None:
-            previous = yield from self._run_model_dag(block, -1, link, dag, previous)
-        previous = yield from self._run_model_dag(
-            block,
-            -1,
-            link,
-            AFExecutionDAG(self._boundary_nodes(block, "token_selection")),
-            previous,
-        )
+        output_anchor = (
+            self._boundary_nodes(block, "token_selection")
+            or self._boundary_nodes(block, "final_norm")
+        )[0]
         if (
-            self.operation_profile is not None
+            tokens > 0
+            and self.operation_profile is not None
             and "sampled_token_readback"
             in self.operation_profile.document["operations"]
         ):
@@ -253,7 +267,7 @@ class ModelAFExecutor(AFExecutor):
             identity = bindings[0].physical_identity
             output = yield from self._control_stage(
                 block,
-                self._boundary_nodes(block, "token_selection")[0],
+                output_anchor,
                 "sampled_token_readback",
                 previous,
                 identity,
@@ -268,7 +282,7 @@ class ModelAFExecutor(AFExecutor):
             yield from self._run_communication_host_stage(
                 block,
                 -1,
-                self._boundary_nodes(block, "token_selection")[0],
+                output_anchor,
                 node_id,
                 previous,
                 (bindings[0].physical_identity,),
@@ -285,7 +299,7 @@ class ModelAFExecutor(AFExecutor):
             yield from self._run_communication_host_stage(
                 block,
                 -1,
-                self._boundary_nodes(block, "token_selection")[0],
+                output_anchor,
                 f"i{block.iteration_id}:output:process",
                 previous,
                 (bindings[0].physical_identity,),

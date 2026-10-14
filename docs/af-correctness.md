@@ -61,3 +61,10 @@ Uneven query lengths retain separate shapes instead of being replaced by a mean.
 Every compiled runtime uses its model's dense and MoE layer metadata for prefill and decode, including automatically generated execution domains.
 Dense FFNs, routed experts, and shared experts are separate services with their declared dependencies and weight ownership.
 The legacy aggregate DAG is limited to direct low-level executors constructed without a runtime plan.
+
+## Model boundaries
+
+Serving engines use whole-model AF execution for MHA, GQA, and MLA architectures.
+Embedding lookup, required tensor-parallel boundary collectives, final normalization, the language-model head, and token selection contribute to request latency.
+An unfinished prefill chunk performs no language-model head, logits gather, or sampling work.
+The chunk that completes a prompt produces one logits row per completed request.
