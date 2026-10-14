@@ -102,3 +102,11 @@ Incomplete prefill chunks skip logits and sampling work.
 Optional host, operation and transport profiles validate their timing scope, runtime identity, environment and workload range before use.
 Synthetic test profiles provide regression fixtures only.
 Changing runtime configuration requires a new provider/runtime; service and DAG caches retain static estimates without retaining resource availability or completion times.
+
+## Code layout
+
+`TokenSim/af` groups planning, execution, runtime state, latency providers, communication resources, calibration, caching and traces into separate packages.
+Configuration records live in `TokenSim/config/af`, while cluster normalization and worker construction live in `TokenSim/config/cluster`.
+`tests/af` mirrors these responsibilities and keeps shared fixtures under `tests/af/support`.
+MLA operator and model tests live in `tests/mla`.
+Internal imports refer to the defining modules; the old flat AF forwarding modules have been removed.

@@ -6,7 +6,7 @@ import copy
 from dataclasses import dataclass
 from typing import Mapping
 
-from TokenSim.af.runtime import RankKey
+from TokenSim.af.runtime.records import RankKey
 from TokenSim.block.block import Device
 from TokenSim.errors import SimulationStateError
 from TokenSim.llm.llm_request import Request, RequestStatus

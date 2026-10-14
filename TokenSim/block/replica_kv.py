@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from typing import Mapping
 
-from TokenSim.af.runtime import AFReplicaRuntime, AFRuntimePlan, RankKey
+from TokenSim.af.runtime.records import AFReplicaRuntime
+from TokenSim.af.runtime.plan import AFRuntimePlan
+from TokenSim.af.runtime.records import RankKey
 from TokenSim.block.block_manager import BlockManager
 from TokenSim.block.replica_mapping import (
     LocalKVShard,

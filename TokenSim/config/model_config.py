@@ -10,7 +10,7 @@ from TokenSim.hardware._yaml import load_yaml_mapping, require
 from TokenSim.hardware.device import normalize_dtype
 from TokenSim.moe.config import MoEModelConfig
 from TokenSim.mla import MLADimensions
-from TokenSim.config.af_model import AFModelMixin
+from TokenSim.config.attention_model import AttentionModelMixin
 from TokenSim.config.validation import integer, boolean
 
 GATED_ACTIVATIONS = {"swiglu", "geglu", "reglu"}
@@ -18,7 +18,7 @@ ACTIVATIONS = GATED_ACTIVATIONS | {"gelu", "relu", "silu"}
 
 
 @dataclass(frozen=True)
-class ModelSpec(AFModelMixin):
+class ModelSpec(AttentionModelMixin):
     """Architecture parameters of a transformer needed for latency estimation.
 
     Field names follow Hugging Face ``config.json`` where one exists so that

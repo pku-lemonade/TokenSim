@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import simpy
-from TokenSim.af import AFRankBinding
+from TokenSim.af.runtime.records import AFRankBinding
 from TokenSim.config.config import WorkerConfig, ParallelRankInfo
 from .messages import WorkerStatus
 

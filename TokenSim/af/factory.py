@@ -6,11 +6,13 @@ from typing import Any
 
 import simpy
 
-from TokenSim.af.model_executor import ModelAFExecutor
-from TokenSim.af.operator_provider import build_operator_table_af_providers
-from TokenSim.af.runtime import AFRuntimePlan, compile_af_runtime_plan
-from TokenSim.af.trace import AFTraceRecorder
-from TokenSim.config.cluster_config import ClusterConfig, WorkerConfig
+from TokenSim.af.execution.model import ModelAFExecutor
+from TokenSim.af.providers.operator_table import build_operator_table_af_providers
+from TokenSim.af.runtime.plan import AFRuntimePlan
+from TokenSim.af.runtime.compiler import compile_af_runtime_plan
+from TokenSim.af.trace.recorder import AFTraceRecorder
+from TokenSim.config.cluster.core import ClusterConfig
+from TokenSim.config.cluster.workers import WorkerConfig
 from TokenSim.config.model_config import ModelSpec
 from TokenSim.hardware import HardwareContext
 from TokenSim.hardware.placement import build_topology_placement

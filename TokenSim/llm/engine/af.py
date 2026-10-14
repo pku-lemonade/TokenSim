@@ -3,17 +3,15 @@
 from __future__ import annotations
 
 from typing import Any
-from TokenSim.af import (
-    AFCacheConfig,
-    AFComputeLatencyProvider,
-    AFTransferLatencyProvider,
-    AFExecutor,
-    AFIteration,
-    AFResourceRegistry,
-    AFRuntimePlan,
-    compile_af_runtime_plan,
-)
-from TokenSim.af.model_executor import ModelAFExecutor
+from TokenSim.af.runtime.cache import AFCacheConfig
+from TokenSim.af.providers.queries import AFComputeLatencyProvider
+from TokenSim.af.providers.queries import AFTransferLatencyProvider
+from TokenSim.af.execution.executor import AFExecutor
+from TokenSim.af.planning.batches import AFIteration
+from TokenSim.af.communication.resources import AFResourceRegistry
+from TokenSim.af.runtime.plan import AFRuntimePlan
+from TokenSim.af.runtime.compiler import compile_af_runtime_plan
+from TokenSim.af.execution.model import ModelAFExecutor
 from TokenSim.block.replica_kv import ReplicaKVBlockManager
 from TokenSim.config.config import WorkerConfig
 from TokenSim.errors import ConfigurationError
@@ -203,7 +201,9 @@ class AFEngineMixin:
             compute_provider is not None and transfer_provider is not None
         ):
             return compute_provider, transfer_provider
-        from TokenSim.af.operator_provider import build_operator_table_af_providers
+        from TokenSim.af.providers.operator_table import (
+            build_operator_table_af_providers,
+        )
 
         built_compute, built_transfer = build_operator_table_af_providers(
             hardware=self.hardware,

@@ -4,25 +4,23 @@ from TokenSim.config.cache_config import (
     num_kv_heads,
     stage_layer_count,
 )
-from TokenSim.config.cluster_config import (
-    AFCommunicationFabricConfig,
-    AFCommunicationLaneConfig,
-    AFCommunicationResourceConfig,
-    AFConfig,
-    AFEffectiveDTypes,
-    AFLinkConfig,
-    ClusterConfig,
-    DomainCollectiveConfig,
-    DomainExpertParallelView,
-    DomainParallelConfig,
-    DomainRankMapping,
-    ExecutionDomainConfig,
-    LogicalInstanceConfig,
-    PhysicalWorkerRef,
-    WorkerConfig,
-    WorkerGroupConfig,
-    validate_worker_count,
-)
+from TokenSim.config.af.communication import AFCommunicationFabricConfig
+from TokenSim.config.af.communication import AFCommunicationLaneConfig
+from TokenSim.config.af.communication import AFCommunicationResourceConfig
+from TokenSim.config.af.settings import AFConfig
+from TokenSim.config.af.links import AFEffectiveDTypes
+from TokenSim.config.af.links import AFLinkConfig
+from TokenSim.config.cluster.core import ClusterConfig
+from TokenSim.config.af.domains import DomainCollectiveConfig
+from TokenSim.config.af.domains import DomainExpertParallelView
+from TokenSim.config.af.domains import DomainParallelConfig
+from TokenSim.config.af.domains import DomainRankMapping
+from TokenSim.config.af.domains import ExecutionDomainConfig
+from TokenSim.config.af.domains import LogicalInstanceConfig
+from TokenSim.config.af.domains import PhysicalWorkerRef
+from TokenSim.config.cluster.workers import WorkerConfig
+from TokenSim.config.cluster.workers import WorkerGroupConfig
+from TokenSim.config.cluster.core import validate_worker_count
 from TokenSim.config.constants import (
     AF_PHASES,
     LEGACY_ROLE_CAPABILITIES,

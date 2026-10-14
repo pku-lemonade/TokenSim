@@ -35,7 +35,7 @@ def main(args, preloaded_agentx_traces=None):
         number(args.sim_time, "sim_time", positive=True)
     config = simulation_config(args)
     cluster = ClusterConfig.from_file(args.cluster)
-    from TokenSim.af import resolve_af_latency_providers
+    from TokenSim.af.providers.queries import resolve_af_latency_providers
 
     af_compute_provider, af_transfer_provider = (
         resolve_af_latency_providers(
