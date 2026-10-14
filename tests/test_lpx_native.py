@@ -199,3 +199,19 @@ class NativeLPXTest(unittest.TestCase):
             )
             self.assertEqual(result["steady_state"]["output_tokens"], 8)
             self.assertEqual(result["steady_state"]["decode_tokens"], 7)
+
+    def test_pipeline_concurrency_increases_factory_output_on_the_same_inventory(self):
+        case = Case("pipeline", "rubin", replace(self.base, a_pp=2, f_pp=2))
+        settings = dict(warmup_steps=1, measurement_seconds=1e-9)
+        one = point(self.hardware, self.model, self.workload, case, 1, **settings)
+        two = point(self.hardware, self.model, self.workload, case, 2, **settings)
+        self.assertEqual(one["inventory"], two["inventory"])
+        self.assertEqual(one["power_watts"], two["power_watts"])
+        self.assertGreater(two["output_tokens_per_s"], one["output_tokens_per_s"])
+        for rank, size in one["services"]["target"]["memory"][
+            "reserved_peak_kv_bytes"
+        ].items():
+            self.assertEqual(
+                two["services"]["target"]["memory"]["reserved_peak_kv_bytes"][rank],
+                2 * size,
+            )

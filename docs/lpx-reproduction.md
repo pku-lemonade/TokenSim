@@ -94,6 +94,9 @@ The default sweep declares eight topologies and three client counts in `experime
 `--a-replicas` adds attention serving replicas and charges their physical inventory.
 FFN stages remain shared across those request streams.
 Capacity failures are exported and excluded from Pareto frontiers.
+`experiments/lpx/pipeline-sweep.json` also sweeps attention PP8, a matching PP8 prefill pool and enough cohorts to populate those stages.
+This separates pipeline throughput from the latency of one request on an idle deployment.
+LP30-only decode can reject the larger cohorts because full-attention KV and the output-head shard share SRAM.
 The whole-model CPU simulation can take substantial time because routing, physical dependencies and trace invariants are evaluated explicitly.
 `--jobs` runs independent points in isolated processes and does not change their simulated resource sharing or power.
 Sequential and parallel point results have deterministic-equivalence coverage.
