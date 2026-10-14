@@ -6,8 +6,8 @@ from dataclasses import asdict
 
 from TokenSim.config.af.links import AFLinkConfig
 from TokenSim.config.af.settings import AFConfig
-from TokenSim.config.cluster.core import ClusterConfig
-from TokenSim.config.cluster.workers import WorkerGroupConfig
+from TokenSim.config.cluster_config import ClusterConfig
+from TokenSim.config.cluster_config import WorkerGroupConfig
 
 
 def _full_link(**overrides) -> AFLinkConfig:

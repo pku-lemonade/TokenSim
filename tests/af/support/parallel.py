@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from TokenSim.config.cluster.core import ClusterConfig
+from TokenSim.config.cluster_config import ClusterConfig
 
 
 def _replica(group, name, dp_rank, tp_size, ep_size, worker_offset):

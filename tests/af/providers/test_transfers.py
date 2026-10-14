@@ -7,7 +7,7 @@ import unittest
 
 from TokenSim.af.providers.operator_table import TopologyAFTransferProvider
 from TokenSim.af.providers.queries import AF_MATCH_TYPES
-from TokenSim.config.cluster.core import ClusterConfig
+from TokenSim.config.cluster_config import ClusterConfig
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.placement import build_topology_placement
 from tests.af.support.config import _cluster_dict

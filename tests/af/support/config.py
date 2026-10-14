@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from TokenSim.config.cluster.core import ClusterConfig
+from TokenSim.config.cluster_config import ClusterConfig
 
 
 def _cluster_dict(

@@ -10,8 +10,8 @@ import unittest
 
 from TokenSim.config.af.links import AFEffectiveDTypes, AFLinkConfig
 from TokenSim.config.af.settings import AFConfig
-from TokenSim.config.cluster.core import ClusterConfig
-from TokenSim.config.cluster.workers import WorkerGroupConfig
+from TokenSim.config.cluster_config import ClusterConfig
+from TokenSim.config.cluster_config import WorkerGroupConfig
 from TokenSim.config.constants import (
     AF_PHASES,
     LEGACY_ROLE_CAPABILITIES,

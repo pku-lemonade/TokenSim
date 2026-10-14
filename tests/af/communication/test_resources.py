@@ -6,7 +6,7 @@ import unittest
 import simpy
 
 from TokenSim.af.communication.resources import AFResourceRegistry
-from TokenSim.config.cluster.core import ClusterConfig
+from TokenSim.config.cluster_config import ClusterConfig
 from TokenSim.errors import ConfigurationError
 
 

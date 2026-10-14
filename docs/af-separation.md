@@ -106,7 +106,8 @@ Changing runtime configuration requires a new provider/runtime; service and DAG 
 ## Code layout
 
 `TokenSim/af` groups planning, execution, runtime state, latency providers, communication resources, calibration, caching and traces into separate packages.
-Configuration records live in `TokenSim/config/af`, while cluster normalization and worker construction live in `TokenSim/config/cluster`.
+AF configuration and topology validation live in `TokenSim/config/af`.
+Worker groups and shared cluster construction extend the existing `TokenSim/config/cluster_config.py` entrypoint.
 `tests/af` mirrors these responsibilities and keeps shared fixtures under `tests/af/support`.
 MLA operator and model tests live in `tests/mla`.
 Internal imports refer to the defining modules; the old flat AF forwarding modules have been removed.

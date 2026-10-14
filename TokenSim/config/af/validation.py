@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from TokenSim.config.cluster_config import WorkerGroupConfig
+
 from TokenSim.config.af.domains import DomainRankMapping, ExecutionDomainConfig
-from TokenSim.config.cluster.workers import WorkerGroupConfig
 from TokenSim.errors import ConfigurationError
 
 

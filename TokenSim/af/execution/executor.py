@@ -34,8 +34,8 @@ from TokenSim.af.providers.queries import (
 )
 from TokenSim.af.runtime.plan import AFRuntimePlan
 from TokenSim.af.trace.recorder import AFTraceRecorder
-from TokenSim.config.cluster.core import ClusterConfig
-from TokenSim.config.cluster.workers import WorkerConfig
+from TokenSim.config.cluster_config import ClusterConfig
+from TokenSim.config.cluster_config import WorkerConfig
 from TokenSim.dtypes import dtype_size_bytes
 from TokenSim.errors import ConfigurationError, SimulationStateError
 from TokenSim.moe.routing import ExpertRouting

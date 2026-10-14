@@ -49,7 +49,7 @@ def run_case(
     # Construct from normalized JSON to recompute the actual fabric configuration.
     if duplex == "half":
         from pydantic import TypeAdapter
-        from TokenSim.config.cluster.core import ClusterConfig
+        from TokenSim.config.cluster_config import ClusterConfig
 
         doc = TypeAdapter(ClusterConfig).dump_python(
             cluster, mode="json", exclude_none=True

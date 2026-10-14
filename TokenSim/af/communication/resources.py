@@ -5,8 +5,8 @@ import simpy
 from TokenSim.af.caching.snapshots import snapshot
 from TokenSim.af.communication.scheduler import DomainScheduler
 from TokenSim.config.af.links import AFLinkConfig
-from TokenSim.config.cluster.core import ClusterConfig
-from TokenSim.config.cluster.workers import WorkerConfig
+from TokenSim.config.cluster_config import ClusterConfig
+from TokenSim.config.cluster_config import WorkerConfig
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.domains import (
     CommunicationDomainConfig,

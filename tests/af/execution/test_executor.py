@@ -5,7 +5,7 @@ import unittest
 
 import simpy
 
-from TokenSim.config.cluster.core import ClusterConfig
+from TokenSim.config.cluster_config import ClusterConfig
 from TokenSim.errors import ConfigurationError, SimulationStateError
 from tests.af.support.config import _cluster_dict, _load_cluster, _two_link_cluster
 from tests.af.support.execution import _executor, _requests

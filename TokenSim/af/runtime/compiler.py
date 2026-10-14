@@ -26,8 +26,8 @@ from TokenSim.af.runtime.topology import (
     _tensor_interval,
     _validate_parallel_shapes,
 )
-from TokenSim.config.cluster.core import ClusterConfig
-from TokenSim.config.cluster.workers import WorkerConfig
+from TokenSim.config.cluster_config import ClusterConfig
+from TokenSim.config.cluster_config import WorkerConfig
 from TokenSim.config.constants import _GB
 from TokenSim.dtypes import dtype_size_bytes
 from TokenSim.errors import ConfigurationError

@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import simpy
 
-from TokenSim.config.cluster.core import ClusterConfig
+from TokenSim.config.cluster_config import ClusterConfig
 from TokenSim.config.config import KVTransferConfig
 from TokenSim.config.simulation import SimulationConfig
 from TokenSim.errors import SimulationStateError

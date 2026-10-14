@@ -12,7 +12,7 @@ from TokenSim.af.providers.operator_table import (
     TopologyAFTransferProvider,
 )
 from TokenSim.af.providers.queries import AFComputeQuery
-from TokenSim.config.cluster.core import ClusterConfig
+from TokenSim.config.cluster_config import ClusterConfig
 from TokenSim.hardware.placement import build_topology_placement
 from TokenSim.operator_data.lookup import LookupPolicy
 from TokenSim.operator_data.package import (

@@ -15,7 +15,7 @@ from TokenSim.af.runtime.records import (
     RankKey,
 )
 from TokenSim.config.af.links import AFEffectiveDTypes
-from TokenSim.config.cluster.core import ClusterConfig
+from TokenSim.config.cluster_config import ClusterConfig
 from TokenSim.dtypes import canonicalize_dtype
 from TokenSim.errors import ConfigurationError
 
