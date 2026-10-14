@@ -77,8 +77,12 @@ class AFBlockBuilder:
                     int(
                         getattr(
                             request,
-                            "prefill_compute_len",
-                            getattr(request, "prefill_len"),
+                            "step_tokens",
+                            getattr(
+                                request,
+                                "prefill_compute_len",
+                                getattr(request, "prefill_len"),
+                            ),
                         )
                     )
                     for request in block_requests

@@ -33,21 +33,22 @@ def rounded_prefill_len(prefill_len: int) -> int:
     )
 
 
-def is_context_build(requests: list[Request]) -> bool:
-    """Prefill and recompute steps both build KV context from scratch."""
-    first = requests[0]
-    return first.is_prefill or bool(getattr(first, "needs_recompute", False))
+def step_tokens(req: Request) -> int:
+    """Tokens ``req`` computes in the current step (see ``Request.step_tokens``)."""
+    return int(req.step_tokens)
 
 
-def request_context_tokens(req: Request) -> int:
-    """Tokens this request contributes to a context-building step."""
-    if getattr(req, "needs_recompute", False):
-        return int(req.recompute_tokens)
-    return int(req.prefill_compute_len)
+def step_kv_len(req: Request) -> int:
+    """KV length the step's queries attend against: cached context plus this step's tokens."""
+    return int(getattr(req, "num_computed_tokens", 0)) + step_tokens(req)
 
 
-def request_kv_len(req: Request) -> int:
-    """Full KV length that a context-building step attends against."""
-    if getattr(req, "needs_recompute", False):
-        return int(req.recompute_tokens)
-    return int(req.prefill_len)
+def is_decode_step(req: Request) -> bool:
+    """A single-token step of a request that already sampled: decode-attention shape.
+
+    Prefill chunks and recompute chunks are context builds and use the
+    context-attention shape even when the chunk is one token long.
+    """
+    return step_tokens(req) == 1 and int(getattr(req, "generation_idx", 0)) > 0 and not bool(
+        getattr(req, "needs_recompute", False)
+    )

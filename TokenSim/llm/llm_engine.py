@@ -20,7 +20,6 @@ from TokenSim.af import (
     AFRankBinding,
     AFRuntimePlan,
     compile_af_runtime_plan,
-    phase_for_requests,
 )
 from TokenSim.block.replica_kv import ReplicaKVBlockManager
 from TokenSim.config.config import (
@@ -43,14 +42,15 @@ from TokenSim.kv_transfer import (
 from TokenSim.hardware import HardwareContext
 from TokenSim.hardware.placement import build_topology_placement
 from TokenSim.hardware.topology import TopologyPlacement
-from TokenSim.latency import build_latency_backend
+from TokenSim.latency import build_latency_backend, effective_fallback
 from TokenSim.latency.operator_table import collective_model_for
+from TokenSim.operator_data.coverage import MissingShapeReport
 from TokenSim.llm.llm_request import Request, RequestStatus
 from TokenSim.llm.llm_scheduler import (
+    DEFAULT_MAX_NUM_BATCHED_TOKENS,
     LLMDynamicScheduler,
     LLMPagedAttnScheduler,
     LLMStaticScheduler,
-    SchedulePhase,
 )
 from TokenSim.placement import (
     BalancedLoadWorkerPool,
@@ -233,6 +233,7 @@ class LLMWorker(Worker):
         block_manager: ReplicaKVBlockManager | None = None,
         runtime_bindings: tuple[AFRankBinding, ...] = (),
         runtime_state=None,
+        max_num_batched_tokens: int | None = DEFAULT_MAX_NUM_BATCHED_TOKENS,
     ):
         super().__init__(env, id)
         self.hardware_context = hardware
@@ -297,13 +298,21 @@ class LLMWorker(Worker):
         self.pending_connector_metadata: KVConnectorMetadata | None = None
 
         backend_name = worker_config.operator_backend or operator_backend
+        fallback = effective_fallback(latency_backend_type, latency_fallback)
         self.operator_package = (
             hardware.operator_package(self.device.device_id, backend_name)
-            if latency_backend_type != "analytical"
+            if fallback != "analytical_only"
             else None
         )
+        # One checklist per worker: compute and communication misses together.
+        self.missing_report = MissingShapeReport()
         self.collective_model = collective_model_for(
-            self.device, self.placement, hardware.links, self.operator_package
+            self.device,
+            self.placement,
+            hardware.links,
+            self.operator_package,
+            fallback=fallback,
+            missing_report=self.missing_report,
         )
         self.parallel_communicator = ParallelCommunicator(
             placement=self.placement,
@@ -312,7 +321,9 @@ class LLMWorker(Worker):
             worker_id=self.id,
             rank_info=self.rank_info,
             parallel_config=self.parallel_config,
-            dtype=self.model_spec.dtype,
+            # Collectives move activations, not weights: bf16 all-reduce and
+            # DeepEP rows, even for fp8/nvfp4 checkpoints.
+            dtype=self.model_spec.activation_dtype,
         )
 
         self.latency_backend = build_latency_backend(
@@ -324,9 +335,10 @@ class LLMWorker(Worker):
             rank_info=self.rank_info,
             communicator=self.parallel_communicator,
             expert_placement=self.expert_placement,
-            fallback=latency_fallback,
+            fallback=fallback,
             decode_context_bucket=decode_context_bucket,
             random_seed=random_seed + id,
+            missing_report=self.missing_report,
         )
         runtime_experts = {
             expert_id
@@ -360,6 +372,7 @@ class LLMWorker(Worker):
                 max_occupy_ratio=max_occupy_ratio if self.role != "prefill" else 1,
                 connector=self.connector,
                 block_manager=block_manager,
+                max_num_batched_tokens=max_num_batched_tokens,
             )
         elif batching == "static":
             self.scheduler = LLMStaticScheduler(
@@ -384,8 +397,8 @@ class LLMWorker(Worker):
     def step(self, requests: list[Request], latency: float):
         for request in requests:
             was_prefill = request.is_prefill
-            request.step(self.env, latency, len(requests))
-            if was_prefill:
+            request.advance(self.env, latency, len(requests))
+            if was_prefill and not request.is_prefill:
                 self.engine.record_request_completion("prefill", request)
             if request.is_done:
                 self.engine.record_request_completion("decode", request)
@@ -435,10 +448,7 @@ class LLMWorker(Worker):
 
                         running = schedule_output.running
                         if running:
-                            use_af = (
-                                schedule_output.phase != SchedulePhase.RECOMPUTE
-                                and self.engine.uses_af_for(running)
-                            )
+                            use_af = self.engine.uses_af_for(running)
                             if use_af:
                                 iteration = self.engine.af_executor.submit(
                                     self.id,
@@ -456,11 +466,8 @@ class LLMWorker(Worker):
                                         self.id,
                                         latency,
                                     )
-                            if schedule_output.phase == SchedulePhase.RECOMPUTE:
-                                self.scheduler.finish_recompute(running, latency)
-                            else:
-                                self.step(running, latency)
-                                running = self.scheduler.update(running)
+                            self.step(running, latency)
+                            running = self.scheduler.update(running)
                             self.connector.set_simulation_time(self.env.now)
                             save_latency = self.connector.wait_for_save()
                             if save_latency:
@@ -468,12 +475,18 @@ class LLMWorker(Worker):
                             worker_meta = self.connector.build_connector_worker_meta()
                             self.scheduler.update_connector_output(worker_meta)
 
-                            if running and self.role == "prefill":
-                                self.engine.dispatch_prefill_to_decode(
-                                    self, list(running)
-                                )
-                                self.scheduler.running = []
-                                running = []
+                            if self.role == "prefill":
+                                # Hand over requests whose prompt is complete;
+                                # partially prefilled ones keep their chunks here.
+                                completed = [
+                                    req for req in running if not req.is_context_build
+                                ]
+                                if completed:
+                                    self.engine.dispatch_prefill_to_decode(self, completed)
+                                    self.scheduler.running = [
+                                        req for req in self.scheduler.running if req.is_context_build
+                                    ]
+                                    running = self.scheduler.running
 
                         if not running and not self.scheduler.waiting:
                             self.status = WorkerStatus.WAITING
@@ -481,7 +494,7 @@ class LLMWorker(Worker):
                     case Task.STOP:
                         self.status = WorkerStatus.STOPPED
                         break
-            except Exception:
+            except Exception as exc:
                 logger.exception(
                     "worker %s failed while handling %s for requests=%s metadata=%s",
                     self.id,
@@ -489,6 +502,7 @@ class LLMWorker(Worker):
                     _request_ids(msg.requests),
                     msg.metadata,
                 )
+                self.engine.record_worker_failure(self.id, exc)
                 self.send_task(self.engine, Task.STOP)
 
     def dynamic_batch(self, requests: list[Request]) -> float:
@@ -519,6 +533,7 @@ class LLMEngine(Worker):
         af_compute_provider: AFComputeLatencyProvider | None = None,
         af_transfer_provider: AFTransferLatencyProvider | None = None,
         af_dtype: str | None = None,
+        max_num_batched_tokens: int | None = DEFAULT_MAX_NUM_BATCHED_TOKENS,
     ):
         super().__init__(env, -1)
 
@@ -547,6 +562,7 @@ class LLMEngine(Worker):
         )
         self.latency_backend_type = latency_backend_type
         self.latency_fallback = latency_fallback
+        self.max_num_batched_tokens = max_num_batched_tokens
 
         self.cluster_config = cluster_config
         worker_configs = cluster_config.workers(self.parallel_config)
@@ -659,6 +675,7 @@ class LLMEngine(Worker):
                     block_manager=block_manager,
                     runtime_bindings=runtime_bindings,
                     runtime_state=runtime_state,
+                    max_num_batched_tokens=max_num_batched_tokens,
                 )
                 self.request_workers.append(worker)
             else:
@@ -724,6 +741,9 @@ class LLMEngine(Worker):
         )
 
         self.connector_stats = ConnectorStats()
+        # First exception raised by a worker step (e.g. MissingOperatorDataError
+        # under table_only); the simulation stops and the caller re-raises it.
+        self.failure: tuple[int, Exception] | None = None
         self.action = self.env.process(self.run())
 
     def _resolve_af_providers(
@@ -801,9 +821,10 @@ class LLMEngine(Worker):
         return capability in worker.capabilities
 
     def uses_af_for(self, requests: list[Request]) -> bool:
-        if self.af_executor is None:
+        if self.af_executor is None or any(req.needs_recompute for req in requests):
             return False
-        return phase_for_requests(requests) in self.cluster_config.af.phases
+        phases = {"prefill" if req.is_prefill else "decode" for req in requests}
+        return len(phases) == 1 and phases.pop() in self.cluster_config.af.phases
 
     def run_complete_compute(self, worker_id: int, latency: float):
         if self.af_resources is None:
@@ -824,6 +845,16 @@ class LLMEngine(Worker):
         if self.af_runtime_plan is None:
             return None
         return self.af_runtime_plan.summary(self.af_replica_block_managers)
+
+    def record_worker_failure(self, worker_id: int, error: Exception) -> None:
+        if self.failure is None:
+            self.failure = (worker_id, error)
+
+    def raise_if_failed(self) -> None:
+        """Re-raise the worker exception that stopped the simulation, if any."""
+        if self.failure is not None:
+            worker_id, error = self.failure
+            raise SimulationStateError(f"worker {worker_id} failed: {error}") from error
 
     def start_debug_clock(self, wall_start: float | None = None) -> None:
         self.debug_printer.start(wall_start)

@@ -251,6 +251,35 @@ class ParallelLatencyTest(unittest.TestCase):
         # deepep_low_latency scales the analytical all-to-all by 0.5 per phase, two phases per layer
         self.assertAlmostEqual(latency, 2 * 2 * 0.5 * plain)
 
+    def test_expert_parallel_group_follows_scope_and_stays_on_its_node(self):
+        # 64 ranks laid out as 8 nodes x 8 GPUs, TP8 inside a node, DP8 across nodes.
+        workers = [SimpleNamespace(id=i, dp_rank=i // 8, tp_rank=i % 8, pp_rank=0) for i in range(64)]
+        placement = _placement(node_size=8)
+        layouts = {}
+        for scope, size in (("per_dp", 8), ("global", None)):
+            config = ParallelConfig(
+                tensor_parallel_size=8,
+                data_parallel_size=8,
+                enable_expert_parallel=True,
+                expert_parallel_scope=scope,
+                expert_parallel_size=size,
+                all2all_backend="deepep_high_throughput",
+            )
+            rank = ParallelRankInfo.from_global_rank(21, config)  # dp2, tp5
+            communicator = _communicator(workers, 21, rank, config, placement)
+            communicator.estimate_ep_all2all(0, count=1, num_tokens=64, hidden_size=7168, top_k=8, num_experts=256)
+            layouts[scope] = communicator.describe()
+            self.assertEqual(communicator.tp_group(), tuple(range(16, 24)))
+
+        per_dp, wide = layouts["per_dp"], layouts["global"]
+        self.assertEqual(per_dp["ep_group"], list(range(16, 24)))
+        self.assertEqual((per_dp["ep_group_size"], per_dp["ep_group_count"]), (8, 8))
+        self.assertEqual(per_dp["ep_group_fan"], [8, 1])
+        self.assertEqual(per_dp["ep_group_link"], "node")
+        self.assertEqual((wide["ep_group_size"], wide["ep_group_count"]), (64, 1))
+        self.assertEqual(wide["ep_group_fan"], [8, 8])
+        self.assertEqual(wide["ep_group_link"], "cluster")
+
     def test_collective_cost_grows_with_group_size_and_topology_span(self):
         from TokenSim.comm.collectives import CollectiveQuery
         from TokenSim.hardware.links import LinkCatalog
@@ -337,6 +366,8 @@ class ParallelIntegrationTest(unittest.TestCase):
 
         self.assertEqual(stats["parallel_expected_rank_count"], 4)
         self.assertEqual(stats["parallel_actual_rank_count"], 4)
+        self.assertEqual(stats["parallel_groups"]["tp_group"], [0, 1])
+        self.assertEqual(stats["parallel_groups"]["ep_group_size"], 1)
         self.assertGreaterEqual(stats["parallel_sync_event_count"], 2)
         self.assertGreater(stats["parallel_tp_collective_latency"], 0)
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -362,6 +393,7 @@ class ParallelIntegrationTest(unittest.TestCase):
             result = json.loads((Path(tmpdir) / "result_1.json").read_text())
         self.assertEqual(result["parallel_config"]["tensor_parallel_size"], 2)
         self.assertEqual(result["parallel_config"]["pipeline_parallel_size"], 2)
+        self.assertEqual(result["parallel_groups"]["tp_group_link"], "node")
         self.assertGreaterEqual(result["parallel_sync_event_count"], 2)
         self.assertEqual(result["latency_backends"]["TestGPU"]["backend"], "operator_table")
         self.assertGreater(result["operator_query_count"], 0)

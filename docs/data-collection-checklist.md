@@ -5,9 +5,13 @@ backend without falling back to analytical estimation. It is organized by device
 operator table, shape grid, and collection method.
 
 After any simulation run, the file `results/.../missing_shapes_<qps>.json`
-reports the exact primary keys that were absent during that experiment; this file
-can be fed directly as input to the next collection round. Before running a
-simulation, use the coverage preview command:
+reports what the tables could not answer during that experiment, grouped by
+table and discrete key with the requested axis ranges and the reason
+(`table_absent`, `discrete_key`, `out_of_range`, `no_measured_mode`, ...); it
+covers compute operators and the `collective` / `ep_all2all` communication
+tables alike and can be fed directly into the next collection round. Run with
+`--latency_fallback table_only` to fail on the first miss instead of falling
+back to formulas. Before running a simulation, use the coverage preview command:
 
 ```bash
 python -m TokenSim.operator_data.cli coverage --device <id> --models <m> --tp <n>
