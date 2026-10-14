@@ -17,9 +17,9 @@ from TokenSim.config.af.communication import AFCommunicationTimingConfig
 from TokenSim.errors import ConfigurationError, SimulationStateError
 from TokenSim.hardware.domains import CommunicationDomainConfig
 from TokenSim.hardware.placement import build_topology_placement
-from tests.af.support.hardware import af_test_hardware
-from tests.af.support.parallel import _cluster
-from tests.af.support.queries import _transfer_query
+from tests.af.support.config import _cluster
+from tests.af.support.execution import af_test_hardware
+from tests.af.support.model import _transfer_query
 
 
 class InputCompute:

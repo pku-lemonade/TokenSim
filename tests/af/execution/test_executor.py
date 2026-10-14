@@ -8,11 +8,12 @@ import simpy
 from TokenSim.config.cluster_config import ClusterConfig
 from TokenSim.errors import ConfigurationError, SimulationStateError
 from tests.af.support.config import _cluster_dict, _load_cluster, _two_link_cluster
-from tests.af.support.execution import _executor, _requests
-from tests.af.support.providers import (
+from tests.af.support.execution import (
     FixedComputeProvider,
     FixedTransferProvider,
     InvalidComputeProvider,
+    _executor,
+    _requests,
 )
 
 

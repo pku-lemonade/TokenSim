@@ -10,8 +10,8 @@ from TokenSim.errors import ConfigurationError
 from TokenSim.llm.llm_engine import LLMEngine
 from TokenSim.moe.config import MoEModelConfig
 from TokenSim.placement import BalancedLoadWorkerPool, DataParallelWorkerPool
+from tests.af.support.config import _cluster
 from tests.af.support.execution import af_test_resources, execution_plan
-from tests.af.support.parallel import _cluster
 
 
 class WorkloadComputeProvider:

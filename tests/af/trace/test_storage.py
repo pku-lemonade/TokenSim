@@ -13,9 +13,19 @@ from TokenSim.af.trace.recorder import AFTraceRecorder
 from TokenSim.errors import SimulationStateError
 from TokenSim.reporting import get_af_stats
 from scripts.deepseek_v3_runtime import configuration, simulate
-from tests.af.support.engine import _build_engine, _run_request, _typed_cluster
-from tests.af.support.providers import FixedComputeProvider, FixedTransferProvider
-from tests.af.support.trace import AccessList, _event, _valid_events, lookup_visits
+from tests.af.support.execution import (
+    FixedComputeProvider,
+    FixedTransferProvider,
+    _build_engine,
+    _run_request,
+    _typed_cluster,
+)
+from tests.af.support.observations import (
+    AccessList,
+    _event,
+    _valid_events,
+    lookup_visits,
+)
 
 
 def iteration(identity=7, end=4):

@@ -8,8 +8,8 @@ import unittest
 from TokenSim.af.runtime.compiler import compile_af_runtime_plan
 from TokenSim.af.runtime.records import AFTensorInterval
 from TokenSim.errors import ConfigurationError
-from tests.af.support.parallel import _cluster
-from tests.af.support.runtime import _moe_config, _runtime_hardware, _runtime_plan
+from tests.af.support.config import _cluster
+from tests.af.support.model import _moe, _runtime_hardware, _runtime_plan
 
 
 class AFRuntimePlanTest(unittest.TestCase):
@@ -101,7 +101,7 @@ class AFRuntimePlanTest(unittest.TestCase):
         model = replace(
             hardware.model("TestModel"),
             hidden_size=24,
-            moe=replace(_moe_config(), hidden_size=24),
+            moe=replace(_moe(top_k=1, shared=1), hidden_size=24),
             head_dim=3,
         )
         with self.assertRaisesRegex(
@@ -124,7 +124,7 @@ class AFRuntimePlanTest(unittest.TestCase):
             _runtime_plan(
                 _cluster(a_tp=2, a_dp=1, f_tp=2, f_dp=1, f_ep=1),
                 moe_config=replace(
-                    _moe_config(),
+                    _moe(top_k=1, shared=1),
                     moe_intermediate_size=33,
                     num_shared_experts=0,
                 ),
@@ -132,13 +132,13 @@ class AFRuntimePlanTest(unittest.TestCase):
         with self.assertRaisesRegex(ConfigurationError, "Dense FFN intermediate=65"):
             _runtime_plan(
                 _cluster(a_tp=2, a_dp=1, f_tp=2, f_dp=1, f_ep=1),
-                moe_config=replace(_moe_config(), intermediate_size=65),
+                moe_config=replace(_moe(top_k=1, shared=1), intermediate_size=65),
             )
         with self.assertRaisesRegex(ConfigurationError, "Shared FFN intermediate=33"):
             _runtime_plan(
                 _cluster(a_tp=2, a_dp=1, f_tp=2, f_dp=1, f_ep=1),
                 moe_config=replace(
-                    _moe_config(),
+                    _moe(top_k=1, shared=1),
                     moe_intermediate_size=33,
                     num_shared_experts=1,
                 ),
@@ -146,7 +146,7 @@ class AFRuntimePlanTest(unittest.TestCase):
         rank_reuse_uneven_expert = _runtime_plan(
             _cluster(a_tp=2, a_dp=1, f_tp=2, f_dp=1, f_ep=2),
             moe_config=replace(
-                _moe_config(),
+                _moe(top_k=1, shared=1),
                 moe_intermediate_size=33,
                 num_shared_experts=0,
             ),
@@ -161,7 +161,7 @@ class AFRuntimePlanTest(unittest.TestCase):
     def test_runtime_kv_replication_is_preserved_in_local_shapes(self):
         plan = _runtime_plan(
             _cluster(a_tp=2, a_dp=1, f_tp=1, f_dp=1, f_ep=1),
-            moe_config=replace(_moe_config(), num_key_value_heads=1),
+            moe_config=replace(_moe(top_k=1, shared=1), num_key_value_heads=1),
         )
         bindings = plan.bindings_for_instance("a-domain", "a0")
 

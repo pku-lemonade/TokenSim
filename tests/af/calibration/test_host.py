@@ -5,7 +5,7 @@ from TokenSim.af.calibration.host import HOST_COVERAGE
 from TokenSim.af.factory import build_model_runtime, simulate_decode
 from TokenSim.config.simulation import SimulationConfig
 from TokenSim.errors import ConfigurationError
-from tests.af.support.profile_fixture import HostProfileFixture
+from tests.af.support.profiles import HostProfileFixture
 
 
 """Af host profile."""

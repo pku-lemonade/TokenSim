@@ -17,8 +17,8 @@ from TokenSim.llm.llm_engine import LLMEngine
 from TokenSim.llm.llm_request import Request
 from scripts.deepseek_v3_runtime import configuration
 from tests.af.support.config import _cluster_dict
-from tests.af.support.hardware import af_test_hardware
-from tests.af.support.queries import _moe
+from tests.af.support.execution import af_test_hardware
+from tests.af.support.model import _moe
 
 
 class ModelLayersTest(unittest.TestCase):

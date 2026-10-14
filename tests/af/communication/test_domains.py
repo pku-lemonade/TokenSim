@@ -12,7 +12,7 @@ from TokenSim.hardware.domains import CommunicationDomainConfig, transmission_se
 
 class VolumeTest(unittest.TestCase):
     def test_numeric_tensor_identity_across_hierarchical_phases(self):
-        from tests.af.support.collective import execute_hierarchy
+        from tests.af.support.observations import execute_hierarchy
 
         for nodes in (
             {rank: 0 for rank in range(4)},
@@ -168,8 +168,8 @@ class DomainFIFOTest(unittest.TestCase):
 
 class PlacementTest(unittest.TestCase):
     def test_automatic_and_override_placement_is_reproducible(self):
-        from tests.af.support.hardware import af_test_hardware
-        from tests.af.support.parallel import _cluster
+        from tests.af.support.execution import af_test_hardware
+        from tests.af.support.config import _cluster
         from TokenSim.hardware.placement import build_topology_placement
 
         cluster = _cluster(a_tp=2, a_dp=1, f_tp=6, f_dp=1)
@@ -194,8 +194,8 @@ class PlacementTest(unittest.TestCase):
                 )
 
     def test_policy_conflicts_and_inventory_shortage_fail(self):
-        from tests.af.support.hardware import af_test_hardware
-        from tests.af.support.parallel import _cluster
+        from tests.af.support.execution import af_test_hardware
+        from tests.af.support.config import _cluster
         from TokenSim.hardware.placement import build_topology_placement
 
         cluster = _cluster(a_tp=2, a_dp=1, f_tp=6, f_dp=1)

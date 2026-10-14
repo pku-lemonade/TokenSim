@@ -5,7 +5,7 @@ import unittest
 from TokenSim.af.calibration.services import TransportServiceProfile
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.domains import CommunicationDomainConfig, MODEL_VERSION
-from tests.af.support.native_fixture import NativeFixture
+from tests.af.support.profiles import NativeFixture
 
 
 class TransportProfileTest(unittest.TestCase):

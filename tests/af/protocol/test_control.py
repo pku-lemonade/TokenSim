@@ -8,8 +8,8 @@ import simpy
 
 from TokenSim.af.execution.control import encode_eager_control
 from TokenSim.errors import ConfigurationError, SimulationStateError
-from tests.af.support import host_fixture as fixed
-from tests.af.support.host_fixture import FixedHostFixture
+from tests.af.support import profiles as fixed
+from tests.af.support.profiles import FixedHostFixture
 
 
 class NativeControlTest(unittest.TestCase):

@@ -6,7 +6,7 @@ import simpy
 
 from TokenSim.af.factory import build_model_runtime, simulate_decode
 from TokenSim.errors import ConfigurationError
-from tests.af.support.operation_fixture import OperationProfileFixture
+from tests.af.support.profiles import OperationProfileFixture
 
 
 """Af operation profile."""

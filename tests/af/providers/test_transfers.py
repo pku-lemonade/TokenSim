@@ -11,8 +11,8 @@ from TokenSim.config.cluster_config import ClusterConfig
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.placement import build_topology_placement
 from tests.af.support.config import _cluster_dict
-from tests.af.support.hardware import af_test_hardware
-from tests.af.support.queries import _transfer_query
+from tests.af.support.execution import af_test_hardware
+from tests.af.support.model import _transfer_query
 
 
 class TopologyTransferProviderTest(unittest.TestCase):

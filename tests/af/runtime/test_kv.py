@@ -13,8 +13,8 @@ from TokenSim.errors import OutOfBlocksError, SimulationStateError
 from TokenSim.kv_transfer import P2PConnector
 from TokenSim.llm.llm_request import Request
 from TokenSim.llm.llm_scheduler import LLMPagedAttnScheduler
-from tests.af.support.parallel import _cluster
-from tests.af.support.runtime import _request, _runtime_plan
+from tests.af.support.config import _cluster
+from tests.af.support.model import _request, _runtime_plan
 
 
 class ReplicaKVBlockManagerTest(unittest.TestCase):

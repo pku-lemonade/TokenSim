@@ -11,11 +11,9 @@ from TokenSim.af.providers.queries import AFServiceEstimate
 from TokenSim.errors import WorkloadValidationError
 from TokenSim.llm.llm_request import Request
 from TokenSim.moe.routing import RoutingAssignment
-from tests.af.support.execution import af_test_resources
-from tests.af.support.hardware import af_test_hardware
-from tests.af.support.parallel import _cluster
-from tests.af.support.queries import _moe
-from tests.af.support.runtime import _moe_config, _runtime_plan
+from tests.af.support.config import _cluster
+from tests.af.support.execution import af_test_hardware, af_test_resources
+from tests.af.support.model import _moe, _runtime_plan
 
 
 class ConstantProvider:
@@ -37,7 +35,7 @@ class RouterPlacementTest(unittest.TestCase):
                 transport_router_logits=True,
             ),
         )
-        moe = replace(_moe_config(), num_shared_experts=0)
+        moe = replace(_moe(top_k=1, shared=1), num_shared_experts=0)
         plan = _runtime_plan(cluster, moe_config=moe, dtype="bf16")
         env = simpy.Environment()
         executor = AFExecutor(
