@@ -1,16 +1,18 @@
 # LPX projection diagnosis and repair plan
 
-The current curves do not reproduce the serving behavior of NVIDIA Figure 11.
+The historical serialized curves do not reproduce the serving behavior of NVIDIA Figure 11.
 The primary defects are in the experiment's execution abstraction and placement assumptions.
 Missing NVIDIA inputs limit subsequent calibration, but the known execution defects must be corrected independently.
 Passing the existing regression tests establishes those tests' software contracts and does not validate the plotted performance.
+The native repair is documented in [the reproduction guide](lpx-reproduction.md).
+The execution findings and numerical probes below describe the preserved serialized executor and its original configuration.
 
 ## Reproduce the diagnosis
 
 ```bash
 python scripts/diagnose_lpx.py \
   --summary outputs/lpx-reproduction/summary.json \
-  --config experiments/lpx/sweep.json \
+  --config experiments/lpx/legacy-serialized-sweep.json \
   --output outputs/lpx-diagnosis/diagnosis.json
 ```
 

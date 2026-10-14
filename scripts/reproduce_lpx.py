@@ -18,6 +18,7 @@ from scripts.lpx.audit import run_audit
 from scripts.lpx.config import load_cases
 from scripts.lpx.simulator import pareto
 from scripts.lpx.native_simulation import point
+from scripts.lpx.architecture import describe_model
 
 
 def write_json(path, value):
@@ -44,11 +45,16 @@ def parser():
     result.add_argument("--plot", action="store_true")
     result.add_argument("--audit-only", action="store_true")
     result.add_argument("--skip-audit", action="store_true")
-    result.add_argument("--model", default="gpt-oss-2t-proxy")
+    result.add_argument("--model", default="gpt-oss-2t-wide-proxy")
+    result.add_argument("--draft-model", default="gpt-oss-draft-proxy")
+    result.add_argument("--cases", nargs="+")
+    result.add_argument("--cached-tokens", type=int)
+    result.add_argument("--prefill-chunk", type=int)
     result.add_argument("--micro-batch", type=int, default=1)
     result.add_argument("--a-replicas", type=int, default=1)
     result.add_argument("--warmup-steps", type=int, default=2)
     result.add_argument("--measurement-seconds", type=float, default=0.05)
+    result.add_argument("--measurement-turns", type=int, default=1)
     result.add_argument(
         "--execution-mode", choices=("eager", "cuda_graph"), default="cuda_graph"
     )
@@ -68,6 +74,8 @@ def main(argv=None):
             for name, value in (
                 ("output_tokens", args.output_tokens),
                 ("new_tokens", args.new_tokens),
+                ("cached_tokens", args.cached_tokens),
+                ("prefill_chunk", args.prefill_chunk),
                 ("context_samples", args.context_samples),
                 ("acceptance_probability", args.acceptance),
             )
@@ -78,6 +86,20 @@ def main(argv=None):
 
         for batch in args.batches or raw["batches"]:
             integer(batch, "batch", minimum=1)
+        for value, name in (
+            (args.micro_batch, "micro-batch"),
+            (args.a_replicas, "A replicas"),
+            (args.warmup_steps, "warm-up steps"),
+        ):
+            integer(value, name, minimum=1)
+        number(args.measurement_seconds, "measurement interval", positive=True)
+        integer(args.measurement_turns, "measurement turns")
+        number(args.graph_kernel_us, "graph kernel microseconds")
+        if args.cases:
+            unknown = set(args.cases) - {case.name for case in cases}
+            if unknown:
+                raise ConfigurationError(f"unknown case names: {sorted(unknown)}")
+            cases = [case for case in cases if case.name in args.cases]
         number(args.facility_watts, "facility watts")
         power = {
             device: watts
@@ -93,6 +115,7 @@ def main(argv=None):
             raise ConfigurationError("audit-only and skip-audit are mutually exclusive")
         hardware = HardwareContext.load(ROOT / "data")
         target = hardware.model(args.model)
+        draft = hardware.model(args.draft_model)
         args.output.mkdir(parents=True, exist_ok=True)
         if not args.skip_audit:
             print("Run production AF layer audit", flush=True)
@@ -117,9 +140,11 @@ def main(argv=None):
                         a_dp=args.a_replicas,
                         warmup_steps=args.warmup_steps,
                         measurement_seconds=args.measurement_seconds,
+                        measurement_turns=args.measurement_turns,
                         execution_mode=args.execution_mode,
                         graph_kernel_us=args.graph_kernel_us,
                         handoff_mode=args.handoff_mode,
+                        draft_spec=draft,
                     )
                 except ConfigurationError as exc:
                     # Capacity failures remain visible and are excluded from the frontier.
@@ -131,6 +156,16 @@ def main(argv=None):
                         "reason": str(exc),
                     }
                 rows.append(row)
+                write_json(args.output / "partial-results.json", rows)
+                if row["status"] == "ok":
+                    print(
+                        f"  {row['tokens_per_s_per_user']:.1f} TPS/user; "
+                        f"{row['output_tokens_per_s']:.1f} output TPS; "
+                        f"{row['power_watts'] / 1000:.1f} kW",
+                        flush=True,
+                    )
+                else:
+                    print(f"  Infeasible: {row['reason']}", flush=True)
         if not any(row["status"] == "ok" for row in rows):
             raise ConfigurationError("no feasible experiment points")
         if not any(row["status"] == "ok" and row["mode"] == "rubin" for row in rows):
@@ -184,6 +219,18 @@ def main(argv=None):
             "git_worktree_dirty": dirty,
             "workload": asdict(workload),
             "model": target.to_dict(),
+            "draft_model": draft.to_dict(),
+            "architecture": describe_model(target),
+            "run_settings": {
+                "micro_batch": args.micro_batch,
+                "a_replicas": args.a_replicas,
+                "warmup_steps": args.warmup_steps,
+                "measurement_seconds": args.measurement_seconds,
+                "measurement_turns": args.measurement_turns,
+                "execution_mode": args.execution_mode,
+                "graph_device_kernel_us": args.graph_kernel_us,
+                "handoff_mode": args.handoff_mode,
+            },
             "cases": [asdict(case) for case in cases],
             "hardware": {
                 device: hardware.device(device).to_dict()

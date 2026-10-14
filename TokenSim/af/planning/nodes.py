@@ -121,6 +121,15 @@ class RankLocalWork:
             "target_dtype": self.target_dtype,
         }
 
+    def trace_mapping(self) -> dict[str, object]:
+        # Immutable tensor and routing records stay shared until event export.
+        # AFTraceEvent.as_dict recursively expands them at the public boundary.
+        return {
+            **vars(self),
+            "tensor_shape": dict(self.tensor_shape),
+            "expert_workload": dict(self.expert_workload),
+        }
+
 
 @dataclass(frozen=True)
 class ExecutionNode:

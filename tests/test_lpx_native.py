@@ -3,10 +3,14 @@
 from dataclasses import replace
 from pathlib import Path
 import unittest
+import simpy
 
 from TokenSim.hardware import HardwareContext
 from scripts.lpx.config import Case, Layout, Workload
 from scripts.lpx.native_simulation import point
+from scripts.lpx.native_config import configuration
+from TokenSim.af.serving.service import AFService
+from TokenSim.af.communication.endpoints import EndpointResources
 
 
 class NativeLPXTest(unittest.TestCase):
@@ -109,9 +113,51 @@ class NativeLPXTest(unittest.TestCase):
             ]
             self.assertTrue(verification)
             self.assertEqual({e["token_count"] for e in verification}, {5})
+            cycles = result["verification_events"]
+            if acceptance == 0:
+                self.assertEqual({row["draft_catchup_tokens"] for row in cycles}, {0})
+            else:
+                self.assertTrue(any(row["draft_catchup_tokens"] == 1 for row in cycles))
             for service in result["services"].values():
                 memory = service["memory"]
                 for rank, current in memory["resident_current_kv_bytes"].items():
                     self.assertLessEqual(
                         current, memory["reserved_peak_kv_bytes"][rank]
                     )
+
+    def test_compact_history_matches_full_trace_metrics_and_namespaces_pools(self):
+        case = Case(
+            "af",
+            "af",
+            replace(self.base, f_device="groq_lp30", f_ep=4, colocated=False),
+            self.base,
+        )
+        compact = self.run_point(case)
+        full = self.run_point(case, trace=True)
+        del compact["trace"], full["trace"]
+        self.assertEqual(compact, full)
+        keys = compact["steady_state"]["resource_utilization"]
+        self.assertTrue(any(key.startswith("target/worker:") for key in keys))
+        self.assertTrue(any(key.startswith("prefill/worker:") for key in keys))
+
+    def test_simultaneous_services_with_equal_local_node_ids_share_endpoint_scheduler(
+        self,
+    ):
+        runtimes = [
+            configuration(self.hardware, self.model, self.base, namespace=name)
+            for name in ("one", "two")
+        ]
+        env = simpy.Environment()
+        endpoints = EndpointResources(
+            env,
+            {key: value for r in runtimes for key, value in r.cluster.networks.items()},
+            [w.physical_worker_ref.identity for r in runtimes for w in r.workers],
+        )
+        services = [AFService(env, r, communication=endpoints) for r in runtimes]
+        sessions = [
+            s.admit(0, 0, maximum_context=24, current_context=16) for s in services
+        ]
+        for service, session in zip(services, sessions):
+            env.process(service.forward([session]))
+        env.run()
+        self.assertEqual([s.cached_context for s in sessions], [17, 17])

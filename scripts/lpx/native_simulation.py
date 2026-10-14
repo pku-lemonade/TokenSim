@@ -7,6 +7,11 @@ from TokenSim.af.communication.endpoints import EndpointResources
 from TokenSim.af.serving.service import AFService
 from TokenSim.af.serving.handoff import plan_handoff, execute_handoff
 from TokenSim.af.serving.metrics import steady_metrics
+from TokenSim.af.serving.timing import (
+    namespace_event,
+    namespace_resource,
+    transport_timing,
+)
 from TokenSim.config.validation import integer, number
 from TokenSim.errors import ConfigurationError
 from scripts.lpx.native_config import configuration
@@ -24,11 +29,13 @@ def point(
     a_dp=1,
     warmup_steps=2,
     measurement_seconds=0.05,
+    measurement_turns=1,
     execution_mode="cuda_graph",
     graph_kernel_us=0.2,
     handoff_mode="incremental",
     power_overrides=None,
     facility_watts=0.0,
+    draft_spec=None,
     trace=False,
 ):
     for value, name in (
@@ -38,6 +45,7 @@ def point(
         (warmup_steps, "warm-up steps"),
     ):
         integer(value, name, minimum=1)
+    integer(measurement_turns, "measurement turns")
     number(measurement_seconds, "measurement interval", positive=True)
     number(facility_watts, "facility power")
     if workload.output_tokens < 2:
@@ -77,7 +85,7 @@ def point(
     if case.draft:
         runtimes["draft"] = configuration(
             hardware,
-            draft_model(target),
+            draft_spec or draft_model(target),
             case.draft,
             namespace="draft",
             micro_batch=micro_batch,
@@ -101,7 +109,13 @@ def point(
     ]
     communication = EndpointResources(env, networks, identities)
     services = {
-        name: AFService(env, runtime, communication=communication, seed=workload.seed)
+        name: AFService(
+            env,
+            runtime,
+            communication=communication,
+            seed=workload.seed,
+            retain_trace=trace,
+        )
         for name, runtime in runtimes.items()
     }
     inventory = {}
@@ -114,8 +128,17 @@ def point(
         number(watts, f"{device} power", positive=True)
         power += count * watts
     stop = env.event()
-    token_events, handoff_events, decode_intervals, turns = [], [], [], []
+    begin_measurement = env.event()
+    token_events, handoff_events, control_events, decode_intervals, turns = (
+        [],
+        [],
+        [],
+        [],
+        [],
+    )
+    verification_events = []
     warm_events = []
+    complete_events = []
     initial_sessions = []
     cohort_indices = [
         list(range(start, min(start + micro_batch, clients)))
@@ -141,6 +164,7 @@ def point(
             ]
         initial_sessions.append(bundle)
         warm_events.append(env.event())
+        complete_events.append(env.event())
 
     def token_control(bundle, cohort, round_index, step, reverse=False):
         draft_owner = services["draft"].owners[("decode", bundle["draft"][0].dp_rank)]
@@ -158,8 +182,19 @@ def point(
             for key, _ in communication.for_step("handoff", "a_to_f", pair)
         )
         duration = hardware.link("ethernet1600Gb").analytical_transfer_us(size) / 1e6
-        yield from communication.scheduler.run(
+        times = yield from communication.scheduler.run(
             keys, duration, (cohort, round_index, step, int(reverse))
+        )
+        control_events.append(
+            dict(
+                source=pair[0],
+                target=pair[1],
+                bytes=size,
+                network="handoff",
+                ready_s=times[0],
+                start_s=times[1],
+                end_s=times[2],
+            )
         )
 
     def prefill(name, sessions):
@@ -173,10 +208,13 @@ def point(
 
     def stream(cohort, bundle):
         completed_steps = 0
+        measured_turns = 0
+        warmed = False
         rng = np.random.default_rng(np.random.SeedSequence([workload.seed, cohort]))
         round_index = 0
         while not stop.triggered:
             started = env.now
+            warm_turn = not warmed
             prefill_name = "prefill" if case.prefill else "target"
             yield from prefill(prefill_name, bundle[prefill_name])
             if case.prefill:
@@ -205,6 +243,9 @@ def point(
                     )
             if case.draft:
                 yield from prefill("draft", bundle["draft"])
+                yield from token_control(
+                    bundle, cohort, round_index, completed_steps, reverse=True
+                )
             first = env.now
             remaining = workload.output_tokens - 1
             for session in bundle["target"]:
@@ -239,9 +280,6 @@ def point(
                             break
                         accepted += 1
                     committed = min(remaining, accepted + 1)
-                    yield from token_control(
-                        bundle, cohort, round_index, completed_steps, reverse=True
-                    )
                     # Roll back uncommitted speculative positions on both models.
                     valid = (
                         workload.cached_tokens
@@ -249,6 +287,16 @@ def point(
                         + bundle["target"][0].generated
                         + committed
                         - 1
+                    )
+                    missing = valid - bundle["draft"][0].cached_context
+                    if missing > 0:
+                        # Complete acceptance needs the final accepted draft
+                        # token's KV before the verifier bonus token is reused.
+                        yield from services["draft"].forward(
+                            bundle["draft"], query_tokens=missing
+                        )
+                    yield from token_control(
+                        bundle, cohort, round_index, completed_steps, reverse=True
                     )
                     for name in ("target", "draft"):
                         for session in bundle[name]:
@@ -258,6 +306,17 @@ def point(
                                 session.generated = (
                                     bundle["target"][0].generated + committed
                                 )
+                    verification_events.append(
+                        dict(
+                            time=env.now,
+                            cohort=cohort,
+                            verification_width=width,
+                            accepted_prefix=accepted,
+                            committed_tokens=committed,
+                            draft_catchup_tokens=max(0, missing),
+                            warmup=warm_turn,
+                        )
+                    )
                 else:
                     yield from services["target"].forward(bundle["target"])
                     committed = 1
@@ -287,6 +346,10 @@ def point(
                     and not warm_events[cohort].triggered
                 ):
                     warm_events[cohort].succeed()
+                    yield begin_measurement
+                    warmed = True
+                    # Restore the fixed prefix and start a measured complete turn.
+                    break
             turns.append(
                 dict(
                     cohort=cohort,
@@ -294,8 +357,16 @@ def point(
                     ttft_s=first - started,
                     end=env.now,
                     completed=remaining == 0,
+                    warmup=warm_turn,
                 )
             )
+            if not warm_turn and remaining == 0:
+                measured_turns += 1
+                if (
+                    measured_turns >= measurement_turns
+                    and not complete_events[cohort].triggered
+                ):
+                    complete_events[cohort].succeed()
             if stop.triggered:
                 break
             round_index += 1
@@ -318,7 +389,10 @@ def point(
     def observe():
         yield env.all_of(warm_events)
         measurement["start"] = env.now
+        begin_measurement.succeed()
         yield env.timeout(measurement_seconds)
+        if measurement_turns:
+            yield env.all_of(complete_events)
         measurement["end"] = env.now
         stop.succeed()
 
@@ -326,15 +400,25 @@ def point(
         env.process(stream(index, bundle))
     env.process(observe())
     env.run()
-    traces = [event for service in services.values() for event in service.trace.events]
+    traces = [
+        namespace_event(name, event)
+        for name, service in services.items()
+        for event in service.trace.events
+    ]
     capacities = {
-        key: value
-        for service in services.values()
+        namespace_resource(name, key): value
+        for name, service in services.items()
         for key, value in service.executor.resources.resource_capacities().items()
     }
     metric = steady_metrics(
         token_events,
-        traces,
+        [
+            *traces,
+            *(
+                transport_timing(row, communication)
+                for row in (*handoff_events, *control_events)
+            ),
+        ],
         start=measurement["start"],
         end=measurement["end"],
         capacities=capacities,
@@ -367,11 +451,15 @@ def point(
         steady_state=metric,
         timings={
             "warmup_s": measurement["start"],
-            "measurement_s": measurement_seconds,
+            "measurement_s": measurement["end"] - measurement["start"],
+            "minimum_measurement_s": measurement_seconds,
+            "minimum_complete_turns_per_cohort": measurement_turns,
             "drain_s": env.now - measurement["end"],
         },
         services={name: service.summary() for name, service in services.items()},
         handoff_events=handoff_events,
+        control_events=control_events,
+        verification_events=verification_events,
         turns=turns,
         execution_mode=execution_mode,
         graph_device_kernel_us_assumption=graph_kernel_us,

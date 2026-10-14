@@ -242,6 +242,10 @@ LP30 device service remains unchanged by the GPU graph setting.
 `coalesce_ready_transfers: true` batches matching endpoint messages and collectives while retaining payload bytes, tensor slices and producer dependencies.
 Endpoint batches wait for all their declared producers.
 The default disables batching; the LPX native experiment enables it explicitly.
+`dag_template_cache_max_tokens` bounds the query-token count eligible for structural template caching.
+Zero retains unlimited shape eligibility; larger graphs always use the validated reference planner.
+`AFService(retain_trace=False)` validates full native events at forward completion and retains their timing records for serving metrics.
+Full exported traces defer immutable tensor and routing serialization until the export boundary.
 Explicit A/F domains can share physical workers when their link declares `colocated: true`.
 Those workers retain one compute resource and one memory capacity across both capabilities.
 

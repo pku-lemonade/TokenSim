@@ -8,6 +8,7 @@ from TokenSim.af.providers.operator_table import build_operator_table_af_provide
 from TokenSim.af.runtime.admission import ResidentKV
 from TokenSim.af.trace.recorder import AFTraceRecorder
 from TokenSim.af.trace.metrics import AFTraceEvent
+from TokenSim.af.serving.timing import CompletedTiming
 from TokenSim.config.validation import integer
 from TokenSim.errors import ConfigurationError
 
@@ -23,7 +24,15 @@ class AFSession:
 
 class AFService:
     def __init__(
-        self, env, runtime, *, trace=True, seed=42, providers=None, communication=None
+        self,
+        env,
+        runtime,
+        *,
+        trace=True,
+        retain_trace=True,
+        seed=42,
+        providers=None,
+        communication=None,
     ):
         self.env, self.runtime = env, runtime
         compute, transfer = providers or build_operator_table_af_providers(
@@ -36,6 +45,7 @@ class AFService:
             fallback="analytical_only",
         )
         self.trace = AFTraceRecorder(trace)
+        self.retain_trace = retain_trace
         self.executor = ModelAFExecutor(
             env,
             runtime.cluster,
@@ -73,6 +83,11 @@ class AFService:
         self, request_id, dp_rank, *, phase="decode", maximum_context, current_context
     ):
         integer(dp_rank, "serving DP rank")
+        integer(maximum_context, "serving maximum context", minimum=1)
+        if maximum_context > self.runtime.model.max_position_embeddings:
+            raise ConfigurationError(
+                "serving KV reservation exceeds the model context limit"
+            )
         owner = self.owners.get((phase, dp_rank))
         if owner is None:
             raise ConfigurationError(
@@ -181,6 +196,12 @@ class AFService:
                 )
             )
         yield self.env.process(self.executor.run_iteration(iteration))
+        if self.trace.enabled and not self.retain_trace:
+            # Validation has completed; stable positions preserve active DAG offsets.
+            for index in self.trace.iteration_event_indices[iteration.iteration_id]:
+                self.trace.events[index] = CompletedTiming.from_event(
+                    self.trace.events[index]
+                )
         for session, request in zip(sessions, requests):
             session.cached_context = request.context_len
             self.memory.commit(session.request_id, request.context_len)

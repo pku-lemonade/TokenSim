@@ -21,7 +21,9 @@ def main(argv=None):
         "--summary", type=Path, default=ROOT / "outputs/lpx-reproduction/summary.json"
     )
     parser.add_argument(
-        "--config", type=Path, default=ROOT / "experiments/lpx/sweep.json"
+        "--config",
+        type=Path,
+        default=ROOT / "experiments/lpx/legacy-serialized-sweep.json",
     )
     parser.add_argument(
         "--output", type=Path, default=ROOT / "outputs/lpx-diagnosis/diagnosis.json"

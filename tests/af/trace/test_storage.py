@@ -8,6 +8,8 @@ import unittest
 from unittest.mock import patch
 
 from TokenSim.af.planning.batching import AFIteration
+from TokenSim.af.planning.nodes import RankLocalWork
+from TokenSim.af.providers.queries import AFTensorSlice
 from TokenSim.af.trace.metrics import AFTraceEvent
 from TokenSim.af.trace.recorder import AFTraceRecorder
 from TokenSim.errors import SimulationStateError
@@ -65,6 +67,18 @@ def reference_summary(recorder, current):
 
 
 class TraceStorageTest(unittest.TestCase):
+    def test_deferred_work_records_preserve_exported_json(self):
+        work = RankLocalWork(
+            2,
+            tensor_shape=(("hidden_size", 16),),
+            expert_workload=((3, 2),),
+            tensor_slices=(AFTensorSlice("x", (0, 16), "partial", payload_bytes=32),),
+        )
+        event = replace(_valid_events()[0], local_work=work.trace_mapping())
+        self.assertIs(event.local_work["tensor_slices"], work.tensor_slices)
+        self.assertEqual(event.as_dict()["local_work"], work.as_dict())
+        json.dumps(event.as_dict())
+
     def test_interleaved_iterations_read_only_their_positions(self):
         recorder = AFTraceRecorder()
         for event in _valid_events():

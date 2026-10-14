@@ -29,7 +29,7 @@ class ExecutorTransportMixin:
             times = yield from endpoint.scheduler.run(
                 resource_ids,
                 estimate.service_duration,
-                (block.iteration_id, block.block_id, layer_id, node_id),
+                (block.iteration_id, block.block_id, layer_id, node_id, *resource_ids),
             )
             return (*times, estimate)
         finally:

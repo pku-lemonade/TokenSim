@@ -225,7 +225,10 @@ class ParallelExecutionPlanner(
             raise ConfigurationError(
                 "AF blocks require a preselected replica placement"
             )
-        if self.cluster_config.af.dag_template_cache:
+        cache_limit = self.cluster_config.af.dag_template_cache_max_tokens
+        if self.cluster_config.af.dag_template_cache and (
+            not cache_limit or block.token_count <= cache_limit
+        ):
             return self.template_cache.build(self, block, layer_id, link)
         return self._build_runtime_layer(block, layer_id, link)
 

@@ -232,7 +232,7 @@ class ExecutorComputeMixin:
                     ep_rank=step.ep_rank,
                     tp_group=step.tp_group,
                     ep_group=step.ep_group,
-                    local_work=local_work.as_dict(),
+                    local_work=local_work.trace_mapping(),
                     layer_type=step.layer_type,
                     original_token_count=local_work.original_token_count,
                     assignment_count=local_work.assignment_count,

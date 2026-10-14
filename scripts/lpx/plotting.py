@@ -19,9 +19,9 @@ LABELS = {
 }
 
 
-def style_axis(ax, x_max=8000):
+def style_axis(ax, x_max=8000, y_max=1.02):
     ax.set_xlim(0, x_max)
-    ax.set_ylim(0, 1.02)
+    ax.set_ylim(0, y_max)
     ax.spines[["top", "right"]].set_visible(False)
     for spine in ax.spines.values():
         spine.set_color("#999999")
@@ -171,7 +171,8 @@ def generate_plots(summary_path, output=None, reference_path=None):
         fig.subplots_adjust(left=0.11, right=0.96, bottom=0.2, top=0.8)
         valid = [r for r in summary["results"] if r["status"] == "ok"]
         x_max = max(1000, max(r["tokens_per_s_per_user"] for r in valid) * 1.15)
-        style_axis(ax, x_max)
+        y_max = max(1.02, max(r["normalized_throughput"] for r in valid) * 1.05)
+        style_axis(ax, x_max, y_max)
         draw_simulation(ax, summary)
         fig.suptitle(
             "TokenSim projection: throughput and interactivity", fontsize=22, y=0.95
@@ -203,7 +204,7 @@ def generate_plots(summary_path, output=None, reference_path=None):
         fig, axes = plt.subplots(1, 2, figsize=(15, 6.8))
         fig.subplots_adjust(left=0.07, right=0.98, bottom=0.29, top=0.79, wspace=0.2)
         for ax in axes:
-            style_axis(ax)
+            style_axis(ax, max(8000, x_max), y_max)
         axes[0].set_title(
             "NVIDIA Figure 11: approximate manual samples", fontsize=12, pad=15
         )

@@ -65,6 +65,7 @@ class AFConfig:
     communication_domains: CommunicationDomainConfig | None = None
     service_estimate_cache: bool = True
     dag_template_cache: bool = True
+    dag_template_cache_max_tokens: int = 0
     execution_protocol: str = "partial_return"
     compute_execution_mode: str = "eager"
     graph_submit_us: float = 4.0
@@ -118,14 +119,25 @@ class AFConfig:
             raise ConfigurationError(f"af.{info.field_name} must be a boolean")
         return value
 
-    @field_validator("af_block_size", mode="before")
+    @field_validator("af_block_size", "dag_template_cache_max_tokens", mode="before")
     @classmethod
-    def _validate_block_size_type(cls, value: Any) -> int:
+    def _validate_block_size_type(cls, value: Any, info) -> int:
         if type(value) is not int:
-            raise ConfigurationError("af_block_size must be a positive integer")
+            raise ConfigurationError(f"{info.field_name} must be an integer")
+        return value
+
+    @field_validator("graph_submit_us", "graph_device_kernel_us", mode="before")
+    @classmethod
+    def _validate_graph_cost(cls, value: Any, info):
+        from TokenSim.config.validation import number
+
+        number(value, info.field_name)
         return value
 
     def __post_init__(self, dtype_presence_input: tuple[str, ...]) -> None:
+        from TokenSim.config.validation import integer
+
+        integer(self.dag_template_cache_max_tokens, "AF DAG cache token limit")
         self._explicit_dtype_fields = frozenset(dtype_presence_input)
         if self.transfer_topology_mode not in {"physical", "flat_link"}:
             raise ConfigurationError(

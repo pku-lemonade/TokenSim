@@ -164,6 +164,7 @@ def configuration(
             compute_execution_mode=execution_mode,
             graph_device_kernel_us=graph_kernel_us,
             coalesce_ready_transfers=True,
+            dag_template_cache_max_tokens=32,
             activation_dtype=model.activation_dtype,
             kv_cache_dtype=model.kv_cache_dtype,
             execution_domains=domains,

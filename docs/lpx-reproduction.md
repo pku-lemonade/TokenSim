@@ -1,149 +1,166 @@
 # Groq 3 LPX figure reproduction
 
 The target is Figure 11 of [NVIDIA's long-context LPX blog](https://developer.nvidia.com/blog/how-nvidia-groq-3-lpx-unlocks-ultrafast-interactivity-at-long-context-on-nvidia-vera-rubin/).
-Its workload has 400,000 cached input tokens, 4,000 new input tokens and 400 output tokens.
-The chart compares Rubin, external drafting, attention–feed-forward network (AF) separation and prefill–decode (PD) separation.
-The published curves are projections for a scaled GPT-OSS model.
-The current curve export describes one serialized batch and has no steady-state factory-throughput validation.
-The [diagnosis and repair plan](lpx-diagnosis.md) identifies the execution and placement defects that prevent reproduction.
-NVIDIA has not supplied the curve samples, exact model architecture, placement, power budget or draft acceptance settings.
+The workload has 400,000 cached input tokens, 4,000 new input tokens and 400 output tokens.
+The four deployments are Rubin, external drafting, attention–feed-forward network (AF) separation and prefill–decode (PD) separation.
+NVIDIA's scaled model, placement, power budget, acceptance settings and curve samples are unpublished.
+The simulator exports independent architecture and execution assumptions; matching NVIDIA's numerical gains requires those inputs and measured runtime profiles.
 
-## Hardware inputs
+## Native execution
 
-`groq_lp30` models the third-generation LPU independently of `groqchip_v1`.
-The [LPX architecture article](https://developer.nvidia.com/blog/inside-nvidia-groq-3-lpx-the-low-latency-inference-accelerator-for-the-nvidia-vera-rubin-platform/) reports 500 MB SRAM and 150 TB/s SRAM bandwidth per chip, with 256 chips per rack.
-FP8 peak is derived from the published 315 PFLOPS rack total.
-The LP30 injection link uses 1.25 TB/s per direction, derived from the published 2.5 TB/s bidirectional total.
-The individual 112 Gb/s link is a separate 14 GB/s entry.
-An aggregate injection budget must be counted once per endpoint.
-`bandwidth_scope: endpoint` on a link prevents automatic Groq topology construction from multiplying its aggregate budget by the chip's port count.
-Links describing one physical port retain the default `bandwidth_scope: link`.
-LPX external DRAM is excluded from SRAM-resident experiments.
+`scripts/reproduce_lpx.py` version 2 executes whole-model production `ModelAFExecutor` DAGs through `AFService`.
+Independent request cohorts share physical compute resources, pipeline stages and transmit/receive endpoint budgets.
+Pipeline parallelism (PP) owns its stage's weights and KV layers and charges activation handoffs.
+Expert parallelism (EP) supports tensor-sharded experts with resolved physical collective groups.
+Colocated A/F domains share one physical compute and memory inventory.
+Large prefill graphs bypass the structural template cache above 32 query tokens to bound compilation cost and retained routing records.
+Full traces undergo invariant validation before optional retention as compact timing records.
+The compact history produces the same serving metrics as the full history.
+Worker and host resource names include their service namespace when metrics are aggregated.
+KV handoff and draft token-control transfers participate in endpoint utilization and queue accounting.
 
-The `rubin` entry follows the [product specifications](https://www.nvidia.com/en-us/data-center/vera-rubin-nvl72/) retrieved on 2026-10-14.
-Those specifications give 288 GB HBM4, 19.2 TB/s memory bandwidth and 3 TB/s bidirectional NVLink bandwidth per GPU.
-The catalog uses dense FP8 and BF16 compute specifications.
-The July architecture article quotes higher bandwidth maxima; those values are not substituted into this snapshot.
+Each cohort warms the prefill/decode path for `--warmup-steps` decode passes, waits for the other cohorts, restores its declared warm prefix and starts a fresh measured turn.
+The measurement lasts at least `--measurement-seconds` and includes at least `--measurement-turns` complete turns per cohort.
+The default requires one complete turn so a short decode-only interval cannot omit suffix prefill and handoff from factory throughput.
+Increasing the number of measured turns reduces finite-window boundary effects.
+Setting the turn minimum to zero is available for fixed-window diagnostics and can produce a decode-dominated sample.
+In-flight work drains after measurement ends.
+Warm-up and drain tokens are excluded from steady-state output throughput.
 
-Compute efficiencies, first-bit latency, inter-rack routing, runtime overhead and chip power are assumptions with evidence grade D.
-The catalog's 450 W LP30 and 1,800 W Rubin power values are experiment defaults.
-They do not represent measured rack power.
-Host, cooling and network power must be supplied separately when reporting facility efficiency.
+## Hardware and precision
 
-## Model inputs
+`groq_lp30` is independent of the first-generation `groqchip_v1` model.
+The [LPX architecture article](https://developer.nvidia.com/blog/inside-nvidia-groq-3-lpx-the-low-latency-inference-accelerator-for-the-nvidia-vera-rubin-platform/) supplies 500 MB decimal SRAM and 150 TB/s SRAM bandwidth per chip, 256 chips per rack and 315 PFLOPS FP8 per rack.
+The catalog derives 1.23046875 PFLOPS FP8 per chip and 1.25 TB/s injection bandwidth per direction from the bidirectional 2.5 TB/s total.
+The separate 112 Gb/s physical-port entry has 14 GB/s bandwidth.
+Aggregate injection is counted once per endpoint and aliases share the same budget.
+LPX external DRAM is excluded from resident experiments.
 
-`gpt-oss-2t-proxy` retains the public GPT-OSS-120B dimensions and increases its expert count to 2,240, giving approximately 2T parameters.
-Its extended context limit, uniform full attention and FP8 weight precision are explicit modeling assumptions.
-The public checkpoint uses alternating local and full attention and MXFP4 expert weights.
-The proxy supplies a conservative full-context attention workload for the experiment.
-Simulator results must retain the proxy name and assumptions when compared with the published chart.
+The `rubin` catalog follows the [product specifications](https://www.nvidia.com/en-us/data-center/vera-rubin-nvl72/) retrieved on 2026-10-14.
+The catalog uses 288 GB HBM4, 19.2 TB/s memory bandwidth, 1.5 TB/s NVLink per direction and dense compute specifications.
+Compute efficiency, launch cost, transport startup and processor power remain evidence-grade-D assumptions.
+Processor defaults are 1,800 W for Rubin and 450 W for LP30.
+`--facility-watts` adds a declared host, network and cooling allowance.
+These defaults do not establish measured rack efficiency.
 
-## Run the experiments
+Expert storage uses MXFP4 payload with one scale byte per 32 weights and padded rows.
+Other weights, activations and KV use BF16 in the corrected candidates.
+LP30 executes packed weights using its FP8 compute capability with an explicit analytical unpack cost.
+Four-bit storage does not double its FP8 execution rate.
+GPU graph mode charges a host submission per cohort pass and an explicit device-kernel overhead.
+The defaults are 4 microseconds for submission and 0.2 microseconds per device kernel.
+LP30 timing is unaffected by the GPU graph switch.
+`--execution-mode eager` and `--graph-kernel-us` support sensitivity checks without changing hardware specifications.
+Measured GPU graph or LP30 compiler profiles are not supplied.
+Ready endpoint messages are batched with byte conservation and explicit producer dependencies.
+The simulator does not claim NVIDIA's 320-byte compiler overlap or a calibrated fused implementation.
 
-Run the production AF audit and the four deployment sweeps from a repository checkout:
+## Architecture candidates
 
-```bash
-python scripts/reproduce_lpx.py \
-  --trace \
-  --plot \
-  --output outputs/lpx-reproduction
-```
+The [public GPT-OSS-120B config](https://huggingface.co/openai/gpt-oss-120b/blob/main/config.json) alternates 128-token local attention and full attention and uses top-4 routed experts.
+The default candidate retains that pattern and mixed precision while assuming a larger width and layer count.
+Each exported summary separates total parameters, activated routed parameters and linear FLOPs per token.
+Attention work dependent on KV length is priced separately by the native provider.
 
-`experiments/lpx/sweep.json` declares the workload, batch sizes and rank inventories.
-The default sweep evaluates 84 configurations.
-`summary.json` retains every feasible point, capacity rejection, Pareto frontier, hardware specification and assumption.
-`points.csv` provides the metrics as a table.
-`af-audit.json` contains production AF runtime plans and simulated event traces for batches 1, 4 and 16.
-The audit executes one resident layer of the proxy on 8 Rubin GPUs and 256 LP30 chips.
-Its negative control checks that the same LP30 placement rejects the entire model.
-The audit does not extrapolate that layer's throughput to the full model.
+| Candidate | Layers / width / experts | Total parameters | Activated routed parameters per token | Expert precision |
+| --- | --- | ---: | ---: | --- |
+| `gpt-oss-2t-wide-proxy` | 80 / 8192 / 128 | 2.077T | 64.42B | MXFP4 |
+| `gpt-oss-2t-expert-proxy` | 36 / 2880 / 2240 | 2.009T | 3.58B | MXFP4 |
+| Historical `gpt-oss-2t-proxy` | 36 / 2880 / 2240 | 2.009T | 3.58B | FP8 |
 
-Use a short sweep when checking script changes:
+The historical candidate retains uniform full attention for existing result reproducibility.
+Both corrected candidates have an assumed 1M context limit.
+Neither corrected architecture is identified as NVIDIA's scaled GPT-OSS deployment.
+The independent four-layer `gpt-oss-draft-proxy` retains public GPT-OSS width and precision instead of inheriting the target's widened geometry.
+Draft quality and acceptance require external measurements.
+
+## Run and inspect
+
+The default sweep declares eight topologies and three client counts in `experiments/lpx/sweep.json`.
+`--batches` means concurrent clients; `--micro-batch` controls requests in each independently progressing cohort.
+`--a-replicas` adds attention serving replicas and charges their physical inventory.
+FFN stages remain shared across those request streams.
+Capacity failures are exported and excluded from Pareto frontiers.
+The whole-model CPU simulation can take substantial time because routing, physical dependencies and trace invariants are evaluated explicitly.
 
 ```bash
 python scripts/reproduce_lpx.py \
   --skip-audit \
+  --cases rubin-tp8 af-tp8 pd-tp16 draft-tp8 \
   --batches 1 \
-  --output-tokens 4 \
-  --context-samples 1 \
-  --output outputs/lpx-smoke
+  --measurement-turns 1 \
+  --plot \
+  --output outputs/lpx-native-reproduction
 ```
 
-`--audit-only` runs only the production AF checks.
-`--config` selects another experiment JSON.
-`--batches`, `--output-tokens`, `--context-samples` and `--acceptance` override their corresponding workload inputs.
-`--rubin-watts` and `--lp30-watts` override processor power.
-`--facility-watts` adds a fixed host, network and cooling power allowance for each deployment.
-
-Install plotting dependencies with `python -m pip install -e '.[dev,plot]'`.
-`--plot` generates PNG and editable SVG files after the sweep.
-Plot an existing summary without running the simulation again:
+Use the matching topology file for expert-count scaling:
 
 ```bash
-python scripts/plot_lpx.py \
-  --summary outputs/lpx-reproduction/summary.json \
-  --output outputs/lpx-reproduction
+python scripts/reproduce_lpx.py \
+  --model gpt-oss-2t-expert-proxy \
+  --config experiments/lpx/expert-sweep.json \
+  --skip-audit \
+  --batches 1 \
+  --plot \
+  --output outputs/lpx-native-expert
 ```
 
-`reference.png` reconstructs the supplied figure using the approximate manual samples in `experiments/lpx/reference.json`.
-Those samples include reading uncertainty and their source URL.
-`simulation.png` plots the simulated Pareto frontiers and includes an inset for the low-efficiency region.
-`comparison.png` places the reference and simulation on matching axis ranges.
-Reference and simulation have independent normalization denominators.
-Reference-only 3x/5x annotations retain their source provenance.
-The reference samples never enter the simulator's timing, calibration or power calculations.
-Every PNG has a corresponding SVG.
+A short script smoke test preserves long-context capacity checks while reducing timed work:
 
-## Execution and metrics
+```bash
+python scripts/reproduce_lpx.py \
+  --skip-audit \
+  --cases rubin-tp8 af-tp8 pd-tp16 draft-tp8 \
+  --batches 1 \
+  --new-tokens 8 \
+  --output-tokens 8 \
+  --measurement-seconds 0.003 \
+  --plot \
+  --output outputs/lpx-native-smoke
+```
 
-The sweep uses TokenSim's AF operator provider, exact routed-expert work, collective service model and SimPy resources.
-The full-model experiment composes layer partitions and context partitions explicitly.
-These partitions extend the experiment's analytical scope beyond the production AF runtime's PP=1 and EP=1 or TP*DP contract.
-Every rank must fit its resident weights, KV shards and activation workspace.
-The default AF FFN layout has four layer partitions, 320 expert partitions and four tensor shards per expert, totaling 5,120 LP30 chips.
-All allocated processors contribute to the power denominator.
-Context parallelism replicates projections and divides cached KV reads across context shards.
-An explicit collective combines the attention results.
-Layer boundaries and A/F dispatch/return have transport costs.
+`--cached-tokens`, `--new-tokens`, `--output-tokens`, `--prefill-chunk` and `--acceptance` override workload inputs.
+`--config`, `--model`, `--draft-model` and `--cases` select explicit configurations.
+`--trace` retains complete native events for client-count-one points.
+`--audit-only` checks one resident full-attention layer and a rejected whole-model placement on 8 Rubin GPUs and 256 LP30 chips.
+`--rubin-watts` and `--lp30-watts` override processor power.
+`--context-samples` is retained for historical configuration compatibility and has no sampling effect in the native executor.
+Invalid CLI settings fail before output creation.
 
-Each pool handles one synchronous batch with serialized model passes.
-The model does not overlap different requests or 320-byte compiler transfers.
-Decode uses a weighted average of representative context positions and deterministic routed histograms.
-Prefill routing uses balanced counts while conserving the exact number of assignments.
-The 400K warm prefix is resident before timing begins.
-Only the 4K suffix is computed during prefill.
-PD copies the retained prefix and suffix KV once before decode.
-AF retains decode KV on the GPU and copies it from the separately allocated prefill GPU pool.
+`summary.json` records revision, dirty state, model/draft inputs, architecture arithmetic, hardware, run settings, physical inventories, capacity failures and frontiers.
+`partial-results.json` checkpoints finished points while a sweep is running.
+`points.csv` contains interactivity, power and normalized efficiency.
+Successful points export bounded/resident KV bytes, service counts, complete/partial turns, TTFT, utilization, queue delays and transfer events.
+Interactivity divides committed decode tokens by per-user decode-pass elapsed time, including queueing.
+Factory throughput counts completed output tokens over the measured wall-clock interval, including suffix prefill, cache handoff and draft service.
+TPS/MW divides factory throughput by all allocated processor watts plus the facility allowance.
+All simulated modes share the maximum feasible Rubin TPS/MW denominator from that sweep.
+Each mode's frontier contains only nondominated feasible points.
 
-External drafting uses a four-layer, 128-expert proxy with an independent KV cache.
-Its warm prefix is also resident, and its new-suffix prefill is charged.
-For `gamma` draft tokens and independent acceptance probability `p`, expected committed tokens per cycle equal `sum(p**i for i in range(gamma + 1))`.
-Every cycle charges all `gamma + 1` verification positions, draft generation and token-control transport.
-A fractional terminal cycle expresses the expected-value approximation.
-Model quality and acceptance calibration require measurements outside TokenSim.
+PD supports `--handoff-mode full` for a cold destination and `incremental` for a verified retained warm prefix.
+Handoffs copy missing positions, retain bounded layer tails and replicate shared KV heads through destination-local transfers.
+Every speculative cycle executes all `gamma + 1` verifier positions, even on complete rejection.
+Seeded accepted prefixes commit a correction/bonus token and roll back uncommitted KV on both models.
+The default micro-batch of one gives independently sampled request acceptance.
+Larger fixed cohorts share one accepted-prefix sample to retain synchronized request lengths.
 
-Per-user interactivity is the number of tokens produced after the prefill token divided by decode time.
-Output throughput is the batch's 400 output tokens divided by the complete timed turn, including suffix prefill and handoff.
-TPS/MW divides that throughput by allocated processor TDP plus the supplied facility allowance.
-All simulated curves share the peak Rubin TPS/MW normalization.
-Each curve keeps only nondominated feasible configurations.
-Original 3x and 5x annotations must not be applied to simulated results without supporting output metrics.
+## Figure artifacts and limits
 
-## Default sweep observations
+Install plotting dependencies with `python -m pip install -e '.[dev,plot]'`.
+`--plot` exports `reference`, `simulation` and `comparison` in PNG and editable SVG.
+`reference` uses approximate manual samples in `experiments/lpx/reference.json` and never contributes to simulation timing or calibration.
+The comparison preserves independent reference and simulation normalizations and expands shared axes if a result exceeds the supplied figure's range.
+Reference 3x/5x annotations are not applied to simulated points.
 
-The 84-configuration sweep produces 61 feasible points and 23 capacity rejections under the checked-in assumptions.
-The production AF layer audit completes at 144.2, 356.4 and 1,205.3 simulated microseconds for batches 1, 4 and 16.
-The full-model negative control requires 8.06 GB of expert weights on an LP30 rank with 500 MB SRAM and fails before execution.
+Native context parallelism is unimplemented and declared CP greater than one fails configuration.
+Higher attention TP can replicate KV heads, so capacity and reads stop shrinking beyond the head-sharding limit.
+Local attention executes on the configured attention pool with bounded KV.
+A separate LP30-local-attention placement at full-attention exchange boundaries is an unvalidated deployment hypothesis and is not implemented.
+These limits restrict feasible PD concurrency and high-interactivity candidates.
+The defaults use flat aggregate links and do not resolve detailed rack routing.
+Resident cohorts have no paged admission, preemption or cache eviction.
 
-| Deployment | Maximum simulated TPS/user | Maximum TPS/MW relative to Rubin |
-| --- | ---: | ---: |
-| Rubin | 464 | 1.0000 |
-| Rubin verifier + LP30 draft | 963 | 0.0963 |
-| Rubin attention + LP30 FFN | 506 | 0.0115 |
-| Rubin prefill + LP30 decode | 1,522 | 0.0057 |
-
-The speed and efficiency maxima may come from different configurations.
-The model's uniform full attention and FP8 expert storage are expensive at 400K context and approximately 2T parameters.
-The capacity checks force large LP30 inventories, and the assumed processor power charges those inventories.
-The simulation does not establish NVIDIA's 3x or 5x gains.
-Measured architecture, routing, compiler overlap, precision and power inputs are required to test those projections.
+The original serialized sweep is preserved as `experiments/lpx/legacy-serialized-sweep.json` with historical outputs under `outputs/lpx-reproduction`.
+The [diagnosis](lpx-diagnosis.md) describes that historical executor and its probes.
+The native output directory is separate to preserve the original evidence.
+Passing software tests and repairing the known execution defects do not establish NVIDIA's projected speed or efficiency gains.

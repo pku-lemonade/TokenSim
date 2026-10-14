@@ -10,19 +10,127 @@
     "draft_tokens": 4,
     "acceptance_probability": 0.8
   },
-  "batches": [1, 2, 4, 8, 16, 32, 64],
+  "batches": [
+    1,
+    4,
+    16
+  ],
   "cases": [
-    {"name": "rubin-tp8", "mode": "rubin", "decode": {"a_tp": 8, "f_ep": 8}},
-    {"name": "rubin-tp16", "mode": "rubin", "decode": {"a_tp": 16, "f_ep": 16}},
-    {"name": "rubin-tp32", "mode": "rubin", "decode": {"a_tp": 32, "f_ep": 32}},
-    {"name": "af-tp8", "mode": "af", "decode": {"a_tp": 8, "f_device": "groq_lp30", "f_tp": 4, "f_ep": 320, "f_pp": 4, "colocated": false}, "prefill": {"a_tp": 32, "f_ep": 32}},
-    {"name": "af-tp16", "mode": "af", "decode": {"a_tp": 16, "f_device": "groq_lp30", "f_tp": 4, "f_ep": 320, "f_pp": 4, "colocated": false}, "prefill": {"a_tp": 32, "f_ep": 32}},
-    {"name": "af-tp32", "mode": "af", "decode": {"a_tp": 32, "f_device": "groq_lp30", "f_tp": 4, "f_ep": 320, "f_pp": 4, "colocated": false}, "prefill": {"a_tp": 32, "f_ep": 32}},
-    {"name": "pd-cp1", "mode": "pd", "decode": {"a_device": "groq_lp30", "f_device": "groq_lp30", "a_tp": 32, "a_cp": 1, "a_pp": 36, "f_tp": 4, "f_ep": 320, "f_pp": 4, "colocated": false}, "prefill": {"a_tp": 32, "f_ep": 32}},
-    {"name": "pd-cp4", "mode": "pd", "decode": {"a_device": "groq_lp30", "f_device": "groq_lp30", "a_tp": 32, "a_cp": 4, "a_pp": 36, "f_tp": 4, "f_ep": 320, "f_pp": 4, "colocated": false}, "prefill": {"a_tp": 32, "f_ep": 32}},
-    {"name": "pd-cp16", "mode": "pd", "decode": {"a_device": "groq_lp30", "f_device": "groq_lp30", "a_tp": 32, "a_cp": 16, "a_pp": 36, "f_tp": 4, "f_ep": 320, "f_pp": 4, "colocated": false}, "prefill": {"a_tp": 32, "f_ep": 32}},
-    {"name": "draft-cp1", "mode": "draft", "decode": {"a_tp": 32, "f_ep": 32}, "draft": {"a_device": "groq_lp30", "f_device": "groq_lp30", "a_tp": 32, "a_cp": 1, "a_pp": 4, "f_tp": 1, "f_ep": 32, "f_pp": 4, "colocated": false}},
-    {"name": "draft-cp4", "mode": "draft", "decode": {"a_tp": 32, "f_ep": 32}, "draft": {"a_device": "groq_lp30", "f_device": "groq_lp30", "a_tp": 32, "a_cp": 4, "a_pp": 4, "f_tp": 1, "f_ep": 32, "f_pp": 4, "colocated": false}},
-    {"name": "draft-cp16", "mode": "draft", "decode": {"a_tp": 32, "f_ep": 32}, "draft": {"a_device": "groq_lp30", "f_device": "groq_lp30", "a_tp": 32, "a_cp": 16, "a_pp": 4, "f_tp": 1, "f_ep": 32, "f_pp": 4, "colocated": false}}
+    {
+      "name": "rubin-tp8",
+      "mode": "rubin",
+      "decode": {
+        "a_tp": 8,
+        "f_ep": 8
+      }
+    },
+    {
+      "name": "rubin-tp16",
+      "mode": "rubin",
+      "decode": {
+        "a_tp": 16,
+        "f_ep": 16
+      }
+    },
+    {
+      "name": "af-tp8",
+      "mode": "af",
+      "decode": {
+        "a_tp": 8,
+        "f_device": "groq_lp30",
+        "f_tp": 4,
+        "f_ep": 128,
+        "f_pp": 8,
+        "colocated": false
+      },
+      "prefill": {
+        "a_tp": 16,
+        "f_ep": 16
+      }
+    },
+    {
+      "name": "af-tp16",
+      "mode": "af",
+      "decode": {
+        "a_tp": 16,
+        "f_device": "groq_lp30",
+        "f_tp": 4,
+        "f_ep": 128,
+        "f_pp": 8,
+        "colocated": false
+      },
+      "prefill": {
+        "a_tp": 16,
+        "f_ep": 16
+      }
+    },
+    {
+      "name": "pd-tp16",
+      "mode": "pd",
+      "decode": {
+        "a_device": "groq_lp30",
+        "f_device": "groq_lp30",
+        "a_tp": 16,
+        "a_pp": 80,
+        "f_tp": 4,
+        "f_ep": 128,
+        "f_pp": 8,
+        "colocated": false
+      },
+      "prefill": {
+        "a_tp": 16,
+        "f_ep": 16
+      }
+    },
+    {
+      "name": "pd-tp32",
+      "mode": "pd",
+      "decode": {
+        "a_device": "groq_lp30",
+        "f_device": "groq_lp30",
+        "a_tp": 32,
+        "a_pp": 80,
+        "f_tp": 4,
+        "f_ep": 128,
+        "f_pp": 8,
+        "colocated": false
+      },
+      "prefill": {
+        "a_tp": 16,
+        "f_ep": 16
+      }
+    },
+    {
+      "name": "draft-tp8",
+      "mode": "draft",
+      "decode": {
+        "a_tp": 8,
+        "f_ep": 8
+      },
+      "draft": {
+        "a_device": "groq_lp30",
+        "f_device": "groq_lp30",
+        "a_tp": 16,
+        "a_pp": 4,
+        "f_ep": 16,
+        "f_pp": 4
+      }
+    },
+    {
+      "name": "draft-tp16",
+      "mode": "draft",
+      "decode": {
+        "a_tp": 16,
+        "f_ep": 16
+      },
+      "draft": {
+        "a_device": "groq_lp30",
+        "f_device": "groq_lp30",
+        "a_tp": 16,
+        "a_pp": 4,
+        "f_ep": 16,
+        "f_pp": 4
+      }
+    }
   ]
 }

@@ -89,7 +89,6 @@ def cluster_doc(batch):
             trace_enabled=True,
             transfer_topology_mode="flat_link",
             router_location="a",
-            weight_dtype="fp8",
             activation_dtype="bf16",
             kv_cache_dtype="bf16",
             communication_domains=dict(
@@ -133,7 +132,12 @@ def cluster_doc(batch):
 
 
 def run_audit(hardware, target, *, batches=(1, 4, 16), context=404000):
-    layer = replace(target, num_layers=1, moe=replace(target.moe, num_moe_layers=1))
+    layer = replace(
+        target,
+        num_layers=1,
+        attention_windows=(0,),
+        moe=replace(target.moe, num_moe_layers=1),
+    )
     rows = []
     for batch in batches:
         runtime = build_model_runtime(
