@@ -7,12 +7,13 @@ sources:
   nvidia-rubin-product-oct2026:
     grade: A
     reference: https://www.nvidia.com/en-us/data-center/vera-rubin-nvl72/
-    notes: Dense FP8 17.5 PFLOPS; dense BF16 4 PFLOPS; FP32 130 TFLOPS; 288 GB HBM4 at 19.2 TB/s; NVLink 3 TB/s bidirectional. Product-page snapshot retrieved 2026-10-14; the July architecture blog quotes higher bandwidth maxima.
+    notes: Dense FP8 17.5 PFLOPS; dense BF16 4 PFLOPS; FP32 130 TFLOPS; 288 GB HBM4 at 19.2 TB/s; NVLink 3 TB/s bidirectional. NVFP4 dense inference is derived from the 50 PFLOPS sparse specification divided by two. Product-page snapshot retrieved 2026-10-14; the July architecture blog quotes higher bandwidth maxima.
   assumption-rubin-analytical:
     grade: D
     reference: docs/lpx-reproduction.md
     notes: Efficiencies, kernel overhead, runtime reserve and 1800 W chip TDP are unmeasured assumptions.
 peak_compute:
+  nvfp4: {value: 25.0e15, source_id: nvidia-rubin-product-oct2026, grade: C}
   fp8: {value: 17.5e15, source_id: nvidia-rubin-product-oct2026}
   fp16: {value: 4.0e15, source_id: nvidia-rubin-product-oct2026}
   bf16: {value: 4.0e15, source_id: nvidia-rubin-product-oct2026}

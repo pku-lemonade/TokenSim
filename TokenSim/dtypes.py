@@ -19,7 +19,7 @@ CANONICAL_DTYPE_ROLES = frozenset(
 @dataclass(frozen=True)
 class DTypeSpec:
     canonical_name: str
-    size_bytes: int
+    size_bytes: int | float
     aliases: tuple[str, ...]
 
 
@@ -54,6 +54,10 @@ CAST_OPERATIONS = tuple(
 _ALIAS_TO_CANONICAL: Mapping[str, str] = MappingProxyType(
     {alias: spec.canonical_name for spec in _SPECS for alias in spec.aliases}
 )
+_PACKED_WEIGHTS = {
+    "mxfp4": DTypeSpec("mxfp4", 0.5, ("mxfp4",)),
+    "mxfp4_wo": DTypeSpec("mxfp4_wo", 0.5, ("mxfp4_wo", "w4a16_mxfp4")),
+}
 
 
 def resolve_dtype(dtype: str, *, role: str | None = None) -> DTypeSpec:
@@ -61,6 +65,10 @@ def resolve_dtype(dtype: str, *, role: str | None = None) -> DTypeSpec:
     if not isinstance(dtype, str) or not dtype.strip():
         raise ValueError(f"{role_name} must be a non-empty dtype string")
     value = dtype.strip().lower()
+    if role == "weight_dtype":
+        for spec in _PACKED_WEIGHTS.values():
+            if value in spec.aliases:
+                return spec
     canonical = _ALIAS_TO_CANONICAL.get(value)
     if canonical is None:
         supported = ", ".join(DTYPE_REGISTRY)
@@ -75,7 +83,7 @@ def canonicalize_dtype(dtype: str, *, role: str | None = None) -> str:
     return resolve_dtype(dtype, role=role).canonical_name
 
 
-def dtype_size_bytes(dtype: str, *, role: str | None = None) -> int:
+def dtype_size_bytes(dtype: str, *, role: str | None = None) -> int | float:
     return resolve_dtype(dtype, role=role).size_bytes
 
 

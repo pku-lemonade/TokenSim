@@ -211,6 +211,11 @@ def cached_estimate(method):
         key = (
             self._estimate_namespace,
             skeleton.query_type,
+            (
+                self.estimate_signature(query)
+                if hasattr(self, "estimate_signature")
+                else ()
+            ),
             tuple(
                 normalize(values.get(name, skeleton.defaults.get(name)))
                 for name in skeleton.names

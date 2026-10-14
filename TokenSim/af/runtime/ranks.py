@@ -2,6 +2,7 @@
 
 from TokenSim.af.runtime.memory import _components_for_binding, _experts_by_ep
 from TokenSim.af.runtime.topology import kv_head_partitions
+from TokenSim.af.runtime.component_storage import stored_components
 from TokenSim.config.cache_config import stage_layer_range
 from TokenSim.errors import ConfigurationError
 
@@ -16,6 +17,7 @@ def compile_rank_components(
     intermediate_source,
     block_size,
     weight_bytes,
+    weight_dtype,
     kv_bytes,
     kv_heads,
     head_dim,
@@ -128,6 +130,14 @@ def compile_rank_components(
                     expert_tp_size=view.expert_tensor_parallel_size,
                     expert_tp_rank=mapping.tp_rank % view.expert_tensor_parallel_size,
                     ffn_projection_count=model.ffn_projection_count,
+                    embedding_role=role,
+                )
+                components = stored_components(
+                    components,
+                    operator_dtypes=model.operator_dtypes,
+                    default_dtype=weight_dtype,
+                    projections=model.ffn_projection_count,
+                    mla=mla,
                     embedding_role=role,
                 )
                 for component in components:

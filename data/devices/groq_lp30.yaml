@@ -15,7 +15,7 @@ sources:
   assumption-lp30-analytical:
     grade: D
     reference: docs/lpx-reproduction.md
-    notes: FP16/BF16 peak is assumed to be half the FP8 peak; FP32 is one quarter of FP16; efficiency, launch cost and 450 W chip TDP are unmeasured assumptions.
+    notes: FP16/BF16 peak is assumed to be half the FP8 peak; FP32 is one quarter of FP16; efficiency, launch cost and 450 W chip TDP are unmeasured assumptions. Packed weights use the FP8 fallback pipe with an assumed two vector operations per decoded element.
 peak_compute:
   fp8: {value: 1.23046875e15, source_id: derived-lp30-rack-compute}
   fp16: {value: 6.15234375e14, source_id: assumption-lp30-analytical}
@@ -40,6 +40,8 @@ analytical:
   moe_mfu: 0.7
   memory_efficiency: 0.9
   kernel_launch_us: 0.2
+  packed_dequant_ops_per_element: 2
+  dequant_efficiency: 0.8
 step_overhead_us: {value: 0.0, source_id: assumption-lp30-analytical}
 power: {tdp_w: 450}
 power_source: assumption-lp30-analytical

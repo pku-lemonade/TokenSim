@@ -140,11 +140,17 @@ class AFLayerRuntime:
     num_shared_experts: int
     mla: MLADimensions | None = None
     tie_word_embeddings: bool = True
+    attention_window: int = 0
 
     def as_dict(self) -> dict[str, object]:
         return {
             "layer_id": self.layer_id,
             "mla": vars(self.mla) if self.mla else None,
+            **(
+                {"attention_window": self.attention_window}
+                if self.attention_window
+                else {}
+            ),
             "layer_type": self.layer_type,
             "hidden_size": self.hidden_size,
             "num_attention_heads": self.num_attention_heads,
@@ -198,12 +204,19 @@ class AFModelComponent:
     layer_id: int | None = None
     formula_source: str = "exact_model_shape"
     shape: tuple[tuple[str, int], ...] = ()
+    storage_dtype: str | None = None
+    scale_bytes: int = 0
 
     def as_dict(self) -> dict[str, object]:
         return {
             "component_id": self.component_id,
             "category": self.category,
             "bytes": self.bytes,
+            **(
+                {"storage_dtype": self.storage_dtype, "scale_bytes": self.scale_bytes}
+                if self.storage_dtype
+                else {}
+            ),
             "formula": self.formula,
             "layer_id": self.layer_id,
             "formula_source": self.formula_source,

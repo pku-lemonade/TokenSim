@@ -49,6 +49,19 @@ class AFRuntimePlan(RuntimeGeometryMixin, RuntimeValidationMixin):
     collective_plans: tuple[AFResolvedCollectivePlan, ...] = ()
     link_effective_dtypes: tuple[tuple[str, AFEffectiveDTypes], ...] = ()
     mla: MLADimensions | None = None
+    component_weight_dtypes: tuple[tuple[str, str], ...] = ()
+
+    def weight_dtype_for(self, stage, operation):
+        key = {
+            "a": "attention",
+            "expert": "routed_experts",
+            "routed_expert": "routed_experts",
+        }.get(stage, stage)
+        if operation in {"embedding_lookup", "lm_head"}:
+            key = "embedding_lm_head"
+        return dict(self.component_weight_dtypes).get(
+            key, self.effective_dtypes.weight_dtype
+        )
 
     @cached_property
     def _binding_index(self):
@@ -368,6 +381,11 @@ class AFRuntimePlan(RuntimeGeometryMixin, RuntimeValidationMixin):
             "block_size": self.block_size,
             "dtype": self.dtype,
             "effective_dtypes": self.effective_dtypes.as_dict(),
+            **(
+                {"component_weight_dtypes": dict(self.component_weight_dtypes)}
+                if self.component_weight_dtypes
+                else {}
+            ),
             "link_effective_dtypes": {
                 name: effective.as_dict()
                 for name, effective in self.link_effective_dtypes

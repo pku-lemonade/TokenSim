@@ -13,6 +13,7 @@ from typing import Any, Mapping
 
 from TokenSim.hardware.device import dtype_bytes, normalize_dtype
 from TokenSim.dtypes import CAST_OPERATIONS, dtype_size_bytes
+from TokenSim.hardware.weight_storage import weight_storage_bytes
 
 ACTIVATION_DTYPE_FOR_WEIGHT_ONLY = "fp16"
 
@@ -276,13 +277,41 @@ def work_for_table(
         counts = json.loads(str(key["expert_tokens"]))
         h, i = int(key["hidden_size"]), int(key["inter_size"])
         tokens, experts = sum(counts), len(counts)
-        b = activation_bytes_for(str(key["dtype"]))
+        b = (
+            dtype_bytes(str(key["activation_dtype"]))
+            if "activation_dtype" in key
+            else activation_bytes_for(str(key["dtype"]))
+        )
         projections = 3 if gated else 2
+        dtype = str(key["dtype"])
+        packed = normalize_dtype(dtype) in {"mxfp4", "mxfp4_wo"}
+        payload, scales = 0, 0
+        if packed:
+            tensors = ((i, h),) * (projections - 1) + ((h, i),)
+            for tensor in tensors:
+                weights, metadata = weight_storage_bytes(tensor, dtype)
+                payload += weights * experts
+                scales += metadata * experts
         return OperatorWork(
             2.0 * projections * tokens * h * i + (4.0 if gated else 1.0) * tokens * i,
-            float(projections) * experts * h * i * dtype_bytes(str(key["dtype"])),
+            (
+                payload + scales
+                if packed
+                else float(projections) * experts * h * i * dtype_bytes(dtype)
+            ),
             (2.0 * tokens * h + 2.0 * projections * tokens * i) * b,
-            details=dict(key),
+            details={
+                **key,
+                **(
+                    {
+                        "weight_payload_bytes": payload,
+                        "weight_scale_bytes": scales,
+                        "dequant_elements": projections * experts * h * i,
+                    }
+                    if packed
+                    else {}
+                ),
+            },
         )
     if table == "mla_attention":
         lengths = json.loads(str(key["context_lengths"]))

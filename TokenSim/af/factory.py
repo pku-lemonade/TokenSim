@@ -41,7 +41,7 @@ def build_model_runtime(doc, *, hardware, model, block_size=16):
         model=model,
         hardware=hardware,
         block_size=block_size,
-        dtype=model.dtype,
+        dtype=model.activation_dtype,
     )
     return AFModelRuntime(doc, hardware, model, cluster, workers, placement, plan)
 
@@ -80,7 +80,7 @@ def simulate_decode(
         cluster_config=config.cluster,
         worker_configs=config.workers,
         placement=config.placement,
-        dtype=config.model.dtype,
+        dtype=config.model.activation_dtype,
         fallback=fallback,
     )
     executor = ModelAFExecutor(

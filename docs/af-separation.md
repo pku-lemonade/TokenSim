@@ -106,6 +106,13 @@ An explicit KV limit caps the available memory calculation.
 A total KV limit is divided by A-domain DP replicas.
 Weight, activation, KV-cache and directional wire dtypes have independent roles.
 GEMM/expert queries use weight precision; normalization, rotary embeddings and residuals use activation precision; attention uses KV-cache precision.
+`ModelSpec.attention_windows` can declare a different key window for each model layer.
+Attention service-cache keys include that geometry so a local-attention estimate cannot satisfy a full-attention query.
+`operator_dtypes` selects component weight storage independently of activation and KV formats.
+The `routed_experts` entry supports weight-only MXFP4 storage with row padding and one scale byte per 32 weights.
+Packed formats cannot be selected for activations, KV blocks or communication tensors.
+LP30 packed-weight estimates use its supported compute-pipe fallback and charge an explicit analytical vector-dequantization term.
+These vector efficiency and instruction-count inputs remain unmeasured assumptions.
 
 ## Request geometry and execution contracts
 

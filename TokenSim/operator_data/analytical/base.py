@@ -152,8 +152,17 @@ def register_model(model: AnalyticalModel) -> None:
 
 def analytical_model_for(family: str) -> AnalyticalModel:
     # Import lazily so that the family modules can import this one.
-    if not _MODELS:
+    if family not in _MODELS or "generic" not in _MODELS:
+        previous = dict(_MODELS)
         from TokenSim.operator_data.analytical import gpu, groq  # noqa: F401
+
+        _MODELS.update(previous)
+        for model in (
+            gpu.GPURooflineModel(),
+            gpu.GenericRooflineModel(),
+            groq.GroqTSPModel(),
+        ):
+            _MODELS.setdefault(model.family, model)
 
     try:
         return _MODELS[family]

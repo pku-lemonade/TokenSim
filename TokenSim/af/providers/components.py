@@ -29,7 +29,7 @@ class ComputeComponentsMixin:
         dtype: str,
     ) -> list[OperatorComponent]:
         model = self.model
-        weight_dtype = normalize_dtype(query.weight_dtype or dtype)
+        weight_dtype = model.operator_dtype("attention", query.weight_dtype or dtype)
         h = model.hidden_size
         heads_local = math.ceil(model.num_attention_heads / tp_size)
         kv_heads_local = local_kv_heads(model.num_key_value_heads, tp_size)
@@ -101,11 +101,17 @@ class ComputeComponentsMixin:
             "num_heads": heads_local,
             "num_kv_heads": kv_heads_local,
             "head_dim": model.head_dim,
-            "window_size": model.sliding_window,
+            "window_size": (
+                model.attention_window(query.layer_id)
+                if model.attention_windows
+                else model.sliding_window
+            ),
         }
         lengths = [max(1, int(length)) for length in query.context_lengths]
         components: list[OperatorComponent] = []
-        if query.phase == "prefill":
+        if query.phase == "prefill" or any(
+            length > 1 for length in query.query_lengths
+        ):
             return prefill_components(self, resolver, query, tokens, common)
         groups = Counter(lengths) if lengths else Counter({1: max(1, tokens)})
         for context_len, count in sorted(groups.items()):
@@ -123,7 +129,7 @@ class ComputeComponentsMixin:
         dtype: str,
     ) -> list[OperatorComponent]:
         model = self.model
-        weight_dtype = normalize_dtype(query.weight_dtype or dtype)
+        weight_dtype = model.operator_dtype("router", query.weight_dtype or dtype)
         h = model.hidden_size
         components = (
             []
@@ -158,7 +164,9 @@ class ComputeComponentsMixin:
         dtype: str,
     ) -> list[OperatorComponent]:
         model = self.model
-        weight_dtype = normalize_dtype(query.weight_dtype or dtype)
+        weight_dtype = model.operator_dtype(
+            "routed_experts", query.weight_dtype or dtype
+        )
         h = model.hidden_size
         components: list[OperatorComponent | None] = []
         if model.is_moe:
@@ -197,6 +205,8 @@ class ComputeComponentsMixin:
                         sorted(count for _, count in workload), separators=(",", ":")
                     ),
                 }
+                if weight_dtype in {"mxfp4", "mxfp4_wo"}:
+                    exact_key["activation_dtype"] = dtype
                 estimate = resolver.analytical_estimate(
                     table, exact_key, gated=model.gated
                 )

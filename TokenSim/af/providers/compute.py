@@ -184,6 +184,9 @@ class ComputeEstimateMixin:
             "token_selection",
         }:
             if query.operation == "lm_head":
+                weight_dtype = self.model.operator_dtype(
+                    "embedding_lm_head", weight_dtype
+                )
                 if self.model.vocab_size % tp_size:
                     raise ConfigurationError("vocab_size must divide attention TP")
                 components = [
@@ -242,6 +245,7 @@ class ComputeEstimateMixin:
         elif query.stage == "router":
             components = self._router_components(resolver, query, tokens, dtype)
         elif query.stage in {"dense_ffn", "shared_expert"}:
+            weight_dtype = self.model.operator_dtype(query.stage, weight_dtype)
             width = (
                 self.model.intermediate_size
                 if query.stage == "dense_ffn"

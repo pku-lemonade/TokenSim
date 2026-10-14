@@ -137,7 +137,11 @@ class ExecutorComputeMixin:
             original_token_count=local_work.original_token_count,
             input_edge_count=local_work.input_edge_count,
             output_token_count=local_work.output_token_count,
-            weight_dtype=effective_dtypes["weight_dtype"],
+            weight_dtype=(
+                self.runtime_plan.weight_dtype_for(step.stage, step.operation)
+                if hasattr(self.runtime_plan, "weight_dtype_for")
+                else effective_dtypes["weight_dtype"]
+            ),
             activation_dtype=effective_dtypes["activation_dtype"],
             kv_cache_dtype=effective_dtypes["kv_cache_dtype"],
             a_to_f_dtype=effective_dtypes["a_to_f_dtype"],

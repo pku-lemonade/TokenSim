@@ -114,6 +114,10 @@ def compile_af_runtime_plan(
         ):
             raise ConfigurationError("vllm_afd supports 1A1F with TP=DP=PP=EP=1")
     effective_dtypes, link_dtypes = _compile_dtypes(cluster_config, model, dtype)
+    if cluster_config.af.execution_protocol == "vllm_afd" and any(
+        value != "bf16" for value in model.operator_dtypes.values()
+    ):
+        raise ConfigurationError("vllm_afd requires BF16 component weights")
     weight_bytes = dtype_size_bytes(effective_dtypes.weight_dtype, role="weight_dtype")
     kv_bytes = dtype_size_bytes(effective_dtypes.kv_cache_dtype, role="kv_cache_dtype")
 
@@ -145,6 +149,7 @@ def compile_af_runtime_plan(
     layers = tuple(
         AFLayerRuntime(
             layer_id=layer_id,
+            attention_window=model.attention_window(layer_id),
             mla=mla,
             tie_word_embeddings=model.tie_word_embeddings,
             layer_type="moe" if layer_id in moe_layer_ids else "dense",
@@ -221,6 +226,7 @@ def compile_af_runtime_plan(
         intermediate_source=intermediate_source,
         block_size=block_size,
         weight_bytes=weight_bytes,
+        weight_dtype=effective_dtypes.weight_dtype,
         kv_bytes=kv_bytes,
         kv_heads=kv_heads,
         head_dim=head_dim,
@@ -387,6 +393,7 @@ def compile_af_runtime_plan(
     plan = AFRuntimePlan(
         mla=mla,
         schema_version="2.0",
+        component_weight_dtypes=tuple(sorted(model.operator_dtypes.items())),
         model=model_id,
         block_size=block_size,
         effective_dtypes=effective_dtypes,

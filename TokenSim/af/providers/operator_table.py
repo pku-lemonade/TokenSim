@@ -105,6 +105,11 @@ class OperatorTableAFComputeProvider(
         self._resolvers[device_type] = resolver
         return resolver
 
+    def estimate_signature(self, query):
+        if self.model.attention_windows and query.stage in {"a", "attention"}:
+            return (self.model.attention_window(query.layer_id),)
+        return ()
+
     @property
     def stats(self) -> OperatorStats:
         aggregate = OperatorStats()

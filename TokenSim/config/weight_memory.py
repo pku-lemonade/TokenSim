@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any
 from TokenSim.config.parallel_config import ParallelConfig, ParallelRankInfo
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.device import dtype_bytes
+from TokenSim.hardware.weight_storage import weight_storage_bytes
 from TokenSim.moe.placement import ExpertPlacement, build_expert_placement
 
 if TYPE_CHECKING:
@@ -125,6 +126,10 @@ def packed_weight_memory(
             element_bytes = dtype_bytes(dtype)
         weight_bytes = ceil(elements * element_bytes)
         scale_bytes = prod(scale_shape) if scale_shape is not None else 0
+        if dtype in ("mxfp4", "mxfp4_wo"):
+            weight_bytes, scale_bytes = weight_storage_bytes(
+                shape, dtype, scale_group_size=spec.expert_scale_group_size
+            )
         stats = components[component]
         stats["parameter_elements"] += 0 if metadata else elements
         stats["weight_bytes"] += 0 if metadata else weight_bytes
