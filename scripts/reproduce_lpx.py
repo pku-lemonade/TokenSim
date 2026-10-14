@@ -57,6 +57,11 @@ def parser():
     result.add_argument("--micro-batch", type=int, default=1)
     result.add_argument("--a-replicas", type=int, default=1)
     result.add_argument("--warmup-steps", type=int, default=2)
+    result.add_argument(
+        "--warmup-mode",
+        choices=("resident_decode", "prefill_and_decode"),
+        default="resident_decode",
+    )
     result.add_argument("--measurement-seconds", type=float, default=0.05)
     result.add_argument("--measurement-turns", type=int, default=1)
     result.add_argument(
@@ -166,6 +171,7 @@ def main(argv=None):
                             micro_batch=args.micro_batch,
                             a_dp=args.a_replicas,
                             warmup_steps=args.warmup_steps,
+                            warmup_mode=args.warmup_mode,
                             measurement_seconds=args.measurement_seconds,
                             measurement_turns=args.measurement_turns,
                             execution_mode=args.execution_mode,
@@ -255,6 +261,7 @@ def main(argv=None):
                 "routing_selection": target.moe.routing.uniform_selection,
                 "a_replicas": args.a_replicas,
                 "warmup_steps": args.warmup_steps,
+                "warmup_mode": args.warmup_mode,
                 "measurement_seconds": args.measurement_seconds,
                 "measurement_turns": args.measurement_turns,
                 "execution_mode": args.execution_mode,

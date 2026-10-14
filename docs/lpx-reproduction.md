@@ -20,12 +20,18 @@ The compact history produces the same serving metrics as the full history.
 Worker and host resource names include their service namespace when metrics are aggregated.
 KV handoff and draft token-control transfers participate in endpoint utilization and queue accounting.
 
-Each cohort warms the prefill/decode path for `--warmup-steps` decode passes, waits for the other cohorts, restores its declared warm prefix and starts a fresh measured turn.
+Each cohort warms the decode path for `--warmup-steps` passes, waits for the other cohorts, restores its declared 400K prefix and starts a fresh measured turn.
+The default `--warmup-mode resident_decode` supplies a cached-plus-new-context snapshot only for unmeasured warm-up.
+The measured turn computes every new suffix token and performs the configured handoff.
+`--warmup-mode prefill_and_decode` also executes suffix prefill and handoff during warm-up.
+The analytical service has no modeled cold-compilation penalty; equivalence coverage confirms the warm-up snapshot preserves measured throughput.
 The measurement lasts at least `--measurement-seconds` and includes at least `--measurement-turns` complete turns per cohort.
 The default requires one complete turn so a short decode-only interval cannot omit suffix prefill and handoff from factory throughput.
 Increasing the number of measured turns reduces finite-window boundary effects.
 Setting the turn minimum to zero is available for fixed-window diagnostics and can produce a decode-dominated sample.
 In-flight work drains after measurement ends.
+Admission closes at the final required turn or timeout before another turn is submitted.
+In-flight prefill chunks drain, and subsequent chunks are not submitted after closure.
 Warm-up and drain tokens are excluded from steady-state output throughput.
 Native measurements explicitly tag warm-up tokens and include output completions at the closing timestamp.
 This boundary convention retains the final speculative token group without admitting the warm-up group that triggered measurement.
@@ -163,6 +169,7 @@ Every speculative cycle executes all `gamma + 1` verifier positions, even on com
 Complete acceptance charges an additional draft forward when its final accepted token still lacks draft KV.
 Seeded accepted prefixes commit a correction/bonus token and roll back uncommitted KV on both models.
 The default micro-batch of one gives independently sampled request acceptance.
+Target and independent drafter suffix prefill execute concurrently on their own physical pools.
 Larger fixed cohorts share one accepted-prefix sample to retain synchronized request lengths.
 
 ## Figure artifacts and limits

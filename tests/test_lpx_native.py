@@ -215,3 +215,40 @@ class NativeLPXTest(unittest.TestCase):
                 two["services"]["target"]["memory"]["reserved_peak_kv_bytes"][rank],
                 2 * size,
             )
+
+    def test_warm_snapshot_preserves_measured_work_and_draft_prefills_overlap(self):
+        case = Case("base", "rubin", self.base)
+        settings = dict(warmup_steps=1, measurement_seconds=1e-9)
+        resident = point(self.hardware, self.model, self.workload, case, 1, **settings)
+        full = point(
+            self.hardware,
+            self.model,
+            self.workload,
+            case,
+            1,
+            warmup_mode="prefill_and_decode",
+            **settings,
+        )
+        for key in ("tokens_per_s_per_user", "output_tokens_per_s"):
+            self.assertAlmostEqual(resident[key], full[key], places=7)
+        self.assertEqual(resident["steady_state"]["output_tokens"], 8)
+        self.assertEqual(resident["timings"]["drain_s"], 0)
+        draft = point(
+            self.hardware,
+            self.model,
+            self.workload,
+            Case("draft", "draft", self.base, draft=self.lpu),
+            1,
+            trace=True,
+            **settings,
+        )
+        starts = {
+            name: min(
+                e["start_at"]
+                for e in draft["trace"]
+                if e["phase"] == "prefill"
+                and (e["source_domain"] or "").startswith(name)
+            )
+            for name in ("target", "draft")
+        }
+        self.assertEqual(starts["target"], starts["draft"])

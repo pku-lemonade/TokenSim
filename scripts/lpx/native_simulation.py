@@ -28,6 +28,7 @@ def point(
     micro_batch=1,
     a_dp=1,
     warmup_steps=2,
+    warmup_mode="resident_decode",
     measurement_seconds=0.05,
     measurement_turns=1,
     execution_mode="cuda_graph",
@@ -48,6 +49,8 @@ def point(
         integer(value, name, minimum=1)
     integer(measurement_turns, "measurement turns")
     number(measurement_seconds, "measurement interval", positive=True)
+    if warmup_mode not in {"resident_decode", "prefill_and_decode"}:
+        raise ConfigurationError("invalid warm-up mode")
     number(facility_watts, "facility power")
     if workload.output_tokens < 2:
         raise ConfigurationError(
@@ -61,41 +64,25 @@ def point(
     )
     if peak_context > target.max_position_embeddings:
         raise ConfigurationError("workload exceeds the target context limit")
-    runtimes = {
-        "target": configuration(
-            hardware,
-            target,
-            case.decode,
-            namespace="target",
-            micro_batch=micro_batch,
-            a_dp=a_dp,
-            execution_mode=execution_mode,
-            graph_kernel_us=graph_kernel_us,
-            endpoint_transfer_occupancy=endpoint_transfer_occupancy,
-        )
-    }
+    layouts = [("target", target, case.decode, a_dp)]
     if case.prefill:
-        runtimes["prefill"] = configuration(
-            hardware,
-            target,
-            case.prefill,
-            namespace="prefill",
-            micro_batch=micro_batch,
-            execution_mode=execution_mode,
-            graph_kernel_us=graph_kernel_us,
-            endpoint_transfer_occupancy=endpoint_transfer_occupancy,
-        )
+        layouts.append(("prefill", target, case.prefill, 1))
     if case.draft:
-        runtimes["draft"] = configuration(
+        layouts.append(("draft", draft_spec or draft_model(target), case.draft, 1))
+    runtimes = {
+        name: configuration(
             hardware,
-            draft_spec or draft_model(target),
-            case.draft,
-            namespace="draft",
+            model,
+            layout,
+            namespace=name,
             micro_batch=micro_batch,
+            a_dp=replicas,
             execution_mode=execution_mode,
             graph_kernel_us=graph_kernel_us,
             endpoint_transfer_occupancy=endpoint_transfer_occupancy,
         )
+        for name, model, layout, replicas in layouts
+    }
     env = simpy.Environment()
     networks = {
         key: value
@@ -162,6 +149,8 @@ def point(
                 if name != "target" or not case.prefill or handoff_mode == "incremental"
                 else 0
             )
+            if warmup_mode == "resident_decode":
+                prefix = workload.cached_tokens + workload.new_tokens
             bundle[name] = [
                 service.admit(
                     i, dp, maximum_context=peak_context, current_context=prefix
@@ -209,12 +198,13 @@ def point(
 
     def prefill(name, sessions):
         left = workload.new_tokens
-        while left:
+        while left and not stop.triggered:
             query = min(workload.prefill_chunk, left)
             yield from services[name].forward(
                 sessions, phase="prefill", query_tokens=query, emit_logits=query == left
             )
             left -= query
+        return not left
 
     def stream(cohort, bundle):
         completed_steps = 0
@@ -226,8 +216,19 @@ def point(
             started = env.now
             warm_turn = not warmed
             prefill_name = "prefill" if case.prefill else "target"
-            yield from prefill(prefill_name, bundle[prefill_name])
-            if case.prefill:
+            do_prefill = not warm_turn or warmup_mode == "prefill_and_decode"
+            draft_prefill = (
+                env.process(prefill("draft", bundle["draft"]))
+                if do_prefill and case.draft
+                else None
+            )
+            if do_prefill and not (
+                yield from prefill(prefill_name, bundle[prefill_name])
+            ):
+                if draft_prefill is not None:
+                    yield draft_prefill
+                return
+            if do_prefill and case.prefill and not stop.triggered:
                 for before, after in zip(bundle["prefill"], bundle["target"]):
                     context = workload.cached_tokens + workload.new_tokens
                     copies = plan_handoff(
@@ -251,8 +252,11 @@ def point(
                         context=context,
                         events=handoff_events,
                     )
-            if case.draft:
-                yield from prefill("draft", bundle["draft"])
+            if draft_prefill is not None:
+                yield draft_prefill
+            if stop.triggered:
+                return
+            if do_prefill and case.draft:
                 yield from token_control(
                     bundle, cohort, round_index, completed_steps, reverse=True
                 )
@@ -380,6 +384,14 @@ def point(
                     and not complete_events[cohort].triggered
                 ):
                     complete_events[cohort].succeed()
+            if (
+                measurement_turns
+                and all(event.triggered for event in complete_events)
+                and env.now >= measurement["start"] + measurement_seconds
+            ):
+                measurement["end"] = env.now
+                if not stop.triggered:
+                    stop.succeed()
             if stop.triggered:
                 break
             round_index += 1
@@ -407,7 +419,8 @@ def point(
         if measurement_turns:
             yield env.all_of(complete_events)
         measurement["end"] = env.now
-        stop.succeed()
+        if not stop.triggered:
+            stop.succeed()
 
     for index, bundle in enumerate(initial_sessions):
         env.process(stream(index, bundle))
@@ -480,6 +493,7 @@ def point(
         execution_mode=execution_mode,
         endpoint_transfer_occupancy=endpoint_transfer_occupancy,
         graph_device_kernel_us_assumption=graph_kernel_us,
+        warmup_mode=warmup_mode,
         handoff_mode=handoff_mode,
         native_executor="ModelAFExecutor",
         trace=[event.as_dict() for event in traces] if trace else [],
