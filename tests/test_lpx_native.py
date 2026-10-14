@@ -152,6 +152,7 @@ class NativeLPXTest(unittest.TestCase):
             env,
             {key: value for r in runtimes for key, value in r.cluster.networks.items()},
             [w.physical_worker_ref.identity for r in runtimes for w in r.workers],
+            transfer_occupancy="wire",
         )
         services = [AFService(env, r, communication=endpoints) for r in runtimes]
         sessions = [

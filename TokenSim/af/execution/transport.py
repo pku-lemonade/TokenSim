@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import simpy
+from dataclasses import replace
 
 from TokenSim.af.providers.queries import AFComputeQuery
 from TokenSim.af.trace.metrics import AFTraceEvent
@@ -26,12 +27,27 @@ class ExecutorTransportMixin:
             )
         self._set_active_stage(block, layer_id, node_id, self.env.now)
         try:
-            times = yield from endpoint.scheduler.run(
+            hop = (estimate.details.get("fixed_latency_us") or 0.0) / 1e6
+            # Only analytical point-to-point hop latency has a separable flight.
+            if estimate.match_type != "analytical" or not estimate.service_duration:
+                hop = 0.0
+            ready, start, end, injected = yield from endpoint.run_transfer(
                 resource_ids,
                 estimate.service_duration,
+                hop,
                 (block.iteration_id, block.block_id, layer_id, node_id, *resource_ids),
             )
-            return (*times, estimate)
+            if endpoint.transfer_occupancy == "wire" and hop:
+                estimate = replace(
+                    estimate,
+                    details={
+                        **estimate.details,
+                        "resource_occupancy_end_at": injected,
+                        "resource_occupancy_scope": "endpoint_serialization",
+                        "propagation_duration_s": hop,
+                    },
+                )
+            return ready, start, end, estimate
         finally:
             self.active_stages.pop((block.iteration_id, block.block_id, node_id), None)
 

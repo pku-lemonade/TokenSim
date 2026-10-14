@@ -14,6 +14,7 @@ def configuration(
     a_dp=1,
     execution_mode="cuda_graph",
     graph_kernel_us=0.2,
+    endpoint_transfer_occupancy="wire",
 ):
     if layout.a_cp != 1:
         raise ConfigurationError(
@@ -153,6 +154,7 @@ def configuration(
             af_block_size=micro_batch,
             transfer_topology_mode="flat_link",
             communication_resource_scope="endpoint",
+            endpoint_transfer_occupancy=endpoint_transfer_occupancy,
             communication_domains=dict(
                 node_size=8,
                 node_count=sum((group["num_workers"] + 7) // 8 for group in groups),

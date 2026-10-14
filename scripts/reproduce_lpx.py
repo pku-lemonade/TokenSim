@@ -60,6 +60,9 @@ def parser():
     )
     result.add_argument("--graph-kernel-us", type=float, default=0.2)
     result.add_argument(
+        "--endpoint-transfer-occupancy", choices=("wire", "service"), default="wire"
+    )
+    result.add_argument(
         "--handoff-mode", choices=("full", "incremental"), default="incremental"
     )
     return result
@@ -143,6 +146,7 @@ def main(argv=None):
                         measurement_turns=args.measurement_turns,
                         execution_mode=args.execution_mode,
                         graph_kernel_us=args.graph_kernel_us,
+                        endpoint_transfer_occupancy=args.endpoint_transfer_occupancy,
                         handoff_mode=args.handoff_mode,
                         draft_spec=draft,
                     )
@@ -229,6 +233,7 @@ def main(argv=None):
                 "measurement_turns": args.measurement_turns,
                 "execution_mode": args.execution_mode,
                 "graph_device_kernel_us": args.graph_kernel_us,
+                "endpoint_transfer_occupancy": args.endpoint_transfer_occupancy,
                 "handoff_mode": args.handoff_mode,
             },
             "cases": [asdict(case) for case in cases],

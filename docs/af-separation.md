@@ -213,6 +213,12 @@ Flat-link experiments can select `communication_resource_scope: endpoint` to sha
 Alias network names referencing the same link class share those budgets.
 Disjoint endpoint sets can transfer concurrently.
 Atomic admission prevents a waiting collective from holding a subset of its endpoints.
+`endpoint_transfer_occupancy: wire` reserves endpoint injection during analytical point-to-point serialization and releases it while the message completes its hop latency.
+Message consumers still wait for serialization and hop completion.
+The default `service` mode holds the endpoints for the complete service duration.
+Measured records with inseparable timing and ring collective rounds retain complete service occupancy.
+Trace occupancy intervals describe atomic transmit/receive injection reservations and do not resolve packet arrival timing inside switches.
+Capacity validation, serving utilization and resource blockers use reservation completion separately from message completion.
 Unsupported statistical settings fail before no-op handling or cache lookup.
 
 ### Service measurements and traces

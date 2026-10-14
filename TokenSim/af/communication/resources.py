@@ -177,7 +177,10 @@ class AFResourceRegistry:
 
         self.endpoint_resources = (
             EndpointResources(
-                env, cluster_config.networks, self.worker_ids_by_physical_identity
+                env,
+                cluster_config.networks,
+                self.worker_ids_by_physical_identity,
+                transfer_occupancy=cluster_config.af.endpoint_transfer_occupancy,
             )
             if cluster_config.af.communication_resource_scope == "endpoint"
             else None

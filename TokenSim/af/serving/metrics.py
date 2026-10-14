@@ -3,6 +3,7 @@
 from collections import defaultdict
 
 from TokenSim.config.validation import number
+from TokenSim.af.trace.occupancy import occupied_until
 
 
 def steady_metrics(events, traces, *, start, end, capacities=None):
@@ -20,7 +21,7 @@ def steady_metrics(events, traces, *, start, end, capacities=None):
     for event in traces:
         queued = max(0.0, min(end, event.start_at) - max(start, event.ready_at))
         queue[event.resource_id] += queued
-        overlap = max(0.0, min(end, event.end_at) - max(start, event.start_at))
+        overlap = max(0.0, min(end, occupied_until(event)) - max(start, event.start_at))
         if not overlap:
             continue
         for resource in event.resource_ids or (event.resource_id,):

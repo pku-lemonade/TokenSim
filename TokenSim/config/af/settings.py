@@ -62,6 +62,7 @@ class AFConfig:
     )
     transfer_topology_mode: str = "physical"
     communication_resource_scope: str = "fabric"
+    endpoint_transfer_occupancy: str = "service"
     communication_domains: CommunicationDomainConfig | None = None
     service_estimate_cache: bool = True
     dag_template_cache: bool = True
@@ -135,6 +136,17 @@ class AFConfig:
         return value
 
     def __post_init__(self, dtype_presence_input: tuple[str, ...]) -> None:
+        if self.endpoint_transfer_occupancy not in {"service", "wire"}:
+            raise ConfigurationError(
+                "AF endpoint transfer occupancy must be service or wire"
+            )
+        if (
+            self.endpoint_transfer_occupancy == "wire"
+            and self.communication_resource_scope != "endpoint"
+        ):
+            raise ConfigurationError(
+                "wire occupancy requires endpoint communication resources"
+            )
         from TokenSim.config.validation import integer
 
         integer(self.dag_template_cache_max_tokens, "AF DAG cache token limit")

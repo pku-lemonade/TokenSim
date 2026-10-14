@@ -34,6 +34,11 @@ The [LPX architecture article](https://developer.nvidia.com/blog/inside-nvidia-g
 The catalog derives 1.23046875 PFLOPS FP8 per chip and 1.25 TB/s injection bandwidth per direction from the bidirectional 2.5 TB/s total.
 The separate 112 Gb/s physical-port entry has 14 GB/s bandwidth.
 Aggregate injection is counted once per endpoint and aliases share the same budget.
+The native experiment reserves endpoint bandwidth for point-to-point serialization and permits hop latency to overlap independent messages.
+Consumers wait for complete message arrival; hop latency is retained.
+`--endpoint-transfer-occupancy service` provides the conservative complete-service reservation comparison.
+Ring collective rounds retain their complete service reservations.
+This aggregate model books transmit and receive injection together and has no packet-level switch simulation.
 LPX external DRAM is excluded from resident experiments.
 
 The `rubin` catalog follows the [product specifications](https://www.nvidia.com/en-us/data-center/vera-rubin-nvl72/) retrieved on 2026-10-14.
@@ -140,6 +145,7 @@ Each mode's frontier contains only nondominated feasible points.
 PD supports `--handoff-mode full` for a cold destination and `incremental` for a verified retained warm prefix.
 Handoffs copy missing positions, retain bounded layer tails and replicate shared KV heads through destination-local transfers.
 Every speculative cycle executes all `gamma + 1` verifier positions, even on complete rejection.
+Complete acceptance charges an additional draft forward when its final accepted token still lacks draft KV.
 Seeded accepted prefixes commit a correction/bonus token and roll back uncommitted KV on both models.
 The default micro-batch of one gives independently sampled request acceptance.
 Larger fixed cohorts share one accepted-prefix sample to retain synchronized request lengths.

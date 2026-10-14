@@ -32,6 +32,7 @@ def point(
     measurement_turns=1,
     execution_mode="cuda_graph",
     graph_kernel_us=0.2,
+    endpoint_transfer_occupancy="wire",
     handoff_mode="incremental",
     power_overrides=None,
     facility_watts=0.0,
@@ -70,6 +71,7 @@ def point(
             a_dp=a_dp,
             execution_mode=execution_mode,
             graph_kernel_us=graph_kernel_us,
+            endpoint_transfer_occupancy=endpoint_transfer_occupancy,
         )
     }
     if case.prefill:
@@ -81,6 +83,7 @@ def point(
             micro_batch=micro_batch,
             execution_mode=execution_mode,
             graph_kernel_us=graph_kernel_us,
+            endpoint_transfer_occupancy=endpoint_transfer_occupancy,
         )
     if case.draft:
         runtimes["draft"] = configuration(
@@ -91,6 +94,7 @@ def point(
             micro_batch=micro_batch,
             execution_mode=execution_mode,
             graph_kernel_us=graph_kernel_us,
+            endpoint_transfer_occupancy=endpoint_transfer_occupancy,
         )
     env = simpy.Environment()
     networks = {
@@ -107,7 +111,9 @@ def point(
         for runtime in runtimes.values()
         for worker in runtime.workers
     ]
-    communication = EndpointResources(env, networks, identities)
+    communication = EndpointResources(
+        env, networks, identities, transfer_occupancy=endpoint_transfer_occupancy
+    )
     services = {
         name: AFService(
             env,
@@ -182,8 +188,11 @@ def point(
             for key, _ in communication.for_step("handoff", "a_to_f", pair)
         )
         duration = hardware.link("ethernet1600Gb").analytical_transfer_us(size) / 1e6
-        times = yield from communication.scheduler.run(
-            keys, duration, (cohort, round_index, step, int(reverse))
+        times = yield from communication.run_transfer(
+            keys,
+            duration,
+            hardware.link("ethernet1600Gb").latency_us / 1e6,
+            (cohort, round_index, step, int(reverse)),
         )
         control_events.append(
             dict(
@@ -194,6 +203,7 @@ def point(
                 ready_s=times[0],
                 start_s=times[1],
                 end_s=times[2],
+                injection_end_s=times[3],
             )
         )
 
@@ -462,6 +472,7 @@ def point(
         verification_events=verification_events,
         turns=turns,
         execution_mode=execution_mode,
+        endpoint_transfer_occupancy=endpoint_transfer_occupancy,
         graph_device_kernel_us_assumption=graph_kernel_us,
         handoff_mode=handoff_mode,
         native_executor="ModelAFExecutor",

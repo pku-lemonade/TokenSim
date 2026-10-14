@@ -1,6 +1,7 @@
 """Compact timing history after full native trace invariant validation."""
 
 from dataclasses import dataclass, replace
+from TokenSim.af.trace.occupancy import occupied_until
 
 
 @dataclass(frozen=True)
@@ -12,10 +13,16 @@ class CompletedTiming:
     start_at: float
     end_at: float
     service_duration: float
+    resource_end_at: float | None = None
 
     @classmethod
     def from_event(cls, event):
-        return cls(**{key: getattr(event, key) for key in cls.__dataclass_fields__})
+        values = {
+            key: getattr(event, key)
+            for key in cls.__dataclass_fields__
+            if key != "resource_end_at"
+        }
+        return cls(**values, resource_end_at=occupied_until(event))
 
 
 def namespace_resource(service, resource):
@@ -53,4 +60,5 @@ def transport_timing(row, resources):
         row["start_s"],
         row["end_s"],
         row["end_s"] - row["start_s"],
+        row.get("injection_end_s", row["end_s"]),
     )

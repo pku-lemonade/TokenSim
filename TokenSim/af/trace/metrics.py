@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from bisect import bisect_right
 from collections import defaultdict
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from math import isfinite
 import math
 import sys
 from typing import Any, Literal, Mapping
+from TokenSim.af.trace.occupancy import occupied_until
 
 from TokenSim.af.planning.batching import AFPhase
 from TokenSim.af.providers.queries import (
@@ -270,7 +271,9 @@ def summarize_timeline(events, start, end, capacities=None):
             sums[_category(event)] += right - left
         for resource in event.resource_ids or (event.resource_id,):
             if capacities.get(resource) == 1:
-                resources[resource].append((event.end_at, index, event.node_id))
+                resources[resource].append(
+                    (occupied_until(event), index, event.node_id)
+                )
     for values in resources.values():
         values.sort()
     segments = []
@@ -312,7 +315,15 @@ def summarize_timeline(events, start, end, capacities=None):
                     - 1
                 )
                 if position >= 0:
-                    blockers.append(by_id[values[position][2]])
+                    blocking = by_id[values[position][2]]
+                    released = occupied_until(blocking)
+                    blockers.append(
+                        replace(
+                            blocking,
+                            end_at=released,
+                            service_duration=released - blocking.start_at,
+                        )
+                    )
             blockers = [
                 e
                 for e in blockers

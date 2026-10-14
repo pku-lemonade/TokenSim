@@ -3,13 +3,19 @@
 import simpy
 
 from TokenSim.errors import ConfigurationError
+from TokenSim.config.validation import number
 
 
 class EndpointResources:
-    def __init__(self, env, networks, identities):
+    def __init__(self, env, networks, identities, *, transfer_occupancy="service"):
         from TokenSim.af.communication.resources import DomainScheduler
 
         self.env, self.networks, self.identities = env, networks, set(identities)
+        if transfer_occupancy not in {"service", "wire"}:
+            raise ConfigurationError(
+                "endpoint transfer occupancy must be service or wire"
+            )
+        self.transfer_occupancy = transfer_occupancy
         self.slots = {}
         self.scheduler = DomainScheduler(env, ())
 
@@ -52,3 +58,14 @@ class EndpointResources:
 
     def capacities(self):
         return {self.format_key(key): 1 for key in self.slots}
+
+    def run_transfer(self, keys, duration, propagation, identity):
+        number(duration, "transfer duration")
+        number(propagation, "transfer hop latency", maximum=duration)
+        flight = propagation if self.transfer_occupancy == "wire" else 0.0
+        ready, start, injected = yield from self.scheduler.run(
+            keys, duration - flight, identity
+        )
+        if flight:
+            yield self.env.timeout(flight)
+        return ready, start, self.env.now, injected

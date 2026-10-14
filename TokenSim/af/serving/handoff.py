@@ -152,8 +152,11 @@ def execute_handoff(
         )
         link = hardware.link(resources.networks[copy.network])
         duration = link.analytical_transfer_us(copy.bytes) / 1e6
-        times = yield from resources.scheduler.run(
-            endpoint_keys, duration, (*identity, index)
+        times = yield from resources.run_transfer(
+            endpoint_keys,
+            duration,
+            link.latency_us / 1e6 if duration else 0.0,
+            (*identity, index),
         )
         events.append(
             {
@@ -166,6 +169,7 @@ def execute_handoff(
                 "ready_s": times[0],
                 "start_s": times[1],
                 "end_s": times[2],
+                "injection_end_s": times[3],
             }
         )
         if not copy.replication and not ready[key].triggered:

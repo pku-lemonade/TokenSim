@@ -67,6 +67,13 @@ class AFService:
                 raise ConfigurationError(
                     "shared serving communication requires endpoint scope"
                 )
+            if (
+                communication.transfer_occupancy
+                != runtime.cluster.af.endpoint_transfer_occupancy
+            ):
+                raise ConfigurationError(
+                    "shared endpoint occupancy must match the serving configuration"
+                )
             self.executor.resources.endpoint_resources = communication
         self.memory = ResidentKV(runtime.plan)
         self.sessions = {}

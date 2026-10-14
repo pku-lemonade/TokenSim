@@ -14,13 +14,14 @@ from TokenSim.af.trace.metrics import (
     _is_f_domain,
 )
 from TokenSim.errors import SimulationStateError
+from TokenSim.af.trace.occupancy import occupied_until, validate_resource_capacity
 
 
 class AFTraceRecorder:
     """Own the full event history and index it by iteration.
 
-    Append through record(), and reset through clear(). In-place replacement
-    in events is supported only when position and iteration identity are kept.
+    Append through record() and reset through clear().
+    Replacements keep position and iteration identity.
     """
 
     def __init__(
@@ -62,7 +63,9 @@ class AFTraceRecorder:
             for resource_id in set(event.resource_ids or (event.resource_id,)):
                 if resource_id not in busy_by_resource:
                     busy_by_resource[resource_id] = _ResourceBusyTime()
-                busy_by_resource[resource_id].add(event.service_duration)
+                busy_by_resource[resource_id].add(
+                    occupied_until(event) - event.start_at
+                )
         for resource_id, busy in sorted(busy_by_resource.items()):
             capacity = self.resource_capacities.get(resource_id, 1)
             utilization[resource_id] = (
@@ -265,29 +268,7 @@ class AFTraceRecorder:
                     typed_events,
                 )
 
-        intervals: dict[str, list[tuple[float, int, str]]] = {}
-        for event in events:
-            if event.service_duration <= 0:
-                continue
-            for resource_id in event.resource_ids or (event.resource_id,):
-                intervals.setdefault(resource_id, []).extend(
-                    (
-                        (event.start_at, 1, event.node_id),
-                        (event.end_at, -1, event.node_id),
-                    )
-                )
-        for resource_id, points in intervals.items():
-            active = 0
-            capacity = self.resource_capacities.get(resource_id, 1)
-            for time, delta, node_id in sorted(
-                points, key=lambda item: (item[0], item[1])
-            ):
-                active += delta
-                if active > capacity:
-                    raise SimulationStateError(
-                        f"AF trace invariant failed: resource={resource_id!r} capacity="
-                        f"{capacity} exceeded at time={time} by node={node_id}"
-                    )
+        validate_resource_capacity(events, self.resource_capacities)
 
     @staticmethod
     def _validate_runtime_layer_semantics(
