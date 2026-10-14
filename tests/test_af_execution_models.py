@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import unittest
 from types import SimpleNamespace
+import unittest
 
 from TokenSim.af.builder import AFBlockBuilder
 from TokenSim.af.latency import AFEndpoint, AFTensorSlice

@@ -1,18 +1,20 @@
 import copy
-import unittest
 from dataclasses import asdict
+import unittest
+
 from TokenSim.af.transport_profile import TransportServiceProfile
-from TokenSim.hardware.domains import CommunicationDomainConfig, MODEL_VERSION
 from TokenSim.errors import ConfigurationError
+from TokenSim.hardware.domains import CommunicationDomainConfig, MODEL_VERSION
+from tests.support.af_native_fixture import NativeFixture
 
 
 class TransportProfileTest(unittest.TestCase):
     def test_runtime_prices_each_message_once_and_cache_preserves_timeline(self):
-        from tests.test_af_native_protocol import NativeProtocolTest
-        from TokenSim.af.factory import build_model_runtime, simulate_decode
+        from TokenSim.af.factory import build_model_runtime
+        from TokenSim.af.factory import simulate_decode
 
-        NativeProtocolTest.setUpClass()
-        fixture = NativeProtocolTest()
+        NativeFixture.setUpClass()
+        fixture = NativeFixture()
         domains = CommunicationDomainConfig(
             node_count=1, device_indices={"a-pool:0": 2, "f-pool:0": 3}
         )

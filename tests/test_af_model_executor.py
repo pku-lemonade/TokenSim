@@ -1,7 +1,7 @@
 import json
-import unittest
 from pathlib import Path
 from types import SimpleNamespace
+import unittest
 from unittest.mock import patch
 
 import simpy
@@ -10,23 +10,22 @@ from TokenSim.af.factory import build_model_runtime, simulate_decode
 from TokenSim.af.model_executor import ModelAFExecutor
 from TokenSim.af.planning import RankLocalWork
 from TokenSim.config.config import KVTransferConfig
-from TokenSim.config.psla_config import PSLAConfig
+from TokenSim.config.simulation import SimulationConfig
 from TokenSim.errors import ConfigurationError, SimulationStateError
 from TokenSim.hardware import HardwareContext
 from TokenSim.llm.llm_engine import LLMEngine
-from TokenSim.llm.llm_request import reset_g_time
-from tests.af_runtime_oracle import observe_services
-from tests.test_af_engine_integration import _run_request
 from scripts.deepseek_v3_runtime import configuration, simulate
+from tests.af_runtime_oracle import observe_services
+from tests.support.af_engine import _run_request
 
 
 class ModelExecutorTest(unittest.TestCase):
     def test_dense_mha_model_can_use_whole_model_executor(self):
-        from tests.hardware_fixtures import test_model
+        from tests.support.hardware import make_model
 
         config = configuration()
         config = build_model_runtime(
-            config.doc, hardware=config.hardware, model=test_model(num_layers=1)
+            config.doc, hardware=config.hardware, model=make_model(num_layers=1)
         )
         executor, _, _, _ = simulate_decode(config, 1, 8, fallback="analytical_only")
         self.assertTrue(any(e.stage == "dense_ffn" for e in executor.trace.events))
@@ -231,7 +230,6 @@ class ModelExecutorTest(unittest.TestCase):
             self.assertFalse(resource.queue)
 
     def test_standard_engine_runs_full_model_and_latent_kv(self):
-        reset_g_time()
         hardware = HardwareContext.load("data")
         doc = json.loads(Path("data/clusters/deepseek_v3/1a32f.json").read_text())
         doc["af"]["communication_domains"] = {
@@ -245,16 +243,18 @@ class ModelExecutorTest(unittest.TestCase):
         env = simpy.Environment()
         engine = LLMEngine(
             env=env,
-            block_size=16,
-            batching="paged-attn",
             kv_transfer_config=KVTransferConfig.default(),
-            psla_config=PSLAConfig.from_file("data/psla/deepseek-v3.json"),
+            model_spec=config.model,
             cluster_config=config.cluster,
             hardware=hardware,
-            prefill_worker_pool_type="round_robin",
-            decode_worker_pool_type="round_robin",
-            max_parallem_sum=8,
-            latency_fallback="analytical_only",
+            config=SimulationConfig(
+                block_size=16,
+                batching="paged-attn",
+                prefill_worker_pool_type="round_robin",
+                decode_worker_pool_type="round_robin",
+                max_num_seqs=8,
+                latency_fallback="analytical_only",
+            ),
         )
         request = _run_request(env, engine, decode_len=2)
         self.assertTrue(request.is_done)

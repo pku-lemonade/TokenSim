@@ -3,21 +3,20 @@ from tempfile import TemporaryDirectory
 import unittest
 
 from TokenSim.af.latency import AFRoutingEdge
-from TokenSim.af.planning import ExecutionNode, RankLocalWork, group_routed_expert_nodes
+from TokenSim.af.planning import ExecutionNode
+from TokenSim.af.planning import RankLocalWork
+from TokenSim.af.planning import group_routed_expert_nodes
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware import HardwareContext
 from TokenSim.latency.operator_table import OperatorResolver
-from TokenSim.operator_data.analytical import Calibration, analytical_model_for
-from TokenSim.operator_data.lookup import (
-    OperatorLookup,
-    LookupPolicy,
-    MissingOperatorDataError,
-)
-from TokenSim.operator_data.package import (
-    OperatorDataPackage,
-    PackageMeta,
-    SourceRecord,
-)
+from TokenSim.operator_data.analytical import Calibration
+from TokenSim.operator_data.analytical import analytical_model_for
+from TokenSim.operator_data.lookup import OperatorLookup
+from TokenSim.operator_data.lookup import LookupPolicy
+from TokenSim.operator_data.lookup import MissingOperatorDataError
+from TokenSim.operator_data.package import OperatorDataPackage
+from TokenSim.operator_data.package import PackageMeta
+from TokenSim.operator_data.package import SourceRecord
 from tests.test_mla import core_key
 
 

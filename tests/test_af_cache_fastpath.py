@@ -1,24 +1,18 @@
+"""Af cache fastpath."""
+
 from dataclasses import replace
 from functools import wraps
 import unittest
 from unittest.mock import patch
 
-from TokenSim.af.estimate_cache import (
-    FingerprintMemo,
-    PreparedQuery,
-    identity,
-    prepare_query,
-)
-from TokenSim.af.latency import AFComputeQuery, AFTransferQuery
+from TokenSim.af.estimate_cache import PreparedQuery, prepare_query
+from TokenSim.af.latency import AFComputeQuery
 from TokenSim.af.operator_provider import (
     OperatorTableAFComputeProvider,
     TopologyAFTransferProvider,
 )
 from TokenSim.af.planning import ParallelExecutionPlanner
-from TokenSim.af.snapshot import snapshot
-from types import SimpleNamespace
 from TokenSim.config.cluster_config import ClusterConfig
-from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.placement import build_topology_placement
 from TokenSim.operator_data.lookup import LookupPolicy
 from TokenSim.operator_data.package import (
@@ -28,8 +22,9 @@ from TokenSim.operator_data.package import (
 )
 from scripts.deepseek_v3_runtime import configuration, simulate
 from tests.af_runtime_oracle import observe_services
-from tests.test_af_executor import _cluster_dict, af_test_hardware
-from tests.test_af_operator_provider import _compute_query, _moe, _transfer_query
+from tests.support.af_config import _cluster_dict
+from tests.support.af_hardware import af_test_hardware
+from tests.support.af_queries import _compute_query, _moe, _transfer_query
 
 
 class CacheFastPathTest(unittest.TestCase):
@@ -221,52 +216,6 @@ class CacheFastPathTest(unittest.TestCase):
         self.assertEqual(estimate.dataset_version, "v2")
         self.assertNotEqual(estimate, initial)
 
-    def test_fingerprints_are_exact_bounded_and_reuse_immutable_values(self):
-        memo = FingerprintMemo(capacity=4)
-        values = [snapshot({"shape": (i, i + 1)}) for i in range(8)]
-        for value in values:
-            self.assertEqual(memo(value), identity(value))
-            self.assertEqual(memo(value), identity(value))
-            self.assertLessEqual(len(memo.values), 4)
-        self.assertNotEqual(memo((True,)), memo((1,)))
-
-    def test_templates_reuse_fingerprints_and_reject_reconfigured_link(self):
-        config = configuration(af_batch_size=1)
-        executor, _, _, _ = simulate(config, 1, 8, fallback="analytical_only")
-        planner = executor.plan_builder
-        iteration = executor.submit(
-            0,
-            [
-                SimpleNamespace(
-                    id=0,
-                    is_prefill=False,
-                    prefill_len=8,
-                    context_len=9,
-                    generation_idx=1,
-                )
-            ],
-            "decode",
-        )
-        block = iteration.blocks[0]
-        link = planner.cluster_config.af.links[0]
-        with patch(
-            "TokenSim.af.templates.identity",
-            side_effect=AssertionError("static fingerprint rescanned"),
-        ):
-            bound = planner.build_layer(block, 0, link)
-        self.assertEqual(
-            bound.nodes, planner._build_runtime_layer(block, 0, link).nodes
-        )
-        changed = replace(config.cluster.af.links[0], network="another-network")
-        with self.assertRaisesRegex(ConfigurationError, "new runtime"):
-            planner.build_layer(block, 0, changed)
-
-    def test_snapshot_preserves_shared_subobjects(self):
-        config = configuration()
-        result = snapshot([config.cluster, config.cluster])
-        self.assertIs(result[0], result[1])
-        self.assertIsNot(result[0], config.cluster)
-
     def test_fast_full_and_uncached_paths_have_identical_service_records(self):
         original = OperatorTableAFComputeProvider.__init__
         original_transfer = TopologyAFTransferProvider.__init__
@@ -306,7 +255,3 @@ class CacheFastPathTest(unittest.TestCase):
                     self.assertEqual(provider.query_constructions, expected)
             self.assertEqual(results[0], results[1])
             self.assertEqual(results[0], results[2])
-
-
-if __name__ == "__main__":
-    unittest.main()

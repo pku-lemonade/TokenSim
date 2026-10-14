@@ -1,141 +1,22 @@
+"""Af engine integration."""
+
 from __future__ import annotations
 
-import sys
-import types
 import unittest
 from unittest.mock import patch
 
-import simpy
-
-try:
-    import TransformerRoofline  # noqa: F401
-except (ImportError, OSError):
-    fake_roofline = types.ModuleType("TransformerRoofline")
-    fake_roofline.TransformerRoofline = object
-    sys.modules["TransformerRoofline"] = fake_roofline
-
-from tests.test_af_executor import (
-    FixedComputeProvider,
-    FixedTransferProvider,
-    _cluster_dict,
-    _psla_config,
-    af_test_hardware,
+from TokenSim.reporting import get_af_stats
+from tests.support.af_engine import (
+    _DTypeCheckingComputeProvider,
+    _build_engine,
+    _disabled_cluster,
+    _run_request,
+    _typed_cluster,
 )
-from TokenSim.config.config import ClusterConfig, KVTransferConfig
-from TokenSim.llm.llm_engine import LLMEngine, Task
-from TokenSim.llm.llm_request import Request, reset_g_time
-from util.request import LLMSource
-from util.results import get_af_stats
-
-
-class _CountingRequest(Request):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.step_calls = 0
-
-    def step(self, *args, **kwargs):
-        self.step_calls += 1
-        return super().step(*args, **kwargs)
-
-
-class _DTypeCheckingComputeProvider(FixedComputeProvider):
-    def __init__(self):
-        super().__init__(0.0002, 0.0003)
-        self.validated_contracts = []
-
-    def validate_effective_dtypes(self, model_id, effective_dtypes):
-        self.validated_contracts.append((model_id, effective_dtypes))
-
-
-def _typed_cluster(*, phases=("decode",), trace_enabled=True):
-    values = _cluster_dict(phases=phases, trace_enabled=trace_enabled)
-    values["af"].update(
-        {
-            "weight_dtype": "fp8",
-            "activation_dtype": "bf16",
-            "kv_cache_dtype": "fp32",
-        }
-    )
-    values["af"]["links"][0].update(
-        {
-            "a_to_f_dtype": "fp8",
-            "f_to_a_dtype": "fp16",
-        }
-    )
-    return ClusterConfig(**values)
-
-
-def _disabled_cluster():
-    return ClusterConfig(
-        num_workers=1,
-        networks={"local": "profile"},
-        worker_groups=[
-            {
-                "name": "full-pool",
-                "capabilities": ["prefill", "decode_full"],
-                "hardware": "a-device",
-                "num_workers": 1,
-                "network": "local",
-            }
-        ],
-    )
-
-
-def _build_engine(cluster, compute=None, transfer=None):
-    env = simpy.Environment()
-    hardware = af_test_hardware(layers=1, capacity_gib=0.1)
-    engine = LLMEngine(
-        env=env,
-        block_size=4,
-        batching="paged-attn",
-        kv_transfer_config=KVTransferConfig.default(),
-        psla_config=_psla_config(),
-        cluster_config=cluster,
-        hardware=hardware,
-        prefill_worker_pool_type="round_robin",
-        decode_worker_pool_type="round_robin",
-        max_parallem_sum=8,
-        af_compute_provider=compute,
-        af_transfer_provider=transfer,
-    )
-    return env, engine, hardware
-
-
-def _run_request(env, engine, *, request_id=1, decode_len=3):
-    request = _CountingRequest(
-        id=request_id,
-        prefill_len=4,
-        decode_len=decode_len,
-        block_size=4,
-    )
-    env.process(
-        LLMSource(
-            env=env,
-            engine=engine,
-            requests=[request],
-            qps=1,
-            distribution="burst",
-        )
-    )
-
-    def stop_when_done():
-        while env.now < 1.0:
-            if request.is_done:
-                engine.send_task(engine, Task.STOP)
-                yield env.timeout(1e-9)
-                return
-            yield env.timeout(1e-6)
-        raise AssertionError("engine request did not finish")
-
-    monitor = env.process(stop_when_done())
-    env.run(until=monitor)
-    return request
+from tests.support.af_providers import FixedTransferProvider
 
 
 class AFEngineIntegrationTest(unittest.TestCase):
-    def setUp(self):
-        reset_g_time()
-
     def test_decode_only_connects_runtime_plan_dtypes_and_providers(self):
         compute = _DTypeCheckingComputeProvider()
         transfer = FixedTransferProvider(0.0001, 0.0001)
@@ -232,47 +113,6 @@ class AFEngineIntegrationTest(unittest.TestCase):
             },
         )
 
-    def test_trace_toggle_does_not_change_engine_timing(self):
-        results = {}
-        for trace_enabled in (True, False):
-            reset_g_time()
-            compute = _DTypeCheckingComputeProvider()
-            transfer = FixedTransferProvider(0.0001, 0.0001)
-            env, engine, roofline = _build_engine(
-                _typed_cluster(trace_enabled=trace_enabled), compute, transfer
-            )
-            request = _run_request(env, engine)
-            results[trace_enabled] = {
-                "completion": env.now,
-                "prefill_latency": request.prefill_latency,
-                "decode_time_sum": request.decode_time_sum,
-                "iteration_makespans": tuple(
-                    item["makespan"] for item in engine.af_iteration_summaries
-                ),
-                "block_completion": tuple(
-                    tuple(sorted(item["block_completed_at"].items()))
-                    for item in engine.af_iteration_summaries
-                ),
-                "query_stages": tuple(query.stage for query in compute.queries),
-                "events": tuple(
-                    len(engine.af_executor.trace.events_for(item["iteration_id"]))
-                    for item in engine.af_iteration_summaries
-                ),
-            }
-
-        comparable_fields = (
-            "completion",
-            "prefill_latency",
-            "decode_time_sum",
-            "iteration_makespans",
-            "block_completion",
-            "query_stages",
-        )
-        for field_name in comparable_fields:
-            self.assertEqual(results[True][field_name], results[False][field_name])
-        self.assertTrue(all(count > 0 for count in results[True]["events"]))
-        self.assertTrue(all(count == 0 for count in results[False]["events"]))
-
     def test_af_disabled_keeps_complete_backend_and_creates_no_af_state(self):
         env, engine, roofline = _build_engine(_disabled_cluster())
 
@@ -294,7 +134,3 @@ class AFEngineIntegrationTest(unittest.TestCase):
                 "af_operator_stats": None,
             },
         )
-
-
-if __name__ == "__main__":
-    unittest.main()

@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-import unittest
-from tests.test_af_executor import af_test_resources
 from dataclasses import replace
+import unittest
 
 import simpy
 
-from tests.test_af_parallel_planning import _cluster
-from tests.test_af_runtime_state import _moe_config, _runtime_plan
 from TokenSim.af.executor import AFExecutor
 from TokenSim.af.latency import AFServiceEstimate
 from TokenSim.af.models import AFBlock
 from TokenSim.af.planning import ExecutionNode, RankLocalWork
 from TokenSim.errors import ConfigurationError
+from tests.support.af_execution import af_test_resources
+from tests.support.af_parallel import _cluster
+from tests.support.af_runtime import _moe_config, _runtime_plan
 
 
 class RecordingComputeProvider:

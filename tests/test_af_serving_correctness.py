@@ -9,12 +9,9 @@ from TokenSim.config.simulation import SimulationConfig
 from TokenSim.errors import ConfigurationError
 from TokenSim.llm.llm_engine import LLMEngine
 from TokenSim.llm.llm_request import Request
-from tests.test_af_executor import (
-    af_test_hardware,
-    FixedComputeProvider,
-    FixedTransferProvider,
-)
-from tests.test_af_parallel_planning import _cluster
+from tests.support.af_hardware import af_test_hardware
+from tests.support.af_parallel import _cluster
+from tests.support.af_providers import FixedComputeProvider, FixedTransferProvider
 
 
 class AFServingCorrectnessTest(unittest.TestCase):

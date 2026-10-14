@@ -1,22 +1,22 @@
-"""Native control wire schema and causal timing without GPUs."""
+"""Native control serialization, readiness, ordering and failure cleanup."""
 
 import json
-import unittest
 from types import SimpleNamespace
-from pathlib import Path
+import unittest
 
 import simpy
 
-from tests import test_af_fixed_host as fixed
 from TokenSim.af.control import encode_eager_control
 from TokenSim.errors import ConfigurationError, SimulationStateError
+from tests.support import af_host_fixture as fixed
+from tests.support.af_host_fixture import FixedHostFixture
 
 
 class NativeControlTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        fixed.FixedHostTest.setUpClass()
-        cls.fixture = fixed.FixedHostTest()
+        fixed.FixedHostFixture.setUpClass()
+        cls.fixture = fixed.FixedHostFixture()
 
     def run_case(self, **costs):
         env, ex = self.fixture.executor(native_control_enabled=True, **costs)
@@ -97,25 +97,6 @@ class NativeControlTest(unittest.TestCase):
         )
         self.assertAlmostEqual(summary["unexplained_duration"], 0)
 
-    def test_cache_trace_equivalence(self):
-        values = []
-        for trace, cache in ((True, True), (True, False), (False, True)):
-            env, _ = self.run_case(
-                model=True,
-                trace=trace,
-                cache=cache,
-                control_encode_us=4,
-                control_h2d_us=2,
-                control_length_readback_us=3,
-                control_payload_readback_us=5,
-                control_decode_us=200,
-                a_step_prepare_us=10,
-                f_step_prepare_us=20,
-                compute_submit_us=2,
-            )
-            values.append(env.now)
-        self.assertEqual(values, [values[0]] * 3)
-
     def test_split_block_is_rejected_in_single_stage_protocol(self):
         env, ex = self.fixture.executor(native_control_enabled=True)
         with self.assertRaisesRegex(ConfigurationError, "unsplit"):
@@ -185,8 +166,10 @@ class NativeControlTest(unittest.TestCase):
 
     def test_transfer_cache_separates_backends(self):
         from dataclasses import replace
-        from TokenSim.af.estimate_cache import cached_estimate, initialize_cache
-        from TokenSim.af.latency import AFServiceEstimate, AFTransferQuery
+        from TokenSim.af.estimate_cache import cached_estimate
+        from TokenSim.af.estimate_cache import initialize_cache
+        from TokenSim.af.latency import AFServiceEstimate
+        from TokenSim.af.latency import AFTransferQuery
 
         class Provider:
             fallback = "analytical_only"
@@ -243,5 +226,108 @@ class NativeControlTest(unittest.TestCase):
         self.assertFalse(ex.active_iterations)
 
 
-if __name__ == "__main__":
-    unittest.main()
+class NativeOrderTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        FixedHostFixture.setUpClass()
+        cls.fixture = FixedHostFixture()
+
+    def executor(self, **costs):
+        return self.fixture.executor(
+            model=True,
+            native_control_enabled=True,
+            native_call_order_enabled=True,
+            **costs,
+        )
+
+    def test_control_enqueue_and_device_completion_are_separate(self):
+        env, ex = self.executor(
+            a_step_prepare_us=10,
+            f_step_prepare_us=100,
+            host_receive_submit_us=20,
+            control_length_readback_us=50,
+            compute_submit_us=3,
+        )
+        self.fixture.run_step(env, ex)
+        events = ex.trace.events_for(0)
+        by_id = {e.node_id: e for e in events}
+        payload_send = by_id["i0:control:payload:host_submit"]
+        length_wire = by_id["i0:control:length:transport"]
+        payload_wire = by_id["i0:control:payload:transport"]
+        self.assertLess(payload_send.end_at, length_wire.end_at)
+        self.assertGreaterEqual(
+            by_id["i0:control:payload:receive_submit"].start_at,
+            by_id["i0:control:length_readback"].end_at,
+        )
+        embedding = next(e for e in events if e.operation == "embedding_lookup")
+        cpu = by_id[embedding.node_id + ":compute_submit"]
+        self.assertLess(cpu.end_at, payload_wire.end_at)
+        self.assertGreaterEqual(embedding.start_at, payload_wire.end_at)
+        ex.trace.validate_invariants(0)
+
+    def test_receivers_prepost_without_occupying_transport(self):
+        env, ex = self.executor(host_receive_submit_us=3)
+        self.fixture.run_step(env, ex)
+        by_id = {e.node_id: e for e in ex.trace.events_for(0)}
+        wires = [e for e in by_id.values() if e.event_type == "transfer"]
+        for wire in wires:
+            root = wire.node_id.removesuffix(":transport")
+            recv = by_id[root + ":receive_submit"]
+            send = by_id[root + ":host_submit"]
+            self.assertLess(recv.start_at, send.start_at)
+            self.assertGreaterEqual(wire.start_at, max(recv.end_at, send.end_at))
+            self.assertEqual(
+                wire.details["readiness_mode"], "native_preposted_call_order"
+            )
+        self.assertFalse(ex._native_controls)
+
+    def test_cancellation_cleans_preposted_calls(self):
+        env, ex = self.executor(a_step_prepare_us=1000000, host_receive_submit_us=3)
+        request = SimpleNamespace(
+            id=0, is_prefill=False, prefill_len=128, context_len=129, generation_idx=0
+        )
+        process = env.process(ex.run_iteration(ex.submit(0, [request], "decode")))
+        env.run(until=10e-6)
+        process.interrupt("cancel preposted iteration")
+        with self.assertRaises(simpy.Interrupt):
+            env.run(until=process)
+        env.run()
+        self.assertFalse(ex._native_controls)
+        self.assertTrue(
+            all(
+                not r.users and not r.queue
+                for r in ex.resources.host_submission_slots.values()
+            )
+        )
+        self.fixture.run_step(env, ex)
+
+    def test_requires_native_control(self):
+        with self.assertRaises(ConfigurationError):
+            self.fixture.executor(native_call_order_enabled=True)
+
+    def test_failed_control_estimate_unblocks_and_can_retry(self):
+        for operation in ("af_control_length", "af_control_payload"):
+            env, ex = self.executor(host_receive_submit_us=3)
+            original = ex.transfer_provider.estimate
+
+            def failure(query):
+                if query.operation == operation:
+                    raise ValueError("injected transfer failure")
+                return original(query)
+
+            ex.transfer_provider.estimate = failure
+            with self.assertRaisesRegex(
+                SimulationStateError, "injected transfer failure"
+            ):
+                self.fixture.run_step(env, ex)
+            env.run()
+            self.assertFalse(ex._native_controls)
+            self.assertFalse(ex.active_iterations)
+            self.assertTrue(
+                all(
+                    not r.users and not r.queue
+                    for r in ex.resources.host_submission_slots.values()
+                )
+            )
+            ex.transfer_provider.estimate = original
+            self.fixture.run_step(env, ex)

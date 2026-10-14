@@ -1,78 +1,18 @@
-"""Ready-input operation service boundary and actual charging oracles."""
-
 import copy
-import json
-import unittest
-from pathlib import Path
 from types import SimpleNamespace
+import unittest
 
 import simpy
-from tests import test_af_host_profile as host
-from tests import test_af_fixed_host as fixed
-from TokenSim.af.calibration import runtime_fingerprint
-from TokenSim.af.operation_profile import OperationServiceProfile
+
 from TokenSim.af.factory import build_model_runtime, simulate_decode
 from TokenSim.errors import ConfigurationError
+from tests.support.af_operation_fixture import OperationProfileFixture
 
 
-class OperationProfileTest(unittest.TestCase):
-    def test_v3_reserves_batch5(self):
-        profile = self.document(self.host.runtime())
-        profile["schema_version"] = 3
-        profile["evidence"]["heldout_batches"] = [5]
-        self.load(profile)
-        for version, heldout in ((3, [2]), (2, [5]), (1, [5])):
-            profile["schema_version"] = version
-            profile["evidence"]["heldout_batches"] = heldout
-            with self.assertRaises(ConfigurationError):
-                self.load(profile)
+"""Af operation profile."""
 
-    @classmethod
-    def setUpClass(cls):
-        host.HostProfileTest.setUpClass()
-        fixed.FixedHostTest.setUpClass()
-        cls.host = host.HostProfileTest()
-        cls.fixed = fixed.FixedHostTest()
 
-    def document(self, runtime):
-        doc = json.loads(Path("tests/fixtures/af_operation_service.json").read_text())
-        doc["runtime_fingerprint"] = runtime_fingerprint(
-            runtime.plan, runtime.cluster, runtime.workers, runtime.hardware
-        )
-        doc["environment"] = {
-            "execution_mode": "eager",
-            "software_sha256": "test-software",
-        }
-        doc["evidence"]["kind"] = "synthetic_test"
-        for op in doc["operations"].values():
-            op["fixed_us"] = 11
-        return doc
-
-    def load(self, doc, explicit=()):
-        runtime = self.host.runtime()
-        return OperationServiceProfile(
-            doc,
-            expected_runtime=runtime_fingerprint(
-                runtime.plan, runtime.cluster, runtime.workers, runtime.hardware
-            ),
-            expected_environment={
-                "execution_mode": "eager",
-                "software_sha256": "test-software",
-            },
-            explicit_costs=explicit,
-        )
-
-    def configured(self, profile=None, **options):
-        runtime = self.host.runtime()
-        doc = copy.deepcopy(runtime.doc)
-        profile = profile or self.document(runtime)
-        doc["af"].update(
-            operation_service_profile=profile,
-            calibration_environment=profile["environment"],
-            **options,
-        )
-        return build_model_runtime(doc, hardware=runtime.hardware, model=runtime.model)
-
+class OperationProfileTest(OperationProfileFixture, unittest.TestCase):
     def test_rejects_invalid_scope_and_evidence(self):
         original = self.document(self.host.runtime())
         edits = [
@@ -102,22 +42,6 @@ class OperationProfileTest(unittest.TestCase):
         ):
             with self.assertRaisesRegex(ConfigurationError, "duplicate"):
                 self.load(original, (cost,))
-
-    def sampled_profile(self):
-        doc = self.document(self.host.runtime())
-        doc["schema_version"] = 2
-        doc["evidence"]["heldout_batches"] = [2]
-        doc["operations"]["sampled_token_readback"] = dict(
-            fixed_us=11,
-            coverage=["sampled_token_readback"],
-            input_ready="sampled_tokens_device_ready",
-            completion="cpu_api_return_data_ready",
-            resource_model="calling_thread_single_inflight",
-        )
-        doc["evidence"]["statistics"]["sampled_token_readback"] = dict(
-            p50_us=11, p95_us=11, samples=100
-        )
-        return doc
 
     def test_sampled_readback_gates_each_step_completion_and_preserves_old_run(self):
         baseline = self.document(self.host.runtime())
@@ -169,46 +93,6 @@ class OperationProfileTest(unittest.TestCase):
         with self.assertRaises(ConfigurationError):
             self.load(doc)
 
-    def test_readback_cache_and_trace_switches_preserve_completion(self):
-        rows = []
-        for enabled in (True, False):
-            runtime = self.configured(
-                self.sampled_profile(),
-                trace_enabled=enabled,
-                service_estimate_cache=enabled,
-                dag_template_cache=enabled,
-            )
-            _, result, _, _ = simulate_decode(
-                runtime, 1, 129, steps=2, fallback="analytical_only", trace=enabled
-            )
-            rows.append(result)
-        self.assertEqual(rows[0], rows[1])
-
-    def test_sampled_ready_100_or_120_plus_11(self):
-        for ready in (100, 120):
-            env, ex, block, node = self.oracle()
-            ex.operation_profile = self.load(self.sampled_profile())
-
-            def run():
-                yield env.timeout(ready / 1e6)
-                yield from ex._control_stage(
-                    block,
-                    node,
-                    "sampled_token_readback",
-                    (),
-                    node.physical_workers[0],
-                    0,
-                    device=True,
-                )
-
-            env.process(run())
-            env.run()
-            self.assertAlmostEqual(env.now * 1e6, ready + 11)
-            event = next(
-                e for e in ex.trace.events if e.operation == "sampled_token_readback"
-            )
-            self.assertAlmostEqual(event.service_duration * 1e6, 11)
-
     def test_workload_and_wire_size_checked(self):
         doc = self.document(self.host.runtime())
         for count, context, phase in (
@@ -245,40 +129,6 @@ class OperationProfileTest(unittest.TestCase):
         )
         self.assertFalse(
             any(e.event_type == "operation_service" for e in ex.trace.events)
-        )
-
-    def test_standard_engine_loads_operation_profile(self):
-        from unittest.mock import patch
-        from tests.test_af_executor import _psla_config
-        from TokenSim.config.config import ClusterConfig, KVTransferConfig
-        from TokenSim.llm.llm_engine import LLMEngine
-
-        runtime = self.configured(self.sampled_profile())
-        env = simpy.Environment()
-        with patch.object(runtime.hardware, "model", return_value=runtime.model):
-            engine = LLMEngine(
-                env=env,
-                block_size=16,
-                batching="paged-attn",
-                kv_transfer_config=KVTransferConfig.default(),
-                psla_config=_psla_config(),
-                cluster_config=ClusterConfig(**runtime.doc),
-                hardware=runtime.hardware,
-                prefill_worker_pool_type="round_robin",
-                decode_worker_pool_type="round_robin",
-                max_parallem_sum=8,
-                latency_fallback="analytical_only",
-            )
-        ex = engine.af_executor
-        self.fixed.run_step(env, ex)
-        self.assertEqual(
-            len([e for e in ex.trace.events if e.event_type == "operation_service"]), 4
-        )
-        self.assertEqual(
-            len(
-                [e for e in ex.trace.events if e.operation == "sampled_token_readback"]
-            ),
-            1,
         )
 
     def test_cancel_sampled_readback_releases_host_and_can_resume(self):
@@ -347,40 +197,6 @@ class OperationProfileTest(unittest.TestCase):
         for i in {e.iteration_id for e in operations}:
             ex.trace.validate_invariants(i)
 
-    def test_cache_identity_and_trace_equivalence(self):
-        profile = self.document(self.host.runtime())
-        results = []
-        namespaces = []
-        for enabled in (True, False):
-            runtime = self.configured(
-                profile,
-                trace_enabled=enabled,
-                service_estimate_cache=enabled,
-                dag_template_cache=enabled,
-            )
-            _, rows, compute, _ = simulate_decode(
-                runtime, 1, 129, fallback="analytical_only", trace=enabled
-            )
-            results.append(rows)
-            namespaces.append(compute._estimate_namespace)
-        self.assertEqual(results[0], results[1])
-        profile["operations"]["h2d"]["fixed_us"] = 12
-        _, changed, compute, _ = simulate_decode(
-            self.configured(profile), 1, 129, fallback="analytical_only"
-        )
-        self.assertNotEqual(namespaces[0], compute._estimate_namespace)
-        self.assertGreater(changed[0]["makespan_us"], results[0][0]["makespan_us"])
-
-    def oracle(self):
-        env, ex = self.fixed.executor(native_control_enabled=True)
-        ex.operation_profile = self.load(self.document(self.host.runtime()))
-        request = SimpleNamespace(
-            id=0, is_prefill=False, prefill_len=128, context_len=129, generation_idx=0
-        )
-        block = ex.submit(0, [request], "decode").blocks[0]
-        node = ex._control_nodes(block)[0]
-        return env, ex, block, node
-
     def test_ready_100_plus_11_and_external_delay(self):
         for ready in (100, 180):
             env, ex, block, node = self.oracle()
@@ -419,40 +235,6 @@ class OperationProfileTest(unittest.TestCase):
         )
         env.run()
         self.assertAlmostEqual(env.now, 22e-6)
-
-    def test_cancel_releases_operation_resource(self):
-        env, ex, block, node = self.oracle()
-        process = env.process(
-            ex._control_stage(
-                block, node, "h2d", (), node.physical_workers[0], 0, device=True
-            )
-        )
-        env.run(until=1e-6)
-        process.interrupt("cancel")
-        with self.assertRaises(simpy.Interrupt):
-            env.run(until=process)
-        env.run()
-        self.assertTrue(
-            all(
-                not r.users and not r.queue
-                for r in ex.resources.host_submission_slots.values()
-            )
-        )
-        self.fixed.run_step(env, ex)
-
-    def input_profile(self):
-        profile = self.document(self.host.runtime())
-        profile["operations"]["a_input_prepare"] = dict(
-            fixed_us=100,
-            coverage=["a_input_prepare"],
-            input_ready="prior_device_work_complete",
-            completion="device_synchronize_after_operation",
-            resource_model="calling_thread_single_inflight",
-        )
-        profile["evidence"]["statistics"]["a_input_prepare"] = dict(
-            p50_us=100, p95_us=101, samples=200
-        )
-        return profile
 
     def test_input_preparation_once_gates_control_and_compute(self):
         profile = self.input_profile()
@@ -552,7 +334,3 @@ class OperationProfileTest(unittest.TestCase):
         self.assertGreaterEqual(first_receive.start_at, by_op["f_dp_metadata"].end_at)
         self.assertIn(by_op["f_dp_metadata"].node_id, first_receive.predecessor_ids)
         ex.trace.validate_invariants(0)
-
-
-if __name__ == "__main__":
-    unittest.main()

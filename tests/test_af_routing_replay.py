@@ -1,18 +1,18 @@
 import copy
-import unittest
 from dataclasses import asdict
 from types import SimpleNamespace
+import unittest
 
-from tests import test_af_host_profile as host
 from TokenSim.af.factory import build_model_runtime, simulate_decode
 from TokenSim.errors import ConfigurationError, WorkloadValidationError
+from tests.support import af_profile_fixture as host
 
 
 class RoutingReplayTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        host.HostProfileTest.setUpClass()
-        cls.fixture = host.HostProfileTest()
+        host.HostProfileFixture.setUpClass()
+        cls.fixture = host.HostProfileFixture()
 
     def configured(self):
         runtime = self.fixture.runtime()

@@ -1,16 +1,16 @@
-import unittest
-from tests.test_af_executor import af_test_resources
 from types import SimpleNamespace
+import unittest
 
 import simpy
 
-from tests.test_af_executor import LLMEngine
-from tests.test_af_parallel_planning import _cluster
 from TokenSim.af import AFExecutor, AFServiceEstimate
 from TokenSim.config.cluster_config import DomainCollectiveConfig
 from TokenSim.errors import ConfigurationError
+from TokenSim.llm.llm_engine import LLMEngine
 from TokenSim.moe.config import MoEModelConfig
 from TokenSim.placement import BalancedLoadWorkerPool, DataParallelWorkerPool
+from tests.support.af_execution import af_test_resources
+from tests.support.af_parallel import _cluster
 
 
 class WorkloadComputeProvider:

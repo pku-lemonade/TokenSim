@@ -5,8 +5,8 @@ import unittest
 
 from TokenSim.af.operator_provider import OperatorTableAFComputeProvider
 from TokenSim.hardware.device import DeviceCatalog
-from tests.test_af_executor import af_test_hardware
-from tests.test_af_operator_provider import _moe, _compute_query
+from tests.support.af_hardware import af_test_hardware
+from tests.support.af_queries import _compute_query, _moe
 
 
 class AFProviderCorrectnessTest(unittest.TestCase):

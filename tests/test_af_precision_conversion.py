@@ -11,8 +11,8 @@ from TokenSim.hardware.device import DeviceCatalog
 from TokenSim.llm.llm_engine import LLMEngine
 from TokenSim.llm.llm_request import Request
 from TokenSim.operator_data.workload import elementwise_work
-from tests.test_af_executor import af_test_hardware
-from tests.test_af_parallel_planning import _cluster
+from tests.support.af_hardware import af_test_hardware
+from tests.support.af_parallel import _cluster
 
 
 class PrecisionConversionTest(unittest.TestCase):

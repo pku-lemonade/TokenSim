@@ -1,13 +1,13 @@
-import unittest
-from tests.test_af_executor import af_test_resources
 from types import SimpleNamespace
+import unittest
 
 import simpy
 
 from TokenSim.af import AFExecutor, AFServiceEstimate
 from TokenSim.config.cluster_config import AFCommunicationTimingConfig
 from TokenSim.errors import ConfigurationError, SimulationStateError
-from tests.test_af_parallel_planning import _cluster
+from tests.support.af_execution import af_test_resources
+from tests.support.af_parallel import _cluster
 
 
 class ZeroCompute:

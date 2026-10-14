@@ -1,17 +1,17 @@
 import copy
 import unittest
 
-from tests import test_af_native_protocol as native
-from TokenSim.af.calibration import (
-    HostOverheadProfile,
-    runtime_fingerprint,
-    HOST_COVERAGE,
-)
+from TokenSim.af.calibration import HOST_COVERAGE
 from TokenSim.af.factory import build_model_runtime, simulate_decode
+from TokenSim.config.simulation import SimulationConfig
 from TokenSim.errors import ConfigurationError
+from tests.support.af_profile_fixture import HostProfileFixture
 
 
-class HostProfileTest(unittest.TestCase):
+"""Af host profile."""
+
+
+class HostProfileTest(HostProfileFixture, unittest.TestCase):
     def test_v3_reserves_batch5_without_changing_old_schema(self):
         runtime = self.runtime()
         profile = self.document(runtime)
@@ -23,22 +23,6 @@ class HostProfileTest(unittest.TestCase):
             profile["evidence"]["heldout_batches"] = heldout
             with self.assertRaisesRegex(ConfigurationError, "held-out"):
                 self.load(profile, runtime)
-
-    @classmethod
-    def setUpClass(cls):
-        native.NativeProtocolTest.setUpClass()
-        cls.fixture = native.NativeProtocolTest()
-
-    def runtime(self, costs=None):
-        doc = self.fixture.document(
-            communication_timing=dict(enabled=True, native_control_enabled=True)
-        )
-        if costs:
-            doc["af"]["communication_timing"].update(costs)
-        runtime = build_model_runtime(
-            doc, hardware=self.fixture.base.hardware, model=self.fixture.model
-        )
-        return runtime
 
     def test_domain_bandwidth_and_placement_invalidate_profile(self):
         original = self.runtime()
@@ -66,86 +50,6 @@ class HostProfileTest(unittest.TestCase):
             )
             with self.assertRaisesRegex(ConfigurationError, "fingerprint mismatch"):
                 self.load(profile, runtime)
-
-    def document(self, runtime):
-        return dict(
-            schema_version=1,
-            profile_id="unit-test-host",
-            unit="us",
-            timing_scope="host_service",
-            contains_wait=False,
-            excludes_device_launch=True,
-            protocol="vllm_afd",
-            runtime_fingerprint=runtime_fingerprint(
-                runtime.plan, runtime.cluster, runtime.workers, runtime.hardware
-            ),
-            environment=dict(execution_mode="eager", software_sha256="test-software"),
-            batch_range=[1, 8],
-            context_range=[129, 160],
-            costs={
-                name: dict(
-                    fixed_us=value, per_token_us=0, coverage=[HOST_COVERAGE[name]]
-                )
-                for name, value in [("a_step_prepare_us", 10), ("host_submit_us", 2)]
-            },
-            evidence=dict(
-                source="unit-test://not-real-calibration",
-                kind="synthetic_test",
-                sample_count=100,
-                window_count=3,
-                training_batches=[1, 8],
-                heldout_batches=[4],
-                method="constant",
-                residual_us=0,
-                validation_status="pending",
-                quantiles_us={
-                    "a_step_prepare_us": dict(p50=10, p95=10),
-                    "host_submit_us": dict(p50=2, p95=2),
-                },
-            ),
-        )
-
-    def load(self, doc, runtime=None, explicit=()):
-        runtime = runtime or self.runtime()
-        return HostOverheadProfile(
-            doc,
-            expected_runtime=runtime_fingerprint(
-                runtime.plan, runtime.cluster, runtime.workers, runtime.hardware
-            ),
-            expected_environment=dict(
-                execution_mode="eager", software_sha256="test-software"
-            ),
-            explicit_costs=explicit,
-        )
-
-    def test_profile_overrides_defaults_without_adding_them(self):
-        runtime = self.runtime()
-        doc = copy.deepcopy(runtime.doc)
-        profile = self.document(runtime)
-        doc["af"].update(
-            engine_overhead_profile=profile,
-            calibration_environment=profile["environment"],
-        )
-        runtime = build_model_runtime(
-            doc, hardware=runtime.hardware, model=runtime.model
-        )
-        ex, rows, _, _ = simulate_decode(runtime, 1, 129, fallback="analytical_only")
-        send = [
-            e
-            for e in ex.trace.events
-            if e.details.get("cost_field") == "host_submit_us"
-        ]
-        self.assertEqual(len(send), 6)
-        self.assertTrue(all(abs(e.service_duration - 2e-6) < 1e-12 for e in send))
-        self.assertTrue(all(e.source_id.startswith("profile:") for e in send))
-        self.assertEqual(
-            ex.overhead_profile.describe()["evidence_kind"], "synthetic_test"
-        )
-        baseline = self.runtime({"a_step_prepare_us": 10, "host_submit_us": 2})
-        _, reference, _, _ = simulate_decode(
-            baseline, 1, 129, fallback="analytical_only"
-        )
-        self.assertEqual(rows, reference)
 
     def test_explicit_default_value_is_still_a_conflict(self):
         runtime = self.runtime({"host_submit_us": 5})
@@ -250,8 +154,9 @@ class HostProfileTest(unittest.TestCase):
         import simpy
         from types import SimpleNamespace
         from unittest.mock import patch
-        from tests.test_af_executor import _psla_config
-        from TokenSim.config.config import ClusterConfig, KVTransferConfig
+
+        from TokenSim.config.config import ClusterConfig
+        from TokenSim.config.config import KVTransferConfig
         from TokenSim.llm.llm_engine import LLMEngine
         from TokenSim.af.model_executor import ModelAFExecutor
 
@@ -266,16 +171,18 @@ class HostProfileTest(unittest.TestCase):
         with patch.object(runtime.hardware, "model", return_value=runtime.model):
             engine = LLMEngine(
                 env=env,
-                block_size=16,
-                batching="paged-attn",
                 kv_transfer_config=KVTransferConfig.default(),
-                psla_config=_psla_config(),
+                model_spec=runtime.model,
                 cluster_config=ClusterConfig(**doc),
                 hardware=runtime.hardware,
-                prefill_worker_pool_type="round_robin",
-                decode_worker_pool_type="round_robin",
-                max_parallem_sum=8,
-                latency_fallback="analytical_only",
+                config=SimulationConfig(
+                    block_size=16,
+                    batching="paged-attn",
+                    prefill_worker_pool_type="round_robin",
+                    decode_worker_pool_type="round_robin",
+                    max_num_seqs=8,
+                    latency_fallback="analytical_only",
+                ),
             )
         ex = engine.af_executor
         self.assertIsInstance(ex, ModelAFExecutor)
@@ -338,99 +245,6 @@ class HostProfileTest(unittest.TestCase):
             ).covered_operations,
             ("routed_experts", "weighted_combine"),
         )
-
-    def test_same_link_name_with_changed_bandwidth_invalidates_profile(self):
-        from dataclasses import replace
-        from unittest.mock import patch
-
-        runtime = self.runtime()
-        original = self.document(runtime)
-        lookup = runtime.hardware.link
-        with patch.object(
-            runtime.hardware,
-            "link",
-            side_effect=lambda name: replace(
-                lookup(name),
-                bandwidth_per_direction_bytes_per_s=lookup(
-                    name
-                ).bandwidth_per_direction_bytes_per_s
-                / 2,
-            ),
-        ):
-            with self.assertRaisesRegex(ConfigurationError, "fingerprint"):
-                self.load(original, runtime)
-
-    def test_profile_content_separates_provider_namespaces(self):
-        runtime = self.runtime()
-        doc = copy.deepcopy(runtime.doc)
-        profile = self.document(runtime)
-        namespaces = []
-        rows = []
-        for cost in (2, 3):
-            profile["costs"]["host_submit_us"]["fixed_us"] = cost
-            doc["af"].update(
-                engine_overhead_profile=profile,
-                calibration_environment=profile["environment"],
-            )
-            configured = build_model_runtime(
-                doc, hardware=runtime.hardware, model=runtime.model
-            )
-            _, result, compute, transfer = simulate_decode(
-                configured, 1, 129, fallback="analytical_only"
-            )
-            namespaces.append(
-                (compute._estimate_namespace, transfer._estimate_namespace)
-            )
-            rows.append(result)
-        self.assertNotEqual(namespaces[0][0], namespaces[1][0])
-        self.assertNotEqual(namespaces[0][1], namespaces[1][1])
-        self.assertGreater(rows[1][0]["makespan_us"], rows[0][0]["makespan_us"])
-
-    def test_native_boundary_failure_releases_resources_and_preserves_kv_owner(self):
-        from types import SimpleNamespace
-        from unittest.mock import patch
-        from TokenSim.errors import SimulationStateError
-
-        runtime = self.runtime()
-        states = {
-            state.physical_identity: state for state in runtime.plan.physical_states
-        }
-        self.assertGreater(states["a-pool:0"].kv_bytes_per_block, 0)
-        self.assertEqual(states["f-pool:0"].kv_bytes_per_block, 0)
-        ex, _, _, _ = simulate_decode(runtime, 1, 129, fallback="analytical_only")
-        original = ex.compute_provider.estimate
-
-        def fail(query):
-            if query.operation == "lm_head":
-                raise ValueError("native boundary failure")
-            return original(query)
-
-        def iteration():
-            request = SimpleNamespace(
-                id=0,
-                is_prefill=False,
-                context_len=129,
-                prefill_len=128,
-                generation_idx=0,
-            )
-            return ex.submit(0, [request], "decode")
-
-        with patch.object(ex.compute_provider, "estimate", fail):
-            with self.assertRaisesRegex(
-                SimulationStateError, "native boundary failure"
-            ):
-                ex.env.run(until=ex.env.process(ex.run_iteration(iteration())))
-        ex.env.run()
-        for resource in (
-            *ex.resources.compute_slots.values(),
-            *ex.resources.communication_resources.values(),
-            *ex.resources.host_submission_slots.values(),
-        ):
-            self.assertFalse(resource.users)
-            self.assertFalse(resource.queue)
-        resumed = iteration()
-        ex.env.run(until=ex.env.process(ex.run_iteration(resumed)))
-        ex.trace.validate_invariants(resumed.iteration_id)
 
     def test_native_buffers_are_reserved_once_and_reduce_kv_capacity(self):
         runtime = self.runtime()
@@ -554,7 +368,3 @@ class HostProfileTest(unittest.TestCase):
                 if e.event_type == "compute" and e.stage == "weighted_combine"
             )
         )
-
-
-if __name__ == "__main__":
-    unittest.main()

@@ -1,15 +1,17 @@
-import json
 import unittest
 from dataclasses import replace
 from unittest.mock import patch
 
-from scripts.deepseek_v3_runtime import ROOT, configuration, simulate
+from scripts.deepseek_v3_runtime import configuration
+from scripts.deepseek_v3_runtime import simulate
 from TokenSim.af.factory import build_model_runtime
 from TokenSim.af.model_executor import ModelAFExecutor
 from TokenSim.operator_data.workload import work_for_table
-from TokenSim.errors import ConfigurationError, SimulationStateError, OutOfBlocksError
+from TokenSim.errors import ConfigurationError
+from TokenSim.errors import SimulationStateError
+from TokenSim.errors import OutOfBlocksError
 from TokenSim.block.replica_kv import ReplicaKVBlockManager
-from tests.test_af_runtime_state import _request
+from tests.support.af_runtime import _request
 
 
 def runtime(full=False, a_tp=1, f_tp=2, block=8, hypothetical=None):

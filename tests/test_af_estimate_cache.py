@@ -4,10 +4,10 @@ import unittest
 
 from TokenSim.af.operator_provider import OperatorTableAFComputeProvider
 from TokenSim.errors import ConfigurationError
-from tests.af_runtime_oracle import observe_services
-from tests.test_af_executor import af_test_hardware
-from tests.test_af_operator_provider import _compute_query, _moe
 from scripts.deepseek_v3_runtime import configuration, simulate
+from tests.af_runtime_oracle import observe_services
+from tests.support.af_hardware import af_test_hardware
+from tests.support.af_queries import _compute_query, _moe
 
 
 class EstimateCacheTest(unittest.TestCase):

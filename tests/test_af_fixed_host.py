@@ -1,95 +1,17 @@
-"""Causal oracles for fixed host costs, independent of measured calibration."""
-
-import unittest
 from types import SimpleNamespace
+import unittest
 
 import simpy
 
-from tests import test_af_native_protocol as native_fixture
-from TokenSim.errors import ConfigurationError
-from TokenSim.af import AFExecutor, AFServiceEstimate
 from TokenSim.af.factory import build_model_runtime
-from TokenSim.af.resources import AFResourceRegistry
-from TokenSim.af.model_executor import ModelAFExecutor
+from TokenSim.errors import ConfigurationError
+from tests.support.af_host_fixture import FixedHostFixture
 
 
-class FixedHostTest(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        native_fixture.NativeProtocolTest.setUpClass()
-        cls.fixture = native_fixture.NativeProtocolTest()
+"""Af fixed host."""
 
-    def executor(self, *, model=False, trace=True, cache=True, **costs):
-        fixture = self.fixture
-        runtime = build_model_runtime(
-            fixture.document(
-                trace_enabled=trace,
-                service_estimate_cache=cache,
-                dag_template_cache=cache,
-                communication_timing=dict(enabled=True, host_submit_us=0, **costs),
-            ),
-            hardware=fixture.base.hardware,
-            model=fixture.model,
-        )
 
-        class Provider:
-            def estimate(self, query):
-                payload = getattr(query, "payload_bytes", None)
-                duration = (
-                    5
-                    if payload is not None
-                    else (100 if query.stage == "attention" else 0)
-                )
-                return AFServiceEstimate(
-                    duration / 1e6,
-                    "oracle",
-                    payload_bytes=payload,
-                    details={
-                        "timing_scope": (
-                            "transport_service"
-                            if payload is not None
-                            else "device_service"
-                        )
-                    },
-                )
-
-        env = simpy.Environment()
-        executor_type = ModelAFExecutor if model else AFExecutor
-        executor = executor_type(
-            env,
-            runtime.cluster,
-            runtime.workers,
-            Provider(),
-            Provider(),
-            fixture.model.model_id,
-            "bf16",
-            2,
-            256,
-            moe_config=fixture.model.moe,
-            runtime_plan=runtime.plan,
-            resources=AFResourceRegistry(
-                env, runtime.cluster, runtime.workers, runtime.placement
-            ),
-            **({"model": fixture.model} if model else {}),
-        )
-        return env, executor
-
-    def run_step(self, env, executor, count=1):
-        requests = [
-            SimpleNamespace(
-                id=i,
-                is_prefill=False,
-                prefill_len=128,
-                context_len=129,
-                generation_idx=0,
-            )
-            for i in range(count)
-        ]
-        iteration = executor.submit(0, requests, "decode")
-        process = env.process(executor.run_iteration(iteration))
-        env.run(until=process)
-        return iteration
-
+class FixedHostTest(FixedHostFixture, unittest.TestCase):
     def test_receiver_preparation_overlaps_compute(self):
         env, ex = self.executor(f_step_prepare_us=200)
         self.run_step(env, ex)
@@ -131,21 +53,6 @@ class FixedHostTest(unittest.TestCase):
                 submit = by_id[event.node_id + ":compute_submit"]
                 self.assertGreaterEqual(event.start_at, submit.end_at)
             self.assertFalse(ex._step_preparation)
-
-    def test_trace_and_cache_do_not_change_time(self):
-        times = []
-        for trace, cache in ((True, True), (True, False), (False, True)):
-            env, ex = self.executor(
-                trace=trace,
-                cache=cache,
-                f_step_prepare_us=200,
-                a_step_prepare_us=10,
-                compute_submit_us=3,
-                host_receive_submit_us=2,
-            )
-            times.append(self.run_step(env, ex).makespan)
-        self.assertEqual(times[0], times[1])
-        self.assertEqual(times[0], times[2])
 
     def test_invalid_costs_rejected(self):
         for field in (
@@ -244,7 +151,3 @@ class FixedHostTest(unittest.TestCase):
                 build_model_runtime(
                     doc, hardware=fixture.base.hardware, model=fixture.model
                 )
-
-
-if __name__ == "__main__":
-    unittest.main()

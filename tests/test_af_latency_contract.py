@@ -8,11 +8,7 @@ from TokenSim.af.latency import (
     AFTensorSlice,
     AFTransferQuery,
 )
-from TokenSim.dtypes import (
-    DTYPE_REGISTRY,
-    canonicalize_dtype,
-    dtype_size_bytes,
-)
+from TokenSim.dtypes import DTYPE_REGISTRY, canonicalize_dtype, dtype_size_bytes
 
 
 class CanonicalDTypeRegistryTest(unittest.TestCase):

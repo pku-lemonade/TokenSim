@@ -5,8 +5,11 @@ from dataclasses import FrozenInstanceError
 
 from TokenSim.errors import WorkloadValidationError
 from TokenSim.llm.llm_request import Request
-from TokenSim.moe import ExpertRouting, LayerRoutingSnapshot, RoutingAssignment
-from TokenSim.moe.config import MoEModelConfig, RoutingConfig
+from TokenSim.moe import ExpertRouting
+from TokenSim.moe import LayerRoutingSnapshot
+from TokenSim.moe import RoutingAssignment
+from TokenSim.moe.config import MoEModelConfig
+from TokenSim.moe.config import RoutingConfig
 
 
 class SyntheticPartitionTest(unittest.TestCase):

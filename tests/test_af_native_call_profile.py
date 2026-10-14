@@ -3,21 +3,21 @@
 import copy
 import unittest
 
-from tests import test_af_operation_profile as operation_tests
 from TokenSim.af.calibration import (
-    EXTENDED_HOST_COVERAGE,
     COMPUTE_CALL_FIELDS,
+    EXTENDED_HOST_COVERAGE,
     MESSAGE_CALL_FIELDS,
 )
 from TokenSim.af.factory import simulate_decode
 from TokenSim.errors import ConfigurationError
+from tests.support import af_operation_fixture as operation_tests
 
 
 class NativeCallProfileTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        operation_tests.OperationProfileTest.setUpClass()
-        cls.fixture = operation_tests.OperationProfileTest()
+        operation_tests.OperationProfileFixture.setUpClass()
+        cls.fixture = operation_tests.OperationProfileFixture()
 
     def profile(self, fields):
         f = self.fixture

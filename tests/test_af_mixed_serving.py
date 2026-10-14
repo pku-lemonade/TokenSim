@@ -1,7 +1,7 @@
 """Mixed serving and recomputation retain AF computation and communication."""
 
-from unittest.mock import patch
 import unittest
+from unittest.mock import patch
 
 import simpy
 
@@ -12,13 +12,10 @@ from TokenSim.errors import SimulationStateError
 from TokenSim.llm.engine.af_worker import run_worker_compute
 from TokenSim.llm.llm_engine import LLMEngine, LLMWorker
 from TokenSim.llm.llm_request import Request
-from tests.test_af_executor import (
-    _cluster_dict,
-    af_test_hardware,
-    FixedComputeProvider,
-    FixedTransferProvider,
-)
-from tests.test_af_operator_provider import _moe
+from tests.support.af_config import _cluster_dict
+from tests.support.af_hardware import af_test_hardware
+from tests.support.af_providers import FixedComputeProvider, FixedTransferProvider
+from tests.support.af_queries import _moe
 
 
 class MixedServingTest(unittest.TestCase):

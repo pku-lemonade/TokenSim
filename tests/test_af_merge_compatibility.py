@@ -13,16 +13,13 @@ from TokenSim.cli import build_parser, main
 from TokenSim.comm.collectives import CollectiveModel
 from TokenSim.errors import WorkloadValidationError
 from TokenSim.hardware.links import LinkCatalog
-from TokenSim.hardware.topology import TopologySpec, TopologyLevel
+from TokenSim.hardware.topology import TopologyLevel, TopologySpec
 from TokenSim.llm.llm_request import Request
 from TokenSim.moe import ExpertRouting, normalize_expert_histogram
+from tests.support.af_config import _cluster_dict
+from tests.support.af_hardware import af_test_hardware
+from tests.support.af_providers import FixedComputeProvider, FixedTransferProvider
 from tests.support.hardware import make_links, moe_test_model
-from tests.test_af_executor import (
-    _cluster_dict,
-    af_test_hardware,
-    FixedComputeProvider,
-    FixedTransferProvider,
-)
 
 
 class AFMergeCompatibilityTest(unittest.TestCase):

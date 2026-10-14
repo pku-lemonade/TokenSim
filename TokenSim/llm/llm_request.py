@@ -485,12 +485,3 @@ class Request:
             first_step_batch=self.prefill_batch_size,
             decode_batch_sum=self.decode_batch_sum,
         )
-
-
-# Timing compatibility for AF callers using the original engine API.
-g_time = LLMTime()
-
-
-def reset_g_time():
-    g_time.time.clear()
-    return g_time

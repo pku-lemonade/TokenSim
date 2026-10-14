@@ -3,13 +3,14 @@ import unittest
 from unittest.mock import patch
 
 from TokenSim.af.factory import build_model_runtime
-from TokenSim.af.planning import AFExecutionDAG, ParallelExecutionPlanner
-from scripts.deepseek_v3_runtime import configuration, simulate
-from tests.af_runtime_oracle import observe_services
-from tests.test_af_parallel_planning import _cluster, _formal_runtime_plan
 from TokenSim.af.models import AFBlock
+from TokenSim.af.planning import AFExecutionDAG, ParallelExecutionPlanner
 from TokenSim.moe.config import MoEModelConfig
 from TokenSim.moe.routing import LayerRoutingSnapshot, RoutingAssignment
+from scripts.deepseek_v3_runtime import configuration, simulate
+from tests.af_runtime_oracle import observe_services
+from tests.support.af_parallel import _cluster
+from tests.support.af_planning import _formal_runtime_plan
 
 
 class TemplateTest(unittest.TestCase):

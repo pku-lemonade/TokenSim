@@ -1,6 +1,7 @@
 """Observation counters used by trace regression tests."""
 
 from dataclasses import replace
+
 from TokenSim.af.models import AFIteration
 from TokenSim.af.trace import AFTraceEvent, AFTraceRecorder
 

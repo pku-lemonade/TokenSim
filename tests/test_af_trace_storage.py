@@ -1,22 +1,20 @@
 """Trace storage, accounting and export contracts, independent of wall-clock timing."""
 
-import json
-import unittest
 from copy import deepcopy
 from dataclasses import replace
+import json
 from types import SimpleNamespace
+import unittest
 from unittest.mock import patch
 
 from TokenSim.af.models import AFIteration
 from TokenSim.af.trace import AFTraceEvent, AFTraceRecorder
 from TokenSim.errors import SimulationStateError
-from TokenSim.llm.llm_request import reset_g_time
-from tests.support.af_trace import AccessList, lookup_visits
+from TokenSim.reporting import get_af_stats
 from scripts.deepseek_v3_runtime import configuration, simulate
-from tests.test_af_engine_integration import _build_engine, _run_request, _typed_cluster
-from tests.test_af_executor import FixedComputeProvider, FixedTransferProvider
-from tests.support.af_trace import _event, _valid_events
-from util.results import get_af_stats
+from tests.support.af_engine import _build_engine, _run_request, _typed_cluster
+from tests.support.af_providers import FixedComputeProvider, FixedTransferProvider
+from tests.support.af_trace import AccessList, _event, _valid_events, lookup_visits
 
 
 def iteration(identity=7, end=4):
@@ -207,7 +205,6 @@ class TraceStorageTest(unittest.TestCase):
 
     def test_engine_completion_never_serializes_events(self):
         for enabled in (True, False):
-            reset_g_time()
             with patch.object(
                 AFTraceEvent,
                 "as_dict",

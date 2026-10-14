@@ -1,22 +1,17 @@
 import unittest
 from dataclasses import replace
 
-from TokenSim.config.model_config import ModelSpec
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware import HardwareContext
-from TokenSim.hardware.device import DeviceSpec
-from TokenSim.operator_data.lookup import (
-    LookupPolicy,
-    MissingOperatorDataError,
-    OperatorLookup,
-)
-from TokenSim.operator_data.package import (
-    OperatorDataPackage,
-    PackageMeta,
-    SourceRecord,
-)
+from TokenSim.operator_data.lookup import LookupPolicy
+from TokenSim.operator_data.lookup import MissingOperatorDataError
+from TokenSim.operator_data.lookup import OperatorLookup
+from TokenSim.operator_data.package import OperatorDataPackage
+from TokenSim.operator_data.package import PackageMeta
+from TokenSim.operator_data.package import SourceRecord
 from TokenSim.operator_data.workload import work_for_table
-from scripts.deepseek_v3_runtime import configuration, simulate
+from scripts.deepseek_v3_runtime import configuration
+from scripts.deepseek_v3_runtime import simulate
 
 
 SOURCE = SourceRecord(

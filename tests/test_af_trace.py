@@ -1,10 +1,10 @@
-import unittest
 from dataclasses import replace
+import unittest
 
 from TokenSim.af.latency import AFEndpoint, AFTensorSlice
-from TokenSim.af.trace import AFTraceEvent, AFTraceRecorder
+from TokenSim.af.trace import AFTraceRecorder
 from TokenSim.errors import SimulationStateError
-from tests.support.af_trace import _event, _valid_events
+from tests.support.af_trace import _valid_events
 
 
 class AFTraceInvariantTest(unittest.TestCase):
