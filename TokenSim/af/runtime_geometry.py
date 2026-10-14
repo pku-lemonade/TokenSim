@@ -1,0 +1,261 @@
+"""Runtime geometry."""
+
+from __future__ import annotations
+
+from typing import Literal
+
+from TokenSim.af.runtime_records import (
+    AFRankBinding,
+    AFResolvedCollectivePlan,
+    AFTensorOwnership,
+)
+from TokenSim.errors import ConfigurationError
+
+
+class RuntimeGeometryMixin:
+    def ownerships_for_replica(
+        self, domain: str, dp_rank: int
+    ) -> tuple[AFTensorOwnership, ...]:
+        domain_plan = self.domain_runtime(domain)
+        candidates = tuple(
+            item
+            for item in self.tensor_ownerships
+            if item.domain == domain and item.dp_rank == dp_rank
+        )
+        if domain_plan.capability == "af_ffn" and domain_plan.expert_parallel_size > 1:
+            # Residual activations have one base TP owner.  EP ranks in a
+            # rank-reuse F pool replicate that owner and must not create
+            # overlapping tensor intervals.
+            by_tp: dict[int, AFTensorOwnership] = {}
+            for item in sorted(candidates, key=lambda value: value.domain_rank):
+                by_tp.setdefault(item.tp_rank, item)
+            candidates = tuple(by_tp.values())
+        ownerships = tuple(
+            sorted(
+                candidates,
+                key=lambda item: item.tp_rank,
+            )
+        )
+        if not ownerships:
+            raise ConfigurationError(
+                f"AF runtime plan has no tensor ownership for domain={domain!r}, "
+                f"dp_rank={dp_rank}"
+            )
+        return ownerships
+
+    def collective_plan(
+        self, domain: str, dp_rank: int, after_stage: str
+    ) -> AFResolvedCollectivePlan | None:
+        matches = tuple(
+            item
+            for item in self.collective_plans
+            if item.domain == domain
+            and item.dp_rank == dp_rank
+            and item.after_stage == after_stage
+        )
+        if len(matches) > 1:
+            raise ConfigurationError(
+                f"AF runtime plan has ambiguous collective for domain={domain!r}, "
+                f"dp_rank={dp_rank}, after_stage={after_stage!r}"
+            )
+        return matches[0] if matches else None
+
+    def local_shape(
+        self,
+        domain: str,
+        domain_rank: int,
+        layer_id: int,
+        operation: str,
+    ) -> dict[str, int]:
+        binding = self.binding(domain, domain_rank)
+        domain_plan = self.domain_runtime(domain)
+        layer = self.layer_plan(layer_id)
+        shape = {
+            "global_hidden_size": self.hidden_size,
+            "hidden_size": self.hidden_size,
+            "tp_size": domain_plan.tensor_parallel_size,
+        }
+        if operation in {"attention", "a_rank_compute"}:
+            if binding.kv_partition is None:
+                raise ConfigurationError(
+                    f"attention rank {binding.rank_key!r} has no KV partition"
+                )
+            shape.update(
+                {
+                    "num_heads": self.num_attention_heads
+                    // domain_plan.tensor_parallel_size,
+                    "num_kv_heads": binding.kv_partition.local_head_count,
+                    "head_dim": self.head_dim,
+                    "query_width": (
+                        self.num_attention_heads
+                        // domain_plan.tensor_parallel_size
+                        * self.head_dim
+                    ),
+                    "kv_width": (binding.kv_partition.local_head_count * self.head_dim),
+                }
+            )
+            if self.mla is not None:
+                shape.update(
+                    self.mla.local_shape(
+                        self.num_attention_heads, domain_plan.tensor_parallel_size
+                    )
+                )
+        elif operation == "dense_ffn":
+            if layer.layer_type != "dense":
+                raise ConfigurationError(
+                    f"layer={layer_id} is {layer.layer_type}, not Dense FFN"
+                )
+            shape["intermediate_size"] = (
+                layer.dense_intermediate_size // domain_plan.tensor_parallel_size
+            )
+        elif operation == "shared_expert":
+            if layer.layer_type != "moe" or not layer.shared_intermediate_size:
+                raise ConfigurationError(
+                    f"layer={layer_id} has no Shared Expert component"
+                )
+            shape["intermediate_size"] = (
+                layer.shared_intermediate_size // domain_plan.tensor_parallel_size
+            )
+        elif operation in {"routed_expert", "expert_rank_compute"}:
+            if layer.layer_type != "moe" or not layer.num_experts:
+                raise ConfigurationError(
+                    f"layer={layer_id} has no Routed Expert component"
+                )
+            expert_tp_size = domain_plan.expert_tensor_parallel_size
+            shape.update(
+                {
+                    "tp_size": expert_tp_size,
+                    "expert_tp_size": expert_tp_size,
+                    "expert_tp_rank": (binding.tp_rank if expert_tp_size > 1 else 0),
+                    "intermediate_size": (
+                        layer.routed_intermediate_size // expert_tp_size
+                    ),
+                }
+            )
+        return shape
+
+    def expert_execution(
+        self, domain: str, expert_id: int, f_service_dp_rank: int
+    ) -> tuple[AFRankBinding, ...]:
+        domain_plan = self.domain_runtime(domain)
+        if domain_plan.capability != "af_ffn":
+            raise ConfigurationError(
+                f"expert execution requires an F domain, got {domain!r}"
+            )
+        if not 0 <= f_service_dp_rank < domain_plan.data_parallel_size:
+            raise ConfigurationError(
+                f"F domain={domain!r} has no service replica "
+                f"dp_rank={f_service_dp_rank}"
+            )
+        candidates = tuple(
+            binding
+            for binding in self.rank_bindings
+            if binding.domain == domain and expert_id in binding.expert_ids
+        )
+        if domain_plan.expert_parallel_mode == "expert_tp":
+            candidates = tuple(
+                binding
+                for binding in candidates
+                if binding.dp_rank == f_service_dp_rank
+            )
+        resolved = tuple(
+            sorted(candidates, key=lambda item: (item.dp_rank, item.tp_rank))
+        )
+        if len(resolved) != domain_plan.expert_tensor_parallel_size:
+            raise ConfigurationError(
+                f"expert={expert_id} in F domain={domain!r} resolves to "
+                f"{len(resolved)} ranks; expected Expert TP="
+                f"{domain_plan.expert_tensor_parallel_size}"
+            )
+        if len({binding.physical_identity for binding in resolved}) != len(resolved):
+            raise ConfigurationError(
+                f"expert={expert_id} in F domain={domain!r} resolves multiple "
+                "Expert TP ranks to the same physical worker"
+            )
+        return resolved
+
+    def component_execution(
+        self,
+        domain: str,
+        layer_id: int,
+        component_category: Literal["dense_ffn", "shared_expert"],
+        f_service_dp_rank: int,
+    ) -> tuple[AFRankBinding, ...]:
+        domain_plan = self.domain_runtime(domain)
+        if domain_plan.capability != "af_ffn":
+            raise ConfigurationError(
+                f"F component execution requires an F domain, got {domain!r}"
+            )
+        if component_category not in {"dense_ffn", "shared_expert"}:
+            raise ConfigurationError(
+                f"unsupported F TP component {component_category!r}; expected "
+                "'dense_ffn' or 'shared_expert'"
+            )
+        if not 0 <= f_service_dp_rank < domain_plan.data_parallel_size:
+            raise ConfigurationError(
+                f"F domain={domain!r} has no service replica "
+                f"dp_rank={f_service_dp_rank}"
+            )
+
+        layer = self.layer_plan(layer_id)
+        if component_category == "dense_ffn" and layer.layer_type != "dense":
+            raise ConfigurationError(
+                f"layer={layer_id} is {layer.layer_type}, not Dense FFN"
+            )
+        if component_category == "shared_expert" and (
+            layer.layer_type != "moe" or not layer.shared_intermediate_size
+        ):
+            raise ConfigurationError(f"layer={layer_id} has no Shared Expert component")
+
+        candidates = tuple(
+            binding
+            for binding in self.rank_bindings
+            if binding.domain == domain and binding.dp_rank == f_service_dp_rank
+        )
+        if domain_plan.capability == "af_ffn" and domain_plan.expert_parallel_size > 1:
+            # Dense/shared weights are replicated on every EP rank in a
+            # rank-reuse F pool.  Execute one representative per base TP
+            # coordinate; routed experts are resolved separately by
+            # ``expert_execution``.
+            by_tp: dict[int, AFRankBinding] = {}
+            for binding in sorted(candidates, key=lambda item: item.domain_rank):
+                by_tp.setdefault(binding.tp_rank, binding)
+            resolved = tuple(sorted(by_tp.values(), key=lambda item: item.tp_rank))
+        else:
+            resolved = tuple(sorted(candidates, key=lambda item: item.tp_rank))
+        if len(resolved) != domain_plan.tensor_parallel_size:
+            raise ConfigurationError(
+                f"F component={component_category!r}, layer={layer_id}, "
+                f"domain={domain!r}, dp_rank={f_service_dp_rank} resolves to "
+                f"{len(resolved)} ranks; expected F TP="
+                f"{domain_plan.tensor_parallel_size}"
+            )
+        expected_group = tuple(binding.domain_rank for binding in resolved)
+        for binding in resolved:
+            if binding.tp_group != expected_group:
+                raise ConfigurationError(
+                    f"F component={component_category!r}, layer={layer_id} rank "
+                    f"{binding.rank_key!r} has TP group {binding.tp_group}; "
+                    f"expected {expected_group}"
+                )
+            state = self.physical_state(binding.physical_identity)
+            matches = tuple(
+                component
+                for component in state.components
+                if component.category == component_category
+                and component.layer_id == layer_id
+                and component.component_id in binding.component_ids
+            )
+            if len(matches) != 1:
+                raise ConfigurationError(
+                    f"F component={component_category!r}, layer={layer_id} does "
+                    f"not resolve uniquely on domain={domain!r}, "
+                    f"rank={binding.domain_rank}; found {len(matches)}"
+                )
+        if len({binding.physical_identity for binding in resolved}) != len(resolved):
+            raise ConfigurationError(
+                f"F component={component_category!r}, layer={layer_id}, "
+                f"domain={domain!r}, dp_rank={f_service_dp_rank} reuses a "
+                "physical worker inside its TP group"
+            )
+        return resolved

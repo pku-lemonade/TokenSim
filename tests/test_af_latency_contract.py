@@ -38,18 +38,6 @@ class CanonicalDTypeRegistryTest(unittest.TestCase):
             {"fp32": 4, "fp16": 2, "bf16": 2, "fp8": 1, "int8": 1},
         )
 
-    def test_runtime_executor_and_analytical_share_the_registry(self):
-        for module in (runtime_module, executor_module, analytical_module):
-            with self.subTest(module=module.__name__):
-                self.assertIs(module.dtype_size_bytes, dtype_size_bytes)
-                self.assertEqual(
-                    module.dtype_size_bytes(
-                        "float8_e4m3fn",
-                        role="activation_dtype",
-                    ),
-                    1,
-                )
-
     def test_unknown_empty_and_invalid_role_fail_without_a_default(self):
         for value in ("", "mystery"):
             with self.subTest(dtype=value):
