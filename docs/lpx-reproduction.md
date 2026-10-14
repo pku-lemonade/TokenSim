@@ -14,6 +14,8 @@ FP8 peak is derived from the published 315 PFLOPS rack total.
 The LP30 injection link uses 1.25 TB/s per direction, derived from the published 2.5 TB/s bidirectional total.
 The individual 112 Gb/s link is a separate 14 GB/s entry.
 An aggregate injection budget must be counted once per endpoint.
+`bandwidth_scope: endpoint` on a link prevents automatic Groq topology construction from multiplying its aggregate budget by the chip's port count.
+Links describing one physical port retain the default `bandwidth_scope: link`.
 LPX external DRAM is excluded from SRAM-resident experiments.
 
 The `rubin` entry follows the [product specifications](https://www.nvidia.com/en-us/data-center/vera-rubin-nvl72/) retrieved on 2026-10-14.

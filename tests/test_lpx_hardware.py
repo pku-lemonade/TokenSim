@@ -5,6 +5,8 @@ import tomllib
 import unittest
 
 from TokenSim.hardware import HardwareContext
+from TokenSim.config.cluster_config import ClusterConfig
+from TokenSim.hardware.placement import build_topology_placement
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -38,6 +40,22 @@ class LPXHardwareTest(unittest.TestCase):
         self.assertGreater(model.total_params(), 2e12)
         self.assertLess(model.total_params(), 2.02e12)
         self.assertEqual(model.sources["assumption-scaled-gpt-oss"]["grade"], "D")
+
+    def test_automatic_lp30_topology_uses_one_injection_budget(self):
+        cluster = ClusterConfig(
+            num_workers=2,
+            networks={"net": "ethernet1600Gb"},
+            worker_groups=[
+                dict(
+                    hardware="groq_lp30",
+                    num_workers=2,
+                    network="net",
+                    capabilities=["prefill", "decode_full"],
+                )
+            ],
+        )
+        placement = build_topology_placement(cluster, cluster.workers(), self.hardware)
+        self.assertEqual(placement.topology.levels[0].links_per_endpoint, 1)
 
     def test_new_catalog_files_are_shipped(self):
         config = tomllib.loads((ROOT / "pyproject.toml").read_text())

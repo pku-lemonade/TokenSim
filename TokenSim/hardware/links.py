@@ -34,8 +34,13 @@ class LinkClass:
     # nccl-tests results; re-fit per link with ``operator_data.cli calibrate``.
     collective_efficiency: float = 0.5
     notes: str = ""
+    bandwidth_scope: str = "link"
 
     def __post_init__(self) -> None:
+        if self.bandwidth_scope not in {"link", "endpoint"}:
+            raise ConfigurationError(
+                f"link {self.link_id!r}: bandwidth_scope must be link or endpoint"
+            )
         if self.duplex not in {"full", "half"}:
             raise ConfigurationError(
                 f"link {self.link_id!r}: duplex must be full or half"
@@ -105,6 +110,7 @@ class LinkClass:
             half_bandwidth_bytes=float(raw.get("half_bandwidth_bytes", 1 << 20)),
             collective_efficiency=float(raw.get("collective_efficiency", 0.5)),
             notes=str(raw.get("notes", "")),
+            bandwidth_scope=str(raw.get("bandwidth_scope", "link")),
         )
 
 

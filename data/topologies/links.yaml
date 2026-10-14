@@ -25,6 +25,7 @@ links:
   groq_lp30_injection:
     display_name: LP30 aggregate C2C injection per chip
     bandwidth_per_direction_bytes_per_s: 1.25e12
+    bandwidth_scope: endpoint
     latency_us: 0.05
     source_id: nvidia-lpx-architecture
     grade: C

@@ -280,6 +280,8 @@ def synthesize_topology(
         if (first_device and first_device.family == "groq_tsp")
         else 1
     )
+    if hardware.link(node_link).bandwidth_scope == "endpoint":
+        node_links = 1
 
     nettypes = {getattr(worker, "nettype", None) for worker in worker_configs}
     nettypes.discard(None)
