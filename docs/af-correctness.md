@@ -55,3 +55,9 @@ An attention query records the query length and available KV context of each req
 Cached keys contribute attention FLOPs and KV reads even when only a short suffix is computed.
 Measured whole-prompt rows used for cached prefill are scaled by the analytical growth ratio and reported as extrapolated estimates.
 Uneven query lengths retain separate shapes instead of being replaced by a mean.
+
+## Model layer structure
+
+Every compiled runtime uses its model's dense and MoE layer metadata for prefill and decode, including automatically generated execution domains.
+Dense FFNs, routed experts, and shared experts are separate services with their declared dependencies and weight ownership.
+The legacy aggregate DAG is limited to direct low-level executors constructed without a runtime plan.

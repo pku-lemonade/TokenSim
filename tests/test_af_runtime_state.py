@@ -288,9 +288,7 @@ class AFRuntimePlanTest(unittest.TestCase):
                 self.assertEqual(f_domain.expert_parallel_mode, mode)
                 self.assertEqual(f_domain.expert_tensor_parallel_size, expert_tp)
                 dense = plan.component_execution("f-domain", 1, "dense_ffn", 1)
-                shared = plan.component_execution(
-                    "f-domain", 0, "shared_expert", 1
-                )
+                shared = plan.component_execution("f-domain", 0, "shared_expert", 1)
                 self.assertEqual(
                     tuple(binding.domain_rank for binding in dense), (2, 3)
                 )
@@ -306,9 +304,7 @@ class AFRuntimePlanTest(unittest.TestCase):
                     self.assertTrue(
                         all(binding.ep_group == (2, 3) for binding in routed)
                     )
-                    self.assertTrue(
-                        all(3 in binding.expert_ids for binding in routed)
-                    )
+                    self.assertTrue(all(3 in binding.expert_ids for binding in routed))
                 else:
                     self.assertEqual(
                         tuple(binding.domain_rank for binding in routed), (3,)
@@ -317,12 +313,8 @@ class AFRuntimePlanTest(unittest.TestCase):
                     self.assertEqual(routed[0].ep_rank, 3)
 
     def test_local_shapes_use_exact_tp_axes_and_reject_ceil_shards(self):
-        expert_tp = _runtime_plan(
-            _cluster(a_tp=2, a_dp=1, f_tp=2, f_dp=2, f_ep=1)
-        )
-        reused = _runtime_plan(
-            _cluster(a_tp=2, a_dp=1, f_tp=2, f_dp=2, f_ep=4)
-        )
+        expert_tp = _runtime_plan(_cluster(a_tp=2, a_dp=1, f_tp=2, f_dp=2, f_ep=1))
+        reused = _runtime_plan(_cluster(a_tp=2, a_dp=1, f_tp=2, f_dp=2, f_ep=4))
 
         self.assertEqual(
             expert_tp.local_shape("f-domain", 2, 0, "routed_expert"),
@@ -347,9 +339,7 @@ class AFRuntimePlanTest(unittest.TestCase):
             },
         )
         self.assertEqual(
-            expert_tp.local_shape("f-domain", 2, 1, "dense_ffn")[
-                "hidden_size"
-            ],
+            expert_tp.local_shape("f-domain", 2, 1, "dense_ffn")["hidden_size"],
             16,
         )
         self.assertEqual(
@@ -372,14 +362,18 @@ class AFRuntimePlanTest(unittest.TestCase):
         ):
             compile_af_runtime_plan(
                 cluster_config=_cluster(a_tp=3, a_dp=1, f_tp=1, f_dp=1, f_ep=1),
-                worker_configs=_cluster(a_tp=3, a_dp=1, f_tp=1, f_dp=1, f_ep=1).workers(),
+                worker_configs=_cluster(
+                    a_tp=3, a_dp=1, f_tp=1, f_dp=1, f_ep=1
+                ).workers(),
                 hardware=hardware,
                 model=model,
                 block_size=4,
                 dtype="fp16",
             )
 
-        with self.assertRaisesRegex(ConfigurationError, "Routed Expert intermediate=33"):
+        with self.assertRaisesRegex(
+            ConfigurationError, "Routed Expert intermediate=33"
+        ):
             _runtime_plan(
                 _cluster(a_tp=2, a_dp=1, f_tp=2, f_dp=1, f_ep=1),
                 moe_config=replace(
@@ -411,9 +405,9 @@ class AFRuntimePlanTest(unittest.TestCase):
             ),
         )
         self.assertEqual(
-            rank_reuse_uneven_expert.local_shape(
-                "f-domain", 0, 0, "routed_expert"
-            )["intermediate_size"],
+            rank_reuse_uneven_expert.local_shape("f-domain", 0, 0, "routed_expert")[
+                "intermediate_size"
+            ],
             33,
         )
 
@@ -582,13 +576,13 @@ class AFRuntimePlanTest(unittest.TestCase):
                     if component.category == "attention"
                 )
                 self.assertEqual(attention.bytes, expected)
-                self.assertEqual(dict(attention.shape)["kv_heads_local"], 4 if kv_heads == 8 else 1)
+                self.assertEqual(
+                    dict(attention.shape)["kv_heads_local"], 4 if kv_heads == 8 else 1
+                )
                 self.assertIn("Q/K/V/O", attention.formula)
 
     def test_weight_and_kv_dtypes_change_independent_ledgers(self):
-        baseline_cluster = _cluster(
-            a_tp=2, a_dp=1, f_tp=2, f_dp=1, f_ep=1
-        )
+        baseline_cluster = _cluster(a_tp=2, a_dp=1, f_tp=2, f_dp=1, f_ep=1)
         typed_cluster = _cluster(a_tp=2, a_dp=1, f_tp=2, f_dp=1, f_ep=1)
         typed_cluster.af = replace(
             typed_cluster.af,
@@ -663,9 +657,7 @@ class AFRuntimePlanTest(unittest.TestCase):
                     ],
                 )
                 self.assertTrue(all(item.retains_residual for item in a_owners))
-                self.assertTrue(
-                    all(not item.retains_residual for item in f_owners)
-                )
+                self.assertTrue(all(not item.retains_residual for item in f_owners))
 
                 destinations = tuple(
                     item
@@ -748,9 +740,11 @@ class AFRuntimePlanTest(unittest.TestCase):
         bad_ep_group = replace(
             plan,
             rank_bindings=tuple(
-                replace(item, ep_group=(item.domain_rank,))
-                if item.rank_key == f_binding.rank_key
-                else item
+                (
+                    replace(item, ep_group=(item.domain_rank,))
+                    if item.rank_key == f_binding.rank_key
+                    else item
+                )
                 for item in plan.rank_bindings
             ),
         )
@@ -763,9 +757,7 @@ class AFRuntimePlanTest(unittest.TestCase):
         bad_residual = replace(
             plan,
             tensor_ownerships=tuple(
-                replace(item, retains_residual=False)
-                if item == a_ownership
-                else item
+                replace(item, retains_residual=False) if item == a_ownership else item
                 for item in plan.tensor_ownerships
             ),
         )
@@ -1090,9 +1082,7 @@ class RuntimePlannerAndSummaryTest(unittest.TestCase):
             routing_snapshots=(snapshot,),
         )
         dag = planner.build_layer(block, 0, cluster.af.links[0])
-        expert_nodes = [
-            node for node in dag.nodes if node.stage == "routed_expert"
-        ]
+        expert_nodes = [node for node in dag.nodes if node.stage == "routed_expert"]
         self.assertEqual({node.ep_rank for node in expert_nodes}, {3})
         for node in expert_nodes:
             binding = plan.binding(node.source_domain, node.domain_ranks[0])
@@ -1111,9 +1101,7 @@ class RuntimePlannerAndSummaryTest(unittest.TestCase):
             )
         self.assertEqual(by_f_target, {0: 4 * 16 * 2, 1: 4 * 16 * 2, 3: 4 * 16 * 2})
 
-        combine_nodes = [
-            node for node in dag.nodes if node.stage == "weighted_combine"
-        ]
+        combine_nodes = [node for node in dag.nodes if node.stage == "weighted_combine"]
         self.assertEqual(len(combine_nodes), 2)
         for node in combine_nodes:
             self.assertEqual(len(node.local_work.routing_edges), 4)
@@ -1130,9 +1118,7 @@ class RuntimePlannerAndSummaryTest(unittest.TestCase):
                 },
                 {(1, token_id, 3, 0, 1.0) for token_id in range(4)},
             )
-            self.assertEqual(
-                dict(node.local_work.tensor_shape)["hidden_size"], 8
-            )
+            self.assertEqual(dict(node.local_work.tensor_shape)["hidden_size"], 8)
 
         f_to_a = [node for node in dag.nodes if node.operation == "af_f_to_a"]
         self.assertEqual({node.target_layout for node in f_to_a}, {"partial"})
@@ -1212,13 +1198,20 @@ class RuntimePlannerAndSummaryTest(unittest.TestCase):
             for node in dag.nodes
             if node.operation in {"all_reduce", "all_gather", "reduce_scatter"}
         }
-        self.assertEqual(set(by_operation), {"all_reduce", "all_gather", "reduce_scatter"})
+        self.assertEqual(
+            set(by_operation), {"all_reduce", "all_gather", "reduce_scatter"}
+        )
         expected = {
             "all_reduce": (32, 32, "partial", "replicated"),
             "all_gather": (16, 32, "sharded", "replicated"),
             "reduce_scatter": (32, 16, "partial", "sharded"),
         }
-        for operation, (input_bytes, output_bytes, source_layout, target_layout) in expected.items():
+        for operation, (
+            input_bytes,
+            output_bytes,
+            source_layout,
+            target_layout,
+        ) in expected.items():
             node = by_operation[operation]
             self.assertEqual(node.source_layout, source_layout)
             self.assertEqual(node.target_layout, target_layout)
@@ -1313,9 +1306,7 @@ class RuntimePlannerAndSummaryTest(unittest.TestCase):
         with self.assertRaisesRegex(ConfigurationError, "downstream requires"):
             planner.build_layer(moe_block, 0, cluster.af.links[0])
 
-        dense_cluster = _cluster(
-            a_tp=2, a_dp=1, f_tp=2, f_dp=1, f_ep=1
-        )
+        dense_cluster = _cluster(a_tp=2, a_dp=1, f_tp=2, f_dp=1, f_ep=1)
         dense_cluster.execution_domains["f-domain"].communication_plan[0] = (
             DomainCollectiveConfig(
                 operation="all_gather",
@@ -1365,9 +1356,7 @@ class RuntimePlannerAndSummaryTest(unittest.TestCase):
         self.assertGreater(swapped["replicas"][0]["logical_cpu_usage"]["used"], 0)
         rebuilt = json.loads(json.dumps(summary))
         self.assertEqual(len(rebuilt["rank_bindings"]), len(plan.rank_bindings))
-        self.assertEqual(
-            len(rebuilt["physical_workers"]), len(plan.physical_states)
-        )
+        self.assertEqual(len(rebuilt["physical_workers"]), len(plan.physical_states))
         f_domain = next(
             item for item in rebuilt["domains"] if item["name"] == "f-domain"
         )
@@ -1423,7 +1412,6 @@ class RuntimePlannerAndSummaryTest(unittest.TestCase):
                 4,
                 1,
                 block_size=4,
-                prefill_expert_histogram={0: 1, 3: 3},
             )
             for request_id in (40, 41)
         ]
@@ -1461,8 +1449,13 @@ class RuntimePlannerAndSummaryTest(unittest.TestCase):
         self.assertEqual(len(f_workers), 4)
         self.assertTrue(any(3 in worker.owned_expert_ids for worker in f_workers))
         operations = [event.operation for event in engine.af_executor.trace.events]
-        self.assertEqual(operations.count("af_a_to_f"), 4)
-        self.assertEqual(operations.count("af_f_to_a"), 4)
+        for operation in ("af_a_to_f", "af_f_to_a"):
+            stages = {
+                event.logical_stage_id
+                for event in engine.af_executor.trace.events
+                if event.operation == operation
+            }
+            self.assertEqual(len(stages), 4)
         runtime = get_af_stats(engine)["af_runtime_state"]
         self.assertEqual(runtime["schema"], "tokensim.af_runtime_state")
 

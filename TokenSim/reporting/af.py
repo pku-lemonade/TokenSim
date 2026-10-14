@@ -26,7 +26,11 @@ def get_af_stats(engine) -> dict[str, Any]:
         "af_phase_fidelity": (
             {
                 "prefill": (
-                    "af_prefill_compatibility"
+                    (
+                        "prefill_af_rank_local"
+                        if getattr(executor, "runtime_plan", None) is not None
+                        else "af_prefill_compatibility"
+                    )
                     if "prefill" in phases
                     else "prefill_aggregate"
                 ),

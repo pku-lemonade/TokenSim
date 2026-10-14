@@ -36,7 +36,14 @@ AF_TEST_DEVICES = (
     "decode-device",
     "device",
 )
-AF_TEST_NETWORKS = ("profile", "af-network-profile", "test", "test-network", "af-net", "net1")
+AF_TEST_NETWORKS = (
+    "profile",
+    "af-network-profile",
+    "test",
+    "test-network",
+    "af-net",
+    "net1",
+)
 
 
 def af_test_hardware(
@@ -110,7 +117,9 @@ class FullBackendGuard:
         def dynamic_batch(worker, requests):
             guard.calls.append(list(requests))
             if guard.reject:
-                raise AssertionError("AF-selected phases must not call the full backend")
+                raise AssertionError(
+                    "AF-selected phases must not call the full backend"
+                )
             return original(worker, requests)
 
         self._patcher = patch.object(LLMWorker, "dynamic_batch", dynamic_batch)
@@ -142,7 +151,20 @@ class FixedComputeProvider:
     ):
         router = f / 3 if router is None else router
         expert = f - router if expert is None else expert
-        self.durations = {"a": a, "router": router, "expert": expert}
+        self.durations = {
+            "a": a,
+            "router": router,
+            "expert": expert,
+            "attention": a,
+            "dense_ffn": f,
+            "routed_expert": expert,
+            "shared_expert": expert,
+            "weighted_combine": 0.0,
+            "residual": 0.0,
+            "layout": 0.0,
+            "encode": 0.0,
+            "decode": 0.0,
+        }
         self.queries = []
 
     def estimate(self, query):
@@ -168,6 +190,9 @@ class FixedTransferProvider:
             "ep_dispatch": dispatch,
             "ep_combine": combine,
             "tp_collective": collective,
+            "all_reduce": collective,
+            "all_gather": collective,
+            "reduce_scatter": collective,
         }
         self.queries = []
 
@@ -278,9 +303,11 @@ def _cluster_dict(
             "phases": list(phases),
             "af_block_size": af_block_size,
             "trace_enabled": trace_enabled,
-            "communication_domains": {"node_size": 8,
+            "communication_domains": {
+                "node_size": 8,
                 "node_count": (sum(g["num_workers"] for g in worker_groups) + 7) // 8,
-                "placement_strategy": "manual"},
+                "placement_strategy": "manual",
+            },
             "links": [link],
         },
     }
@@ -323,7 +350,11 @@ def _two_link_cluster(*, shared_resource):
         ],
         af={
             "enabled": True,
-            "communication_domains": {"node_size": 8, "node_count": 1, "placement_strategy": "manual"},
+            "communication_domains": {
+                "node_size": 8,
+                "node_count": 1,
+                "placement_strategy": "manual",
+            },
             "phases": ["prefill", "decode"],
             "af_block_size": 1,
             "trace_enabled": True,
@@ -452,11 +483,17 @@ def af_test_resources(env, cluster, workers=None):
     """Test providers use the same explicit placement as production providers."""
     from TokenSim.af.resources import AFResourceRegistry
     from TokenSim.hardware.placement import build_topology_placement
+
     workers = cluster.workers() if workers is None else workers
-    hardware = af_test_hardware(devices=tuple(sorted({w.hardware for w in workers})),
-                                networks=tuple(sorted({w.nettype for w in workers})))
-    placement = (build_topology_placement(cluster, workers, hardware)
-                 if cluster.af.transfer_topology_mode == "physical" else None)
+    hardware = af_test_hardware(
+        devices=tuple(sorted({w.hardware for w in workers})),
+        networks=tuple(sorted({w.nettype for w in workers})),
+    )
+    placement = (
+        build_topology_placement(cluster, workers, hardware)
+        if cluster.af.transfer_topology_mode == "physical"
+        else None
+    )
     return AFResourceRegistry(env, cluster, workers, placement)
 
 
@@ -592,7 +629,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
         )
         self.assertIsInstance(engine.workers[4], AFComputeWorker)
         self.assertFalse(hasattr(engine.workers[4], "scheduler"))
-        self.assertEqual(len(compute.queries), 6)
+        self.assertEqual(len(compute.queries), 8)
         self.assertEqual(len(transfer.queries), 4)
         af_stats = get_af_stats(engine)
         self.assertTrue(af_stats["af_enabled"])
@@ -627,7 +664,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
         result = dump.call_args.args[0]
         self.assertTrue(result["af_enabled"])
         self.assertEqual(result["af_iteration_count"], 2)
-        self.assertEqual(result["af_trace"][0]["events"][0]["stage"], "a")
+        self.assertEqual(result["af_trace"][0]["events"][0]["stage"], "attention")
 
     def test_multiblock_multilayer_engine_advances_each_request_once_per_iteration(
         self,
@@ -681,7 +718,16 @@ class AFExecutorEndToEndTest(unittest.TestCase):
         self.assertEqual(len(engine.af_iteration_summaries), 2)
         self.assertTrue(
             all(
-                len(engine.af_executor.trace.events_for(summary["iteration_id"])) == 20
+                len(
+                    [
+                        event
+                        for event in engine.af_executor.trace.events_for(
+                            summary["iteration_id"]
+                        )
+                        if event.layer_id >= 0
+                    ]
+                )
+                == 24
                 for summary in engine.af_iteration_summaries
             )
         )

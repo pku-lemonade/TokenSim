@@ -139,9 +139,7 @@ class AFEngineIntegrationTest(unittest.TestCase):
     def test_decode_only_connects_runtime_plan_dtypes_and_providers(self):
         compute = _DTypeCheckingComputeProvider()
         transfer = FixedTransferProvider(0.0001, 0.0001)
-        env, engine, roofline = _build_engine(
-            _typed_cluster(), compute, transfer
-        )
+        env, engine, roofline = _build_engine(_typed_cluster(), compute, transfer)
 
         plan = engine.af_runtime_plan
         self.assertIsNotNone(plan)
@@ -229,7 +227,7 @@ class AFEngineIntegrationTest(unittest.TestCase):
         self.assertEqual(
             get_af_stats(engine)["af_phase_fidelity"],
             {
-                "prefill": "af_prefill_compatibility",
+                "prefill": "prefill_af_rank_local",
                 "decode": "decode_aggregate",
             },
         )

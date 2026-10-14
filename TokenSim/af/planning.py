@@ -811,13 +811,7 @@ class ParallelExecutionPlanner(ConfigurationOwner):
                     "AF link configuration changed; create a new runtime"
                 )
             link = configured
-        formal_runtime = (
-            self.runtime_plan is not None
-            and (block.phase == "decode" or self.runtime_plan.layers[0].mla is not None)
-            and block.placement is not None
-            and not block.placement.a_domain.startswith("implicit:")
-            and not block.placement.f_domain.startswith("implicit:")
-        )
+        formal_runtime = self.runtime_plan is not None and block.placement is not None
         if formal_runtime:
             if self.cluster_config.af.dag_template_cache:
                 return self.template_cache.build(self, block, layer_id, link)

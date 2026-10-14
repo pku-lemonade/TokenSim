@@ -658,17 +658,7 @@ class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
         iteration_id = self._next_iteration_id
         self._next_iteration_id += 1
         runtime_layer_types = self._runtime_layer_types()
-        formal_routing = (
-            self.runtime_plan is not None
-            and (
-                resolved_phase == "decode"
-                or self.runtime_plan.layers[0].mla is not None
-            )
-            and all(
-                not domain.name.startswith("implicit:")
-                for domain in self.cluster_config.af.execution_domains
-            )
-        )
+        formal_routing = self.runtime_plan is not None
         layer_types = runtime_layer_types if formal_routing else None
 
         def placement_factory(_block_id, _block_requests):
