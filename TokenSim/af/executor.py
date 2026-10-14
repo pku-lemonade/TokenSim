@@ -32,7 +32,12 @@ from TokenSim.af.runtime import AFRuntimePlan
 from TokenSim.af.readiness import TransferReadiness
 from TokenSim.af.control import NativeControlMixin
 from TokenSim.af.native_order import NativeOrderMixin
-from TokenSim.af.calibration import HostOverheadProfile, runtime_fingerprint, COMPUTE_CALL_FIELDS, MESSAGE_CALL_FIELDS
+from TokenSim.af.calibration import (
+    HostOverheadProfile,
+    runtime_fingerprint,
+    COMPUTE_CALL_FIELDS,
+    MESSAGE_CALL_FIELDS,
+)
 from TokenSim.af.routing_replay import RoutingReplay
 from TokenSim.af.operation_profile import OperationServiceProfile
 from TokenSim.dtypes import dtype_size_bytes
@@ -44,7 +49,11 @@ from TokenSim.moe.routing import ExpertRouting
 
 class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
     _configuration_fields = (
-        "cluster_config", "runtime_plan", "model_id", "dtype", "total_layers",
+        "cluster_config",
+        "runtime_plan",
+        "model_id",
+        "dtype",
+        "total_layers",
         "hidden_size",
     )
 
@@ -95,57 +104,113 @@ class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
         if cluster_config.af.engine_overhead_profile is not None:
             self.overhead_profile = HostOverheadProfile(
                 cluster_config.af.engine_overhead_profile,
-                expected_runtime=runtime_fingerprint(runtime_plan, cluster_config, worker_configs,
-                                                     getattr(compute_provider, "hardware", None)),
+                expected_runtime=runtime_fingerprint(
+                    runtime_plan,
+                    cluster_config,
+                    worker_configs,
+                    getattr(compute_provider, "hardware", None),
+                ),
                 expected_environment=cluster_config.af.calibration_environment,
-                explicit_costs=cluster_config.af.communication_timing._explicit_cost_fields)
-            if self.overhead_profile.document['schema_version']==4:
-                source=self.overhead_profile.document['device_service_source_id']
-                hardware=getattr(compute_provider,'hardware',None)
-                if (getattr(compute_provider,'fallback',None)!='analytical_only' or hardware is None
-                    or any(hardware.device(w.hardware).analytical_source_id!=source for w in worker_configs)):
-                    raise ConfigurationError('CPU API submission costs require matching device-only calibration; old launch assumptions conflict')
-            if (any(name in self.overhead_profile.document['costs'] for name in
-                    ('engine_output_process_us','engine_runner_bookkeeping_us'))
-                    and not getattr(self, 'supports_sampled_token_readback', False)):
-                raise ConfigurationError('engine output processing requires the whole-model executor')
+                explicit_costs=cluster_config.af.communication_timing._explicit_cost_fields,
+            )
+            if self.overhead_profile.document["schema_version"] == 4:
+                source = self.overhead_profile.document["device_service_source_id"]
+                hardware = getattr(compute_provider, "hardware", None)
+                if (
+                    getattr(compute_provider, "fallback", None) != "analytical_only"
+                    or hardware is None
+                    or any(
+                        hardware.device(w.hardware).analytical_source_id != source
+                        for w in worker_configs
+                    )
+                ):
+                    raise ConfigurationError(
+                        "CPU API submission costs require matching device-only calibration; old launch assumptions conflict"
+                    )
+            if any(
+                name in self.overhead_profile.document["costs"]
+                for name in ("engine_output_process_us", "engine_runner_bookkeeping_us")
+            ) and not getattr(self, "supports_sampled_token_readback", False):
+                raise ConfigurationError(
+                    "engine output processing requires the whole-model executor"
+                )
         self.operation_profile = None
         if cluster_config.af.operation_service_profile is not None:
             self.operation_profile = OperationServiceProfile(
                 cluster_config.af.operation_service_profile,
-                expected_runtime=runtime_fingerprint(runtime_plan, cluster_config, worker_configs,
-                                                     getattr(compute_provider, "hardware", None)),
+                expected_runtime=runtime_fingerprint(
+                    runtime_plan,
+                    cluster_config,
+                    worker_configs,
+                    getattr(compute_provider, "hardware", None),
+                ),
                 expected_environment=cluster_config.af.calibration_environment,
-                explicit_costs=cluster_config.af.communication_timing._explicit_cost_fields)
-            if 'sampled_token_readback' in self.operation_profile.document['operations']:
-                if not getattr(self, 'supports_sampled_token_readback', False):
-                    raise ConfigurationError('sampled_token_readback requires the whole-model executor')
-                if getattr(compute_provider, 'fallback', None) != 'analytical_only':
-                    raise ConfigurationError('sampled_token_readback requires audited analytical_only compute coverage')
-            if any(name in self.operation_profile.document['operations'] for name in ('a_input_prepare','a_attention_metadata')):
-                if getattr(compute_provider, 'fallback', None) != 'analytical_only':
-                    raise ConfigurationError('a_input_prepare requires audited analytical_only compute coverage')
-                if self.overhead_profile is not None and 'a_step_prepare_us' in self.overhead_profile.document['costs']:
-                    raise ConfigurationError('duplicate operation/host profile coverage: a_input_prepare')
-            if ('f_dp_metadata' in self.operation_profile.document['operations'] and self.overhead_profile is not None
-                    and 'f_step_prepare_us' in self.overhead_profile.document['costs']):
-                raise ConfigurationError('duplicate operation/host profile coverage: f_dp_metadata')
+                explicit_costs=cluster_config.af.communication_timing._explicit_cost_fields,
+            )
+            if (
+                "sampled_token_readback"
+                in self.operation_profile.document["operations"]
+            ):
+                if not getattr(self, "supports_sampled_token_readback", False):
+                    raise ConfigurationError(
+                        "sampled_token_readback requires the whole-model executor"
+                    )
+                if getattr(compute_provider, "fallback", None) != "analytical_only":
+                    raise ConfigurationError(
+                        "sampled_token_readback requires audited analytical_only compute coverage"
+                    )
+            if any(
+                name in self.operation_profile.document["operations"]
+                for name in ("a_input_prepare", "a_attention_metadata")
+            ):
+                if getattr(compute_provider, "fallback", None) != "analytical_only":
+                    raise ConfigurationError(
+                        "a_input_prepare requires audited analytical_only compute coverage"
+                    )
+                if (
+                    self.overhead_profile is not None
+                    and "a_step_prepare_us" in self.overhead_profile.document["costs"]
+                ):
+                    raise ConfigurationError(
+                        "duplicate operation/host profile coverage: a_input_prepare"
+                    )
+            if (
+                "f_dp_metadata" in self.operation_profile.document["operations"]
+                and self.overhead_profile is not None
+                and "f_step_prepare_us" in self.overhead_profile.document["costs"]
+            ):
+                raise ConfigurationError(
+                    "duplicate operation/host profile coverage: f_dp_metadata"
+                )
         timing = cluster_config.af.communication_timing
         self.routing_replay = None
         if cluster_config.af.routing_replay is not None:
             self.routing_replay = RoutingReplay(
                 cluster_config.af.routing_replay,
-                expected_runtime=runtime_fingerprint(runtime_plan, cluster_config, worker_configs,
-                                                     getattr(compute_provider, 'hardware', None)),
-                expected_environment=cluster_config.af.calibration_environment)
-        if runtime_plan is None and (timing.a_step_prepare_us or timing.f_step_prepare_us
-                                     or timing.native_control_enabled):
-            raise ConfigurationError("fixed step preparation requires a compiled AF runtime plan")
+                expected_runtime=runtime_fingerprint(
+                    runtime_plan,
+                    cluster_config,
+                    worker_configs,
+                    getattr(compute_provider, "hardware", None),
+                ),
+                expected_environment=cluster_config.af.calibration_environment,
+            )
+        if runtime_plan is None and (
+            timing.a_step_prepare_us
+            or timing.f_step_prepare_us
+            or timing.native_control_enabled
+        ):
+            raise ConfigurationError(
+                "fixed step preparation requires a compiled AF runtime plan"
+            )
         # This callback supplies invocation events, not cached service times.
         self.transfer_readiness = transfer_readiness
         self._validate_provider_dtype_contract()
         self.resources = resources or AFResourceRegistry(
-            env, cluster_config, worker_configs, getattr(transfer_provider, "placement", None)
+            env,
+            cluster_config,
+            worker_configs,
+            getattr(transfer_provider, "placement", None),
         )
         self.trace = trace_recorder or AFTraceRecorder(
             cluster_config.af.trace_enabled,
@@ -187,102 +252,220 @@ class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
         return self.overhead_profile.cost(name, count, fallback)
 
     def _native_call_cost_field(self, step, action):
-        if action == 'compute':
-            if (step.operation == 'router_topk' and self.overhead_profile is not None
-                    and 'compute_f_moe_block_us' in self.overhead_profile.document['costs']):
-                return 'compute_f_moe_block_us'
+        if action == "compute":
+            if (
+                step.operation == "router_topk"
+                and self.overhead_profile is not None
+                and "compute_f_moe_block_us" in self.overhead_profile.document["costs"]
+            ):
+                return "compute_f_moe_block_us"
             field = COMPUTE_CALL_FIELDS.get(step.operation)
-            fallback = 'compute_submit_us'
+            fallback = "compute_submit_us"
         else:
-            backend = step.metadata.get('transport_backend', 'pynccl')
+            backend = step.metadata.get("transport_backend", "pynccl")
             field = MESSAGE_CALL_FIELDS.get((backend, step.direction, action))
-            fallback = 'host_submit_us' if action == 'send' else 'host_receive_submit_us'
-        if self.overhead_profile is not None and field in self.overhead_profile.document['costs']:
+            fallback = (
+                "host_submit_us" if action == "send" else "host_receive_submit_us"
+            )
+        if (
+            self.overhead_profile is not None
+            and field in self.overhead_profile.document["costs"]
+        ):
             return field
         return fallback
 
     def host_cost_provenance(self, name, *, tokens):
         """Materialized per-call cost, distinct from whole-engine validation."""
         profile = self.overhead_profile
-        covered = profile is not None and name in profile.document['costs']
-        explicit = name in self.cluster_config.af.communication_timing._explicit_cost_fields
-        measured = covered and profile.document['evidence']['kind'] == 'measured'
-        return dict(value_us=self._host_cost_us(name, tokens=tokens), unit='us',
-                    calibrated=measured,
-                    origin=('measured_profile' if measured else 'synthetic_test_profile' if covered
-                            else 'manual_assumption' if explicit else 'unmeasured_default'),
-                    profile_id=profile.document['profile_id'] if covered else None,
-                    profile_fingerprint=profile.fingerprint if covered else None,
-                    coverage=list(profile.document['costs'][name]['coverage']) if covered else [],
-                    validation_status=profile.document['evidence']['validation_status'] if covered else None)
+        covered = profile is not None and name in profile.document["costs"]
+        explicit = (
+            name in self.cluster_config.af.communication_timing._explicit_cost_fields
+        )
+        measured = covered and profile.document["evidence"]["kind"] == "measured"
+        return dict(
+            value_us=self._host_cost_us(name, tokens=tokens),
+            unit="us",
+            calibrated=measured,
+            origin=(
+                "measured_profile"
+                if measured
+                else (
+                    "synthetic_test_profile"
+                    if covered
+                    else "manual_assumption" if explicit else "unmeasured_default"
+                )
+            ),
+            profile_id=profile.document["profile_id"] if covered else None,
+            profile_fingerprint=profile.fingerprint if covered else None,
+            coverage=(
+                list(profile.document["costs"][name]["coverage"]) if covered else []
+            ),
+            validation_status=(
+                profile.document["evidence"]["validation_status"] if covered else None
+            ),
+        )
 
     def _start_step_preparation(self, iteration):
         """One independent host preparation per participating worker/iteration."""
         timing = self.cluster_config.af.communication_timing
         preparations = {}
-        a_cost = self._host_cost_us("a_step_prepare_us", tokens=len(iteration.request_ids))
-        f_cost = self._host_cost_us("f_step_prepare_us", tokens=len(iteration.request_ids))
-        schedule_cost = self._host_cost_us('engine_step_schedule_us', tokens=len(iteration.request_ids))
-        input_operations = tuple(name for name in ('a_input_prepare','a_attention_metadata')
-            if self.operation_profile is not None and name in self.operation_profile.document['operations'])
+        a_cost = self._host_cost_us(
+            "a_step_prepare_us", tokens=len(iteration.request_ids)
+        )
+        f_cost = self._host_cost_us(
+            "f_step_prepare_us", tokens=len(iteration.request_ids)
+        )
+        schedule_cost = self._host_cost_us(
+            "engine_step_schedule_us", tokens=len(iteration.request_ids)
+        )
+        input_operations = tuple(
+            name
+            for name in ("a_input_prepare", "a_attention_metadata")
+            if self.operation_profile is not None
+            and name in self.operation_profile.document["operations"]
+        )
         input_operation = bool(input_operations)
         if input_operation:
-            a_cost = sum(self.operation_profile.document['operations'][name]['fixed_us'] for name in input_operations)
-        if not timing.enabled or not (a_cost or f_cost or input_operation or schedule_cost):
+            a_cost = sum(
+                self.operation_profile.document["operations"][name]["fixed_us"]
+                for name in input_operations
+            )
+        if not timing.enabled or not (
+            a_cost or f_cost or input_operation or schedule_cost
+        ):
             return preparations
         for block in iteration.blocks:
             for domain, instance, duration, field in (
-                (block.placement.a_domain, block.placement.a_instance, a_cost, "a_step_prepare_us"),
-                (block.placement.f_domain, block.placement.f_instance, f_cost, "f_step_prepare_us"),
+                (
+                    block.placement.a_domain,
+                    block.placement.a_instance,
+                    a_cost,
+                    "a_step_prepare_us",
+                ),
+                (
+                    block.placement.f_domain,
+                    block.placement.f_instance,
+                    f_cost,
+                    "f_step_prepare_us",
+                ),
             ):
-                if not duration and not ((input_operation or schedule_cost) and field == 'a_step_prepare_us'):
+                if not duration and not (
+                    (input_operation or schedule_cost) and field == "a_step_prepare_us"
+                ):
                     continue
-                for binding in self.runtime_plan.bindings_for_instance(domain, instance):
+                for binding in self.runtime_plan.bindings_for_instance(
+                    domain, instance
+                ):
                     identity = binding.physical_identity
                     if identity in preparations:
                         continue
                     node_id = f"i{iteration.iteration_id}:prepare:{identity}"
-                    if (input_operation or schedule_cost) and field == 'a_step_prepare_us':
-                        process = self.env.process(self._run_a_step_preparation(block, identity, node_id, duration))
+                    if (
+                        input_operation or schedule_cost
+                    ) and field == "a_step_prepare_us":
+                        process = self.env.process(
+                            self._run_a_step_preparation(
+                                block, identity, node_id, duration
+                            )
+                        )
                         preparations[identity] = (process, node_id)
                         continue
-                    step = SimpleNamespace(operation="step_prepare", direction=None,
-                        logical_stage_id=None, leg_id=None, source_domain=domain,
-                        target_domain=domain, layer_type=None)
-                    process = self.env.process(self._run_preparation_stage(
-                        block, -1, step, node_id, (), (identity,), duration / 1e6,
-                        "host_prepare", details={"cost_field": field, "cost_scope": "per_step_per_worker",
-                                                "calibrated": False}))
+                    step = SimpleNamespace(
+                        operation="step_prepare",
+                        direction=None,
+                        logical_stage_id=None,
+                        leg_id=None,
+                        source_domain=domain,
+                        target_domain=domain,
+                        layer_type=None,
+                    )
+                    process = self.env.process(
+                        self._run_preparation_stage(
+                            block,
+                            -1,
+                            step,
+                            node_id,
+                            (),
+                            (identity,),
+                            duration / 1e6,
+                            "host_prepare",
+                            details={
+                                "cost_field": field,
+                                "cost_scope": "per_step_per_worker",
+                                "calibrated": False,
+                            },
+                        )
+                    )
                     preparations[identity] = (process, node_id)
         return preparations
 
     def _run_a_step_preparation(self, block, identity, node_id, duration):
         try:
             predecessors = ()
-            schedule = self._host_cost_us('engine_step_schedule_us', block)
+            schedule = self._host_cost_us("engine_step_schedule_us", block)
             if schedule:
-                scheduled = node_id+':schedule'
+                scheduled = node_id + ":schedule"
                 template = self._control_nodes(block)[0]
-                yield from self._run_communication_host_stage(block,-1,template,scheduled,(),(identity,),
-                    schedule/1e6,'host_prepare',details={'cost_field':'engine_step_schedule_us','cost_scope':'per_step_per_worker'})
+                yield from self._run_communication_host_stage(
+                    block,
+                    -1,
+                    template,
+                    scheduled,
+                    (),
+                    (identity,),
+                    schedule / 1e6,
+                    "host_prepare",
+                    details={
+                        "cost_field": "engine_step_schedule_us",
+                        "cost_scope": "per_step_per_worker",
+                    },
+                )
                 predecessors = (scheduled,)
             if self.operation_profile is not None and any(
-                    n in self.operation_profile.document['operations'] for n in ('a_input_prepare','a_attention_metadata')):
-                yield from self._run_input_preparation(block, identity, node_id, predecessors)
+                n in self.operation_profile.document["operations"]
+                for n in ("a_input_prepare", "a_attention_metadata")
+            ):
+                yield from self._run_input_preparation(
+                    block, identity, node_id, predecessors
+                )
             else:
-                yield from self._run_communication_host_stage(block,-1,self._control_nodes(block)[0],node_id,
-                    predecessors,(identity,),duration/1e6,'host_prepare',
-                    details={'cost_field':'a_step_prepare_us','cost_scope':'per_step_per_worker'})
+                yield from self._run_communication_host_stage(
+                    block,
+                    -1,
+                    self._control_nodes(block)[0],
+                    node_id,
+                    predecessors,
+                    (identity,),
+                    duration / 1e6,
+                    "host_prepare",
+                    details={
+                        "cost_field": "a_step_prepare_us",
+                        "cost_scope": "per_step_per_worker",
+                    },
+                )
         except simpy.Interrupt:
             return
 
     def _run_input_preparation(self, block, identity, node_id, predecessors=()):
         try:
-            names = [name for name in ('a_input_prepare','a_attention_metadata')
-                     if name in self.operation_profile.document['operations']]
-            for index,name in enumerate(names):
-                completed = yield from self._control_stage(block,self._control_nodes(block)[0],name,predecessors,
-                    identity,0,device=True,node_id=node_id if index==len(names)-1 else node_id+':'+name)
+            names = [
+                name
+                for name in ("a_input_prepare", "a_attention_metadata")
+                if name in self.operation_profile.document["operations"]
+            ]
+            for index, name in enumerate(names):
+                completed = yield from self._control_stage(
+                    block,
+                    self._control_nodes(block)[0],
+                    name,
+                    predecessors,
+                    identity,
+                    0,
+                    device=True,
+                    node_id=(
+                        node_id if index == len(names) - 1 else node_id + ":" + name
+                    ),
+                )
                 predecessors = (completed,)
         except simpy.Interrupt:
             return
@@ -293,18 +476,42 @@ class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
         except simpy.Interrupt:
             return
 
-    def _run_receiver_submit(self, block, layer_id, step, node_id, duration, cost_field='host_receive_submit_us'):
+    def _run_receiver_submit(
+        self,
+        block,
+        layer_id,
+        step,
+        node_id,
+        duration,
+        cost_field="host_receive_submit_us",
+    ):
         try:
-            prepared = yield from self._wait_step_preparation(block, (step.physical_workers[-1],))
+            prepared = yield from self._wait_step_preparation(
+                block, (step.physical_workers[-1],)
+            )
             control = self._native_controls.get(block.iteration_id)
-            if control is not None and step.direction == "a_to_f" and step.metadata.get("message_class") != "control":
+            if (
+                control is not None
+                and step.direction == "a_to_f"
+                and step.metadata.get("message_class") != "control"
+            ):
                 yield control["f_ready"]
                 prepared = (*prepared, control["f_node"])
             yield from self._run_communication_host_stage(
-                block, layer_id, step, node_id,
+                block,
+                layer_id,
+                step,
+                node_id,
                 tuple(dict.fromkeys((*step.predecessor_ids, *prepared))),
-                (step.physical_workers[-1],), duration, "host_submit",
-                details={"cost_field": cost_field, "cost_scope": "per_receive_call", "calibrated": False})
+                (step.physical_workers[-1],),
+                duration,
+                "host_submit",
+                details={
+                    "cost_field": cost_field,
+                    "cost_scope": "per_receive_call",
+                    "calibrated": False,
+                },
+            )
         except simpy.Interrupt:
             return
 
@@ -320,23 +527,27 @@ class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
         if cached is not None:
             return cached
         if self.runtime_plan is None:
-            result = FrozenDict({
-                "weight_dtype": self.dtype,
-                "activation_dtype": self.dtype,
-                "kv_cache_dtype": self.dtype,
-                "a_to_f_dtype": self.dtype,
-                "f_to_a_dtype": self.dtype,
-            })
+            result = FrozenDict(
+                {
+                    "weight_dtype": self.dtype,
+                    "activation_dtype": self.dtype,
+                    "kv_cache_dtype": self.dtype,
+                    "a_to_f_dtype": self.dtype,
+                    "f_to_a_dtype": self.dtype,
+                }
+            )
             self._effective_dtype_bindings[link_name] = result
             return result
         effective = self.runtime_plan.dtypes_for_link(link_name)
-        result = FrozenDict({
-            "weight_dtype": effective.weight_dtype,
-            "activation_dtype": effective.activation_dtype,
-            "kv_cache_dtype": effective.kv_cache_dtype,
-            "a_to_f_dtype": effective.a_to_f_dtype,
-            "f_to_a_dtype": effective.f_to_a_dtype,
-        })
+        result = FrozenDict(
+            {
+                "weight_dtype": effective.weight_dtype,
+                "activation_dtype": effective.activation_dtype,
+                "kv_cache_dtype": effective.kv_cache_dtype,
+                "a_to_f_dtype": effective.a_to_f_dtype,
+                "f_to_a_dtype": effective.f_to_a_dtype,
+            }
+        )
         self._effective_dtype_bindings[link_name] = result
         return result
 
@@ -353,9 +564,7 @@ class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
     def _validate_provider_dtype_contract(self) -> None:
         if self.runtime_plan is None:
             return
-        validator = getattr(
-            self.compute_provider, "validate_effective_dtypes", None
-        )
+        validator = getattr(self.compute_provider, "validate_effective_dtypes", None)
         if not callable(validator):
             return
         contracts = [self.runtime_plan.effective_dtypes]
@@ -451,7 +660,10 @@ class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
         runtime_layer_types = self._runtime_layer_types()
         formal_routing = (
             self.runtime_plan is not None
-            and (resolved_phase == "decode" or self.runtime_plan.layers[0].mla is not None)
+            and (
+                resolved_phase == "decode"
+                or self.runtime_plan.layers[0].mla is not None
+            )
             and all(
                 not domain.name.startswith("implicit:")
                 for domain in self.cluster_config.af.execution_domains
@@ -500,8 +712,11 @@ class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
                 )
             if self.routing_replay is not None:
                 block_requests = self.routing_replay.requests_for(
-                    block_requests, phase=snapshot_phase, layer_id=layer_id,
-                    decode_step=self._routing_step(snapshot_phase, block_requests))
+                    block_requests,
+                    phase=snapshot_phase,
+                    layer_id=layer_id,
+                    decode_step=self._routing_step(snapshot_phase, block_requests),
+                )
             return self.expert_routing.snapshot_for_layer(
                 block_requests,
                 iteration_id=snapshot_iteration_id,
@@ -547,15 +762,12 @@ class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
     def _routing_step(phase: AFPhase, requests: Sequence[Any]) -> int:
         if phase == "prefill":
             return 0
-        steps = {
-            int(getattr(request, "generation_idx", 0)) for request in requests
-        }
-        if len(steps) != 1 or next(iter(steps)) < 0:
+        steps = {int(getattr(request, "generation_idx", 0)) for request in requests}
+        if not steps or min(steps) < 0:
             raise ConfigurationError(
-                "one AF block cannot freeze a routing snapshot across different "
-                f"Decode steps; got generation_idx values {sorted(steps)}"
+                f"AF Decode steps must be non-negative; got {sorted(steps)}"
             )
-        return next(iter(steps))
+        return min(steps)
 
     def _canonical_a_tp_rank(self, placement) -> int:
         ownerships = self.runtime_plan.ownerships_for_replica(
@@ -574,14 +786,22 @@ class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
             raise SimulationStateError(
                 f"AF iteration {iteration.iteration_id} is already active"
             )
-        native_control = self.cluster_config.af.communication_timing.native_control_enabled
+        native_control = (
+            self.cluster_config.af.communication_timing.native_control_enabled
+        )
         if native_control and self.active_iterations:
-            raise SimulationStateError("native control eager mode supports one in-flight iteration")
+            raise SimulationStateError(
+                "native control eager mode supports one in-flight iteration"
+            )
         if native_control and len(iteration.blocks) > 1:
-            raise ConfigurationError("native control eager DP=1 requires one unsplit block per iteration")
+            raise ConfigurationError(
+                "native control eager DP=1 requires one unsplit block per iteration"
+            )
         iteration.start_at = self.env.now
         self.active_iterations[iteration.iteration_id] = iteration
-        self._step_preparation[iteration.iteration_id] = self._start_step_preparation(iteration)
+        self._step_preparation[iteration.iteration_id] = self._start_step_preparation(
+            iteration
+        )
         failure_event = self.env.event()
         failures: list[BaseException] = []
         done_events = [self.env.event() for _ in iteration.blocks]
@@ -592,16 +812,28 @@ class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
             for block, done_event in zip(iteration.blocks, done_events)
         ]
         if native_control and iteration.blocks:
-            state = {"a_ready": self.env.event(), "f_ready": self.env.event(),
-                     "a_node": f"i{iteration.iteration_id}:control:payload:transport",
-                     "f_node": f"i{iteration.iteration_id}:control:decode"}
+            state = {
+                "a_ready": self.env.event(),
+                "f_ready": self.env.event(),
+                "a_node": f"i{iteration.iteration_id}:control:payload:transport",
+                "f_node": f"i{iteration.iteration_id}:control:decode",
+            }
             self._native_controls[iteration.iteration_id] = state
             if self.cluster_config.af.communication_timing.native_call_order_enabled:
                 self._start_native_call_order(iteration.blocks[0], state)
             control_done = self.env.event()
             done_events.append(control_done)
-            processes.append(self.env.process(self._run_control_guarded(
-                iteration.blocks[0], state, failure_event, failures, control_done)))
+            processes.append(
+                self.env.process(
+                    self._run_control_guarded(
+                        iteration.blocks[0],
+                        state,
+                        failure_event,
+                        failures,
+                        control_done,
+                    )
+                )
+            )
         try:
             if processes:
                 completion = self.env.all_of(done_events)
@@ -630,10 +862,14 @@ class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
             raise
         finally:
             state = self._native_controls.pop(iteration.iteration_id, None)
-            receivers = [call['receiver'] for call in state.get('calls', {}).values()] if state else []
+            receivers = (
+                [call["receiver"] for call in state.get("calls", {}).values()]
+                if state
+                else []
+            )
             for receiver in receivers:
                 if receiver.is_alive:
-                    receiver.interrupt('native iteration finished or cancelled')
+                    receiver.interrupt("native iteration finished or cancelled")
             if receivers:
                 yield self.env.all_of(receivers)
             self._fused_combines.pop(iteration.iteration_id, None)
@@ -726,15 +962,27 @@ class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
         for index, node in enumerate(dag.nodes):
             done_event = self.env.event()
             done_events.append(done_event)
-            predecessors = tuple(done_events[item] for item in predecessor_indices[index])
+            predecessors = tuple(
+                done_events[item] for item in predecessor_indices[index]
+            )
             bindings = getattr(node, "input_producer_ids", ())
             subgroup_inputs = None
-            if (bindings and self.cluster_config.af.transfer_topology_mode == "physical"
-                    and hasattr(self.transfer_provider, "communication_plan")):
+            if (
+                bindings
+                and self.cluster_config.af.transfer_topology_mode == "physical"
+                and hasattr(self.transfer_provider, "communication_plan")
+            ):
                 events_by_id = dict(zip(node.predecessor_ids, predecessors))
-                subgroup_inputs = {endpoint: (producer, events_by_id[producer]) for endpoint, producer in bindings}
+                subgroup_inputs = {
+                    endpoint: (producer, events_by_id[producer])
+                    for endpoint, producer in bindings
+                }
                 data_ids = {producer for _, producer in bindings}
-                predecessors = tuple(event for producer, event in events_by_id.items() if producer not in data_ids)
+                predecessors = tuple(
+                    event
+                    for producer, event in events_by_id.items()
+                    if producer not in data_ids
+                )
             processes.append(
                 self.env.process(
                     self._run_dag_node_guarded(
@@ -795,8 +1043,13 @@ class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
             if failure_event.triggered:
                 return
             if subgroup_inputs is not None:
-                yield from self._run_planned_communication(block, layer_id, link, node,
-                    input_readiness=(subgroup_inputs, failure_event))
+                yield from self._run_planned_communication(
+                    block,
+                    layer_id,
+                    link,
+                    node,
+                    input_readiness=(subgroup_inputs, failure_event),
+                )
             else:
                 yield from self._run_planned_step(block, layer_id, link, node)
         except simpy.Interrupt:
@@ -832,40 +1085,80 @@ class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
         layer_id: int,
         step: ExecutionNode,
     ):
-        preparation_ids = yield from self._wait_step_preparation(block, step.physical_workers)
+        preparation_ids = yield from self._wait_step_preparation(
+            block, step.physical_workers
+        )
         control = self._native_controls.get(block.iteration_id)
         if control is not None and not step.predecessor_ids:
             preparation_ids = (*preparation_ids, control["a_node"])
         timing = self.cluster_config.af.communication_timing
-        compute_cost_field = self._native_call_cost_field(step, 'compute')
+        compute_cost_field = self._native_call_cost_field(step, "compute")
         compute_submit_us = self._host_cost_us(compute_cost_field, block)
-        if (step.operation in ('routed_expert','f_weighted_combine') and self.overhead_profile is not None
-                and 'compute_f_moe_block_us' in self.overhead_profile.document['costs']):
-            compute_submit_us = 0  # One native FusedMoE call owns router, experts and combine dispatch.
-        if (step.operation == 'f_weighted_combine' and self.overhead_profile is not None
-                and 'compute_f_expert_group_us' in self.overhead_profile.document['costs']):
-            compute_submit_us = 0  # Native grouped invocation includes combine dispatch.
+        if (
+            step.operation in ("routed_expert", "f_weighted_combine")
+            and self.overhead_profile is not None
+            and "compute_f_moe_block_us" in self.overhead_profile.document["costs"]
+        ):
+            compute_submit_us = (
+                0  # One native FusedMoE call owns router, experts and combine dispatch.
+            )
+        if (
+            step.operation == "f_weighted_combine"
+            and self.overhead_profile is not None
+            and "compute_f_expert_group_us" in self.overhead_profile.document["costs"]
+        ):
+            compute_submit_us = (
+                0  # Native grouped invocation includes combine dispatch.
+            )
         combine_key = (block.block_id, layer_id, step.physical_workers)
-        fused = (self._fused_combines.get(block.iteration_id, {}).get(combine_key)
-                 if step.stage == 'weighted_combine' else None)
+        fused = (
+            self._fused_combines.get(block.iteration_id, {}).get(combine_key)
+            if step.stage == "weighted_combine"
+            else None
+        )
         if fused is not None:
             compute_submit_us = 0
         if timing.enabled and compute_submit_us:
             submit_id = f"{step.node_id}:compute_submit"
             yield from self._run_communication_host_stage(
-                block, layer_id, step, submit_id,
+                block,
+                layer_id,
+                step,
+                submit_id,
                 tuple(dict.fromkeys((*step.predecessor_ids, *preparation_ids))),
-                step.physical_workers, compute_submit_us / 1e6, "host_submit",
-                details={"cost_field": compute_cost_field,
-                    "cost_scope": "per_native_call_group" if compute_cost_field != 'compute_submit_us' else "per_compute_dag_node",
-                    "calibrated": False})
+                step.physical_workers,
+                compute_submit_us / 1e6,
+                "host_submit",
+                details={
+                    "cost_field": compute_cost_field,
+                    "cost_scope": (
+                        "per_native_call_group"
+                        if compute_cost_field != "compute_submit_us"
+                        else "per_compute_dag_node"
+                    ),
+                    "calibrated": False,
+                },
+            )
             step = replace(step, predecessor_ids=(submit_id,))
         elif preparation_ids and not step.predecessor_ids:
             step = replace(step, predecessor_ids=preparation_ids)
-        if control is not None and 'a_device_ready' in control and control['a_node'] in preparation_ids:
-            yield control['a_device_ready']
-            step = replace(step, predecessor_ids=tuple(dict.fromkeys((*step.predecessor_ids,
-                f'i{block.iteration_id}:control:payload:transport'))))
+        if (
+            control is not None
+            and "a_device_ready" in control
+            and control["a_node"] in preparation_ids
+        ):
+            yield control["a_device_ready"]
+            step = replace(
+                step,
+                predecessor_ids=tuple(
+                    dict.fromkeys(
+                        (
+                            *step.predecessor_ids,
+                            f"i{block.iteration_id}:control:payload:transport",
+                        )
+                    )
+                ),
+            )
         if self.runtime_plan is not None:
             self.runtime_plan.validate_execution_node(step)
         resources = self._compute_resource_bindings.get(step.physical_workers)
@@ -878,7 +1171,9 @@ class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
         if local_work is None:
             raise SimulationStateError(f"compute node {step.node_id} has no local work")
         effective_dtypes = self._effective_dtypes(block.link_name)
-        query = prepare_query(self.compute_provider, AFComputeQuery,
+        query = prepare_query(
+            self.compute_provider,
+            AFComputeQuery,
             iteration_id=block.iteration_id,
             block_id=block.block_id,
             layer_id=layer_id,
@@ -926,69 +1221,93 @@ class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
             layer_id,
             step.node_id,
             tuple(resource for _, resource in resources),
-            lambda: (AFServiceEstimate(0, fused.source_id, dataset_version=fused.dataset_version,
-                match_type=fused.match_type, details={'timing_scope':'device_service',
-                    'covered_by':'routed_experts', 'semantic_completion_only':True}) if fused is not None else self._estimate(
-                self.compute_provider, query, block, layer_id, stage_name
-            )),
+            lambda: (
+                AFServiceEstimate(
+                    0,
+                    fused.source_id,
+                    dataset_version=fused.dataset_version,
+                    match_type=fused.match_type,
+                    details={
+                        "timing_scope": "device_service",
+                        "covered_by": "routed_experts",
+                        "semantic_completion_only": True,
+                    },
+                )
+                if fused is not None
+                else self._estimate(
+                    self.compute_provider, query, block, layer_id, stage_name
+                )
+            ),
         )
-        if (self.cluster_config.af.execution_protocol == 'vllm_afd' and step.stage == 'routed_expert'
-                and 'weighted_combine' in estimate.details.get('covered_operations', ())):
-            self._fused_combines.setdefault(block.iteration_id, {})[combine_key] = estimate
+        if (
+            self.cluster_config.af.execution_protocol == "vllm_afd"
+            and step.stage == "routed_expert"
+            and "weighted_combine" in estimate.details.get("covered_operations", ())
+        ):
+            self._fused_combines.setdefault(block.iteration_id, {})[
+                combine_key
+            ] = estimate
         if self.trace.enabled:
             resource_ids = tuple(f"worker:{item[0]}" for item in resources)
             self.trace.record(
                 AFTraceEvent(
-                iteration_id=block.iteration_id,
-                block_id=block.block_id,
-                layer_id=layer_id,
-                phase=block.phase,
-                event_type="compute",
-                stage=step.stage,
-                operation=step.operation,
-                resource_id=resource_ids[0],
-                resource_ids=resource_ids,
-                worker_id=worker_id,
-                ready_at=ready_at,
-                start_at=start_at,
-                end_at=end_at,
-                queue_duration=start_at - ready_at,
-                service_duration=end_at - start_at,
-                request_count=block.request_count,
-                token_count=block.token_count,
-                source_id=estimate.source_id,
-                dataset_version=estimate.dataset_version,
-                match_type=estimate.match_type,
-                details={**estimate.details, "execution_protocol": self.cluster_config.af.execution_protocol,
-                         **({"routing_replay": self.routing_replay.describe()}
-                            if self.routing_replay is not None and step.stage == "router" else {})},
-                source_domain=step.source_domain,
-                target_domain=step.target_domain,
-                logical_participants=step.logical_participants,
-                participant_ranks=step.domain_ranks,
-                physical_endpoints=step.physical_workers,
-                node_id=step.node_id,
-                predecessor_ids=step.predecessor_ids,
-                dp_rank=step.dp_rank,
-                tp_rank=step.tp_rank,
-                ep_rank=step.ep_rank,
-                tp_group=step.tp_group,
-                ep_group=step.ep_group,
-                local_work=local_work.as_dict(),
-                layer_type=step.layer_type,
-                original_token_count=local_work.original_token_count,
-                assignment_count=local_work.assignment_count,
-                input_edge_count=local_work.input_edge_count,
-                output_token_count=local_work.output_token_count,
-                logical_stage_id=step.logical_stage_id,
-                source_endpoint=step.source_endpoint,
-                target_endpoint=step.target_endpoint,
-                tensor_slices=step.tensor_slices,
-                source_layout=step.source_layout,
-                target_layout=step.target_layout,
-                routing_edges=step.routing_edges,
-                source_dtype=local_work.source_dtype,
-                target_dtype=local_work.target_dtype,
+                    iteration_id=block.iteration_id,
+                    block_id=block.block_id,
+                    layer_id=layer_id,
+                    phase=block.phase,
+                    event_type="compute",
+                    stage=step.stage,
+                    operation=step.operation,
+                    resource_id=resource_ids[0],
+                    resource_ids=resource_ids,
+                    worker_id=worker_id,
+                    ready_at=ready_at,
+                    start_at=start_at,
+                    end_at=end_at,
+                    queue_duration=start_at - ready_at,
+                    service_duration=end_at - start_at,
+                    request_count=block.request_count,
+                    token_count=block.token_count,
+                    source_id=estimate.source_id,
+                    dataset_version=estimate.dataset_version,
+                    match_type=estimate.match_type,
+                    details={
+                        **estimate.details,
+                        "execution_protocol": self.cluster_config.af.execution_protocol,
+                        **(
+                            {"routing_replay": self.routing_replay.describe()}
+                            if self.routing_replay is not None
+                            and step.stage == "router"
+                            else {}
+                        ),
+                    },
+                    source_domain=step.source_domain,
+                    target_domain=step.target_domain,
+                    logical_participants=step.logical_participants,
+                    participant_ranks=step.domain_ranks,
+                    physical_endpoints=step.physical_workers,
+                    node_id=step.node_id,
+                    predecessor_ids=step.predecessor_ids,
+                    dp_rank=step.dp_rank,
+                    tp_rank=step.tp_rank,
+                    ep_rank=step.ep_rank,
+                    tp_group=step.tp_group,
+                    ep_group=step.ep_group,
+                    local_work=local_work.as_dict(),
+                    layer_type=step.layer_type,
+                    original_token_count=local_work.original_token_count,
+                    assignment_count=local_work.assignment_count,
+                    input_edge_count=local_work.input_edge_count,
+                    output_token_count=local_work.output_token_count,
+                    logical_stage_id=step.logical_stage_id,
+                    source_endpoint=step.source_endpoint,
+                    target_endpoint=step.target_endpoint,
+                    tensor_slices=step.tensor_slices,
+                    source_layout=step.source_layout,
+                    target_layout=step.target_layout,
+                    routing_edges=step.routing_edges,
+                    source_dtype=local_work.source_dtype,
+                    target_dtype=local_work.target_dtype,
                 )
             )
         self.active_stages.pop((block.iteration_id, block.block_id, step.node_id), None)
@@ -1003,12 +1322,25 @@ class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
         input_readiness=None,
     ):
         is_control = step.metadata.get("message_class") == "control"
-        binding_key = (link.name, step.direction, step.resource_group, step.resource_lane,
-                       step.physical_workers if self.cluster_config.af.transfer_topology_mode == "physical" else ())
+        binding_key = (
+            link.name,
+            step.direction,
+            step.resource_group,
+            step.resource_lane,
+            (
+                step.physical_workers
+                if self.cluster_config.af.transfer_topology_mode == "physical"
+                else ()
+            ),
+        )
         binding = self._communication_resource_bindings.get(binding_key)
         if binding is None:
             keyed_resources = self.resources.communication_resources_for_step(
-                link, step.direction, step.resource_group, step.resource_lane, step.physical_workers
+                link,
+                step.direction,
+                step.resource_group,
+                step.resource_lane,
+                step.physical_workers,
             )
             resource_ids = tuple(
                 self.resources.format_link_resource(key) for key, _ in keyed_resources
@@ -1016,8 +1348,14 @@ class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
             binding = (keyed_resources, resource_ids)
             self._communication_resource_bindings[binding_key] = binding
         keyed_resources, resource_ids = binding
-        input_predecessors = tuple(producer for producer, _ in input_readiness[0].values()) if input_readiness else ()
-        if step.operation == "all_to_all" and (step.payload_bytes == 0 or len(step.physical_workers) == 1):
+        input_predecessors = (
+            tuple(producer for producer, _ in input_readiness[0].values())
+            if input_readiness
+            else ()
+        )
+        if step.operation == "all_to_all" and (
+            step.payload_bytes == 0 or len(step.physical_workers) == 1
+        ):
             keyed_resources, resource_ids = (), ()
         endpoint_workers = self._endpoint_worker_bindings.get(step.physical_workers)
         if endpoint_workers is None:
@@ -1032,14 +1370,18 @@ class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
         transfer_dtype = (
             effective_dtypes["a_to_f_dtype"]
             if step.direction == "a_to_f"
-            else effective_dtypes["f_to_a_dtype"]
-            if step.direction == "f_to_a"
-            else effective_dtypes["activation_dtype"]
+            else (
+                effective_dtypes["f_to_a_dtype"]
+                if step.direction == "f_to_a"
+                else effective_dtypes["activation_dtype"]
+            )
         )
         if is_control:
             transfer_dtype = step.metadata["wire_dtype"]
         is_collective = step.direction == "collective"
-        query = prepare_query(self.transfer_provider, AFTransferQuery,
+        query = prepare_query(
+            self.transfer_provider,
+            AFTransferQuery,
             iteration_id=block.iteration_id,
             block_id=block.block_id,
             layer_id=layer_id,
@@ -1052,8 +1394,15 @@ class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
             target_device=target_device,
             network=step.network or link.network,
             operation=step.operation,
-            transport_backend=(step.metadata["transport_backend"] if is_control else
-                "pynccl" if self.cluster_config.af.execution_protocol == "vllm_afd" else "unspecified"),
+            transport_backend=(
+                step.metadata["transport_backend"]
+                if is_control
+                else (
+                    "pynccl"
+                    if self.cluster_config.af.execution_protocol == "vllm_afd"
+                    else "unspecified"
+                )
+            ),
             link_group=link.resource_group,
             group_size=max(1, len(step.domain_ranks)),
             payload_bytes=step.payload_bytes,
@@ -1063,14 +1412,14 @@ class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
             participant_ranks=step.domain_ranks,
             physical_endpoints=step.physical_workers,
             resource_identities=resource_ids,
-            topology=self._query_mapping((
-                ("participant_count", len(step.domain_ranks)),
-                ("physical_endpoint_count", len(step.physical_workers)),
-            )),
-            node_id=step.node_id,
-            communication_kind=(
-                "collective" if is_collective else "endpoint_leg"
+            topology=self._query_mapping(
+                (
+                    ("participant_count", len(step.domain_ranks)),
+                    ("physical_endpoint_count", len(step.physical_workers)),
+                )
             ),
+            node_id=step.node_id,
+            communication_kind=("collective" if is_collective else "endpoint_leg"),
             layer_type=step.layer_type,
             original_token_count=step.metadata.get(
                 "original_token_count", block.token_count
@@ -1114,40 +1463,68 @@ class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
         wire_predecessors = step.predecessor_ids
         if input_readiness is not None:
             input_ids = {producer for producer, _ in input_readiness[0].values()}
-            wire_predecessors = tuple(key for key in wire_predecessors if key not in input_ids)
+            wire_predecessors = tuple(
+                key for key in wire_predecessors if key not in input_ids
+            )
         submission_finished_at = self.env.now
         receiver_process = None
         native_state = self._native_controls.get(block.iteration_id, {})
-        native_call = native_state.get('calls', {}).get(step.node_id)
+        native_call = native_state.get("calls", {}).get(step.node_id)
         receiver_id = f"{step.node_id}:receive_submit"
-        needs_receiver = timing.enabled and step.direction in {"a_to_f", "f_to_a"} and (
-            timing.host_receive_submit_us or timing.a_step_prepare_us or timing.f_step_prepare_us
-            or timing.native_control_enabled
+        needs_receiver = (
+            timing.enabled
+            and step.direction in {"a_to_f", "f_to_a"}
+            and (
+                timing.host_receive_submit_us
+                or timing.a_step_prepare_us
+                or timing.f_step_prepare_us
+                or timing.native_control_enabled
+            )
         )
         if native_call is not None:
-            receiver_process = native_call['receiver']
+            receiver_process = native_call["receiver"]
         elif needs_receiver:
-            receive_cost_field = self._native_call_cost_field(step, 'receive')
-            receiver_process = self.env.process(self._run_receiver_submit(
-                block, layer_id, step, receiver_id, self._host_cost_us(receive_cost_field, block) / 1e6, receive_cost_field))
+            receive_cost_field = self._native_call_cost_field(step, "receive")
+            receiver_process = self.env.process(
+                self._run_receiver_submit(
+                    block,
+                    layer_id,
+                    step,
+                    receiver_id,
+                    self._host_cost_us(receive_cost_field, block) / 1e6,
+                    receive_cost_field,
+                )
+            )
         if timing.enabled:
             submit_node_id = f"{step.node_id}:host_submit"
             is_collective = step.operation in {
-                "tp_collective", "all_reduce", "all_gather", "reduce_scatter"
+                "tp_collective",
+                "all_reduce",
+                "all_gather",
+                "reduce_scatter",
             }
             submitters = (
-                step.physical_workers
-                if is_collective
-                else (step.physical_workers[0],)
+                step.physical_workers if is_collective else (step.physical_workers[0],)
             )
             try:
-                send_cost_field = self._native_call_cost_field(step, 'send')
+                send_cost_field = self._native_call_cost_field(step, "send")
                 yield from self._run_communication_host_stage(
-                    block, layer_id, step, submit_node_id,
-                    tuple(key for key in step.predecessor_ids if input_readiness is None
-                          or key not in {producer for producer, _ in input_readiness[0].values()}),
-                    submitters, self._host_cost_us(send_cost_field, block) / 1e6, "host_submit",
-                    details={"cost_field": send_cost_field})
+                    block,
+                    layer_id,
+                    step,
+                    submit_node_id,
+                    tuple(
+                        key
+                        for key in step.predecessor_ids
+                        if input_readiness is None
+                        or key
+                        not in {producer for producer, _ in input_readiness[0].values()}
+                    ),
+                    submitters,
+                    self._host_cost_us(send_cost_field, block) / 1e6,
+                    "host_submit",
+                    details={"cost_field": send_cost_field},
+                )
             except BaseException:
                 if receiver_process is not None and receiver_process.is_alive:
                     receiver_process.interrupt("AF sender submission cancelled")
@@ -1155,9 +1532,9 @@ class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
                 raise
             submission_finished_at = self.env.now
             if native_call is not None:
-                native_call['submitted'].succeed()
-                if step.operation == 'af_control_payload':
-                    native_state['a_ready'].succeed()
+                native_call["submitted"].succeed()
+                if step.operation == "af_control_payload":
+                    native_state["a_ready"].succeed()
             wire_node_id = f"{step.node_id}:transport"
             wire_predecessors = (submit_node_id,)
 
@@ -1174,11 +1551,17 @@ class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
                     yield receiver_process
                 raise
             wire_predecessors = (*wire_predecessors, receiver_id)
-            readiness_mode = "native_preposted_call_order" if native_call is not None else "fixed_host_preparation"
+            readiness_mode = (
+                "native_preposted_call_order"
+                if native_call is not None
+                else "fixed_host_preparation"
+            )
         if self.transfer_readiness is not None:
             readiness = self.transfer_readiness(block, layer_id, step)
             if not isinstance(readiness, TransferReadiness):
-                raise SimulationStateError("transfer_readiness must return TransferReadiness")
+                raise SimulationStateError(
+                    "transfer_readiness must return TransferReadiness"
+                )
             readiness_mode = "invocation_events"
             readiness_events = readiness.events(self.env)
             if readiness_events:
@@ -1189,20 +1572,41 @@ class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
         if self.cluster_config.af.transfer_topology_mode == "physical":
             if hasattr(self.transfer_provider, "communication_plan"):
                 plan = self.transfer_provider.communication_plan(query)
-                if self.resources.node_by_worker != dict(self.transfer_provider.node_by_worker):
-                    raise ConfigurationError("provider and executor use different communication domain placement")
+                if self.resources.node_by_worker != dict(
+                    self.transfer_provider.node_by_worker
+                ):
+                    raise ConfigurationError(
+                        "provider and executor use different communication domain placement"
+                    )
                 multiple_phases = len(plan.phases) > 1
                 ready_at, start_at, end_at = yield from self._run_domain_plan(
-                    block, layer_id, step, wire_node_id, wire_predecessors, plan, input_readiness)
-                resource_ids = tuple(sorted({key for phase in plan.phases for key in phase.resource_ids}))
+                    block,
+                    layer_id,
+                    step,
+                    wire_node_id,
+                    wire_predecessors,
+                    plan,
+                    input_readiness,
+                )
+                resource_ids = tuple(
+                    sorted({key for phase in plan.phases for key in phase.resource_ids})
+                )
             else:
-                ready_at, start_at, end_at = yield from self.resources.domain_scheduler.run(
-                    resource_ids, estimate.service_duration,
-                    (block.iteration_id, block.block_id, layer_id, wire_node_id))
+                ready_at, start_at, end_at = (
+                    yield from self.resources.domain_scheduler.run(
+                        resource_ids,
+                        estimate.service_duration,
+                        (block.iteration_id, block.block_id, layer_id, wire_node_id),
+                    )
+                )
         else:
             ready_at, start_at, end_at, estimate = yield from self._run_resources_stage(
-                block, layer_id, wire_node_id,
-                tuple(resource for _, resource in keyed_resources), lambda: estimate)
+                block,
+                layer_id,
+                wire_node_id,
+                tuple(resource for _, resource in keyed_resources),
+                lambda: estimate,
+            )
         if (
             estimate.payload_bytes is not None
             and step.payload_bytes is not None
@@ -1215,72 +1619,107 @@ class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
         if self.trace.enabled:
             self.trace.record(
                 AFTraceEvent(
-                iteration_id=block.iteration_id,
-                block_id=block.block_id,
-                layer_id=layer_id,
-                phase=block.phase,
-                event_type=("synchronize" if multiple_phases else "control_transfer" if is_control else "collective" if step.operation in {"tp_collective", "all_reduce", "all_gather", "reduce_scatter"} else "transfer"),
-                operation=step.operation,
-                direction=step.direction,
-                resource_id=(f"completion:{wire_node_id}" if multiple_phases or not resource_ids else resource_ids[0]),
-                resource_ids=() if multiple_phases else resource_ids,
-                ready_at=end_at if multiple_phases else ready_at,
-                start_at=end_at if multiple_phases else start_at,
-                end_at=end_at,
-                queue_duration=0.0 if multiple_phases else start_at - ready_at,
-                service_duration=0.0 if multiple_phases else end_at - start_at,
-                request_count=block.request_count,
-                token_count=block.token_count,
-                source_id=estimate.source_id,
-                dataset_version=estimate.dataset_version,
-                match_type=estimate.match_type,
-                payload_bytes=step.payload_bytes,
-                details={
-                    **estimate.details,
-                    "communication_operation": step.operation,
-                    "phase_completion_only": multiple_phases,
-                    "message_class": "control" if is_control else "data",
-                    "transport_backend": query.transport_backend,
-                    "wire_dtype": transfer_dtype,
-                    **({"control_schema": step.metadata["control_schema"],
-                        "payload_utf8": step.metadata.get("payload_utf8")} if is_control else {}),
-                    "execution_protocol": self.cluster_config.af.execution_protocol,
-                    "readiness_mode": readiness_mode,
-                    "readiness_wait_started_at": peer_wait_started_at,
-                    "peer_ready_at": peer_ready_at,
-                    "readiness_wait_duration": peer_ready_at - peer_wait_started_at,
-                    **(
-                        {
-                            "communication_ready_at": communication_ready_at,
-                            "host_submit_finished_at": submission_finished_at,
-                            "communication_timing_mode": "separated",
-                        }
-                        if timing.enabled
-                        else {}
+                    iteration_id=block.iteration_id,
+                    block_id=block.block_id,
+                    layer_id=layer_id,
+                    phase=block.phase,
+                    event_type=(
+                        "synchronize"
+                        if multiple_phases
+                        else (
+                            "control_transfer"
+                            if is_control
+                            else (
+                                "collective"
+                                if step.operation
+                                in {
+                                    "tp_collective",
+                                    "all_reduce",
+                                    "all_gather",
+                                    "reduce_scatter",
+                                }
+                                else "transfer"
+                            )
+                        )
                     ),
-                },
-                source_domain=step.source_domain,
-                target_domain=step.target_domain,
-                logical_participants=step.logical_participants,
-                participant_ranks=step.domain_ranks,
-                physical_endpoints=step.physical_workers,
-                node_id=wire_node_id,
-                predecessor_ids=(tuple(f"{wire_node_id}:phase:{phase.phase_id}" for phase in plan.phases)
-                    if multiple_phases else tuple(dict.fromkeys((*wire_predecessors,
-                                                                 *input_predecessors)))),
-                dp_rank=step.dp_rank,
-                tp_rank=step.tp_rank,
-                ep_rank=step.ep_rank,
-                tp_group=step.tp_group,
-                ep_group=step.ep_group,
-                logical_stage_id=step.logical_stage_id,
-                layer_type=step.layer_type,
-                tensor_slices=step.tensor_slices,
-                source_endpoint=step.source_endpoint,
-                target_endpoint=step.target_endpoint,
-                source_layout=step.source_layout,
-                target_layout=step.target_layout,
-                routing_edges=step.routing_edges,
+                    operation=step.operation,
+                    direction=step.direction,
+                    resource_id=(
+                        f"completion:{wire_node_id}"
+                        if multiple_phases or not resource_ids
+                        else resource_ids[0]
+                    ),
+                    resource_ids=() if multiple_phases else resource_ids,
+                    ready_at=end_at if multiple_phases else ready_at,
+                    start_at=end_at if multiple_phases else start_at,
+                    end_at=end_at,
+                    queue_duration=0.0 if multiple_phases else start_at - ready_at,
+                    service_duration=0.0 if multiple_phases else end_at - start_at,
+                    request_count=block.request_count,
+                    token_count=block.token_count,
+                    source_id=estimate.source_id,
+                    dataset_version=estimate.dataset_version,
+                    match_type=estimate.match_type,
+                    payload_bytes=step.payload_bytes,
+                    details={
+                        **estimate.details,
+                        "communication_operation": step.operation,
+                        "phase_completion_only": multiple_phases,
+                        "message_class": "control" if is_control else "data",
+                        "transport_backend": query.transport_backend,
+                        "wire_dtype": transfer_dtype,
+                        **(
+                            {
+                                "control_schema": step.metadata["control_schema"],
+                                "payload_utf8": step.metadata.get("payload_utf8"),
+                            }
+                            if is_control
+                            else {}
+                        ),
+                        "execution_protocol": self.cluster_config.af.execution_protocol,
+                        "readiness_mode": readiness_mode,
+                        "readiness_wait_started_at": peer_wait_started_at,
+                        "peer_ready_at": peer_ready_at,
+                        "readiness_wait_duration": peer_ready_at - peer_wait_started_at,
+                        **(
+                            {
+                                "communication_ready_at": communication_ready_at,
+                                "host_submit_finished_at": submission_finished_at,
+                                "communication_timing_mode": "separated",
+                            }
+                            if timing.enabled
+                            else {}
+                        ),
+                    },
+                    source_domain=step.source_domain,
+                    target_domain=step.target_domain,
+                    logical_participants=step.logical_participants,
+                    participant_ranks=step.domain_ranks,
+                    physical_endpoints=step.physical_workers,
+                    node_id=wire_node_id,
+                    predecessor_ids=(
+                        tuple(
+                            f"{wire_node_id}:phase:{phase.phase_id}"
+                            for phase in plan.phases
+                        )
+                        if multiple_phases
+                        else tuple(
+                            dict.fromkeys((*wire_predecessors, *input_predecessors))
+                        )
+                    ),
+                    dp_rank=step.dp_rank,
+                    tp_rank=step.tp_rank,
+                    ep_rank=step.ep_rank,
+                    tp_group=step.tp_group,
+                    ep_group=step.ep_group,
+                    logical_stage_id=step.logical_stage_id,
+                    layer_type=step.layer_type,
+                    tensor_slices=step.tensor_slices,
+                    source_endpoint=step.source_endpoint,
+                    target_endpoint=step.target_endpoint,
+                    source_layout=step.source_layout,
+                    target_layout=step.target_layout,
+                    routing_edges=step.routing_edges,
                 )
             )
         self.active_stages.pop((block.iteration_id, block.block_id, wire_node_id), None)
@@ -1288,12 +1727,13 @@ class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
             transport_completed.succeed()
         if timing.enabled:
             is_collective = step.operation in {
-                "tp_collective", "all_reduce", "all_gather", "reduce_scatter"
+                "tp_collective",
+                "all_reduce",
+                "all_gather",
+                "reduce_scatter",
             }
             completers = (
-                step.physical_workers
-                if is_collective
-                else (step.physical_workers[-1],)
+                step.physical_workers if is_collective else (step.physical_workers[-1],)
             )
             yield from self._run_communication_host_stage(
                 block,
@@ -1302,26 +1742,45 @@ class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
                 step.node_id,
                 (wire_node_id,),
                 completers,
-                0.0 if is_control else self._host_cost_us("host_completion_us", block) / 1e6,
+                (
+                    0.0
+                    if is_control
+                    else self._host_cost_us("host_completion_us", block) / 1e6
+                ),
                 "synchronize",
-                details={
-                    "cost_field": None if is_control else "host_completion_us",
-                    "communication_ready_at": communication_ready_at,
-                    "submission_finished_at": submission_finished_at,
-                    "transfer_finished_at": end_at,
-                    "dependency_wait_duration": end_at - submission_finished_at,
-                    "wait_is_dependency_not_additional_service": True,
-                } if self.trace.enabled else None,
+                details=(
+                    {
+                        "cost_field": None if is_control else "host_completion_us",
+                        "communication_ready_at": communication_ready_at,
+                        "submission_finished_at": submission_finished_at,
+                        "transfer_finished_at": end_at,
+                        "dependency_wait_duration": end_at - submission_finished_at,
+                        "wait_is_dependency_not_additional_service": True,
+                    }
+                    if self.trace.enabled
+                    else None
+                ),
             )
         self.active_stages.pop((block.iteration_id, block.block_id, step.node_id), None)
 
-    def _run_domain_plan(self, block, layer_id, step, wire_node_id, predecessors, plan, input_readiness=None):
+    def _run_domain_plan(
+        self,
+        block,
+        layer_id,
+        step,
+        wire_node_id,
+        predecessors,
+        plan,
+        input_readiness=None,
+    ):
         """Instantiate cached phases with fresh dependency events and FIFO waits."""
         ready = self.env.now
-        single_phase = (len(plan.phases) == 1 and
-                        not plan.phases[0].local_work_bytes)
-        completed = ({} if single_phase else
-                     {phase.phase_id: self.env.event() for phase in plan.phases})
+        single_phase = len(plan.phases) == 1 and not plan.phases[0].local_work_bytes
+        completed = (
+            {}
+            if single_phase
+            else {phase.phase_id: self.env.event() for phase in plan.phases}
+        )
         intervals = {}
         children = []
 
@@ -1330,28 +1789,63 @@ class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
             input_ids = ()
             if input_readiness is not None and not phase.predecessor_ids:
                 bindings, failure = input_readiness
-                identities = tuple(self.resources.worker(rank).physical_worker_ref.identity for rank in phase.participants)
-                input_ids = tuple(dict.fromkeys(bindings[identity][0] for identity in identities))
+                identities = tuple(
+                    self.resources.worker(rank).physical_worker_ref.identity
+                    for rank in phase.participants
+                )
+                input_ids = tuple(
+                    dict.fromkeys(bindings[identity][0] for identity in identities)
+                )
                 dependencies.extend(bindings[identity][1] for identity in identities)
             if dependencies:
                 yield self.env.all_of(dependencies)
             if input_readiness is not None and input_readiness[1].triggered:
                 raise SimulationStateError("collective input producer failed")
-            phase_predecessors = tuple(dict.fromkeys((*input_ids, *(
-                tuple(f"{wire_node_id}:phase:{key}" for key in phase.predecessor_ids) or predecessors))))
+            phase_predecessors = tuple(
+                dict.fromkeys(
+                    (
+                        *input_ids,
+                        *(
+                            tuple(
+                                f"{wire_node_id}:phase:{key}"
+                                for key in phase.predecessor_ids
+                            )
+                            or predecessors
+                        ),
+                    )
+                )
+            )
             estimate = self.transfer_provider.phase_estimate(phase)
-            identity = (block.iteration_id, block.block_id, layer_id, step.node_id, phase.phase_id)
+            identity = (
+                block.iteration_id,
+                block.block_id,
+                layer_id,
+                step.node_id,
+                phase.phase_id,
+            )
             node_id = f"{wire_node_id}:phase:{phase.phase_id}"
             self._set_active_stage(block, layer_id, node_id, self.env.now)
             try:
                 local_children = ()
                 if phase.local_work_bytes:
                     phase_ready = self.env.now
-                    local_children = tuple(f"{node_id}:worker:{rank}" for rank in phase.participants)
-                    processes = [self.env.process(self._run_communication_reorder(
-                        block, layer_id, step, phase, child_id,
-                        phase_predecessors, rank))
-                        for rank, child_id in zip(phase.participants, local_children)]
+                    local_children = tuple(
+                        f"{node_id}:worker:{rank}" for rank in phase.participants
+                    )
+                    processes = [
+                        self.env.process(
+                            self._run_communication_reorder(
+                                block,
+                                layer_id,
+                                step,
+                                phase,
+                                child_id,
+                                phase_predecessors,
+                                rank,
+                            )
+                        )
+                        for rank, child_id in zip(phase.participants, local_children)
+                    ]
                     for process in processes:
                         process.defused = True
                     joined = self.env.all_of(processes)
@@ -1361,7 +1855,9 @@ class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
                     except BaseException:
                         for process in processes:
                             if process.is_alive:
-                                process.interrupt("local communication reorder cancelled")
+                                process.interrupt(
+                                    "local communication reorder cancelled"
+                                )
                         for process in processes:
                             if not process.triggered:
                                 try:
@@ -1372,7 +1868,8 @@ class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
                     times = (phase_ready, phase_ready, self.env.now)
                 elif phase.resource_ids:
                     times = yield from self.resources.domain_scheduler.run(
-                        phase.resource_ids, estimate.service_duration, identity)
+                        phase.resource_ids, estimate.service_duration, identity
+                    )
                 else:
                     times = (self.env.now, self.env.now, self.env.now)
                 intervals[phase.phase_id] = times
@@ -1380,29 +1877,54 @@ class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
                     phase_ready, start, end = times
                     if local_children:
                         phase_ready = start = end
-                    self.trace.record(AFTraceEvent(
-                        iteration_id=block.iteration_id, block_id=block.block_id,
-                        layer_id=layer_id, phase=block.phase, event_type="collective",
-                        operation=phase.operation, direction=step.direction,
-                        resource_id=phase.resource_ids[0] if phase.resource_ids else f"noop:{node_id}",
-                        resource_ids=phase.resource_ids,
-                        ready_at=phase_ready, start_at=start, end_at=end,
-                        queue_duration=start-phase_ready, service_duration=end-start,
-                        request_count=block.request_count, token_count=block.token_count,
-                        source_id=estimate.source_id, dataset_version=estimate.dataset_version,
-                        match_type=estimate.match_type, payload_bytes=phase.logical_input_bytes,
-                        details={**estimate.details, "routing_provenance": plan.provenance,
-                                 "dependency_wait_duration": phase_ready-ready},
-                        node_id=node_id,
-                        predecessor_ids=local_children or phase_predecessors,
-                        logical_stage_id=step.logical_stage_id,
-                        source_domain=step.source_domain, target_domain=step.target_domain,
-                        layer_type=step.layer_type, original_token_count=step.metadata.get("original_token_count", block.token_count),
-                    ))
+                    self.trace.record(
+                        AFTraceEvent(
+                            iteration_id=block.iteration_id,
+                            block_id=block.block_id,
+                            layer_id=layer_id,
+                            phase=block.phase,
+                            event_type="collective",
+                            operation=phase.operation,
+                            direction=step.direction,
+                            resource_id=(
+                                phase.resource_ids[0]
+                                if phase.resource_ids
+                                else f"noop:{node_id}"
+                            ),
+                            resource_ids=phase.resource_ids,
+                            ready_at=phase_ready,
+                            start_at=start,
+                            end_at=end,
+                            queue_duration=start - phase_ready,
+                            service_duration=end - start,
+                            request_count=block.request_count,
+                            token_count=block.token_count,
+                            source_id=estimate.source_id,
+                            dataset_version=estimate.dataset_version,
+                            match_type=estimate.match_type,
+                            payload_bytes=phase.logical_input_bytes,
+                            details={
+                                **estimate.details,
+                                "routing_provenance": plan.provenance,
+                                "dependency_wait_duration": phase_ready - ready,
+                            },
+                            node_id=node_id,
+                            predecessor_ids=local_children or phase_predecessors,
+                            logical_stage_id=step.logical_stage_id,
+                            source_domain=step.source_domain,
+                            target_domain=step.target_domain,
+                            layer_type=step.layer_type,
+                            original_token_count=step.metadata.get(
+                                "original_token_count", block.token_count
+                            ),
+                        )
+                    )
                 if not single_phase:
                     completed[phase.phase_id].succeed()
             finally:
-                self.active_stages.pop((block.iteration_id, block.block_id, node_id), None)
+                self.active_stages.pop(
+                    (block.iteration_id, block.block_id, node_id), None
+                )
 
         try:
             # One transport phase needs no child Process or ConditionValue.
@@ -1454,35 +1976,81 @@ class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
         phase_ready = min((times[0] for times in intervals.values()), default=ready)
         return phase_ready, start, end
 
-    def _run_communication_reorder(self, block, layer_id, step, phase, node_id, predecessors, worker_id):
+    def _run_communication_reorder(
+        self, block, layer_id, step, phase, node_id, predecessors, worker_id
+    ):
         worker = self.resources.worker(worker_id)
         query = AFComputeQuery(
-            iteration_id=block.iteration_id, block_id=block.block_id, layer_id=layer_id,
-            phase=block.phase, stage="layout", operation="data_reorder",
-            token_count=1, local_token_count=1, context_lengths=block.context_lengths,
-            model_id=self.model_id, dtype=phase.dtype, device_type=worker.hardware,
-            worker_id=worker_id, source_domain=step.source_domain,
+            iteration_id=block.iteration_id,
+            block_id=block.block_id,
+            layer_id=layer_id,
+            phase=block.phase,
+            stage="layout",
+            operation="data_reorder",
+            token_count=1,
+            local_token_count=1,
+            context_lengths=block.context_lengths,
+            model_id=self.model_id,
+            dtype=phase.dtype,
+            device_type=worker.hardware,
+            worker_id=worker_id,
+            source_domain=step.source_domain,
             physical_worker=worker.physical_worker_ref.identity,
-            local_shape={"tokens": 1, "hidden_size": self.hidden_size,
-                         "global_hidden_size": self.hidden_size, "tp_size": 1,
-                         "reorder_bytes": phase.local_work_bytes})
-        estimate = self._estimate(self.compute_provider, query, block, layer_id, node_id)
+            local_shape={
+                "tokens": 1,
+                "hidden_size": self.hidden_size,
+                "global_hidden_size": self.hidden_size,
+                "tp_size": 1,
+                "reorder_bytes": phase.local_work_bytes,
+            },
+        )
+        estimate = self._estimate(
+            self.compute_provider, query, block, layer_id, node_id
+        )
         ready, start, end, _ = yield from self._run_resources_stage(
-            block, layer_id, node_id, (self.resources.compute_slots[worker_id],), lambda: estimate)
+            block,
+            layer_id,
+            node_id,
+            (self.resources.compute_slots[worker_id],),
+            lambda: estimate,
+        )
         if self.trace.enabled:
-            self.trace.record(AFTraceEvent(
-                iteration_id=block.iteration_id, block_id=block.block_id, layer_id=layer_id,
-                phase=block.phase, event_type="compute", operation="data_reorder", direction=None,
-                resource_id=f"worker:{worker_id}", resource_ids=(f"worker:{worker_id}",),
-                ready_at=ready, start_at=start, end_at=end, queue_duration=start-ready,
-                service_duration=end-start, request_count=block.request_count, token_count=block.token_count,
-                source_id=estimate.source_id, dataset_version=estimate.dataset_version,
-                match_type=estimate.match_type, node_id=node_id, predecessor_ids=predecessors,
-                source_domain=step.source_domain, target_domain=step.target_domain,
-                layer_type=step.layer_type, stage="layout", logical_stage_id=step.logical_stage_id,
-                details={**estimate.details, "local_work_bytes": phase.local_work_bytes,
-                         "layout_permutation": phase.layout_permutation, "wire_bytes": 0},
-            ))
+            self.trace.record(
+                AFTraceEvent(
+                    iteration_id=block.iteration_id,
+                    block_id=block.block_id,
+                    layer_id=layer_id,
+                    phase=block.phase,
+                    event_type="compute",
+                    operation="data_reorder",
+                    direction=None,
+                    resource_id=f"worker:{worker_id}",
+                    resource_ids=(f"worker:{worker_id}",),
+                    ready_at=ready,
+                    start_at=start,
+                    end_at=end,
+                    queue_duration=start - ready,
+                    service_duration=end - start,
+                    request_count=block.request_count,
+                    token_count=block.token_count,
+                    source_id=estimate.source_id,
+                    dataset_version=estimate.dataset_version,
+                    match_type=estimate.match_type,
+                    node_id=node_id,
+                    predecessor_ids=predecessors,
+                    source_domain=step.source_domain,
+                    target_domain=step.target_domain,
+                    layer_type=step.layer_type,
+                    stage="layout",
+                    logical_stage_id=step.logical_stage_id,
+                    details={
+                        **estimate.details,
+                        "local_work_bytes": phase.local_work_bytes,
+                        "layout_permutation": phase.layout_permutation,
+                        "wire_bytes": 0,
+                    },
+                )
+            )
         self.active_stages.pop((block.iteration_id, block.block_id, node_id), None)
 
     def _run_communication_host_stage(
@@ -1503,10 +2071,22 @@ class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
             # Each participating host submits independently. Acquiring all hosts
             # before starting service would hold an idle host behind a busy peer.
             child_ids = tuple(f"{node_id}:host:{identity}" for identity in participants)
-            children = [self.env.process(self._run_communication_host_stage(
-                block, layer_id, step, child_id, predecessors, (identity,),
-                duration, event_type, details,
-            )) for identity, child_id in zip(participants, child_ids)]
+            children = [
+                self.env.process(
+                    self._run_communication_host_stage(
+                        block,
+                        layer_id,
+                        step,
+                        child_id,
+                        predecessors,
+                        (identity,),
+                        duration,
+                        event_type,
+                        details,
+                    )
+                )
+                for identity, child_id in zip(participants, child_ids)
+            ]
             try:
                 yield self.env.all_of(children)
             except simpy.Interrupt:
@@ -1520,26 +2100,48 @@ class AFExecutor(NativeOrderMixin, NativeControlMixin, ConfigurationOwner):
             event_type = "synchronize"
         estimate = AFServiceEstimate(
             duration,
-            (f"profile:{self.overhead_profile.fingerprint}:{details['cost_field']}"
-             if self.overhead_profile is not None and details
-             and details.get("cost_field") in self.overhead_profile.document['costs']
-             else "assumption:communication-host-cost"),
+            (
+                f"profile:{self.overhead_profile.fingerprint}:{details['cost_field']}"
+                if self.overhead_profile is not None
+                and details
+                and details.get("cost_field") in self.overhead_profile.document["costs"]
+                else "assumption:communication-host-cost"
+            ),
             dataset_version="communication-timing-config",
-            details={
-                "communication_operation": step.operation,
-                "timing_scope": (self.overhead_profile.document['timing_scope']
-                    if self.overhead_profile is not None else "host_service"),
-                "fixed_cost_us": duration * 1e6,
-                "host_resource_scope": (
-                    self.cluster_config.af.communication_timing.host_resource_scope
-                ),
-                **(details or {}),
-                **({"host_profile": self.overhead_profile.describe()}
-                   if self.overhead_profile is not None else {}),
-                **({"effective_cost": self.host_cost_provenance(details['cost_field'], tokens=block.token_count),
-                    "calibrated": self.host_cost_provenance(details['cost_field'], tokens=block.token_count)['calibrated']}
-                   if details and details.get('cost_field') else {}),
-            } if self.trace.enabled else {},
+            details=(
+                {
+                    "communication_operation": step.operation,
+                    "timing_scope": (
+                        self.overhead_profile.document["timing_scope"]
+                        if self.overhead_profile is not None
+                        else "host_service"
+                    ),
+                    "fixed_cost_us": duration * 1e6,
+                    "host_resource_scope": (
+                        self.cluster_config.af.communication_timing.host_resource_scope
+                    ),
+                    **(details or {}),
+                    **(
+                        {"host_profile": self.overhead_profile.describe()}
+                        if self.overhead_profile is not None
+                        else {}
+                    ),
+                    **(
+                        {
+                            "effective_cost": self.host_cost_provenance(
+                                details["cost_field"], tokens=block.token_count
+                            ),
+                            "calibrated": self.host_cost_provenance(
+                                details["cost_field"], tokens=block.token_count
+                            )["calibrated"],
+                        }
+                        if details and details.get("cost_field")
+                        else {}
+                    ),
+                }
+                if self.trace.enabled
+                else {}
+            ),
         )
         ready, start, end, _ = yield from self._run_resources_stage(
             block,

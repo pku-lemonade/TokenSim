@@ -35,3 +35,9 @@ Unsupported partial passes fail before request ownership or iteration state chan
 GEMM and expert-table queries use the effective weight dtype.
 Normalization, rotary embeddings, residuals, and communication use their activation or transfer dtypes.
 Attention queries use the effective KV-cache dtype, including overrides from AF configuration.
+
+## Continuous decode routing
+
+Requests in one AF block may have different generation positions.
+Routing snapshots retain each request's decode step and absolute token identity.
+External assignments are selected and validated against that request's step.
