@@ -1533,10 +1533,32 @@ def compile_af_runtime_plan(
     watermark: float = 0.01,
     usable_memory_fraction: float = 1.0,
     kv_cache_capacity_tokens_per_dp_rank: int | None = None,
+    kv_cache_capacity_tokens_total: int | None = None,
 ) -> AFRuntimePlan:
     from TokenSim.config.validation import integer, number
 
     number(usable_memory_fraction, "gpu_memory_utilization", positive=True, maximum=1)
+    if (
+        kv_cache_capacity_tokens_per_dp_rank is None
+        and kv_cache_capacity_tokens_total is None
+    ):
+        kv_cache_capacity_tokens_per_dp_rank = (
+            cluster_config.kv_cache_capacity_tokens_per_dp_rank
+        )
+        kv_cache_capacity_tokens_total = cluster_config.kv_cache_capacity_tokens_total
+    if (
+        kv_cache_capacity_tokens_per_dp_rank is not None
+        and kv_cache_capacity_tokens_total is not None
+    ):
+        raise ConfigurationError(
+            "AF KV total and per-replica limits are mutually exclusive"
+        )
+    if kv_cache_capacity_tokens_total is not None:
+        integer(
+            kv_cache_capacity_tokens_total,
+            "KV cache total capacity",
+            minimum=block_size,
+        )
     if kv_cache_capacity_tokens_per_dp_rank is not None:
         integer(
             kv_cache_capacity_tokens_per_dp_rank,
@@ -1977,6 +1999,18 @@ def compile_af_runtime_plan(
 
     replicas: list[AFReplicaRuntime] = []
     for domain in domain_configs:
+        replica_capacity = kv_cache_capacity_tokens_per_dp_rank
+        if (
+            domain.capability == "af_attention"
+            and kv_cache_capacity_tokens_total is not None
+        ):
+            replica_capacity = (
+                kv_cache_capacity_tokens_total // domain.parallel.data_parallel_size
+            )
+            if replica_capacity < block_size:
+                raise ConfigurationError(
+                    "AF total capacity must allow at least one KV block per A replica"
+                )
         for instance in domain.logical_instances:
             instance_bindings = tuple(
                 sorted(
@@ -2002,10 +2036,10 @@ def compile_af_runtime_plan(
                     gpu_blocks = max(
                         0, raw_gpu_blocks - int(watermark * raw_gpu_blocks)
                     )
-                    if kv_cache_capacity_tokens_per_dp_rank is not None:
+                    if replica_capacity is not None:
                         gpu_blocks = min(
                             gpu_blocks,
-                            kv_cache_capacity_tokens_per_dp_rank // block_size,
+                            replica_capacity // block_size,
                         )
                     cpu_blocks = int(
                         min(

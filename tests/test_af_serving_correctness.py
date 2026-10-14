@@ -18,10 +18,11 @@ from tests.test_af_parallel_planning import _cluster
 
 
 class AFServingCorrectnessTest(unittest.TestCase):
-    def make_engine(self, *, utilization=1.0, capacity=None):
+    def make_engine(self, *, utilization=1.0, capacity=None, total=None, replicas=1):
         hardware = af_test_hardware(capacity_gib=0.1)
-        cluster = _cluster(a_tp=1, a_dp=1, f_tp=1, f_dp=1, f_ep=1)
+        cluster = _cluster(a_tp=1, a_dp=replicas, f_tp=1, f_dp=1, f_ep=1)
         cluster.kv_cache_capacity_tokens_per_dp_rank = capacity
+        cluster.kv_cache_capacity_tokens_total = total
         return LLMEngine(
             env=simpy.Environment(),
             kv_transfer_config=KVTransferConfig.default(),
@@ -82,3 +83,13 @@ class AFServingCorrectnessTest(unittest.TestCase):
                         config=SimulationConfig(dp_lockstep=True),
                     )
                 self.assertEqual(len(env._queue), 0)
+
+    def test_total_limit_is_divided_by_attention_domain_replicas(self):
+        engine = self.make_engine(total=64, replicas=2)
+        self.assertEqual(engine.parallel_config.data_parallel_size, 1)
+        self.assertEqual(len(engine.request_workers), 2)
+        self.assertEqual(
+            [w.cache_config.num_gpu_blocks for w in engine.request_workers], [8, 8]
+        )
+        with self.assertRaisesRegex(ConfigurationError, "one KV block per A replica"):
+            self.make_engine(total=7, replicas=2)

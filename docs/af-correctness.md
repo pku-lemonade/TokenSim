@@ -10,6 +10,7 @@ Use `dp_lockstep=false` for AF simulations.
 `gpu_memory_utilization` limits the usable memory of every AF physical worker before model weights, protocol buffers, and KV blocks are allocated.
 An explicit per-replica KV capacity caps every attention tensor-parallel shard at the same logical block count.
 The override cannot increase the capacity calculated from physical memory.
+`kv_cache_capacity_tokens_total` is divided by the attention execution domain's DP replica count, independently of the generic serving parallel configuration.
 
 ## F-side routing metadata
 
