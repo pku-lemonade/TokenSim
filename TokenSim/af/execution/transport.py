@@ -10,6 +10,31 @@ from TokenSim.errors import SimulationStateError
 
 
 class ExecutorTransportMixin:
+    def _run_flat_transport(
+        self, block, layer_id, node_id, keyed_resources, resource_ids, estimate
+    ):
+        endpoint = self.resources.endpoint_resources
+        if endpoint is None:
+            return (
+                yield from self._run_resources_stage(
+                    block,
+                    layer_id,
+                    node_id,
+                    tuple(resource for _, resource in keyed_resources),
+                    lambda: estimate,
+                )
+            )
+        self._set_active_stage(block, layer_id, node_id, self.env.now)
+        try:
+            times = yield from endpoint.scheduler.run(
+                resource_ids,
+                estimate.service_duration,
+                (block.iteration_id, block.block_id, layer_id, node_id),
+            )
+            return (*times, estimate)
+        finally:
+            self.active_stages.pop((block.iteration_id, block.block_id, node_id), None)
+
     def _run_domain_plan(
         self,
         block,

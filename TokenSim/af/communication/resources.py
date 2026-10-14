@@ -149,6 +149,15 @@ class AFResourceRegistry:
             worker_id: simpy.Resource(env, capacity=1)
             for worker_id in self.worker_configs
         }
+        from TokenSim.af.communication.endpoints import EndpointResources
+
+        self.endpoint_resources = (
+            EndpointResources(
+                env, cluster_config.networks, self.worker_ids_by_physical_identity
+            )
+            if cluster_config.af.communication_resource_scope == "endpoint"
+            else None
+        )
         timing = cluster_config.af.communication_timing
         host_keys = (
             {"shared"}
@@ -269,7 +278,12 @@ class AFResourceRegistry:
         resource_group: str | None = None,
         resource_lane: str | None = None,
         physical_endpoints: tuple[str, ...] = (),
+        network: str | None = None,
     ) -> tuple[tuple[tuple[str, str], simpy.Resource], ...]:
+        if self.endpoint_resources is not None:
+            return self.endpoint_resources.for_step(
+                network or link.network, direction, physical_endpoints
+            )
         if self.cluster_config.af.transfer_topology_mode == "physical":
             workers = tuple(
                 self.worker_id_for_physical(identity) for identity in physical_endpoints
@@ -314,6 +328,8 @@ class AFResourceRegistry:
                 for key, resource in self.communication_resources.items()
             }
         )
+        if self.endpoint_resources is not None:
+            capacities.update(self.endpoint_resources.capacities())
         if self.cluster_config.af.transfer_topology_mode == "physical":
             capacities = {
                 key: value

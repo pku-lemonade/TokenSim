@@ -209,6 +209,10 @@ Each subgroup waits for its own producers; consumers wait for all required colle
 All-to-All may use declared locality fractions and load imbalance in physical mode.
 Expected output bytes retain fractional statistical traffic, and total traffic is conserved.
 Flat All-to-All supports the uniform distribution with default imbalance and no destination redistribution.
+Flat-link experiments can select `communication_resource_scope: endpoint` to share a transmit and receive injection budget per physical worker and link class.
+Alias network names referencing the same link class share those budgets.
+Disjoint endpoint sets can transfer concurrently.
+Atomic admission prevents a waiting collective from holding a subset of its endpoints.
 Unsupported statistical settings fail before no-op handling or cache lookup.
 
 ### Service measurements and traces
@@ -223,6 +227,13 @@ Caches retain static traffic plans and service estimates.
 Every invocation creates its own readiness events, resource reservations and queueing delays.
 Trace records keep dependency waiting, resource queueing and service duration separate.
 The node FIFO and coarse phase resource reservations are modeling approximations.
+The cohort-serving API under `TokenSim.af.serving` executes independent streams through `ModelAFExecutor` and exports steady-state token counts, queue delays and resource utilization.
+Its resident KV leases account for each stage's bounded or full-context layer windows and reserve the declared peak context before execution.
+This fixed-cohort mode does not page or preempt requests.
+KV handoffs verify model/cache identity and source coverage before scheduling copies.
+Incremental mode sends only positions absent from the declared warm destination.
+Local layers send their retained window tail, and replicated KV heads receive a cross-pool canonical copy followed by destination-local replication.
+Cancellation releases every endpoint reservation and leaves destination validity unchanged.
 
 ## Code layout
 

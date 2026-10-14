@@ -7,7 +7,7 @@ from TokenSim.config.cluster_config import ClusterConfig
 from tests.af.support.config import _cluster
 
 
-def pipeline_cluster(a_pp=2, f_pp=2, layers=2):
+def pipeline_cluster(a_pp=2, f_pp=2, layers=2, resource_scope="fabric", namespace=""):
     # Keep the existing TP/fabric contract and expand physical stage mappings.
     from dataclasses import asdict
 
@@ -27,6 +27,9 @@ def pipeline_cluster(a_pp=2, f_pp=2, layers=2):
         return value
 
     raw = clean(raw)
+    raw["af"]["communication_resource_scope"] = resource_scope
+    if resource_scope == "endpoint":
+        raw["af"]["transfer_topology_mode"] = "flat_link"
     for domain, stages in zip(raw["af"]["execution_domains"], (a_pp, f_pp)):
         domain["parallel"]["pipeline_parallel_size"] = stages
         original = domain["logical_instances"][0]["rank_mapping"]
@@ -45,6 +48,23 @@ def pipeline_cluster(a_pp=2, f_pp=2, layers=2):
     raw["af"]["communication_domains"]["node_count"] = sum(
         (group["num_workers"] + 7) // 8 for group in raw["worker_groups"]
     )
+    if namespace:
+        names = {
+            group["name"]: f"{namespace}-{group['name']}"
+            for group in raw["worker_groups"]
+        }
+        for group in raw["worker_groups"]:
+            group["name"] = names[group["name"]]
+        for domain in raw["af"]["execution_domains"]:
+            domain["worker_group"] = names[domain["worker_group"]]
+            for instance in domain["logical_instances"]:
+                for mapping in instance["rank_mapping"]:
+                    mapping["physical_worker"]["group_name"] = names[
+                        mapping["physical_worker"]["group_name"]
+                    ]
+        for link in raw["af"]["links"]:
+            link["attention_group"] = names[link["attention_group"]]
+            link["ffn_group"] = names[link["ffn_group"]]
     return ClusterConfig(**raw)
 
 

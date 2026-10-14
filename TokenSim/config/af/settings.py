@@ -61,6 +61,7 @@ class AFConfig:
         default_factory=AFCommunicationTimingConfig
     )
     transfer_topology_mode: str = "physical"
+    communication_resource_scope: str = "fabric"
     communication_domains: CommunicationDomainConfig | None = None
     service_estimate_cache: bool = True
     dag_template_cache: bool = True
@@ -124,6 +125,17 @@ class AFConfig:
         if self.transfer_topology_mode not in {"physical", "flat_link"}:
             raise ConfigurationError(
                 "af.transfer_topology_mode must be physical or flat_link"
+            )
+        if self.communication_resource_scope not in {"fabric", "endpoint"}:
+            raise ConfigurationError(
+                "communication_resource_scope must be fabric or endpoint"
+            )
+        if (
+            self.communication_resource_scope == "endpoint"
+            and self.transfer_topology_mode != "flat_link"
+        ):
+            raise ConfigurationError(
+                "endpoint injection uses flat_link services; physical mode has node-domain budgets"
             )
         self.dtype_presence_input = tuple(sorted(self._explicit_dtype_fields))
         if type(self.enabled) is not bool:

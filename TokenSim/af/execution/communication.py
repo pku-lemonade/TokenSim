@@ -61,8 +61,10 @@ class ExecutorCommunicationMixin:
             (
                 step.physical_workers
                 if self.cluster_config.af.transfer_topology_mode == "physical"
+                or self.resources.endpoint_resources is not None
                 else ()
             ),
+            step.network,
         )
         binding = self._communication_resource_bindings.get(binding_key)
         if binding is None:
@@ -72,6 +74,7 @@ class ExecutorCommunicationMixin:
                 step.resource_group,
                 step.resource_lane,
                 step.physical_workers,
+                network=step.network,
             )
             resource_ids = tuple(
                 self.resources.format_link_resource(key) for key, _ in keyed_resources
@@ -109,7 +112,13 @@ class ExecutorCommunicationMixin:
         )
         if is_control:
             transfer_dtype = step.metadata["wire_dtype"]
-        is_collective = step.direction == "collective"
+        is_collective = step.operation in {
+            "all_reduce",
+            "all_gather",
+            "reduce_scatter",
+            "all_to_all",
+            "tp_collective",
+        }
         query = prepare_query(
             self.transfer_provider,
             AFTransferQuery,
@@ -331,12 +340,8 @@ class ExecutorCommunicationMixin:
                     )
                 )
         else:
-            ready_at, start_at, end_at, estimate = yield from self._run_resources_stage(
-                block,
-                layer_id,
-                wire_node_id,
-                tuple(resource for _, resource in keyed_resources),
-                lambda: estimate,
+            ready_at, start_at, end_at, estimate = yield from self._run_flat_transport(
+                block, layer_id, wire_node_id, keyed_resources, resource_ids, estimate
             )
         if (
             estimate.payload_bytes is not None
