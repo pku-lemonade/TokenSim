@@ -268,10 +268,14 @@ class TopologyPlacement:
             raise ConfigurationError(f"placement has no mapping for worker {worker_id}")
         slot = self.device_index_by_worker[worker_id]
         if type(slot) is not int or slot < 0:
-            raise ConfigurationError(f"placement worker {worker_id} needs a nonnegative integer GPU slot")
+            raise ConfigurationError(
+                f"placement worker {worker_id} needs a nonnegative integer GPU slot"
+            )
         size = self.topology.levels[0].size
         if type(size) is not int or size < 1:
-            raise ConfigurationError("placement node level requires a positive integer size")
+            raise ConfigurationError(
+                "placement node level requires a positive integer size"
+            )
         return self.topology.coordinates(slot)[0]
 
     def layout(self, worker_ids: Sequence[int]) -> GroupLayout:

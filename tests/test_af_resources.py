@@ -46,9 +46,7 @@ class AFResourceRegistryTest(unittest.TestCase):
             plan.resource_lane,
         )
 
-        self.assertEqual(
-            collective[0][0], (plan.resource_group, plan.resource_lane)
-        )
+        self.assertEqual(collective[0][0], (plan.resource_group, plan.resource_lane))
         self.assertIsNot(
             collective[0][1],
             registry.communication_resources_for_step(link, "a_to_f")[0][1],

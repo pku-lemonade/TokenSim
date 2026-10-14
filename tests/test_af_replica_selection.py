@@ -30,9 +30,7 @@ def _domain(
                         tp_rank=0,
                         pp_rank=0,
                         dp_rank=dp_rank,
-                        ep_rank=(
-                            dp_rank if expert_parallel_size > 1 else 0
-                        ),
+                        ep_rank=(dp_rank if expert_parallel_size > 1 else 0),
                         physical_worker=PhysicalWorkerRef(
                             group_name=f"{name}-pool",
                             worker_index=dp_rank,
@@ -63,8 +61,7 @@ class IndependentAFReplicaSelectorTest(unittest.TestCase):
         selector = IndependentRoundRobinAFReplicaSelector()
 
         selections = [
-            selector.select_for_block("decode", a_domain, f_domain)
-            for _ in range(6)
+            selector.select_for_block("decode", a_domain, f_domain) for _ in range(6)
         ]
 
         self.assertEqual(

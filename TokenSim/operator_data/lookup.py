@@ -10,7 +10,12 @@ from TokenSim.config.validation import boolean, number
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.device import normalize_dtype
 from TokenSim.operator_data.package import OperatorDataPackage
-from TokenSim.operator_data.schema import TABLE_SPECS, AxisSpec, TableSpec, normalize_table_key_value
+from TokenSim.operator_data.schema import (
+    TABLE_SPECS,
+    AxisSpec,
+    TableSpec,
+    normalize_table_key_value,
+)
 
 MATCH_TYPES = ("exact", "interpolated", "extrapolated")
 EXTRAPOLATION_MODES = ("none", "hold", "scale", "analytical", "empirical")

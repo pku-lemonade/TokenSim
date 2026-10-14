@@ -30,11 +30,15 @@ class DomainScheduler:
         if not keys or not set(keys) <= self.resource_ids:
             raise ConfigurationError(f"invalid communication domain request: {keys!r}")
         if any(type(part) not in (int, str) for part in identity):
-            raise ConfigurationError("domain request identity must contain stable integer/string components")
+            raise ConfigurationError(
+                "domain request identity must contain stable integer/string components"
+            )
         stable_identity = tuple((type(part).__name__, part) for part in identity)
         request = DomainRequest(keys, (self.env.now, stable_identity), self.env.event())
         if any(item.priority == request.priority for item in self.waiters):
-            raise ConfigurationError("concurrent domain requests need unique stable logical identities")
+            raise ConfigurationError(
+                "concurrent domain requests need unique stable logical identities"
+            )
         self.waiters.append(request)
         self._wake()
         return request
@@ -56,7 +60,9 @@ class DomainScheduler:
         for request in sorted(self.waiters, key=lambda item: item.priority):
             if request.cancelled:
                 continue
-            if blocked.intersection(request.keys) or any(key in self.owners for key in request.keys):
+            if blocked.intersection(request.keys) or any(
+                key in self.owners for key in request.keys
+            ):
                 blocked.update(request.keys)
                 remaining.append(request)
                 continue
@@ -78,7 +84,12 @@ class DomainScheduler:
         self._wake()
 
     def run(self, keys, duration, identity):
-        if isinstance(duration, bool) or not isinstance(duration, (int, float)) or not math.isfinite(duration) or duration < 0:
+        if (
+            isinstance(duration, bool)
+            or not isinstance(duration, (int, float))
+            or not math.isfinite(duration)
+            or duration < 0
+        ):
             raise ConfigurationError("domain service must be finite and nonnegative")
         ready = self.env.now
         if duration == 0:

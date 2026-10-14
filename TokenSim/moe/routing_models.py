@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-import math
 from collections import Counter
 from dataclasses import dataclass, field
+import math
 from typing import Literal
+
 from TokenSim.errors import WorkloadValidationError
+
 
 RoutingPhase = Literal["prefill", "decode"]
 

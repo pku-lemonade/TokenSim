@@ -180,7 +180,9 @@ class TemplateCache:
             if self._configuration_fingerprint is None:
                 self._configuration_fingerprint = identity(planner.cluster_config.af)
             if layer_id not in self._layer_fingerprints:
-                self._layer_fingerprints[layer_id] = identity(replace(layer, layer_id=0))
+                self._layer_fingerprints[layer_id] = identity(
+                    replace(layer, layer_id=0)
+                )
             if link.name not in self._link_fingerprints:
                 self._link_fingerprints[link.name] = identity(link)
             static = (

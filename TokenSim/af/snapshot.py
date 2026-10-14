@@ -12,11 +12,16 @@ def _reject_write(self, *args, **kwargs):
 
 @lru_cache(maxsize=None)
 def _readonly_type(cls):
-    return type(f"ReadOnly{cls.__name__}", (cls,), {
-        "__setattr__": _reject_write, "__delattr__": _reject_write,
-        "__deepcopy__": lambda self, memo: self,
-        "_af_readonly": True,
-    })
+    return type(
+        f"ReadOnly{cls.__name__}",
+        (cls,),
+        {
+            "__setattr__": _reject_write,
+            "__delattr__": _reject_write,
+            "__deepcopy__": lambda self, memo: self,
+            "_af_readonly": True,
+        },
+    )
 
 
 def snapshot(value, _memo=None):
@@ -37,10 +42,14 @@ def snapshot(value, _memo=None):
     elif is_dataclass(value):
         cls = type(value)
         # Frozen records keep their type so equality/hash remain compatible.
-        result = object.__new__(cls if cls.__dataclass_params__.frozen else _readonly_type(cls))
+        result = object.__new__(
+            cls if cls.__dataclass_params__.frozen else _readonly_type(cls)
+        )
         memo[id(value)] = result
-        items = vars(value).items() if hasattr(value, "__dict__") else (
-            (field.name, getattr(value, field.name)) for field in fields(value)
+        items = (
+            vars(value).items()
+            if hasattr(value, "__dict__")
+            else ((field.name, getattr(value, field.name)) for field in fields(value))
         )
         for name, item in items:
             object.__setattr__(result, name, snapshot(item, memo))
@@ -97,5 +106,7 @@ class HardwareSnapshot(ConfigurationOwner):
     def operator_package(self, device_id, backend=None):
         key = (device_id, backend)
         if key not in self._packages:
-            self._packages[key] = snapshot(self._source.operator_package(device_id, backend))
+            self._packages[key] = snapshot(
+                self._source.operator_package(device_id, backend)
+            )
         return self._packages[key]

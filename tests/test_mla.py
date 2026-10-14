@@ -168,8 +168,9 @@ class MLAIntegrationTest(unittest.TestCase):
             "v_head_dim",
         ):
             for value in (0, -1, 100000, True):
-                with self.subTest(field=field, value=value), self.assertRaisesRegex(
-                    ConfigurationError, field
+                with (
+                    self.subTest(field=field, value=value),
+                    self.assertRaisesRegex(ConfigurationError, field),
                 ):
                     replace(shape, **{field: value})
 

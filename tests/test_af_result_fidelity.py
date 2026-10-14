@@ -23,9 +23,7 @@ class AFResultFidelityTest(unittest.TestCase):
             ),
             af_iteration_summaries=[],
             af_runtime_summary=lambda: {},
-            cluster_config=SimpleNamespace(
-                af=SimpleNamespace(phases=tuple(phases))
-            ),
+            cluster_config=SimpleNamespace(af=SimpleNamespace(phases=tuple(phases))),
         )
 
     def test_decode_only_marks_prefill_aggregate_and_decode_rank_local(self):

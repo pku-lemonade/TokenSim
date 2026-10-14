@@ -1,4 +1,5 @@
 """Per-invocation communication readiness; never part of a service estimate."""
+
 from dataclasses import dataclass
 
 import simpy
@@ -25,7 +26,9 @@ class TransferReadiness:
             if event is None:
                 continue
             if not isinstance(event, simpy.Event) or event.env is not env:
-                raise SimulationStateError("transfer readiness must use events from the current simulation")
+                raise SimulationStateError(
+                    "transfer readiness must use events from the current simulation"
+                )
             if event not in result:
                 result.append(event)
         return tuple(result)

@@ -4,10 +4,16 @@ import unittest
 from unittest.mock import patch
 
 from TokenSim.af.estimate_cache import (
-    FingerprintMemo, PreparedQuery, identity, prepare_query,
+    FingerprintMemo,
+    PreparedQuery,
+    identity,
+    prepare_query,
 )
 from TokenSim.af.latency import AFComputeQuery, AFTransferQuery
-from TokenSim.af.operator_provider import OperatorTableAFComputeProvider, TopologyAFTransferProvider
+from TokenSim.af.operator_provider import (
+    OperatorTableAFComputeProvider,
+    TopologyAFTransferProvider,
+)
 from TokenSim.af.planning import ParallelExecutionPlanner
 from TokenSim.af.snapshot import snapshot
 from types import SimpleNamespace
@@ -15,7 +21,11 @@ from TokenSim.config.cluster_config import ClusterConfig
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.placement import build_topology_placement
 from TokenSim.operator_data.lookup import LookupPolicy
-from TokenSim.operator_data.package import OperatorDataPackage, PackageMeta, SourceRecord
+from TokenSim.operator_data.package import (
+    OperatorDataPackage,
+    PackageMeta,
+    SourceRecord,
+)
 from scripts.deepseek_v3_runtime import configuration, simulate
 from tests.af_runtime_oracle import observe_services
 from tests.test_af_executor import _cluster_dict, af_test_hardware
@@ -25,7 +35,9 @@ from tests.test_af_operator_provider import _compute_query, _moe, _transfer_quer
 class CacheFastPathTest(unittest.TestCase):
     def compute(self, **kwargs):
         hardware = af_test_hardware(moe=_moe())
-        return OperatorTableAFComputeProvider(hardware, hardware.model("TestModel"), **kwargs)
+        return OperatorTableAFComputeProvider(
+            hardware, hardware.model("TestModel"), **kwargs
+        )
 
     def transfer(self):
         cluster = ClusterConfig(**_cluster_dict(attention_workers=2, ffn_workers=2))
@@ -38,12 +50,24 @@ class CacheFastPathTest(unittest.TestCase):
         return prepare_query(provider, type(query), **vars(query))
 
     def test_hits_skip_materialization_for_compute_and_transfer(self):
-        for provider, query in ((self.compute(), _compute_query()), (self.transfer(), _transfer_query())):
+        for provider, query in (
+            (self.compute(), _compute_query()),
+            (self.transfer(), _transfer_query()),
+        ):
             with self.subTest(provider=type(provider).__name__):
                 first = provider.estimate(self.prepared(provider, query))
                 self.assertEqual(provider.query_constructions, 1)
-                with patch.object(PreparedQuery, "materialize", side_effect=AssertionError("unexpected construction")):
-                    self.assertIs(first, provider.estimate(self.prepared(provider, replace(query, iteration_id=9))))
+                with patch.object(
+                    PreparedQuery,
+                    "materialize",
+                    side_effect=AssertionError("unexpected construction"),
+                ):
+                    self.assertIs(
+                        first,
+                        provider.estimate(
+                            self.prepared(provider, replace(query, iteration_id=9))
+                        ),
+                    )
                     self.assertIs(first, provider.estimate(query))
                 self.assertEqual(provider.estimate_cache_hits, 2)
                 self.assertEqual(provider.query_constructions, 1)
@@ -64,7 +88,9 @@ class CacheFastPathTest(unittest.TestCase):
         transfer.estimate(self.prepared(transfer, _transfer_query(payload_bytes=1)))
         for invalid in (True, 1.0):
             with self.assertRaisesRegex(ValueError, "non-negative integer"):
-                transfer.estimate(self.prepared(transfer, _transfer_query(payload_bytes=invalid)))
+                transfer.estimate(
+                    self.prepared(transfer, _transfer_query(payload_bytes=invalid))
+                )
         self.assertEqual(compute.estimate_cache_hits, 0)
         self.assertEqual(transfer.estimate_cache_hits, 0)
 
@@ -80,9 +106,15 @@ class CacheFastPathTest(unittest.TestCase):
     def test_compact_and_full_keys_agree_across_dynamic_fields(self):
         compute = self.compute(fallback="analytical_only")
         base = _compute_query()
-        queries = [base, replace(base, context_lengths=(16,)), replace(base, dtype="bf16"),
-                   replace(base, physical_worker="a-pool:1"), replace(base, phase="prefill"),
-                   _compute_query(tokens=4), _compute_query("expert", expert_workload=((1, 2),))]
+        queries = [
+            base,
+            replace(base, context_lengths=(16,)),
+            replace(base, dtype="bf16"),
+            replace(base, physical_worker="a-pool:1"),
+            replace(base, phase="prefill"),
+            _compute_query(tokens=4),
+            _compute_query("expert", expert_workload=((1, 2),)),
+        ]
         for query in queries:
             before = compute.estimate_cache_hits
             full = compute.estimate(query)
@@ -90,10 +122,13 @@ class CacheFastPathTest(unittest.TestCase):
             self.assertIs(full, compute.estimate(self.prepared(compute, query)))
         transfer = self.transfer()
         base = _transfer_query()
-        for query in (base, replace(base, payload_bytes=8192),
-                      replace(base, participant_ranks=(1, 0)),
-                      replace(base, physical_endpoints=("a-pool:1", "f-pool:1")),
-                      replace(base, source_layout="replicated")):
+        for query in (
+            base,
+            replace(base, payload_bytes=8192),
+            replace(base, participant_ranks=(1, 0)),
+            replace(base, physical_endpoints=("a-pool:1", "f-pool:1")),
+            replace(base, source_layout="replicated"),
+        ):
             before = transfer.estimate_cache_hits
             full = transfer.estimate(query)
             self.assertEqual(transfer.estimate_cache_hits, before)
@@ -123,7 +158,11 @@ class CacheFastPathTest(unittest.TestCase):
 
     def test_configuration_snapshot_rejects_updates_and_detaches_source(self):
         config = configuration()
-        planner = ParallelExecutionPlanner(config.cluster, hidden_size=config.model.hidden_size, runtime_plan=config.plan)
+        planner = ParallelExecutionPlanner(
+            config.cluster,
+            hidden_size=config.model.hidden_size,
+            runtime_plan=config.plan,
+        )
         original = planner.cluster_config.af.router_location
         config.cluster.af.router_location = "f" if original == "a" else "a"
         self.assertEqual(planner.cluster_config.af.router_location, original)
@@ -134,7 +173,11 @@ class CacheFastPathTest(unittest.TestCase):
         with self.assertRaises(TypeError):
             planner.cluster_config.networks["new"] = "changed"
         provider = self.compute(lookup_policy=LookupPolicy(extrapolate="none"))
-        for name, value in (("lookup_policy", LookupPolicy()), ("fallback", "table_only"), ("hardware", object())):
+        for name, value in (
+            ("lookup_policy", LookupPolicy()),
+            ("fallback", "table_only"),
+            ("hardware", object()),
+        ):
             with self.assertRaisesRegex(TypeError, "new runtime"):
                 setattr(provider, name, value)
 
@@ -144,8 +187,21 @@ class CacheFastPathTest(unittest.TestCase):
 
         def package(version, latency):
             return OperatorDataPackage.from_rows(
-                PackageMeta(version, "a-device", "measured", sources={source.source_id: source}),
-                {"gemm": [dict(dtype="fp16", m=2, n=48, k=16, latency_us=latency, source_id=source.source_id)]},
+                PackageMeta(
+                    version, "a-device", "measured", sources={source.source_id: source}
+                ),
+                {
+                    "gemm": [
+                        dict(
+                            dtype="fp16",
+                            m=2,
+                            n=48,
+                            k=16,
+                            latency_us=latency,
+                            source_id=source.source_id,
+                        )
+                    ]
+                },
             )
 
         first = package("v1", 123.0)
@@ -178,14 +234,29 @@ class CacheFastPathTest(unittest.TestCase):
         config = configuration(af_batch_size=1)
         executor, _, _, _ = simulate(config, 1, 8, fallback="analytical_only")
         planner = executor.plan_builder
-        iteration = executor.submit(0, [SimpleNamespace(
-            id=0, is_prefill=False, prefill_len=8, context_len=9, generation_idx=1,
-        )], "decode")
+        iteration = executor.submit(
+            0,
+            [
+                SimpleNamespace(
+                    id=0,
+                    is_prefill=False,
+                    prefill_len=8,
+                    context_len=9,
+                    generation_idx=1,
+                )
+            ],
+            "decode",
+        )
         block = iteration.blocks[0]
         link = planner.cluster_config.af.links[0]
-        with patch("TokenSim.af.templates.identity", side_effect=AssertionError("static fingerprint rescanned")):
+        with patch(
+            "TokenSim.af.templates.identity",
+            side_effect=AssertionError("static fingerprint rescanned"),
+        ):
             bound = planner.build_layer(block, 0, link)
-        self.assertEqual(bound.nodes, planner._build_runtime_layer(block, 0, link).nodes)
+        self.assertEqual(
+            bound.nodes, planner._build_runtime_layer(block, 0, link).nodes
+        )
         changed = replace(config.cluster.af.links[0], network="another-network")
         with self.assertRaisesRegex(ConfigurationError, "new runtime"):
             planner.build_layer(block, 0, changed)
@@ -202,6 +273,7 @@ class CacheFastPathTest(unittest.TestCase):
         for trace in (False, True):
             results = []
             for mode in ("fast", "full", "uncached"):
+
                 def initialize(provider, *args, **kwargs):
                     original(provider, *args, **kwargs)
                     provider.query_fast_path = mode == "fast"
@@ -212,11 +284,25 @@ class CacheFastPathTest(unittest.TestCase):
 
                 config = configuration(a_tp=2, f_tp=2, af_batch_size=1)
                 config.cluster.af.service_estimate_cache = mode != "uncached"
-                with patch.object(OperatorTableAFComputeProvider, "__init__", initialize), patch.object(TopologyAFTransferProvider, "__init__", initialize_transfer), observe_services() as services:
-                    executor, rows, compute, transfer = simulate(config, 2, 8, steps=2, trace=trace, fallback="analytical_only")
+                with (
+                    patch.object(
+                        OperatorTableAFComputeProvider, "__init__", initialize
+                    ),
+                    patch.object(
+                        TopologyAFTransferProvider, "__init__", initialize_transfer
+                    ),
+                    observe_services() as services,
+                ):
+                    executor, rows, compute, transfer = simulate(
+                        config, 2, 8, steps=2, trace=trace, fallback="analytical_only"
+                    )
                 results.append((rows, services, executor.trace.events))
                 for provider in (compute, transfer):
-                    expected = provider.estimate_requests - provider.estimate_cache_hits if mode == "fast" else provider.estimate_requests
+                    expected = (
+                        provider.estimate_requests - provider.estimate_cache_hits
+                        if mode == "fast"
+                        else provider.estimate_requests
+                    )
                     self.assertEqual(provider.query_constructions, expected)
             self.assertEqual(results[0], results[1])
             self.assertEqual(results[0], results[2])

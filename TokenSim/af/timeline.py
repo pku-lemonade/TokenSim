@@ -1,4 +1,5 @@
 """Per-iteration time accounting; never sum overlapping work as wall time."""
+
 from bisect import bisect_right
 from collections import defaultdict
 import math
@@ -12,18 +13,28 @@ def communication_window(start, end, *, fixed_intervals=(), transport_intervals=
     """
     groups = [tuple(fixed_intervals), tuple(transport_intervals)]
     if not all(math.isfinite(t) for t in (start, end)) or end < start:
-        raise ValueError('invalid communication observation window')
+        raise ValueError("invalid communication observation window")
     for group in groups:
         for left, right in group:
-            if not all(math.isfinite(t) for t in (left, right)) or left < start or right > end or right < left:
-                raise ValueError('service interval outside communication observation')
+            if (
+                not all(math.isfinite(t) for t in (left, right))
+                or left < start
+                or right > end
+                or right < left
+            ):
+                raise ValueError("service interval outside communication observation")
     fixed, transport = (_union(g) for g in groups)
     combined = _union(groups[0] + groups[1])
     if fixed + transport - combined > 1e-12:
-        raise ValueError('fixed and transport service overlap in one observation')
-    return dict(start_at=start, end_at=end, total_duration=end-start,
-                waiting_duration=max(0., end-start-combined),
-                fixed_service_duration=fixed, transport_service_duration=transport)
+        raise ValueError("fixed and transport service overlap in one observation")
+    return dict(
+        start_at=start,
+        end_at=end,
+        total_duration=end - start,
+        waiting_duration=max(0.0, end - start - combined),
+        fixed_service_duration=fixed,
+        transport_service_duration=transport,
+    )
 
 
 def summarize_message_waits(events):
@@ -36,28 +47,45 @@ def summarize_message_waits(events):
     by_id = {e.node_id: e for e in events}
     rows = []
     for wire in events:
-        if wire.event_type not in {'transfer', 'control_transfer'} or not wire.node_id.endswith(':transport'):
+        if wire.event_type not in {
+            "transfer",
+            "control_transfer",
+        } or not wire.node_id.endswith(":transport"):
             continue
-        message_id = wire.node_id.removesuffix(':transport')
+        message_id = wire.node_id.removesuffix(":transport")
         completion = by_id.get(message_id)
         finish = completion.end_at if completion is not None else wire.end_at
-        for side, suffix in (('sender', ':host_submit'), ('receiver', ':receive_submit')):
+        for side, suffix in (
+            ("sender", ":host_submit"),
+            ("receiver", ":receive_submit"),
+        ):
             submit = by_id.get(message_id + suffix)
             if submit is None:
                 continue  # Missing receiver invocation is unknown, not zero wait.
             begin = submit.ready_at
             fixed = [(submit.start_at, submit.end_at)]
-            if completion is not None and set(completion.physical_endpoints) & set(submit.physical_endpoints):
+            if completion is not None and set(completion.physical_endpoints) & set(
+                submit.physical_endpoints
+            ):
                 fixed.append((completion.start_at, completion.end_at))
-            row = communication_window(begin, finish, fixed_intervals=fixed,
-                transport_intervals=[(wire.start_at, wire.end_at)])
-            rows.append(dict(message_id=message_id, observation_side=side,
-                observation_endpoints=list(submit.physical_endpoints),
-                observation_scope='modeled local submit ready to modeled data completion',
-                message_class=wire.details.get('message_class', 'data'),
-                transport_scope='provider service including inseparable device startup',
-                full_fixed_transfer_split_available=False,
-                **row))
+            row = communication_window(
+                begin,
+                finish,
+                fixed_intervals=fixed,
+                transport_intervals=[(wire.start_at, wire.end_at)],
+            )
+            rows.append(
+                dict(
+                    message_id=message_id,
+                    observation_side=side,
+                    observation_endpoints=list(submit.physical_endpoints),
+                    observation_scope="modeled local submit ready to modeled data completion",
+                    message_class=wire.details.get("message_class", "data"),
+                    transport_scope="provider service including inseparable device startup",
+                    full_fixed_transfer_split_available=False,
+                    **row,
+                )
+            )
     return rows
 
 
@@ -74,17 +102,17 @@ def _union(intervals):
 
 
 def _category(event):
-    if event.event_type == 'operation_service':
-        return 'operation_service'
-    if event.event_type == 'control_transfer':
-        return 'control_transport'
-    if event.event_type in {'transfer', 'collective'}:
-        return 'data_transport'
-    if event.event_type == 'control_device':
-        return 'control_device'
-    if event.event_type == 'compute':
-        return 'compute'
-    return 'host_service'
+    if event.event_type == "operation_service":
+        return "operation_service"
+    if event.event_type == "control_transfer":
+        return "control_transport"
+    if event.event_type in {"transfer", "collective"}:
+        return "data_transport"
+    if event.event_type == "control_device":
+        return "control_device"
+    if event.event_type == "compute":
+        return "compute"
+    return "host_service"
 
 
 def summarize_timeline(events, start, end, capacities=None):
@@ -112,49 +140,96 @@ def summarize_timeline(events, start, end, capacities=None):
     for values in resources.values():
         values.sort()
     segments = []
+
     def segment(left, right, category, node_id):
         left, right = max(start, left), min(end, right)
         if right > left:
-            segments.append(dict(start_at=left, end_at=right, duration=right-left,
-                                 category=category, node_id=node_id))
+            segments.append(
+                dict(
+                    start_at=left,
+                    end_at=right,
+                    duration=right - left,
+                    category=category,
+                    node_id=node_id,
+                )
+            )
 
     if not events:
-        segment(start, end, 'unexplained', None)
+        segment(start, end, "unexplained", None)
     else:
         current = max(events, key=lambda e: (e.end_at, indices[e.node_id]))
-        segment(current.end_at, end, 'unexplained', None)
+        segment(current.end_at, end, "unexplained", None)
         seen = set()
         while current is not None:
             if current.node_id in seen:
-                raise ValueError('cycle in trace critical chain')
+                raise ValueError("cycle in trace critical chain")
             seen.add(current.node_id)
-            segment(current.start_at, current.end_at, _category(current), current.node_id)
+            segment(
+                current.start_at, current.end_at, _category(current), current.node_id
+            )
             blockers = [by_id[p] for p in current.predecessor_ids if p in by_id]
             for resource in current.resource_ids or (current.resource_id,):
                 values = resources.get(resource, ())
-                position = bisect_right(values, (current.start_at, indices[current.node_id]-1, chr(0x10ffff))) - 1
+                position = (
+                    bisect_right(
+                        values,
+                        (current.start_at, indices[current.node_id] - 1, chr(0x10FFFF)),
+                    )
+                    - 1
+                )
                 if position >= 0:
                     blockers.append(by_id[values[position][2]])
-            blockers = [e for e in blockers if e.node_id not in seen and e.end_at <= current.start_at + 1e-12]
-            previous = max(blockers, key=lambda e: (e.end_at, indices[e.node_id]), default=None)
-            previous_end = max(start, previous.end_at) if previous is not None else start
+            blockers = [
+                e
+                for e in blockers
+                if e.node_id not in seen and e.end_at <= current.start_at + 1e-12
+            ]
+            previous = max(
+                blockers, key=lambda e: (e.end_at, indices[e.node_id]), default=None
+            )
+            previous_end = (
+                max(start, previous.end_at) if previous is not None else start
+            )
             dependency_end = min(current.ready_at, current.start_at)
             if dependency_end > previous_end:
-                wait_start = current.details.get('readiness_wait_started_at', dependency_end)
-                segment(previous_end, min(wait_start, dependency_end), 'unexplained', current.node_id)
-                segment(max(previous_end, wait_start), dependency_end, 'peer_wait', current.node_id)
-            segment(max(previous_end, current.ready_at), current.start_at, 'resource_queue', current.node_id)
+                wait_start = current.details.get(
+                    "readiness_wait_started_at", dependency_end
+                )
+                segment(
+                    previous_end,
+                    min(wait_start, dependency_end),
+                    "unexplained",
+                    current.node_id,
+                )
+                segment(
+                    max(previous_end, wait_start),
+                    dependency_end,
+                    "peer_wait",
+                    current.node_id,
+                )
+            segment(
+                max(previous_end, current.ready_at),
+                current.start_at,
+                "resource_queue",
+                current.node_id,
+            )
             current = previous
-    segments.sort(key=lambda s: (s['start_at'], s['end_at']))
+    segments.sort(key=lambda s: (s["start_at"], s["end_at"]))
     totals = defaultdict(float)
     for part in segments:
-        totals[part['category']] += part['duration']
-    reconstructed = sum(part['duration'] for part in segments)
-    if abs(reconstructed - (end-start)) > 1e-10:
-        raise ValueError('critical chain does not reconstruct iteration makespan')
-    return dict(makespan=end-start, reconstructed_makespan=reconstructed,
-                service_sum_by_category=dict(sums),
-                busy_union_by_category={name: _union(values) for name, values in intervals.items()},
-                critical_chain=segments, critical_duration_by_category=dict(totals),
-                unexplained_duration=totals.get('unexplained', 0.0),
-                interpretation='one timestamp-supported chain; busy unions across categories may overlap; external blockers remain queue/gaps')
+        totals[part["category"]] += part["duration"]
+    reconstructed = sum(part["duration"] for part in segments)
+    if abs(reconstructed - (end - start)) > 1e-10:
+        raise ValueError("critical chain does not reconstruct iteration makespan")
+    return dict(
+        makespan=end - start,
+        reconstructed_makespan=reconstructed,
+        service_sum_by_category=dict(sums),
+        busy_union_by_category={
+            name: _union(values) for name, values in intervals.items()
+        },
+        critical_chain=segments,
+        critical_duration_by_category=dict(totals),
+        unexplained_duration=totals.get("unexplained", 0.0),
+        interpretation="one timestamp-supported chain; busy unions across categories may overlap; external blockers remain queue/gaps",
+    )

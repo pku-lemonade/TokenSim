@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from typing import Any
+from typing import Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from TokenSim.config.model_config import ModelSpec
 from TokenSim.errors import ConfigurationError
 from TokenSim.mla import MLADimensions
 from TokenSim.moe.config import MoEModelConfig

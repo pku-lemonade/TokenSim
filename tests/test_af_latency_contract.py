@@ -2,9 +2,6 @@ from __future__ import annotations
 
 import unittest
 
-import TokenSim.af.executor as executor_module
-import TokenSim.af.runtime as runtime_module
-import TokenSim.operator_data.analytical as analytical_module
 from TokenSim.af.latency import (
     AFComputeQuery,
     AFEndpoint,

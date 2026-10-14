@@ -72,8 +72,11 @@ def _cluster(
         ],
         af={
             "enabled": True,
-            "communication_domains": {"node_size": 8, "node_count": (a_workers + f_workers + 7) // 8,
-                "placement_strategy": "manual"},
+            "communication_domains": {
+                "node_size": 8,
+                "node_count": (a_workers + f_workers + 7) // 8,
+                "placement_strategy": "manual",
+            },
             "phases": ["prefill", "decode"],
             "af_block_size": 1,
             "links": [
@@ -363,7 +366,9 @@ class DAGValidationTest(unittest.TestCase):
             rebuild(combine, replace(combine, local_work=bad_combine_work))
 
         transfer = next(node for node in dag.nodes if node.operation == "af_a_to_f")
-        with self.assertRaisesRegex(ConfigurationError, "duplicate physical tensor copy"):
+        with self.assertRaisesRegex(
+            ConfigurationError, "duplicate physical tensor copy"
+        ):
             rebuild(
                 transfer,
                 replace(
@@ -390,12 +395,14 @@ class ParallelExecutionPlannerTest(unittest.TestCase):
                 )
                 a_domain = cluster.execution_domains["a-domain"]
                 a_domain.communication_plan = [
-                    replace(
-                        plan,
-                        participants=(0, 2),
+                    (
+                        replace(
+                            plan,
+                            participants=(0, 2),
+                        )
+                        if plan.after_stage == after_stage
+                        else plan
                     )
-                    if plan.after_stage == after_stage
-                    else plan
                     for plan in a_domain.communication_plan
                 ]
                 with self.assertRaisesRegex(
@@ -509,9 +516,7 @@ class ParallelExecutionPlannerTest(unittest.TestCase):
         self.assertEqual(
             dense_collectives, ["all_reduce", "reduce_scatter", "all_gather"]
         )
-        dense_a_to_f = [
-            node for node in dense.nodes if node.operation == "af_a_to_f"
-        ]
+        dense_a_to_f = [node for node in dense.nodes if node.operation == "af_a_to_f"]
         self.assertEqual(len(dense_a_to_f), 8)
         self.assertEqual(
             {node.source_endpoint.domain_rank for node in dense_a_to_f}, {0}
@@ -521,9 +526,7 @@ class ParallelExecutionPlannerTest(unittest.TestCase):
             {0, 1, 2, 3},
         )
         self.assertTrue(all(node.payload_bytes == 16 for node in dense_a_to_f))
-        dense_f_to_a = [
-            node for node in dense.nodes if node.operation == "af_f_to_a"
-        ]
+        dense_f_to_a = [node for node in dense.nodes if node.operation == "af_f_to_a"]
         self.assertEqual(len(dense_f_to_a), 8)
         self.assertEqual(
             {
@@ -546,9 +549,7 @@ class ParallelExecutionPlannerTest(unittest.TestCase):
         self.assertEqual(moe_stages["encode"], 18)
         self.assertEqual(moe_stages["decode"], 24)
         routed = [node for node in moe.nodes if node.stage == "routed_expert"]
-        self.assertEqual(
-            sum(node.local_work.assignment_count for node in routed), 4
-        )
+        self.assertEqual(sum(node.local_work.assignment_count for node in routed), 4)
         self.assertEqual(
             {node.local_work.expert_workload for node in routed},
             {((0, 2),), ((1, 2),)},
@@ -607,9 +608,7 @@ class ParallelExecutionPlannerTest(unittest.TestCase):
                 {edge.routing_weight for edge in node.local_work.routing_edges},
                 {0.75, 0.25},
             )
-        self.assertEqual(
-            moe.terminal_node_ids, ("i5:b0:l1:residual:layout",)
-        )
+        self.assertEqual(moe.terminal_node_ids, ("i5:b0:l1:residual:layout",))
 
     def test_topology_matrix_covers_single_tp_dp_ep_and_combined_modes(self):
         cases = (
@@ -654,9 +653,7 @@ class ParallelExecutionPlannerTest(unittest.TestCase):
                     sum(node.operation == "expert_rank_compute" for node in dag.nodes),
                     active_ep if f_ep > 1 else f_tp,
                 )
-                expected_collectives = int(a_tp > 1) + int(
-                    f_ep == 1 and f_tp > 1
-                )
+                expected_collectives = int(a_tp > 1) + int(f_ep == 1 and f_tp > 1)
                 self.assertEqual(
                     sum(node.operation == "tp_collective" for node in dag.nodes),
                     expected_collectives,

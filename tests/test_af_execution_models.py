@@ -221,9 +221,7 @@ class AFExecutionDAGModelTest(unittest.TestCase):
 
         root, left, right = self._sinks()
         with self.assertRaisesRegex(ConfigurationError, "do not exist"):
-            AFExecutionDAG(
-                (root, left, right), terminal_node_ids=("left", "absent")
-            )
+            AFExecutionDAG((root, left, right), terminal_node_ids=("left", "absent"))
         with self.assertRaisesRegex(ConfigurationError, "equal all sink"):
             AFExecutionDAG((root, left, right), terminal_node_ids=("left",))
 

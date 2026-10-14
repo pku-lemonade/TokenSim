@@ -34,13 +34,16 @@ class TraceConstructionTest(unittest.TestCase):
                             env.process(executor.run_iteration(iteration))
                             env.run()
                         else:
-                            with patch(
-                                "TokenSim.af.executor.AFTraceEvent",
-                                side_effect=AssertionError("trace constructed"),
-                            ), patch.object(
-                                RankLocalWork,
-                                "as_dict",
-                                side_effect=AssertionError("trace serialized"),
+                            with (
+                                patch(
+                                    "TokenSim.af.executor_compute.AFTraceEvent",
+                                    side_effect=AssertionError("trace constructed"),
+                                ),
+                                patch.object(
+                                    RankLocalWork,
+                                    "as_dict",
+                                    side_effect=AssertionError("trace serialized"),
+                                ),
                             ):
                                 env.process(executor.run_iteration(iteration))
                                 env.run()

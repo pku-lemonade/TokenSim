@@ -42,13 +42,16 @@ class ModelExecutorTest(unittest.TestCase):
                         config, 2, 8, steps=2, trace=trace, fallback="analytical_only"
                     )
                 else:
-                    with patch(
-                        "TokenSim.af.executor.AFTraceEvent",
-                        side_effect=AssertionError("trace constructed"),
-                    ), patch.object(
-                        RankLocalWork,
-                        "as_dict",
-                        side_effect=AssertionError("local work serialized"),
+                    with (
+                        patch(
+                            "TokenSim.af.executor_compute.AFTraceEvent",
+                            side_effect=AssertionError("trace constructed"),
+                        ),
+                        patch.object(
+                            RankLocalWork,
+                            "as_dict",
+                            side_effect=AssertionError("local work serialized"),
+                        ),
                     ):
                         executor, rows, _, _ = simulate(
                             config,
@@ -231,7 +234,11 @@ class ModelExecutorTest(unittest.TestCase):
         reset_g_time()
         hardware = HardwareContext.load("data")
         doc = json.loads(Path("data/clusters/deepseek_v3/1a32f.json").read_text())
-        doc["af"]["communication_domains"] = {"node_size": 8, "node_count": 5, "placement_strategy": "dedicated"}
+        doc["af"]["communication_domains"] = {
+            "node_size": 8,
+            "node_count": 5,
+            "placement_strategy": "dedicated",
+        }
         config = build_model_runtime(
             doc, hardware=hardware, model=hardware.model("deepseek-v3-671b-mla")
         )

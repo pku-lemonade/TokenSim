@@ -5,19 +5,39 @@ from TokenSim.config.model_config import ModelSpec
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware import HardwareContext
 from TokenSim.hardware.device import DeviceSpec
-from TokenSim.operator_data.lookup import LookupPolicy, MissingOperatorDataError, OperatorLookup
-from TokenSim.operator_data.package import OperatorDataPackage, PackageMeta, SourceRecord
+from TokenSim.operator_data.lookup import (
+    LookupPolicy,
+    MissingOperatorDataError,
+    OperatorLookup,
+)
+from TokenSim.operator_data.package import (
+    OperatorDataPackage,
+    PackageMeta,
+    SourceRecord,
+)
 from TokenSim.operator_data.workload import work_for_table
 from scripts.deepseek_v3_runtime import configuration, simulate
 
 
-SOURCE = SourceRecord("measured:mla-fixture", "A", "measured", device="Fixture", backend="test")
+SOURCE = SourceRecord(
+    "measured:mla-fixture", "A", "measured", device="Fixture", backend="test"
+)
 
 
 def _mla_rows():
-    base = dict(attn_dtype="bf16", kv_cache_dtype="bf16", phase="decode",
-                execution_mode="absorbed", query_len=1, context_lengths="[[8,1]]",
-                num_heads=8, kv_lora_rank=4, rope_head_dim=2, nope_head_dim=2, v_head_dim=2)
+    base = dict(
+        attn_dtype="bf16",
+        kv_cache_dtype="bf16",
+        phase="decode",
+        execution_mode="absorbed",
+        query_len=1,
+        context_lengths="[[8,1]]",
+        num_heads=8,
+        kv_lora_rank=4,
+        rope_head_dim=2,
+        nope_head_dim=2,
+        v_head_dim=2,
+    )
     return [
         {**base, "batch_size": 1, "latency_us": 10.0, "source_id": SOURCE.source_id},
         {**base, "batch_size": 2, "latency_us": 18.0, "source_id": SOURCE.source_id},
@@ -27,11 +47,15 @@ def _mla_rows():
 class OperatorTableAdapterTest(unittest.TestCase):
     def test_mla_key_normalization_and_provenance(self):
         package = OperatorDataPackage.from_rows(
-            PackageMeta("fixture-v1", "Fixture", "test", sources={SOURCE.source_id: SOURCE}),
+            PackageMeta(
+                "fixture-v1", "Fixture", "test", sources={SOURCE.source_id: SOURCE}
+            ),
             {"mla_attention": _mla_rows()},
         )
         lookup = OperatorLookup(package, LookupPolicy(extrapolate="none"))
-        exact = lookup.lookup("mla_attention", {**_mla_rows()[0], "context_lengths": "[[8, 1.0]]"})
+        exact = lookup.lookup(
+            "mla_attention", {**_mla_rows()[0], "context_lengths": "[[8, 1.0]]"}
+        )
         self.assertEqual(exact.match_type, "exact")
         self.assertEqual(exact.source_id, SOURCE.source_id)
         mid = lookup.lookup("mla_attention", {**_mla_rows()[0], "batch_size": 1.5})
@@ -44,7 +68,10 @@ class OperatorTableAdapterTest(unittest.TestCase):
         work = work_for_table("mla_attention", key)
         self.assertGreater(work.details["cache_read_bytes"], 0)
         self.assertGreater(work.details["cache_write_bytes"], 0)
-        self.assertEqual(work.kv_bytes, work.details["cache_read_bytes"] + work.details["cache_write_bytes"])
+        self.assertEqual(
+            work.kv_bytes,
+            work.details["cache_read_bytes"] + work.details["cache_write_bytes"],
+        )
 
 
 class DeepSeekV3ModelSpecTest(unittest.TestCase):
@@ -77,8 +104,15 @@ class DeepSeekV3RuntimeTest(unittest.TestCase):
         executor, rows, compute, _ = simulate(config, 1, 8)
         self.assertEqual(len(rows), 1)
         self.assertGreater(rows[0]["makespan_us"], 0)
-        self.assertTrue(any(event.stage == "attention" for event in executor.trace.events))
-        self.assertTrue(any(event.operation == "post_attention_norm" for event in executor.trace.events))
+        self.assertTrue(
+            any(event.stage == "attention" for event in executor.trace.events)
+        )
+        self.assertTrue(
+            any(
+                event.operation == "post_attention_norm"
+                for event in executor.trace.events
+            )
+        )
         self.assertTrue(compute.stats_dict()["operator_query_count"] > 0)
 
     def test_tp_and_multistep_trace_has_no_orphan_frontier(self):
@@ -87,7 +121,9 @@ class DeepSeekV3RuntimeTest(unittest.TestCase):
         self.assertEqual(len(rows), 2)
         for iteration in range(2):
             executor.trace.validate_invariants(iteration)
-        self.assertTrue(any(event.operation == "all_reduce" for event in executor.trace.events))
+        self.assertTrue(
+            any(event.operation == "all_reduce" for event in executor.trace.events)
+        )
 
 
 if __name__ == "__main__":

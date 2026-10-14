@@ -55,8 +55,8 @@ def traffic_feature_fingerprint(values):
     """
     digest = hashlib.sha256()
     for value in values:
-        encoded = repr(identity(value)).encode('utf-8')
-        digest.update(len(encoded).to_bytes(8,'big'))
+        encoded = repr(identity(value)).encode("utf-8")
+        digest.update(len(encoded).to_bytes(8, "big"))
         digest.update(encoded)
     return digest.hexdigest()
 
@@ -77,18 +77,30 @@ class FingerprintMemo:
 
     def _visit(self, value):
         if type(value) in (str, int, float, bool, type(None)):
-            return ((type(value), value) if type(value) in (bool, float) else value), True
+            return (
+                (type(value), value) if type(value) in (bool, float) else value
+            ), True
         previous = self.values.get(id(value))
         if previous is not None and previous[0] is value:
             return previous[1], True
         if is_dataclass(value):
-            children = tuple((field.name, self._visit(getattr(value, field.name))) for field in fields(value))
+            children = tuple(
+                (field.name, self._visit(getattr(value, field.name)))
+                for field in fields(value)
+            )
             key = tuple((name, item[0]) for name, item in children)
-            safe = (value.__dataclass_params__.frozen or getattr(type(value), "_af_readonly", False)) and all(item[1] for _, item in children)
+            safe = (
+                value.__dataclass_params__.frozen
+                or getattr(type(value), "_af_readonly", False)
+            ) and all(item[1] for _, item in children)
         elif isinstance(value, Mapping):
-            children = tuple(sorted((name, self._visit(item)) for name, item in value.items()))
+            children = tuple(
+                sorted((name, self._visit(item)) for name, item in value.items())
+            )
             key = tuple((name, item[0]) for name, item in children)
-            safe = isinstance(value, FrozenDict) and all(item[1] for _, item in children)
+            safe = isinstance(value, FrozenDict) and all(
+                item[1] for _, item in children
+            )
         elif isinstance(value, (tuple, list)):
             children = tuple(self._visit(item) for item in value)
             key = tuple(item[0] for item in children)
@@ -107,9 +119,17 @@ class QuerySkeleton:
 
     def __init__(self, query_type):
         self.query_type = query_type
-        self.names = tuple(field.name for field in fields(query_type) if field.name not in _EXECUTION_FIELDS)
+        self.names = tuple(
+            field.name
+            for field in fields(query_type)
+            if field.name not in _EXECUTION_FIELDS
+        )
         self.defaults = {
-            field.name: (field.default if field.default is not MISSING else freeze(field.default_factory()))
+            field.name: (
+                field.default
+                if field.default is not MISSING
+                else freeze(field.default_factory())
+            )
             for field in fields(query_type)
             if field.default is not MISSING or field.default_factory is not MISSING
         }
@@ -180,13 +200,20 @@ def cached_estimate(method):
         if not self.cache_enabled:
             result = method(self, query)
             return replace(result, details=freeze(result.details))
-        skeleton = query.skeleton if isinstance(query, PreparedQuery) else query_skeleton(type(query))
+        skeleton = (
+            query.skeleton
+            if isinstance(query, PreparedQuery)
+            else query_skeleton(type(query))
+        )
         values = query.values if isinstance(query, PreparedQuery) else vars(query)
         normalize = self._fingerprints
         key = (
             self._estimate_namespace,
             skeleton.query_type,
-            tuple(normalize(values.get(name, skeleton.defaults.get(name))) for name in skeleton.names),
+            tuple(
+                normalize(values.get(name, skeleton.defaults.get(name)))
+                for name in skeleton.names
+            ),
         )
         result = self._estimate_cache.get(key)
         if result is not None:
@@ -220,12 +247,25 @@ def initialize_cache(provider, enabled=True, capacity=4096):
     provider._fingerprints = FingerprintMemo()
     cluster = getattr(provider, "cluster_config", None)
     provider._estimate_namespace = (
-        provider.fallback, identity(getattr(provider, "lookup_policy", None)),
-        (cluster.af.transfer_topology_mode, cluster.af.communication_timing.enabled) if cluster else None,
-        cluster.af.execution_protocol if cluster else getattr(provider, 'execution_protocol', None),
-        getattr(provider, 'require_device_scope', False),
+        provider.fallback,
+        identity(getattr(provider, "lookup_policy", None)),
+        (
+            (cluster.af.transfer_topology_mode, cluster.af.communication_timing.enabled)
+            if cluster
+            else None
+        ),
+        (
+            cluster.af.execution_protocol
+            if cluster
+            else getattr(provider, "execution_protocol", None)
+        ),
+        getattr(provider, "require_device_scope", False),
         identity(cluster.af.operation_service_profile) if cluster else None,
-        identity(getattr(cluster.af, "communication_domains", None)) if cluster else None,
+        (
+            identity(getattr(cluster.af, "communication_domains", None))
+            if cluster
+            else None
+        ),
     )
 
 
@@ -248,6 +288,7 @@ def cached_plan(provider, key, factory):
 
 def cached_phase_estimate(method):
     """Share the service LRU without counting phases as external query builds."""
+
     @wraps(method)
     def estimate(self, phase):
         if not self.cache_enabled:
@@ -264,4 +305,5 @@ def cached_phase_estimate(method):
         else:
             self._estimate_cache.move_to_end(key)
         return result
+
     return estimate

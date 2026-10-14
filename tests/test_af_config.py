@@ -185,9 +185,7 @@ def _explicit_decode_cluster_raw(
                         "pipeline_parallel_size": 1,
                         "data_parallel_size": a_dp,
                     },
-                    "logical_instances": _domain_instances(
-                        "attention", a_tp, a_dp
-                    ),
+                    "logical_instances": _domain_instances("attention", a_tp, a_dp),
                 },
                 {
                     "name": "f-domain",
@@ -312,9 +310,7 @@ class AFConfigModelTest(unittest.TestCase):
         )
         self.assertTrue(effective.legacy_mapped)
         self.assertEqual(effective.deprecated_fields, ("af_dtype",))
-        self.assertEqual(
-            set(effective.source_by_role.values()), {"legacy:af_dtype"}
-        )
+        self.assertEqual(set(effective.source_by_role.values()), {"legacy:af_dtype"})
 
     def test_legacy_and_new_dtype_fields_cannot_mix(self):
         with self.assertRaisesRegex(ConfigurationError, "af_dtype.*weight_dtype"):
@@ -345,9 +341,7 @@ class AFConfigModelTest(unittest.TestCase):
         typed_link = replace(default_link, a_to_f_dtype="fp8")
 
         self.assertEqual(copied_link.explicit_dtype_fields, frozenset())
-        self.assertEqual(
-            typed_link.explicit_dtype_fields, frozenset({"a_to_f_dtype"})
-        )
+        self.assertEqual(typed_link.explicit_dtype_fields, frozenset({"a_to_f_dtype"}))
         with self.assertRaisesRegex(ConfigurationError, "f_to_a_dtype"):
             AFLinkConfig(
                 **{
@@ -605,14 +599,24 @@ class AFCommunicationResourceTest(unittest.TestCase):
     def test_shared_fabric_rejects_network_and_duplex_conflicts(self):
         for overrides in (
             dict(network="net2"),
-            dict(duplex="half", a_to_f_capacity=None, f_to_a_capacity=None,
-                 half_duplex_capacity=1),
+            dict(
+                duplex="half",
+                a_to_f_capacity=None,
+                f_to_a_capacity=None,
+                half_duplex_capacity=1,
+            ),
         ):
-            with self.subTest(overrides=overrides), self.assertRaisesRegex(ConfigurationError, "conflicts"):
-                _cluster(networks={"net1": "test-network", "net2": "test-network"}, links=[
-                    _full_link(name="prefill-link", phases=("prefill",)),
-                    _full_link(name="decode-link", phases=("decode",), **overrides),
-                ])
+            with (
+                self.subTest(overrides=overrides),
+                self.assertRaisesRegex(ConfigurationError, "conflicts"),
+            ):
+                _cluster(
+                    networks={"net1": "test-network", "net2": "test-network"},
+                    links=[
+                        _full_link(name="prefill-link", phases=("prefill",)),
+                        _full_link(name="decode-link", phases=("decode",), **overrides),
+                    ],
+                )
 
     def test_explicit_fabric_registry_supports_independent_collective_lane(self):
         fabric = AFCommunicationFabricConfig(
@@ -698,9 +702,7 @@ class AFDomainParallelConfigTest(unittest.TestCase):
             (4, "rank_reuse", 1, [0, 1, 2, 3]),
         ):
             with self.subTest(ep_size=ep_size):
-                cluster = ClusterConfig(
-                    **_explicit_decode_cluster_raw(f_ep=ep_size)
-                )
+                cluster = ClusterConfig(**_explicit_decode_cluster_raw(f_ep=ep_size))
                 domain = cluster.execution_domains["f-domain"]
                 mappings = [
                     mapping
@@ -765,20 +767,14 @@ class AFCollectiveConfigTest(unittest.TestCase):
         raw = self._with_collective_fabric(
             _explicit_decode_cluster_raw(a_tp=4, a_dp=2, f_tp=1, f_dp=1)
         )
-        raw["af"]["execution_domains"][0]["communication_plan"] = [
-            self._collective()
-        ]
+        raw["af"]["execution_domains"][0]["communication_plan"] = [self._collective()]
 
         cluster = ClusterConfig(**raw)
         domain = cluster.execution_domains["a-domain"]
         collective = domain.communication_plan[0]
 
-        self.assertEqual(
-            domain.resolve_collective_participants(collective, 0), (0, 2)
-        )
-        self.assertEqual(
-            domain.resolve_collective_participants(collective, 1), (4, 6)
-        )
+        self.assertEqual(domain.resolve_collective_participants(collective, 0), (0, 2))
+        self.assertEqual(domain.resolve_collective_participants(collective, 1), (4, 6))
         self.assertEqual(collective.operation, "all_gather")
         self.assertEqual(
             cluster.af_communication_resources[
@@ -788,7 +784,9 @@ class AFCollectiveConfigTest(unittest.TestCase):
         )
 
     def test_collective_participants_and_stage_are_strict(self):
-        with self.assertRaisesRegex(ConfigurationError, "participants contains duplicates"):
+        with self.assertRaisesRegex(
+            ConfigurationError, "participants contains duplicates"
+        ):
             DomainCollectiveConfig(
                 operation="all_reduce",
                 after_stage="a_compute",
@@ -821,12 +819,8 @@ class AFCollectiveConfigTest(unittest.TestCase):
             ClusterConfig(**duplicate_stage)
 
     def test_collective_requires_resolvable_fabric_and_lane(self):
-        base = _explicit_decode_cluster_raw(
-            a_tp=4, a_dp=2, f_tp=1, f_dp=1
-        )
-        base["af"]["execution_domains"][0]["communication_plan"] = [
-            self._collective()
-        ]
+        base = _explicit_decode_cluster_raw(a_tp=4, a_dp=2, f_tp=1, f_dp=1)
+        base["af"]["execution_domains"][0]["communication_plan"] = [self._collective()]
         with self.assertRaisesRegex(ConfigurationError, "missing communication fabric"):
             ClusterConfig(**base)
 
@@ -834,7 +828,9 @@ class AFCollectiveConfigTest(unittest.TestCase):
         del missing_lane["af"]["execution_domains"][0]["communication_plan"][0][
             "resource_lane"
         ]
-        with self.assertRaisesRegex(ConfigurationError, "requires explicit resource_lane"):
+        with self.assertRaisesRegex(
+            ConfigurationError, "requires explicit resource_lane"
+        ):
             ClusterConfig(**missing_lane)
 
         unknown_lane = self._with_collective_fabric(deepcopy(base))
@@ -923,9 +919,7 @@ class AFLoadingAndEntryPointTest(unittest.TestCase):
             self.assertEqual(
                 {
                     (plan.after_stage, plan.operation)
-                    for plan in cluster.execution_domains[
-                        "decode-a"
-                    ].communication_plan
+                    for plan in cluster.execution_domains["decode-a"].communication_plan
                 },
                 {
                     ("a_compute", "all_reduce"),
@@ -1086,9 +1080,7 @@ class AFLoadingAndEntryPointTest(unittest.TestCase):
             ClusterConfig(**cross_group)
 
     def test_domain_topology_matrix_keeps_a_f_world_sizes_independent(self):
-        def replica(
-            group, name, dp_rank, tp, *, rank_reuse=False, worker_offset=0
-        ):
+        def replica(group, name, dp_rank, tp, *, rank_reuse=False, worker_offset=0):
             return {
                 "name": name,
                 "rank_mapping": [
@@ -1097,9 +1089,7 @@ class AFLoadingAndEntryPointTest(unittest.TestCase):
                         "tp_rank": local_rank,
                         "pp_rank": 0,
                         "dp_rank": dp_rank,
-                        "ep_rank": (
-                            dp_rank * tp + local_rank if rank_reuse else 0
-                        ),
+                        "ep_rank": (dp_rank * tp + local_rank if rank_reuse else 0),
                         "physical_worker": {
                             "group_name": group,
                             "worker_index": worker_offset + local_rank,

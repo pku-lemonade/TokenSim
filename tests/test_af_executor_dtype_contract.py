@@ -184,20 +184,14 @@ class AFExecutorDTypeContractTest(unittest.TestCase):
 
         directional = {
             direction: [
-                query
-                for query in transfer.queries
-                if query.direction == direction
+                query for query in transfer.queries if query.direction == direction
             ]
             for direction in ("a_to_f", "f_to_a")
         }
         self.assertTrue(directional["a_to_f"])
         self.assertTrue(directional["f_to_a"])
-        self.assertTrue(
-            all(query.dtype == "fp8" for query in directional["a_to_f"])
-        )
-        self.assertTrue(
-            all(query.dtype == "fp32" for query in directional["f_to_a"])
-        )
+        self.assertTrue(all(query.dtype == "fp8" for query in directional["a_to_f"]))
+        self.assertTrue(all(query.dtype == "fp32" for query in directional["f_to_a"]))
         for query in transfer.queries:
             self.assertEqual(query.activation_dtype, "bf16")
             self.assertEqual(query.a_to_f_dtype, "fp8")
