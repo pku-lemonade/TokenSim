@@ -4,6 +4,8 @@ The target is Figure 11 of [NVIDIA's long-context LPX blog](https://developer.nv
 Its workload has 400,000 cached input tokens, 4,000 new input tokens and 400 output tokens.
 The chart compares Rubin, external drafting, attention–feed-forward network (AF) separation and prefill–decode (PD) separation.
 The published curves are projections for a scaled GPT-OSS model.
+The current curve export describes one serialized batch and has no steady-state factory-throughput validation.
+The [diagnosis and repair plan](lpx-diagnosis.md) identifies the execution and placement defects that prevent reproduction.
 NVIDIA has not supplied the curve samples, exact model architecture, placement, power budget or draft acceptance settings.
 
 ## Hardware inputs
