@@ -1,0 +1,40 @@
+schema_version: 1
+device_id: rubin
+family: nvidia_gpu
+display_name: NVIDIA Rubin GPU
+aliases: [Rubin, Vera-Rubin-GPU]
+sources:
+  nvidia-rubin-product-oct2026:
+    grade: A
+    reference: https://www.nvidia.com/en-us/data-center/vera-rubin-nvl72/
+    notes: Dense FP8 17.5 PFLOPS; dense BF16 4 PFLOPS; FP32 130 TFLOPS; 288 GB HBM4 at 19.2 TB/s; NVLink 3 TB/s bidirectional. Product-page snapshot retrieved 2026-10-14; the July architecture blog quotes higher bandwidth maxima.
+  assumption-rubin-analytical:
+    grade: D
+    reference: docs/lpx-reproduction.md
+    notes: Efficiencies, kernel overhead, runtime reserve and 1800 W chip TDP are unmeasured assumptions.
+peak_compute:
+  fp8: {value: 17.5e15, source_id: nvidia-rubin-product-oct2026}
+  fp16: {value: 4.0e15, source_id: nvidia-rubin-product-oct2026}
+  bf16: {value: 4.0e15, source_id: nvidia-rubin-product-oct2026}
+  fp32: {value: 130.0e12, source_id: nvidia-rubin-product-oct2026}
+memory:
+  kind: hbm4
+  capacity_bytes: {value: 288000000000, source_id: nvidia-rubin-product-oct2026}
+  bandwidth_bytes_per_s: {value: 19.2e12, source_id: nvidia-rubin-product-oct2026}
+  reserved_bytes: {value: 4000000000, source_id: assumption-rubin-analytical}
+interconnect:
+  scale_up_link: nvlink6
+  scale_up_ports: 1
+  host_link: pcie6_x16
+analytical:
+  source_id: assumption-rubin-analytical
+  grade: D
+  gemm_mfu: 0.7
+  attention_mfu: 0.45
+  moe_mfu: 0.5
+  memory_efficiency: 0.85
+  kernel_launch_us: 3.0
+  collective_launch_us: 1.0
+step_overhead_us: {value: 0.0, source_id: assumption-rubin-analytical}
+power: {tdp_w: 1800}
+power_source: assumption-rubin-analytical

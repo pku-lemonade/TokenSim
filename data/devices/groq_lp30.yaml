@@ -1,0 +1,46 @@
+schema_version: 1
+device_id: groq_lp30
+family: groq_tsp
+display_name: NVIDIA Groq 3 LP30 LPU
+aliases: [LP30, Groq-3, Groq-3-LPU]
+sources:
+  nvidia-lpx-architecture:
+    grade: A
+    reference: https://developer.nvidia.com/blog/inside-nvidia-groq-3-lpx-the-low-latency-inference-accelerator-for-the-nvidia-vera-rubin-platform/
+    notes: 256 LP30 chips per rack; 315 PFLOPS FP8; 500 MB SRAM and 150 TB/s SRAM bandwidth per chip; 96 links at 112 Gbps; 2.5 TB/s aggregate bidirectional C2C bandwidth.
+  derived-lp30-rack-compute:
+    grade: C
+    reference: https://developer.nvidia.com/blog/inside-nvidia-groq-3-lpx-the-low-latency-inference-accelerator-for-the-nvidia-vera-rubin-platform/
+    notes: FP8 peak equals the published rack peak divided by 256; tray and rack totals are rounded differently.
+  assumption-lp30-analytical:
+    grade: D
+    reference: docs/lpx-reproduction.md
+    notes: FP16/BF16 peak is assumed to be half the FP8 peak; FP32 is one quarter of FP16; efficiency, launch cost and 450 W chip TDP are unmeasured assumptions.
+peak_compute:
+  fp8: {value: 1.23046875e15, source_id: derived-lp30-rack-compute}
+  fp16: {value: 6.15234375e14, source_id: assumption-lp30-analytical}
+  bf16: {value: 6.15234375e14, source_id: assumption-lp30-analytical}
+  fp32: {value: 1.5380859375e14, source_id: assumption-lp30-analytical}
+memory:
+  kind: sram
+  capacity_bytes: {value: 500000000, source_id: nvidia-lpx-architecture}
+  bandwidth_bytes_per_s: {value: 150.0e12, source_id: nvidia-lpx-architecture}
+on_chip_memory:
+  capacity_bytes: {value: 500000000, source_id: nvidia-lpx-architecture}
+  bandwidth_bytes_per_s: {value: 150.0e12, source_id: nvidia-lpx-architecture}
+interconnect:
+  scale_up_link: groq_lp30_injection
+  scale_up_ports: 96
+  host_link: pcie6_x16
+analytical:
+  source_id: assumption-lp30-analytical
+  grade: D
+  gemm_mfu: 0.8
+  attention_mfu: 0.6
+  moe_mfu: 0.7
+  memory_efficiency: 0.9
+  kernel_launch_us: 0.2
+step_overhead_us: {value: 0.0, source_id: assumption-lp30-analytical}
+power: {tdp_w: 450}
+power_source: assumption-lp30-analytical
+external_dram_modeled: false
