@@ -35,3 +35,93 @@ Its extended context limit, uniform full attention and FP8 weight precision are 
 The public checkpoint uses alternating local and full attention and MXFP4 expert weights.
 The proxy supplies a conservative full-context attention workload for the experiment.
 Simulator results must retain the proxy name and assumptions when compared with the published chart.
+
+## Run the experiments
+
+Run the production AF audit and the four deployment sweeps from a repository checkout:
+
+```bash
+python scripts/reproduce_lpx.py \
+  --trace \
+  --output outputs/lpx-reproduction
+```
+
+`experiments/lpx/sweep.json` declares the workload, batch sizes and rank inventories.
+The default sweep evaluates 84 configurations.
+`summary.json` retains every feasible point, capacity rejection, Pareto frontier, hardware specification and assumption.
+`points.csv` provides the metrics as a table.
+`af-audit.json` contains production AF runtime plans and simulated event traces for batches 1, 4 and 16.
+The audit executes one resident layer of the proxy on 8 Rubin GPUs and 256 LP30 chips.
+Its negative control checks that the same LP30 placement rejects the entire model.
+The audit does not extrapolate that layer's throughput to the full model.
+
+Use a short sweep when checking script changes:
+
+```bash
+python scripts/reproduce_lpx.py \
+  --skip-audit \
+  --batches 1 \
+  --output-tokens 4 \
+  --context-samples 1 \
+  --output outputs/lpx-smoke
+```
+
+`--audit-only` runs only the production AF checks.
+`--config` selects another experiment JSON.
+`--batches`, `--output-tokens`, `--context-samples` and `--acceptance` override their corresponding workload inputs.
+`--rubin-watts` and `--lp30-watts` override processor power.
+`--facility-watts` adds a fixed host, network and cooling power allowance for each deployment.
+
+## Execution and metrics
+
+The sweep uses TokenSim's AF operator provider, exact routed-expert work, collective service model and SimPy resources.
+The full-model experiment composes layer partitions and context partitions explicitly.
+These partitions extend the experiment's analytical scope beyond the production AF runtime's PP=1 and EP=1 or TP*DP contract.
+Every rank must fit its resident weights, KV shards and activation workspace.
+The default AF FFN layout has four layer partitions, 320 expert partitions and four tensor shards per expert, totaling 5,120 LP30 chips.
+All allocated processors contribute to the power denominator.
+Context parallelism replicates projections and divides cached KV reads across context shards.
+An explicit collective combines the attention results.
+Layer boundaries and A/F dispatch/return have transport costs.
+
+Each pool handles one synchronous batch with serialized model passes.
+The model does not overlap different requests or 320-byte compiler transfers.
+Decode uses a weighted average of representative context positions and deterministic routed histograms.
+Prefill routing uses balanced counts while conserving the exact number of assignments.
+The 400K warm prefix is resident before timing begins.
+Only the 4K suffix is computed during prefill.
+PD copies the retained prefix and suffix KV once before decode.
+AF retains decode KV on the GPU and copies it from the separately allocated prefill GPU pool.
+
+External drafting uses a four-layer, 128-expert proxy with an independent KV cache.
+Its warm prefix is also resident, and its new-suffix prefill is charged.
+For `gamma` draft tokens and independent acceptance probability `p`, expected committed tokens per cycle equal `sum(p**i for i in range(gamma + 1))`.
+Every cycle charges all `gamma + 1` verification positions, draft generation and token-control transport.
+A fractional terminal cycle expresses the expected-value approximation.
+Model quality and acceptance calibration require measurements outside TokenSim.
+
+Per-user interactivity is the number of tokens produced after the prefill token divided by decode time.
+Output throughput is the batch's 400 output tokens divided by the complete timed turn, including suffix prefill and handoff.
+TPS/MW divides that throughput by allocated processor TDP plus the supplied facility allowance.
+All simulated curves share the peak Rubin TPS/MW normalization.
+Each curve keeps only nondominated feasible configurations.
+Original 3x and 5x annotations must not be applied to simulated results without supporting output metrics.
+
+## Default sweep observations
+
+The 84-configuration sweep produces 61 feasible points and 23 capacity rejections under the checked-in assumptions.
+The production AF layer audit completes at 144.2, 356.4 and 1,205.3 simulated microseconds for batches 1, 4 and 16.
+The full-model negative control requires 8.06 GB of expert weights on an LP30 rank with 500 MB SRAM and fails before execution.
+
+| Deployment | Maximum simulated TPS/user | Maximum TPS/MW relative to Rubin |
+| --- | ---: | ---: |
+| Rubin | 464 | 1.0000 |
+| Rubin verifier + LP30 draft | 963 | 0.0963 |
+| Rubin attention + LP30 FFN | 506 | 0.0115 |
+| Rubin prefill + LP30 decode | 1,522 | 0.0057 |
+
+The speed and efficiency maxima may come from different configurations.
+The model's uniform full attention and FP8 expert storage are expensive at 400K context and approximately 2T parameters.
+The capacity checks force large LP30 inventories, and the assumed processor power charges those inventories.
+The simulation does not establish NVIDIA's 3x or 5x gains.
+Measured architecture, routing, compiler overlap, precision and power inputs are required to test those projections.
