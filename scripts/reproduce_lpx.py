@@ -19,10 +19,31 @@ from scripts.lpx.config import load_cases
 from scripts.lpx.simulator import pareto
 from scripts.lpx.runner import evaluate_jobs
 from scripts.lpx.architecture import describe_model
+from scripts.lpx.validation import power_snapshot, validate_summary
 
 
 def write_json(path, value):
     path.write_text(json.dumps(value, indent=2, allow_nan=False), encoding="utf-8")
+
+
+def repository_state():
+    revision = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
+    dirty = bool(
+        subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+    )
+    return revision, dirty
 
 
 def parser():
@@ -98,6 +119,9 @@ def main(argv=None):
 
         for batch in args.batches or raw["batches"]:
             integer(batch, "batch", minimum=1)
+        batches = args.batches or raw["batches"]
+        if len(set(batches)) != len(batches):
+            raise ConfigurationError("batch/client counts must be unique")
         for value, name in (
             (args.micro_batch, "micro-batch"),
             (args.a_replicas, "A replicas"),
@@ -154,6 +178,7 @@ def main(argv=None):
             write_json(args.output / "af-audit.json", run_audit(hardware, target))
         if args.audit_only:
             return 0
+        revision, dirty = repository_state()
         jobs = []
         for case in cases:
             for batch in args.batches or raw["batches"]:
@@ -229,28 +254,15 @@ def main(argv=None):
             ]
             for mode in modes
         }
-        revision = subprocess.run(
-            ["git", "rev-parse", "HEAD"],
-            cwd=ROOT,
-            capture_output=True,
-            text=True,
-            check=True,
-        ).stdout.strip()
-        dirty = bool(
-            subprocess.run(
-                ["git", "status", "--porcelain"],
-                cwd=ROOT,
-                capture_output=True,
-                text=True,
-                check=True,
-            ).stdout.strip()
-        )
+        end_revision, end_dirty = repository_state()
         payload = {
             "schema": "tokensim.lpx_projection",
             "version": 2,
             "executor": "production_ModelAFExecutor",
             "git_revision": revision,
             "git_worktree_dirty": dirty,
+            "end_git_revision": end_revision,
+            "end_git_worktree_dirty": end_dirty,
             "workload": asdict(workload),
             "model": target.to_dict(),
             "draft_model": draft.to_dict(),
@@ -272,9 +284,16 @@ def main(argv=None):
             "cases": [asdict(case) for case in cases],
             "hardware": {
                 device: hardware.device(device).to_dict()
-                for device in ("rubin", "groq_lp30")
+                for device in sorted(
+                    {name for case in cases for name in case.inventory()}
+                )
             },
             "power_overrides": power,
+            "power_model": power_snapshot(
+                hardware,
+                power,
+                sorted({name for case in cases for name in case.inventory()}),
+            ),
             "facility_watts": args.facility_watts,
             "normalization_tokens_per_s_per_mw": baseline,
             "frontiers": frontiers,
@@ -292,6 +311,7 @@ def main(argv=None):
                 "Graph host/device costs are explicit analytical assumptions; no measured graph or compiler-vector-overlap calibration is supplied.",
             ],
         }
+        payload["validation"] = validate_summary(payload)
         write_json(args.output / "summary.json", payload)
         fields = [
             "case",

@@ -155,8 +155,10 @@ python scripts/reproduce_lpx.py \
 `--context-samples` is retained for historical configuration compatibility and has no sampling effect in the native executor.
 Invalid CLI settings fail before output creation.
 
-`summary.json` records revision, dirty state, model/draft inputs, architecture arithmetic, hardware, run settings, physical inventories, capacity failures and frontiers.
+`summary.json` records revision and dirty-state snapshots at the start and end of evaluation, model/draft inputs, architecture arithmetic, hardware, run settings, physical inventories, capacity failures and frontiers.
 `partial-results.json` checkpoints finished points while a sweep is running.
+`power_model` preserves effective processor watts, source identifiers and evidence grades independently of the hardware performance snapshot.
+Each newly exported summary runs arithmetic, physical-inventory, complete-turn, memory-reservation, transfer-byte and Pareto-frontier validation.
 `points.csv` contains interactivity, power and normalized efficiency.
 Successful points export bounded/resident KV bytes, service counts, complete/partial turns, TTFT, utilization, queue delays and transfer events.
 Interactivity divides committed decode tokens by per-user decode-pass elapsed time, including queueing.
@@ -193,4 +195,15 @@ Resident cohorts have no paged admission, preemption or cache eviction.
 The original serialized sweep is preserved as `experiments/lpx/legacy-serialized-sweep.json` with historical outputs under `outputs/lpx-reproduction`.
 The [diagnosis](lpx-diagnosis.md) describes that historical executor and its probes.
 The native output directory is separate to preserve the original evidence.
+Audit a saved native summary without rerunning its requests:
+
+```bash
+python scripts/check_lpx_results.py \
+  --summary outputs/lpx-native-reproduction/summary.json \
+  --original-workload \
+  --output outputs/lpx-native-reproduction/validation.json
+```
+
+For version-2 summaries produced without a power snapshot, this command verifies the saved hardware snapshot and reconstructs processor power from the explicitly loaded local catalog.
+The audit checks every saved power total against that catalog before accepting the result.
 Passing software tests and repairing the known execution defects do not establish NVIDIA's projected speed or efficiency gains.
