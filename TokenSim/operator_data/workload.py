@@ -87,6 +87,7 @@ def context_attention_work(
     kv_cache_dtype: str,
     window_size: int = 0,
     causal: bool = True,
+    context_len: int | None = None,
 ) -> OperatorWork:
     """Prefill attention core: QK^T, softmax, and PV for one padded batch.
 
@@ -106,10 +107,19 @@ def context_attention_work(
         causal_factor = 0.5 if causal else 1.0
     flops = 4.0 * batch_size * input_seq_len * keys_per_query * h_q * causal_factor
     tokens = float(batch_size) * input_seq_len
+    prefix = 0 if context_len is None else context_len - input_seq_len
+    if prefix < 0:
+        raise ValueError("attention context must cover every query token")
+    if prefix:
+        keys_per_query = prefix + (input_seq_len * 0.5 if causal else input_seq_len)
+        if window_size:
+            keys_per_query = min(keys_per_query, window_size)
+        flops = 4.0 * batch_size * input_seq_len * keys_per_query * h_q
+    cached_keys = prefix if not window_size else min(prefix, window_size)
     return OperatorWork(
         flops=flops,
         activation_bytes=tokens * 2 * h_q * b_a,  # read Q, write O
-        kv_bytes=tokens * 4 * h_kv * b_kv,  # read K,V and write them to the cache
+        kv_bytes=(tokens * 4 + batch_size * cached_keys * 2) * h_kv * b_kv,
         details={
             "batch_size": batch_size,
             "input_seq_len": input_seq_len,
@@ -363,6 +373,7 @@ def work_for_table(
             str(key["attn_dtype"]),
             str(key["kv_cache_dtype"]),
             int(key.get("window_size", 0)),
+            context_len=int(key["context_len"]) if "context_len" in key else None,
         )
     if table == "generation_attention":
         return generation_attention_work(

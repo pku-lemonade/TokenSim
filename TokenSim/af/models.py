@@ -45,6 +45,10 @@ class AFBlock:
     placement: AFBlockPlacement | None = None
     expert_histogram: tuple[tuple[int, int], ...] = ()
     routing_snapshots: tuple["LayerRoutingSnapshot", ...] = ()
+    query_lengths: tuple[int, ...] = ()
+    query_offsets: tuple[int, ...] = ()
+    logits_rows: int | None = None
+    forward_phase: AFPhase | None = None
 
     def __post_init__(self) -> None:
         from TokenSim.moe.routing import LayerRoutingSnapshot

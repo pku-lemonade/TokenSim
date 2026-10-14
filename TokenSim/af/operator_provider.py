@@ -20,6 +20,7 @@ links is produced by the executor's SimPy resources.
 """
 
 from __future__ import annotations
+from TokenSim.af.prefill import prefill_components
 
 import math
 import json
@@ -748,23 +749,7 @@ class OperatorTableAFComputeProvider(ConfigurationOwner):
         lengths = [max(1, int(length)) for length in query.context_lengths]
         components: list[OperatorComponent] = []
         if query.phase == "prefill":
-            if lengths and sum(lengths) == tokens:
-                groups: Counter = Counter(lengths)
-            else:
-                batch = max(1, len(lengths))
-                groups = Counter({max(1, math.ceil(tokens / batch)): batch})
-            for seq_len, count in sorted(groups.items()):
-                key = {
-                    **common,
-                    "batch_size": int(count),
-                    "input_seq_len": int(seq_len),
-                }
-                components.append(
-                    self._component(
-                        resolver, "attention_core", "context_attention", key
-                    )
-                )
-            return components
+            return prefill_components(self, resolver, query, tokens, common)
         groups = Counter(lengths) if lengths else Counter({1: max(1, tokens)})
         for context_len, count in sorted(groups.items()):
             key = {**common, "batch_size": int(count), "context_len": int(context_len)}

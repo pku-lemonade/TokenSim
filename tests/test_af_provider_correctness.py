@@ -82,3 +82,37 @@ class AFProviderCorrectnessTest(unittest.TestCase):
             weights = [c for c in components if c["table"] in {"gemm", "moe"}]
             self.assertTrue(weights)
             self.assertTrue(all(c["key"]["dtype"] == "fp8" for c in weights))
+
+    def test_prefill_reads_cached_keys_in_addition_to_new_queries(self):
+        query = replace(
+            _compute_query("a", phase="prefill", tokens=8, context=(8,)),
+            query_lengths=(8,),
+        )
+        plain = self.provider.estimate(query)
+        cached = self.provider.estimate(replace(query, context_lengths=(8192,)))
+        self.assertGreater(cached.service_duration, plain.service_duration)
+        attention = next(
+            c for c in cached.details["components"] if c["name"] == "attention_core"
+        )
+        self.assertEqual(attention["key"]["input_seq_len"], 8)
+        self.assertEqual(attention["key"]["context_len"], 8192)
+
+    def test_uneven_prefill_queries_are_not_replaced_by_their_mean(self):
+        query = replace(
+            _compute_query("a", phase="prefill", tokens=7, context=(12, 32)),
+            query_lengths=(2, 5),
+        )
+        components = self.provider.estimate(query).details["components"]
+        attention = [c for c in components if c["name"] == "attention_core"]
+        self.assertEqual(
+            [(c["key"]["input_seq_len"], c["key"]["context_len"]) for c in attention],
+            [(2, 12), (5, 32)],
+        )
+
+    def test_prefill_rejects_queries_past_available_keys(self):
+        query = replace(
+            _compute_query("a", phase="prefill", tokens=8, context=(4,)),
+            query_lengths=(8,),
+        )
+        with self.assertRaisesRegex(ValueError, "KV contexts"):
+            self.provider.estimate(query)

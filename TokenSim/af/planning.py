@@ -2845,6 +2845,14 @@ class ParallelExecutionPlanner(ConfigurationOwner):
 
     @staticmethod
     def _block_tokens(block: AFBlock) -> tuple[tuple[int, int], ...]:
+        if block.query_lengths:
+            return tuple(
+                (request_id, token)
+                for request_id, offset, queries in zip(
+                    block.request_ids, block.query_offsets, block.query_lengths
+                )
+                for token in range(offset, offset + queries)
+            )
         if block.phase == "decode":
             return tuple(
                 (request_id, max(0, context_len - 1))

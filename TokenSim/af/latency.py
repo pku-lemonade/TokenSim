@@ -198,6 +198,7 @@ class AFComputeQuery:
     routing_edges: tuple[AFRoutingEdge, ...] = ()
     source_dtype: str | None = None
     target_dtype: str | None = None
+    query_lengths: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True)

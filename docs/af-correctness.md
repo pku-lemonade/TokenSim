@@ -48,3 +48,10 @@ Changing wire precision creates explicit encode and decode nodes on the producin
 The elementwise operator name records both dtypes, such as `cast_bf16_to_fp8`, and the table dtype identifies the output format.
 The analytical fallback accounts for reads in the source format, writes in the target format, element conversion, and kernel submission overhead.
 Strict table lookup requires a matching conversion measurement.
+
+## Prefill attention contexts
+
+An attention query records the query length and available KV context of each request separately.
+Cached keys contribute attention FLOPs and KV reads even when only a short suffix is computed.
+Measured whole-prompt rows used for cached prefill are scaled by the analytical growth ratio and reported as extrapolated estimates.
+Uneven query lengths retain separate shapes instead of being replaced by a mean.

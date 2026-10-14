@@ -7,6 +7,7 @@ from TokenSim.af.models import AFBlock, AFBlockPlacement, AFIteration, AFPhase
 from TokenSim.config.cluster_config import AFLinkConfig
 from TokenSim.errors import ConfigurationError
 from TokenSim.moe.routing import LayerRoutingSnapshot
+from TokenSim.af.request_work import request_work
 
 
 AFLayerType = Literal["dense", "moe"]
@@ -72,23 +73,13 @@ class AFBlockBuilder:
         blocks: list[AFBlock] = []
         for block_id, start in enumerate(range(0, len(requests), af_block_size)):
             block_requests = tuple(requests[start : start + af_block_size])
-            if resolved_phase == "prefill":
-                token_count = sum(
-                    int(
-                        getattr(
-                            request,
-                            "step_tokens",
-                            getattr(
-                                request,
-                                "prefill_compute_len",
-                                getattr(request, "prefill_len"),
-                            ),
-                        )
-                    )
-                    for request in block_requests
-                )
-            else:
-                token_count = len(block_requests)
+            work = tuple(
+                request_work(request, resolved_phase) for request in block_requests
+            )
+            token_count = sum(item.queries for item in work)
+            forward_phases = {item.forward_phase for item in work}
+            if len(forward_phases) != 1:
+                raise ConfigurationError("AF blocks require one forward phase")
             placement = (
                 placement_factory(block_id, block_requests)
                 if placement_factory is not None
@@ -116,9 +107,11 @@ class AFBlockBuilder:
                     request_ids=tuple(int(request.id) for request in block_requests),
                     request_count=len(block_requests),
                     token_count=token_count,
-                    context_lengths=tuple(
-                        int(request.context_len) for request in block_requests
-                    ),
+                    context_lengths=tuple(item.context for item in work),
+                    query_lengths=tuple(item.queries for item in work),
+                    query_offsets=tuple(item.offset for item in work),
+                    logits_rows=sum(item.logits_rows for item in work),
+                    forward_phase=next(iter(forward_phases)),
                     source_a_worker_id=source_a_worker_id,
                     link_name=link.name,
                     placement=placement,
