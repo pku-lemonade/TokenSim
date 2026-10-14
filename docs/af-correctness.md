@@ -68,3 +68,12 @@ Serving engines use whole-model AF execution for MHA, GQA, and MLA architectures
 Embedding lookup, required tensor-parallel boundary collectives, final normalization, the language-model head, and token selection contribute to request latency.
 An unfinished prefill chunk performs no language-model head, logits gather, or sampling work.
 The chunk that completes a prompt produces one logits row per completed request.
+
+## Mixed serving and recomputation
+
+A serving batch is partitioned by its logical prefill/decode phase and whether it builds context.
+Selected AF phases execute their graphs concurrently on the shared physical resources, with one serving-step completion barrier.
+Native eager control retains its single-in-flight execution rule.
+Recomputation retains decode ownership while using prefill attention kernels over the restored context.
+MLA recomputation requires a whole, equal-length context, matching its unchunked prefill restriction.
+Failure or cancellation of one group interrupts the remaining groups and releases their resources.

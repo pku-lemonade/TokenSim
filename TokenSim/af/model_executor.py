@@ -3,6 +3,7 @@
 from dataclasses import replace
 
 from TokenSim.af.executor import AFExecutor
+from TokenSim.af.request_work import request_work
 from TokenSim.af.latency import AFEndpoint
 from TokenSim.af.planning import AFExecutionDAG, ExecutionNode, RankLocalWork
 from TokenSim.dtypes import dtype_size_bytes
@@ -46,19 +47,18 @@ class ModelAFExecutor(AFExecutor):
         actual_phase = phase or (
             "prefill" if requests and requests[0].is_prefill else "decode"
         )
-        if self.model.attention_type == "mla" and actual_phase == "prefill":
-            lengths = {request.prefill_len for request in requests}
+        if self.model.attention_type == "mla" and any(
+            request.is_prefill or getattr(request, "needs_recompute", False)
+            for request in requests
+        ):
+            work = tuple(request_work(request, actual_phase) for request in requests)
+            lengths = {request.context_len for request in requests}
             if len(lengths) != 1 or any(
-                getattr(request, "prefill_compute_len", request.prefill_len)
-                != request.prefill_len
-                or request.context_len != request.prefill_len
-                or getattr(request, "num_computed_tokens", 0) != 0
-                or getattr(request, "step_tokens", request.prefill_len)
-                != request.prefill_len
-                for request in requests
+                item.offset != 0 or item.queries != request.context_len
+                for request, item in zip(requests, work)
             ):
                 raise ConfigurationError(
-                    "MLA supports only full equal-length, unchunked prefill"
+                    "MLA supports only full equal-length, unchunked prefill or recomputation"
                 )
         return super().submit(source_a_worker_id, requests, phase)
 

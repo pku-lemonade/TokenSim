@@ -79,15 +79,65 @@ def bind_af_worker(worker, worker_config, runtime_bindings, runtime_state):
     worker.physical_worker_ref = worker_config.physical_worker_ref
 
 
+def _complete_compute(worker, running):
+    latency = worker.dynamic_batch(running)
+    if latency:
+        yield from worker.engine.run_complete_compute(worker.id, latency)
+    return latency
+
+
+def _af_compute(worker, phase, requests):
+    engine = worker.engine
+    iteration = engine.af_executor.submit(worker.id, requests, phase)
+    yield from engine.af_executor.run_iteration(iteration)
+    engine.record_af_iteration(iteration)
+    return iteration.makespan or 0.0
+
+
 def run_worker_compute(worker, running):
     engine = worker.engine
-    if engine.uses_af_for(running):
-        iteration = engine.af_executor.submit(worker.id, running)
-        yield worker.env.process(engine.af_executor.run_iteration(iteration))
-        latency = iteration.makespan or 0.0
-        engine.record_af_iteration(iteration)
+    selected = engine.cluster_config.af.phases if engine.af_executor is not None else ()
+    if not any(
+        ("prefill" if req.is_prefill else "decode") in selected for req in running
+    ):
+        return (yield from _complete_compute(worker, running))
+    groups = {}
+    for req in running:
+        phase = "prefill" if req.is_prefill else "decode"
+        building = req.is_prefill or req.needs_recompute
+        groups.setdefault((phase, building), []).append(req)
+    start = worker.env.now
+    jobs = [
+        (
+            _af_compute(worker, phase, requests)
+            if phase in selected
+            else _complete_compute(worker, requests)
+        )
+        for (phase, _), requests in groups.items()
+    ]
+    if (
+        len(jobs) == 1
+        or engine.cluster_config.af.communication_timing.native_control_enabled
+    ):
+        for job in jobs:
+            yield from job
     else:
-        latency = worker.dynamic_batch(running)
-        if latency:
-            yield from engine.run_complete_compute(worker.id, latency)
-    return latency
+        processes = [worker.env.process(job) for job in jobs]
+        for process in processes:
+            process.defused = True
+        joined = worker.env.all_of(processes)
+        joined.defused = True
+        try:
+            yield joined
+        except BaseException:
+            for process in processes:
+                if process.is_alive:
+                    process.interrupt("AF serving batch failed or was cancelled")
+            for process in processes:
+                if not process.triggered:
+                    try:
+                        yield process
+                    except BaseException:
+                        pass
+            raise
+    return worker.env.now - start

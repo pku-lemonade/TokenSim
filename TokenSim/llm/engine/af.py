@@ -264,10 +264,15 @@ class AFEngineMixin:
         return capability in worker.capabilities
 
     def uses_af_for(self, requests: list[Request]) -> bool:
-        if self.af_executor is None or any(req.needs_recompute for req in requests):
-            return False
-        phases = {"prefill" if req.is_prefill else "decode" for req in requests}
-        return len(phases) == 1 and phases.pop() in self.cluster_config.af.phases
+        return (
+            self.af_executor is not None
+            and bool(requests)
+            and all(
+                ("prefill" if req.is_prefill else "decode")
+                in self.cluster_config.af.phases
+                for req in requests
+            )
+        )
 
     def run_complete_compute(self, worker_id: int, latency: float):
         if self.af_resources is None:
