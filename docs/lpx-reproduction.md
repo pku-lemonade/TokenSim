@@ -43,6 +43,7 @@ Run the production AF audit and the four deployment sweeps from a repository che
 ```bash
 python scripts/reproduce_lpx.py \
   --trace \
+  --plot \
   --output outputs/lpx-reproduction
 ```
 
@@ -71,6 +72,25 @@ python scripts/reproduce_lpx.py \
 `--batches`, `--output-tokens`, `--context-samples` and `--acceptance` override their corresponding workload inputs.
 `--rubin-watts` and `--lp30-watts` override processor power.
 `--facility-watts` adds a fixed host, network and cooling power allowance for each deployment.
+
+Install plotting dependencies with `python -m pip install -e '.[dev,plot]'`.
+`--plot` generates PNG and editable SVG files after the sweep.
+Plot an existing summary without running the simulation again:
+
+```bash
+python scripts/plot_lpx.py \
+  --summary outputs/lpx-reproduction/summary.json \
+  --output outputs/lpx-reproduction
+```
+
+`reference.png` reconstructs the supplied figure using the approximate manual samples in `experiments/lpx/reference.json`.
+Those samples include reading uncertainty and their source URL.
+`simulation.png` plots the simulated Pareto frontiers and includes an inset for the low-efficiency region.
+`comparison.png` places the reference and simulation on matching axis ranges.
+Reference and simulation have independent normalization denominators.
+Reference-only 3x/5x annotations retain their source provenance.
+The reference samples never enter the simulator's timing, calibration or power calculations.
+Every PNG has a corresponding SVG.
 
 ## Execution and metrics
 

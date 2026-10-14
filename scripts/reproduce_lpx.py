@@ -39,6 +39,7 @@ def parser():
     result.add_argument("--lp30-watts", type=float)
     result.add_argument("--facility-watts", type=float, default=0.0)
     result.add_argument("--trace", action="store_true")
+    result.add_argument("--plot", action="store_true")
     result.add_argument("--audit-only", action="store_true")
     result.add_argument("--skip-audit", action="store_true")
     return result
@@ -199,6 +200,10 @@ def main(argv=None):
             writer.writeheader()
             writer.writerows(rows)
         print(f"Saved {len(rows)} points to {args.output}", flush=True)
+        if args.plot:
+            from scripts.lpx.plotting import generate_plots
+
+            generate_plots(args.output / "summary.json")
         return 0
     except (ConfigurationError, ValueError, TypeError) as exc:
         print(f"LPX experiment: {exc}", file=sys.stderr)

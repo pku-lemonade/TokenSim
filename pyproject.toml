@@ -22,6 +22,7 @@ dependencies = [
 # orjson speeds up parsing multi-gigabyte AgentX traces; json is the fallback.
 agentx = ["huggingface_hub>=0.34", "orjson>=3.10"]
 dev = ["pytest>=8", "black==24.2.0"]
+plot = ["matplotlib>=3.8"]
 
 [project.scripts]
 tokensim = "TokenSim.cli:cli"
