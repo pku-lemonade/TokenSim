@@ -47,6 +47,10 @@ class AFEngineMixin:
                 hardware=hardware,
                 block_size=block_size,
                 dtype=af_dtype,
+                usable_memory_fraction=config.gpu_memory_utilization,
+                kv_cache_capacity_tokens_per_dp_rank=cluster_config.effective_kv_cache_capacity_per_dp_rank(
+                    self.parallel_config
+                ),
             )
             if cluster_config.af.enabled
             else None

@@ -1531,7 +1531,18 @@ def compile_af_runtime_plan(
     block_size: int,
     dtype: str = "bf16",
     watermark: float = 0.01,
+    usable_memory_fraction: float = 1.0,
+    kv_cache_capacity_tokens_per_dp_rank: int | None = None,
 ) -> AFRuntimePlan:
+    from TokenSim.config.validation import integer, number
+
+    number(usable_memory_fraction, "gpu_memory_utilization", positive=True, maximum=1)
+    if kv_cache_capacity_tokens_per_dp_rank is not None:
+        integer(
+            kv_cache_capacity_tokens_per_dp_rank,
+            "KV cache capacity",
+            minimum=block_size,
+        )
     if not cluster_config.af.enabled:
         raise ConfigurationError("AF runtime plan requires af.enabled=true")
     from TokenSim.hardware.domains import physical_domain_config
@@ -1838,7 +1849,9 @@ def compile_af_runtime_plan(
         worker = worker_by_physical[physical]
         try:
             hardware_conf = hardware.device(worker.hardware)
-            capacity_bytes = int(hardware_conf.usable_memory_bytes)
+            capacity_bytes = int(
+                hardware_conf.usable_memory_bytes * usable_memory_fraction
+            )
         except (AttributeError, KeyError, TypeError, ValueError) as exc:
             raise ConfigurationError(
                 f"AF runtime hardware capacity metadata missing for "
@@ -1989,6 +2002,11 @@ def compile_af_runtime_plan(
                     gpu_blocks = max(
                         0, raw_gpu_blocks - int(watermark * raw_gpu_blocks)
                     )
+                    if kv_cache_capacity_tokens_per_dp_rank is not None:
+                        gpu_blocks = min(
+                            gpu_blocks,
+                            kv_cache_capacity_tokens_per_dp_rank // block_size,
+                        )
                     cpu_blocks = int(
                         min(
                             32768,
