@@ -19,6 +19,7 @@ from TokenSim.hardware.domains import MODEL_VERSION
 TRANSFER_OPERATIONS = (
     "af_a_to_f",
     "af_f_to_a",
+    "af_pipeline_handoff",
     "af_control_length",
     "af_control_payload",
     "af_router_metadata",

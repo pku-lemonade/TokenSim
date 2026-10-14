@@ -165,6 +165,9 @@ class ExecutorIterationMixin:
     def _run_block(self, block: AFBlock):
         link = self._links[block.link_name]
         for layer_id in range(self.total_layers):
+            handoff = self._pipeline_handoff(block, layer_id)
+            if handoff is not None:
+                yield from self._run_dag(block, layer_id, link, handoff)
             dag = self.plan_builder.build_layer(block, layer_id, link)
             yield from self._run_dag(block, layer_id, link, dag)
         iteration = self.active_iterations[block.iteration_id]

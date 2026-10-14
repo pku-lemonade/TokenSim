@@ -112,7 +112,7 @@ class DomainParallelConfig:
                 mode="expert_tp",
                 expert_parallel_size=1,
                 expert_tensor_parallel_size=self.tensor_parallel_size,
-                base_world_size=self.world_size,
+                base_world_size=self.tensor_parallel_size * self.data_parallel_size,
                 base_tensor_parallel_size=self.tensor_parallel_size,
             )
         world = self.tensor_parallel_size * self.data_parallel_size
@@ -126,9 +126,7 @@ class DomainParallelConfig:
                 f"{context} expert_parallel_size={self.expert_parallel_size} must divide "
                 f"TP*DP={world} and its Expert TP must divide base TP={self.tensor_parallel_size}"
             )
-        rank_reuse = (
-            self.expert_parallel_size == self.world_size and self.world_size > 1
-        )
+        rank_reuse = self.expert_parallel_size == world and world > 1
         return DomainExpertParallelView(
             mode=(
                 "rank_reuse"
@@ -141,7 +139,7 @@ class DomainParallelConfig:
                 if self.expert_parallel_size == 1
                 else expert_tp
             ),
-            base_world_size=self.world_size,
+            base_world_size=world,
             base_tensor_parallel_size=self.tensor_parallel_size,
         )
 
@@ -257,7 +255,7 @@ class ExecutionDomainConfig:
         )
 
     def resolve_collective_participants(
-        self, collective: DomainCollectiveConfig, dp_rank: int
+        self, collective: DomainCollectiveConfig, dp_rank: int, pp_rank: int = 0
     ) -> tuple[int, ...]:
         instance = next(
             (
@@ -272,7 +270,9 @@ class ExecutionDomainConfig:
                 f"execution domain {self.name!r} has no DP replica {dp_rank}"
             )
         mapping_by_tp = {
-            mapping.tp_rank: mapping.domain_rank for mapping in instance.rank_mapping
+            mapping.tp_rank: mapping.domain_rank
+            for mapping in instance.rank_mapping
+            if mapping.pp_rank == pp_rank
         }
         missing = set(collective.participants) - set(mapping_by_tp)
         if missing:

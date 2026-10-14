@@ -171,6 +171,7 @@ class AFResolvedCollectivePlan:
     resource_group: str
     resource_lane: str
     payload_bytes: int | None = None
+    pp_rank: int = 0
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -184,6 +185,7 @@ class AFResolvedCollectivePlan:
             "resource_group": self.resource_group,
             "resource_lane": self.resource_lane,
             "payload_bytes": self.payload_bytes,
+            **({"pp_rank": self.pp_rank} if self.pp_rank else {}),
         }
 
 
@@ -384,11 +386,12 @@ class AFDomainRuntime:
         "expert_tp"
     )
     expert_tensor_parallel_size: int = 1
+    pipeline_parallel_size: int = 1
 
     def parallel_config(self) -> ParallelConfig:
         return ParallelConfig(
             tensor_parallel_size=self.tensor_parallel_size,
-            pipeline_parallel_size=1,
+            pipeline_parallel_size=self.pipeline_parallel_size,
             data_parallel_size=self.data_parallel_size,
             enable_expert_parallel=self.expert_parallel_size > 1,
             expert_placement_strategy=self.expert_placement_strategy,

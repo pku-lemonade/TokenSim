@@ -159,7 +159,9 @@ class ComputeNodePlannerMixin:
     ) -> ExecutionNode | None:
         if len(bindings) <= 1:
             return None
-        plan = self.runtime_plan.collective_plan(domain.name, dp_rank, after_stage)
+        plan = self.runtime_plan.collective_plan(
+            domain.name, dp_rank, after_stage, bindings[0].pp_rank
+        )
         if plan is None:
             if required:
                 raise ConfigurationError(

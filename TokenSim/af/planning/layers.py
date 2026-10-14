@@ -38,11 +38,11 @@ class RuntimeLayerPlannerMixin:
         f_domain = self.cluster_config.execution_domains[block.placement.f_domain]
         a_instance = self._instance(a_domain, block.placement.a_instance)
         f_instance = self._instance(f_domain, block.placement.f_instance)
-        a_bindings = self.runtime_plan.bindings_for_instance(
-            a_domain.name, a_instance.name
+        a_bindings = self.runtime_plan.bindings_for_layer(
+            a_domain.name, a_instance.name, layer_id
         )
-        f_service_bindings = self.runtime_plan.bindings_for_instance(
-            f_domain.name, f_instance.name
+        f_service_bindings = self.runtime_plan.bindings_for_layer(
+            f_domain.name, f_instance.name, layer_id
         )
         if (
             f_domain.capability == "af_ffn"

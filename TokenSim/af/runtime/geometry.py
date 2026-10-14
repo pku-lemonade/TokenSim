@@ -10,18 +10,15 @@ from TokenSim.af.runtime.records import (
     AFTensorOwnership,
 )
 from TokenSim.errors import ConfigurationError
+from TokenSim.config.cache_config import stage_layer_range
 
 
 class RuntimeGeometryMixin:
     def ownerships_for_replica(
-        self, domain: str, dp_rank: int
+        self, domain: str, dp_rank: int, pp_rank: int = 0
     ) -> tuple[AFTensorOwnership, ...]:
         domain_plan = self.domain_runtime(domain)
-        candidates = tuple(
-            item
-            for item in self.tensor_ownerships
-            if item.domain == domain and item.dp_rank == dp_rank
-        )
+        candidates = self._ownership_index.get((domain, dp_rank, pp_rank), ())
         if domain_plan.capability == "af_ffn" and domain_plan.expert_parallel_size > 1:
             # Residual activations have one base TP owner.  EP ranks in a
             # rank-reuse F pool replicate that owner and must not create
@@ -44,7 +41,7 @@ class RuntimeGeometryMixin:
         return ownerships
 
     def collective_plan(
-        self, domain: str, dp_rank: int, after_stage: str
+        self, domain: str, dp_rank: int, after_stage: str, pp_rank: int = 0
     ) -> AFResolvedCollectivePlan | None:
         matches = tuple(
             item
@@ -52,6 +49,7 @@ class RuntimeGeometryMixin:
             if item.domain == domain
             and item.dp_rank == dp_rank
             and item.after_stage == after_stage
+            and item.pp_rank == pp_rank
         )
         if len(matches) > 1:
             raise ConfigurationError(
@@ -59,6 +57,25 @@ class RuntimeGeometryMixin:
                 f"dp_rank={dp_rank}, after_stage={after_stage!r}"
             )
         return matches[0] if matches else None
+
+    def pipeline_stage(self, domain: str, layer_id: int) -> int:
+        self.layer_plan(layer_id)
+        for stage in range(self.domain_runtime(domain).pipeline_parallel_size):
+            if layer_id in stage_layer_range(
+                self.total_layers,
+                self.domain_runtime(domain).pipeline_parallel_size,
+                stage,
+            ):
+                return stage
+        raise ConfigurationError("layer has no pipeline owner")
+
+    def bindings_for_layer(self, domain: str, instance: str, layer_id: int):
+        stage = self.pipeline_stage(domain, layer_id)
+        return tuple(
+            binding
+            for binding in self.bindings_for_instance(domain, instance)
+            if binding.pp_rank == stage
+        )
 
     def local_shape(
         self,
@@ -138,18 +155,12 @@ class RuntimeGeometryMixin:
         domain = self.domain_runtime(binding.domain)
         if domain.expert_parallel_mode == "expert_tp":
             return binding.tp_group
-        return tuple(
-            sorted(
-                candidate.domain_rank
-                for candidate in self.rank_bindings
-                if candidate.domain == binding.domain
-                and candidate.pp_rank == binding.pp_rank
-                and candidate.ep_rank == binding.ep_rank
-            )
-        )
+        return self._expert_group_index[
+            (binding.domain, binding.pp_rank, binding.ep_rank)
+        ]
 
     def expert_execution(
-        self, domain: str, expert_id: int, f_service_dp_rank: int
+        self, domain: str, expert_id: int, f_service_dp_rank: int, layer_id: int = 0
     ) -> tuple[AFRankBinding, ...]:
         domain_plan = self.domain_runtime(domain)
         if domain_plan.capability != "af_ffn":
@@ -161,10 +172,8 @@ class RuntimeGeometryMixin:
                 f"F domain={domain!r} has no service replica "
                 f"dp_rank={f_service_dp_rank}"
             )
-        candidates = tuple(
-            binding
-            for binding in self.rank_bindings
-            if binding.domain == domain and expert_id in binding.expert_ids
+        candidates = self._expert_index.get(
+            (domain, self.pipeline_stage(domain, layer_id), expert_id), ()
         )
         if domain_plan.expert_parallel_mode == "expert_tp":
             candidates = tuple(
@@ -221,10 +230,8 @@ class RuntimeGeometryMixin:
         ):
             raise ConfigurationError(f"layer={layer_id} has no Shared Expert component")
 
-        candidates = tuple(
-            binding
-            for binding in self.rank_bindings
-            if binding.domain == domain and binding.dp_rank == f_service_dp_rank
+        candidates = self.bindings_for_layer(
+            domain, self.replica(domain, f_service_dp_rank).instance, layer_id
         )
         if domain_plan.capability == "af_ffn" and domain_plan.expert_parallel_size > 1:
             # Dense/shared weights are replicated on every EP rank in a

@@ -18,7 +18,7 @@ from TokenSim.af.runtime.records import (
 )
 from TokenSim.config.af.links import AFEffectiveDTypes
 from TokenSim.config.cluster_config import ClusterConfig
-from TokenSim.config.cache_config import local_kv_heads
+from TokenSim.config.cache_config import local_kv_heads, stage_layer_count
 from TokenSim.config.parallel_config import ParallelRankInfo
 from TokenSim.dtypes import canonicalize_dtype
 from TokenSim.errors import ConfigurationError
@@ -83,7 +83,11 @@ class AFCacheConfig:
             model_param_size_unsharded=sum(
                 state.model_bytes for state in plan.physical_states
             ),
-            num_layers_per_rank=plan.total_layers,
+            num_layers_per_rank=stage_layer_count(
+                plan.total_layers,
+                plan.domain_runtime(replica.domain).pipeline_parallel_size,
+                leader.pp_rank,
+            ),
             total_num_layers=plan.total_layers,
             num_kv_heads=plan.num_kv_heads,
             local_kv_heads=local_partition.local_head_count,
@@ -252,7 +256,9 @@ def _compile_request_owners(
             a_domain.logical_instances,
             key=lambda item: min(mapping.dp_rank for mapping in item.rank_mapping),
         ):
-            leader_mapping = min(instance.rank_mapping, key=lambda item: item.tp_rank)
+            leader_mapping = min(
+                instance.rank_mapping, key=lambda item: (item.pp_rank, item.tp_rank)
+            )
             leader = by_key[(a_domain.name, leader_mapping.domain_rank)]
             owners.append(
                 AFRequestOwner(
@@ -376,29 +382,32 @@ def _compile_collective_plans(
                         f"AF collective {collective.operation!r} in domain "
                         f"{domain.name!r} references missing communication lane {key!r}"
                     )
-                participant_ranks = domain.resolve_collective_participants(
-                    collective, dp_rank
-                )
-                participant_bindings = tuple(
-                    binding_by_key[(domain.name, rank)] for rank in participant_ranks
-                )
-                plans.append(
-                    AFResolvedCollectivePlan(
-                        domain=domain.name,
-                        dp_rank=dp_rank,
-                        after_stage=collective.after_stage,
-                        operation=collective.operation,
-                        participant_ranks=participant_ranks,
-                        physical_workers=tuple(
-                            binding.physical_identity
-                            for binding in participant_bindings
-                        ),
-                        network=network or resource.network,
-                        resource_group=resource_group,
-                        resource_lane=resource_lane,
-                        payload_bytes=collective.payload_bytes,
+                for pp_rank in range(domain.parallel.pipeline_parallel_size):
+                    participant_ranks = domain.resolve_collective_participants(
+                        collective, dp_rank, pp_rank
                     )
-                )
+                    participant_bindings = tuple(
+                        binding_by_key[(domain.name, rank)]
+                        for rank in participant_ranks
+                    )
+                    plans.append(
+                        AFResolvedCollectivePlan(
+                            domain=domain.name,
+                            dp_rank=dp_rank,
+                            after_stage=collective.after_stage,
+                            operation=collective.operation,
+                            participant_ranks=participant_ranks,
+                            physical_workers=tuple(
+                                binding.physical_identity
+                                for binding in participant_bindings
+                            ),
+                            network=network or resource.network,
+                            resource_group=resource_group,
+                            resource_lane=resource_lane,
+                            payload_bytes=collective.payload_bytes,
+                            pp_rank=pp_rank,
+                        )
+                    )
     return tuple(
         sorted(
             plans,

@@ -27,7 +27,7 @@ class TensorCopyPlannerMixin:
         ) = None,
     ) -> tuple[_TransferCopy, ...]:
         a_ownerships = self.runtime_plan.ownerships_for_replica(
-            a_bindings[0].domain, a_bindings[0].dp_rank
+            a_bindings[0].domain, a_bindings[0].dp_rank, a_bindings[0].pp_rank
         )
         source_by_rank = {item.domain_rank: item for item in a_bindings}
         ownership_by_rank = {item.domain_rank: item for item in a_ownerships}
@@ -321,7 +321,7 @@ class TensorCopyPlannerMixin:
 
     def _ownership(self, binding: Any) -> Any:
         for ownership in self.runtime_plan.ownerships_for_replica(
-            binding.domain, binding.dp_rank
+            binding.domain, binding.dp_rank, binding.pp_rank
         ):
             if ownership.domain_rank == binding.domain_rank:
                 return ownership

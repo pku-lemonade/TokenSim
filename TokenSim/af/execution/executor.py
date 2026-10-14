@@ -16,6 +16,7 @@ from TokenSim.af.execution.communication import ExecutorCommunicationMixin
 from TokenSim.af.execution.compute import ExecutorComputeMixin
 from TokenSim.af.execution.control import NativeControlMixin
 from TokenSim.af.execution.iteration import ExecutorIterationMixin
+from TokenSim.af.execution.pipeline import PipelineExecutionMixin
 from TokenSim.af.execution.services import ExecutorHostMixin
 from TokenSim.af.execution.submission import ExecutorSubmissionMixin
 from TokenSim.af.execution.transport import ExecutorTransportMixin
@@ -45,6 +46,7 @@ class AFExecutor(
     ExecutorCommunicationMixin,
     ExecutorTransportMixin,
     NativeControlMixin,
+    PipelineExecutionMixin,
     ConfigurationOwner,
 ):
     _configuration_fields = (

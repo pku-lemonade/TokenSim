@@ -70,8 +70,9 @@ class ModelAFExecutor(AFExecutor):
         return block.request_count if block.phase == "prefill" else block.token_count
 
     def _boundary_nodes(self, block, operation):
-        bindings = self.runtime_plan.bindings_for_instance(
-            block.placement.a_domain, block.placement.a_instance
+        layer = 0 if operation == "embedding_lookup" else self.total_layers - 1
+        bindings = self.runtime_plan.bindings_for_layer(
+            block.placement.a_domain, block.placement.a_instance, layer
         )
         tp = len(bindings)
         tokens = (
@@ -111,8 +112,9 @@ class ModelAFExecutor(AFExecutor):
         )
 
     def _boundary_collective(self, block, name, operation, after_stage, payload):
-        bindings = self.runtime_plan.bindings_for_instance(
-            block.placement.a_domain, block.placement.a_instance
+        layer = 0 if name == "embedding_reduce" else self.total_layers - 1
+        bindings = self.runtime_plan.bindings_for_layer(
+            block.placement.a_domain, block.placement.a_instance, layer
         )
         if len(bindings) <= 1:
             return None
@@ -204,8 +206,8 @@ class ModelAFExecutor(AFExecutor):
         link = self._links[block.link_name]
         previous = ()
         bytes_per_element = dtype_size_bytes(self.dtype, role="activation_dtype")
-        bindings = self.runtime_plan.bindings_for_instance(
-            block.placement.a_domain, block.placement.a_instance
+        bindings = self.runtime_plan.bindings_for_layer(
+            block.placement.a_domain, block.placement.a_instance, self.total_layers - 1
         )
         previous = yield from self._run_model_dag(
             block,
@@ -224,6 +226,11 @@ class ModelAFExecutor(AFExecutor):
         if dag is not None:
             previous = yield from self._run_model_dag(block, -1, link, dag, previous)
         for layer in range(self.total_layers):
+            handoff = self._pipeline_handoff(block, layer)
+            if handoff is not None:
+                previous = yield from self._run_model_dag(
+                    block, layer, link, handoff, previous
+                )
             dag = self.plan_builder.build_layer(block, layer, link)
             previous = yield from self._run_model_dag(block, layer, link, dag, previous)
         for operation in ("final_norm", "lm_head"):

@@ -32,6 +32,7 @@ def _components_for_binding(
     expert_tp_size: int,
     expert_tp_rank: int,
     ffn_projection_count: int,
+    embedding_role: str = "both",
 ) -> tuple[AFModelComponent, ...]:
     _ = dp_rank
     components: list[AFModelComponent] = []
@@ -85,13 +86,23 @@ def _components_for_binding(
                     ),
                 )
             )
+        if embedding_role == "none":
+            return tuple(components)
         components.append(
             AFModelComponent(
-                component_id=f"embedding_lm_head.{'tied' if layers[0].tie_word_embeddings else 'untied'}.tp{tp_rank}-of-{tp_size}",
+                component_id=(
+                    f"embedding_lm_head.{'tied' if layers[0].tie_word_embeddings else 'untied'}.tp{tp_rank}-of-{tp_size}"
+                    if embedding_role == "both"
+                    else f"{embedding_role}.tp{tp_rank}-of-{tp_size}"
+                ),
                 category="embedding_lm_head",
                 bytes=(vocab_size * hidden // tp_size)
                 * weight_dtype_size
-                * (1 if layers[0].tie_word_embeddings else 2),
+                * (
+                    1
+                    if embedding_role != "both" or layers[0].tie_word_embeddings
+                    else 2
+                ),
                 formula="vocab * hidden * weight_dtype / A_TP * (1 if tied else 2)",
                 shape=(
                     ("vocab_size", vocab_size),

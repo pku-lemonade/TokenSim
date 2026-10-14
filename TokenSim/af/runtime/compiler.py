@@ -193,6 +193,7 @@ def compile_af_runtime_plan(
         AFDomainRuntime(
             name=domain.name,
             capability=domain.capability,
+            pipeline_parallel_size=domain.parallel.pipeline_parallel_size,
             tensor_parallel_size=domain.parallel.tensor_parallel_size,
             data_parallel_size=domain.parallel.data_parallel_size,
             expert_parallel_size=(
@@ -209,109 +210,23 @@ def compile_af_runtime_plan(
         for domain in domain_configs
     )
 
-    preliminary: list[dict[str, Any]] = []
-    kv_by_rank: dict[RankKey, AFKVHeadPartition] = {}
-    component_by_id: dict[str, AFModelComponent] = {}
-    for domain in domain_configs:
-        tp_size = domain.parallel.tensor_parallel_size
-        domain_mappings = tuple(
-            sorted(
-                (
-                    mapping
-                    for instance in domain.logical_instances
-                    for mapping in instance.rank_mapping
-                ),
-                key=lambda item: item.domain_rank,
-            )
-        )
-        partitions = (
-            kv_head_partitions(
-                num_kv_heads=kv_heads,
-                tensor_parallel_size=tp_size,
-                head_dim=head_dim,
-                num_layers=total_layers,
-                block_size=block_size,
-                dtype_size_bytes=kv_bytes,
-                mla_cache_width=mla.cache_width if mla else 0,
-            )
-            if domain.capability == "af_attention"
-            else ()
-        )
-        expert_view = domain.expert_parallel
-        experts_by_rank = _experts_by_ep(
-            moe_config.num_experts if moe_config.enabled else 0,
-            expert_view.expert_parallel_size,
-            domain.parallel.expert_placement_strategy,
-        )
-        for instance in domain.logical_instances:
-            mappings = tuple(
-                sorted(instance.rank_mapping, key=lambda item: item.tp_rank)
-            )
-            tp_group = tuple(item.domain_rank for item in mappings)
-            for mapping in mappings:
-                physical = mapping.physical_worker.identity
-                worker = worker_by_physical.get(physical)
-                if worker is None:
-                    raise ConfigurationError(
-                        f"AF runtime domain={domain.name}, rank={mapping.domain_rank} "
-                        f"references missing physical worker {physical!r}"
-                    )
-                if domain.capability == "af_ffn" and expert_view.mode != "expert_tp":
-                    expert_ids = tuple(experts_by_rank.get(mapping.ep_rank, ()))
-                    ep_group = tuple(item.domain_rank for item in domain_mappings)
-                elif domain.capability == "af_ffn":
-                    expert_ids = (
-                        tuple(range(moe_config.num_experts))
-                        if moe_config.enabled
-                        else ()
-                    )
-                    ep_group = tp_group
-                else:
-                    expert_ids = ()
-                    ep_group = ()
-                rank_key = (domain.name, mapping.domain_rank)
-                if partitions:
-                    kv_by_rank[rank_key] = partitions[mapping.tp_rank]
-                components = _components_for_binding(
-                    capability=domain.capability,
-                    router_location=cluster_config.af.router_location,
-                    tp_rank=mapping.tp_rank,
-                    tp_size=tp_size,
-                    dp_rank=mapping.dp_rank,
-                    is_leader=(mapping.tp_rank == 0),
-                    expert_ids=expert_ids,
-                    layers=layers,
-                    hidden=hidden,
-                    intermediate_source=intermediate_source,
-                    vocab_size=vocab_size,
-                    weight_dtype_size=weight_bytes,
-                    kv_partition=kv_by_rank.get(rank_key),
-                    expert_tp_size=expert_view.expert_tensor_parallel_size,
-                    expert_tp_rank=(
-                        mapping.tp_rank % expert_view.expert_tensor_parallel_size
-                    ),
-                    ffn_projection_count=model.ffn_projection_count,
-                )
-                for component in components:
-                    previous = component_by_id.get(component.component_id)
-                    if previous is not None and previous != component:
-                        raise ConfigurationError(
-                            f"AF component {component.component_id!r} has inconsistent "
-                            f"metadata: {previous} != {component}"
-                        )
-                    component_by_id[component.component_id] = component
-                preliminary.append(
-                    {
-                        "domain": domain,
-                        "instance": instance.name,
-                        "mapping": mapping,
-                        "worker": worker,
-                        "tp_group": tp_group,
-                        "ep_group": ep_group,
-                        "expert_ids": expert_ids,
-                        "components": components,
-                    }
-                )
+    from TokenSim.af.runtime.ranks import compile_rank_components
+
+    preliminary, kv_by_rank = compile_rank_components(
+        domains=domain_configs,
+        workers=worker_by_physical,
+        model=model,
+        layers=layers,
+        hidden=hidden,
+        intermediate_source=intermediate_source,
+        block_size=block_size,
+        weight_bytes=weight_bytes,
+        kv_bytes=kv_bytes,
+        kv_heads=kv_heads,
+        head_dim=head_dim,
+        mla=mla,
+        router_location=cluster_config.af.router_location,
+    )
 
     physical_states = _compile_physical_states(
         preliminary=preliminary,
@@ -344,6 +259,7 @@ def compile_af_runtime_plan(
             is_scheduler_leader=(
                 item["domain"].capability == "af_attention"
                 and item["mapping"].tp_rank == 0
+                and item["mapping"].pp_rank == 0
             ),
             expert_ids=item["expert_ids"],
             component_ids=tuple(

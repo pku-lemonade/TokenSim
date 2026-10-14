@@ -107,6 +107,7 @@ class MoELayerPlannerMixin:
                 f_domain.name,
                 expert_id,
                 block.placement.f_dp_rank,
+                layer_id,
             )
             ids = {
                 binding.domain_rank: (

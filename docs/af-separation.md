@@ -49,7 +49,12 @@ Use [DeepSeek V3 MLA](deepseek-v3-mla.md) for the full-model MLA example.
 An unselected phase requires a worker with `prefill` or `decode_full` capability.
 Omitted execution domains are generated from the endpoint groups, with one single-rank replica per worker.
 Explicit domains support independent tensor parallelism (TP) and data parallelism (DP).
-Pipeline parallelism must be one, and generic `dp_lockstep` cannot be combined with AF.
+Pipeline parallelism partitions consecutive layers onto distinct physical ranks within each A/F domain.
+The domains may have different stage counts.
+Embedding and output-head storage belongs to the boundary A stages, and each A stage owns its local KV shards.
+Activation handoffs between A stages use the declared A communication fabric.
+Independent micro-batches can occupy different stages concurrently.
+Generic `dp_lockstep` cannot be combined with AF.
 
 Expert parallelism (EP) reuses the F domain's `TP*DP` physical ranks.
 `EP=1` gives each replica a TP-sharded expert set.

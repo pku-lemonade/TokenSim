@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import cached_property
 from typing import Any, Mapping
 
 from TokenSim.af.runtime.geometry import RuntimeGeometryMixin
@@ -49,6 +50,55 @@ class AFRuntimePlan(RuntimeGeometryMixin, RuntimeValidationMixin):
     link_effective_dtypes: tuple[tuple[str, AFEffectiveDTypes], ...] = ()
     mla: MLADimensions | None = None
 
+    @cached_property
+    def _binding_index(self):
+        return {binding.rank_key: binding for binding in self.rank_bindings}
+
+    @cached_property
+    def _expert_index(self):
+        result = {}
+        for binding in self.rank_bindings:
+            for expert in binding.expert_ids:
+                result.setdefault((binding.domain, binding.pp_rank, expert), []).append(
+                    binding
+                )
+        return {key: tuple(value) for key, value in result.items()}
+
+    @cached_property
+    def _physical_index(self):
+        return {state.physical_identity: state for state in self.physical_states}
+
+    @cached_property
+    def _instance_index(self):
+        result = {}
+        for binding in self.rank_bindings:
+            result.setdefault((binding.domain, binding.instance), []).append(binding)
+        return {
+            key: tuple(sorted(value, key=lambda b: (b.pp_rank, b.ep_rank, b.tp_rank)))
+            for key, value in result.items()
+        }
+
+    @cached_property
+    def _replica_index(self):
+        return {replica.replica_key: replica for replica in self.replicas}
+
+    @cached_property
+    def _expert_group_index(self):
+        result = {}
+        for binding in self.rank_bindings:
+            result.setdefault(
+                (binding.domain, binding.pp_rank, binding.ep_rank), []
+            ).append(binding.domain_rank)
+        return {key: tuple(sorted(value)) for key, value in result.items()}
+
+    @cached_property
+    def _ownership_index(self):
+        result = {}
+        for item in self.tensor_ownerships:
+            stage = self.binding(item.domain, item.domain_rank).pp_rank
+            result.setdefault((item.domain, item.dp_rank, stage), []).append(item)
+        return {key: tuple(value) for key, value in result.items()}
+
     @property
     def dtype(self) -> str:
         return self.effective_dtypes.activation_dtype
@@ -86,27 +136,18 @@ class AFRuntimePlan(RuntimeGeometryMixin, RuntimeValidationMixin):
         )
 
     def binding(self, domain: str, domain_rank: int) -> AFRankBinding:
-        for binding in self.rank_bindings:
-            if binding.domain == domain and binding.domain_rank == domain_rank:
-                return binding
-        raise ConfigurationError(
-            f"AF runtime plan has no rank binding for domain={domain!r}, "
-            f"rank={domain_rank}"
-        )
+        try:
+            return self._binding_index[(domain, domain_rank)]
+        except KeyError as exc:
+            raise ConfigurationError(
+                f"AF runtime plan has no rank binding for domain={domain!r}, "
+                f"rank={domain_rank}"
+            ) from exc
 
     def bindings_for_instance(
         self, domain: str, instance: str
     ) -> tuple[AFRankBinding, ...]:
-        bindings = tuple(
-            sorted(
-                (
-                    binding
-                    for binding in self.rank_bindings
-                    if binding.domain == domain and binding.instance == instance
-                ),
-                key=lambda binding: (binding.ep_rank, binding.tp_rank),
-            )
-        )
+        bindings = self._instance_index.get((domain, instance), ())
         if not bindings:
             raise ConfigurationError(
                 f"AF runtime plan has no instance {instance!r} in domain {domain!r}"
@@ -128,12 +169,12 @@ class AFRuntimePlan(RuntimeGeometryMixin, RuntimeValidationMixin):
         return next(iter(instances))
 
     def replica(self, domain: str, dp_rank: int) -> AFReplicaRuntime:
-        for replica in self.replicas:
-            if replica.domain == domain and replica.dp_rank == dp_rank:
-                return replica
-        raise ConfigurationError(
-            f"AF runtime plan has no replica for domain={domain!r}, dp_rank={dp_rank}"
-        )
+        try:
+            return self._replica_index[(domain, dp_rank)]
+        except KeyError as exc:
+            raise ConfigurationError(
+                f"AF runtime plan has no replica for domain={domain!r}, dp_rank={dp_rank}"
+            ) from exc
 
     def replica_for_instance(self, domain: str, instance: str) -> AFReplicaRuntime:
         for replica in self.replicas:
@@ -186,12 +227,12 @@ class AFRuntimePlan(RuntimeGeometryMixin, RuntimeValidationMixin):
         )
 
     def physical_state(self, physical_identity: str) -> AFPhysicalRuntimeState:
-        for state in self.physical_states:
-            if state.physical_identity == physical_identity:
-                return state
-        raise ConfigurationError(
-            f"AF runtime plan has no physical state for {physical_identity!r}"
-        )
+        try:
+            return self._physical_index[physical_identity]
+        except KeyError as exc:
+            raise ConfigurationError(
+                f"AF runtime plan has no physical state for {physical_identity!r}"
+            ) from exc
 
     def bindings_for_physical(
         self, physical_identity: str
@@ -209,7 +250,7 @@ class AFRuntimePlan(RuntimeGeometryMixin, RuntimeValidationMixin):
         raise ConfigurationError(f"AF runtime plan has no domain {domain!r}")
 
     def expert_placement(
-        self, domain: str, instance: str
+        self, domain: str, instance: str, layer_id: int = 0
     ) -> tuple[tuple[int, int, tuple[int, ...], tuple[str, ...]], ...]:
         by_expert: dict[int, list[AFRankBinding]] = {}
         domain_plan = self.domain_runtime(domain)
@@ -217,6 +258,11 @@ class AFRuntimePlan(RuntimeGeometryMixin, RuntimeValidationMixin):
             tuple(binding for binding in self.rank_bindings if binding.domain == domain)
             if domain_plan.expert_parallel_mode != "expert_tp"
             else self.bindings_for_instance(domain, instance)
+        )
+        bindings = tuple(
+            binding
+            for binding in bindings
+            if binding.pp_rank == self.pipeline_stage(domain, layer_id)
         )
         for binding in bindings:
             for expert_id in binding.expert_ids:
@@ -339,6 +385,11 @@ class AFRuntimePlan(RuntimeGeometryMixin, RuntimeValidationMixin):
                     "name": domain.name,
                     "capability": domain.capability,
                     "tensor_parallel_size": domain.tensor_parallel_size,
+                    **(
+                        {"pipeline_parallel_size": domain.pipeline_parallel_size}
+                        if domain.pipeline_parallel_size > 1
+                        else {}
+                    ),
                     "data_parallel_size": domain.data_parallel_size,
                     "expert_parallel_size": domain.expert_parallel_size,
                     "expert_parallel_mode": domain.expert_parallel_mode,

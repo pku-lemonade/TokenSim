@@ -250,6 +250,13 @@ def stage_layer_count(total_layers: int, pp_size: int, pp_rank: int) -> int:
     return base + (1 if pp_rank < remainder else 0)
 
 
+def stage_layer_range(total_layers: int, pp_size: int, pp_rank: int) -> range:
+    if not 1 <= pp_size <= total_layers or not 0 <= pp_rank < pp_size:
+        raise ConfigurationError("pipeline stage must own at least one model layer")
+    start = pp_rank * (total_layers // pp_size) + min(pp_rank, total_layers % pp_size)
+    return range(start, start + stage_layer_count(total_layers, pp_size, pp_rank))
+
+
 def num_kv_heads(model: ModelSpec) -> int:
     return int(model.num_key_value_heads)
 

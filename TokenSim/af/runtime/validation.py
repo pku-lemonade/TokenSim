@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from TokenSim.af.runtime.topology import kv_head_partitions
 from TokenSim.errors import ConfigurationError
+from TokenSim.config.cache_config import stage_layer_count, stage_layer_range
 
 
 class RuntimeValidationMixin:
@@ -108,7 +109,8 @@ class RuntimeValidationMixin:
             domain_bindings = tuple(
                 item for item in self.rank_bindings if item.domain == domain.name
             )
-            expected_count = domain.tensor_parallel_size * domain.data_parallel_size
+            stage_count = domain.tensor_parallel_size * domain.data_parallel_size
+            expected_count = stage_count * domain.pipeline_parallel_size
             if len(domain_bindings) != expected_count:
                 raise ConfigurationError(
                     f"AF runtime domain={domain.name} rank count mismatch: "
@@ -134,9 +136,9 @@ class RuntimeValidationMixin:
                 expected_expert_tp = domain.tensor_parallel_size
             else:
                 expected_ep_size = domain.expert_parallel_size
-                expected_expert_tp = expected_count // expected_ep_size
+                expected_expert_tp = stage_count // expected_ep_size
                 if (
-                    expected_count % expected_ep_size
+                    stage_count % expected_ep_size
                     or domain.tensor_parallel_size % expected_expert_tp
                 ):
                     raise ConfigurationError(
@@ -161,7 +163,11 @@ class RuntimeValidationMixin:
                 expected_ep_group = (
                     binding.tp_group
                     if domain.expert_parallel_mode == "expert_tp"
-                    else world_group
+                    else tuple(
+                        rank
+                        for rank in world_group
+                        if self.binding(domain.name, rank).pp_rank == binding.pp_rank
+                    )
                 )
                 if binding.ep_group != expected_ep_group:
                     raise ConfigurationError(
@@ -178,7 +184,7 @@ class RuntimeValidationMixin:
             bindings = tuple(
                 sorted(
                     (self.binding(*rank_key) for rank_key in replica.rank_keys),
-                    key=lambda item: item.tp_rank,
+                    key=lambda item: (item.pp_rank, item.tp_rank),
                 )
             )
             if any(item.dp_rank != replica.dp_rank for item in bindings):
@@ -186,15 +192,22 @@ class RuntimeValidationMixin:
                     f"AF runtime domain={replica.domain}, replica={replica.dp_rank} "
                     "contains a rank from another DP replica"
                 )
-            if {item.tp_rank for item in bindings} != set(
-                range(domain.tensor_parallel_size)
-            ):
+            if {(item.pp_rank, item.tp_rank) for item in bindings} != {
+                (stage, rank)
+                for stage in range(domain.pipeline_parallel_size)
+                for rank in range(domain.tensor_parallel_size)
+            }:
                 raise ConfigurationError(
                     f"AF runtime domain={replica.domain}, replica={replica.dp_rank} "
                     "does not contain exactly one base rank per TP coordinate"
                 )
             expected_tp_group = tuple(item.domain_rank for item in bindings)
             for binding in bindings:
+                expected_tp_group = tuple(
+                    item.domain_rank
+                    for item in bindings
+                    if item.pp_rank == binding.pp_rank
+                )
                 expected_ep_rank = (
                     (binding.dp_rank * domain.tensor_parallel_size + binding.tp_rank)
                     // domain.expert_tensor_parallel_size
@@ -218,16 +231,20 @@ class RuntimeValidationMixin:
                         f"AF runtime domain={replica.domain}, replica={replica.dp_rank} "
                         "must have exactly one scheduler leader"
                     )
-                expected_partitions = kv_head_partitions(
-                    num_kv_heads=self.num_kv_heads,
-                    tensor_parallel_size=domain.tensor_parallel_size,
-                    head_dim=self.head_dim,
-                    num_layers=self.total_layers,
-                    block_size=self.block_size,
-                    dtype_size_bytes=self.kv_dtype_size_bytes,
-                    mla_cache_width=self.mla.cache_width if self.mla else 0,
-                )
                 for binding in bindings:
+                    expected_partitions = kv_head_partitions(
+                        num_kv_heads=self.num_kv_heads,
+                        tensor_parallel_size=domain.tensor_parallel_size,
+                        head_dim=self.head_dim,
+                        num_layers=stage_layer_count(
+                            self.total_layers,
+                            domain.pipeline_parallel_size,
+                            binding.pp_rank,
+                        ),
+                        block_size=self.block_size,
+                        dtype_size_bytes=self.kv_dtype_size_bytes,
+                        mla_cache_width=self.mla.cache_width if self.mla else 0,
+                    )
                     if binding.kv_partition != expected_partitions[binding.tp_rank]:
                         raise ConfigurationError(
                             f"AF runtime rank {binding.rank_key!r} KV partition mismatch"
@@ -251,97 +268,42 @@ class RuntimeValidationMixin:
                     )
                 if any(binding.kv_partition is not None for binding in bindings):
                     raise ConfigurationError("F ranks must not own KV state")
-                if domain.expert_parallel_mode == "expert_tp" and self.num_experts:
-                    for expert_id in range(self.num_experts):
-                        owners = [
-                            item for item in bindings if expert_id in item.expert_ids
-                        ]
-                        if {item.tp_rank for item in owners} != set(
-                            range(domain.tensor_parallel_size)
-                        ):
+        from TokenSim.af.runtime.ranks import validate_expert_components
+
+        validate_expert_components(self)
+
+        for domain in self.domains:
+            for dp_rank in range(domain.data_parallel_size):
+                for pp_rank in range(domain.pipeline_parallel_size):
+                    ownerships = self.ownerships_for_replica(
+                        domain.name, dp_rank, pp_rank
+                    )
+                    cursor = 0
+                    for ownership in ownerships:
+                        binding = self.binding(ownership.domain, ownership.domain_rank)
+                        if ownership.physical_worker != binding.physical_identity:
                             raise ConfigurationError(
-                                f"F domain={domain.name}, replica={replica.dp_rank}, "
-                                f"expert={expert_id} lacks exact Expert TP shards"
+                                f"AF tensor ownership for rank {binding.rank_key!r} "
+                                "references a different physical worker"
                             )
-
-        for domain in self.domains:
-            if (
-                domain.capability != "af_ffn"
-                or domain.expert_parallel_mode == "expert_tp"
-                or not self.num_experts
-            ):
-                continue
-            domain_bindings = tuple(
-                item for item in self.rank_bindings if item.domain == domain.name
-            )
-            expected_ep_group = tuple(
-                item.domain_rank
-                for item in sorted(domain_bindings, key=lambda item: item.domain_rank)
-            )
-            for binding in domain_bindings:
-                if binding.ep_group != expected_ep_group:
-                    raise ConfigurationError(
-                        f"rank-reuse F rank {binding.rank_key!r} EP group mismatch"
-                    )
-            for expert_id in range(self.num_experts):
-                owners = [
-                    item for item in domain_bindings if expert_id in item.expert_ids
-                ]
-                if len(owners) != domain.expert_tensor_parallel_size:
-                    raise ConfigurationError(
-                        f"rank-reuse F domain={domain.name}, expert={expert_id} must "
-                        f"resolve to {domain.expert_tensor_parallel_size} physical ranks; got {len(owners)}"
-                    )
-
-        for domain in self.domains:
-            if domain.capability != "af_ffn":
-                continue
-            for dp_rank in range(domain.data_parallel_size):
-                for layer in self.layers:
-                    if layer.layer_type == "dense":
-                        self.component_execution(
-                            domain.name, layer.layer_id, "dense_ffn", dp_rank
-                        )
-                    elif layer.shared_intermediate_size:
-                        self.component_execution(
-                            domain.name, layer.layer_id, "shared_expert", dp_rank
-                        )
-                if domain.expert_parallel_mode == "expert_tp":
-                    for expert_id in range(self.num_experts):
-                        self.expert_execution(domain.name, expert_id, dp_rank)
-            if domain.expert_parallel_mode != "expert_tp":
-                for expert_id in range(self.num_experts):
-                    self.expert_execution(domain.name, expert_id, 0)
-
-        for domain in self.domains:
-            for dp_rank in range(domain.data_parallel_size):
-                ownerships = self.ownerships_for_replica(domain.name, dp_rank)
-                cursor = 0
-                for ownership in ownerships:
-                    binding = self.binding(ownership.domain, ownership.domain_rank)
-                    if ownership.physical_worker != binding.physical_identity:
-                        raise ConfigurationError(
-                            f"AF tensor ownership for rank {binding.rank_key!r} "
-                            "references a different physical worker"
-                        )
-                    expected_residual = binding.capability == "af_attention"
-                    if ownership.retains_residual != expected_residual:
-                        raise ConfigurationError(
-                            f"AF tensor ownership for rank {binding.rank_key!r} "
-                            f"retains_residual={ownership.retains_residual}; "
-                            f"expected={expected_residual}"
-                        )
-                    if ownership.interval.start != cursor:
+                        expected_residual = binding.capability == "af_attention"
+                        if ownership.retains_residual != expected_residual:
+                            raise ConfigurationError(
+                                f"AF tensor ownership for rank {binding.rank_key!r} "
+                                f"retains_residual={ownership.retains_residual}; "
+                                f"expected={expected_residual}"
+                            )
+                        if ownership.interval.start != cursor:
+                            raise ConfigurationError(
+                                f"AF tensor ownership for domain={domain.name}, "
+                                f"dp_rank={dp_rank} has a gap or overlap"
+                            )
+                        cursor = ownership.interval.end
+                    if cursor != self.hidden_size:
                         raise ConfigurationError(
                             f"AF tensor ownership for domain={domain.name}, "
-                            f"dp_rank={dp_rank} has a gap or overlap"
+                            f"dp_rank={dp_rank} does not cover hidden_size={self.hidden_size}"
                         )
-                    cursor = ownership.interval.end
-                if cursor != self.hidden_size:
-                    raise ConfigurationError(
-                        f"AF tensor ownership for domain={domain.name}, "
-                        f"dp_rank={dp_rank} does not cover hidden_size={self.hidden_size}"
-                    )
 
         ownership_by_rank = {
             (item.domain, item.domain_rank): item for item in self.tensor_ownerships
@@ -389,7 +351,7 @@ class RuntimeValidationMixin:
                 )
 
         collective_keys = [
-            (item.domain, item.dp_rank, item.after_stage)
+            (item.domain, item.dp_rank, item.pp_rank, item.after_stage)
             for item in self.collective_plans
         ]
         if len(collective_keys) != len(set(collective_keys)):
@@ -401,8 +363,10 @@ class RuntimeValidationMixin:
                 collective.participant_ranks, collective.physical_workers
             ):
                 binding = self.binding(collective.domain, rank)
-                if binding.dp_rank != collective.dp_rank or (
-                    binding.physical_identity != physical
+                if (
+                    binding.dp_rank != collective.dp_rank
+                    or binding.pp_rank != collective.pp_rank
+                    or (binding.physical_identity != physical)
                 ):
                     raise ConfigurationError(
                         f"AF collective {collective.operation!r} endpoint mismatch"

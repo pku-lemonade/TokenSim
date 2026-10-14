@@ -38,12 +38,6 @@ class ClusterDomainValidationMixin:
                     f"and rank_mapping for required_rank_count="
                     f"{domain.required_rank_count}"
                 )
-            if domain.parallel.pipeline_parallel_size != 1:
-                raise ConfigurationError(
-                    f"execution domain {domain.name!r} has "
-                    f"pipeline_parallel_size={domain.parallel.pipeline_parallel_size}; "
-                    "AF phase one only supports pipeline_parallel_size=1"
-                )
             _ = domain.expert_parallel
             if len(domain.logical_instances) != domain.parallel.data_parallel_size:
                 raise ConfigurationError(
@@ -190,7 +184,10 @@ class ClusterDomainValidationMixin:
                         f"network={fabric.network!r}"
                     )
                 for dp_rank in range(domain.parallel.data_parallel_size):
-                    domain.resolve_collective_participants(collective, dp_rank)
+                    for pp_rank in range(domain.parallel.pipeline_parallel_size):
+                        domain.resolve_collective_participants(
+                            collective, dp_rank, pp_rank
+                        )
 
     @staticmethod
     def _validate_domain_rank_mapping(
@@ -203,6 +200,7 @@ class ClusterDomainValidationMixin:
         rank_in_replica = mapping.domain_rank % ranks_per_replica
         expected_dp = mapping.domain_rank // ranks_per_replica
         expected_tp = rank_in_replica % parallel.tensor_parallel_size
+        expected_pp = rank_in_replica // parallel.tensor_parallel_size
         expected_ep = domain.expert_parallel.ep_rank(
             dp_rank=expected_dp, tp_rank=expected_tp
         )
@@ -212,7 +210,7 @@ class ClusterDomainValidationMixin:
             mapping.dp_rank,
             mapping.ep_rank,
         )
-        expected = (expected_tp, 0, expected_dp, expected_ep)
+        expected = (expected_tp, expected_pp, expected_dp, expected_ep)
         if actual != expected:
             raise ConfigurationError(
                 f"execution domain {domain.name!r} domain_rank={mapping.domain_rank} "
