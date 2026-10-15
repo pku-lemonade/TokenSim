@@ -8,15 +8,21 @@ from TokenSim.hardware import HardwareContext
 from TokenSim.errors import ConfigurationError
 from TokenSim.config.validation import integer
 from scripts.lpx.native_simulation import point
+from scripts.lpx.hardware_overrides import reserve_memory
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
 def evaluate(job):
     target, workload, case, clients, settings = job
+    settings = dict(settings)
     try:
-        return point(
+        hardware = reserve_memory(
             HardwareContext.load(ROOT / "data"),
+            settings.pop("memory_reserve_overrides", {}),
+        )
+        return point(
+            hardware,
             target,
             workload,
             case,

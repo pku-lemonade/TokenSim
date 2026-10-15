@@ -131,6 +131,11 @@ def generate_plots(summary_path, output=None, reference_path=None):
             "plots require TokenSim summary and explicitly digitized reference"
         )
     workload = summary["workload"]
+    fidelity = (
+        "Sampled native-DAG replay; numerical accuracy requires separate native calibration."
+        if summary.get("executor") == "sampled_native_dag_replay"
+        else "Native per-pass operator DAGs."
+    )
     caption = (
         f"{summary['model']['model_id']} | Cached ISL = {workload['cached_tokens']:,} | "
         f"New ISL = {workload['new_tokens']:,} | OSL = {workload['output_tokens']:,}"
@@ -194,8 +199,8 @@ def generate_plots(summary_path, output=None, reference_path=None):
         fig.text(
             0.11,
             0.075,
-            "Analytical proxy; all allocated processors charged. Curves normalized to the peak simulated Rubin TPS/MW.",
-            fontsize=10,
+            fidelity + " All allocated processors charged; peak Rubin normalization.",
+            fontsize=9,
             color="#666666",
         )
         fig.text(
@@ -216,7 +221,14 @@ def generate_plots(summary_path, output=None, reference_path=None):
         )
         draw_reference(axes[0], reference["curves"])
         axes[1].set_title(
-            "TokenSim: independent analytical assumptions", fontsize=12, pad=15
+            "TokenSim: "
+            + (
+                "sampled native-DAG replay"
+                if summary.get("version") == 3
+                else "native analytical operators"
+            ),
+            fontsize=12,
+            pad=15,
         )
         draw_simulation(axes[1], summary, legend=False)
         fig.suptitle(

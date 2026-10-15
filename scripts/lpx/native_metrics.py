@@ -8,6 +8,14 @@ from TokenSim.af.serving.timing import (
 )
 
 
+def resource_capacities(services):
+    return {
+        namespace_resource(name, key): value
+        for name, service in services.items()
+        for key, value in service.executor.resources.resource_capacities().items()
+    }
+
+
 def collect_metrics(
     services,
     measurement,
@@ -17,11 +25,7 @@ def collect_metrics(
     communication,
     windows=None,
 ):
-    capacities = {
-        namespace_resource(name, key): value
-        for name, service in services.items()
-        for key, value in service.executor.resources.resource_capacities().items()
-    }
+    capacities = resource_capacities(services)
     transport = [
         transport_timing(row, communication)
         for row in (*handoff_events, *control_events)

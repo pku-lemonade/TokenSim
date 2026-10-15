@@ -35,6 +35,7 @@ class AFService:
         providers=None,
         communication=None,
         metric_sink=None,
+        execution_driver=None,
     ):
         if metric_sink is not None and (retain_trace or not trace):
             raise ConfigurationError(
@@ -43,6 +44,7 @@ class AFService:
         if metric_sink is not None and not callable(metric_sink):
             raise ConfigurationError("metric sink must be callable")
         self.env, self.runtime = env, runtime
+        self.execution_driver = execution_driver
         compute, transfer = providers or build_operator_table_af_providers(
             hardware=runtime.hardware,
             model=runtime.model,
@@ -175,6 +177,27 @@ class AFService:
                 )
             )
         start = self.env.now
+        if self.execution_driver is None:
+            iteration = yield from self._execute_native(
+                owner, requests, phase, start, query_tokens
+            )
+        else:
+            iteration = yield from self.execution_driver.forward(self, requests, phase)
+        for session, request in zip(sessions, requests):
+            session.cached_context = request.context_len
+            self.memory.commit(session.request_id, request.context_len)
+        self.completed_passes.append(
+            {
+                "start": start,
+                "end": self.env.now,
+                "request_ids": tuple(session.request_id for session in sessions),
+                "phase": phase,
+                "query_tokens": query_tokens,
+            }
+        )
+        return iteration
+
+    def _execute_native(self, owner, requests, phase, start, query_tokens):
         graph_timing = None
         if self.runtime.cluster.af.compute_execution_mode == "cuda_graph":
             resources = self.executor.resources.host_resources_for(
@@ -216,8 +239,8 @@ class AFService:
                     end_at=finished,
                     queue_duration=submitted - start,
                     service_duration=finished - submitted,
-                    request_count=len(sessions),
-                    token_count=query_tokens * len(sessions),
+                    request_count=len(requests),
+                    token_count=query_tokens * len(requests),
                     source_id="assumption:cuda_graph_submit",
                     match_type="analytical",
                     node_id=f"i{iteration.iteration_id}:cuda_graph_submit",
@@ -233,18 +256,6 @@ class AFService:
                 self.trace.events[index] = CompletedTiming.from_event(
                     self.trace.events[index]
                 )
-        for session, request in zip(sessions, requests):
-            session.cached_context = request.context_len
-            self.memory.commit(session.request_id, request.context_len)
-        self.completed_passes.append(
-            {
-                "start": start,
-                "end": self.env.now,
-                "request_ids": tuple(session.request_id for session in sessions),
-                "phase": phase,
-                "query_tokens": query_tokens,
-            }
-        )
         return iteration
 
     def release(self, session):
@@ -257,8 +268,12 @@ class AFService:
             "passes": len(self.completed_passes),
             "resource_capacities": self.executor.resources.resource_capacities(),
             "operator_stats": (
-                self.executor.compute_provider.stats_dict()
-                if hasattr(self.executor.compute_provider, "stats_dict")
-                else {}
+                {"fidelity": "sampled_native_profiles"}
+                if self.execution_driver is not None
+                else (
+                    self.executor.compute_provider.stats_dict()
+                    if hasattr(self.executor.compute_provider, "stats_dict")
+                    else {}
+                )
             ),
         }

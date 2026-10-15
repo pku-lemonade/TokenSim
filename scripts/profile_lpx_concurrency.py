@@ -16,6 +16,7 @@ from TokenSim.hardware import HardwareContext
 from scripts.lpx.concurrency import decode_probe, resident_capacity
 from scripts.lpx.config import load_cases
 from scripts.lpx.native_config import runtime_configurations
+from scripts.lpx.hardware_overrides import reserve_memory
 from scripts.reproduce_lpx import repository_state, write_json
 
 
@@ -37,6 +38,12 @@ def main(argv=None):
     parser.add_argument("--capacity-only", action="store_true")
     parser.add_argument("--model", default="gpt-oss-2t-wide-proxy")
     parser.add_argument("--draft-model", default="gpt-oss-draft-proxy")
+    parser.add_argument(
+        "--execution-backend", choices=("native", "sampled-replay"), default="native"
+    )
+    parser.add_argument("--replay-samples", type=int, default=4)
+    parser.add_argument("--replay-cache", type=Path)
+    parser.add_argument("--lp30-reserve-bytes", type=int, default=0)
     args = parser.parse_args(argv)
     try:
         for values, label in (
@@ -67,7 +74,17 @@ def main(argv=None):
             raise ConfigurationError(
                 "decode sweeps require explicit Rubin/AF cases; PD/draft support capacity-only checks"
             )
-        hardware = HardwareContext.load(ROOT / "data")
+        hardware = reserve_memory(
+            HardwareContext.load(ROOT / "data"), {"groq_lp30": args.lp30_reserve_bytes}
+        )
+        execution_factory = None
+        if args.execution_backend == "sampled-replay":
+            from scripts.lpx.replay_driver import ReplayConfig
+
+            settings = dict(samples=args.replay_samples)
+            if args.replay_cache is not None:
+                settings["cache"] = str(args.replay_cache)
+            execution_factory = ReplayConfig(workload, **settings)
         target, draft = hardware.model(args.model), hardware.model(args.draft_model)
         revision, dirty = repository_state()
         args.output.mkdir(parents=True, exist_ok=True)
@@ -89,6 +106,9 @@ def main(argv=None):
                 ),
                 steps=args.steps,
                 warmup_steps=args.warmup_steps,
+                execution_backend=args.execution_backend,
+                replay_samples=args.replay_samples if execution_factory else None,
+                lp30_additional_reserve_bytes=args.lp30_reserve_bytes,
             ),
             capacity=[],
             decode_probes=[],
@@ -160,6 +180,7 @@ def main(argv=None):
                             warmup_steps=args.warmup_steps,
                             seed=workload.seed,
                             maximum_context=peak,
+                            execution_factory=execution_factory,
                         )
                         row.update(
                             case=case.name,

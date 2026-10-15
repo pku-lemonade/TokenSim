@@ -11,6 +11,8 @@ POINT_FIELDS = (
     "mode",
     "batch",
     "status",
+    "micro_batch",
+    "native_executor",
     "tokens_per_s_per_user",
     "output_tokens_per_s",
     "tokens_per_s_per_mw",
@@ -48,6 +50,8 @@ def _point_evidence(row):
         handoff_bytes_all_phases=sum(e["bytes"] for e in row["handoff_events"]),
         control_bytes_all_phases=sum(e["bytes"] for e in row["control_events"]),
     )
+    if "replay_profiles" in row:
+        result["replay_profiles"] = row["replay_profiles"]
     cycles = [
         event
         for event in row["verification_events"]

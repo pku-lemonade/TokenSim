@@ -85,6 +85,7 @@ def decode_probe(
     warmup_steps=2,
     seed=42,
     maximum_context=None,
+    execution_factory=None,
 ):
     """Measure resident decode only; no suffix prefill or factory efficiency."""
     for value, name in (
@@ -107,8 +108,33 @@ def decode_probe(
     capacity = resident_capacity(runtime, peak, micro_batch=micro_batch)
     if clients > capacity["maximum_resident_clients"]:
         raise ConfigurationError("decode probe exceeds resident capacity")
-    env = simpy.Environment()
-    service = AFService(env, runtime, seed=seed, retain_trace=False)
+    measurement, events, intervals = {}, [], []
+    driver = (
+        execution_factory({"target": runtime}, measurement)
+        if execution_factory
+        else None
+    )
+    env = driver.env if driver else simpy.Environment()
+    communication = (
+        driver.communication(
+            runtime.cluster.networks,
+            [worker.physical_worker_ref.identity for worker in runtime.workers],
+            "wire",
+        )
+        if driver
+        else None
+    )
+    service = AFService(
+        env,
+        runtime,
+        seed=seed,
+        retain_trace=False,
+        trace=driver is None,
+        communication=communication,
+        execution_driver=driver,
+    )
+    if driver:
+        driver.bind({"target": service}, communication)
     replicas = len(capacity["replicas"])
     bundles = [
         [
@@ -123,7 +149,6 @@ def decode_probe(
     complete = [env.event() for _ in bundles]
     begin = env.event()
     stop = env.event()
-    measurement, events, intervals = {}, [], []
 
     def stream(cohort, sessions):
         for _ in range(warmup_steps):
@@ -158,13 +183,17 @@ def decode_probe(
         env.process(stream(cohort, bundle))
     env.process(observe())
     env.run()
-    metric = steady_metrics(
-        events,
-        service.trace.events,
-        start=measurement["start"],
-        end=measurement["end"],
-        capacities=service.executor.resources.resource_capacities(),
-        include_end=True,
+    metric = (
+        driver.metrics(events)
+        if driver
+        else steady_metrics(
+            events,
+            service.trace.events,
+            start=measurement["start"],
+            end=measurement["end"],
+            capacities=service.executor.resources.resource_capacities(),
+            include_end=True,
+        )
     )
     selected = [row for row in events if row["time"] <= measurement["end"]]
     user_seconds = sum(
@@ -177,9 +206,9 @@ def decode_probe(
     compute_utilization = [
         value
         for key, value in metric["resource_utilization"].items()
-        if key.startswith("worker:")
+        if key.split("/", 1)[-1].startswith("worker:")
     ]
-    return dict(
+    result = dict(
         clients=clients,
         micro_batch=micro_batch,
         cohorts=len(bundles),
@@ -202,3 +231,6 @@ def decode_probe(
         memory=service.memory.summary(),
         metric_scope="resident_decode_only",
     )
+    if driver:
+        result["replay_profiles"] = driver.describe()
+    return result

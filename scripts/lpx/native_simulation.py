@@ -1,16 +1,13 @@
 """Run LPX requests through native AF services in a steady-state interval."""
 
 import numpy as np
-import simpy
 
-from TokenSim.af.communication.endpoints import EndpointResources
-from TokenSim.af.serving.service import AFService
 from TokenSim.af.serving.handoff import plan_handoff, execute_handoff
-from TokenSim.af.serving.metrics import ResourceMetrics
 from TokenSim.config.validation import boolean, integer, number
 from TokenSim.errors import ConfigurationError
 from scripts.lpx.native_config import runtime_configurations, session_prefix_context
 from scripts.lpx.native_metrics import collect_metrics
+from scripts.lpx.native_setup import create_serving
 
 
 def point(
@@ -35,6 +32,7 @@ def point(
     draft_spec=None,
     trace=False,
     stream_metrics=False,
+    execution_factory=None,
 ):
     boolean(stream_metrics, "stream metrics")
     for value, name in (
@@ -72,41 +70,18 @@ def point(
         graph_kernel_us=graph_kernel_us,
         endpoint_transfer_occupancy=endpoint_transfer_occupancy,
     )
-    env = simpy.Environment()
     measurement = {}
-    networks = {
-        key: value
-        for runtime in runtimes.values()
-        for key, value in runtime.cluster.networks.items()
-    }
-    networks.update(
-        handoff="ethernet1600Gb",
-        replication=hardware.device(case.decode.a_device).scale_up_link,
+    env, communication, services, windows, driver = create_serving(
+        hardware,
+        runtimes,
+        case,
+        workload,
+        measurement,
+        trace=trace,
+        stream_metrics=stream_metrics,
+        endpoint_transfer_occupancy=endpoint_transfer_occupancy,
+        execution_factory=execution_factory,
     )
-    identities = [
-        worker.physical_worker_ref.identity
-        for runtime in runtimes.values()
-        for worker in runtime.workers
-    ]
-    communication = EndpointResources(
-        env, networks, identities, transfer_occupancy=endpoint_transfer_occupancy
-    )
-    windows = (
-        {name: ResourceMetrics(measurement, namespace=name) for name in runtimes}
-        if stream_metrics and not trace
-        else None
-    )
-    services = {
-        name: AFService(
-            env,
-            runtime,
-            communication=communication,
-            seed=workload.seed,
-            retain_trace=trace,
-            metric_sink=windows[name].observe if windows is not None else None,
-        )
-        for name, runtime in runtimes.items()
-    }
     inventory = {}
     for runtime in runtimes.values():
         for worker in runtime.workers:
@@ -427,15 +402,18 @@ def point(
         env.process(stream(index, bundle))
     env.process(observe())
     env.run()
-    metric, traces = collect_metrics(
-        services,
-        measurement,
-        token_events,
-        handoff_events,
-        control_events,
-        communication,
-        windows,
-    )
+    if driver is None:
+        metric, traces = collect_metrics(
+            services,
+            measurement,
+            token_events,
+            handoff_events,
+            control_events,
+            communication,
+            windows,
+        )
+    else:
+        metric, traces = driver.metrics(token_events), []
     intervals = [
         row
         for row in decode_intervals
@@ -450,7 +428,7 @@ def point(
         raise ConfigurationError(
             "measurement interval contains no completed decode pass"
         )
-    return dict(
+    result = dict(
         case=case.name,
         mode=case.mode,
         batch=clients,
@@ -486,3 +464,7 @@ def point(
         native_executor="ModelAFExecutor",
         trace=[event.as_dict() for event in traces] if trace else [],
     )
+    if driver is not None:
+        result["native_executor"] = "SampledNativeReplay"
+        result["replay_profiles"] = driver.describe()
+    return result

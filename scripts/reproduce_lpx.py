@@ -20,6 +20,7 @@ from scripts.lpx.runner import evaluate_jobs
 from scripts.lpx.architecture import describe_model
 from scripts.lpx.validation import power_snapshot, validate_summary
 from scripts.lpx.export import write_points_csv
+from scripts.lpx.hardware_overrides import reserve_memory
 
 
 def write_json(path, value):
@@ -64,6 +65,14 @@ def parser():
     result.add_argument("--facility-watts", type=float, default=0.0)
     result.add_argument("--trace", action="store_true")
     result.add_argument("--retain-timing-history", action="store_true")
+    result.add_argument(
+        "--execution-backend", choices=("native", "sampled-replay"), default="native"
+    )
+    result.add_argument("--replay-samples", type=int, default=4)
+    result.add_argument("--replay-prefill-samples", type=int, default=1)
+    result.add_argument("--replay-cache", type=Path)
+    result.add_argument("--lp30-reserve-bytes", type=int, default=0)
+    result.add_argument("--rubin-reserve-bytes", type=int, default=0)
     result.add_argument("--plot", action="store_true")
     result.add_argument("--audit-only", action="store_true")
     result.add_argument("--skip-audit", action="store_true")
@@ -151,9 +160,14 @@ def main(argv=None):
             number(watts, f"{device} power", positive=True)
         if args.audit_only and args.skip_audit:
             raise ConfigurationError("audit-only and skip-audit are mutually exclusive")
+        reserves = {
+            "rubin": args.rubin_reserve_bytes,
+            "groq_lp30": args.lp30_reserve_bytes,
+        }
         hardware = HardwareContext.load(ROOT / "data")
         target = hardware.model(args.model)
         draft = hardware.model(args.draft_model)
+        hardware = reserve_memory(hardware, reserves)
         if args.routing_selection:
             target = replace(
                 target,
@@ -173,6 +187,24 @@ def main(argv=None):
                     ),
                 ),
             )
+        execution_factory = None
+        if args.execution_backend == "sampled-replay":
+            from scripts.lpx.replay_driver import ReplayConfig
+            from scripts.lpx.replay_engine import library
+
+            integer(args.replay_samples, "decode profile samples", minimum=1)
+            integer(args.replay_prefill_samples, "prefill profile samples", minimum=1)
+            if args.trace:
+                raise ConfigurationError(
+                    "sampled replay cannot retain full execution traces"
+                )
+            library()
+            settings = dict(
+                samples=args.replay_samples, prefill_samples=args.replay_prefill_samples
+            )
+            if args.replay_cache is not None:
+                settings["cache"] = str(args.replay_cache)
+            execution_factory = ReplayConfig(workload, **settings)
         args.output.mkdir(parents=True, exist_ok=True)
         if not args.skip_audit:
             print("Run production AF layer audit", flush=True)
@@ -192,9 +224,11 @@ def main(argv=None):
                         batch,
                         dict(
                             power_overrides=power,
+                            memory_reserve_overrides=reserves,
                             facility_watts=args.facility_watts,
                             trace=args.trace and batch == 1,
                             stream_metrics=not args.retain_timing_history,
+                            execution_factory=execution_factory,
                             micro_batch=args.micro_batch,
                             a_dp=args.a_replicas,
                             warmup_steps=args.warmup_steps,
@@ -259,8 +293,12 @@ def main(argv=None):
         end_revision, end_dirty = repository_state()
         payload = {
             "schema": "tokensim.lpx_projection",
-            "version": 2,
-            "executor": "production_ModelAFExecutor",
+            "version": 3 if execution_factory else 2,
+            "executor": (
+                "sampled_native_dag_replay"
+                if execution_factory
+                else "production_ModelAFExecutor"
+            ),
             "git_revision": revision,
             "git_worktree_dirty": dirty,
             "end_git_revision": end_revision,
@@ -273,6 +311,12 @@ def main(argv=None):
                 "client_counts": list(batches),
                 "stream_metrics": not args.retain_timing_history,
                 "event_accounting_required": True,
+                "execution_backend": args.execution_backend,
+                "additional_memory_reserve_bytes": reserves,
+                "replay_samples": args.replay_samples if execution_factory else None,
+                "replay_prefill_samples": (
+                    args.replay_prefill_samples if execution_factory else None
+                ),
                 "micro_batch": args.micro_batch,
                 "simulation_processes": args.jobs,
                 "routing_selection": target.moe.routing.uniform_selection,

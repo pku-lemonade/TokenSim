@@ -73,14 +73,41 @@ def _handoff_unit(model, workload, case, mode):
     )
 
 
-def validate_point(row, case, workload, *, a_replicas, watts, facility_watts, model):
+def validate_point(
+    row,
+    case,
+    workload,
+    *,
+    a_replicas,
+    watts,
+    facility_watts,
+    model,
+    executor="ModelAFExecutor",
+):
     _require(row["mode"] == case.mode, "case mode")
     integer(row["batch"], "result batch", minimum=1)
     if row["status"] == "infeasible":
         _require(bool(row.get("reason")), "capacity rejection needs a reason")
         return
     _require(row["status"] == "ok", "unknown point status")
-    _require(row.get("native_executor") == "ModelAFExecutor", "native executor")
+    _require(row.get("native_executor") == executor, "point executor")
+    if executor == "SampledNativeReplay":
+        profile = row["replay_profiles"]
+        _require(
+            profile["method"] == "sampled_native_operator_dags"
+            and bool(profile["profiles"]),
+            "missing sampled profile provenance",
+        )
+        for item in profile["profiles"]:
+            number(item["native_duration_s"], "native profile duration", positive=True)
+            integer(item["native_events"], "native profile events", minimum=1)
+            for key in ("source_sha256", "input_sha256", "node_body_sha256"):
+                _require(
+                    isinstance(item[key], str)
+                    and len(item[key]) == 64
+                    and all(c in "0123456789abcdef" for c in item[key]),
+                    "invalid profile fingerprint",
+                )
     clients, micro = row["clients"], row["micro_batch"]
     integer(clients, "clients", minimum=1)
     integer(micro, "micro-batch", minimum=1)
@@ -274,11 +301,14 @@ def validate_summary(
 ):
     _require(
         payload.get("schema") == "tokensim.lpx_projection"
-        and payload.get("version") == 2,
+        and payload.get("version") in {2, 3},
         "native summary schema",
     )
+    sampled = payload.get("version") == 3
     _require(
-        payload.get("executor") == "production_ModelAFExecutor", "summary executor"
+        payload.get("executor")
+        == ("sampled_native_dag_replay" if sampled else "production_ModelAFExecutor"),
+        "summary executor",
     )
     workload = Workload(**payload["workload"])
     if original_workload:
@@ -335,6 +365,7 @@ def validate_summary(
             watts=powers,
             facility_watts=payload["facility_watts"],
             model=payload["model"],
+            executor="SampledNativeReplay" if sampled else "ModelAFExecutor",
         )
     feasible = [row for row in rows if row["status"] == "ok"]
     rubin = [row for row in feasible if row["mode"] == "rubin"]
@@ -385,6 +416,12 @@ def validate_summary(
         rejected=len(rows) - len(feasible),
         power_model=powers,
         original_workload=original_workload,
+        execution_fidelity=(
+            "sampled_operator_profiles" if sampled else "native_per_pass_dags"
+        ),
+        numerical_accuracy=(
+            "requires_separate_native_calibration" if sampled else "native_execution"
+        ),
         grid_coverage=grid_coverage,
         event_accounting=(
             "token_events_and_intervals"

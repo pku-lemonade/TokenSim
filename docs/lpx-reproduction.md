@@ -246,6 +246,40 @@ PD and draft cases support capacity checks and require their complete serving pr
 Repeat candidate complete turns with the original 400K/4K/400 workload using `reproduce_lpx.py` before reporting deployment efficiency.
 The PP8 configuration is a distinct physical inventory and requires its own matching Rubin baseline.
 
+## Optional sampled native-DAG execution
+
+`--execution-backend sampled-replay` captures native whole-model operator directed acyclic graphs (DAGs) and schedules their dependencies and physical resource reservations with a compiled C++17 event engine.
+The native backend remains the default.
+The optional backend requires `g++` or `clang++`; its shared library is built locally under `.codex/lpx-replay`.
+Every captured profile must reconstruct its own isolated native pass duration before it can be used.
+Cached JSON profiles include source, model, effective hardware, link, runtime-version and configuration fingerprints, plus a digest of their node data.
+The profile cache uses file locks and atomic replacement and does not deserialize executable Python objects.
+
+The sampled backend still executes all requested output tokens, complete turns, suffix-prefill chunks, cache handoffs and speculative verification/rollback operations.
+It replaces per-pass graph construction and Python operator scheduling with a finite corpus of native profiles.
+`--replay-samples` controls decode profiles per signature and defaults to four.
+`--replay-prefill-samples` defaults to one.
+`--replay-cache` chooses the profile cache directory.
+Sample selection uses a separate deterministic seed and does not consume speculative acceptance draws.
+Request cohorts must have synchronized contexts.
+For inputs below 16K tokens, profiles use the exact request context.
+Long-context decode uses the midpoint of the output range; nonterminal prefill uses the suffix midpoint, and terminal prefill uses the complete input context.
+Routing samples, representative contexts and cross-pass resource tie ordering introduce numerical approximation.
+No fitted throughput multiplier or vendor-curve calibration is applied.
+
+Sampled summaries use version 3, `executor: sampled_native_dag_replay` and per-point `native_executor: SampledNativeReplay`.
+Their resource/token/inventory audit reports `numerical_accuracy: requires_separate_native_calibration`.
+Passing that audit establishes accounting consistency; native controls across the intended modes, client counts and batch sizes must establish numerical accuracy separately.
+Self-reconstruction of isolated profiles alone does not validate contention under concurrent passes.
+The concurrency profiler accepts the same optional backend for direct comparisons with resident decode controls.
+Sampled execution does not support full native trace export.
+
+`--lp30-reserve-bytes` and `--rubin-reserve-bytes` add an explicit per-device allowance to the catalog's existing reserved memory.
+The allowance reduces usable memory before production admission and capacity checks and is saved with the effective hardware snapshot.
+It is a declared assumption, not a measured workspace requirement.
+Flat-link LPX configurations account for resident weights and KV but do not derive all activation, compiler or allocator workspace requirements.
+Capacity without an additional allowance is therefore a resident-memory bound.
+
 ## Figure artifacts and limits
 
 Install plotting dependencies with `python -m pip install -e '.[dev,plot]'`.
