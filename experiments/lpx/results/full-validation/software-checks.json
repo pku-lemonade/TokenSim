@@ -1,0 +1,12 @@
+{
+  "tests_passed": 469,
+  "test_command": "python -m unittest discover -s tests -t .",
+  "test_log_sha256": "cffa711c6eb70cf6fbc32841e2ea8547899c6b75051d3b53e984e0b2ffad43d7",
+  "black_version": "24.2.0",
+  "file_line_limit": 500,
+  "source_summary_hashes_verified": 10,
+  "shell_examples": "bash -n passed",
+  "local_document_links": "passed",
+  "numerical_gate": "failed; separate from passing software and accounting checks",
+  "diagnostic_hashes_verified": 7
+}

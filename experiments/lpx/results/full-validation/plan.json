@@ -1,0 +1,206 @@
+{
+  "schema": "tokensim.lpx_validation_plan",
+  "version": 1,
+  "code_revision": "1cce799",
+  "native_calibration_error_limit": 0.05,
+  "primary_workload": {
+    "cached_tokens": 400000,
+    "new_tokens": 4000,
+    "output_tokens": 400
+  },
+  "strata": [
+    {
+      "name": "default-m1",
+      "config": "experiments/lpx/full-validation-default.json",
+      "cases": [
+        "rubin-tp8",
+        "rubin-tp16",
+        "af-tp8",
+        "pd-tp16",
+        "draft-tp8"
+      ],
+      "batches": [
+        1,
+        4,
+        16,
+        64,
+        256
+      ],
+      "micro_batch": 1,
+      "prefill_chunk": 64,
+      "samples": 8
+    },
+    {
+      "name": "default-m4",
+      "config": "experiments/lpx/full-validation-default.json",
+      "cases": [
+        "rubin-tp8",
+        "af-tp8"
+      ],
+      "batches": [
+        4,
+        16
+      ],
+      "micro_batch": 4,
+      "prefill_chunk": 64,
+      "samples": 4
+    },
+    {
+      "name": "pipeline-m16",
+      "config": "experiments/lpx/full-validation-cases.json",
+      "cases": [
+        "rubin-tp8-pp8",
+        "af-tp8-pp8",
+        "af-tp8-pp8-f2560"
+      ],
+      "batches": [
+        16,
+        64,
+        256
+      ],
+      "micro_batch": 16,
+      "prefill_chunk": 64,
+      "samples": 4
+    }
+  ],
+  "limitations": [
+    "Raw sampled results remain exploratory wherever native calibration or profile-count/window stability exceeds the declared error limit.",
+    "No global optimum or NVIDIA 3x/5x gain is inferred from the finite grid."
+  ],
+  "additional_studies": [
+    {
+      "name": "expert-sensitivity",
+      "config": "experiments/lpx/expert-sweep.json",
+      "model": "gpt-oss-2t-expert-proxy",
+      "cases": [
+        "rubin-tp8",
+        "af-tp8",
+        "pd-tp16",
+        "draft-tp8"
+      ],
+      "batches": [
+        1,
+        16
+      ],
+      "micro_batch": 1,
+      "prefill_chunk": 64,
+      "samples": 4
+    },
+    {
+      "name": "matched-legacy400",
+      "config": "experiments/lpx/sweep.json",
+      "cases": [
+        "rubin-tp8",
+        "af-tp8",
+        "pd-tp16",
+        "draft-tp8"
+      ],
+      "batches": [
+        1,
+        2
+      ],
+      "micro_batch": 1,
+      "prefill_chunk": 256,
+      "samples": 4
+    },
+    {
+      "name": "seed43-sensitivity",
+      "config": "experiments/lpx/full-validation-seed43.json",
+      "cases": [
+        "rubin-tp8-pp8"
+      ],
+      "batches": [
+        64
+      ],
+      "micro_batch": 16,
+      "prefill_chunk": 64,
+      "samples": 4
+    },
+    {
+      "name": "turns2-sensitivity",
+      "config": "experiments/lpx/full-validation-cases.json",
+      "cases": [
+        "rubin-tp8-pp8"
+      ],
+      "batches": [
+        64
+      ],
+      "micro_batch": 16,
+      "prefill_chunk": 64,
+      "samples": 4,
+      "measurement_turns": 2
+    },
+    {
+      "name": "turns4-sensitivity",
+      "config": "experiments/lpx/full-validation-cases.json",
+      "cases": [
+        "rubin-tp8-pp8"
+      ],
+      "batches": [
+        64
+      ],
+      "micro_batch": 16,
+      "prefill_chunk": 64,
+      "samples": 4,
+      "measurement_turns": 4
+    }
+  ],
+  "native_control": {
+    "config": "experiments/lpx/sweep.json",
+    "cases": [
+      "rubin-tp8",
+      "af-tp8",
+      "pd-tp16",
+      "draft-tp8"
+    ],
+    "batches": [
+      1
+    ],
+    "cached_tokens": 400000,
+    "new_tokens": 4000,
+    "output_tokens": 16,
+    "micro_batch": 1,
+    "warmup_steps": 1,
+    "measurement_seconds": 1e-09,
+    "note": "Four exact completed points were combined from a sequential checkpoint and two independent native workers; source hashes are retained in the control summary."
+  },
+  "decode_controls": {
+    "config": "experiments/lpx/pipeline-sweep.json",
+    "cases": [
+      "rubin-tp8-pp8",
+      "af-tp8-pp8"
+    ],
+    "batches": [
+      16,
+      64,
+      256
+    ],
+    "micro_batch": 16,
+    "warmup_steps": 1,
+    "measured_steps": [
+      8,
+      32,
+      128
+    ],
+    "replay_samples": [
+      4,
+      16
+    ],
+    "note": "Only the recorded combinations were run. Native AF 256 was stopped after more than two hours and is explicitly unavailable."
+  },
+  "capacity": {
+    "configs": [
+      "experiments/lpx/sweep.json",
+      "experiments/lpx/full-validation-cases.json",
+      "experiments/lpx/expert-sweep.json"
+    ],
+    "lp30_additional_reserve_bytes": [
+      0,
+      32000000,
+      64000000
+    ],
+    "maximum_context": 404400,
+    "draft_extra_context": 4,
+    "scope": "resident weights and KV; no general activation workspace derivation"
+  }
+}

@@ -1,4 +1,4 @@
-"""Run LPX requests through native AF services in a steady-state interval."""
+"""Run LPX requests through AF services in a finite measurement window."""
 
 import numpy as np
 

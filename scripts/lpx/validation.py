@@ -410,7 +410,7 @@ def validate_summary(
                 "frontier omits a nondominated point",
             )
     return dict(
-        status="passed",
+        status="accounting_passed" if sampled else "passed",
         points=len(rows),
         feasible=len(feasible),
         rejected=len(rows) - len(feasible),

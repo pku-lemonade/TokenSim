@@ -66,7 +66,10 @@ def parser():
     result.add_argument("--trace", action="store_true")
     result.add_argument("--retain-timing-history", action="store_true")
     result.add_argument(
-        "--execution-backend", choices=("native", "sampled-replay"), default="native"
+        "--execution-backend",
+        choices=("native", "sampled-replay"),
+        default="native",
+        help="native execution or experimental, numerically uncertified sampled replay",
     )
     result.add_argument("--replay-samples", type=int, default=4)
     result.add_argument("--replay-prefill-samples", type=int, default=1)
@@ -312,6 +315,10 @@ def main(argv=None):
                 "stream_metrics": not args.retain_timing_history,
                 "event_accounting_required": True,
                 "execution_backend": args.execution_backend,
+                "result_scope": "finite_measurement_window",
+                "approximation_status": (
+                    "experimental_uncertified" if execution_factory else None
+                ),
                 "additional_memory_reserve_bytes": reserves,
                 "replay_samples": args.replay_samples if execution_factory else None,
                 "replay_prefill_samples": (
@@ -348,11 +355,19 @@ def main(argv=None):
             "frontiers": frontiers,
             "results": rows,
             "limitations": [
-                "Production whole-model AF DAGs, physical rank ownership, independent serving cohorts and endpoint injection reservations.",
+                (
+                    "Experimental replay of sampled native whole-model graphs with physical rank and endpoint reservations. Numerical accuracy is not certified."
+                    if execution_factory
+                    else "Production whole-model AF DAGs, physical rank ownership, independent serving cohorts and endpoint injection reservations."
+                ),
                 "Independent model/topology/precision/power assumptions; NVIDIA's undisclosed projection cannot be numerically reproduced.",
                 "Native PP and combined expert/tensor groups are validated; unimplemented context-parallel layouts fail configuration.",
-                "Warm-up and drain are excluded from steady-state throughput; queue delays and per-resource utilization are exported.",
-                "Layer windows and packed expert weights are executed with native per-request routing and KV byte admission.",
+                "Warm-up and drain are excluded from the finite measurement window; steady-state convergence requires a separate window-sensitivity test.",
+                (
+                    "Sampled native profiles retain layer windows, packed expert weights and KV byte admission; routing and long contexts are approximations."
+                    if execution_factory
+                    else "Layer windows and packed expert weights are executed with native per-request routing and KV byte admission."
+                ),
                 "Warm prefixes are resident; prefix creation, checkpoint loading and model quality are outside the simulation.",
                 "Output throughput includes new-suffix prefill, cache handoff and draft service; per-user interactivity excludes TTFT.",
                 "Assumed processor TDP plus supplied facility watts; no automatic rack power or cooling estimate.",

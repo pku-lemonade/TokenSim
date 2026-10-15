@@ -1,5 +1,8 @@
 # Native LPX repair results
 
+The [expanded validation study](lpx-full-validation.md) tests higher concurrency, micro-batches, memory allowances and measurement stability.
+This report preserves the historical low-concurrency experiment and its original provenance.
+
 The repair replaces the serialized full-model projection with production `ModelAFExecutor` serving.
 The retained original-workload experiment finished all eight requested case/client combinations.
 Seven points are feasible and one fails the declared static random-access memory (SRAM) capacity check.

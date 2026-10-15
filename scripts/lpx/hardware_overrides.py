@@ -28,4 +28,15 @@ def reserve_memory(hardware, overrides):
             if extra
             else device
         )
-    return replace(hardware, devices=DeviceCatalog(devices), _packages={})
+    return replace(
+        hardware,
+        devices=DeviceCatalog(devices),
+        _packages=dict(hardware._packages),
+        _package_index=(
+            None
+            if hardware._package_index is None
+            else {
+                name: list(values) for name, values in hardware._package_index.items()
+            }
+        ),
+    )

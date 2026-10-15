@@ -7,6 +7,7 @@ from io import StringIO
 import gzip
 import json
 from pathlib import Path
+from types import SimpleNamespace
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -270,6 +271,18 @@ class NativeReplayControlTest(unittest.TestCase):
             self.assertEqual(replay["memory"], native["memory"])
             self.assertGreater(replay["mean_compute_utilization"], 0)
 
+    def test_memory_allowance_preserves_registered_operator_data_without_aliasing_index(
+        self,
+    ):
+        hardware = replace(self.hardware, _packages={}, _package_index={})
+        package = SimpleNamespace(device_id="rubin", backend="fixture")
+        hardware.register_package(package)
+        adjusted = reserve_memory(hardware, {"rubin": 64_000_000})
+        self.assertIs(adjusted.operator_package("rubin", "fixture"), package)
+        adjusted.register_package(SimpleNamespace(device_id="rubin", backend="extra"))
+        self.assertEqual(hardware.available_backends("rubin"), ["fixture"])
+        self.assertEqual(adjusted.available_backends("rubin"), ["fixture", "extra"])
+
     def test_cli_and_audit_distinguish_sampled_execution_and_check_provenance(self):
         with (
             tempfile.TemporaryDirectory() as directory,
@@ -315,6 +328,7 @@ class NativeReplayControlTest(unittest.TestCase):
             )
             payload = json.loads((root / "run/summary.json").read_text())
             audit = validate_summary(payload)
+            self.assertEqual(audit["status"], "accounting_passed")
             self.assertEqual(
                 audit["numerical_accuracy"], "requires_separate_native_calibration"
             )

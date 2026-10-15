@@ -132,7 +132,7 @@ def generate_plots(summary_path, output=None, reference_path=None):
         )
     workload = summary["workload"]
     fidelity = (
-        "Sampled native-DAG replay; numerical accuracy requires separate native calibration."
+        "Exploratory sampled native-DAG replay; numerical accuracy is not certified."
         if summary.get("executor") == "sampled_native_dag_replay"
         else "Native per-pass operator DAGs."
     )
@@ -186,7 +186,13 @@ def generate_plots(summary_path, output=None, reference_path=None):
         style_axis(ax, x_max, y_max)
         draw_simulation(ax, summary)
         fig.suptitle(
-            "TokenSim projection: throughput and interactivity", fontsize=22, y=0.95
+            (
+                "Exploratory sampled throughput and interactivity"
+                if summary.get("version") == 3
+                else "TokenSim projection: throughput and interactivity"
+            ),
+            fontsize=22,
+            y=0.95,
         )
         fig.text(0.5, 0.865, caption, ha="center", fontsize=11)
         zoom = ax.inset_axes([0.47, 0.35, 0.48, 0.26])
@@ -223,7 +229,7 @@ def generate_plots(summary_path, output=None, reference_path=None):
         axes[1].set_title(
             "TokenSim: "
             + (
-                "sampled native-DAG replay"
+                "exploratory sampled replay"
                 if summary.get("version") == 3
                 else "native analytical operators"
             ),

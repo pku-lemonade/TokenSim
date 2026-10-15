@@ -248,6 +248,10 @@ The PP8 configuration is a distinct physical inventory and requires its own matc
 
 ## Optional sampled native-DAG execution
 
+The [expanded validation study](lpx-full-validation.md) found numerical errors up to 45.8% in concurrent replay controls.
+This backend is experimental and its high-load results are exploratory.
+An accounting audit does not certify its timing predictions.
+
 `--execution-backend sampled-replay` captures native whole-model operator directed acyclic graphs (DAGs) and schedules their dependencies and physical resource reservations with a compiled C++17 event engine.
 The native backend remains the default.
 The optional backend requires `g++` or `clang++`; its shared library is built locally under `.codex/lpx-replay`.
@@ -268,9 +272,13 @@ Routing samples, representative contexts and cross-pass resource tie ordering in
 No fitted throughput multiplier or vendor-curve calibration is applied.
 
 Sampled summaries use version 3, `executor: sampled_native_dag_replay` and per-point `native_executor: SampledNativeReplay`.
-Their resource/token/inventory audit reports `numerical_accuracy: requires_separate_native_calibration`.
+Their resource/token/inventory audit reports `status: accounting_passed` and `numerical_accuracy: requires_separate_native_calibration`.
 Passing that audit establishes accounting consistency; native controls across the intended modes, client counts and batch sizes must establish numerical accuracy separately.
 Self-reconstruction of isolated profiles alone does not validate contention under concurrent passes.
+The `steady_state` result key is retained for compatibility and describes the measured finite window.
+Window length, complete-turn count, micro-batch size and routing samples require separate convergence checks.
+The native 64-client Rubin control changed by 70.2% when measurement increased from eight to 32 decode passes per cohort.
+Warm-up exclusion and positive complete-turn counts alone do not establish saturation.
 The concurrency profiler accepts the same optional backend for direct comparisons with resident decode controls.
 Sampled execution does not support full native trace export.
 
@@ -327,3 +335,4 @@ For version-2 summaries produced without a power snapshot, this command verifies
 The audit checks every saved power total against that catalog before accepting the result.
 Passing software tests and repairing the known execution defects do not establish NVIDIA's projected speed or efficiency gains.
 The [completed native experiment report](lpx-native-results.md) records the original-workload measurements and their remaining limits.
+The [expanded validation report](lpx-full-validation.md) records the load matrix, failed numerical calibration and window, memory and architecture sensitivities.
