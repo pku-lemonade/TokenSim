@@ -22,7 +22,9 @@ POINT_FIELDS = (
 
 def write_points_csv(path, rows):
     with Path(path).open("w", newline="", encoding="utf-8") as stream:
-        writer = csv.DictWriter(stream, fieldnames=POINT_FIELDS, extrasaction="ignore")
+        writer = csv.DictWriter(
+            stream, fieldnames=POINT_FIELDS, extrasaction="ignore", lineterminator="\n"
+        )
         writer.writeheader()
         writer.writerows(rows)
 

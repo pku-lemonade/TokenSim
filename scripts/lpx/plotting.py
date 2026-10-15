@@ -33,7 +33,13 @@ def style_axis(ax, x_max=8000, y_max=1.02):
 
 def save(fig, output, name):
     for suffix in ("png", "svg"):
-        fig.savefig(output / f"{name}.{suffix}", dpi=160, facecolor="white")
+        path = output / f"{name}.{suffix}"
+        fig.savefig(path, dpi=160, facecolor="white")
+        if suffix == "svg":
+            path.write_text(
+                "\n".join(line.rstrip() for line in path.read_text().splitlines())
+                + "\n"
+            )
     plt.close(fig)
 
 

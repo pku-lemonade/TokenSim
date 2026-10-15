@@ -1,0 +1,20 @@
+{
+  "status": "passed",
+  "points": 8,
+  "feasible": 7,
+  "rejected": 1,
+  "power_model": {
+    "rubin": {
+      "watts": 1800.0,
+      "source_id": "assumption-rubin-analytical",
+      "grade": "D"
+    },
+    "groq_lp30": {
+      "watts": 450.0,
+      "source_id": "assumption-lp30-analytical",
+      "grade": "D"
+    }
+  },
+  "original_workload": true,
+  "grid_coverage": "external"
+}
