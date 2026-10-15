@@ -113,7 +113,7 @@ Sequential and parallel point results have deterministic-equivalence coverage.
 python scripts/reproduce_lpx.py \
   --skip-audit \
   --cases rubin-tp8 af-tp8 pd-tp16 draft-tp8 \
-  --batches 1 \
+  --batches 1 2 \
   --measurement-turns 1 \
   --jobs 4 \
   --plot \
@@ -156,10 +156,11 @@ python scripts/reproduce_lpx.py \
 Invalid CLI settings fail before output creation.
 
 `summary.json` records revision and dirty-state snapshots at the start and end of evaluation, model/draft inputs, architecture arithmetic, hardware, run settings, physical inventories, capacity failures and frontiers.
+New summaries record the requested client counts in `run_settings.client_counts` and reject missing or unexpected case/client combinations during export.
 `partial-results.json` checkpoints finished points while a sweep is running.
 `power_model` preserves effective processor watts, source identifiers and evidence grades independently of the hardware performance snapshot.
 Each newly exported summary runs arithmetic, physical-inventory, complete-turn, memory-reservation, transfer-byte and Pareto-frontier validation.
-`points.csv` contains interactivity, power and normalized efficiency.
+`points.csv` contains interactivity, raw output throughput, power and normalized efficiency.
 Successful points export bounded/resident KV bytes, service counts, complete/partial turns, TTFT, utilization, queue delays and transfer events.
 Interactivity divides committed decode tokens by per-user decode-pass elapsed time, including queueing.
 Factory throughput counts completed output tokens over the measured wall-clock interval, including suffix prefill, cache handoff and draft service.
@@ -200,10 +201,26 @@ Audit a saved native summary without rerunning its requests:
 ```bash
 python scripts/check_lpx_results.py \
   --summary outputs/lpx-native-reproduction/summary.json \
+  --config experiments/lpx/sweep.json \
+  --cases rubin-tp8 af-tp8 pd-tp16 draft-tp8 \
+  --batches 1 2 \
   --original-workload \
-  --output outputs/lpx-native-reproduction/validation.json
+  --output outputs/lpx-native-reproduction/validation.json \
+  --export outputs/lpx-native-reproduction/audited
 ```
+
+`--config` compares the saved case layouts with the selected configurations and checks the complete case/client grid.
+`--cases` selects names from that configuration and requires `--config`.
+`--batches` overrides the configuration's client counts or supplies the expected counts for an older summary.
+Without `--batches`, a supplied configuration uses its own client counts.
+Without external counts, the audit uses `run_settings.client_counts` when available.
+An older summary with neither source reports `grid_coverage: not_recorded`; its point arithmetic can pass without establishing experiment completeness.
+Draft verification commits must equal measured decode tokens, with warm-up and drain cycles excluded and partial cohorts weighted by their request count.
+`--export` writes a compact `evidence.json` and `points.csv` after successful validation.
+The evidence preserves effective power assumptions, inputs, frontiers, complete turns and measured verification totals, and identifies the unmodified source summary by its SHA-256 digest.
+Audit output paths must differ from the source summary and each other.
 
 For version-2 summaries produced without a power snapshot, this command verifies the saved hardware snapshot and reconstructs processor power from the explicitly loaded local catalog.
 The audit checks every saved power total against that catalog before accepting the result.
 Passing software tests and repairing the known execution defects do not establish NVIDIA's projected speed or efficiency gains.
+The [completed native experiment report](lpx-native-results.md) records the original-workload measurements and their remaining limits.

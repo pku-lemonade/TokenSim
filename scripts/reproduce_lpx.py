@@ -1,7 +1,6 @@
 """Run the LPX figure's workload through TokenSim analytical operators and SimPy."""
 
 import argparse
-import csv
 from dataclasses import asdict, replace
 import json
 from pathlib import Path
@@ -20,6 +19,7 @@ from scripts.lpx.simulator import pareto
 from scripts.lpx.runner import evaluate_jobs
 from scripts.lpx.architecture import describe_model
 from scripts.lpx.validation import power_snapshot, validate_summary
+from scripts.lpx.export import write_points_csv
 
 
 def write_json(path, value):
@@ -268,6 +268,7 @@ def main(argv=None):
             "draft_model": draft.to_dict(),
             "architecture": describe_model(target),
             "run_settings": {
+                "client_counts": list(batches),
                 "micro_batch": args.micro_batch,
                 "simulation_processes": args.jobs,
                 "routing_selection": target.moe.routing.uniform_selection,
@@ -313,21 +314,7 @@ def main(argv=None):
         }
         payload["validation"] = validate_summary(payload)
         write_json(args.output / "summary.json", payload)
-        fields = [
-            "case",
-            "mode",
-            "batch",
-            "status",
-            "tokens_per_s_per_user",
-            "tokens_per_s_per_mw",
-            "normalized_throughput",
-            "power_watts",
-            "reason",
-        ]
-        with (args.output / "points.csv").open("w", newline="") as stream:
-            writer = csv.DictWriter(stream, fieldnames=fields, extrasaction="ignore")
-            writer.writeheader()
-            writer.writerows(rows)
+        write_points_csv(args.output / "points.csv", rows)
         print(f"Saved {len(rows)} points to {args.output}", flush=True)
         if args.plot:
             from scripts.lpx.plotting import generate_plots

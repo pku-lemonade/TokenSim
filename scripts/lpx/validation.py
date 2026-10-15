@@ -212,6 +212,7 @@ def validate_point(row, case, workload, *, a_replicas, watts, facility_watts, mo
         _require(copies >= minimum * clients, "missing KV handoffs")
     if case.mode == "draft":
         _require(bool(row["verification_events"]), "missing verification cycles")
+        measured_commits = 0
         for cycle in row["verification_events"]:
             _require(
                 cycle["verification_width"] == workload.draft_tokens + 1,
@@ -226,9 +227,55 @@ def validate_point(row, case, workload, *, a_replicas, watts, facility_watts, mo
                 "committed prefix",
             )
             _require(cycle["draft_catchup_tokens"] in (0, 1), "draft KV catch-up")
+            integer(cycle["cohort"], "verification cohort")
+            _require(cycle["cohort"] * micro < clients, "verification cohort range")
+            number(cycle["time"], "verification completion")
+            if (
+                not cycle["warmup"]
+                and metric["start_s"] <= cycle["time"] <= metric["end_s"]
+            ):
+                cohort_size = min(micro, clients - cycle["cohort"] * micro)
+                measured_commits += cycle["committed_tokens"] * cohort_size
+        _require(
+            measured_commits == metric["decode_tokens"],
+            "measured verification commits disagree with decode tokens",
+        )
 
 
-def validate_summary(payload, *, hardware=None, original_workload=False):
+def _validate_grid(payload, cases, identities, expected_cases, expected_batches):
+    if expected_cases is not None:
+        expected = {case.name: case for case in expected_cases}
+        _require(
+            len(expected) == len(expected_cases) and cases == expected,
+            "saved cases differ from requested configurations",
+        )
+    recorded = payload["run_settings"].get("client_counts")
+    batches = expected_batches if expected_batches is not None else recorded
+    _require({name for name, _ in identities} == set(cases), "missing declared case")
+    if batches is None:
+        return "not_recorded"
+    for counts in (recorded, batches):
+        if counts is None:
+            continue
+        _require(bool(counts), "empty client-count grid")
+        for batch in counts:
+            integer(batch, "expected client count", minimum=1)
+        _require(len(set(counts)) == len(counts), "duplicate client counts")
+    if recorded is not None and expected_batches is not None:
+        _require(set(recorded) == set(batches), "requested client counts differ")
+    expected = {(name, batch) for name in cases for batch in batches}
+    _require(set(identities) == expected, "incomplete or unexpected experiment grid")
+    return "external" if expected_batches is not None else "declared"
+
+
+def validate_summary(
+    payload,
+    *,
+    hardware=None,
+    original_workload=False,
+    expected_cases=None,
+    expected_batches=None,
+):
     _require(
         payload.get("schema") == "tokensim.lpx_projection"
         and payload.get("version") == 2,
@@ -261,9 +308,16 @@ def validate_summary(payload, *, hardware=None, original_workload=False):
     for spec in powers.values():
         number(spec["watts"], "processor watts", positive=True)
     cases = {case.name: case for case in map(_case, payload["cases"])}
+    _require(
+        bool(cases) and len(cases) == len(payload["cases"]),
+        "empty or duplicate declared cases",
+    )
     rows = payload["results"]
     identities = [(row["case"], row["batch"]) for row in rows]
     _require(len(set(identities)) == len(identities), "duplicate experiment points")
+    grid_coverage = _validate_grid(
+        payload, cases, identities, expected_cases, expected_batches
+    )
     for row in rows:
         _require(row["case"] in cases, "undeclared case")
         validate_point(
@@ -324,6 +378,7 @@ def validate_summary(payload, *, hardware=None, original_workload=False):
         rejected=len(rows) - len(feasible),
         power_model=powers,
         original_workload=original_workload,
+        grid_coverage=grid_coverage,
     )
 
 
