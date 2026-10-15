@@ -9,6 +9,7 @@ from TokenSim.af.runtime.admission import ResidentKV
 from TokenSim.af.trace.recorder import AFTraceRecorder
 from TokenSim.af.trace.metrics import AFTraceEvent
 from TokenSim.af.serving.timing import CompletedTiming
+from TokenSim.af.serving.history import StreamingTraceRecorder
 from TokenSim.config.validation import integer, boolean
 from TokenSim.errors import ConfigurationError
 
@@ -33,7 +34,14 @@ class AFService:
         seed=42,
         providers=None,
         communication=None,
+        metric_sink=None,
     ):
+        if metric_sink is not None and (retain_trace or not trace):
+            raise ConfigurationError(
+                "streaming metrics require recording with trace retention disabled"
+            )
+        if metric_sink is not None and not callable(metric_sink):
+            raise ConfigurationError("metric sink must be callable")
         self.env, self.runtime = env, runtime
         compute, transfer = providers or build_operator_table_af_providers(
             hardware=runtime.hardware,
@@ -44,7 +52,11 @@ class AFService:
             dtype=runtime.model.activation_dtype,
             fallback="analytical_only",
         )
-        self.trace = AFTraceRecorder(trace)
+        self.trace = (
+            AFTraceRecorder(trace)
+            if metric_sink is None
+            else StreamingTraceRecorder(trace, metric_sink)
+        )
         self.retain_trace = retain_trace
         self.executor = ModelAFExecutor(
             env,
@@ -213,7 +225,9 @@ class AFService:
                 )
             )
         yield self.env.process(self.executor.run_iteration(iteration))
-        if self.trace.enabled and not self.retain_trace:
+        if self.trace.enabled and isinstance(self.trace, StreamingTraceRecorder):
+            self.trace.release_iteration(iteration.iteration_id)
+        elif self.trace.enabled and not self.retain_trace:
             # Validation has completed; stable positions preserve active DAG offsets.
             for index in self.trace.iteration_event_indices[iteration.iteration_id]:
                 self.trace.events[index] = CompletedTiming.from_event(

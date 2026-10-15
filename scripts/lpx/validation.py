@@ -5,19 +5,10 @@ import math
 
 from TokenSim.config.validation import integer, number
 from TokenSim.dtypes import dtype_size_bytes
-from TokenSim.errors import ConfigurationError
 from TokenSim.af.serving.timing import namespace_resource
 from scripts.lpx.config import Case, Layout, Workload
-
-
-def _require(condition, message):
-    if not condition:
-        raise ConfigurationError(f"LPX result audit: {message}")
-
-
-def _equal(actual, expected, label):
-    number(actual, label)
-    _require(math.isclose(actual, expected, rel_tol=1e-9, abs_tol=1e-10), label)
+from scripts.lpx.event_validation import validate_accounting_events
+from scripts.lpx.validation_checks import equal as _equal, require as _require
 
 
 def power_snapshot(hardware, overrides, devices=("rubin", "groq_lp30")):
@@ -139,7 +130,11 @@ def validate_point(row, case, workload, *, a_replicas, watts, facility_watts, mo
     completed = Counter()
     complete_decode_tokens, complete_user_seconds = 0, 0.0
     for turn in row["turns"]:
-        if not turn["warmup"] and turn["completed"]:
+        if (
+            not turn["warmup"]
+            and turn["completed"]
+            and turn["end"] <= metric["end_s"] + 1e-10
+        ):
             _require(
                 metric["start_s"]
                 <= turn["start"]
@@ -166,6 +161,7 @@ def validate_point(row, case, workload, *, a_replicas, watts, facility_watts, mo
         metric["output_tokens"] >= minimum * clients * workload.output_tokens,
         "complete-turn output count",
     )
+    validate_accounting_events(row, workload)
     capacities = {}
     physical_compute_slots = 0
     for name, service in row["services"].items():
@@ -291,6 +287,10 @@ def validate_summary(
             == (400000, 4000, 400),
             "original figure workload",
         )
+        _require(
+            payload["run_settings"].get("measurement_turns", 0) >= 1,
+            "original-workload audit requires complete measured turns",
+        )
     powers = payload.get("power_model")
     if powers is None:
         _require(
@@ -320,6 +320,13 @@ def validate_summary(
     )
     for row in rows:
         _require(row["case"] in cases, "undeclared case")
+        if row["status"] == "ok" and payload["run_settings"].get(
+            "event_accounting_required", False
+        ):
+            _require(
+                "token_events" in row and "decode_intervals" in row,
+                "missing required token-accounting events",
+            )
         validate_point(
             row,
             cases[row["case"]],
@@ -379,6 +386,13 @@ def validate_summary(
         power_model=powers,
         original_workload=original_workload,
         grid_coverage=grid_coverage,
+        event_accounting=(
+            "token_events_and_intervals"
+            if all(
+                "token_events" in row and "decode_intervals" in row for row in feasible
+            )
+            else "legacy_turn_totals"
+        ),
     )
 
 

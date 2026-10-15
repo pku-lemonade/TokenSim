@@ -24,8 +24,9 @@ def validate_resource_capacity(events, capacities):
         if end <= event.start_at:
             continue
         for resource in event.resource_ids or (event.resource_id,):
+            node = getattr(event, "node_id", f"iteration:{event.iteration_id}")
             intervals.setdefault(resource, []).extend(
-                ((event.start_at, 1, event.node_id), (end, -1, event.node_id))
+                ((event.start_at, 1, node), (end, -1, node))
             )
     for resource, points in intervals.items():
         active = 0

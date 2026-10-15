@@ -6,15 +6,11 @@ import simpy
 from TokenSim.af.communication.endpoints import EndpointResources
 from TokenSim.af.serving.service import AFService
 from TokenSim.af.serving.handoff import plan_handoff, execute_handoff
-from TokenSim.af.serving.metrics import steady_metrics
-from TokenSim.af.serving.timing import (
-    namespace_event,
-    namespace_resource,
-    transport_timing,
-)
-from TokenSim.config.validation import integer, number
+from TokenSim.af.serving.metrics import ResourceMetrics
+from TokenSim.config.validation import boolean, integer, number
 from TokenSim.errors import ConfigurationError
-from scripts.lpx.native_config import runtime_configurations
+from scripts.lpx.native_config import runtime_configurations, session_prefix_context
+from scripts.lpx.native_metrics import collect_metrics
 
 
 def point(
@@ -38,7 +34,9 @@ def point(
     facility_watts=0.0,
     draft_spec=None,
     trace=False,
+    stream_metrics=False,
 ):
+    boolean(stream_metrics, "stream metrics")
     for value, name in (
         (clients, "clients"),
         (micro_batch, "micro-batch"),
@@ -75,6 +73,7 @@ def point(
         endpoint_transfer_occupancy=endpoint_transfer_occupancy,
     )
     env = simpy.Environment()
+    measurement = {}
     networks = {
         key: value
         for runtime in runtimes.values()
@@ -92,6 +91,11 @@ def point(
     communication = EndpointResources(
         env, networks, identities, transfer_occupancy=endpoint_transfer_occupancy
     )
+    windows = (
+        {name: ResourceMetrics(measurement, namespace=name) for name in runtimes}
+        if stream_metrics and not trace
+        else None
+    )
     services = {
         name: AFService(
             env,
@@ -99,6 +103,7 @@ def point(
             communication=communication,
             seed=workload.seed,
             retain_trace=trace,
+            metric_sink=windows[name].observe if windows is not None else None,
         )
         for name, runtime in runtimes.items()
     }
@@ -135,13 +140,14 @@ def point(
                 next(iter(service.owners.values())).domain
             ).data_parallel_size
             dp = cohort % replicas
-            prefix = (
-                workload.cached_tokens
-                if name != "target" or not case.prefill or handoff_mode == "incremental"
-                else 0
+            prefix = session_prefix_context(
+                workload,
+                case,
+                name,
+                handoff_mode=handoff_mode,
+                warmup_mode=warmup_mode,
+                warming=True,
             )
-            if warmup_mode == "resident_decode":
-                prefix = workload.cached_tokens + workload.new_tokens
             bundle[name] = [
                 service.admit(
                     i, dp, maximum_context=peak_context, current_context=prefix
@@ -263,6 +269,7 @@ def point(
                     tokens=len(bundle["target"]),
                     phase="prefill",
                     cohort=cohort,
+                    round=round_index,
                     warmup=warm_turn,
                 )
             )
@@ -335,6 +342,7 @@ def point(
                         tokens=committed * len(bundle["target"]),
                         phase="decode",
                         cohort=cohort,
+                        round=round_index,
                         warmup=warm_turn,
                     )
                 )
@@ -345,6 +353,7 @@ def point(
                         tokens=committed,
                         clients=len(bundle["target"]),
                         cohort=cohort,
+                        round=round_index,
                         warmup=warm_turn,
                     )
                 )
@@ -361,6 +370,7 @@ def point(
             turns.append(
                 dict(
                     cohort=cohort,
+                    round=round_index,
                     start=started,
                     ttft_s=first - started,
                     end=env.now,
@@ -376,7 +386,8 @@ def point(
                 ):
                     complete_events[cohort].succeed()
             if (
-                measurement_turns
+                not stop.triggered
+                and measurement_turns
                 and all(event.triggered for event in complete_events)
                 and env.now >= measurement["start"] + measurement_seconds
             ):
@@ -388,19 +399,18 @@ def point(
             round_index += 1
             for name, sessions in bundle.items():
                 for session in sessions:
-                    session.cached_context = (
-                        workload.cached_tokens
-                        if name != "target"
-                        or handoff_mode == "incremental"
-                        or not case.prefill
-                        else 0
+                    session.cached_context = session_prefix_context(
+                        workload,
+                        case,
+                        name,
+                        handoff_mode=handoff_mode,
+                        warmup_mode=warmup_mode,
+                        warming=not warmed,
                     )
                     services[name].memory.commit(
                         session.request_id, session.cached_context
                     )
                     session.generated = 0
-
-    measurement = {}
 
     def observe():
         yield env.all_of(warm_events)
@@ -409,37 +419,22 @@ def point(
         yield env.timeout(measurement_seconds)
         if measurement_turns:
             yield env.all_of(complete_events)
-        measurement["end"] = env.now
         if not stop.triggered:
+            measurement["end"] = env.now
             stop.succeed()
 
     for index, bundle in enumerate(initial_sessions):
         env.process(stream(index, bundle))
     env.process(observe())
     env.run()
-    traces = [
-        namespace_event(name, event)
-        for name, service in services.items()
-        for event in service.trace.events
-    ]
-    capacities = {
-        namespace_resource(name, key): value
-        for name, service in services.items()
-        for key, value in service.executor.resources.resource_capacities().items()
-    }
-    metric = steady_metrics(
+    metric, traces = collect_metrics(
+        services,
+        measurement,
         token_events,
-        [
-            *traces,
-            *(
-                transport_timing(row, communication)
-                for row in (*handoff_events, *control_events)
-            ),
-        ],
-        start=measurement["start"],
-        end=measurement["end"],
-        capacities=capacities,
-        include_end=True,
+        handoff_events,
+        control_events,
+        communication,
+        windows,
     )
     intervals = [
         row
@@ -481,6 +476,8 @@ def point(
         control_events=control_events,
         verification_events=verification_events,
         turns=turns,
+        token_events=token_events,
+        decode_intervals=decode_intervals,
         execution_mode=execution_mode,
         endpoint_transfer_occupancy=endpoint_transfer_occupancy,
         graph_device_kernel_us_assumption=graph_kernel_us,

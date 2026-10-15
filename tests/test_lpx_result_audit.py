@@ -95,7 +95,11 @@ class LPXResultAuditTest(unittest.TestCase):
             power_overrides={},
             power_model=power_snapshot(cls.hardware, {}),
             facility_watts=0,
-            run_settings={"a_replicas": 1, "client_counts": [1]},
+            run_settings={
+                "a_replicas": 1,
+                "client_counts": [1],
+                "event_accounting_required": True,
+            },
             normalization_tokens_per_s_per_mw=baseline,
             results=rows,
             frontiers={
@@ -139,6 +143,10 @@ class LPXResultAuditTest(unittest.TestCase):
             lambda p: p["cases"].append(p["cases"][0]),
             lambda p: p["run_settings"].update(client_counts=[1, 2]),
             lambda p: p["results"][2]["verification_events"].pop(),
+            lambda p: p["results"][0]["token_events"][0].update(tokens=999),
+            lambda p: p["results"][0]["decode_intervals"][0].update(tokens=999),
+            lambda p: p["results"][0].pop("token_events"),
+            lambda p: p["results"][0].pop("decode_intervals"),
         ]
         for index, change in enumerate(changes):
             with self.subTest(corruption=index):
@@ -150,6 +158,28 @@ class LPXResultAuditTest(unittest.TestCase):
     def test_original_workload_check_rejects_smoke_substitution(self):
         with self.assertRaisesRegex(ConfigurationError, "original figure workload"):
             validate_summary(self.payload, original_workload=True)
+
+    def test_original_workload_cannot_substitute_a_fixed_decode_window(self):
+        payload = deepcopy(self.payload)
+        payload["workload"].update(
+            cached_tokens=400000, new_tokens=4000, output_tokens=400
+        )
+        payload["run_settings"]["measurement_turns"] = 0
+        with self.assertRaisesRegex(ConfigurationError, "complete measured turns"):
+            validate_summary(payload, original_workload=True)
+
+    def test_older_accounting_has_an_explicitly_limited_audit_scope(self):
+        older = deepcopy(self.payload)
+        older["run_settings"].pop("event_accounting_required")
+        for row in older["results"]:
+            del row["token_events"], row["decode_intervals"]
+        self.assertEqual(
+            validate_summary(older)["event_accounting"], "legacy_turn_totals"
+        )
+        self.assertEqual(
+            validate_summary(self.payload)["event_accounting"],
+            "token_events_and_intervals",
+        )
 
     def test_external_grid_checks_older_results_and_declared_layouts(self):
         older = deepcopy(self.payload)

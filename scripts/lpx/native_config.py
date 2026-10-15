@@ -5,6 +5,16 @@ from TokenSim.errors import ConfigurationError
 from scripts.lpx.simulator import draft_model
 
 
+def session_prefix_context(
+    workload, case, service, *, handoff_mode, warmup_mode, warming
+):
+    if warming and warmup_mode == "resident_decode":
+        return workload.cached_tokens + workload.new_tokens
+    if service == "target" and case.prefill and handoff_mode == "full":
+        return 0
+    return workload.cached_tokens
+
+
 def runtime_configurations(
     hardware, target, case, *, draft_spec=None, a_dp=1, **settings
 ):

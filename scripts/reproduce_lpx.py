@@ -63,6 +63,7 @@ def parser():
     result.add_argument("--lp30-watts", type=float)
     result.add_argument("--facility-watts", type=float, default=0.0)
     result.add_argument("--trace", action="store_true")
+    result.add_argument("--retain-timing-history", action="store_true")
     result.add_argument("--plot", action="store_true")
     result.add_argument("--audit-only", action="store_true")
     result.add_argument("--skip-audit", action="store_true")
@@ -193,6 +194,7 @@ def main(argv=None):
                             power_overrides=power,
                             facility_watts=args.facility_watts,
                             trace=args.trace and batch == 1,
+                            stream_metrics=not args.retain_timing_history,
                             micro_batch=args.micro_batch,
                             a_dp=args.a_replicas,
                             warmup_steps=args.warmup_steps,
@@ -269,6 +271,8 @@ def main(argv=None):
             "architecture": describe_model(target),
             "run_settings": {
                 "client_counts": list(batches),
+                "stream_metrics": not args.retain_timing_history,
+                "event_accounting_required": True,
                 "micro_batch": args.micro_batch,
                 "simulation_processes": args.jobs,
                 "routing_selection": target.moe.routing.uniform_selection,

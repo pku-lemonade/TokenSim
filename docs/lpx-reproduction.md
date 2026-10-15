@@ -35,6 +35,8 @@ In-flight work drains after measurement ends.
 Admission closes at the final required turn or timeout before another turn is submitted.
 In-flight prefill chunks drain, and subsequent chunks are not submitted after closure.
 Warm-up and drain tokens are excluded from steady-state output throughput.
+The closing timestamp is immutable after admission stops, including when an in-flight turn finishes during drain.
+Resident warm-up restores cached-plus-new context between short warm-up turns.
 Native measurements explicitly tag warm-up tokens and include output completions at the closing timestamp.
 This boundary convention retains the final speculative token group without admitting the warm-up group that triggered measurement.
 
@@ -162,6 +164,18 @@ New summaries record the requested client counts in `run_settings.client_counts`
 Each newly exported summary runs arithmetic, physical-inventory, complete-turn, memory-reservation, transfer-byte and Pareto-frontier validation.
 `points.csv` contains interactivity, raw output throughput, power and normalized efficiency.
 Successful points export bounded/resident KV bytes, service counts, complete/partial turns, TTFT, utilization, queue delays and transfer events.
+New results retain token completion events and decode intervals with cohort and turn identifiers.
+The independent audit reconstructs output counts, per-user elapsed time, complete-turn token counts and the earliest valid closing timestamp from that evidence.
+`--original-workload` requires a positive complete-turn minimum and rejects fixed-window decode diagnostics even if their declared token lengths match the original figure.
+
+Complete-turn CLI runs accumulate resource metrics online and release each iteration's events after native invariant validation.
+Live event positions remain stable while other iterations are executing.
+This bounds retained event objects by active iterations instead of total experiment length.
+`--retain-timing-history` preserves completed timing records for differential diagnostics.
+`--trace` retains full events for client-count-one points.
+Retained histories also receive a global capacity audit across iterations, which can detect short resource overlaps even when average utilization is below one.
+New exports require their token-event evidence; older summaries report `event_accounting: legacy_turn_totals` to identify the narrower audit scope.
+
 Interactivity divides committed decode tokens by per-user decode-pass elapsed time, including queueing.
 Factory throughput counts completed output tokens over the measured wall-clock interval, including suffix prefill, cache handoff and draft service.
 TPS/MW divides factory throughput by all allocated processor watts plus the facility allowance.
