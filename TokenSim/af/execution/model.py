@@ -174,11 +174,12 @@ class ModelAFExecutor(AFExecutor):
         )
 
     def _run_model_dag(self, block, layer, link, dag, previous):
-        offset = len(self.trace.events) if self.trace.enabled else 0
+        indices = self.trace.iteration_event_indices
+        offset = len(indices.get(block.iteration_id, ())) if self.trace.enabled else 0
         yield from self._run_dag(block, layer, link, dag)
         if self.trace.enabled and previous:
             # Only this DAG's newly emitted roots; unrelated blocks may interleave.
-            for index in range(offset, len(self.trace.events)):
+            for index in indices.get(block.iteration_id, ())[offset:]:
                 event = self.trace.events[index]
                 if (
                     event.iteration_id == block.iteration_id

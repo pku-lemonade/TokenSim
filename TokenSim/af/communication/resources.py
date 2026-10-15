@@ -39,6 +39,7 @@ class DomainScheduler:
         self._priorities = set()
         self._resource_queues = {}
         self._active_queue_keys = set()
+        self._dirty_queue_keys = set()
         self._serial = 0
         self._scheduled = False
 
@@ -61,6 +62,7 @@ class DomainScheduler:
         self._serial += 1
         for key in keys:
             self._active_queue_keys.add(key)
+            self._dirty_queue_keys.add(key)
             heapq.heappush(
                 self._resource_queues.setdefault(key, []),
                 (request.priority, self._serial, request),
@@ -80,9 +82,10 @@ class DomainScheduler:
 
     def _arbitrate(self):
         self._scheduled = False
+        changed, self._dirty_queue_keys = self._dirty_queue_keys, set()
         candidates = {
             id(request): request
-            for key in tuple(self._active_queue_keys)
+            for key in changed
             if (request := self._front(key)) is not None
         }
         for request in sorted(candidates.values(), key=lambda item: item.priority):
@@ -123,6 +126,7 @@ class DomainScheduler:
             request.cancelled = True
             self._waiters.pop(id(request), None)
             self._priorities.discard(request.priority)
+        self._dirty_queue_keys.update(request.keys)
         self._wake()
 
     def run(self, keys, duration, identity):
