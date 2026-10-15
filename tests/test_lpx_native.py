@@ -43,13 +43,18 @@ class NativeLPXTest(unittest.TestCase):
         )
         env.run()
         self.assertEqual(session.cached_context, 18)
-        self.assertFalse(any(e.operation == "lm_head" for e in service.trace.events))
+        self.assertFalse(
+            any(e.operation in {"final_norm", "lm_head"} for e in service.trace.events)
+        )
         env.process(service.forward([session], phase="prefill", query_tokens=2))
         env.run()
         self.assertEqual(session.cached_context, 20)
         heads = [e for e in service.trace.events if e.operation == "lm_head"]
         self.assertEqual(len(heads), 2)
         self.assertEqual({e.local_work["token_count"] for e in heads}, {1})
+        norms = [e for e in service.trace.events if e.operation == "final_norm"]
+        self.assertEqual(len(norms), 2)
+        self.assertEqual({e.local_work["token_count"] for e in norms}, {1})
 
     @classmethod
     def setUpClass(cls):

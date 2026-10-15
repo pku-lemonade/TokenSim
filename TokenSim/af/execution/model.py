@@ -77,7 +77,7 @@ class ModelAFExecutor(AFExecutor):
         tp = len(bindings)
         tokens = (
             self._logits_rows(block)
-            if operation in {"lm_head", "token_selection"}
+            if operation in {"final_norm", "lm_head", "token_selection"}
             else block.token_count
         )
         if tokens == 0:
@@ -262,7 +262,9 @@ class ModelAFExecutor(AFExecutor):
             )
         output_anchor = (
             self._boundary_nodes(block, "token_selection")
-            or self._boundary_nodes(block, "final_norm")
+            or self._boundary_nodes(
+                replace(block, logits_rows=block.request_count), "final_norm"
+            )
         )[0]
         if (
             tokens > 0

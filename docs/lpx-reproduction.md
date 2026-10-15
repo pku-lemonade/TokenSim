@@ -16,7 +16,8 @@ Colocated A/F domains share one physical compute and memory inventory.
 The native factory defaults to the reference planner because independently sampled routing rarely reuses an exact structural template.
 Factory callers can enable structural caching for repeated routes, with eligibility limited to at most 32 query tokens.
 Differential coverage compares complete native results and traces between reference and cached planning.
-Intermediate prefill chunks extend KV without producing unused vocabulary logits; the final suffix chunk computes the prefill output token.
+Intermediate prefill chunks extend KV without final normalization or unused vocabulary logits.
+The final suffix chunk normalizes and projects the output row for each request.
 Full traces undergo invariant validation before optional retention as compact timing records.
 The compact history produces the same serving metrics as the full history.
 Worker and host resource names include their service namespace when metrics are aggregated.
