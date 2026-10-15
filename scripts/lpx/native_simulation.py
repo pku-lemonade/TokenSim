@@ -14,8 +14,7 @@ from TokenSim.af.serving.timing import (
 )
 from TokenSim.config.validation import integer, number
 from TokenSim.errors import ConfigurationError
-from scripts.lpx.native_config import configuration
-from scripts.lpx.simulator import draft_model
+from scripts.lpx.native_config import runtime_configurations
 
 
 def point(
@@ -64,25 +63,17 @@ def point(
     )
     if peak_context > target.max_position_embeddings:
         raise ConfigurationError("workload exceeds the target context limit")
-    layouts = [("target", target, case.decode, a_dp)]
-    if case.prefill:
-        layouts.append(("prefill", target, case.prefill, 1))
-    if case.draft:
-        layouts.append(("draft", draft_spec or draft_model(target), case.draft, 1))
-    runtimes = {
-        name: configuration(
-            hardware,
-            model,
-            layout,
-            namespace=name,
-            micro_batch=micro_batch,
-            a_dp=replicas,
-            execution_mode=execution_mode,
-            graph_kernel_us=graph_kernel_us,
-            endpoint_transfer_occupancy=endpoint_transfer_occupancy,
-        )
-        for name, model, layout, replicas in layouts
-    }
+    runtimes = runtime_configurations(
+        hardware,
+        target,
+        case,
+        draft_spec=draft_spec,
+        a_dp=a_dp,
+        micro_batch=micro_batch,
+        execution_mode=execution_mode,
+        graph_kernel_us=graph_kernel_us,
+        endpoint_transfer_occupancy=endpoint_transfer_occupancy,
+    )
     env = simpy.Environment()
     networks = {
         key: value

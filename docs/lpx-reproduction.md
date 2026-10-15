@@ -177,6 +177,60 @@ The default micro-batch of one gives independently sampled request acceptance.
 Target and independent drafter suffix prefill execute concurrently on their own physical pools.
 Larger fixed cohorts share one accepted-prefix sample to retain synchronized request lengths.
 
+## Concurrency coverage
+
+One or two resident clients provide low-load latency checks and cannot establish a multi-stage deployment's throughput frontier.
+The retained eight-point run used an explicit `--batches 1 2` override to limit host simulation time.
+That choice omitted the larger client counts already declared by the default and pipeline sweeps.
+Its efficiency ratios describe only the measured operating points.
+
+Keep physical inventory fixed within each load sweep.
+Vary client counts and micro-batch sizes independently, with enough progressing cohorts to exercise all pipeline stages.
+Continue until throughput stops increasing across successive load increments or resident memory rejects another point.
+Increase the measurement length and check stability at candidate peaks.
+Compare feasible frontiers across the declared placements and use a common Rubin denominator from the expanded experiment.
+
+`scripts/profile_lpx_concurrency.py` checks resident capacity through the production physical rank ledger.
+It includes every service pool declared by each case and reserves the original workload's peak context, including speculative lookahead where applicable.
+The limit accounts for weights, protocol buffers, full/windowed KV layers, pipeline placement and request distribution across attention replicas.
+Partial final cohorts use their actual request counts.
+Run capacity checks without executing decoder passes:
+
+```bash
+python scripts/profile_lpx_concurrency.py \
+  --config experiments/lpx/pipeline-sweep.json \
+  --capacity-only \
+  --output outputs/lpx-pipeline-capacity
+```
+
+Rubin and AF can also run resident decode concurrency probes:
+
+```bash
+python scripts/profile_lpx_concurrency.py \
+  --config experiments/lpx/pipeline-sweep.json \
+  --cases rubin-tp8-pp8 af-tp8-pp8 \
+  --batches 1 2 4 8 16 32 64 128 256 \
+  --micro-batches 1 4 16 \
+  --steps 8 \
+  --warmup-steps 2 \
+  --output outputs/lpx-decode-concurrency
+```
+
+`--steps` is the minimum number of measured decode passes per cohort.
+Micro-batch sizes greater than a requested client count are skipped to avoid duplicate single-cohort probes.
+Each cohort continues submitting work until all cohorts meet that minimum, so early finishers do not reduce the active population during measurement.
+Warm-up and drain are excluded from the measured decode rates.
+The result records actual committed tokens, completed passes per cohort, micro-batch size and mean/maximum compute utilization.
+Mean utilization includes every allocated compute rank in the target runtime, including idle ranks.
+`profile.json` checkpoints capacity and probe outcomes after each completed point.
+Probe timing uses `ModelAFExecutor` and the same runtime configurations as complete-turn experiments.
+
+These probes exclude suffix prefill, KV handoff and speculative verification.
+Their `resident_decode_only` scope cannot supply complete-turn factory throughput or a normalization denominator for the reference comparison.
+PD and draft cases support capacity checks and require their complete serving protocols for throughput measurements.
+Repeat candidate complete turns with the original 400K/4K/400 workload using `reproduce_lpx.py` before reporting deployment efficiency.
+The PP8 configuration is a distinct physical inventory and requires its own matching Rubin baseline.
+
 ## Figure artifacts and limits
 
 Install plotting dependencies with `python -m pip install -e '.[dev,plot]'`.

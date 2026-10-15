@@ -7,6 +7,13 @@ The independent audit verifies the complete requested grid, original workload, p
 The supplied NVIDIA Figure 11 is a vendor projection for a scaled GPT-OSS model.
 The simulator uses independently declared proxies because the article does not give the scaled dimensions, deployed inventories, power figures or timing profiles needed to reproduce its numerical curves.
 
+This is a low-concurrency validation run with one or two resident clients per deployment.
+Those counts were selected to limit host execution time and do not establish throughput saturation.
+The saved-result audit confirms the requested eight outcomes and their accounting; it does not validate that the sampled grid is sufficient for a deployment comparison.
+The AF/PD efficiency ratios below apply only to those low-load operating points.
+They do not establish the deployments' peak efficiency or an optimized performance gap to NVIDIA's curves.
+The concurrency profiling procedure in the [experiment guide](lpx-reproduction.md#concurrency-coverage) addresses the missing load coverage.
+
 ## Implementation evidence
 
 Attention–feed-forward network (AF) separation assigns attention and feed-forward networks (FFNs) to separate pools.
@@ -68,7 +75,7 @@ The independent audit checks its saved hardware against the current catalog and 
 The original summary remains unchanged; the committed evidence identifies its exact bytes with SHA-256 `dc1c3e33d5bb051ca5f13fce8be079ec80e1291737f3eb7db4c0cec664d052e8`.
 New runs save both revision snapshots, processor-power provenance and the requested client counts.
 
-## Completed measurements
+## Completed low-concurrency measurements
 
 TPS denotes tokens per second, and MW denotes megawatts.
 TPS/user measures per-user decode speed, and output TPS measures the deployment's completed output across the entire turn.

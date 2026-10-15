@@ -2,6 +2,23 @@
 
 from TokenSim.af.factory import build_model_runtime
 from TokenSim.errors import ConfigurationError
+from scripts.lpx.simulator import draft_model
+
+
+def runtime_configurations(
+    hardware, target, case, *, draft_spec=None, a_dp=1, **settings
+):
+    layouts = [("target", target, case.decode, a_dp)]
+    if case.prefill:
+        layouts.append(("prefill", target, case.prefill, 1))
+    if case.draft:
+        layouts.append(("draft", draft_spec or draft_model(target), case.draft, 1))
+    return {
+        name: configuration(
+            hardware, model, layout, namespace=name, a_dp=replicas, **settings
+        )
+        for name, model, layout, replicas in layouts
+    }
 
 
 def configuration(
