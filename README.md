@@ -147,6 +147,7 @@ The [`docs/`](docs/) directory contains detailed feature descriptions, configura
 | --- | --- |
 | [Operator latency model](docs/operator-latency-model.md) | Operator tables, interpolation and extrapolation, formula-based fallback, communication timing, calibration and result provenance |
 | [AF separation](docs/af-separation.md) | Serving modes, execution domains, tensor/KV ownership, precision, communication, traces and validation |
+| [32-user decode experiment](docs/32-user-decode.md) | Portable DeepSeek-V3 4A32F run with Poisson arrivals, 400 output tokens per request and audited latency metrics |
 | [Groq 3 LPX reproduction](docs/lpx-reproduction.md) | Sourced LP30/Rubin inputs, production AF audit and four deployment experiments for the long-context figure |
 | [Native LPX results](docs/lpx-native-results.md) | Completed 400K/4K/400 measurements, audited evidence, comparison figures and limits of the sampled deployments |
 | [Parallelism](docs/parallelism.md) | Worker roles, tensor/pipeline/data/expert parallelism, conversation routing, synchronized data-parallel steps and communication topology |
