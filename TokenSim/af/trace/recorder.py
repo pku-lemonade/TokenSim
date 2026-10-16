@@ -47,6 +47,13 @@ class AFTraceRecorder:
         self.events.clear()
         self.iteration_event_indices.clear()
 
+    def complete_iteration(self, iteration_id: int) -> None:
+        """Finalize validated events; memory recorders keep their live objects."""
+
+    def close(self) -> None:
+        """Release history when its owner no longer needs trace readback."""
+        self.clear()
+
     def events_for(self, iteration_id: int) -> tuple[AFTraceEvent, ...]:
         return tuple(
             self.events[index]

@@ -258,7 +258,23 @@ Full exported traces defer immutable tensor and routing serialization until the 
 `TokenSim.af.trace.export.write_chrome_trace` writes events incrementally in their recorded order using compact JSON.
 The DeepSeek profile writer delegates to this shared exporter and preserves every JSON field and value.
 Export reads final dependency patches and replaces the destination only after the complete document has been written.
-The recorder still retains the event history during execution.
+AF executors, fixed-batch decode and serving with full trace retention use `ArchivedTraceRecorder` by default.
+The recorder archives each iteration after dependency patches and invariant validation complete.
+Active events keep their stable append positions, while completed events and their position indexes move to a private temporary SQLite database.
+The database contains chunks of at most 256 events and uses a 2 MiB SQLite page cache.
+The decoded readback cache holds at most `max(2, peak_concurrent_iterations)` chunks to avoid repeated decoding of interleaved iterations.
+Writes are synchronous and transactional, so a failed write keeps the iteration's active history available to its owner.
+Global iteration, integer indexing, slicing and `events_for(iteration_id)` read completed snapshots in their original recorded order, including interleaved iterations.
+Completed snapshots have no stable Python object identity after readback cache eviction.
+Replacing `trace.events[index]` persists the replacement while preserving its iteration identity.
+Treat nested values in completed snapshots as read-only because mutating a returned dictionary does not persist an archive update.
+`AFTraceRecorder` remains available for callers that require an in-memory mutable event list.
+`clear()` and `close()` release the archive, and unreferenced archives are removed during normal garbage collection.
+The DeepSeek command closes each archive after profile export, including export failures.
+The standard Python temporary directory setting controls archive placement, and archive disk usage grows with trace length.
+Trace storage in memory is bounded by active iterations and readback chunks for fixed workloads.
+Explicitly materializing the complete history through `list(trace.events)` or full result reporting still uses memory proportional to the requested history.
+Request state, iteration summaries and growing model contexts can contribute additional memory outside the trace archive.
 Explicit A/F domains can share physical workers when their link declares `colocated: true`.
 Those workers retain one compute resource and one memory capacity across both capabilities.
 

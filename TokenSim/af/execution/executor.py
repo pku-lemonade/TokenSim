@@ -33,6 +33,7 @@ from TokenSim.af.providers.queries import (
 )
 from TokenSim.af.runtime.plan import AFRuntimePlan
 from TokenSim.af.trace.recorder import AFTraceRecorder
+from TokenSim.af.trace.archive import ArchivedTraceRecorder
 from TokenSim.config.cluster_config import ClusterConfig, WorkerConfig
 from TokenSim.errors import ConfigurationError, SimulationStateError
 from TokenSim.moe.routing import ExpertRouting
@@ -213,7 +214,7 @@ class AFExecutor(
             worker_configs,
             getattr(transfer_provider, "placement", None),
         )
-        self.trace = trace_recorder or AFTraceRecorder(
+        self.trace = trace_recorder or ArchivedTraceRecorder(
             cluster_config.af.trace_enabled,
             self.resources.resource_capacities(),
         )

@@ -7,6 +7,7 @@ from TokenSim.af.execution.model import ModelAFExecutor
 from TokenSim.af.providers.operator_table import build_operator_table_af_providers
 from TokenSim.af.runtime.admission import ResidentKV
 from TokenSim.af.trace.recorder import AFTraceRecorder
+from TokenSim.af.trace.archive import ArchivedTraceRecorder
 from TokenSim.af.trace.metrics import AFTraceEvent
 from TokenSim.af.serving.timing import CompletedTiming
 from TokenSim.af.serving.history import StreamingTraceRecorder
@@ -54,11 +55,12 @@ class AFService:
             dtype=runtime.model.activation_dtype,
             fallback="analytical_only",
         )
-        self.trace = (
-            AFTraceRecorder(trace)
-            if metric_sink is None
-            else StreamingTraceRecorder(trace, metric_sink)
-        )
+        if metric_sink is not None:
+            self.trace = StreamingTraceRecorder(trace, metric_sink)
+        elif retain_trace:
+            self.trace = ArchivedTraceRecorder(trace)
+        else:
+            self.trace = AFTraceRecorder(trace)
         self.retain_trace = retain_trace
         self.executor = ModelAFExecutor(
             env,

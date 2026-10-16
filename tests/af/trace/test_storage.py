@@ -125,13 +125,13 @@ class TraceStorageTest(unittest.TestCase):
         changed = [
             (old, new)
             for old, new in zip(originals, executor.trace.events)
-            if old is not new
+            if old != new
         ]
         self.assertTrue(changed)
         for old, new in changed:
             self.assertFalse(old.predecessor_ids)
             self.assertTrue(new.predecessor_ids)
-            self.assertIs(
+            self.assertEqual(
                 next(
                     e
                     for e in executor.trace.events_for(new.iteration_id)

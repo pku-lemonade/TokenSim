@@ -122,6 +122,7 @@ class ExecutorIterationMixin:
         }
         if self.trace.enabled:
             self.trace.validate_invariants(iteration.iteration_id)
+            self.trace.complete_iteration(iteration.iteration_id)
         return iteration
 
     def _run_control_guarded(self, block, state, failure_event, failures, done):

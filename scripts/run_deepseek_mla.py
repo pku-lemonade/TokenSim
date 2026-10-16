@@ -71,17 +71,20 @@ def run(args):
             fallback=args.fallback,
         )
         step_us = sum(row["makespan_us"] for row in measurements) / args.steps
-        profile = write_profile(
-            output / f"decode-layers{config.plan.total_layers}-b{batch}.trace.json",
-            executor,
-            metadata={
-                "model": MODEL_ID,
-                "backend": "operator_table",
-                "timing": "simulated service and queue durations; no GPU execution",
-                "hardware_assumptions_file": "hardware-assumptions.json",
-                "hypothetical_f_memory_gib": args.hypothetical_f_memory_gib,
-            },
-        )
+        try:
+            profile = write_profile(
+                output / f"decode-layers{config.plan.total_layers}-b{batch}.trace.json",
+                executor,
+                metadata={
+                    "model": MODEL_ID,
+                    "backend": "operator_table",
+                    "timing": "simulated service and queue durations; no GPU execution",
+                    "hardware_assumptions_file": "hardware-assumptions.json",
+                    "hypothetical_f_memory_gib": args.hypothetical_f_memory_gib,
+                },
+            )
+        finally:
+            executor.trace.close()
         rows.append(
             {
                 "batch_size": batch,
