@@ -1,0 +1,19 @@
+[package]
+name = "tokensim-rust-probe"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "tokensim_rust_probe"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "=0.20.3", features = ["extension-module"] }
+
+[build-dependencies]
+pyo3-build-config = "=0.20.3"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1

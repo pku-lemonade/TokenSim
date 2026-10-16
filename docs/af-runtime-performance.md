@@ -3,7 +3,7 @@
 ## Scope
 
 The runtime optimizations preserve the model, query and provider interfaces, deterministic event scheduling, simulated durations, and complete exported traces.
-They use Python and the standard library and require no additional compiler or package.
+The production optimizations use Python and the standard library and require no additional compiler or package.
 The reference revision for the measurements below is `d8677a0`.
 
 ## Implementation
@@ -82,8 +82,9 @@ python scripts/run_deepseek_mla.py \
 A C++ prototype of recursive structural-key normalization reduced the initial geometry-interning candidate from 11.31 seconds to 10.08 seconds for the full-model one-step simulation.
 That incremental gain did not meet the requested 2x threshold for adopting a native backend.
 The retained Python implementation removes more redundant work without introducing a native build dependency.
-An exploratory Rust JSON encoder reduced trace export from about 2.2 seconds to 0.94 seconds, but the whole candidate still did not reach 2x and its JSON compatibility would require additional handling.
+An exploratory use of the third-party Rust JSON encoder `orjson` reduced trace export from about 2.2 seconds to 0.94 seconds, but the whole candidate still did not reach 2x and its JSON compatibility would require additional handling.
 Neither prototype is part of the production implementation.
+The separate [Rust kernel experiment](../scripts/af_rust/README.md) provides authored native implementations and a reproducible comparison entry point.
 
 A separate concurrency probe ran two independent one-layer jobs of 600 steps each with attention and feed-forward tensor parallelism 2, batch 8, context 128 and trace retention disabled.
 Threads and processes reproduced the sequential simulation rows exactly.
@@ -108,3 +109,44 @@ A candidate replacement must preserve FIFO ties, failure and cancellation behavi
 A native implementation should remain behind the existing Python interfaces and retain a reference path for validation.
 It should be adopted only after representative complete runs demonstrate at least 2x throughput with equal result JSON and trace values.
 Independent experiment processes remain the available concurrency path while that gate is unmet.
+
+## Authored Rust kernel experiment
+
+`scripts/af_rust` implements structural-key normalization, validated template binding and event dispatch in Rust with PyO3.
+`scripts/profile_af_rust.py` selects Python or Rust inside a fresh diagnostic process and passes simulation arguments through the existing DeepSeek command-line interface.
+No production model, provider or configuration module is changed by this experiment.
+The build is explicit, dependency versions are locked, and artifacts are cached by Python version and Rust source digest.
+
+The comparison uses the optimized Python revision `ba8c043` as its reference.
+The default Rust probe selects key normalization and template binding.
+The full-model one-step result uses the median of three alternating fresh-process pairs.
+The longer cases use one pair each and include complete trace export and exact file comparisons.
+All cases use the DeepSeek configuration described above.
+
+| Workload | Optimized Python simulation | Rust keys and templates | Speedup |
+| --- | ---: | ---: | ---: |
+| Full model, 1 step | 8.313 s | 7.930 s | 1.048x |
+| Full model, 4 steps | 41.215 s | 39.407 s | 1.046x |
+| One layer, 128 steps | 20.049 s | 18.871 s | 1.062x |
+
+Including trace export, the full-model one-step median is 10.604 seconds for Python and 10.227 seconds for Rust, a 1.037x speedup.
+The full-model four-step totals are 51.006 seconds and 49.563 seconds, a 1.029x speedup.
+Peak resident memory in that four-step pair is 1,051 MiB for Python and 1,147 MiB for Rust.
+The additional compiled template representation adds storage while the Python recipes remain available.
+All six result JSON files, including complete traces, match byte for byte in each of the five pairs.
+
+The event-dispatch kernel continues to call Python generators and scheduling callbacks and does not release the global interpreter lock.
+It preserves the Python event queue and its time, priority and insertion ordering.
+The dispatch experiment has a separate selection because crossing this boundary alone did not improve complete-run performance.
+In individual one-step full-model probes, Rust dispatch alone took 8.638 seconds and the three combined kernels took 8.388 seconds, compared with the 8.313-second Python median.
+Both variants reproduce all six result JSON files byte for byte.
+Per-event reference scopes prevent temporary Python references from accumulating across a run.
+
+The 506-test suite passes with the default runtime and with all three Rust kernels installed in the test process.
+Eight optional native contract tests cover dense and mixture-of-experts trace equivalence, mutable key descendants, bounded storage, event ordering, cancellation, callback growth, stop/resume, errors, temporary reference release and restoration of customized execution paths.
+Black 24.2.0, Rust formatting, Clippy with warnings treated as errors, the 500-line source limit and whitespace checks pass.
+
+The Rust kernels remain optional experiments because the measured whole-run gain is below the requested 2x adoption threshold.
+A complete native engine would need typed planning and execution state, native resource queues and dependency tracking, and bounded trace conversion with fewer Python callbacks.
+The existing Python model and provider interfaces could remain above that internal boundary.
+The [Rust experiment guide](../scripts/af_rust/README.md) records the implemented scope, reproduction commands and remaining engine work.
