@@ -1,7 +1,7 @@
 """Validated structural DAG templates with per-execution identity bindings.
 
 The cache is local to one planner/runtime plan. Exact token counts and routing
-incidence are shape classes: a changed count or branch compiles another template.
+incidence are shape classes: only recurring shapes compile reusable templates.
 Context affects provider queries, not static planning. No SimPy state lives here.
 """
 
@@ -161,6 +161,7 @@ class TemplateCache:
     def __init__(self, limit=128):
         self.limit = limit
         self.templates = OrderedDict()
+        self.probation = OrderedDict()
         self.requests = 0
         self.hits = 0
         self.static_fingerprints = {}
@@ -242,9 +243,17 @@ class TemplateCache:
         template = self.templates.get(key)
         if template is None:
             dag = planner._build_runtime_layer(block, layer_id, link)
+            # One-use routing shapes execute the validated graph directly.
+            # Keep only keys during probation, never their graphs or recipes.
+            if key not in self.probation:
+                self.probation[key] = None
+                while len(self.probation) > self.limit:
+                    self.probation.popitem(last=False)
+                return dag
+            del self.probation[key]
             template = DAGTemplate.compile(dag, block, layer_id, tokens, edges)
             self.templates[key] = template
-            if len(self.templates) > self.limit:
+            while len(self.templates) > self.limit:
                 self.templates.popitem(last=False)
         else:
             self.hits += 1

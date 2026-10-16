@@ -250,8 +250,15 @@ Endpoint batches wait for all their declared producers.
 The default disables batching; the LPX native experiment enables it explicitly.
 `dag_template_cache_max_tokens` bounds the query-token count eligible for structural template caching.
 Zero retains unlimited shape eligibility; larger graphs always use the validated reference planner.
+The template cache executes a new shape through the validated reference planner and compiles a reusable template when that shape recurs.
+Probation retains at most 128 shape keys, and the compiled template cache retains at most 128 templates per planner.
+Shapes whose keys leave probation require another observed recurrence before compilation.
 `AFService(retain_trace=False)` validates full native events at forward completion and retains their timing records for serving metrics.
 Full exported traces defer immutable tensor and routing serialization until the export boundary.
+`TokenSim.af.trace.export.write_chrome_trace` writes events incrementally in their recorded order using compact JSON.
+The DeepSeek profile writer delegates to this shared exporter and preserves every JSON field and value.
+Export reads final dependency patches and replaces the destination only after the complete document has been written.
+The recorder still retains the event history during execution.
 Explicit A/F domains can share physical workers when their link declares `colocated: true`.
 Those workers retain one compute resource and one memory capacity across both capabilities.
 

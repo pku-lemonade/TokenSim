@@ -9,6 +9,7 @@ from typing import Any
 
 
 from TokenSim.af.factory import build_model_runtime, simulate_decode
+from TokenSim.af.trace.export import write_chrome_trace
 from TokenSim.hardware import HardwareContext
 from TokenSim.hardware.device.sourced_value import SourcedValue
 
@@ -208,29 +209,8 @@ simulate = simulate_decode
 
 
 def write_profile(path: str | Path, executor, metadata: dict[str, Any] | None = None):
-    events = []
-    for event in executor.trace.events:
-        row = event.as_dict()
-        events.append(
-            dict(
-                name=row.get("stage") or row.get("operation") or row.get("event_type"),
-                cat=row.get("event_type"),
-                ph="X",
-                pid=1,
-                tid=row.get("resource_id"),
-                ts=row["start_at"] * 1e6,
-                dur=row["service_duration"] * 1e6,
-                args=row,
-            )
-        )
-    payload = {
-        "displayTimeUnit": "us",
-        "traceEvents": events,
-        "metadata": metadata or {"timing": "simulated operator-table service time"},
-    }
-    output = Path(path)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(
-        json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8"
+    return write_chrome_trace(
+        path,
+        executor.trace.events,
+        metadata or {"timing": "simulated operator-table service time"},
     )
-    return output
