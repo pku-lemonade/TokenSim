@@ -3,28 +3,50 @@
 from collections.abc import Iterable, Mapping
 from dataclasses import fields, is_dataclass
 from functools import lru_cache
+from inspect import getattr_static
+from types import GetSetDescriptorType
 import json
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Any
 
+from TokenSim.af.runtime.host import host_collection
 from TokenSim.af.trace.metrics import AFTraceEvent
 
 
 @lru_cache(maxsize=128)
-def _field_names(record_type):
-    return tuple(field.name for field in fields(record_type))
+def _field_layout(record_type):
+    if not is_dataclass(record_type):
+        return None
+    names = tuple(field.name for field in fields(record_type))
+    direct = (
+        record_type.__getattribute__ is object.__getattribute__
+        and isinstance(
+            getattr_static(record_type, "__dict__", None), GetSetDescriptorType
+        )
+        and all(
+            not hasattr(getattr_static(record_type, name, None), "__get__")
+            for name in names
+        )
+    )
+    return names, direct
 
 
 def _record_dict(record):
     # Nested immutable records stay shared until the JSON encoder visits them.
-    return {name: getattr(record, name) for name in _field_names(type(record))}
-
-
-def _encode_record(value):
-    if is_dataclass(value) and not isinstance(value, type):
-        return _record_dict(value)
-    raise TypeError(f"Object of type {type(value).__name__} is not JSON serializable")
+    layout = _field_layout(type(record))
+    if layout is None:
+        raise TypeError(
+            f"Object of type {type(record).__name__} is not JSON serializable"
+        )
+    names, direct = layout
+    values = getattr(record, "__dict__", None) if direct else None
+    # Reuse the existing field mapping only when its contents and order match
+    # the declared schema. Cached properties and arbitrary extra attributes
+    # must never become exported fields; slots and class defaults still work.
+    if type(values) is dict and tuple(values) == names:
+        return values
+    return {name: getattr(record, name) for name in names}
 
 
 def write_chrome_trace(
@@ -39,20 +61,23 @@ def write_chrome_trace(
     A failed export leaves any existing destination intact.
     """
     encoder = json.JSONEncoder(
-        ensure_ascii=False, separators=(",", ":"), default=_encode_record
+        ensure_ascii=False, separators=(",", ":"), default=_record_dict
     )
     output = Path(path)
     output.parent.mkdir(parents=True, exist_ok=True)
     temporary = None
     try:
-        with NamedTemporaryFile(
-            mode="w",
-            encoding="utf-8",
-            dir=output.parent,
-            delete=False,
-            prefix=f".{output.name}.",
-            suffix=".tmp",
-        ) as stream:
+        with (
+            host_collection(),
+            NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                dir=output.parent,
+                delete=False,
+                prefix=f".{output.name}.",
+                suffix=".tmp",
+            ) as stream,
+        ):
             temporary = Path(stream.name)
             stream.write('{"displayTimeUnit":"us","traceEvents":[')
             for index, event in enumerate(events):

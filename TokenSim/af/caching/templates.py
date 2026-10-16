@@ -14,7 +14,7 @@ from TokenSim.af.caching.estimates import FrozenDict, identity
 from TokenSim.af.providers.queries import AFRoutingEdge
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Recipe:
     kind: str
     value: object
@@ -104,14 +104,19 @@ class DAGTemplate:
             memo[id(value)] = recipe
             return recipe
 
-        indices = {node.node_id: i for i, node in enumerate(dag.nodes)}
-        return cls(
-            tuple(compile_value(node) for node in dag.nodes),
-            tuple(
-                tuple(indices[p] for p in node.predecessor_ids) for node in dag.nodes
-            ),
-            tuple(indices[node_id] for node_id in dag.terminal_node_ids),
-        )
+        try:
+            indices = {node.node_id: i for i, node in enumerate(dag.nodes)}
+            return cls(
+                tuple(compile_value(node) for node in dag.nodes),
+                tuple(
+                    tuple(indices[p] for p in node.predecessor_ids)
+                    for node in dag.nodes
+                ),
+                tuple(indices[node_id] for node_id in dag.terminal_node_ids),
+            )
+        finally:
+            # The recursive closure otherwise retains its memo until cyclic GC.
+            del compile_value
 
     def bind(self, block, layer_id, tokens, edges):
         prefix = f"i{block.iteration_id}:b{block.block_id}:l{layer_id}"
@@ -150,15 +155,19 @@ class DAGTemplate:
             memo[key] = result
             return result
 
-        return BoundDAG(
-            tuple(bind_value(node) for node in self.nodes),
-            self.predecessor_indices,
-            self.terminal_indices,
-        )
+        try:
+            return BoundDAG(
+                tuple(bind_value(node) for node in self.nodes),
+                self.predecessor_indices,
+                self.terminal_indices,
+            )
+        finally:
+            # Bound nodes belong to the returned DAG, not a dead closure cycle.
+            del bind_value
 
 
 class TemplateCache:
-    def __init__(self, limit=128):
+    def __init__(self, limit=384):
         self.limit = limit
         self.templates = OrderedDict()
         self.probation = OrderedDict()

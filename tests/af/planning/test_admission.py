@@ -2,11 +2,13 @@
 
 from copy import deepcopy
 from dataclasses import replace
+import gc
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 import unittest
+import weakref
 from unittest.mock import patch
 
 from TokenSim.af.caching.templates import BoundDAG, DAGTemplate, TemplateCache
@@ -115,3 +117,15 @@ class TemplateAdmissionTest(NativeFixture, unittest.TestCase):
                     if enabled and not model.moe.is_moe_model:
                         self.assertGreater(executor.plan_builder.template_cache.hits, 0)
                 self.assertEqual(results[0], results[1])
+
+    def test_binding_releases_temporary_node_memo_without_cyclic_collection(self):
+        planner, block, link = self.dense_planner()
+        planner.build_layer(block, 0, link)
+        enabled = gc.isenabled()
+        self.addCleanup(gc.enable if enabled else gc.disable)
+        gc.disable()
+        changed = replace(block, iteration_id=block.iteration_id + 1)
+        bound = planner.build_layer(changed, 0, link)
+        node = weakref.ref(bound.nodes[0])
+        del bound
+        self.assertIsNone(node())

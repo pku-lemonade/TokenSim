@@ -4,6 +4,7 @@ import gc
 from threading import Event, Thread
 from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 import simpy
 
@@ -103,4 +104,27 @@ class HostRunTest(unittest.TestCase):
             thread.join(5)
         self.assertFalse(thread.is_alive())
         self.assertEqual(errors, [])
+        self.assertEqual(gc.get_threshold(), (700, 10, 10))
+
+    def test_fixed_batch_scope_covers_submissions_between_environment_runs(self):
+        from TokenSim.af.execution.model import ModelAFExecutor
+        from scripts.deepseek_v3_runtime import configuration, simulate
+
+        original = ModelAFExecutor.submit
+        policies = []
+
+        def submit(executor, *args, **kwargs):
+            policies.append(gc.get_threshold())
+            return original(executor, *args, **kwargs)
+
+        with patch.object(ModelAFExecutor, "submit", submit):
+            executor, _, _, _ = simulate(
+                configuration(a_tp=1, f_tp=1, af_batch_size=1),
+                1,
+                8,
+                steps=2,
+                fallback="analytical_only",
+            )
+        executor.trace.close()
+        self.assertEqual(policies, [(250_000, 10, 10)] * 2)
         self.assertEqual(gc.get_threshold(), (700, 10, 10))

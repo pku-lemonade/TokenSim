@@ -1,6 +1,7 @@
 """Chrome trace values, final dependency patches and export failure handling."""
 
-from dataclasses import replace
+from dataclasses import dataclass, field, replace
+import gc
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -107,3 +108,84 @@ class TraceExportTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "trace source failed"):
                 write_chrome_trace(output, events())
             self.assertEqual(list(Path(directory).iterdir()), [])
+
+    def test_record_fields_keep_schema_order_and_attribute_semantics(self):
+        @dataclass
+        class Ordinary:
+            value: int
+            default: int = field(default=7, init=False)
+
+        @dataclass(slots=True)
+        class Slotted:
+            value: int
+
+        @dataclass
+        class CustomAccess:
+            value: int
+
+            def __getattribute__(self, name):
+                value = object.__getattribute__(self, name)
+                return value * 2 if name == "value" else value
+
+        class Doubled:
+            def __set_name__(self, owner, name):
+                self.name = name
+
+            def __get__(self, instance, owner=None):
+                return self if instance is None else 2 * vars(instance)[self.name]
+
+            def __set__(self, instance, value):
+                vars(instance)[self.name] = value
+
+        @dataclass
+        class DescriptorAccess:
+            value: int = Doubled()
+
+        ordinary = Ordinary(3)
+        ordinary.extra = "not a field"
+        ordinary.default = 11
+        reordered = Ordinary(5)
+        del reordered.value
+        reordered.value = 9
+        values = (ordinary, reordered, Slotted(4), CustomAccess(6), DescriptorAccess(5))
+        events = [replace(_valid_events()[0], details={"records": values})]
+        with TemporaryDirectory() as directory:
+            output = Path(directory) / "trace.json"
+            write_chrome_trace(output, events)
+            self.assertEqual(
+                json.loads(output.read_text()), reference_payload(events, {})
+            )
+            self.assertNotIn('"extra"', output.read_text())
+
+    def test_export_preserves_collection_policy_on_success_and_failure(self):
+        previous, enabled = gc.get_threshold(), gc.isenabled()
+        self.addCleanup(gc.set_threshold, *previous)
+        self.addCleanup(gc.enable if enabled else gc.disable)
+        policies = (
+            (True, (700, 8, 9), (250_000, 8, 9)),
+            (True, (1_000_000, 8, 9), (1_000_000, 8, 9)),
+            (False, (700, 8, 9), (700, 8, 9)),
+            (True, (0, 8, 9), (0, 8, 9)),
+        )
+        with TemporaryDirectory() as directory:
+            for enabled, policy, expected in policies:
+                for fail in (False, True):
+                    with self.subTest(enabled=enabled, policy=policy, fail=fail):
+                        (gc.enable if enabled else gc.disable)()
+                        gc.set_threshold(*policy)
+
+                        def events():
+                            self.assertEqual(gc.get_threshold(), expected)
+                            self.assertEqual(gc.isenabled(), enabled)
+                            yield _valid_events()[0]
+                            if fail:
+                                raise RuntimeError("export failed")
+
+                        path = Path(directory) / "trace.json"
+                        if fail:
+                            with self.assertRaisesRegex(RuntimeError, "export failed"):
+                                write_chrome_trace(path, events())
+                        else:
+                            write_chrome_trace(path, events())
+                        self.assertEqual(gc.get_threshold(), policy)
+                        self.assertEqual(gc.isenabled(), enabled)

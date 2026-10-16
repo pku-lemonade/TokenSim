@@ -10,7 +10,7 @@ from TokenSim.af.execution.model import ModelAFExecutor
 from TokenSim.af.providers.operator_table import build_operator_table_af_providers
 from TokenSim.af.runtime.plan import AFRuntimePlan
 from TokenSim.af.runtime.compiler import compile_af_runtime_plan
-from TokenSim.af.runtime.host import run_environment
+from TokenSim.af.runtime.host import host_collection, run_environment
 from TokenSim.af.trace.archive import ArchivedTraceRecorder
 from TokenSim.config.cluster_config import ClusterConfig
 from TokenSim.config.cluster_config import WorkerConfig
@@ -47,6 +47,7 @@ def build_model_runtime(doc, *, hardware, model, block_size=16):
     return AFModelRuntime(doc, hardware, model, cluster, workers, placement, plan)
 
 
+@host_collection()
 def simulate_decode(
     config, batch, context, *, steps=1, trace=True, fallback="table_first", seed=42
 ):

@@ -258,7 +258,8 @@ The default disables batching; the LPX native experiment enables it explicitly.
 `dag_template_cache_max_tokens` bounds the query-token count eligible for structural template caching.
 Zero retains unlimited shape eligibility; larger graphs always use the validated reference planner.
 The template cache executes a new shape through the validated reference planner and compiles a reusable template when that shape recurs.
-Probation retains at most 128 shape keys, and the compiled template cache retains at most 128 templates per planner.
+Probation retains at most 384 shape keys, and the compiled template cache retains at most 384 templates per planner.
+Internal binding recipes use fixed attribute slots to reduce the storage per cached template.
 Shapes whose keys leave probation require another observed recurrence before compilation.
 `AFService(retain_trace=False)` validates full native events at forward completion and retains their timing records for serving metrics.
 Full exported traces defer immutable tensor and routing serialization until the export boundary.

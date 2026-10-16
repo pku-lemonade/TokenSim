@@ -32,7 +32,7 @@ The completed-trace archive and its bounded readback behavior remain in use.
 Measurements use an Apple M5 host, Python 3.12.12 and fresh local processes.
 The DeepSeek cases use batch 32, attention tensor parallelism 4, feed-forward tensor parallelism 32, context 8,192, A100 SXM 80 GB, NVLink 3 and analytical-only estimates.
 Full-model cases contain 61 layers.
-No 100-step full-model workload was launched for this exploration.
+The measurements in this section exclude the 100-step full-model workload measured separately below.
 The one-step and cross-model results use the median of three fresh-process before/after pairs.
 The full-model one-step pairs alternate their execution order.
 The baseline probes load the changed modules from `git show d8677a0` without modifying the working checkout.
@@ -153,6 +153,81 @@ The comparison uses the small deterministic layouts from `tests/test_lpx_native.
 The measured memory budget applies to these configurations; the collection threshold does not impose a hard resident-memory cap.
 The 513-test suite passes, including contracts for caller policy preservation, exceptions, stop/resume and overlapping host runs.
 Black 24.2.0, the 500-line source limit and whitespace checks pass.
+
+## Complete 100-step command
+
+This comparison uses `2856d5c` as its reference and executes the original full-model command for 100 consecutive decode steps in each fresh local process.
+The workload increments context and generation state normally and retains the complete trace.
+The measured command includes configuration, simulation, invariant validation, archival, all six JSON outputs and archive cleanup.
+Python imports and diagnostic file hashing are outside the timed interval in both versions.
+The runs execute sequentially on the Apple M5 host with Python 3.12.12.
+These measurements are a single complete pair, with shorter screening runs used to select candidates.
+
+| Phase | Reference | Optimized | Speedup |
+| --- | ---: | ---: | ---: |
+| Simulation | 682.788 s | 512.345 s | 1.33x |
+| Complete trace export | 272.405 s | 214.962 s | 1.27x |
+| Complete command | 955.568 s | 727.606 s | 1.31x |
+
+The complete command uses 23.86% less time, and peak resident memory increases from 1.60 GB to 2.43 GB per process.
+The trace contains 6,759,500 events and occupies 32,392,112,426 bytes in both versions.
+Completed events remain archived, with zero completed events retained in the active trace collection at the end of the simulation.
+
+The warm-step profile spreads execution time across structural normalization, template compilation and binding, communication execution, scheduling and trace handling.
+The export profile shows repeated dataclass field copies and attribute lookups in addition to standard-library JSON encoding and archive reads.
+The reference environment-run intervals total 607.212 seconds, leaving 75.576 seconds in setup and work between those intervals.
+The reference restores the low collection threshold between steps, allowing subsequent routing submission to trigger frequent collection of large cached object graphs.
+
+The existing host collection scope now covers the complete fixed-batch decode call and complete streaming trace export.
+Automatic collection remains enabled, and nested or overlapping scopes restore the caller's policy after the last scope exits.
+The template compiler and binder clear recursive closure references when each call returns, releasing their temporary memo dictionaries without waiting for cyclic collection.
+Internal binding recipes use slots to reduce stored objects, and the bounded template cache holds up to 384 recurring shapes instead of 128.
+The larger cache accommodates recurring routing shapes while retaining the existing probation and eviction policies.
+No model-specific key fields or alternate scheduling path are introduced.
+The complete optimized run observes 257 compiled templates and raises cache hits from 4,422 to 5,586 across the same 6,100 lookups.
+Simulation time falls to 512.345 seconds, a 1.33x speedup.
+Its environment-run intervals total 509.852 seconds, and setup plus work between those intervals falls to 2.493 seconds.
+An ablation keeps the original 128-template capacity while applying the remaining optimizations.
+Its simulation takes 573.729 seconds, export takes 212.973 seconds, and the complete command takes 787.000 seconds with a 1.53 GB peak.
+The larger template cache saves another 59.394 seconds per complete command at an additional 0.89 GB of peak resident memory.
+All six ablation JSON files are byte-identical to the original reference outputs.
+
+Trace export reuses a dataclass's existing field dictionary when its attribute access, declared fields and dictionary order allow equivalent serialization.
+Slots, descriptors, custom attribute access, omitted instance defaults and extra attributes use the generic field-by-field fallback.
+The standard-library JSON encoder, event order, floating-point representation and atomic destination replacement remain in use.
+
+All 100 iteration rows, service-query counts and service-cache hits match the reference.
+The five companion JSON files are byte-identical, and every value and array position in the complete trace matches after JSON parsing.
+Some object keys appear in a different order because the existing template binder inserts static fields before dynamic fields, and `RankLocalWork.trace_mapping()` preserves that dictionary order.
+Increasing cache capacity changes which graphs use that binder, so the complete trace has a different byte hash.
+Validation uses the additional 100-step ablation whose six outputs match the reference byte for byte, then compares both complete parsed traces with object keys sorted for diagnostic hashing.
+This comparison includes all 6,759,500 events and file metadata without sorting arrays or rounding numeric values.
+The production trace is retained as a losslessly compressed artifact whose decompressed SHA-256 matches the recorded uncompressed file.
+
+A fresh concurrent comparison uses the same original geometry with three batch-32 streams and four consecutive iterations per stream.
+Its 811,140 events and all iteration timings match after complete JSON-value comparison.
+Simulation takes 74.192 seconds in the reference and 73.937 seconds with the optimizations, which does not establish a simulation speedup for this shorter concurrent case.
+Complete trace export falls from 37.852 seconds to 28.545 seconds, reducing the combined time from 112.044 seconds to 102.483 seconds.
+Peak resident memory is 2.16 GB and 2.21 GB respectively.
+Extending the optimized case to 12 iterations per stream produces 2,433,420 events with a 3.10 GB peak and 278 cached templates.
+That run takes 208.918 seconds for simulation and 93.395 seconds for complete export.
+It records scalar iteration timings and releases completed iteration objects during execution.
+This longer case checks memory and complete output generation without a paired reference throughput claim.
+A saturation run extends each of the three streams to 24 iterations, giving 72 complete iterations and 4,866,840 trace events.
+The cache reaches its 384-template limit by completion 54, and the run continues through completion 71.
+Peak resident memory is 3,906,404,352 bytes, meeting the 4,000,000,000-byte per-process budget after the cache fills.
+Simulation takes 416.880 seconds and complete export takes 198.917 seconds, with zero completed events retained in the active trace collection afterward.
+Automatic collection remains enabled and performs collections during execution.
+The measured budget applies to these configurations and does not impose a universal hard memory limit.
+The dense multi-head attention and grouped-query attention with mixture-of-experts fixtures each preserve 400 iteration rows and complete exported trace bytes against `2856d5c`.
+Complete LPX result documents match in the native Rubin, attention/feed-forward disaggregated, prefill/decode disaggregated and speculative-draft modes.
+All 517 tests pass, including caller collection-policy restoration, export failures, dataclass attribute semantics, immediate binding-memo release and optional Rust contracts.
+Black 24.2.0, the 500-line source limit and whitespace checks pass.
+
+Increasing the structural fingerprint memo to 16,384 entries slows the four-step screen, and replacing its FIFO dictionary with an ordered dictionary provides no established gain.
+Attribute-getter export and a custom pickle dispatch table also provide no useful complete-run improvement in the screening probes.
+Disabling template caching reduces compilation cost in a short startup-heavy run but does not establish a benefit for the complete workload.
+Those substitutions are excluded from production.
 
 ## Native code and parallel execution
 

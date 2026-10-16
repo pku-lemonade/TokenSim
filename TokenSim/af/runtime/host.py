@@ -13,7 +13,8 @@ _saved_thresholds = None
 
 
 @contextmanager
-def _simulation_gc():
+def host_collection():
+    """Amortize automatic collection during allocation-heavy host work."""
     global _active_runs, _saved_thresholds
     with _lock:
         if _active_runs == 0:
@@ -44,7 +45,7 @@ def run_environment(environment, until=None):
     the last call exits, including errors and bounded stop/resume runs.
     Disabled collection and higher caller thresholds are preserved.
     """
-    with _simulation_gc():
+    with host_collection():
         if until is None:
             return environment.run()
         return environment.run(until=until)
