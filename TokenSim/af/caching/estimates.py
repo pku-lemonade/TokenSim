@@ -5,6 +5,16 @@ from collections.abc import Mapping
 from dataclasses import MISSING, fields, is_dataclass, replace
 from functools import lru_cache, wraps
 import hashlib
+from operator import itemgetter
+
+
+_SCALARS = (str, int, type(None))
+_TAGGED_SCALARS = (bool, float)
+
+
+@lru_cache(maxsize=128)
+def _field_names(record_type):
+    return tuple(field.name for field in fields(record_type))
 
 
 class FrozenDict(dict):
@@ -69,42 +79,49 @@ class FingerprintMemo:
         self.values = {}
 
     def __call__(self, value):
-        if type(value) in (str, int, type(None)):
+        if type(value) in _SCALARS:
             return value
-        if type(value) in (bool, float):
+        if type(value) in _TAGGED_SCALARS:
             return (type(value), value)
         return self._visit(value)[0]
 
     def _visit(self, value):
-        if type(value) in (str, int, float, bool, type(None)):
-            return (
-                (type(value), value) if type(value) in (bool, float) else value
-            ), True
+        value_type = type(value)
+        if value_type in _SCALARS:
+            return value, True
+        if value_type in _TAGGED_SCALARS:
+            return (value_type, value), True
         previous = self.values.get(id(value))
         if previous is not None and previous[0] is value:
             return previous[1], True
         if is_dataclass(value):
-            children = tuple(
-                (field.name, self._visit(getattr(value, field.name)))
-                for field in fields(value)
+            safe = value.__dataclass_params__.frozen or getattr(
+                value_type, "_af_readonly", False
             )
-            key = tuple((name, item[0]) for name, item in children)
-            safe = (
-                value.__dataclass_params__.frozen
-                or getattr(type(value), "_af_readonly", False)
-            ) and all(item[1] for _, item in children)
+            children = []
+            for name in _field_names(value_type):
+                child, immutable = self._visit(getattr(value, name))
+                children.append((name, child))
+                safe &= immutable
+            key = tuple(children)
         elif isinstance(value, Mapping):
-            children = tuple(
-                sorted((name, self._visit(item)) for name, item in value.items())
-            )
-            key = tuple((name, item[0]) for name, item in children)
-            safe = isinstance(value, FrozenDict) and all(
-                item[1] for _, item in children
-            )
+            safe = isinstance(value, FrozenDict)
+            children = []
+            for name, item in value.items():
+                child, immutable = self._visit(item)
+                children.append((name, child))
+                safe &= immutable
+            key = tuple(sorted(children))
         elif isinstance(value, (tuple, list)):
-            children = tuple(self._visit(item) for item in value)
-            key = tuple(item[0] for item in children)
-            safe = isinstance(value, tuple) and all(item[1] for item in children)
+            if value_type is tuple and all(type(item) in _SCALARS for item in value):
+                return value, True
+            safe = isinstance(value, tuple)
+            children = []
+            for item in value:
+                child, immutable = self._visit(item)
+                children.append(child)
+                safe &= immutable
+            key = tuple(children)
         else:
             return value, False
         if safe:
@@ -133,6 +150,16 @@ class QuerySkeleton:
             for field in fields(query_type)
             if field.default is not MISSING or field.default_factory is not MISSING
         }
+        self._extract = itemgetter(*self.names) if len(self.names) > 1 else None
+        self._key_defaults = dict.fromkeys(self.names) | self.defaults
+
+    def key_values(self, values):
+        # Dictionary merge and itemgetter run their field loops in C. Keep
+        # PreparedQuery.values unchanged so materialization retains defaults.
+        complete = self._key_defaults | values
+        if self._extract is not None:
+            return self._extract(complete)
+        return tuple(complete[name] for name in self.names)
 
 
 @lru_cache(maxsize=2)
@@ -216,10 +243,7 @@ def cached_estimate(method):
                 if hasattr(self, "estimate_signature")
                 else ()
             ),
-            tuple(
-                normalize(values.get(name, skeleton.defaults.get(name)))
-                for name in skeleton.names
-            ),
+            tuple(map(normalize, skeleton.key_values(values))),
         )
         result = self._estimate_cache.get(key)
         if result is not None:

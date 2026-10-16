@@ -347,9 +347,20 @@ class TensorCopyPlannerMixin:
             f"rank={binding.domain_rank}"
         )
 
-    @staticmethod
-    def _endpoint(binding: Any) -> AFEndpoint:
-        return AFEndpoint(
+    def _endpoint(self, binding: Any) -> AFEndpoint:
+        key = (
+            binding.domain,
+            binding.domain_rank,
+            binding.physical_identity,
+            binding.hardware,
+            binding.dp_rank,
+            binding.tp_rank,
+            binding.ep_rank,
+        )
+        endpoint = self._endpoints.get(key)
+        if endpoint is not None:
+            return endpoint
+        endpoint = AFEndpoint(
             domain=binding.domain,
             domain_rank=binding.domain_rank,
             physical_worker=binding.physical_identity,
@@ -358,6 +369,8 @@ class TensorCopyPlannerMixin:
             tp_rank=binding.tp_rank,
             ep_rank=binding.ep_rank,
         )
+        self._endpoints[key] = endpoint
+        return endpoint
 
     @staticmethod
     def _block_tokens(block: AFBlock) -> tuple[tuple[int, int], ...]:

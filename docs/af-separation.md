@@ -149,6 +149,13 @@ The fixed-batch `simulate_decode` helper checks the selected A replica's residen
 Optional host, operation and transport profiles validate their timing scope, runtime identity, environment and workload range before use.
 Synthetic test profiles provide regression fixtures only.
 Changing runtime configuration requires a new provider/runtime; service and DAG caches retain static estimates without retaining resource availability or completion times.
+Service cache keys normalize all non-execution query fields and distinguish booleans, integers and floats.
+Immutable field layouts and endpoint records are reused within their runtime boundaries.
+Wire-plan keys contain the operation, payload bytes, dtype, mapped physical participants, statistical options and transport backend.
+Node placement is pinned by the provider.
+Per-invocation routing edges, tensor identities, logical byte annotations and query topology do not affect the current wire-plan builders and stay outside that cache key.
+Execution and trace validation still receive the original records and create fresh readiness events and resource reservations for each invocation.
+For profiling results and native-backend criteria, see [AF runtime performance](af-runtime-performance.md).
 
 ## Physical communication
 
