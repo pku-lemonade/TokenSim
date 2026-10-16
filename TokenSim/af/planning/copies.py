@@ -65,30 +65,30 @@ class TensorCopyPlannerMixin:
         byte_width = dtype_size_bytes(transfer_dtype, role="a_to_f_dtype")
         copies: list[_TransferCopy] = []
         edges_by_consumer = dict(routing_edges_by_consumer or {})
+        source_parts = (
+            (
+                (
+                    canonical,
+                    ownership_by_rank[canonical.domain_rank],
+                    (0, self.hidden_size),
+                ),
+            )
+            if replicated
+            else tuple(
+                (
+                    source_by_rank[a_owner.domain_rank],
+                    a_owner,
+                    (a_owner.interval.start, a_owner.interval.end),
+                )
+                for a_owner in sharded_owners
+            )
+        )
         for target, consumer_id, consumer_tokens in target_specs:
             for token in consumer_tokens:
                 matching_edges = tuple(
                     edge
                     for edge in edges_by_consumer.get(consumer_id, ())
                     if (edge.request_id, edge.token_id) == token
-                )
-                source_parts = (
-                    (
-                        (
-                            canonical,
-                            ownership_by_rank[canonical.domain_rank],
-                            (0, self.hidden_size),
-                        ),
-                    )
-                    if replicated
-                    else tuple(
-                        (
-                            source_by_rank[a_owner.domain_rank],
-                            a_owner,
-                            (a_owner.interval.start, a_owner.interval.end),
-                        )
-                        for a_owner in sharded_owners
-                    )
                 )
                 for source, a_owner, interval in source_parts:
                     predecessor = barrier_predecessor or (

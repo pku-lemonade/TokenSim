@@ -2,6 +2,7 @@
 
 import numpy as np
 
+from TokenSim.af.runtime.host import run_environment
 from TokenSim.af.serving.handoff import plan_handoff, execute_handoff
 from TokenSim.config.validation import boolean, integer, number
 from TokenSim.errors import ConfigurationError
@@ -401,7 +402,7 @@ def point(
     for index, bundle in enumerate(initial_sessions):
         env.process(stream(index, bundle))
     env.process(observe())
-    env.run()
+    run_environment(env)
     if driver is None:
         metric, traces = collect_metrics(
             services,

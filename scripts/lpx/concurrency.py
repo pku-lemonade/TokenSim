@@ -3,6 +3,7 @@
 import simpy
 
 from TokenSim.af.runtime.admission import rank_kv_bytes
+from TokenSim.af.runtime.host import run_environment
 from TokenSim.af.serving.metrics import steady_metrics
 from TokenSim.af.serving.service import AFService
 from TokenSim.config.validation import integer
@@ -182,7 +183,7 @@ def decode_probe(
     for cohort, bundle in enumerate(bundles):
         env.process(stream(cohort, bundle))
     env.process(observe())
-    env.run()
+    run_environment(env)
     metric = (
         driver.metrics(events)
         if driver

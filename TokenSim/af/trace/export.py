@@ -38,6 +38,9 @@ def write_chrome_trace(
     JSON values match AFTraceEvent.as_dict(); whitespace is compact.
     A failed export leaves any existing destination intact.
     """
+    encoder = json.JSONEncoder(
+        ensure_ascii=False, separators=(",", ":"), default=_encode_record
+    )
     output = Path(path)
     output.parent.mkdir(parents=True, exist_ok=True)
     temporary = None
@@ -66,14 +69,7 @@ def write_chrome_trace(
                 )
                 if index:
                     stream.write(",")
-                stream.write(
-                    json.dumps(
-                        item,
-                        ensure_ascii=False,
-                        separators=(",", ":"),
-                        default=_encode_record,
-                    )
-                )
+                stream.write(encoder.encode(item))
             stream.write('],"metadata":')
             stream.write(
                 json.dumps(

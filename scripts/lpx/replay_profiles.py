@@ -17,6 +17,7 @@ from time import perf_counter
 import simpy
 import numpy as np
 
+from TokenSim.af.runtime.host import run_environment
 from TokenSim.af.serving.service import AFService
 from TokenSim.af.serving.timing import namespace_resource
 from TokenSim.af.trace.occupancy import occupied_until
@@ -149,7 +150,7 @@ def capture_profile(
             sessions, phase=phase, query_tokens=queries, emit_logits=emit_logits
         )
     )
-    env.run()
+    run_environment(env)
     result = extract_profile(
         service.trace.events,
         namespace,

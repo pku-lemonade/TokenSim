@@ -10,6 +10,7 @@ from TokenSim.af.execution.model import ModelAFExecutor
 from TokenSim.af.providers.operator_table import build_operator_table_af_providers
 from TokenSim.af.runtime.plan import AFRuntimePlan
 from TokenSim.af.runtime.compiler import compile_af_runtime_plan
+from TokenSim.af.runtime.host import run_environment
 from TokenSim.af.trace.archive import ArchivedTraceRecorder
 from TokenSim.config.cluster_config import ClusterConfig
 from TokenSim.config.cluster_config import WorkerConfig
@@ -114,7 +115,7 @@ def simulate_decode(
         iteration = executor.submit(source_worker, requests, "decode")
         env.process(executor.run_iteration(iteration))
         try:
-            env.run()
+            run_environment(env)
         except BaseException:
             executor.trace.close()
             raise
