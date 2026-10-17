@@ -75,7 +75,7 @@ def main():
     context = installed(options.kernels) if options.backend == "rust" else nullcontext()
     try:
         with context:
-            cli.main(arguments)
+            cli.main([*arguments, "--no-resume"])
     finally:
         for name, function in originals.items():
             setattr(cli, name, function)

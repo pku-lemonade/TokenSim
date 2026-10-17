@@ -61,19 +61,22 @@ def _event_encoder():
 
 
 def _encode_event(event, options, encoder):
+    selected = options.fields
+    if selected is None and options.detail == "timing":
+        selected = TIMING_FIELDS
     row = (
-        {name: getattr(event, name) for name in TIMING_FIELDS}
-        if options.detail == "timing"
+        {name: getattr(event, name) for name in selected}
+        if selected is not None
         else _record_dict(event)
     )
     item = dict(
-        name=row["stage"] or row["operation"] or row["event_type"],
-        cat=row["event_type"],
+        name=event.stage or event.operation or event.event_type,
+        cat=event.event_type,
         ph="X",
         pid=1,
-        tid=row["resource_id"],
-        ts=row["start_at"] * 1e6,
-        dur=row["service_duration"] * 1e6,
+        tid=event.resource_id,
+        ts=event.start_at * 1e6,
+        dur=event.service_duration * 1e6,
         args=row,
     )
     try:

@@ -26,6 +26,9 @@ The model uses BF16 architectural estimates, and multi-token prediction is unsup
 
 ## Run decode
 
+The command uses the [reusable AF experiment runner](af-experiment-runner.md), which supports per-point trace configuration and completed-point resume.
+The Python runner also accepts other compiled AF models.
+
 A single-layer experiment uses one A worker and one F worker by default:
 
 ```bash

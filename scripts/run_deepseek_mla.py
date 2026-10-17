@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 import sys
+from tempfile import NamedTemporaryFile
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -19,6 +21,7 @@ from scripts.deepseek_v3_runtime import (
 )
 from scripts.af_trace_options import add_trace_arguments, trace_configuration
 from TokenSim.af.trace.config import AFTraceConfig
+from TokenSim.af.experiments import AFExperimentRunner
 from TokenSim.errors import ConfigurationError
 
 
@@ -28,6 +31,20 @@ def write_json(path: str | Path, value):
     path.write_text(
         json.dumps(value, indent=2, ensure_ascii=False, default=str), encoding="utf-8"
     )
+
+
+def publish_trace(source, target):
+    """Publish the cached trace without copying a potentially large file."""
+    temporary = None
+    try:
+        with NamedTemporaryFile(dir=target.parent, delete=False) as stream:
+            temporary = Path(stream.name)
+        temporary.unlink()
+        os.link(source, temporary)
+        temporary.replace(target)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
 
 
 def run(args):
@@ -63,57 +80,42 @@ def run(args):
         "note": "F capacity override changes storage only; compute and memory bandwidth remain those of the base device.",
     }
     write_json(output / "hardware-assumptions.json", assumptions)
+    runner = AFExperimentRunner(
+        config,
+        output / ".experiments",
+        trace_config=trace_config,
+        fallback=args.fallback,
+        seed=args.seed,
+        resume=args.resume,
+        verify=args.verify_checkpoints,
+        code_paths=(
+            ROOT / "TokenSim",
+            Path(__file__),
+            ROOT / "scripts/deepseek_v3_runtime.py",
+        ),
+        profile_metadata={
+            "model": MODEL_ID,
+            "backend": "operator_table",
+            "timing": "simulated service and queue durations; no GPU execution",
+            "hardware_assumptions_file": "hardware-assumptions.json",
+            "hypothetical_f_memory_gib": args.hypothetical_f_memory_gib,
+        },
+        simulate=simulate,
+        write_profile=write_profile,
+    )
     rows = []
     for batch in args.batches:
-        trace_output = (
-            output / f"decode-layers{config.plan.total_layers}-b{batch}.trace.json"
-        )
         print(
             f"Run operator-table V3 decode: layers={config.plan.total_layers}, B={batch}",
             flush=True,
         )
-        executor, measurements, compute, transfer = simulate(
-            config,
-            batch,
-            args.context,
-            steps=args.steps,
-            trace=True,
-            fallback=args.fallback,
-            trace_output=trace_output,
-            **trace_kwargs,
-        )
-        step_us = sum(row["makespan_us"] for row in measurements) / args.steps
-        try:
-            profile = (
-                write_profile(
-                    trace_output,
-                    executor,
-                    metadata={
-                        "model": MODEL_ID,
-                        "backend": "operator_table",
-                        "timing": "simulated service and queue durations; no GPU execution",
-                        "hardware_assumptions_file": "hardware-assumptions.json",
-                        "hypothetical_f_memory_gib": args.hypothetical_f_memory_gib,
-                    },
-                )
-                if trace_config.mode == "full"
-                else None
-            )
-        finally:
-            executor.trace.close()
-        rows.append(
-            {
-                "batch_size": batch,
-                "context_len": args.context,
-                "steps": args.steps,
-                "avg_step_us": step_us,
-                "tokens_per_s": batch / (step_us / 1e6),
-                "tokens_per_s_per_user": 1e6 / step_us,
-                "profile": str(profile.name) if profile is not None else None,
-                "operator_stats": compute.stats_dict(),
-                "transfer": transfer.describe(),
-            }
-        )
+        completed = runner.run(batch, args.context, steps=args.steps)
+        row = completed.result["summary"]
+        if row["profile"] is not None:
+            publish_trace(completed.directory / row["profile"], output / row["profile"])
+        if completed.reused:
+            print(f"Reuse completed experiment: B={batch}", flush=True)
+        rows.append(row)
     write_json(
         output / "summary.json",
         {
@@ -124,6 +126,7 @@ def run(args):
             "hardware_assumptions_file": "hardware-assumptions.json",
             "hypothetical_f_memory_gib": args.hypothetical_f_memory_gib,
             "fallback": args.fallback,
+            **({"seed": args.seed} if args.seed != 42 else {}),
             **({"trace_config": trace_config.describe()} if trace_kwargs else {}),
             "results": rows,
             "limitations": [
@@ -152,6 +155,19 @@ def build_parser():
     parser.add_argument("--device", default="a100_sxm_80g")
     parser.add_argument("--network", default="nvlink3")
     parser.add_argument("--hypothetical-f-memory-gib", type=int)
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--resume",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="reuse matching completed experiment points; interrupted points restart",
+    )
+    parser.add_argument(
+        "--verify-checkpoints",
+        choices=("stat", "sha256"),
+        default="stat",
+        help="verify output size and mtime, or additionally read and hash every output",
+    )
     parser.add_argument(
         "--fallback",
         choices=("table_first", "table_only", "analytical_only"),
@@ -166,6 +182,8 @@ def main(argv=None):
     args = parser.parse_args(argv)
     try:
         trace_configuration(args)
+        if args.seed < 0:
+            raise ConfigurationError("seed must be nonnegative")
     except ConfigurationError as exc:
         parser.error(str(exc))
     if (

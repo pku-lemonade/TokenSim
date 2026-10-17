@@ -57,6 +57,7 @@ Selections without matching events produce a valid empty Chrome trace.
 | `--trace-layers -1 0 1` | Export model-boundary events and selected zero-based layers |
 | `--trace-detail full` | Export every existing event field |
 | `--trace-detail timing` | Export event identifiers, resource identifiers, operation names, counts, dependency identifiers and timestamps |
+| `--trace-fields node_id predecessor_ids payload_bytes` | Export exactly these event argument fields while retaining the Chrome timeline envelope |
 
 Event types are `compute`, `transfer`, `collective`, `control_transfer`, `control_device`, `operation_service`, `host_submit`, `host_prepare` and `synchronize`.
 The parser derives this list from the event record's declared type.
@@ -86,7 +87,18 @@ Filtered events preserve their original order and predecessor identifiers, inclu
 A filtered trace cannot support complete dependency-chain reconstruction or complete resource-utilization analysis.
 Timing detail omits provenance, arbitrary details, routing edges, tensor layouts, tensor slices and other payload descriptions.
 Timing detail preserves the Chrome timeline envelope and the exact fields listed in `TIMING_FIELDS` in `TokenSim/af/trace/config.py`.
+Explicit fields select names declared by `AFTraceEvent` and are an alternative to timing detail.
+The Chrome event name, category, resource lane, timestamp and duration remain present even when their corresponding argument fields are omitted.
+An empty Python or JSON `fields` list exports an empty argument object for every selected event.
+Omitting `predecessor_ids` prevents dependency reconstruction and is recorded in trace configuration metadata.
 Resource release details can differ from event completion time, so timing-only exports are insufficient for reconstructing exact resource occupancy.
+
+## Configuration files and experiment reuse
+
+`--trace-config path.json` loads an object containing `mode`, `validate`, `detail`, `event_types`, `iterations`, `layers` and `fields` as needed.
+Explicit trace flags override matching file entries, and unknown keys are rejected.
+The [reusable experiment runner](af-experiment-runner.md) accepts the same settings as a Python configuration or mapping and checkpoints each complete point independently.
+The DeepSeek command uses that runner automatically and supports `--no-resume`, `--verify-checkpoints sha256` and `--seed`.
 
 ## Output contracts
 

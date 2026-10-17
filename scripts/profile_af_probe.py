@@ -7,6 +7,7 @@ import importlib
 import json
 from pathlib import Path
 import resource
+import shutil
 import sys
 from time import perf_counter
 
@@ -107,6 +108,11 @@ with ExitStack() as stack:
             "--output",
             str(args.output),
         ]
+        + (
+            ["--no-resume"]
+            if hasattr(cli.build_parser().parse_args([]), "resume")
+            else []
+        )
     )
     metrics["total_seconds"] = perf_counter() - started
 metrics["peak_rss_bytes"] = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
@@ -137,3 +143,4 @@ print(
 )
 if not args.keep_trace:
     (args.output / "decode-layers61-b32.trace.json").unlink()
+    shutil.rmtree(args.output / ".experiments", ignore_errors=True)

@@ -1,0 +1,7 @@
+{
+  "mode": "full",
+  "validate": true,
+  "event_types": ["transfer", "collective"],
+  "iterations": [0, 1],
+  "fields": ["node_id", "predecessor_ids", "start_at", "end_at", "payload_bytes", "network", "resource_ids"]
+}
