@@ -73,9 +73,14 @@ class MessagePackWriter(pipeline._PrefixWriter):
         return output
 
 
-def convert(source, destination):
+def convert(
+    source, destination, *, header=HEADER, unpack_options=None, unpacker_type=None
+):
     """Convert in bounded memory and publish only a complete, valid stream."""
-    import msgpack
+    if unpacker_type is None:
+        import msgpack
+
+        unpacker_type = msgpack.Unpacker
 
     source, destination = Path(source), Path(destination)
     if source.resolve() == destination.resolve():
@@ -95,13 +100,14 @@ def convert(source, destination):
             ) as output,
         ):
             temporary = Path(output.name)
-            unpacker = msgpack.Unpacker(
+            unpacker = unpacker_type(
                 stream,
                 raw=False,
                 strict_map_key=False,
                 max_buffer_size=16 * 1024 * 1024,
+                **(unpack_options or {}),
             )
-            if next(unpacker, None) != HEADER:
+            if next(unpacker, None) != header:
                 raise ValueError("unsupported diagnostic trace header")
             complete_bytes = unpacker.tell()
             output.write(b'{"displayTimeUnit":"us","traceEvents":[')

@@ -1,0 +1,672 @@
+{
+  "baseline_revision": "a897c98",
+  "workload": {
+    "full_model": true,
+    "layers": 61,
+    "a_tp": 4,
+    "f_tp": 32,
+    "batches": 32,
+    "af_batch_size": 32,
+    "context": 8192,
+    "steps": 8,
+    "device": "a100_sxm_80g",
+    "network": "nvlink3",
+    "fallback": "analytical_only",
+    "seed": 42,
+    "trace_mode": "full",
+    "trace_detail": "full"
+  },
+  "run_order": [
+    "archiveonly",
+    "sharedpack",
+    "datapickle",
+    "json",
+    "archiveonly-repeat"
+  ],
+  "runs": {
+    "archiveonly": {
+      "kernels": "archiveonly",
+      "source": "/Users/feiyangwu/codes/TokenSim",
+      "steps": 8,
+      "python_version": "3.12.12",
+      "production_path": true,
+      "rows": [
+        {
+          "step": 0,
+          "wall_seconds": 5.329485040623695
+        },
+        {
+          "step": 1,
+          "wall_seconds": 7.612053374759853
+        },
+        {
+          "step": 2,
+          "wall_seconds": 4.840485124848783
+        },
+        {
+          "step": 3,
+          "wall_seconds": 4.980969958007336
+        },
+        {
+          "step": 4,
+          "wall_seconds": 6.210506875067949
+        },
+        {
+          "step": 5,
+          "wall_seconds": 4.894959541969001
+        },
+        {
+          "step": 6,
+          "wall_seconds": 5.143891375046223
+        },
+        {
+          "step": 7,
+          "wall_seconds": 5.230240874923766
+        }
+      ],
+      "simulation_seconds": 44.433592832647264,
+      "events": 540760,
+      "iteration_rows": [
+        {
+          "iteration_id": 0,
+          "batch_size": 32,
+          "context_len": 8192,
+          "makespan_us": 67602.863163351
+        },
+        {
+          "iteration_id": 1,
+          "batch_size": 32,
+          "context_len": 8193,
+          "makespan_us": 67604.24172146799
+        },
+        {
+          "iteration_id": 2,
+          "batch_size": 32,
+          "context_len": 8194,
+          "makespan_us": 67605.6202795895
+        },
+        {
+          "iteration_id": 3,
+          "batch_size": 32,
+          "context_len": 8195,
+          "makespan_us": 67606.99883768892
+        },
+        {
+          "iteration_id": 4,
+          "batch_size": 32,
+          "context_len": 8196,
+          "makespan_us": 67608.37739576586
+        },
+        {
+          "iteration_id": 5,
+          "batch_size": 32,
+          "context_len": 8197,
+          "makespan_us": 67609.75595388452
+        },
+        {
+          "iteration_id": 6,
+          "batch_size": 32,
+          "context_len": 8198,
+          "makespan_us": 67611.13451199974
+        },
+        {
+          "iteration_id": 7,
+          "batch_size": 32,
+          "context_len": 8199,
+          "makespan_us": 67612.51307013055
+        }
+      ],
+      "compute_requests": 38768,
+      "compute_hits": 37384,
+      "transfer_requests": 494184,
+      "transfer_hits": 493944,
+      "template_entries": 99,
+      "template_requests": 488,
+      "template_hits": 274,
+      "export_seconds": 0.35102008283138275,
+      "total_seconds": 45.22107645915821,
+      "peak_rss_bytes": 1103052800,
+      "hashes": {
+        "summary.json": "8e0de772a09c8a162eeb64832832f2bf80e6d2bd37c0f02bfee98392e348f6a5",
+        "model-spec.json": "c360c16a36fb18aad567ac954104c34c3b1259f4ff2f5cd41ebb72cf3d51248c",
+        "runtime-plan.json": "502aeb4eadedec19e1e3022b3ef6c6077311697aa4911d8960d7c182450db4f8",
+        "hardware-assumptions.json": "47590bd712724524bce14fbf6afd48c596135ef60b7694a5968a556d09309d08",
+        "cluster.json": "91c3a789260907f9984935aaf1f31f261861842efc69e3d8a4a5748bc342d77b"
+      },
+      "binary_sha256": "cdfdda1ecc837fec6cf8ff62495be09d2b111e12299f52d9a716f787a57bc6b3",
+      "binary_bytes": 460959744
+    },
+    "sharedpack": {
+      "kernels": "sharedpack",
+      "source": "/Users/feiyangwu/codes/TokenSim",
+      "steps": 8,
+      "python_version": "3.12.12",
+      "production_path": true,
+      "rows": [
+        {
+          "step": 0,
+          "wall_seconds": 5.94934104103595
+        },
+        {
+          "step": 1,
+          "wall_seconds": 8.394903667271137
+        },
+        {
+          "step": 2,
+          "wall_seconds": 5.587663250043988
+        },
+        {
+          "step": 3,
+          "wall_seconds": 5.689415541943163
+        },
+        {
+          "step": 4,
+          "wall_seconds": 6.942251750268042
+        },
+        {
+          "step": 5,
+          "wall_seconds": 5.617779499851167
+        },
+        {
+          "step": 6,
+          "wall_seconds": 5.8092346247285604
+        },
+        {
+          "step": 7,
+          "wall_seconds": 5.904651000164449
+        }
+      ],
+      "simulation_seconds": 50.08853420894593,
+      "events": 540760,
+      "iteration_rows": [
+        {
+          "iteration_id": 0,
+          "batch_size": 32,
+          "context_len": 8192,
+          "makespan_us": 67602.863163351
+        },
+        {
+          "iteration_id": 1,
+          "batch_size": 32,
+          "context_len": 8193,
+          "makespan_us": 67604.24172146799
+        },
+        {
+          "iteration_id": 2,
+          "batch_size": 32,
+          "context_len": 8194,
+          "makespan_us": 67605.6202795895
+        },
+        {
+          "iteration_id": 3,
+          "batch_size": 32,
+          "context_len": 8195,
+          "makespan_us": 67606.99883768892
+        },
+        {
+          "iteration_id": 4,
+          "batch_size": 32,
+          "context_len": 8196,
+          "makespan_us": 67608.37739576586
+        },
+        {
+          "iteration_id": 5,
+          "batch_size": 32,
+          "context_len": 8197,
+          "makespan_us": 67609.75595388452
+        },
+        {
+          "iteration_id": 6,
+          "batch_size": 32,
+          "context_len": 8198,
+          "makespan_us": 67611.13451199974
+        },
+        {
+          "iteration_id": 7,
+          "batch_size": 32,
+          "context_len": 8199,
+          "makespan_us": 67612.51307013055
+        }
+      ],
+      "compute_requests": 38768,
+      "compute_hits": 37384,
+      "transfer_requests": 494184,
+      "transfer_hits": 493944,
+      "template_entries": 99,
+      "template_requests": 488,
+      "template_hits": 274,
+      "export_seconds": 0.0003265407867729664,
+      "total_seconds": 50.531316582579166,
+      "peak_rss_bytes": 1120501760,
+      "hashes": {
+        "summary.json": "bd10e37f08743c83359f24874997bed4ff676243503b1ed03280a0cc303ad8ae",
+        "model-spec.json": "c360c16a36fb18aad567ac954104c34c3b1259f4ff2f5cd41ebb72cf3d51248c",
+        "runtime-plan.json": "502aeb4eadedec19e1e3022b3ef6c6077311697aa4911d8960d7c182450db4f8",
+        "hardware-assumptions.json": "47590bd712724524bce14fbf6afd48c596135ef60b7694a5968a556d09309d08",
+        "shared-records.json": "691bff0edf5bac2fe5ea11c2b48e930baf8cba07872642517a3b362dc7a8df6a",
+        "cluster.json": "91c3a789260907f9984935aaf1f31f261861842efc69e3d8a4a5748bc342d77b"
+      },
+      "binary_sha256": "1cdc04b9499930f863aca10008982f3f2ebb7f1f3929474294c0e80b621cb71b",
+      "binary_bytes": 1925830076
+    },
+    "datapickle": {
+      "kernels": "datapickle",
+      "source": "/Users/feiyangwu/codes/TokenSim",
+      "steps": 8,
+      "python_version": "3.12.12",
+      "production_path": true,
+      "rows": [
+        {
+          "step": 0,
+          "wall_seconds": 5.782534250058234
+        },
+        {
+          "step": 1,
+          "wall_seconds": 8.125471833627671
+        },
+        {
+          "step": 2,
+          "wall_seconds": 5.250696834176779
+        },
+        {
+          "step": 3,
+          "wall_seconds": 5.425528584048152
+        },
+        {
+          "step": 4,
+          "wall_seconds": 6.623504083137959
+        },
+        {
+          "step": 5,
+          "wall_seconds": 5.315906083211303
+        },
+        {
+          "step": 6,
+          "wall_seconds": 5.5446494170464575
+        },
+        {
+          "step": 7,
+          "wall_seconds": 5.647842667065561
+        }
+      ],
+      "simulation_seconds": 47.90992354089394,
+      "events": 540760,
+      "iteration_rows": [
+        {
+          "iteration_id": 0,
+          "batch_size": 32,
+          "context_len": 8192,
+          "makespan_us": 67602.863163351
+        },
+        {
+          "iteration_id": 1,
+          "batch_size": 32,
+          "context_len": 8193,
+          "makespan_us": 67604.24172146799
+        },
+        {
+          "iteration_id": 2,
+          "batch_size": 32,
+          "context_len": 8194,
+          "makespan_us": 67605.6202795895
+        },
+        {
+          "iteration_id": 3,
+          "batch_size": 32,
+          "context_len": 8195,
+          "makespan_us": 67606.99883768892
+        },
+        {
+          "iteration_id": 4,
+          "batch_size": 32,
+          "context_len": 8196,
+          "makespan_us": 67608.37739576586
+        },
+        {
+          "iteration_id": 5,
+          "batch_size": 32,
+          "context_len": 8197,
+          "makespan_us": 67609.75595388452
+        },
+        {
+          "iteration_id": 6,
+          "batch_size": 32,
+          "context_len": 8198,
+          "makespan_us": 67611.13451199974
+        },
+        {
+          "iteration_id": 7,
+          "batch_size": 32,
+          "context_len": 8199,
+          "makespan_us": 67612.51307013055
+        }
+      ],
+      "compute_requests": 38768,
+      "compute_hits": 37384,
+      "transfer_requests": 494184,
+      "transfer_hits": 493944,
+      "template_entries": 99,
+      "template_requests": 488,
+      "template_hits": 274,
+      "export_seconds": 0.000612541101872921,
+      "total_seconds": 48.34906279202551,
+      "peak_rss_bytes": 1119682560,
+      "hashes": {
+        "summary.json": "92120cb5170fded958eeeb2244cd245f9833cc3e3c32e2f2d31c281fdc42407e",
+        "model-spec.json": "c360c16a36fb18aad567ac954104c34c3b1259f4ff2f5cd41ebb72cf3d51248c",
+        "runtime-plan.json": "502aeb4eadedec19e1e3022b3ef6c6077311697aa4911d8960d7c182450db4f8",
+        "hardware-assumptions.json": "47590bd712724524bce14fbf6afd48c596135ef60b7694a5968a556d09309d08",
+        "cluster.json": "91c3a789260907f9984935aaf1f31f261861842efc69e3d8a4a5748bc342d77b"
+      },
+      "binary_sha256": "0e07fb8112899646794b03b9856d17d4d3563b7f5813dd8ff7a6fd65a0f4da31",
+      "binary_bytes": 467613691
+    },
+    "json": {
+      "kernels": "",
+      "source": "/Users/feiyangwu/codes/TokenSim",
+      "steps": 8,
+      "python_version": "3.12.12",
+      "production_path": true,
+      "rows": [
+        {
+          "step": 0,
+          "wall_seconds": 6.711804667022079
+        },
+        {
+          "step": 1,
+          "wall_seconds": 9.107963582966477
+        },
+        {
+          "step": 2,
+          "wall_seconds": 6.332766457926482
+        },
+        {
+          "step": 3,
+          "wall_seconds": 6.452289541717619
+        },
+        {
+          "step": 4,
+          "wall_seconds": 7.685300666838884
+        },
+        {
+          "step": 5,
+          "wall_seconds": 6.3311668750829995
+        },
+        {
+          "step": 6,
+          "wall_seconds": 6.5778209157288074
+        },
+        {
+          "step": 7,
+          "wall_seconds": 6.677636125124991
+        }
+      ],
+      "simulation_seconds": 56.068779833614826,
+      "events": 540760,
+      "iteration_rows": [
+        {
+          "iteration_id": 0,
+          "batch_size": 32,
+          "context_len": 8192,
+          "makespan_us": 67602.863163351
+        },
+        {
+          "iteration_id": 1,
+          "batch_size": 32,
+          "context_len": 8193,
+          "makespan_us": 67604.24172146799
+        },
+        {
+          "iteration_id": 2,
+          "batch_size": 32,
+          "context_len": 8194,
+          "makespan_us": 67605.6202795895
+        },
+        {
+          "iteration_id": 3,
+          "batch_size": 32,
+          "context_len": 8195,
+          "makespan_us": 67606.99883768892
+        },
+        {
+          "iteration_id": 4,
+          "batch_size": 32,
+          "context_len": 8196,
+          "makespan_us": 67608.37739576586
+        },
+        {
+          "iteration_id": 5,
+          "batch_size": 32,
+          "context_len": 8197,
+          "makespan_us": 67609.75595388452
+        },
+        {
+          "iteration_id": 6,
+          "batch_size": 32,
+          "context_len": 8198,
+          "makespan_us": 67611.13451199974
+        },
+        {
+          "iteration_id": 7,
+          "batch_size": 32,
+          "context_len": 8199,
+          "makespan_us": 67612.51307013055
+        }
+      ],
+      "compute_requests": 38768,
+      "compute_hits": 37384,
+      "transfer_requests": 494184,
+      "transfer_hits": 493944,
+      "template_entries": 99,
+      "template_requests": 488,
+      "template_hits": 274,
+      "export_seconds": 0.0009176670573651791,
+      "total_seconds": 56.51058658398688,
+      "peak_rss_bytes": 1128792064,
+      "hashes": {
+        "summary.json": "831808e6807a8d1fad7f06c692ab70ef661101187d0a1fc252776302532c4879",
+        "model-spec.json": "c360c16a36fb18aad567ac954104c34c3b1259f4ff2f5cd41ebb72cf3d51248c",
+        "runtime-plan.json": "502aeb4eadedec19e1e3022b3ef6c6077311697aa4911d8960d7c182450db4f8",
+        "hardware-assumptions.json": "47590bd712724524bce14fbf6afd48c596135ef60b7694a5968a556d09309d08",
+        "cluster.json": "91c3a789260907f9984935aaf1f31f261861842efc69e3d8a4a5748bc342d77b",
+        "decode-layers61-b32.trace.json": "540c00510aca1d7127275a2443048fa1bdd5f117a8e43265f7df1f2523da7046"
+      }
+    },
+    "archiveonly-repeat": {
+      "kernels": "archiveonly",
+      "source": "/Users/feiyangwu/codes/TokenSim",
+      "steps": 8,
+      "python_version": "3.12.12",
+      "production_path": true,
+      "rows": [
+        {
+          "step": 0,
+          "wall_seconds": 5.379469624720514
+        },
+        {
+          "step": 1,
+          "wall_seconds": 7.8379294578917325
+        },
+        {
+          "step": 2,
+          "wall_seconds": 4.984327292069793
+        },
+        {
+          "step": 3,
+          "wall_seconds": 5.0871890829876065
+        },
+        {
+          "step": 4,
+          "wall_seconds": 6.290569374803454
+        },
+        {
+          "step": 5,
+          "wall_seconds": 4.952826042193919
+        },
+        {
+          "step": 6,
+          "wall_seconds": 5.243665665853769
+        },
+        {
+          "step": 7,
+          "wall_seconds": 5.287012833170593
+        }
+      ],
+      "simulation_seconds": 45.257024833001196,
+      "events": 540760,
+      "iteration_rows": [
+        {
+          "iteration_id": 0,
+          "batch_size": 32,
+          "context_len": 8192,
+          "makespan_us": 67602.863163351
+        },
+        {
+          "iteration_id": 1,
+          "batch_size": 32,
+          "context_len": 8193,
+          "makespan_us": 67604.24172146799
+        },
+        {
+          "iteration_id": 2,
+          "batch_size": 32,
+          "context_len": 8194,
+          "makespan_us": 67605.6202795895
+        },
+        {
+          "iteration_id": 3,
+          "batch_size": 32,
+          "context_len": 8195,
+          "makespan_us": 67606.99883768892
+        },
+        {
+          "iteration_id": 4,
+          "batch_size": 32,
+          "context_len": 8196,
+          "makespan_us": 67608.37739576586
+        },
+        {
+          "iteration_id": 5,
+          "batch_size": 32,
+          "context_len": 8197,
+          "makespan_us": 67609.75595388452
+        },
+        {
+          "iteration_id": 6,
+          "batch_size": 32,
+          "context_len": 8198,
+          "makespan_us": 67611.13451199974
+        },
+        {
+          "iteration_id": 7,
+          "batch_size": 32,
+          "context_len": 8199,
+          "makespan_us": 67612.51307013055
+        }
+      ],
+      "compute_requests": 38768,
+      "compute_hits": 37384,
+      "transfer_requests": 494184,
+      "transfer_hits": 493944,
+      "template_entries": 99,
+      "template_requests": 488,
+      "template_hits": 274,
+      "export_seconds": 0.3615188333205879,
+      "total_seconds": 46.060756041668355,
+      "peak_rss_bytes": 1115324416,
+      "hashes": {
+        "summary.json": "8e0de772a09c8a162eeb64832832f2bf80e6d2bd37c0f02bfee98392e348f6a5",
+        "model-spec.json": "c360c16a36fb18aad567ac954104c34c3b1259f4ff2f5cd41ebb72cf3d51248c",
+        "runtime-plan.json": "502aeb4eadedec19e1e3022b3ef6c6077311697aa4911d8960d7c182450db4f8",
+        "hardware-assumptions.json": "47590bd712724524bce14fbf6afd48c596135ef60b7694a5968a556d09309d08",
+        "cluster.json": "91c3a789260907f9984935aaf1f31f261861842efc69e3d8a4a5748bc342d77b"
+      },
+      "binary_sha256": "cdfdda1ecc837fec6cf8ff62495be09d2b111e12299f52d9a716f787a57bc6b3",
+      "binary_bytes": 460959744
+    }
+  },
+  "conversions": {
+    "archiveonly": {
+      "events": 540760,
+      "conversion_seconds": 13.36006529117003,
+      "peak_rss_bytes": 129138688,
+      "binary_bytes": 460959744,
+      "converted_bytes": 2588215556,
+      "converted_sha256": "540c00510aca1d7127275a2443048fa1bdd5f117a8e43265f7df1f2523da7046"
+    },
+    "sharedpack": {
+      "events": 540760,
+      "conversion_seconds": 15.066383583005518,
+      "peak_rss_bytes": 80822272,
+      "binary_bytes": 1925830076,
+      "converted_bytes": 2588215556,
+      "converted_sha256": "540c00510aca1d7127275a2443048fa1bdd5f117a8e43265f7df1f2523da7046"
+    },
+    "datapickle": {
+      "events": 540760,
+      "conversion_seconds": 11.969819707795978,
+      "peak_rss_bytes": 97026048,
+      "binary_bytes": 467613691,
+      "converted_bytes": 2588215556,
+      "converted_sha256": "540c00510aca1d7127275a2443048fa1bdd5f117a8e43265f7df1f2523da7046"
+    },
+    "archiveonly-repeat": {
+      "converted_sha256": "540c00510aca1d7127275a2443048fa1bdd5f117a8e43265f7df1f2523da7046",
+      "verification": "binary snapshot hash equals the converted first snapshot"
+    }
+  },
+  "checks": {
+    "events_equal": true,
+    "compute_requests_equal": true,
+    "compute_hits_equal": true,
+    "transfer_requests_equal": true,
+    "transfer_hits_equal": true,
+    "template_entries_equal": true,
+    "template_requests_equal": true,
+    "template_hits_equal": true,
+    "iteration_rows_equal": true,
+    "configuration_hashes_equal": true,
+    "normalized_summaries_equal": true,
+    "all_converted_json_hashes_equal": true
+  },
+  "comparisons": {
+    "archiveonly": {
+      "speedup": 1.2496515122771321,
+      "total_time_reduction_percent": 19.977690566085393,
+      "trace_size_reduction_percent": 82.19005588883803
+    },
+    "sharedpack": {
+      "speedup": 1.1183280073780837,
+      "total_time_reduction_percent": 10.58079620624931,
+      "trace_size_reduction_percent": 25.59236144240221
+    },
+    "datapickle": {
+      "speedup": 1.1688041777990266,
+      "total_time_reduction_percent": 14.442468721912116,
+      "trace_size_reduction_percent": 81.93296961236562
+    },
+    "archiveonly-repeat": {
+      "speedup": 1.2268705822558623,
+      "total_time_reduction_percent": 18.491810427038892,
+      "trace_size_reduction_percent": 82.19005588883803
+    }
+  },
+  "archive_average": {
+    "seconds": 45.640916250413284,
+    "speedup": 1.2381562691234351,
+    "total_time_reduction_percent": 19.234750496562135
+  },
+  "shared_reference_counters": [
+    {
+      "hits": 1452140,
+      "definitions": 65536
+    }
+  ],
+  "previous_format_report": {
+    "json_seconds": 56.15185410389677,
+    "msgpack_seconds": 51.67004418722354,
+    "speedup": 1.0867390378152888,
+    "total_time_reduction_percent": 7.981588476812562,
+    "trace_size_reduction_percent": 18.442220544323163
+  }
+}
