@@ -72,6 +72,7 @@ points = runner.run_many([
 Existing invocations use completed-point reuse by default.
 Append `--no-resume` to force execution or `--verify-checkpoints sha256` to verify every output byte on reuse.
 `--seed` defaults to the previous value of 42.
+See [trace reproducibility](af-reproducibility.md) for cross-process checks and artifact metadata that varies independently of this seed.
 The command's point directories live under `<output>/.experiments`.
 Its public trace files are atomic hard-link publications of the corresponding cached files, so publication does not copy large traces.
 Deleting the cache does not remove an already published trace.

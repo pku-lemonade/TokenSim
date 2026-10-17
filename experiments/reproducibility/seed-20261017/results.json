@@ -1,0 +1,216 @@
+{
+  "source_revision_before_fix": "ba14123",
+  "python": "3.12.12",
+  "platform": "macOS-26.5.1-arm64-arm-64bit",
+  "simulation_seed": 42,
+  "hash_settings": [
+    "1",
+    "2",
+    "42",
+    "12345",
+    "random"
+  ],
+  "checkpoint_reuse": false,
+  "fixed_batch": {
+    "layers": 1,
+    "batches": [
+      1,
+      8,
+      32
+    ],
+    "af_batch_size": 8,
+    "context": 8192,
+    "steps": 3,
+    "repeats_per_process": 2,
+    "processes": 5,
+    "repeat_equal": true,
+    "cross_process_equal": true,
+    "trace_observations": {
+      "decode-layers1-b1.trace.json": {
+        "raw": "c66f6dc32ed0f6b44387925f35ac79aea2914d6128dc41a470f8a5b3aa2139f8",
+        "semantic": {
+          "events": 468,
+          "sha256": "1cc8e26685cbedca93de4f61a0436697118172dbd1c13b7da2bb0b22e7672ffb"
+        }
+      },
+      "decode-layers1-b32.trace.json": {
+        "raw": "aad144cee5ffcf4056ff7bf04e2723423244af3749556717f1c9cc6ec705df81",
+        "semantic": {
+          "events": 4644,
+          "sha256": "4302575d0e3a21da56c683ba3aa9dbae071cb7bbcfd2534834af9c7fbcb0a64f"
+        }
+      },
+      "decode-layers1-b8.trace.json": {
+        "raw": "ebc073bdb7dfe9a649e0d5bcab1528da52304b3d9f7cc914ab542132e6820039",
+        "semantic": {
+          "events": 1161,
+          "sha256": "b2c83645ad6896ee593e3238ae13648bf53db82409e72caba284ee31064847e6"
+        }
+      }
+    },
+    "public_hashes": {
+      "summary.json": "7594d482b37626d5f831d1ed396a5390344135d846f87d5d37f4b54fe072734d",
+      "decode-layers1-b1.trace.json": "c66f6dc32ed0f6b44387925f35ac79aea2914d6128dc41a470f8a5b3aa2139f8",
+      "model-spec.json": "4e3eaaa053c1825d1d811737e4e17fc56f303733c28c6db6aa2b7f7e7a759c89",
+      "runtime-plan.json": "bb06a417595e4061d46b563ba32f9b52e13169ce0e02994309fb6b95beb0d2fa",
+      "hardware-assumptions.json": "47590bd712724524bce14fbf6afd48c596135ef60b7694a5968a556d09309d08",
+      "decode-layers1-b32.trace.json": "aad144cee5ffcf4056ff7bf04e2723423244af3749556717f1c9cc6ec705df81",
+      "cluster.json": "1424394c9dd119a92de88cbfc598913d79d61c1a5d83b4aa0345210fa08b2900",
+      "decode-layers1-b8.trace.json": "ebc073bdb7dfe9a649e0d5bcab1528da52304b3d9f7cc914ab542132e6820039"
+    }
+  },
+  "concurrent": {
+    "layers": 1,
+    "cohorts": 3,
+    "batch": 32,
+    "af_batch_size": 32,
+    "context": 8192,
+    "steps": 3,
+    "repeats_per_process": 2,
+    "processes": 5,
+    "repeat_equal": true,
+    "cross_process_equal": true,
+    "trace_observation": {
+      "raw": "c526ddcb236200effa4e561374b8b6f89316795446906bd5eae77b4a501867c7",
+      "semantic": {
+        "events": 10602,
+        "sha256": "77407c277d8a1e516f7e4d97fe05b0f8cb54b19c79fb7d95b3a6ecb9da6bb216"
+      }
+    }
+  },
+  "original_geometry": {
+    "layers": 61,
+    "a_tp": 4,
+    "f_tp": 32,
+    "batch": 32,
+    "af_batch_size": 32,
+    "context": 8192,
+    "steps": 2,
+    "device": "a100_sxm_80g",
+    "network": "nvlink3",
+    "fallback": "analytical_only",
+    "repetitions": [
+      {
+        "hash_seed": "1",
+        "hashes": {
+          "cluster.json": "91c3a789260907f9984935aaf1f31f261861842efc69e3d8a4a5748bc342d77b",
+          "decode-layers61-b32.trace.json": "94f3467373bd4ceae9e206d2489a068b8fe81cd172b2890b617c8af1fca0463d",
+          "hardware-assumptions.json": "47590bd712724524bce14fbf6afd48c596135ef60b7694a5968a556d09309d08",
+          "model-spec.json": "c360c16a36fb18aad567ac954104c34c3b1259f4ff2f5cd41ebb72cf3d51248c",
+          "runtime-plan.json": "502aeb4eadedec19e1e3022b3ef6c6077311697aa4911d8960d7c182450db4f8",
+          "summary.json": "6005f234b89d586173ac99abe26004189b9270c4a41713b8fbf07e075f16c577"
+        }
+      },
+      {
+        "hash_seed": "2",
+        "hashes": {
+          "cluster.json": "91c3a789260907f9984935aaf1f31f261861842efc69e3d8a4a5748bc342d77b",
+          "decode-layers61-b32.trace.json": "94f3467373bd4ceae9e206d2489a068b8fe81cd172b2890b617c8af1fca0463d",
+          "hardware-assumptions.json": "47590bd712724524bce14fbf6afd48c596135ef60b7694a5968a556d09309d08",
+          "model-spec.json": "c360c16a36fb18aad567ac954104c34c3b1259f4ff2f5cd41ebb72cf3d51248c",
+          "runtime-plan.json": "502aeb4eadedec19e1e3022b3ef6c6077311697aa4911d8960d7c182450db4f8",
+          "summary.json": "6005f234b89d586173ac99abe26004189b9270c4a41713b8fbf07e075f16c577"
+        }
+      },
+      {
+        "hash_seed": "random",
+        "hashes": {
+          "cluster.json": "91c3a789260907f9984935aaf1f31f261861842efc69e3d8a4a5748bc342d77b",
+          "decode-layers61-b32.trace.json": "94f3467373bd4ceae9e206d2489a068b8fe81cd172b2890b617c8af1fca0463d",
+          "hardware-assumptions.json": "47590bd712724524bce14fbf6afd48c596135ef60b7694a5968a556d09309d08",
+          "model-spec.json": "c360c16a36fb18aad567ac954104c34c3b1259f4ff2f5cd41ebb72cf3d51248c",
+          "runtime-plan.json": "502aeb4eadedec19e1e3022b3ef6c6077311697aa4911d8960d7c182450db4f8",
+          "summary.json": "6005f234b89d586173ac99abe26004189b9270c4a41713b8fbf07e075f16c577"
+        }
+      }
+    ],
+    "cross_process_equal": true,
+    "post_fix_public_hashes": {
+      "cluster.json": "91c3a789260907f9984935aaf1f31f261861842efc69e3d8a4a5748bc342d77b",
+      "decode-layers61-b32.trace.json": "94f3467373bd4ceae9e206d2489a068b8fe81cd172b2890b617c8af1fca0463d",
+      "hardware-assumptions.json": "47590bd712724524bce14fbf6afd48c596135ef60b7694a5968a556d09309d08",
+      "model-spec.json": "c360c16a36fb18aad567ac954104c34c3b1259f4ff2f5cd41ebb72cf3d51248c",
+      "runtime-plan.json": "502aeb4eadedec19e1e3022b3ef6c6077311697aa4911d8960d7c182450db4f8",
+      "summary.json": "6005f234b89d586173ac99abe26004189b9270c4a41713b8fbf07e075f16c577"
+    },
+    "post_fix_equals_pre_fix": true
+  },
+  "native_serving": {
+    "cases": [
+      "eager-cyclic",
+      "eager-random_without_replacement",
+      "eager-hot",
+      "cuda_graph-cyclic",
+      "cuda_graph-random_without_replacement",
+      "cuda_graph-hot",
+      "eager_control-cyclic",
+      "eager_control-random_without_replacement",
+      "eager_control-hot",
+      "cuda_graph_control-cyclic",
+      "cuda_graph_control-random_without_replacement",
+      "cuda_graph_control-hot"
+    ],
+    "steps_per_stream": 3,
+    "control_streams": 1,
+    "other_streams": 2,
+    "event_bytes_equal_before": true,
+    "mapping_values_equal_before": true,
+    "mapping_order_equal_before": false,
+    "example_host_resource_orders_before": {
+      "1": [
+        "host:1",
+        "host:0"
+      ],
+      "2": [
+        "host:0",
+        "host:1"
+      ]
+    },
+    "all_observations_equal_after": true,
+    "event_bytes_preserved": true
+  },
+  "plot": {
+    "input_kind": "synthetic two-point results fixture passed to the supplied actual plot script",
+    "original_file_hashes": [
+      {
+        "pareto-tps-user-vs-tps-mw.png": "fbca4569a4f2fe2cba8cc4d8580c4a2612187ef0fc62dbae94d05680f66375d2",
+        "pareto-tps-user-vs-tps-mw.svg": "0ab8dfdab604ecbf6bb451bf94cc106fca05ba165117dd08a0a0a6bfa63a54b1",
+        "pareto-decode.png": "f017fe73375d9c118a042e48f2b80b8b2fb3a5dbd7700d566ed9b0fbe42791c9",
+        "pareto-decode.svg": "b8bc860a3e25a216c1452a1e86b3e10881e9f1a87fc2dfac47f37328dd5c0e5f",
+        "pareto-registered-users.png": "b9d79ac42f01bcd47acf00ede867720329a26ec980d6f891a4ee9f92e1835ef0",
+        "pareto-registered-users.svg": "f47d64539c7dbc1d4726f36a931eeef9a47916d88320270692dd1d842095dd65"
+      },
+      {
+        "pareto-tps-user-vs-tps-mw.png": "fbca4569a4f2fe2cba8cc4d8580c4a2612187ef0fc62dbae94d05680f66375d2",
+        "pareto-tps-user-vs-tps-mw.svg": "79eeb6bd9c3e44ae629f3d72815fd7b1633267ef2be6fdb30b672c5df37dd50f",
+        "pareto-decode.png": "f017fe73375d9c118a042e48f2b80b8b2fb3a5dbd7700d566ed9b0fbe42791c9",
+        "pareto-decode.svg": "bf29f7b29544cbe20b977e69eeece566ccb9bc9c0d03cc58f11e1ed59bd6fbd4",
+        "pareto-registered-users.png": "b9d79ac42f01bcd47acf00ede867720329a26ec980d6f891a4ee9f92e1835ef0",
+        "pareto-registered-users.svg": "2a74b4f994bf52771dd554d4ce6ca6ab0c2b80e9eb55ca4be5c48425b0d1d617"
+      }
+    ],
+    "png_equal": true,
+    "svg_equal": false,
+    "reproduced_differences": [
+      "dc:date export timestamp",
+      "random marker and clip-path identifiers"
+    ],
+    "fixed_svg_hashsalt": "tokensim-qps1",
+    "fixed_svg_date": null,
+    "all_fixed_export_files_equal": true
+  },
+  "limitations": [
+    "Complete 100-step command not rerun.",
+    "Original eight-point QPS=1 launch_scan.py and results.json are not present in this checkout; that serving scan was not reproduced.",
+    "Same-machine and same-Python-version observations only."
+  ],
+  "validation": {
+    "unit_tests": 629,
+    "unit_test_seconds": 33.521,
+    "unit_tests_passed": true,
+    "black_version": "24.2.0",
+    "black_passed": true,
+    "regression_failed_before_fix": true,
+    "regression_passed_after_fix": true
+  }
+}
