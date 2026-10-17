@@ -41,6 +41,10 @@ def timed_run(*values, **options):
 
 
 def simulate(*values, **options):
+    # Diagnostic kernels compare with the original archive/export path.
+    # An empty selection measures the production CLI, including its defaults.
+    if args.kernels:
+        options.pop("trace_output", None)
     start = perf_counter()
     result = original_simulate(*values, **options)
     metrics["simulation_seconds"] = perf_counter() - start

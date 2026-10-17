@@ -32,7 +32,6 @@ def write_json(path: str | Path, value):
 
 def run(args):
     trace_config = trace_configuration(args)
-    # Keep the legacy call path intact for default runs and diagnostic wrappers.
     trace_kwargs = (
         {"trace_config": trace_config} if trace_config != AFTraceConfig() else {}
     )
@@ -66,6 +65,9 @@ def run(args):
     write_json(output / "hardware-assumptions.json", assumptions)
     rows = []
     for batch in args.batches:
+        trace_output = (
+            output / f"decode-layers{config.plan.total_layers}-b{batch}.trace.json"
+        )
         print(
             f"Run operator-table V3 decode: layers={config.plan.total_layers}, B={batch}",
             flush=True,
@@ -77,14 +79,14 @@ def run(args):
             steps=args.steps,
             trace=True,
             fallback=args.fallback,
+            trace_output=trace_output,
             **trace_kwargs,
         )
         step_us = sum(row["makespan_us"] for row in measurements) / args.steps
         try:
             profile = (
                 write_profile(
-                    output
-                    / f"decode-layers{config.plan.total_layers}-b{batch}.trace.json",
+                    trace_output,
                     executor,
                     metadata={
                         "model": MODEL_ID,

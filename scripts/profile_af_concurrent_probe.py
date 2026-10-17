@@ -22,6 +22,7 @@ from TokenSim.af import factory
 from TokenSim.af.execution.model import ModelAFExecutor
 from TokenSim.af.providers.operator_table import build_operator_table_af_providers
 from TokenSim.af.runtime.host import host_collection
+from TokenSim.af.trace.pipeline import PipelinedTraceRecorder
 
 
 def peak_bytes():
@@ -57,7 +58,11 @@ def measure(args):
         moe_config=config.model.moe,
         random_seed=42,
         runtime_plan=config.plan,
-        trace_recorder=factory.ArchivedTraceRecorder(True),
+        trace_recorder=(
+            PipelinedTraceRecorder(args.output)
+            if args.trace_pipeline
+            else factory.ArchivedTraceRecorder(True)
+        ),
         model=config.model,
     )
     owner = next(item for item in config.plan.request_owners if item.phase == "decode")
@@ -121,6 +126,7 @@ def measure(args):
         cache = executor.plan_builder.template_cache
         result = dict(
             kernels=args.kernels,
+            trace_pipeline=args.trace_pipeline,
             cohorts=args.cohorts,
             steps=args.steps,
             simulation_seconds=simulation,
@@ -148,6 +154,11 @@ def measure(args):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--kernels", default="")
+    parser.add_argument(
+        "--trace-pipeline",
+        action="store_true",
+        help="Use the production trace pipeline enabled by the DeepSeek CLI",
+    )
     parser.add_argument("--cohorts", type=int, default=3)
     parser.add_argument("--steps", type=int, default=4)
     parser.add_argument("--output", type=Path, required=True)
@@ -156,6 +167,8 @@ def main():
         parser.error("cohorts and steps must be positive")
     if "metrics" in args.kernels.split(","):
         parser.error("this diagnostic requires a complete trace")
+    if args.trace_pipeline and args.kernels:
+        parser.error("choose the production pipeline or diagnostic kernels")
     args.output.mkdir(parents=True, exist_ok=True)
     with ExitStack() as stack:
         for name in filter(None, args.kernels.split(",")):

@@ -80,6 +80,8 @@ Outputs include model and cluster metadata, the runtime plan, hardware assumptio
 `avg_step_us` reports elapsed step latency; summed component service includes work on concurrent resources.
 Operator statistics in `summary.json` report measured matches, interpolation, extrapolation, analytical estimates and missing shapes.
 Use `--trace off` to skip detailed events, `--trace validate` to validate and release events, or the default `--trace full` to retain and export them.
+The command enables the measured runtime caches, scoped host collection and finalized-prefix trace export by default.
+See [integrated performance measurements](af-integrated-defaults.md) for measured gains and compatibility checks.
 Full mode supports optional event-type, layer, iteration and detail selections described in [configurable AF traces](af-trace-configuration.md).
 
 ## Operator data

@@ -2,6 +2,10 @@
 
 The DeepSeek decode runner and the shared `simulate_decode` API support independent event collection, invariant validation and export choices.
 The default remains a complete validated trace with the existing output schema.
+The DeepSeek command prepares finalized JSON during simulation and publishes the complete file after execution.
+This default preserves every trace event and field and needs no additional flag.
+Partial or repeated exports, changed export settings and edits to archived events use the complete archive as a fallback.
+See [the integrated performance measurements](af-integrated-defaults.md) for the implementation scope and validation.
 These options do not change modeled execution, iteration timing rows or latency-provider statistics.
 The general serving CLI and `AFService` retain their existing trace interfaces.
 

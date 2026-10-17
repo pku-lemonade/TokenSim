@@ -3,7 +3,8 @@
 All measurements use production commit `7665583` as their reference.
 That reference already contains the earlier runtime, cache, garbage-collection and bounded-trace improvements.
 The prototype modules are opt-in diagnostic contexts under `scripts/`.
-Production modules, configuration schemas and default execution paths remain unchanged.
+At the time of these measurements, production modules, configuration schemas and default execution paths remained unchanged.
+The subsequent [integrated version](af-integrated-defaults.md) adopts finalized-prefix export with 1,024-event archive chunks for the DeepSeek command and adds configurable trace collection.
 
 ## Workload and measurement
 

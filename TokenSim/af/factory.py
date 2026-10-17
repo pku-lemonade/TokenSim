@@ -1,6 +1,7 @@
 """Construct a whole-model AF runtime from catalog models and cluster data."""
 
 from dataclasses import dataclass
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
@@ -13,6 +14,7 @@ from TokenSim.af.runtime.compiler import compile_af_runtime_plan
 from TokenSim.af.runtime.host import host_collection, run_environment
 from TokenSim.af.trace.archive import ArchivedTraceRecorder
 from TokenSim.af.trace.config import AFTraceConfig
+from TokenSim.af.trace.pipeline import PipelinedTraceRecorder
 from TokenSim.af.trace.transient import ValidationTraceRecorder
 from TokenSim.config.cluster_config import ClusterConfig
 from TokenSim.config.cluster_config import WorkerConfig
@@ -60,12 +62,19 @@ def simulate_decode(
     fallback="table_first",
     seed=42,
     trace_config: AFTraceConfig | None = None,
+    trace_output: str | Path | None = None,
 ):
-    """Exact fixed-batch decode; every token advances its own SimPy iteration."""
+    """Exact fixed-batch decode; every token advances its own SimPy iteration.
+
+    An optional trace_output prepares finalized JSON in its parent directory.
+    Call write_chrome_trace after simulation to publish the complete file.
+    """
     if any(type(value) is not int or value < 1 for value in (batch, context, steps)):
         raise ValueError("batch, context and steps must be positive")
     if trace_config is not None and not isinstance(trace_config, AFTraceConfig):
         raise ConfigurationError("trace_config must be an AFTraceConfig")
+    if trace_output is not None and not isinstance(trace_output, (str, Path)):
+        raise ConfigurationError("trace_output must be a path")
     options = trace_config or AFTraceConfig(mode="full" if trace else "off")
     if trace is False and options.enabled:
         raise ConfigurationError("trace=False conflicts with an enabled trace_config")
@@ -100,11 +109,14 @@ def simulate_decode(
         dtype=config.model.activation_dtype,
         fallback=fallback,
     )
-    recorder = (
-        ValidationTraceRecorder()
-        if options.mode == "validate"
-        else ArchivedTraceRecorder(options.enabled)
-    )
+    if options.mode == "validate":
+        recorder = ValidationTraceRecorder()
+    elif options.mode == "full" and trace_output is not None:
+        recorder = PipelinedTraceRecorder(
+            Path(trace_output).parent, trace_config=options
+        )
+    else:
+        recorder = ArchivedTraceRecorder(options.enabled)
     recorder.validate_on_completion = options.validate
     recorder.trace_config = trace_config
     executor = ModelAFExecutor(

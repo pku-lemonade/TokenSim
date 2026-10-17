@@ -51,6 +51,40 @@ def _record_dict(record):
     return {name: getattr(record, name) for name in names}
 
 
+def _event_encoder():
+    return json.JSONEncoder(
+        ensure_ascii=False,
+        separators=(",", ":"),
+        default=_record_dict,
+        check_circular=False,
+    )
+
+
+def _encode_event(event, options, encoder):
+    row = (
+        {name: getattr(event, name) for name in TIMING_FIELDS}
+        if options.detail == "timing"
+        else _record_dict(event)
+    )
+    item = dict(
+        name=row["stage"] or row["operation"] or row["event_type"],
+        cat=row["event_type"],
+        ph="X",
+        pid=1,
+        tid=row["resource_id"],
+        ts=row["start_at"] * 1e6,
+        dur=row["service_duration"] * 1e6,
+        args=row,
+    )
+    try:
+        return encoder.encode(item)
+    except RecursionError:
+        # Retry with cycle checks to preserve the standard failure type.
+        return json.dumps(
+            item, ensure_ascii=False, separators=(",", ":"), default=_record_dict
+        )
+
+
 def write_chrome_trace(
     path: str | Path,
     events: Iterable[AFTraceEvent],
@@ -69,18 +103,18 @@ def write_chrome_trace(
     options = trace_config or AFTraceConfig()
     if options.mode != "full":
         raise ConfigurationError("trace export requires full mode")
-    if options.filtered:
-        events = (event for event in events if options.includes(event))
     if options != AFTraceConfig():
         metadata = dict(metadata or {}, trace_config=options.describe())
-    encoder = json.JSONEncoder(
-        ensure_ascii=False,
-        separators=(",", ":"),
-        default=_record_dict,
-        check_circular=False,
-    )
     output = Path(path)
     output.parent.mkdir(parents=True, exist_ok=True)
+    prepared = getattr(events, "_write_prepared_trace", None)
+    if prepared is not None:
+        result = prepared(output, metadata, options)
+        if result is not None:
+            return result
+    if options.filtered:
+        events = (event for event in events if options.includes(event))
+    encoder = _event_encoder()
     temporary = None
     try:
         with (
@@ -98,35 +132,9 @@ def write_chrome_trace(
             temporary = Path(stream.name)
             stream.write('{"displayTimeUnit":"us","traceEvents":[')
             for index, event in enumerate(events):
-                row = (
-                    {name: getattr(event, name) for name in TIMING_FIELDS}
-                    if options.detail == "timing"
-                    else _record_dict(event)
-                )
-                item = dict(
-                    name=row["stage"] or row["operation"] or row["event_type"],
-                    cat=row["event_type"],
-                    ph="X",
-                    pid=1,
-                    tid=row["resource_id"],
-                    ts=row["start_at"] * 1e6,
-                    dur=row["service_duration"] * 1e6,
-                    args=row,
-                )
                 if index:
                     stream.write(",")
-                try:
-                    encoded = encoder.encode(item)
-                except RecursionError:
-                    # The C encoder still bounds recursion. Retry with cycle
-                    # checks to preserve the standard encoder's failure type.
-                    encoded = json.dumps(
-                        item,
-                        ensure_ascii=False,
-                        separators=(",", ":"),
-                        default=_record_dict,
-                    )
-                stream.write(encoded)
+                stream.write(_encode_event(event, options, encoder))
             stream.write('],"metadata":')
             stream.write(
                 json.dumps(

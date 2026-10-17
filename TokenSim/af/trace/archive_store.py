@@ -146,11 +146,19 @@ class TraceArchiveStore:
             )
         self._cache.pop(chunk_id, None)
 
-    def items(self, iteration_id=None):
+    def items(self, iteration_id=None, *, start=None, end=None):
         if self._connection is None:
             return
-        condition = "" if iteration_id is None else " WHERE iteration_id=?"
-        parameters = () if iteration_id is None else (iteration_id,)
+        conditions, parameters = [], []
+        for column, operator, value in (
+            ("iteration_id", "=", iteration_id),
+            ("position", ">=", start),
+            ("position", "<", end),
+        ):
+            if value is not None:
+                conditions.append(column + operator + "?")
+                parameters.append(value)
+        condition = " WHERE " + " AND ".join(conditions) if conditions else ""
         cursor = self._connection.execute(
             "SELECT position, chunk_id, ordinal FROM positions"
             + condition
