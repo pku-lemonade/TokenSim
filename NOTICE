@@ -22,3 +22,6 @@ DeepGEMM
 The fused-expert work and storage estimates follow the published DeepGEMM kernel geometry.
 Retained attribution is in code and the operator-data source records.
 The upstream license is third_party/licenses/DeepGEMM-MIT.txt.
+
+The optional SimPy probes adapt SimPy 4.1.2 event dispatch and condition code.
+SimPy is distributed under the MIT license in third_party/licenses/SimPy-MIT.txt.
