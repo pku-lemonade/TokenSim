@@ -27,7 +27,7 @@ def main():
     parser.add_argument(
         "--kernels",
         nargs="+",
-        choices=("keys", "templates", "events"),
+        choices=("keys", "templates", "events", "domains"),
         default=("keys", "templates"),
     )
     parser.add_argument("--report", type=Path)

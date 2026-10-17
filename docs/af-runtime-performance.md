@@ -352,7 +352,7 @@ Independent experiment processes remain the available concurrency path while tha
 
 ## Authored Rust kernel experiment
 
-`scripts/af_rust` implements structural-key normalization, validated template binding and event dispatch in Rust with PyO3.
+`scripts/af_rust` implements structural-key normalization, validated template binding, communication resource queues and event dispatch in Rust with PyO3.
 `scripts/profile_af_rust.py` selects Python or Rust inside a fresh diagnostic process and passes simulation arguments through the existing DeepSeek command-line interface.
 No production model, provider or configuration module is changed by this experiment.
 The build is explicit, dependency versions are locked, and artifacts are cached by Python version and Rust source digest.
@@ -395,3 +395,10 @@ The [Rust experiment guide](../scripts/af_rust/README.md) records the implemente
 
 The [follow-up profiling report](../experiments/performance/follow-up-20261017/README.md) compares allocation, dependency, binding, JSON batching and interpreter prototypes with the integrated runtime at `e10f8a7`.
 Its measurements retain complete trace export and validation, and its diagnostic prototypes leave production behavior unchanged.
+
+## Native resource scheduling follow-up
+
+The [native scheduling report](../experiments/performance/rust-scheduling-20261017/README.md) evaluates moving complete communication resource queue state and FIFO arbitration into Rust against the integrated runtime at `f7f74ff`.
+Model definitions, provider queries and production scheduler interfaces retain their existing execution path.
+The optional prototype adds no production dependency.
+Its complete-run timings, isolated scheduling measurements and profiles are recorded separately.

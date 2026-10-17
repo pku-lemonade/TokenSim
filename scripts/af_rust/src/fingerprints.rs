@@ -136,6 +136,10 @@ impl Fingerprints {
         Ok(self.visit(value, 0)?.0)
     }
 
+    fn _visit(&self, value: &PyAny) -> PyResult<(PyObject, bool)> {
+        self.visit(value, 0)
+    }
+
     fn normalize_many(&self, values: &PyTuple) -> PyResult<PyObject> {
         let children = values
             .iter()

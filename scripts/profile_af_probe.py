@@ -21,10 +21,17 @@ parser.add_argument(
     help="Keep production trace preparation while installing diagnostic kernels.",
 )
 parser.add_argument("--steps", type=int, default=4)
+parser.add_argument(
+    "--profile-step",
+    type=int,
+    help="Instrument one zero-based environment run and write runtime.prof.",
+)
 parser.add_argument("--output", type=Path, required=True)
 parser.add_argument("--keep-trace", action="store_true")
 parser.add_argument("--semantic-digest", action="store_true")
 args = parser.parse_args()
+if args.profile_step is not None and not 0 <= args.profile_step < args.steps:
+    parser.error("profile-step must select an existing zero-based step")
 sys.path.insert(0, str(args.source))
 from scripts import run_deepseek_mla as cli
 from TokenSim.af import factory
@@ -45,6 +52,16 @@ original_run = factory.run_environment
 def timed_run(*values, **options):
     start = perf_counter()
     try:
+        if args.profile_step == len(metrics["rows"]):
+            import cProfile
+
+            profile = cProfile.Profile()
+            metrics["profiled_step"] = args.profile_step
+            try:
+                with profile:
+                    return original_run(*values, **options)
+            finally:
+                profile.dump_stats(str(args.output / "runtime.prof"))
         return original_run(*values, **options)
     finally:
         metrics["rows"].append(

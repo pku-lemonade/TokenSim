@@ -1,6 +1,6 @@
 # Rust AF kernel experiment
 
-This optional experiment implements three runtime kernels in Rust through PyO3.
+This optional experiment implements four runtime kernels in Rust through PyO3.
 The production runtime does not import this directory or require Rust.
 Model definitions, provider queries, configuration and simulation command-line arguments retain their existing interfaces.
 The experiment measures whether moving existing operations across the language boundary improves complete runs.
@@ -23,8 +23,19 @@ Temporary Python references are released after every dispatched event.
 Custom environment subclasses and customized `step` methods retain their original execution path.
 This kernel requires the tested SimPy 4.1.2 behavior.
 
+`src/domains.rs` owns communication resource queues, stable priorities, resource ownership, cancelled-entry cleanup and atomic FIFO arbitration in native containers.
+The Python adapter retains `DomainRequest`, SimPy events, priority-2 arbitration turns and the existing service generator.
+Arbitration operates on native state without Python callbacks inside its queue scan.
+Endpoint resource identifiers can be added as the existing Python endpoint registry discovers them.
+The diagnostic boundary supports string resource identifiers, signed 64-bit integer or Unicode string identity components and finite floating-point timestamps.
+Integer timestamps must be within the inclusive range from `-2**53` to `2**53`.
+Unsupported identity values and integer timestamps raise an explicit error without changing queue state.
+The `owners` property returns a snapshot, and custom scheduler subclasses that mutate private Python queue fields are outside this prototype's scope.
+The reference scheduler remains available for those implementations.
+
 The default Rust selection enables `keys` and `templates`.
 The `events` kernel is selectable for measurement because its initial complete-run result was slower.
+The `domains` kernel is separately selectable and does not change production defaults.
 Python callbacks and object construction continue to hold the global interpreter lock.
 These kernels do not provide parallel execution of one simulation.
 
@@ -78,15 +89,19 @@ python scripts/profile_af_rust.py \
   --output outputs/rust-probe-native
 ```
 
-Select individual kernels with `--kernels keys`, `--kernels templates`, or `--kernels events` before the argument separator.
-Select the combined dispatch experiment with `--kernels keys templates events`.
+Select individual kernels with `--kernels keys`, `--kernels templates`, `--kernels domains` or `--kernels events` before the argument separator.
+Select the combined dispatch experiment with `--kernels keys templates domains events`.
 The wrapper restores its substitutions when execution finishes or raises an exception.
 Build the extension before running the optional native contract tests.
 
 ```bash
 python -m unittest \
-  tests.af.test_rust_probe
+  tests.af.test_rust_probe \
+  tests.af.test_rust_domains
 ```
+
+The [native scheduling follow-up](../../experiments/performance/rust-scheduling-20261017/README.md) compares this broader queue boundary with the current integrated runtime.
+It records complete-run measurements separately from an isolated scheduling workload and instrumented profiles.
 
 ## Adoption gate and remaining work
 

@@ -69,8 +69,9 @@ def installed(kernels=("keys", "templates")):
     """Temporarily substitute private kernels in this diagnostic process."""
     import simpy
     from TokenSim.af.caching import estimates, templates
+    from TokenSim.af.communication import resources
 
-    if not set(kernels) <= {"keys", "templates", "events"}:
+    if not set(kernels) <= {"keys", "templates", "events", "domains"}:
         raise ValueError("unknown Rust probe kernel")
     if "events" in kernels and simpy.__version__ != "4.1.2":
         raise RuntimeError("Rust event probe requires the tested SimPy 4.1.2 semantics")
@@ -80,6 +81,7 @@ def installed(kernels=("keys", "templates")):
     original_bind = templates.DAGTemplate.bind
     original_run = simpy.Environment.run
     original_step = simpy.Environment.step
+    original_scheduler = resources.DomainScheduler
     reference_loop = (
         original_run.__module__ == "simpy.core"
         and original_step.__module__ == "simpy.core"
@@ -123,6 +125,10 @@ def installed(kernels=("keys", "templates")):
             templates.DAGTemplate.bind = bind
         if "events" in kernels:
             simpy.Environment.run = run
+        if "domains" in kernels:
+            from scripts.af_rust.domains import scheduler_type
+
+            resources.DomainScheduler = scheduler_type(native)
         yield native
     finally:
         estimates.FingerprintMemo = original_memo
@@ -132,3 +138,4 @@ def installed(kernels=("keys", "templates")):
             estimates.map = original_map
         templates.DAGTemplate.bind = original_bind
         simpy.Environment.run = original_run
+        resources.DomainScheduler = original_scheduler

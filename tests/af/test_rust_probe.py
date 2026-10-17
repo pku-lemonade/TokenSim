@@ -31,7 +31,7 @@ class NestedRecord:
 class RustProbeTest(NativeFixture, unittest.TestCase):
     def compare(self, scenario):
         expected = scenario()
-        with backend.installed(("keys", "templates", "events")):
+        with backend.installed(("keys", "templates", "events", "domains")):
             observed = scenario()
         self.assertEqual(expected, observed)
 
@@ -40,7 +40,11 @@ class RustProbeTest(NativeFixture, unittest.TestCase):
             results = []
             for native in (False, True):
                 with self.subTest(model=model.model_id, rust=native):
-                    context = backend.installed() if native else nullcontext()
+                    context = (
+                        backend.installed(("keys", "templates", "domains"))
+                        if native
+                        else nullcontext()
+                    )
                     with context, TemporaryDirectory() as directory:
                         runtime = build_model_runtime(
                             deepcopy(self.base.doc),
@@ -68,6 +72,9 @@ class RustProbeTest(NativeFixture, unittest.TestCase):
         before = memo(record)
         mutable["values"].append(2)
         self.assertNotEqual(before, memo(record))
+        normalized, immutable = memo._visit(record)
+        self.assertEqual(normalized, memo(record))
+        self.assertFalse(immutable)
         self.assertNotIn(id(record), memo.values)
         for value in range(40):
             nested = NestedRecord(((True, value, 1.0),))
