@@ -8,6 +8,35 @@ schema_version: 1
 # attains (nccl-tests busbw / peak). Both are grade-D defaults eyeballed from
 # the AIConfigurator nccl tables; adjust them when measurements for a link exist.
 links:
+  nvlink6:
+    display_name: Rubin NVLink 6 aggregate injection per GPU
+    bandwidth_per_direction_bytes_per_s: 1.5e12
+    latency_us: 0.5
+    source_id: nvidia-rubin-product-oct2026
+    grade: C
+    notes: Published 3 TB/s bidirectional injection divided by two; latency and efficiency are assumptions.
+  groq_lp30_c2c_112g:
+    display_name: LP30 individual 112 Gb/s C2C link
+    bandwidth_per_direction_bytes_per_s: 14.0e9
+    latency_us: 0.05
+    source_id: nvidia-lpx-architecture
+    grade: C
+    notes: Individual link per direction; latency is an assumption.
+  groq_lp30_injection:
+    display_name: LP30 aggregate C2C injection per chip
+    bandwidth_per_direction_bytes_per_s: 1.25e12
+    bandwidth_scope: endpoint
+    latency_us: 0.05
+    source_id: nvidia-lpx-architecture
+    grade: C
+    notes: Published 2.5 TB/s bidirectional divided by two; do not multiply this budget by 96 ports. Latency and routing efficiency are assumptions.
+  ethernet1600Gb:
+    display_name: Assumed 1600 Gb/s unidirectional inter-rack service
+    bandwidth_per_direction_bytes_per_s: 200.0e9
+    latency_us: 2.0
+    source_id: assumption-lpx-inter-rack
+    grade: D
+    notes: Explicit experiment assumption; no measured GPU-to-LPX transport profile.
   nvlink2:
     display_name: NVLink 2 via NVSwitch (V100 DGX-2) or hybrid cube mesh, aggregate per GPU
     bandwidth_per_direction_bytes_per_s: 150.0e9

@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "workload": {
+    "cached_tokens": 400000,
+    "new_tokens": 4000,
+    "output_tokens": 400,
+    "prefill_chunk": 256,
+    "context_samples": 3,
+    "seed": 43,
+    "draft_tokens": 4,
+    "acceptance_probability": 0.8
+  },
+  "batches": [
+    1,
+    4,
+    16,
+    64,
+    256
+  ],
+  "cases": [
+    {
+      "name": "rubin-tp8-pp8",
+      "mode": "rubin",
+      "decode": {
+        "a_device": "rubin",
+        "f_device": "rubin",
+        "a_tp": 8,
+        "a_cp": 1,
+        "a_pp": 8,
+        "f_tp": 1,
+        "f_ep": 8,
+        "f_pp": 8,
+        "colocated": true
+      },
+      "prefill": null,
+      "draft": null
+    },
+    {
+      "name": "af-tp8-pp8",
+      "mode": "af",
+      "decode": {
+        "a_device": "rubin",
+        "f_device": "groq_lp30",
+        "a_tp": 8,
+        "a_cp": 1,
+        "a_pp": 8,
+        "f_tp": 4,
+        "f_ep": 128,
+        "f_pp": 8,
+        "colocated": false
+      },
+      "prefill": {
+        "a_device": "rubin",
+        "f_device": "rubin",
+        "a_tp": 8,
+        "a_cp": 1,
+        "a_pp": 8,
+        "f_tp": 1,
+        "f_ep": 8,
+        "f_pp": 8,
+        "colocated": true
+      },
+      "draft": null
+    },
+    {
+      "name": "af-tp8-pp8-f2560",
+      "mode": "af",
+      "decode": {
+        "a_device": "rubin",
+        "f_device": "groq_lp30",
+        "a_tp": 8,
+        "a_cp": 1,
+        "a_pp": 8,
+        "f_tp": 1,
+        "f_ep": 128,
+        "f_pp": 20,
+        "colocated": false
+      },
+      "prefill": {
+        "a_device": "rubin",
+        "f_device": "rubin",
+        "a_tp": 8,
+        "a_cp": 1,
+        "a_pp": 8,
+        "f_tp": 1,
+        "f_ep": 8,
+        "f_pp": 8,
+        "colocated": true
+      },
+      "draft": null
+    },
+    {
+      "name": "pd-tp16",
+      "mode": "pd",
+      "decode": {
+        "a_device": "groq_lp30",
+        "f_device": "groq_lp30",
+        "a_tp": 16,
+        "a_cp": 1,
+        "a_pp": 80,
+        "f_tp": 4,
+        "f_ep": 128,
+        "f_pp": 8,
+        "colocated": false
+      },
+      "prefill": {
+        "a_device": "rubin",
+        "f_device": "rubin",
+        "a_tp": 8,
+        "a_cp": 1,
+        "a_pp": 8,
+        "f_tp": 1,
+        "f_ep": 8,
+        "f_pp": 8,
+        "colocated": true
+      },
+      "draft": null
+    },
+    {
+      "name": "draft-tp8-pp8",
+      "mode": "draft",
+      "decode": {
+        "a_device": "rubin",
+        "f_device": "rubin",
+        "a_tp": 8,
+        "a_cp": 1,
+        "a_pp": 8,
+        "f_tp": 1,
+        "f_ep": 8,
+        "f_pp": 8,
+        "colocated": true
+      },
+      "prefill": null,
+      "draft": {
+        "a_device": "groq_lp30",
+        "f_device": "groq_lp30",
+        "a_tp": 16,
+        "a_cp": 1,
+        "a_pp": 4,
+        "f_tp": 1,
+        "f_ep": 16,
+        "f_pp": 4,
+        "colocated": true
+      }
+    }
+  ]
+}

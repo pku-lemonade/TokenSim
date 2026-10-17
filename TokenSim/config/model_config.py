@@ -9,6 +9,8 @@ from TokenSim.config.components import TransformerComponents, ModelLayerSpec
 from TokenSim.hardware._yaml import load_yaml_mapping, require
 from TokenSim.hardware.device import normalize_dtype
 from TokenSim.moe.config import MoEModelConfig
+from TokenSim.mla import MLADimensions
+from TokenSim.config.attention_model import AttentionModelMixin
 from TokenSim.config.validation import integer, boolean
 
 GATED_ACTIVATIONS = {"swiglu", "geglu", "reglu"}
@@ -16,7 +18,7 @@ ACTIVATIONS = GATED_ACTIVATIONS | {"gelu", "relu", "silu"}
 
 
 @dataclass(frozen=True)
-class ModelSpec:
+class ModelSpec(AttentionModelMixin):
     """Architecture parameters of a transformer needed for latency estimation.
 
     Field names follow Hugging Face ``config.json`` where one exists so that
@@ -39,17 +41,37 @@ class ModelSpec:
     activation_dtype: str | None = None
     kv_cache_dtype: str = "fp16"
     sliding_window: int = 0
+    attention_windows: tuple[int, ...] = ()
     tie_word_embeddings: bool = False
     aliases: tuple[str, ...] = ()
     moe: MoEModelConfig = field(default_factory=MoEModelConfig)
     sources: Mapping[str, Mapping[str, Any]] = field(default_factory=dict)
     display_name: str = ""
+    attention_type: str = "mha"
+    q_lora_rank: int = 0
+    kv_lora_rank: int = 0
+    rope_head_dim: int = 0
+    nope_head_dim: int = 0
+    v_head_dim: int = 0
     architecture: str = "transformer"
     components: TransformerComponents | None = None
     operator_dtypes: Mapping[str, str] = field(default_factory=dict)
     operator_modules: Mapping[str, Mapping[str, Any]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
+        if self.attention_type not in {"mha", "gqa", "mqa", "mla"}:
+            raise ConfigurationError(
+                f"model {self.model_id!r}: unknown attention_type={self.attention_type!r}"
+            )
+        if self.attention_type == "mla":
+            try:
+                dims = MLADimensions.from_model(self)
+            except ValueError as exc:
+                raise ConfigurationError(f"model {self.model_id!r}: {exc}") from exc
+            if self.head_dim != dims.head_dim:
+                raise ConfigurationError(
+                    f"model {self.model_id!r}: MLA head_dim must equal nope_head_dim + rope_head_dim"
+                )
         for name in (
             "hidden_size",
             "intermediate_size",
@@ -62,6 +84,15 @@ class ModelSpec:
         ):
             integer(getattr(self, name), f"model {self.model_id!r}: {name}", minimum=1)
         integer(self.sliding_window, "sliding_window")
+        if not isinstance(self.attention_windows, (tuple, list)):
+            raise ConfigurationError(
+                "attention_windows must be an array of layer windows"
+            )
+        object.__setattr__(self, "attention_windows", tuple(self.attention_windows))
+        if self.attention_windows and len(self.attention_windows) != self.num_layers:
+            raise ConfigurationError("attention_windows must specify every model layer")
+        for window in self.attention_windows:
+            integer(window, "attention window")
         boolean(self.tie_word_embeddings, "tie_word_embeddings")
         if not isinstance(self.model_id, str) or not self.model_id:
             raise ConfigurationError("model_id must be a nonempty string")
@@ -119,10 +150,6 @@ class ModelSpec:
         return self.num_attention_heads * self.head_dim
 
     @property
-    def kv_dim(self) -> int:
-        return self.kv_cache_dim or self.num_key_value_heads * self.head_dim
-
-    @property
     def gated(self) -> bool:
         return self.activation in GATED_ACTIVATIONS
 
@@ -153,14 +180,27 @@ class ModelSpec:
         return tuple(
             ModelLayerSpec(
                 i,
-                "latent" if self.kv_cache_dim else "gqa",
+                (
+                    "sliding"
+                    if self.attention_window(i)
+                    else "latent" if self.kv_cache_dim else "gqa"
+                ),
                 moe_routing="learned" if i in moe_layers else "none",
             )
             for i in range(self.num_layers)
         )
 
-    def operator_dtype(self, name: str) -> str:
-        return self.operator_dtypes.get(name, self.dtype)
+    def operator_dtype(self, name: str, fallback: str | None = None) -> str:
+        return self.operator_dtypes.get(name, fallback or self.dtype)
+
+    def attention_window(self, layer_id: int) -> int:
+        if type(layer_id) is not int or not 0 <= layer_id < self.num_layers:
+            raise ConfigurationError("attention window requires a valid layer index")
+        return (
+            self.attention_windows[layer_id]
+            if self.attention_windows
+            else self.sliding_window
+        )
 
     def cache_signature(self) -> str:
         """Architecture/precision identity, independent of timing data bindings."""
@@ -182,6 +222,10 @@ class ModelSpec:
     # -- parameter accounting --------------------------------------------
 
     def attention_params_per_layer(self) -> int:
+        if self.attention_type == "mla":
+            return self.mla_dimensions.weight_elements(
+                self.num_attention_heads, self.hidden_size
+            )
         if self.components is not None:
             spec = self.components
             return (
@@ -271,6 +315,11 @@ class ModelSpec:
         heads = int(require(raw, "num_attention_heads", context))
         hidden = int(require(raw, "hidden_size", context))
         head_dim = int(raw.get("head_dim") or hidden // heads)
+        attention_type = str(raw.get("attention_type", "mha")).lower()
+        if attention_type == "mla" and "head_dim" not in raw:
+            head_dim = int(raw.get("nope_head_dim", 0)) + int(
+                raw.get("rope_head_dim", 0)
+            )
         moe_raw = raw.get("moe") or None
         moe = MoEModelConfig()
         if moe_raw:
@@ -346,6 +395,7 @@ class ModelSpec:
             ),
             kv_cache_dtype=str(raw.get("kv_cache_dtype", raw.get("dtype", "fp16"))),
             sliding_window=int(raw.get("sliding_window", 0) or 0),
+            attention_windows=raw.get("attention_windows", ()),
             tie_word_embeddings=bool(raw.get("tie_word_embeddings", False)),
             aliases=tuple(str(alias) for alias in raw.get("aliases", [])),
             moe=moe,
@@ -361,11 +411,15 @@ class ModelSpec:
             operator_modules={
                 str(k): dict(v) for k, v in (raw.get("operator_modules") or {}).items()
             },
+            attention_type=attention_type,
+            **{name: raw.get(name, 0) for name in MLADimensions.__dataclass_fields__},
         )
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "model_id": self.model_id,
+            "display_name": self.display_name,
+            "aliases": list(self.aliases),
             "hidden_size": self.hidden_size,
             "intermediate_size": self.intermediate_size,
             "num_layers": self.num_layers,
@@ -376,13 +430,29 @@ class ModelSpec:
             "vocab_size": self.vocab_size,
             "max_position_embeddings": self.max_position_embeddings,
             "sliding_window": self.sliding_window,
+            **(
+                {"attention_windows": list(self.attention_windows)}
+                if self.attention_windows
+                else {}
+            ),
             "tie_word_embeddings": self.tie_word_embeddings,
             "activation": self.activation,
             "dtype": self.dtype,
             "activation_dtype": self.activation_dtype,
             "kv_cache_dtype": self.kv_cache_dtype,
             "is_moe": self.is_moe,
+            "moe": self.moe.to_dict(),
+            "sources": {key: dict(value) for key, value in self.sources.items()},
             "total_params": self.total_params(),
+            "attention_type": self.attention_type,
+            "mla_dimensions": (
+                {
+                    name: getattr(self, name)
+                    for name in MLADimensions.__dataclass_fields__
+                }
+                if self.attention_type == "mla"
+                else None
+            ),
             "architecture": self.architecture,
             "operator_dtypes": dict(self.operator_dtypes),
             "components": self.components.to_dict() if self.components else None,
@@ -391,65 +461,4 @@ class ModelSpec:
         }
 
 
-class ModelCatalog:
-    def __init__(self, models: Iterable[ModelSpec] = ()) -> None:
-        self._models: dict[str, ModelSpec] = {}
-        self._index: dict[str, str] = {}
-        for model in models:
-            self.add(model)
-
-    def add(self, model: ModelSpec) -> None:
-        if model.model_id in self._models:
-            raise ConfigurationError(f"duplicate model_id {model.model_id!r}")
-        self._models[model.model_id] = model
-        for name in model.names:
-            key = _alias_key(name)
-            existing = self._index.get(key)
-            if existing is not None and existing != model.model_id:
-                raise ConfigurationError(
-                    f"model alias {name!r} is claimed by both {existing!r} and {model.model_id!r}"
-                )
-            self._index[key] = model.model_id
-
-    @classmethod
-    def load(cls, directory: str | Path) -> "ModelCatalog":
-        directory = Path(directory)
-        if not directory.is_dir():
-            raise ConfigurationError(f"model catalog directory not found: {directory}")
-        catalog = cls()
-        for path in sorted(directory.glob("*.yaml")):
-            catalog.add(
-                ModelSpec.from_mapping(load_yaml_mapping(path), context=str(path))
-            )
-        if not catalog:
-            raise ConfigurationError(f"model catalog {directory} has no *.yaml entries")
-        return catalog
-
-    def resolve(self, source: str | Path) -> ModelSpec:
-        path = Path(source).expanduser()
-        if path.is_file():
-            return ModelSpec.from_mapping(load_yaml_mapping(path), context=str(path))
-        if path.suffix.lower() in {".yaml", ".yml"}:
-            raise ConfigurationError(f"model configuration does not exist: {path}")
-        return self.get(str(source))
-
-    def get(self, name: str) -> ModelSpec:
-        model_id = self._index.get(_alias_key(name))
-        if model_id is None:
-            raise ConfigurationError(
-                f"unknown model {name!r}; known models: {sorted(self._models)}"
-            )
-        return self._models[model_id]
-
-    def __contains__(self, name: object) -> bool:
-        return isinstance(name, str) and _alias_key(name) in self._index
-
-    def __len__(self) -> int:
-        return len(self._models)
-
-    def __iter__(self):
-        return iter(self._models.values())
-
-
-def _alias_key(name: str) -> str:
-    return "".join(ch for ch in str(name).lower() if ch.isalnum())
+from TokenSim.config.model_catalog import ModelCatalog

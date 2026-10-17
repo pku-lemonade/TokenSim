@@ -34,8 +34,13 @@ class LinkClass:
     # nccl-tests results; re-fit per link with ``operator_data.cli calibrate``.
     collective_efficiency: float = 0.5
     notes: str = ""
+    bandwidth_scope: str = "link"
 
     def __post_init__(self) -> None:
+        if self.bandwidth_scope not in {"link", "endpoint"}:
+            raise ConfigurationError(
+                f"link {self.link_id!r}: bandwidth_scope must be link or endpoint"
+            )
         if self.duplex not in {"full", "half"}:
             raise ConfigurationError(
                 f"link {self.link_id!r}: duplex must be full or half"
@@ -69,6 +74,24 @@ class LinkClass:
             + message_bytes / (bandwidth * self.efficiency(message_bytes)) * 1e6
         )
 
+    def analytical_transfer_us(
+        self, message_bytes: float, *, oversubscription: float = 1.0
+    ) -> float:
+        """AF v1 pure alpha-beta service; legacy efficiency consumers stay intact."""
+        import math
+
+        if not math.isfinite(oversubscription) or oversubscription < 1:
+            raise ConfigurationError("oversubscription must be finite and at least one")
+        if message_bytes <= 0:
+            return 0.0
+        return (
+            self.latency_us
+            + message_bytes
+            * oversubscription
+            / self.bandwidth_per_direction_bytes_per_s
+            * 1e6
+        )
+
     @classmethod
     def from_mapping(cls, link_id: str, raw: Mapping[str, Any]) -> "LinkClass":
         context = f"link {link_id!r}"
@@ -87,6 +110,7 @@ class LinkClass:
             half_bandwidth_bytes=float(raw.get("half_bandwidth_bytes", 1 << 20)),
             collective_efficiency=float(raw.get("collective_efficiency", 0.5)),
             notes=str(raw.get("notes", "")),
+            bandwidth_scope=str(raw.get("bandwidth_scope", "link")),
         )
 
 

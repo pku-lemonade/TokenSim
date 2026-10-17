@@ -1,0 +1,1360 @@
+{
+  "schema": "tokensim.lpx_evidence",
+  "version": 1,
+  "source_summary": {
+    "name": "outputs/lpx-full-validation/native-control/summary.json",
+    "sha256": "33ed78c1da013fef7e1c8583aa3333a71bd85cea63ebbcc7729ecab42ad12412"
+  },
+  "audit": {
+    "status": "passed",
+    "points": 4,
+    "feasible": 4,
+    "rejected": 0,
+    "power_model": {
+      "groq_lp30": {
+        "watts": 450.0,
+        "source_id": "assumption-lp30-analytical",
+        "grade": "D"
+      },
+      "rubin": {
+        "watts": 1800.0,
+        "source_id": "assumption-rubin-analytical",
+        "grade": "D"
+      }
+    },
+    "original_workload": false,
+    "execution_fidelity": "native_per_pass_dags",
+    "numerical_accuracy": "native_execution",
+    "grid_coverage": "external",
+    "event_accounting": "token_events_and_intervals"
+  },
+  "power_model": {
+    "groq_lp30": {
+      "watts": 450.0,
+      "source_id": "assumption-lp30-analytical",
+      "grade": "D"
+    },
+    "rubin": {
+      "watts": 1800.0,
+      "source_id": "assumption-rubin-analytical",
+      "grade": "D"
+    }
+  },
+  "executor": "production_ModelAFExecutor",
+  "git_revision": "1cce7993ff830ff764d118bca786bba38af216c4",
+  "git_worktree_dirty": false,
+  "end_git_revision": "1cce7993ff830ff764d118bca786bba38af216c4",
+  "end_git_worktree_dirty": false,
+  "workload": {
+    "cached_tokens": 400000,
+    "new_tokens": 4000,
+    "output_tokens": 16,
+    "prefill_chunk": 256,
+    "context_samples": 3,
+    "seed": 42,
+    "draft_tokens": 4,
+    "acceptance_probability": 0.8
+  },
+  "model": {
+    "model_id": "gpt-oss-2t-wide-proxy",
+    "display_name": "GPT-OSS width/layer-scaled 2T sensitivity proxy",
+    "aliases": [],
+    "hidden_size": 8192,
+    "intermediate_size": 8192,
+    "num_layers": 80,
+    "num_attention_heads": 64,
+    "num_key_value_heads": 8,
+    "head_dim": 128,
+    "kv_cache_dim": null,
+    "vocab_size": 201088,
+    "max_position_embeddings": 1048576,
+    "sliding_window": 0,
+    "attention_windows": [
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0
+    ],
+    "tie_word_embeddings": false,
+    "activation": "swiglu",
+    "dtype": "bf16",
+    "activation_dtype": "bf16",
+    "kv_cache_dtype": "bf16",
+    "is_moe": true,
+    "moe": {
+      "is_moe_model": true,
+      "num_experts": 128,
+      "num_experts_per_tok": 4,
+      "moe_intermediate_size": 8192,
+      "num_shared_experts": 0,
+      "num_moe_layers": 80,
+      "first_k_dense_replace": 0,
+      "moe_layer_freq": 1,
+      "interleave_moe_layer_step": 1,
+      "routing": {
+        "distribution": "uniform",
+        "hot_experts": null,
+        "hot_expert_fraction": 0.5,
+        "uniform_selection": "random_without_replacement"
+      },
+      "hidden_size": 8192,
+      "intermediate_size": 8192,
+      "num_attention_heads": 64,
+      "num_key_value_heads": 8
+    },
+    "sources": {
+      "openai-gpt-oss-120b-config": {
+        "grade": "A",
+        "reference": "https://huggingface.co/openai/gpt-oss-120b/blob/main/config.json",
+        "notes": "Alternating 128-token local/full attention, top-4 of 128 experts, vocabulary and mixed expert/nonexpert precision follow the public checkpoint."
+      },
+      "assumption-scaled-gpt-oss": {
+        "grade": "D",
+        "reference": "docs/lpx-reproduction.md",
+        "notes": "Width 8192, 80 layers, 128-dimensional heads and 1M context are sensitivity assumptions. This candidate is not NVIDIA's unpublished scaled model. Uniform routing without replacement is an unmeasured sensitivity assumption."
+      }
+    },
+    "total_params": 2077042409472,
+    "attention_type": "gqa",
+    "mla_dimensions": null,
+    "architecture": "transformer",
+    "operator_dtypes": {
+      "routed_experts": "mxfp4"
+    },
+    "components": null,
+    "operator_modules": {},
+    "layers": [
+      {
+        "layer_id": 0,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 1,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 2,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 3,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 4,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 5,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 6,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 7,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 8,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 9,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 10,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 11,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 12,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 13,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 14,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 15,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 16,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 17,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 18,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 19,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 20,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 21,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 22,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 23,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 24,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 25,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 26,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 27,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 28,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 29,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 30,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 31,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 32,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 33,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 34,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 35,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 36,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 37,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 38,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 39,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 40,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 41,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 42,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 43,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 44,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 45,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 46,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 47,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 48,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 49,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 50,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 51,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 52,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 53,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 54,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 55,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 56,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 57,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 58,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 59,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 60,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 61,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 62,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 63,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 64,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 65,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 66,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 67,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 68,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 69,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 70,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 71,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 72,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 73,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 74,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 75,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 76,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 77,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 78,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 79,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      }
+    ]
+  },
+  "draft_model": {
+    "model_id": "gpt-oss-draft-proxy",
+    "display_name": "Four-layer GPT-OSS draft sensitivity proxy",
+    "aliases": [],
+    "hidden_size": 2880,
+    "intermediate_size": 2880,
+    "num_layers": 4,
+    "num_attention_heads": 64,
+    "num_key_value_heads": 8,
+    "head_dim": 64,
+    "kv_cache_dim": null,
+    "vocab_size": 201088,
+    "max_position_embeddings": 1048576,
+    "sliding_window": 0,
+    "attention_windows": [
+      128,
+      0,
+      128,
+      0
+    ],
+    "tie_word_embeddings": false,
+    "activation": "swiglu",
+    "dtype": "bf16",
+    "activation_dtype": "bf16",
+    "kv_cache_dtype": "bf16",
+    "is_moe": true,
+    "moe": {
+      "is_moe_model": true,
+      "num_experts": 128,
+      "num_experts_per_tok": 4,
+      "moe_intermediate_size": 2880,
+      "num_shared_experts": 0,
+      "num_moe_layers": 4,
+      "first_k_dense_replace": 0,
+      "moe_layer_freq": 1,
+      "interleave_moe_layer_step": 1,
+      "routing": {
+        "distribution": "uniform",
+        "hot_experts": null,
+        "hot_expert_fraction": 0.5,
+        "uniform_selection": "random_without_replacement"
+      },
+      "hidden_size": 2880,
+      "intermediate_size": 2880,
+      "num_attention_heads": 64,
+      "num_key_value_heads": 8
+    },
+    "sources": {
+      "assumption-draft": {
+        "grade": "D",
+        "reference": "docs/lpx-reproduction.md",
+        "notes": "Four public GPT-OSS-120B layers with a 1M context limit are a hypothetical independent drafter. Acceptance must be supplied independently; no model quality claim is made. Uniform routing without replacement is an unmeasured sensitivity assumption."
+      }
+    },
+    "total_params": 14006108160,
+    "attention_type": "gqa",
+    "mla_dimensions": null,
+    "architecture": "transformer",
+    "operator_dtypes": {
+      "routed_experts": "mxfp4"
+    },
+    "components": null,
+    "operator_modules": {},
+    "layers": [
+      {
+        "layer_id": 0,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 1,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 2,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 3,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      }
+    ]
+  },
+  "architecture": {
+    "model_id": "gpt-oss-2t-wide-proxy",
+    "total_parameters": 2077042409472,
+    "activated_routed_ffn_parameters_per_token": 64424509440,
+    "activated_linear_parameters_per_token": 78235303936,
+    "linear_flops_per_token": 156470607872,
+    "attention_kv_dependent_flops_included": false,
+    "full_attention_layers": 40,
+    "bounded_attention_layers": 40,
+    "expert_storage_dtype": "mxfp4",
+    "nonexpert_weight_dtype": "bf16",
+    "activation_dtype": "bf16",
+    "kv_cache_dtype": "bf16",
+    "uniform_expert_selection": "random_without_replacement",
+    "architecture_assumption": {
+      "grade": "D",
+      "reference": "docs/lpx-reproduction.md",
+      "notes": "Width 8192, 80 layers, 128-dimensional heads and 1M context are sensitivity assumptions. This candidate is not NVIDIA's unpublished scaled model. Uniform routing without replacement is an unmeasured sensitivity assumption."
+    }
+  },
+  "run_settings": {
+    "client_counts": [
+      1
+    ],
+    "stream_metrics": true,
+    "event_accounting_required": true,
+    "execution_backend": "native",
+    "additional_memory_reserve_bytes": {
+      "rubin": 0,
+      "groq_lp30": 0
+    },
+    "replay_samples": null,
+    "replay_prefill_samples": null,
+    "micro_batch": 1,
+    "simulation_processes": 3,
+    "routing_selection": "random_without_replacement",
+    "a_replicas": 1,
+    "warmup_steps": 1,
+    "warmup_mode": "resident_decode",
+    "measurement_seconds": 1e-09,
+    "measurement_turns": 1,
+    "execution_mode": "cuda_graph",
+    "graph_device_kernel_us": 0.2,
+    "endpoint_transfer_occupancy": "wire",
+    "handoff_mode": "incremental",
+    "resumed_control_points": true
+  },
+  "cases": [
+    {
+      "name": "rubin-tp8",
+      "mode": "rubin",
+      "decode": {
+        "a_device": "rubin",
+        "f_device": "rubin",
+        "a_tp": 8,
+        "a_cp": 1,
+        "a_pp": 1,
+        "f_tp": 1,
+        "f_ep": 8,
+        "f_pp": 1,
+        "colocated": true
+      },
+      "prefill": null,
+      "draft": null
+    },
+    {
+      "name": "af-tp8",
+      "mode": "af",
+      "decode": {
+        "a_device": "rubin",
+        "f_device": "groq_lp30",
+        "a_tp": 8,
+        "a_cp": 1,
+        "a_pp": 1,
+        "f_tp": 4,
+        "f_ep": 128,
+        "f_pp": 8,
+        "colocated": false
+      },
+      "prefill": {
+        "a_device": "rubin",
+        "f_device": "rubin",
+        "a_tp": 16,
+        "a_cp": 1,
+        "a_pp": 1,
+        "f_tp": 1,
+        "f_ep": 16,
+        "f_pp": 1,
+        "colocated": true
+      },
+      "draft": null
+    },
+    {
+      "name": "pd-tp16",
+      "mode": "pd",
+      "decode": {
+        "a_device": "groq_lp30",
+        "f_device": "groq_lp30",
+        "a_tp": 16,
+        "a_cp": 1,
+        "a_pp": 80,
+        "f_tp": 4,
+        "f_ep": 128,
+        "f_pp": 8,
+        "colocated": false
+      },
+      "prefill": {
+        "a_device": "rubin",
+        "f_device": "rubin",
+        "a_tp": 16,
+        "a_cp": 1,
+        "a_pp": 1,
+        "f_tp": 1,
+        "f_ep": 16,
+        "f_pp": 1,
+        "colocated": true
+      },
+      "draft": null
+    },
+    {
+      "name": "draft-tp8",
+      "mode": "draft",
+      "decode": {
+        "a_device": "rubin",
+        "f_device": "rubin",
+        "a_tp": 8,
+        "a_cp": 1,
+        "a_pp": 1,
+        "f_tp": 1,
+        "f_ep": 8,
+        "f_pp": 1,
+        "colocated": true
+      },
+      "prefill": null,
+      "draft": {
+        "a_device": "groq_lp30",
+        "f_device": "groq_lp30",
+        "a_tp": 16,
+        "a_cp": 1,
+        "a_pp": 4,
+        "f_tp": 1,
+        "f_ep": 16,
+        "f_pp": 4,
+        "colocated": true
+      }
+    }
+  ],
+  "hardware": {
+    "groq_lp30": {
+      "device_id": "groq_lp30",
+      "family": "groq_tsp",
+      "display_name": "NVIDIA Groq 3 LP30 LPU",
+      "peak_compute": {
+        "fp8": 1230468750000000.0,
+        "fp16": 615234375000000.0,
+        "bf16": 615234375000000.0,
+        "fp32": 153808593750000.0
+      },
+      "memory_capacity_bytes": 500000000.0,
+      "memory_bandwidth_bytes_per_s": 150000000000000.0,
+      "scale_up_link": "groq_lp30_injection",
+      "host_link": "pcie6_x16",
+      "step_overhead_us": 0.0,
+      "memory_reserved_bytes": 0.0,
+      "analytical": {
+        "gemm_mfu": 0.8,
+        "attention_mfu": 0.6,
+        "moe_mfu": 0.7,
+        "memory_efficiency": 0.9,
+        "elementwise_memory_efficiency": 0.9,
+        "kernel_launch_us": 0.2,
+        "collective_launch_us": 0.5,
+        "gemm_small_m_knee": 1.0,
+        "packed_dequant_ops_per_element": 2.0,
+        "dequant_efficiency": 0.8
+      },
+      "analytical_source_id": "assumption-lp30-analytical",
+      "analytical_grade": "D"
+    },
+    "rubin": {
+      "device_id": "rubin",
+      "family": "nvidia_gpu",
+      "display_name": "NVIDIA Rubin GPU",
+      "peak_compute": {
+        "nvfp4": 2.5e+16,
+        "fp8": 1.75e+16,
+        "fp16": 4000000000000000.0,
+        "bf16": 4000000000000000.0,
+        "fp32": 130000000000000.0
+      },
+      "memory_capacity_bytes": 288000000000.0,
+      "memory_bandwidth_bytes_per_s": 19200000000000.0,
+      "scale_up_link": "nvlink6",
+      "host_link": "pcie6_x16",
+      "step_overhead_us": 0.0,
+      "memory_reserved_bytes": 4000000000.0,
+      "analytical": {
+        "gemm_mfu": 0.7,
+        "attention_mfu": 0.45,
+        "moe_mfu": 0.5,
+        "memory_efficiency": 0.85,
+        "elementwise_memory_efficiency": 0.7,
+        "kernel_launch_us": 3.0,
+        "collective_launch_us": 1.0,
+        "gemm_small_m_knee": 64.0
+      },
+      "analytical_source_id": "assumption-rubin-analytical",
+      "analytical_grade": "D"
+    }
+  },
+  "power_overrides": {},
+  "facility_watts": 0.0,
+  "normalization_tokens_per_s_per_mw": 2981.4057930915237,
+  "frontiers": {
+    "rubin": [
+      {
+        "case": "rubin-tp8",
+        "batch": 1,
+        "tokens_per_s_per_user": 364.78765858253905,
+        "tokens_per_s_per_mw": 2981.4057930915237,
+        "normalized_throughput": 1.0
+      }
+    ],
+    "af": [
+      {
+        "case": "af-tp8",
+        "batch": 1,
+        "tokens_per_s_per_user": 434.51702483822925,
+        "tokens_per_s_per_mw": 35.38762636174481,
+        "normalized_throughput": 0.01186944308075894
+      }
+    ],
+    "pd": [
+      {
+        "case": "pd-tp16",
+        "batch": 1,
+        "tokens_per_s_per_user": 1641.5741553093744,
+        "tokens_per_s_per_mw": 30.499083245026288,
+        "normalized_throughput": 0.010229765876117361
+      }
+    ],
+    "draft": [
+      {
+        "case": "draft-tp8",
+        "batch": 1,
+        "tokens_per_s_per_user": 681.4406771472833,
+        "tokens_per_s_per_mw": 1047.5026330773485,
+        "normalized_throughput": 0.35134520617911474
+      }
+    ]
+  },
+  "limitations": [
+    "Production whole-model AF DAGs, physical rank ownership, independent serving cohorts and endpoint injection reservations.",
+    "Independent model/topology/precision/power assumptions; NVIDIA's undisclosed projection cannot be numerically reproduced.",
+    "Native PP and combined expert/tensor groups are validated; unimplemented context-parallel layouts fail configuration.",
+    "Warm-up and drain are excluded from steady-state throughput; queue delays and per-resource utilization are exported.",
+    "Layer windows and packed expert weights are executed with native per-request routing and KV byte admission.",
+    "Warm prefixes are resident; prefix creation, checkpoint loading and model quality are outside the simulation.",
+    "Output throughput includes new-suffix prefill, cache handoff and draft service; per-user interactivity excludes TTFT.",
+    "Assumed processor TDP plus supplied facility watts; no automatic rack power or cooling estimate.",
+    "External draft acceptance uses a seeded Bernoulli prefix; full gamma+1 verification positions and rollback are charged.",
+    "Graph host/device costs are explicit analytical assumptions; no measured graph or compiler-vector-overlap calibration is supplied."
+  ],
+  "results": [
+    {
+      "case": "rubin-tp8",
+      "mode": "rubin",
+      "batch": 1,
+      "status": "ok",
+      "micro_batch": 1,
+      "native_executor": "ModelAFExecutor",
+      "tokens_per_s_per_user": 364.78765858253905,
+      "output_tokens_per_s": 42.93224342051794,
+      "tokens_per_s_per_mw": 2981.4057930915237,
+      "normalized_throughput": 1.0,
+      "power_watts": 14400.0,
+      "inventory": {
+        "rubin": 8
+      },
+      "timings": {
+        "warmup_s": 0.0027478226854117925,
+        "measurement_s": 0.37268026837734197,
+        "minimum_measurement_s": 1e-09,
+        "minimum_complete_turns_per_cohort": 1,
+        "completed_token_boundary": "[start, end]; warmup explicitly excluded",
+        "drain_s": 0.0
+      },
+      "steady_state": {
+        "start_s": 0.0027478226854117925,
+        "end_s": 0.37542809106275377,
+        "duration_s": 0.37268026837734197,
+        "output_tokens": 16,
+        "decode_tokens": 15,
+        "output_tokens_per_s": 42.93224342051794,
+        "decode_tokens_per_s": 40.24897820673557
+      },
+      "maximum_resource_utilization": 0.8366789791922943,
+      "total_resource_queue_s": 0.09159069527504789,
+      "turns": [
+        {
+          "cohort": 0,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.0027478226854117925,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 0,
+          "round": 1,
+          "start": 0.0027478226854117925,
+          "ttft_s": 0.3315604562151495,
+          "end": 0.37542809106275377,
+          "completed": true,
+          "warmup": false
+        }
+      ],
+      "handoff_bytes_all_phases": 0,
+      "control_bytes_all_phases": 0
+    },
+    {
+      "case": "af-tp8",
+      "mode": "af",
+      "batch": 1,
+      "status": "ok",
+      "micro_batch": 1,
+      "native_executor": "ModelAFExecutor",
+      "tokens_per_s_per_user": 434.51702483822925,
+      "output_tokens_per_s": 66.75521836879541,
+      "tokens_per_s_per_mw": 35.38762636174481,
+      "normalized_throughput": 0.01186944308075894,
+      "power_watts": 1886400.0,
+      "inventory": {
+        "rubin": 24,
+        "groq_lp30": 4096
+      },
+      "timings": {
+        "warmup_s": 0.002301397013014743,
+        "measurement_s": 0.23968163674645646,
+        "minimum_measurement_s": 1e-09,
+        "minimum_complete_turns_per_cohort": 1,
+        "completed_token_boundary": "[start, end]; warmup explicitly excluded",
+        "drain_s": 0.0
+      },
+      "steady_state": {
+        "start_s": 0.002301397013014743,
+        "end_s": 0.2419830337594712,
+        "duration_s": 0.23968163674645646,
+        "output_tokens": 16,
+        "decode_tokens": 15,
+        "output_tokens_per_s": 66.75521836879541,
+        "decode_tokens_per_s": 62.5830172207457
+      },
+      "maximum_resource_utilization": 0.6284795926036959,
+      "total_resource_queue_s": 0.3478291278093625,
+      "turns": [
+        {
+          "cohort": 0,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.002301397013014743,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 0,
+          "round": 1,
+          "start": 0.002301397013014743,
+          "ttft_s": 0.2051605497865508,
+          "end": 0.2419830337594712,
+          "completed": true,
+          "warmup": false
+        }
+      ],
+      "handoff_bytes_all_phases": 676331520,
+      "control_bytes_all_phases": 0
+    },
+    {
+      "case": "pd-tp16",
+      "mode": "pd",
+      "batch": 1,
+      "status": "ok",
+      "micro_batch": 1,
+      "native_executor": "ModelAFExecutor",
+      "tokens_per_s_per_user": 1641.5741553093744,
+      "output_tokens_per_s": 74.66175578382435,
+      "tokens_per_s_per_mw": 30.499083245026288,
+      "normalized_throughput": 0.010229765876117361,
+      "power_watts": 2448000.0,
+      "inventory": {
+        "groq_lp30": 5376,
+        "rubin": 16
+      },
+      "timings": {
+        "warmup_s": 0.0006091698304711054,
+        "measurement_s": 0.21429980894537762,
+        "minimum_measurement_s": 1e-09,
+        "minimum_complete_turns_per_cohort": 1,
+        "completed_token_boundary": "[start, end]; warmup explicitly excluded",
+        "drain_s": 0.0
+      },
+      "steady_state": {
+        "start_s": 0.0006091698304711054,
+        "end_s": 0.21490897877584872,
+        "duration_s": 0.21429980894537762,
+        "output_tokens": 16,
+        "decode_tokens": 15,
+        "output_tokens_per_s": 74.66175578382435,
+        "decode_tokens_per_s": 69.99539604733532
+      },
+      "maximum_resource_utilization": 0.7029171801800107,
+      "total_resource_queue_s": 0.3370156878168969,
+      "turns": [
+        {
+          "cohort": 0,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.0006091698304711054,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 0,
+          "round": 1,
+          "start": 0.0006091698304711054,
+          "ttft_s": 0.20516223818655127,
+          "end": 0.21490897877584872,
+          "completed": true,
+          "warmup": false
+        }
+      ],
+      "handoff_bytes_all_phases": 1352663040,
+      "control_bytes_all_phases": 0
+    },
+    {
+      "case": "draft-tp8",
+      "mode": "draft",
+      "batch": 1,
+      "status": "ok",
+      "micro_batch": 1,
+      "native_executor": "ModelAFExecutor",
+      "tokens_per_s_per_user": 681.4406771472833,
+      "output_tokens_per_s": 45.252113748941454,
+      "tokens_per_s_per_mw": 1047.5026330773485,
+      "normalized_throughput": 0.35134520617911474,
+      "power_watts": 43200.0,
+      "inventory": {
+        "rubin": 8,
+        "groq_lp30": 64
+      },
+      "timings": {
+        "warmup_s": 0.004394269498529118,
+        "measurement_s": 0.3535746438004628,
+        "minimum_measurement_s": 1e-09,
+        "minimum_complete_turns_per_cohort": 1,
+        "completed_token_boundary": "[start, end]; warmup explicitly excluded",
+        "drain_s": 0.0
+      },
+      "steady_state": {
+        "start_s": 0.004394269498529118,
+        "end_s": 0.3579689132989919,
+        "duration_s": 0.3535746438004628,
+        "output_tokens": 16,
+        "decode_tokens": 15,
+        "output_tokens_per_s": 45.252113748941454,
+        "decode_tokens_per_s": 42.42385663963262
+      },
+      "maximum_resource_utilization": 0.8623614711955263,
+      "total_resource_queue_s": 0.09659579134805796,
+      "turns": [
+        {
+          "cohort": 0,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.004394269498529118,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 0,
+          "round": 1,
+          "start": 0.004394269498529118,
+          "ttft_s": 0.3315624562351496,
+          "end": 0.3579689132989919,
+          "completed": true,
+          "warmup": false
+        }
+      ],
+      "handoff_bytes_all_phases": 0,
+      "control_bytes_all_phases": 124,
+      "measured_verification": {
+        "cycles": 5,
+        "committed_tokens": 15,
+        "draft_catchup_tokens": 1
+      }
+    }
+  ]
+}

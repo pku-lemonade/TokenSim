@@ -8,6 +8,7 @@ silently producing a latency for an impossible placement.
 """
 
 from __future__ import annotations
+from TokenSim.dtypes import CAST_OPERATIONS
 
 from typing import Any, Mapping
 
@@ -55,7 +56,7 @@ class GroqTSPModel:
             work = work_for_table(table, key)
             efficiency = float(params.get("attention_mfu", 0.6))
             peak = device.peak_compute_for(dtype).value
-        elif table == "moe":
+        elif table in {"moe", "routed_experts"}:
             dtype = str(key["dtype"])
             work = work_for_table(table, key, gated=gated, imbalance=imbalance)
             efficiency = float(params.get("moe_mfu", 0.7))
@@ -64,13 +65,26 @@ class GroqTSPModel:
             dtype = str(key["dtype"])
             work = work_for_table(table, key)
             efficiency = 0.8
-            peak = device.peak_compute_for(dtype).value
+            peak = device.peak_compute_for(
+                "fp32" if key["op_name"] in CAST_OPERATIONS else dtype
+            ).value
         else:
             raise ValueError(
                 f"{self.family} analytical model does not cover table {table!r}"
             )
 
         fits = work.weight_bytes <= sram.value
+        effective_flops = work.flops
+        vector_time = 0.0
+        if work.details.get("dequant_elements") and "nvfp4" not in device.peak_compute:
+            vector_ops = float(work.details["dequant_elements"]) * float(
+                params.get("packed_dequant_ops_per_element", 2)
+            )
+            vector_peak = device.peak_compute_for("fp32").value * float(
+                params.get("dequant_efficiency", 0.8)
+            )
+            vector_time = vector_ops / vector_peak
+            effective_flops = max(effective_flops, vector_time * peak * efficiency)
         return roofline_estimate(
             work=work,
             peak_ops_per_s=peak,
@@ -80,10 +94,12 @@ class GroqTSPModel:
             overhead_us=overhead_us,
             calibration=calibration,
             source_id=source_id,
+            compute_flops_override=effective_flops,
             details={
                 "fits_on_chip": fits,
                 "sram_bytes": sram.value,
                 "weight_bytes": work.weight_bytes,
+                "packed_dequant_time_us": vector_time * 1e6,
             },
         )
 

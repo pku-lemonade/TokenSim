@@ -1,0 +1,2531 @@
+{
+  "schema": "tokensim.lpx_evidence",
+  "version": 1,
+  "source_summary": {
+    "name": "outputs/lpx-full-validation/expert-sensitivity/summary.json",
+    "sha256": "4e8745026bd40eba0161e4c10d0e3a3c3d23f7e46d822048d510c5f7b6e1f2bf"
+  },
+  "audit": {
+    "status": "accounting_passed",
+    "points": 8,
+    "feasible": 6,
+    "rejected": 2,
+    "power_model": {
+      "groq_lp30": {
+        "watts": 450.0,
+        "source_id": "assumption-lp30-analytical",
+        "grade": "D"
+      },
+      "rubin": {
+        "watts": 1800.0,
+        "source_id": "assumption-rubin-analytical",
+        "grade": "D"
+      }
+    },
+    "original_workload": true,
+    "execution_fidelity": "sampled_operator_profiles",
+    "numerical_accuracy": "requires_separate_native_calibration",
+    "grid_coverage": "external",
+    "event_accounting": "token_events_and_intervals"
+  },
+  "power_model": {
+    "groq_lp30": {
+      "watts": 450.0,
+      "source_id": "assumption-lp30-analytical",
+      "grade": "D"
+    },
+    "rubin": {
+      "watts": 1800.0,
+      "source_id": "assumption-rubin-analytical",
+      "grade": "D"
+    }
+  },
+  "executor": "sampled_native_dag_replay",
+  "git_revision": "1cce7993ff830ff764d118bca786bba38af216c4",
+  "git_worktree_dirty": false,
+  "end_git_revision": "1cce7993ff830ff764d118bca786bba38af216c4",
+  "end_git_worktree_dirty": false,
+  "workload": {
+    "cached_tokens": 400000,
+    "new_tokens": 4000,
+    "output_tokens": 400,
+    "prefill_chunk": 64,
+    "context_samples": 3,
+    "seed": 42,
+    "draft_tokens": 4,
+    "acceptance_probability": 0.8
+  },
+  "model": {
+    "model_id": "gpt-oss-2t-expert-proxy",
+    "display_name": "GPT-OSS expert-count-scaled 2T sensitivity proxy",
+    "aliases": [],
+    "hidden_size": 2880,
+    "intermediate_size": 2880,
+    "num_layers": 36,
+    "num_attention_heads": 64,
+    "num_key_value_heads": 8,
+    "head_dim": 64,
+    "kv_cache_dim": null,
+    "vocab_size": 201088,
+    "max_position_embeddings": 1048576,
+    "sliding_window": 0,
+    "attention_windows": [
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0,
+      128,
+      0
+    ],
+    "tie_word_embeddings": false,
+    "activation": "swiglu",
+    "dtype": "bf16",
+    "activation_dtype": "bf16",
+    "kv_cache_dtype": "bf16",
+    "is_moe": true,
+    "moe": {
+      "is_moe_model": true,
+      "num_experts": 2240,
+      "num_experts_per_tok": 4,
+      "moe_intermediate_size": 2880,
+      "num_shared_experts": 0,
+      "num_moe_layers": 36,
+      "first_k_dense_replace": 0,
+      "moe_layer_freq": 1,
+      "interleave_moe_layer_step": 1,
+      "routing": {
+        "distribution": "uniform",
+        "hot_experts": null,
+        "hot_expert_fraction": 0.5,
+        "uniform_selection": "random_without_replacement"
+      },
+      "hidden_size": 2880,
+      "intermediate_size": 2880,
+      "num_attention_heads": 64,
+      "num_key_value_heads": 8
+    },
+    "sources": {
+      "openai-gpt-oss-120b-config": {
+        "grade": "A",
+        "reference": "https://huggingface.co/openai/gpt-oss-120b/blob/main/config.json",
+        "notes": "Hidden, FFN, head, vocabulary and layer dimensions are transcribed from the 120B config."
+      },
+      "assumption-scaled-gpt-oss": {
+        "grade": "D",
+        "reference": "docs/lpx-reproduction.md",
+        "notes": "2240 experts and 1M context are sensitivity assumptions. Public GPT-OSS width, layer count, top-k, alternating attention and mixed precision are retained. NVIDIA did not publish its scaled architecture. Uniform routing without replacement is an unmeasured sensitivity assumption."
+      }
+    },
+    "total_params": 2008927272960,
+    "attention_type": "gqa",
+    "mla_dimensions": null,
+    "architecture": "transformer",
+    "operator_dtypes": {
+      "routed_experts": "mxfp4"
+    },
+    "components": null,
+    "operator_modules": {},
+    "layers": [
+      {
+        "layer_id": 0,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 1,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 2,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 3,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 4,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 5,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 6,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 7,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 8,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 9,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 10,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 11,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 12,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 13,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 14,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 15,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 16,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 17,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 18,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 19,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 20,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 21,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 22,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 23,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 24,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 25,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 26,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 27,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 28,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 29,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 30,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 31,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 32,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 33,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 34,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 35,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      }
+    ]
+  },
+  "draft_model": {
+    "model_id": "gpt-oss-draft-proxy",
+    "display_name": "Four-layer GPT-OSS draft sensitivity proxy",
+    "aliases": [],
+    "hidden_size": 2880,
+    "intermediate_size": 2880,
+    "num_layers": 4,
+    "num_attention_heads": 64,
+    "num_key_value_heads": 8,
+    "head_dim": 64,
+    "kv_cache_dim": null,
+    "vocab_size": 201088,
+    "max_position_embeddings": 1048576,
+    "sliding_window": 0,
+    "attention_windows": [
+      128,
+      0,
+      128,
+      0
+    ],
+    "tie_word_embeddings": false,
+    "activation": "swiglu",
+    "dtype": "bf16",
+    "activation_dtype": "bf16",
+    "kv_cache_dtype": "bf16",
+    "is_moe": true,
+    "moe": {
+      "is_moe_model": true,
+      "num_experts": 128,
+      "num_experts_per_tok": 4,
+      "moe_intermediate_size": 2880,
+      "num_shared_experts": 0,
+      "num_moe_layers": 4,
+      "first_k_dense_replace": 0,
+      "moe_layer_freq": 1,
+      "interleave_moe_layer_step": 1,
+      "routing": {
+        "distribution": "uniform",
+        "hot_experts": null,
+        "hot_expert_fraction": 0.5,
+        "uniform_selection": "random_without_replacement"
+      },
+      "hidden_size": 2880,
+      "intermediate_size": 2880,
+      "num_attention_heads": 64,
+      "num_key_value_heads": 8
+    },
+    "sources": {
+      "assumption-draft": {
+        "grade": "D",
+        "reference": "docs/lpx-reproduction.md",
+        "notes": "Four public GPT-OSS-120B layers with a 1M context limit are a hypothetical independent drafter. Acceptance must be supplied independently; no model quality claim is made. Uniform routing without replacement is an unmeasured sensitivity assumption."
+      }
+    },
+    "total_params": 14006108160,
+    "attention_type": "gqa",
+    "mla_dimensions": null,
+    "architecture": "transformer",
+    "operator_dtypes": {
+      "routed_experts": "mxfp4"
+    },
+    "components": null,
+    "operator_modules": {},
+    "layers": [
+      {
+        "layer_id": 0,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 1,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 2,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 3,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "learned",
+        "is_mtp": false
+      }
+    ]
+  },
+  "architecture": {
+    "model_id": "gpt-oss-2t-expert-proxy",
+    "total_parameters": 2008927272960,
+    "activated_routed_ffn_parameters_per_token": 3583180800,
+    "activated_linear_parameters_per_token": 5350072320,
+    "linear_flops_per_token": 10700144640,
+    "attention_kv_dependent_flops_included": false,
+    "full_attention_layers": 18,
+    "bounded_attention_layers": 18,
+    "expert_storage_dtype": "mxfp4",
+    "nonexpert_weight_dtype": "bf16",
+    "activation_dtype": "bf16",
+    "kv_cache_dtype": "bf16",
+    "uniform_expert_selection": "random_without_replacement",
+    "architecture_assumption": {
+      "grade": "D",
+      "reference": "docs/lpx-reproduction.md",
+      "notes": "2240 experts and 1M context are sensitivity assumptions. Public GPT-OSS width, layer count, top-k, alternating attention and mixed precision are retained. NVIDIA did not publish its scaled architecture. Uniform routing without replacement is an unmeasured sensitivity assumption."
+    }
+  },
+  "run_settings": {
+    "client_counts": [
+      1,
+      16
+    ],
+    "stream_metrics": true,
+    "event_accounting_required": true,
+    "execution_backend": "sampled-replay",
+    "additional_memory_reserve_bytes": {
+      "rubin": 0,
+      "groq_lp30": 0
+    },
+    "replay_samples": 4,
+    "replay_prefill_samples": 1,
+    "micro_batch": 1,
+    "simulation_processes": 1,
+    "routing_selection": "random_without_replacement",
+    "a_replicas": 1,
+    "warmup_steps": 2,
+    "warmup_mode": "resident_decode",
+    "measurement_seconds": 0.05,
+    "measurement_turns": 1,
+    "execution_mode": "cuda_graph",
+    "graph_device_kernel_us": 0.2,
+    "endpoint_transfer_occupancy": "wire",
+    "handoff_mode": "incremental"
+  },
+  "cases": [
+    {
+      "name": "rubin-tp8",
+      "mode": "rubin",
+      "decode": {
+        "a_device": "rubin",
+        "f_device": "rubin",
+        "a_tp": 8,
+        "a_cp": 1,
+        "a_pp": 1,
+        "f_tp": 1,
+        "f_ep": 8,
+        "f_pp": 1,
+        "colocated": true
+      },
+      "prefill": null,
+      "draft": null
+    },
+    {
+      "name": "af-tp8",
+      "mode": "af",
+      "decode": {
+        "a_device": "rubin",
+        "f_device": "groq_lp30",
+        "a_tp": 8,
+        "a_cp": 1,
+        "a_pp": 1,
+        "f_tp": 2,
+        "f_ep": 320,
+        "f_pp": 4,
+        "colocated": false
+      },
+      "prefill": {
+        "a_device": "rubin",
+        "f_device": "rubin",
+        "a_tp": 16,
+        "a_cp": 1,
+        "a_pp": 1,
+        "f_tp": 1,
+        "f_ep": 16,
+        "f_pp": 1,
+        "colocated": true
+      },
+      "draft": null
+    },
+    {
+      "name": "pd-tp16",
+      "mode": "pd",
+      "decode": {
+        "a_device": "groq_lp30",
+        "f_device": "groq_lp30",
+        "a_tp": 16,
+        "a_cp": 1,
+        "a_pp": 36,
+        "f_tp": 2,
+        "f_ep": 320,
+        "f_pp": 4,
+        "colocated": false
+      },
+      "prefill": {
+        "a_device": "rubin",
+        "f_device": "rubin",
+        "a_tp": 16,
+        "a_cp": 1,
+        "a_pp": 1,
+        "f_tp": 1,
+        "f_ep": 16,
+        "f_pp": 1,
+        "colocated": true
+      },
+      "draft": null
+    },
+    {
+      "name": "draft-tp8",
+      "mode": "draft",
+      "decode": {
+        "a_device": "rubin",
+        "f_device": "rubin",
+        "a_tp": 8,
+        "a_cp": 1,
+        "a_pp": 1,
+        "f_tp": 1,
+        "f_ep": 8,
+        "f_pp": 1,
+        "colocated": true
+      },
+      "prefill": null,
+      "draft": {
+        "a_device": "groq_lp30",
+        "f_device": "groq_lp30",
+        "a_tp": 16,
+        "a_cp": 1,
+        "a_pp": 4,
+        "f_tp": 1,
+        "f_ep": 16,
+        "f_pp": 4,
+        "colocated": true
+      }
+    }
+  ],
+  "hardware": {
+    "groq_lp30": {
+      "device_id": "groq_lp30",
+      "family": "groq_tsp",
+      "display_name": "NVIDIA Groq 3 LP30 LPU",
+      "peak_compute": {
+        "fp8": 1230468750000000.0,
+        "fp16": 615234375000000.0,
+        "bf16": 615234375000000.0,
+        "fp32": 153808593750000.0
+      },
+      "memory_capacity_bytes": 500000000.0,
+      "memory_bandwidth_bytes_per_s": 150000000000000.0,
+      "scale_up_link": "groq_lp30_injection",
+      "host_link": "pcie6_x16",
+      "step_overhead_us": 0.0,
+      "memory_reserved_bytes": 0.0,
+      "analytical": {
+        "gemm_mfu": 0.8,
+        "attention_mfu": 0.6,
+        "moe_mfu": 0.7,
+        "memory_efficiency": 0.9,
+        "elementwise_memory_efficiency": 0.9,
+        "kernel_launch_us": 0.2,
+        "collective_launch_us": 0.5,
+        "gemm_small_m_knee": 1.0,
+        "packed_dequant_ops_per_element": 2.0,
+        "dequant_efficiency": 0.8
+      },
+      "analytical_source_id": "assumption-lp30-analytical",
+      "analytical_grade": "D"
+    },
+    "rubin": {
+      "device_id": "rubin",
+      "family": "nvidia_gpu",
+      "display_name": "NVIDIA Rubin GPU",
+      "peak_compute": {
+        "nvfp4": 2.5e+16,
+        "fp8": 1.75e+16,
+        "fp16": 4000000000000000.0,
+        "bf16": 4000000000000000.0,
+        "fp32": 130000000000000.0
+      },
+      "memory_capacity_bytes": 288000000000.0,
+      "memory_bandwidth_bytes_per_s": 19200000000000.0,
+      "scale_up_link": "nvlink6",
+      "host_link": "pcie6_x16",
+      "step_overhead_us": 0.0,
+      "memory_reserved_bytes": 4000000000.0,
+      "analytical": {
+        "gemm_mfu": 0.7,
+        "attention_mfu": 0.45,
+        "moe_mfu": 0.5,
+        "memory_efficiency": 0.85,
+        "elementwise_memory_efficiency": 0.7,
+        "kernel_launch_us": 3.0,
+        "collective_launch_us": 1.0,
+        "gemm_small_m_knee": 64.0
+      },
+      "analytical_source_id": "assumption-rubin-analytical",
+      "analytical_grade": "D"
+    }
+  },
+  "power_overrides": {},
+  "facility_watts": 0.0,
+  "normalization_tokens_per_s_per_mw": 93579.05478666072,
+  "frontiers": {
+    "rubin": [
+      {
+        "case": "rubin-tp8",
+        "batch": 16,
+        "tokens_per_s_per_user": 139.01423769313402,
+        "tokens_per_s_per_mw": 93579.05478666072,
+        "normalized_throughput": 1.0
+      },
+      {
+        "case": "rubin-tp8",
+        "batch": 1,
+        "tokens_per_s_per_user": 1338.8246398097435,
+        "tokens_per_s_per_mw": 63159.2810333859,
+        "normalized_throughput": 0.6749296749937783
+      }
+    ],
+    "draft": [
+      {
+        "case": "draft-tp8",
+        "batch": 1,
+        "tokens_per_s_per_user": 3409.1584468386295,
+        "tokens_per_s_per_mw": 35774.58862670534,
+        "normalized_throughput": 0.38229269047719483
+      }
+    ],
+    "af": [
+      {
+        "case": "af-tp8",
+        "batch": 16,
+        "tokens_per_s_per_user": 160.58821834166554,
+        "tokens_per_s_per_mw": 1338.4333621053117,
+        "normalized_throughput": 0.014302702299746882
+      },
+      {
+        "case": "af-tp8",
+        "batch": 1,
+        "tokens_per_s_per_user": 1232.8393267849733,
+        "tokens_per_s_per_mw": 750.0600287613366,
+        "normalized_throughput": 0.008015255448682458
+      }
+    ],
+    "pd": [
+      {
+        "case": "pd-tp16",
+        "batch": 1,
+        "tokens_per_s_per_user": 4576.629666580491,
+        "tokens_per_s_per_mw": 1324.432528532312,
+        "normalized_throughput": 0.014153087264577757
+      }
+    ]
+  },
+  "limitations": [
+    "Production whole-model AF DAGs, physical rank ownership, independent serving cohorts and endpoint injection reservations.",
+    "Independent model/topology/precision/power assumptions; NVIDIA's undisclosed projection cannot be numerically reproduced.",
+    "Native PP and combined expert/tensor groups are validated; unimplemented context-parallel layouts fail configuration.",
+    "Warm-up and drain are excluded from steady-state throughput; queue delays and per-resource utilization are exported.",
+    "Layer windows and packed expert weights are executed with native per-request routing and KV byte admission.",
+    "Warm prefixes are resident; prefix creation, checkpoint loading and model quality are outside the simulation.",
+    "Output throughput includes new-suffix prefill, cache handoff and draft service; per-user interactivity excludes TTFT.",
+    "Assumed processor TDP plus supplied facility watts; no automatic rack power or cooling estimate.",
+    "External draft acceptance uses a seeded Bernoulli prefix; full gamma+1 verification positions and rollback are charged.",
+    "Graph host/device costs are explicit analytical assumptions; no measured graph or compiler-vector-overlap calibration is supplied."
+  ],
+  "results": [
+    {
+      "case": "rubin-tp8",
+      "mode": "rubin",
+      "batch": 1,
+      "status": "ok",
+      "micro_batch": 1,
+      "native_executor": "SampledNativeReplay",
+      "tokens_per_s_per_user": 1338.8246398097435,
+      "output_tokens_per_s": 909.493646880757,
+      "tokens_per_s_per_mw": 63159.2810333859,
+      "normalized_throughput": 0.6749296749937783,
+      "power_watts": 14400.0,
+      "inventory": {
+        "rubin": 8
+      },
+      "timings": {
+        "warmup_s": 0.0014995121007955249,
+        "measurement_s": 0.43980516122554475,
+        "minimum_measurement_s": 0.05,
+        "minimum_complete_turns_per_cohort": 1,
+        "completed_token_boundary": "[start, end]; warmup explicitly excluded",
+        "drain_s": 0.0
+      },
+      "steady_state": {
+        "start_s": 0.0014995121007955249,
+        "end_s": 0.44130467332634027,
+        "duration_s": 0.43980516122554475,
+        "output_tokens": 400,
+        "decode_tokens": 399,
+        "output_tokens_per_s": 909.493646880757,
+        "decode_tokens_per_s": 907.2199127635552
+      },
+      "maximum_resource_utilization": 0.4694205440853278,
+      "total_resource_queue_s": 0.015185361032968813,
+      "turns": [
+        {
+          "cohort": 0,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.0014995121007955249,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 0,
+          "round": 1,
+          "start": 0.0014995121007955249,
+          "ttft_s": 0.14178256130035907,
+          "end": 0.44130467332634027,
+          "completed": true,
+          "warmup": false
+        }
+      ],
+      "handoff_bytes_all_phases": 0,
+      "control_bytes_all_phases": 0,
+      "replay_profiles": {
+        "method": "sampled_native_operator_dags",
+        "decode_profile_samples": 4,
+        "prefill_profile_samples": 1,
+        "profiles": [
+          {
+            "phase": "decode",
+            "batch": 1,
+            "queries": 1,
+            "context": 404199,
+            "emit_logits": true,
+            "dp_rank": 0,
+            "seed": 104771,
+            "sample": 1,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 0.6802967870607972,
+            "native_duration_s": 0.0007497560503977572,
+            "native_events": 2445,
+            "service": "target",
+            "model_id": "gpt-oss-2t-expert-proxy",
+            "input_sha256": "70235c0a61e4613d37825a3a51285f8cdaf70a0be9da0e6d55df2c343b113281",
+            "node_body_sha256": "b7b6c59c33afefe99998b073000f99377a639de191f97dd85c5f08b0c39b3aca"
+          },
+          {
+            "phase": "prefill",
+            "batch": 1,
+            "queries": 64,
+            "context": 402000,
+            "emit_logits": false,
+            "dp_rank": 0,
+            "seed": 42,
+            "sample": 0,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 4.204817951191217,
+            "native_duration_s": 0.0022627105524221894,
+            "native_events": 4150,
+            "service": "target",
+            "model_id": "gpt-oss-2t-expert-proxy",
+            "input_sha256": "ff6ab2aeefe1c950026229bacddcaabbc01ce478f0c64e3c097126f56f1df482",
+            "node_body_sha256": "adc30ac64bbe1082b40f2c46034ae0f0f2c4959acb47573791f3647b6e01c7da"
+          },
+          {
+            "phase": "prefill",
+            "batch": 1,
+            "queries": 32,
+            "context": 404000,
+            "emit_logits": true,
+            "dp_rank": 0,
+            "seed": 42,
+            "sample": 0,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 2.587490770034492,
+            "native_duration_s": 0.0014945070501839774,
+            "native_events": 4175,
+            "service": "target",
+            "model_id": "gpt-oss-2t-expert-proxy",
+            "input_sha256": "2fdbd16d2763ed8eb0cf5613677807a8041c1208e724122726e85a5823414883",
+            "node_body_sha256": "ea3aa9e9adb0868f4e56d14586e5dd690967c39118a7ae25e2eb2595c2ac1083"
+          },
+          {
+            "phase": "decode",
+            "batch": 1,
+            "queries": 1,
+            "context": 404199,
+            "emit_logits": true,
+            "dp_rank": 0,
+            "seed": 314229,
+            "sample": 3,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 0.6254841079935431,
+            "native_duration_s": 0.0007457072927507001,
+            "native_events": 2475,
+            "service": "target",
+            "model_id": "gpt-oss-2t-expert-proxy",
+            "input_sha256": "1d3b4c13c826e0e67a020234821857a311d041e3512c167977ace892dbfe8e36",
+            "node_body_sha256": "26dc8a576bad9fa4b1b087c950fcf2406458d97129659efc6d82e04e23e08426"
+          },
+          {
+            "phase": "decode",
+            "batch": 1,
+            "queries": 1,
+            "context": 404199,
+            "emit_logits": true,
+            "dp_rank": 0,
+            "seed": 209500,
+            "sample": 2,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 0.6253096219152212,
+            "native_duration_s": 0.000746516276280111,
+            "native_events": 2465,
+            "service": "target",
+            "model_id": "gpt-oss-2t-expert-proxy",
+            "input_sha256": "e8da018990a1ae47ac976fe575ff42b023927d0e848fb1d0a0676f6cd10cc95c",
+            "node_body_sha256": "63635f3b56234e742d75531ef08afcf7259a8c7eb91bde8788b2aa67a780c3e4"
+          },
+          {
+            "phase": "decode",
+            "batch": 1,
+            "queries": 1,
+            "context": 404199,
+            "emit_logits": true,
+            "dp_rank": 0,
+            "seed": 42,
+            "sample": 0,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 0.6311576860025525,
+            "native_duration_s": 0.0007457034527507003,
+            "native_events": 2485,
+            "service": "target",
+            "model_id": "gpt-oss-2t-expert-proxy",
+            "input_sha256": "93de9381a7ff4056fc4ea978a433600702d8cb114872e811dd58d00a420e2f90",
+            "node_body_sha256": "293ff7cb9b843bca35da3b1b222549b26c4bbded9aac4ee1491bd0632b51c90a"
+          }
+        ],
+        "routing": "deterministic selection from a finite native routing corpus",
+        "context": "exact below 16K input tokens; representative midpoint above 16K",
+        "limitations": [
+          "Sampled routing and fixed within-phase context are approximations.",
+          "Resource tie ordering uses native sample start order and replay submission order.",
+          "All requested tokens and serving protocol actions are executed; model quality is unmeasured."
+        ]
+      }
+    },
+    {
+      "case": "rubin-tp8",
+      "mode": "rubin",
+      "batch": 16,
+      "status": "ok",
+      "micro_batch": 1,
+      "native_executor": "SampledNativeReplay",
+      "tokens_per_s_per_user": 139.01423769313402,
+      "output_tokens_per_s": 1347.5383889279144,
+      "tokens_per_s_per_mw": 93579.05478666072,
+      "normalized_throughput": 1.0,
+      "power_watts": 14400.0,
+      "inventory": {
+        "rubin": 8
+      },
+      "timings": {
+        "warmup_s": 0.014361896755972268,
+        "measurement_s": 4.749400872424691,
+        "minimum_measurement_s": 0.05,
+        "minimum_complete_turns_per_cohort": 1,
+        "completed_token_boundary": "[start, end]; warmup explicitly excluded",
+        "drain_s": 0.027809206920141882
+      },
+      "steady_state": {
+        "start_s": 0.014361896755972268,
+        "end_s": 4.763762769180664,
+        "duration_s": 4.749400872424691,
+        "output_tokens": 6400,
+        "decode_tokens": 6384,
+        "output_tokens_per_s": 1347.5383889279144,
+        "decode_tokens_per_s": 1344.1695429555948
+      },
+      "maximum_resource_utilization": 0.6954576662643933,
+      "total_resource_queue_s": 280.49554091327934,
+      "turns": [
+        {
+          "cohort": 1,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.014361896755972268,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 0,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.014361896755972268,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 9,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.014361896755972268,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 2,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.014361896755972268,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 7,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.014361896755972268,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 3,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.014361896755972268,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 6,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.014361896755972268,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 4,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.014361896755972268,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 10,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.014361896755972268,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 15,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.014361896755972268,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 13,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.014361896755972268,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 5,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.014361896755972268,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 11,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.014361896755972268,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 12,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.014361896755972268,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 8,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.014361896755972268,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 14,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.014361896755972268,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 1,
+          "round": 1,
+          "start": 0.014361896755972268,
+          "ttft_s": 1.8787947325822514,
+          "end": 4.763527240671231,
+          "completed": true,
+          "warmup": false
+        },
+        {
+          "cohort": 8,
+          "round": 1,
+          "start": 0.014361896755972268,
+          "ttft_s": 1.879209775473234,
+          "end": 4.7636582790735185,
+          "completed": true,
+          "warmup": false
+        },
+        {
+          "cohort": 3,
+          "round": 1,
+          "start": 0.014361896755972268,
+          "ttft_s": 1.879142775634018,
+          "end": 4.763658508997328,
+          "completed": true,
+          "warmup": false
+        },
+        {
+          "cohort": 9,
+          "round": 1,
+          "start": 0.014361896755972268,
+          "ttft_s": 1.8791420858625894,
+          "end": 4.763695038772117,
+          "completed": true,
+          "warmup": false
+        },
+        {
+          "cohort": 14,
+          "round": 1,
+          "start": 0.014361896755972268,
+          "ttft_s": 1.879210494823519,
+          "end": 4.763759034577998,
+          "completed": true,
+          "warmup": false
+        },
+        {
+          "cohort": 7,
+          "round": 1,
+          "start": 0.014361896755972268,
+          "ttft_s": 1.8791425457102084,
+          "end": 4.763759774216092,
+          "completed": true,
+          "warmup": false
+        },
+        {
+          "cohort": 10,
+          "round": 1,
+          "start": 0.014361896755972268,
+          "ttft_s": 1.879206990144662,
+          "end": 4.763760004139902,
+          "completed": true,
+          "warmup": false
+        },
+        {
+          "cohort": 0,
+          "round": 1,
+          "start": 0.014361896755972268,
+          "ttft_s": 1.8791418559387798,
+          "end": 4.763760234063712,
+          "completed": true,
+          "warmup": false
+        },
+        {
+          "cohort": 12,
+          "round": 1,
+          "start": 0.014361896755972268,
+          "ttft_s": 1.8792095455494244,
+          "end": 4.763760674273236,
+          "completed": true,
+          "warmup": false
+        },
+        {
+          "cohort": 2,
+          "round": 1,
+          "start": 0.014361896755972268,
+          "ttft_s": 1.879142315786399,
+          "end": 4.763761159054188,
+          "completed": true,
+          "warmup": false
+        },
+        {
+          "cohort": 13,
+          "round": 1,
+          "start": 0.014361896755972268,
+          "ttft_s": 1.8792086549208529,
+          "end": 4.763761388977998,
+          "completed": true,
+          "warmup": false
+        },
+        {
+          "cohort": 11,
+          "round": 1,
+          "start": 0.014361896755972268,
+          "ttft_s": 1.8792093156256149,
+          "end": 4.763761618901808,
+          "completed": true,
+          "warmup": false
+        },
+        {
+          "cohort": 5,
+          "round": 1,
+          "start": 0.014361896755972268,
+          "ttft_s": 1.8792090857018053,
+          "end": 4.7637618488256175,
+          "completed": true,
+          "warmup": false
+        },
+        {
+          "cohort": 4,
+          "round": 1,
+          "start": 0.014361896755972268,
+          "ttft_s": 1.8792067602208524,
+          "end": 4.763762078749427,
+          "completed": true,
+          "warmup": false
+        },
+        {
+          "cohort": 6,
+          "round": 1,
+          "start": 0.014361896755972268,
+          "ttft_s": 1.8791430055578275,
+          "end": 4.763762308673237,
+          "completed": true,
+          "warmup": false
+        },
+        {
+          "cohort": 15,
+          "round": 1,
+          "start": 0.014361896755972268,
+          "ttft_s": 1.8792080232827575,
+          "end": 4.763762769180664,
+          "completed": true,
+          "warmup": false
+        }
+      ],
+      "handoff_bytes_all_phases": 0,
+      "control_bytes_all_phases": 0,
+      "replay_profiles": {
+        "method": "sampled_native_operator_dags",
+        "decode_profile_samples": 4,
+        "prefill_profile_samples": 1,
+        "profiles": [
+          {
+            "phase": "decode",
+            "batch": 1,
+            "queries": 1,
+            "context": 404199,
+            "emit_logits": true,
+            "dp_rank": 0,
+            "seed": 104771,
+            "sample": 1,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 0.6802967870607972,
+            "native_duration_s": 0.0007497560503977572,
+            "native_events": 2445,
+            "service": "target",
+            "model_id": "gpt-oss-2t-expert-proxy",
+            "input_sha256": "70235c0a61e4613d37825a3a51285f8cdaf70a0be9da0e6d55df2c343b113281",
+            "node_body_sha256": "b7b6c59c33afefe99998b073000f99377a639de191f97dd85c5f08b0c39b3aca"
+          },
+          {
+            "phase": "decode",
+            "batch": 1,
+            "queries": 1,
+            "context": 404199,
+            "emit_logits": true,
+            "dp_rank": 0,
+            "seed": 209500,
+            "sample": 2,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 0.6253096219152212,
+            "native_duration_s": 0.000746516276280111,
+            "native_events": 2465,
+            "service": "target",
+            "model_id": "gpt-oss-2t-expert-proxy",
+            "input_sha256": "e8da018990a1ae47ac976fe575ff42b023927d0e848fb1d0a0676f6cd10cc95c",
+            "node_body_sha256": "63635f3b56234e742d75531ef08afcf7259a8c7eb91bde8788b2aa67a780c3e4"
+          },
+          {
+            "phase": "decode",
+            "batch": 1,
+            "queries": 1,
+            "context": 404199,
+            "emit_logits": true,
+            "dp_rank": 0,
+            "seed": 42,
+            "sample": 0,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 0.6311576860025525,
+            "native_duration_s": 0.0007457034527507003,
+            "native_events": 2485,
+            "service": "target",
+            "model_id": "gpt-oss-2t-expert-proxy",
+            "input_sha256": "93de9381a7ff4056fc4ea978a433600702d8cb114872e811dd58d00a420e2f90",
+            "node_body_sha256": "293ff7cb9b843bca35da3b1b222549b26c4bbded9aac4ee1491bd0632b51c90a"
+          },
+          {
+            "phase": "decode",
+            "batch": 1,
+            "queries": 1,
+            "context": 404199,
+            "emit_logits": true,
+            "dp_rank": 0,
+            "seed": 314229,
+            "sample": 3,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 0.6254841079935431,
+            "native_duration_s": 0.0007457072927507001,
+            "native_events": 2475,
+            "service": "target",
+            "model_id": "gpt-oss-2t-expert-proxy",
+            "input_sha256": "1d3b4c13c826e0e67a020234821857a311d041e3512c167977ace892dbfe8e36",
+            "node_body_sha256": "26dc8a576bad9fa4b1b087c950fcf2406458d97129659efc6d82e04e23e08426"
+          },
+          {
+            "phase": "prefill",
+            "batch": 1,
+            "queries": 64,
+            "context": 402000,
+            "emit_logits": false,
+            "dp_rank": 0,
+            "seed": 42,
+            "sample": 0,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 4.204817951191217,
+            "native_duration_s": 0.0022627105524221894,
+            "native_events": 4150,
+            "service": "target",
+            "model_id": "gpt-oss-2t-expert-proxy",
+            "input_sha256": "ff6ab2aeefe1c950026229bacddcaabbc01ce478f0c64e3c097126f56f1df482",
+            "node_body_sha256": "adc30ac64bbe1082b40f2c46034ae0f0f2c4959acb47573791f3647b6e01c7da"
+          },
+          {
+            "phase": "prefill",
+            "batch": 1,
+            "queries": 32,
+            "context": 404000,
+            "emit_logits": true,
+            "dp_rank": 0,
+            "seed": 42,
+            "sample": 0,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 2.587490770034492,
+            "native_duration_s": 0.0014945070501839774,
+            "native_events": 4175,
+            "service": "target",
+            "model_id": "gpt-oss-2t-expert-proxy",
+            "input_sha256": "2fdbd16d2763ed8eb0cf5613677807a8041c1208e724122726e85a5823414883",
+            "node_body_sha256": "ea3aa9e9adb0868f4e56d14586e5dd690967c39118a7ae25e2eb2595c2ac1083"
+          }
+        ],
+        "routing": "deterministic selection from a finite native routing corpus",
+        "context": "exact below 16K input tokens; representative midpoint above 16K",
+        "limitations": [
+          "Sampled routing and fixed within-phase context are approximations.",
+          "Resource tie ordering uses native sample start order and replay submission order.",
+          "All requested tokens and serving protocol actions are executed; model quality is unmeasured."
+        ]
+      }
+    },
+    {
+      "case": "af-tp8",
+      "mode": "af",
+      "batch": 1,
+      "status": "ok",
+      "micro_batch": 1,
+      "native_executor": "SampledNativeReplay",
+      "tokens_per_s_per_user": 1232.8393267849733,
+      "output_tokens_per_s": 896.4717463755495,
+      "tokens_per_s_per_mw": 750.0600287613366,
+      "normalized_throughput": 0.008015255448682458,
+      "power_watts": 1195200.0,
+      "inventory": {
+        "rubin": 24,
+        "groq_lp30": 2560
+      },
+      "timings": {
+        "warmup_s": 0.0016222116517736547,
+        "measurement_s": 0.44619364928923505,
+        "minimum_measurement_s": 0.05,
+        "minimum_complete_turns_per_cohort": 1,
+        "completed_token_boundary": "[start, end]; warmup explicitly excluded",
+        "drain_s": 0.0
+      },
+      "steady_state": {
+        "start_s": 0.0016222116517736547,
+        "end_s": 0.4478158609410087,
+        "duration_s": 0.44619364928923505,
+        "output_tokens": 400,
+        "decode_tokens": 399,
+        "output_tokens_per_s": 896.4717463755495,
+        "decode_tokens_per_s": 894.2305670096106
+      },
+      "maximum_resource_utilization": 0.34794887177582107,
+      "total_resource_queue_s": 0.06198641397215111,
+      "turns": [
+        {
+          "cohort": 0,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.0016222116517736547,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 0,
+          "round": 1,
+          "start": 0.0016222116517736547,
+          "ttft_s": 0.12255050185612926,
+          "end": 0.4478158609410087,
+          "completed": true,
+          "warmup": false
+        }
+      ],
+      "handoff_bytes_all_phases": 152174592,
+      "control_bytes_all_phases": 0,
+      "replay_profiles": {
+        "method": "sampled_native_operator_dags",
+        "decode_profile_samples": 4,
+        "prefill_profile_samples": 1,
+        "profiles": [
+          {
+            "phase": "decode",
+            "batch": 1,
+            "queries": 1,
+            "context": 404199,
+            "emit_logits": true,
+            "dp_rank": 0,
+            "seed": 104771,
+            "sample": 1,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 1.3585690520703793,
+            "native_duration_s": 0.0008111058258868339,
+            "native_events": 3167,
+            "service": "target",
+            "model_id": "gpt-oss-2t-expert-proxy",
+            "input_sha256": "1f3504943447bdcedbe6f5271343db93b94a3814ead0fbe8a68cec591ede04aa",
+            "node_body_sha256": "88e39a7d66fa1bee5266ae2e2f9a89996519ecaf39a44eea897cacd37fb85834"
+          },
+          {
+            "phase": "prefill",
+            "batch": 1,
+            "queries": 64,
+            "context": 402000,
+            "emit_logits": false,
+            "dp_rank": 0,
+            "seed": 42,
+            "sample": 0,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 9.10730800870806,
+            "native_duration_s": 0.001949937250328736,
+            "native_events": 12798,
+            "service": "prefill",
+            "model_id": "gpt-oss-2t-expert-proxy",
+            "input_sha256": "9f14748a7f512fd807c3964950125fb86cf895462fd2375a2c3517d29803658a",
+            "node_body_sha256": "843fd48da0fdc0bb3e182a2d74f394b5112fd95183117412d9a8882e4daac074"
+          },
+          {
+            "phase": "prefill",
+            "batch": 1,
+            "queries": 32,
+            "context": 404000,
+            "emit_logits": true,
+            "dp_rank": 0,
+            "seed": 42,
+            "sample": 0,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 6.294121793936938,
+            "native_duration_s": 0.001557283215747449,
+            "native_events": 12847,
+            "service": "prefill",
+            "model_id": "gpt-oss-2t-expert-proxy",
+            "input_sha256": "b3476bb410316e0499fcd086db1230386c810940f6654fd2ae23a3349f20bc91",
+            "node_body_sha256": "99bca6af0cc18e90f91ef47aeea6234d3bfebd43a207b1ce2c47b0e500aea127"
+          },
+          {
+            "phase": "decode",
+            "batch": 1,
+            "queries": 1,
+            "context": 404199,
+            "emit_logits": true,
+            "dp_rank": 0,
+            "seed": 314229,
+            "sample": 3,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 1.2750267940573394,
+            "native_duration_s": 0.0008112262592582621,
+            "native_events": 3154,
+            "service": "target",
+            "model_id": "gpt-oss-2t-expert-proxy",
+            "input_sha256": "5d941e0494b5233deec876b8ae8cc76bd85230a4d3b4bef7e5f8826e62c748b3",
+            "node_body_sha256": "1f2813c3efec1b0534fe6e6f7f6b852169b56bd00670305f2605afed30963b78"
+          },
+          {
+            "phase": "decode",
+            "batch": 1,
+            "queries": 1,
+            "context": 404199,
+            "emit_logits": true,
+            "dp_rank": 0,
+            "seed": 209500,
+            "sample": 2,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 1.3430471033789217,
+            "native_duration_s": 0.0008111058258868339,
+            "native_events": 3167,
+            "service": "target",
+            "model_id": "gpt-oss-2t-expert-proxy",
+            "input_sha256": "882a0bc8031bda2e1852bfb8c580b9b0abec85c29a637c58608b970b2fe89e7b",
+            "node_body_sha256": "3024bf526e47a3f715fb2846456d5b52839d4b7729dea8bed641658147bf82b5"
+          },
+          {
+            "phase": "decode",
+            "batch": 1,
+            "queries": 1,
+            "context": 404199,
+            "emit_logits": true,
+            "dp_rank": 0,
+            "seed": 42,
+            "sample": 0,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 1.3492985279299319,
+            "native_duration_s": 0.0008111058258868339,
+            "native_events": 3167,
+            "service": "target",
+            "model_id": "gpt-oss-2t-expert-proxy",
+            "input_sha256": "10b3033ca73bc6226701ac6d1d7ac211c846bc7298a71817b4355b34da9cd25a",
+            "node_body_sha256": "bf185ed65301a67fae09d7ffda9e17bff9ea10557f5b0c7dee74c881a7589a96"
+          }
+        ],
+        "routing": "deterministic selection from a finite native routing corpus",
+        "context": "exact below 16K input tokens; representative midpoint above 16K",
+        "limitations": [
+          "Sampled routing and fixed within-phase context are approximations.",
+          "Resource tie ordering uses native sample start order and replay submission order.",
+          "All requested tokens and serving protocol actions are executed; model quality is unmeasured."
+        ]
+      }
+    },
+    {
+      "case": "af-tp8",
+      "mode": "af",
+      "batch": 16,
+      "status": "ok",
+      "micro_batch": 1,
+      "native_executor": "SampledNativeReplay",
+      "tokens_per_s_per_user": 160.58821834166554,
+      "output_tokens_per_s": 1599.6955543882686,
+      "tokens_per_s_per_mw": 1338.4333621053117,
+      "normalized_throughput": 0.014302702299746882,
+      "power_watts": 1195200.0,
+      "inventory": {
+        "rubin": 24,
+        "groq_lp30": 2560
+      },
+      "timings": {
+        "warmup_s": 0.012497353037218484,
+        "measurement_s": 4.000761258880532,
+        "minimum_measurement_s": 0.05,
+        "minimum_complete_turns_per_cohort": 1,
+        "completed_token_boundary": "[start, end]; warmup explicitly excluded",
+        "drain_s": 0.019384250914862733
+      },
+      "steady_state": {
+        "start_s": 0.012497353037218484,
+        "end_s": 4.013258611917751,
+        "duration_s": 4.000761258880532,
+        "output_tokens": 6400,
+        "decode_tokens": 6384,
+        "output_tokens_per_s": 1599.6955543882686,
+        "decode_tokens_per_s": 1595.696315502298
+      },
+      "maximum_resource_utilization": 0.6208921425465816,
+      "total_resource_queue_s": 251.75175374677318,
+      "turns": [
+        {
+          "cohort": 0,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.012497353037218484,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 1,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.012497353037218484,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 2,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.012497353037218484,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 3,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.012497353037218484,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 4,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.012497353037218484,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 5,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.012497353037218484,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 6,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.012497353037218484,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 7,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.012497353037218484,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 8,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.012497353037218484,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 9,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.012497353037218484,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 10,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.012497353037218484,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 11,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.012497353037218484,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 12,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.012497353037218484,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 13,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.012497353037218484,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 14,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.012497353037218484,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 15,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.012497353037218484,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 0,
+          "round": 1,
+          "start": 0.012497353037218484,
+          "ttft_s": 1.5153671775387842,
+          "end": 4.013006025947449,
+          "completed": true,
+          "warmup": false
+        },
+        {
+          "cohort": 1,
+          "round": 1,
+          "start": 0.012497353037218484,
+          "ttft_s": 1.515462286658784,
+          "end": 4.013142283626933,
+          "completed": true,
+          "warmup": false
+        },
+        {
+          "cohort": 2,
+          "round": 1,
+          "start": 0.012497353037218484,
+          "ttft_s": 1.5155573957787836,
+          "end": 4.013142513550743,
+          "completed": true,
+          "warmup": false
+        },
+        {
+          "cohort": 3,
+          "round": 1,
+          "start": 0.012497353037218484,
+          "ttft_s": 1.5156525048987832,
+          "end": 4.013152824865869,
+          "completed": true,
+          "warmup": false
+        },
+        {
+          "cohort": 4,
+          "round": 1,
+          "start": 0.012497353037218484,
+          "ttft_s": 1.5157476140187829,
+          "end": 4.0131530547896785,
+          "completed": true,
+          "warmup": false
+        },
+        {
+          "cohort": 5,
+          "round": 1,
+          "start": 0.012497353037218484,
+          "ttft_s": 1.5158427231387825,
+          "end": 4.013154677881555,
+          "completed": true,
+          "warmup": false
+        },
+        {
+          "cohort": 6,
+          "round": 1,
+          "start": 0.012497353037218484,
+          "ttft_s": 1.5159378322587822,
+          "end": 4.013162461670911,
+          "completed": true,
+          "warmup": false
+        },
+        {
+          "cohort": 7,
+          "round": 1,
+          "start": 0.012497353037218484,
+          "ttft_s": 1.5160329413787819,
+          "end": 4.013198616786233,
+          "completed": true,
+          "warmup": false
+        },
+        {
+          "cohort": 8,
+          "round": 1,
+          "start": 0.012497353037218484,
+          "ttft_s": 1.5161280504987815,
+          "end": 4.013244422809481,
+          "completed": true,
+          "warmup": false
+        },
+        {
+          "cohort": 9,
+          "round": 1,
+          "start": 0.012497353037218484,
+          "ttft_s": 1.5162231596187812,
+          "end": 4.013244652733291,
+          "completed": true,
+          "warmup": false
+        },
+        {
+          "cohort": 10,
+          "round": 1,
+          "start": 0.012497353037218484,
+          "ttft_s": 1.5163182687387808,
+          "end": 4.0132448826571006,
+          "completed": true,
+          "warmup": false
+        },
+        {
+          "cohort": 11,
+          "round": 1,
+          "start": 0.012497353037218484,
+          "ttft_s": 1.5164133778587805,
+          "end": 4.01324511258091,
+          "completed": true,
+          "warmup": false
+        },
+        {
+          "cohort": 12,
+          "round": 1,
+          "start": 0.012497353037218484,
+          "ttft_s": 1.5165084869787802,
+          "end": 4.01324534250472,
+          "completed": true,
+          "warmup": false
+        },
+        {
+          "cohort": 13,
+          "round": 1,
+          "start": 0.012497353037218484,
+          "ttft_s": 1.5166035960987798,
+          "end": 4.01324557242853,
+          "completed": true,
+          "warmup": false
+        },
+        {
+          "cohort": 14,
+          "round": 1,
+          "start": 0.012497353037218484,
+          "ttft_s": 1.5166987052187795,
+          "end": 4.0132548773150845,
+          "completed": true,
+          "warmup": false
+        },
+        {
+          "cohort": 15,
+          "round": 1,
+          "start": 0.012497353037218484,
+          "ttft_s": 1.5167938143387791,
+          "end": 4.013258611917751,
+          "completed": true,
+          "warmup": false
+        }
+      ],
+      "handoff_bytes_all_phases": 2434793472,
+      "control_bytes_all_phases": 0,
+      "replay_profiles": {
+        "method": "sampled_native_operator_dags",
+        "decode_profile_samples": 4,
+        "prefill_profile_samples": 1,
+        "profiles": [
+          {
+            "phase": "decode",
+            "batch": 1,
+            "queries": 1,
+            "context": 404199,
+            "emit_logits": true,
+            "dp_rank": 0,
+            "seed": 104771,
+            "sample": 1,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 1.3585690520703793,
+            "native_duration_s": 0.0008111058258868339,
+            "native_events": 3167,
+            "service": "target",
+            "model_id": "gpt-oss-2t-expert-proxy",
+            "input_sha256": "1f3504943447bdcedbe6f5271343db93b94a3814ead0fbe8a68cec591ede04aa",
+            "node_body_sha256": "88e39a7d66fa1bee5266ae2e2f9a89996519ecaf39a44eea897cacd37fb85834"
+          },
+          {
+            "phase": "decode",
+            "batch": 1,
+            "queries": 1,
+            "context": 404199,
+            "emit_logits": true,
+            "dp_rank": 0,
+            "seed": 209500,
+            "sample": 2,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 1.3430471033789217,
+            "native_duration_s": 0.0008111058258868339,
+            "native_events": 3167,
+            "service": "target",
+            "model_id": "gpt-oss-2t-expert-proxy",
+            "input_sha256": "882a0bc8031bda2e1852bfb8c580b9b0abec85c29a637c58608b970b2fe89e7b",
+            "node_body_sha256": "3024bf526e47a3f715fb2846456d5b52839d4b7729dea8bed641658147bf82b5"
+          },
+          {
+            "phase": "decode",
+            "batch": 1,
+            "queries": 1,
+            "context": 404199,
+            "emit_logits": true,
+            "dp_rank": 0,
+            "seed": 42,
+            "sample": 0,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 1.3492985279299319,
+            "native_duration_s": 0.0008111058258868339,
+            "native_events": 3167,
+            "service": "target",
+            "model_id": "gpt-oss-2t-expert-proxy",
+            "input_sha256": "10b3033ca73bc6226701ac6d1d7ac211c846bc7298a71817b4355b34da9cd25a",
+            "node_body_sha256": "bf185ed65301a67fae09d7ffda9e17bff9ea10557f5b0c7dee74c881a7589a96"
+          },
+          {
+            "phase": "decode",
+            "batch": 1,
+            "queries": 1,
+            "context": 404199,
+            "emit_logits": true,
+            "dp_rank": 0,
+            "seed": 314229,
+            "sample": 3,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 1.2750267940573394,
+            "native_duration_s": 0.0008112262592582621,
+            "native_events": 3154,
+            "service": "target",
+            "model_id": "gpt-oss-2t-expert-proxy",
+            "input_sha256": "5d941e0494b5233deec876b8ae8cc76bd85230a4d3b4bef7e5f8826e62c748b3",
+            "node_body_sha256": "1f2813c3efec1b0534fe6e6f7f6b852169b56bd00670305f2605afed30963b78"
+          },
+          {
+            "phase": "prefill",
+            "batch": 1,
+            "queries": 64,
+            "context": 402000,
+            "emit_logits": false,
+            "dp_rank": 0,
+            "seed": 42,
+            "sample": 0,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 9.10730800870806,
+            "native_duration_s": 0.001949937250328736,
+            "native_events": 12798,
+            "service": "prefill",
+            "model_id": "gpt-oss-2t-expert-proxy",
+            "input_sha256": "9f14748a7f512fd807c3964950125fb86cf895462fd2375a2c3517d29803658a",
+            "node_body_sha256": "843fd48da0fdc0bb3e182a2d74f394b5112fd95183117412d9a8882e4daac074"
+          },
+          {
+            "phase": "prefill",
+            "batch": 1,
+            "queries": 32,
+            "context": 404000,
+            "emit_logits": true,
+            "dp_rank": 0,
+            "seed": 42,
+            "sample": 0,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 6.294121793936938,
+            "native_duration_s": 0.001557283215747449,
+            "native_events": 12847,
+            "service": "prefill",
+            "model_id": "gpt-oss-2t-expert-proxy",
+            "input_sha256": "b3476bb410316e0499fcd086db1230386c810940f6654fd2ae23a3349f20bc91",
+            "node_body_sha256": "99bca6af0cc18e90f91ef47aeea6234d3bfebd43a207b1ce2c47b0e500aea127"
+          }
+        ],
+        "routing": "deterministic selection from a finite native routing corpus",
+        "context": "exact below 16K input tokens; representative midpoint above 16K",
+        "limitations": [
+          "Sampled routing and fixed within-phase context are approximations.",
+          "Resource tie ordering uses native sample start order and replay submission order.",
+          "All requested tokens and serving protocol actions are executed; model quality is unmeasured."
+        ]
+      }
+    },
+    {
+      "case": "pd-tp16",
+      "mode": "pd",
+      "batch": 1,
+      "status": "ok",
+      "micro_batch": 1,
+      "native_executor": "SampledNativeReplay",
+      "tokens_per_s_per_user": 4576.629666580491,
+      "output_tokens_per_s": 1907.1828410865294,
+      "tokens_per_s_per_mw": 1324.432528532312,
+      "normalized_throughput": 0.014153087264577757,
+      "power_watts": 1440000.0,
+      "inventory": {
+        "groq_lp30": 3136,
+        "rubin": 16
+      },
+      "timings": {
+        "warmup_s": 0.00043690702551499533,
+        "measurement_s": 0.2097334305776988,
+        "minimum_measurement_s": 0.05,
+        "minimum_complete_turns_per_cohort": 1,
+        "completed_token_boundary": "[start, end]; warmup explicitly excluded",
+        "drain_s": 0.0
+      },
+      "steady_state": {
+        "start_s": 0.00043690702551499533,
+        "end_s": 0.2101703376032138,
+        "duration_s": 0.2097334305776988,
+        "output_tokens": 400,
+        "decode_tokens": 399,
+        "output_tokens_per_s": 1907.1828410865294,
+        "decode_tokens_per_s": 1902.414883983813
+      },
+      "maximum_resource_utilization": 0.26562610036258555,
+      "total_resource_queue_s": 0.048481834847288865,
+      "turns": [
+        {
+          "cohort": 0,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.00043690702551499533,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 0,
+          "round": 1,
+          "start": 0.00043690702551499533,
+          "ttft_s": 0.12255137105612955,
+          "end": 0.2101703376032138,
+          "completed": true,
+          "warmup": false
+        }
+      ],
+      "handoff_bytes_all_phases": 304349184,
+      "control_bytes_all_phases": 0,
+      "replay_profiles": {
+        "method": "sampled_native_operator_dags",
+        "decode_profile_samples": 4,
+        "prefill_profile_samples": 1,
+        "profiles": [
+          {
+            "phase": "decode",
+            "batch": 1,
+            "queries": 1,
+            "context": 404199,
+            "emit_logits": true,
+            "dp_rank": 0,
+            "seed": 104771,
+            "sample": 1,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 2.456889954395592,
+            "native_duration_s": 0.00021845351275749875,
+            "native_events": 6063,
+            "service": "target",
+            "model_id": "gpt-oss-2t-expert-proxy",
+            "input_sha256": "0706a8b7f8bd60c18e6d16a3ee4ae763d53beff4217496b590c9769733b988bc",
+            "node_body_sha256": "be59685a082824f0d0479d99d970ff7067e2e86c8fd6328208494b75000905c3"
+          },
+          {
+            "phase": "prefill",
+            "batch": 1,
+            "queries": 64,
+            "context": 402000,
+            "emit_logits": false,
+            "dp_rank": 0,
+            "seed": 42,
+            "sample": 0,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 9.10730800870806,
+            "native_duration_s": 0.001949937250328736,
+            "native_events": 12798,
+            "service": "prefill",
+            "model_id": "gpt-oss-2t-expert-proxy",
+            "input_sha256": "9f14748a7f512fd807c3964950125fb86cf895462fd2375a2c3517d29803658a",
+            "node_body_sha256": "843fd48da0fdc0bb3e182a2d74f394b5112fd95183117412d9a8882e4daac074"
+          },
+          {
+            "phase": "prefill",
+            "batch": 1,
+            "queries": 32,
+            "context": 404000,
+            "emit_logits": true,
+            "dp_rank": 0,
+            "seed": 42,
+            "sample": 0,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 6.294121793936938,
+            "native_duration_s": 0.001557283215747449,
+            "native_events": 12847,
+            "service": "prefill",
+            "model_id": "gpt-oss-2t-expert-proxy",
+            "input_sha256": "b3476bb410316e0499fcd086db1230386c810940f6654fd2ae23a3349f20bc91",
+            "node_body_sha256": "99bca6af0cc18e90f91ef47aeea6234d3bfebd43a207b1ce2c47b0e500aea127"
+          },
+          {
+            "phase": "decode",
+            "batch": 1,
+            "queries": 1,
+            "context": 404199,
+            "emit_logits": true,
+            "dp_rank": 0,
+            "seed": 314229,
+            "sample": 3,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 2.421926613897085,
+            "native_duration_s": 0.00021864652212892762,
+            "native_events": 6042,
+            "service": "target",
+            "model_id": "gpt-oss-2t-expert-proxy",
+            "input_sha256": "2ebea32a1a70600bd3234abbae78a3bc03d3a103cc2ab4202183144253a30806",
+            "node_body_sha256": "14cf416a9bb30899d43aa17712405cdf8fd1c07af475a9b3dc6132fff9036b10"
+          },
+          {
+            "phase": "decode",
+            "batch": 1,
+            "queries": 1,
+            "context": 404199,
+            "emit_logits": true,
+            "dp_rank": 0,
+            "seed": 209500,
+            "sample": 2,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 2.4471993716433644,
+            "native_duration_s": 0.00021845351275749875,
+            "native_events": 6063,
+            "service": "target",
+            "model_id": "gpt-oss-2t-expert-proxy",
+            "input_sha256": "e9038be75994f3485bf6eb3389c96dee4eec1051e19b84bd50718de09b887fb9",
+            "node_body_sha256": "d16ad4859572068f3acac849d5f28373e683788721551a6fcbb5c5074c00f01b"
+          },
+          {
+            "phase": "decode",
+            "batch": 1,
+            "queries": 1,
+            "context": 404199,
+            "emit_logits": true,
+            "dp_rank": 0,
+            "seed": 42,
+            "sample": 0,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 2.5288523929193616,
+            "native_duration_s": 0.00021845351275749875,
+            "native_events": 6063,
+            "service": "target",
+            "model_id": "gpt-oss-2t-expert-proxy",
+            "input_sha256": "97bb5b2584e9b58653c212e54546017ec8d5dcdf92a1a311dd59266179a32eb3",
+            "node_body_sha256": "28b95921ccf6015347333761b726c43b962d000af299a9d9960e69afa4f245a9"
+          }
+        ],
+        "routing": "deterministic selection from a finite native routing corpus",
+        "context": "exact below 16K input tokens; representative midpoint above 16K",
+        "limitations": [
+          "Sampled routing and fixed within-phase context are approximations.",
+          "Resource tie ordering uses native sample start order and replay submission order.",
+          "All requested tokens and serving protocol actions are executed; model quality is unmeasured."
+        ]
+      }
+    },
+    {
+      "case": "pd-tp16",
+      "mode": "pd",
+      "batch": 16,
+      "status": "infeasible",
+      "reason": "resident KV does not fit on target-a:560: required=503086080, available=500000000"
+    },
+    {
+      "case": "draft-tp8",
+      "mode": "draft",
+      "batch": 1,
+      "status": "ok",
+      "micro_batch": 1,
+      "native_executor": "SampledNativeReplay",
+      "tokens_per_s_per_user": 3409.1584468386295,
+      "output_tokens_per_s": 1545.4622286736708,
+      "tokens_per_s_per_mw": 35774.58862670534,
+      "normalized_throughput": 0.38229269047719483,
+      "power_watts": 43200.0,
+      "inventory": {
+        "rubin": 8,
+        "groq_lp30": 64
+      },
+      "timings": {
+        "warmup_s": 0.001953815338307589,
+        "measurement_s": 0.2588222426783497,
+        "minimum_measurement_s": 0.05,
+        "minimum_complete_turns_per_cohort": 1,
+        "completed_token_boundary": "[start, end]; warmup explicitly excluded",
+        "drain_s": 0.0
+      },
+      "steady_state": {
+        "start_s": 0.001953815338307589,
+        "end_s": 0.26077605801665726,
+        "duration_s": 0.2588222426783497,
+        "output_tokens": 400,
+        "decode_tokens": 399,
+        "output_tokens_per_s": 1545.4622286736708,
+        "decode_tokens_per_s": 1541.5985731019866
+      },
+      "maximum_resource_utilization": 0.5332842196685192,
+      "total_resource_queue_s": 0.02089914526423883,
+      "turns": [
+        {
+          "cohort": 0,
+          "round": 0,
+          "start": 0,
+          "ttft_s": 0,
+          "end": 0.001953815338307589,
+          "completed": false,
+          "warmup": true
+        },
+        {
+          "cohort": 0,
+          "round": 1,
+          "start": 0.001953815338307589,
+          "ttft_s": 0.14178456132035955,
+          "end": 0.26077605801665726,
+          "completed": true,
+          "warmup": false
+        }
+      ],
+      "handoff_bytes_all_phases": 0,
+      "control_bytes_all_phases": 2404,
+      "replay_profiles": {
+        "method": "sampled_native_operator_dags",
+        "decode_profile_samples": 4,
+        "prefill_profile_samples": 1,
+        "profiles": [
+          {
+            "phase": "decode",
+            "batch": 1,
+            "queries": 1,
+            "context": 404199,
+            "emit_logits": true,
+            "dp_rank": 0,
+            "seed": 104771,
+            "sample": 1,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 0.1952637881040573,
+            "native_duration_s": 3.120214827276194e-05,
+            "native_events": 671,
+            "service": "draft",
+            "model_id": "gpt-oss-draft-proxy",
+            "input_sha256": "7ef3f5207f31f4375e0090bff37a68532387e3fd5ff233603485783840795f6e",
+            "node_body_sha256": "485d88a9ba8888fb23902374b03ff09cd2a9fbd34b9307ff532eeae02e7c9b18"
+          },
+          {
+            "phase": "decode",
+            "batch": 1,
+            "queries": 1,
+            "context": 404199,
+            "emit_logits": true,
+            "dp_rank": 0,
+            "seed": 314229,
+            "sample": 3,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 0.19877053331583738,
+            "native_duration_s": 3.2001833758476214e-05,
+            "native_events": 635,
+            "service": "draft",
+            "model_id": "gpt-oss-draft-proxy",
+            "input_sha256": "70a987ebf80edcb4f7d0381f7a2884ce32bd171e10c9c09c23abc45f6711b63d",
+            "node_body_sha256": "1ee1d23f6fe22f1daa552d0a5b92afea330157e1bca759c43d971510638c6e7c"
+          },
+          {
+            "phase": "decode",
+            "batch": 1,
+            "queries": 5,
+            "context": 404199,
+            "emit_logits": true,
+            "dp_rank": 0,
+            "seed": 209500,
+            "sample": 2,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 1.1555138640105724,
+            "native_duration_s": 0.0008418522620728305,
+            "native_events": 3905,
+            "service": "target",
+            "model_id": "gpt-oss-2t-expert-proxy",
+            "input_sha256": "4dfef9ff6e305cc51df0a7140afd089d55ffdd2434c5d67273dad56cf319b67c",
+            "node_body_sha256": "2c8b934189a112e77d992cc70b9593fac148d4e8a9b65ce1183228ec472d1578"
+          },
+          {
+            "phase": "decode",
+            "batch": 1,
+            "queries": 1,
+            "context": 404199,
+            "emit_logits": true,
+            "dp_rank": 0,
+            "seed": 209500,
+            "sample": 2,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 0.20642955973744392,
+            "native_duration_s": 3.160199101561905e-05,
+            "native_events": 653,
+            "service": "draft",
+            "model_id": "gpt-oss-draft-proxy",
+            "input_sha256": "91d83e03ad53b42c7463ea89ea5922ede15c1c0056d186d2232888d832a9bb87",
+            "node_body_sha256": "4f801c5255c25b7022da914d3db5f944e708434999b0f332838cb7ff38b8df0e"
+          },
+          {
+            "phase": "decode",
+            "batch": 1,
+            "queries": 1,
+            "context": 404199,
+            "emit_logits": true,
+            "dp_rank": 0,
+            "seed": 42,
+            "sample": 0,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 0.18979861587285995,
+            "native_duration_s": 3.160659901561905e-05,
+            "native_events": 653,
+            "service": "draft",
+            "model_id": "gpt-oss-draft-proxy",
+            "input_sha256": "90a80defd90bcfa968e4f4350728808e8ec9638baa2953a139ae52516edf6eb6",
+            "node_body_sha256": "ff42b9e2c4b7603ba8ccc6b3efbf1a90f3023f7f156161a9f9663b60e0fe00a2"
+          },
+          {
+            "phase": "decode",
+            "batch": 1,
+            "queries": 5,
+            "context": 404199,
+            "emit_logits": true,
+            "dp_rank": 0,
+            "seed": 314229,
+            "sample": 3,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 1.2869158438406885,
+            "native_duration_s": 0.0008507424973669475,
+            "native_events": 3965,
+            "service": "target",
+            "model_id": "gpt-oss-2t-expert-proxy",
+            "input_sha256": "14862e0dfdc2a5d511ee64905ebbcac1962767187fd1b6c4b06b550e7729e8b5",
+            "node_body_sha256": "11a8d10ada29215daee7818c99a5524c6bd048ab51d0f9b05d4b010db6cb16fd"
+          },
+          {
+            "phase": "prefill",
+            "batch": 1,
+            "queries": 64,
+            "context": 402000,
+            "emit_logits": false,
+            "dp_rank": 0,
+            "seed": 42,
+            "sample": 0,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 4.204817951191217,
+            "native_duration_s": 0.0022627105524221894,
+            "native_events": 4150,
+            "service": "target",
+            "model_id": "gpt-oss-2t-expert-proxy",
+            "input_sha256": "ff6ab2aeefe1c950026229bacddcaabbc01ce478f0c64e3c097126f56f1df482",
+            "node_body_sha256": "adc30ac64bbe1082b40f2c46034ae0f0f2c4959acb47573791f3647b6e01c7da"
+          },
+          {
+            "phase": "prefill",
+            "batch": 1,
+            "queries": 64,
+            "context": 402000,
+            "emit_logits": false,
+            "dp_rank": 0,
+            "seed": 42,
+            "sample": 0,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 0.9351442181505263,
+            "native_duration_s": 0.00019181647015483586,
+            "native_events": 1486,
+            "service": "draft",
+            "model_id": "gpt-oss-draft-proxy",
+            "input_sha256": "c26efb02a98d8a06fb916b2cd32780042e5fec2eaeaf8f8a2624f89a84f63d63",
+            "node_body_sha256": "8f45f552cbf22284fb4df261d6d8ecb967f0f847710b9f3c01f12f06684a6278"
+          },
+          {
+            "phase": "prefill",
+            "batch": 1,
+            "queries": 32,
+            "context": 404000,
+            "emit_logits": true,
+            "dp_rank": 0,
+            "seed": 42,
+            "sample": 0,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 0.7154003530740738,
+            "native_duration_s": 0.0001155888619499682,
+            "native_events": 1535,
+            "service": "draft",
+            "model_id": "gpt-oss-draft-proxy",
+            "input_sha256": "793ef67b50a44b4e828bd1d915ef6db1a645b45be003707a89b8715deaae94fa",
+            "node_body_sha256": "ea7e635a5882d10a7ed45cdf8c930d672164e3f3195870aaf06864f9d7fce8f6"
+          },
+          {
+            "phase": "prefill",
+            "batch": 1,
+            "queries": 32,
+            "context": 404000,
+            "emit_logits": true,
+            "dp_rank": 0,
+            "seed": 42,
+            "sample": 0,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 2.587490770034492,
+            "native_duration_s": 0.0014945070501839774,
+            "native_events": 4175,
+            "service": "target",
+            "model_id": "gpt-oss-2t-expert-proxy",
+            "input_sha256": "2fdbd16d2763ed8eb0cf5613677807a8041c1208e724122726e85a5823414883",
+            "node_body_sha256": "ea3aa9e9adb0868f4e56d14586e5dd690967c39118a7ae25e2eb2595c2ac1083"
+          },
+          {
+            "phase": "decode",
+            "batch": 1,
+            "queries": 5,
+            "context": 404199,
+            "emit_logits": true,
+            "dp_rank": 0,
+            "seed": 104771,
+            "sample": 1,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 1.2997521422803402,
+            "native_duration_s": 0.0008456937726610649,
+            "native_events": 4035,
+            "service": "target",
+            "model_id": "gpt-oss-2t-expert-proxy",
+            "input_sha256": "ad02e0cf67ce96cd5605dcf8bffcf3c3d0fa48db02edf62dfecfab32cf02dc2e",
+            "node_body_sha256": "3c68090354e9a0af0af0fc455a9aac1deb4febc1348161717b6167d8f203e4cc"
+          },
+          {
+            "phase": "decode",
+            "batch": 1,
+            "queries": 5,
+            "context": 404199,
+            "emit_logits": true,
+            "dp_rank": 0,
+            "seed": 42,
+            "sample": 0,
+            "source_sha256": "edef5acef842a4121cdb8b9ebb2de3bda967eec39e43774aae18319894783959",
+            "host_capture_s": 1.2793779182247818,
+            "native_duration_s": 0.0008530292879551801,
+            "native_events": 4015,
+            "service": "target",
+            "model_id": "gpt-oss-2t-expert-proxy",
+            "input_sha256": "69c89c28c1e59c542271fc15a1561f888fea1325d82bf3a104461967b7d43b4e",
+            "node_body_sha256": "6a1be1c455107442d3fcec71de53e562f5772211d8e4d1c6f0bae723e936b0a2"
+          }
+        ],
+        "routing": "deterministic selection from a finite native routing corpus",
+        "context": "exact below 16K input tokens; representative midpoint above 16K",
+        "limitations": [
+          "Sampled routing and fixed within-phase context are approximations.",
+          "Resource tie ordering uses native sample start order and replay submission order.",
+          "All requested tokens and serving protocol actions are executed; model quality is unmeasured."
+        ]
+      },
+      "measured_verification": {
+        "cycles": 118,
+        "committed_tokens": 399,
+        "draft_catchup_tokens": 52
+      }
+    },
+    {
+      "case": "draft-tp8",
+      "mode": "draft",
+      "batch": 16,
+      "status": "infeasible",
+      "reason": "resident KV does not fit on draft-a:16: required=524286976, available=500000000"
+    }
+  ]
+}

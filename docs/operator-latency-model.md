@@ -915,6 +915,24 @@ It uses DP8 with expert parallelism, and the cluster selects `vllm`.
     --verbose none
 ```
 
+### 8.9 Attention-FFN Disaggregation (AF)
+
+AF clusters (`docs/af-separation.md`) price their per-layer stages with the
+same tables. With `af.latency_provider = operator_table` the engine builds
+`OperatorTableAFComputeProvider` and `TopologyAFTransferProvider`
+(`TokenSim/af/operator_provider.py`): the A stage is rmsnorm + QKV GEMM + RoPE
++ attention core + output GEMM + residual for the A domain's TP shard, the
+router stage is rmsnorm + router GEMM on the A leader, and the F stage is one
+`moe` lookup (routed assignments converted to balanced input tokens,
+`assignments * ep_size / top_k`) or the dense gate/up + SwiGLU + down GEMMs.
+Every operator goes through the shared `OperatorResolver`, so match types,
+calibrations, extrapolation and analytical fallback behave exactly as in
+Section 3. Cross-domain transfers use the link class named by the cluster's
+`networks` mapping (`latency_us + bytes / (bandwidth * efficiency)`); TP
+collectives inside a domain use the hierarchical collective model of
+Section 6. `af.operator_backend` and `af.latency_fallback` override the
+run-wide flags for the AF devices.
+
 ---
 
 ## 9. Result Provenance
@@ -936,6 +954,8 @@ Every simulation result (`result_<qps>.json`) records the data sources and estim
 | `parallel_groups` | TP/EP group of rank 0 and the topology level each spans (`ep_group_size`, `ep_group_link`, ...) |
 | `parallel_link_type_counts` | Communication event counts per topology level |
 | `parallel_comm_match_type_counts` | Communication estimates by match type (measured, interpolated, extrapolated, analytical) |
+| `af_latency_providers` | AF runs only: which compute / transfer provider answered (`operator_table` + `topology_links`, or the injected test providers) |
+| `af_operator_stats` | AF runs only: the operator match-type counts and missing shapes behind the AF stage service times |
 
 The full missing-shape report is exported to `missing_shapes_<qps>.json` whenever a miss was recorded.
 The following report comes from the H100 example in section 8.8.

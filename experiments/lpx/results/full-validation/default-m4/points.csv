@@ -1,0 +1,5 @@
+case,mode,batch,status,micro_batch,native_executor,tokens_per_s_per_user,output_tokens_per_s,tokens_per_s_per_mw,normalized_throughput,power_watts,reason
+rubin-tp8,rubin,4,ok,4,SampledNativeReplay,182.4141864694201,456.70663738128945,31715.73870703399,0.8332656512549856,14400.0,
+rubin-tp8,rubin,16,ok,4,SampledNativeReplay,58.35396308135326,548.0924801033635,38061.9777849558,1.0,14400.0,
+af-tp8,af,4,ok,4,SampledNativeReplay,240.9597150019389,647.7510157085738,343.37946125348486,0.009021587453850267,1886400.0,
+af-tp8,af,16,ok,4,SampledNativeReplay,88.04858379860552,878.573132361077,465.7406342032851,0.012236375020621538,1886400.0,

@@ -6,6 +6,7 @@ replaces with fitted values per device and table.
 """
 
 from __future__ import annotations
+from TokenSim.dtypes import CAST_OPERATIONS
 
 from typing import Any, Mapping
 
@@ -60,7 +61,7 @@ class GPURooflineModel:
                 details={"effective_m": max(m, knee)},
                 compute_flops_override=effective_flops,
             )
-        if table in {"context_attention", "generation_attention"}:
+        if table in {"context_attention", "generation_attention", "mla_attention"}:
             work = work_for_table(table, key)
             dtype = str(key["attn_dtype"])
             efficiency = float(params.get("attention_mfu", 0.45))
@@ -74,19 +75,48 @@ class GPURooflineModel:
                 calibration=calibration,
                 source_id=source_id,
             )
-        if table == "moe":
-            work = work_for_table(table, key, gated=gated, imbalance=imbalance)
-            dtype = str(key["dtype"])
+        if table == "batched_gemm":
+            work = work_for_table(table, key)
             return roofline_estimate(
                 work=work,
-                peak_ops_per_s=device.peak_compute_for(dtype).value,
+                peak_ops_per_s=device.peak_compute_for(str(key["dtype"])).value,
                 bandwidth_bytes_per_s=bandwidth,
-                compute_efficiency=float(params.get("moe_mfu", 0.5)),
+                compute_efficiency=float(params.get("gemm_mfu", 0.7)),
+                memory_efficiency=float(params.get("memory_efficiency", 0.85)),
+                overhead_us=launch_us,
+                calibration=calibration,
+                source_id=source_id,
+            )
+        if table in {"moe", "routed_experts"}:
+            work = work_for_table(table, key, gated=gated, imbalance=imbalance)
+            dtype = str(key["dtype"])
+            peak = device.peak_compute_for(dtype).value
+            efficiency = float(params.get("moe_mfu", 0.5))
+            effective_flops = work.flops
+            if (
+                work.details.get("dequant_elements")
+                and "nvfp4" not in device.peak_compute
+            ):
+                vector_ops = float(work.details["dequant_elements"]) * float(
+                    params.get("packed_dequant_ops_per_element", 2)
+                )
+                vector_peak = device.peak_compute_for("fp32").value * float(
+                    params.get("dequant_efficiency", 0.8)
+                )
+                effective_flops = max(
+                    effective_flops, vector_ops / vector_peak * peak * efficiency
+                )
+            return roofline_estimate(
+                work=work,
+                peak_ops_per_s=peak,
+                bandwidth_bytes_per_s=bandwidth,
+                compute_efficiency=efficiency,
                 memory_efficiency=float(params.get("memory_efficiency", 0.85)),
                 # grouped GEMM issues gate/up and down kernels plus permutation
                 overhead_us=3 * launch_us,
                 calibration=calibration,
                 source_id=source_id,
+                compute_flops_override=effective_flops,
             )
         if table == "elementwise":
             work = work_for_table(table, key)
@@ -96,6 +126,7 @@ class GPURooflineModel:
                 peak_ops_per_s=(
                     device.peak_compute_for("fp32").value
                     if "fp32" in device.peak_compute
+                    or key["op_name"] in CAST_OPERATIONS
                     else device.peak_compute_for(dtype).value
                 ),
                 bandwidth_bytes_per_s=bandwidth,

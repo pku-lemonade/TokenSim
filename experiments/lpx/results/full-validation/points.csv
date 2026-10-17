@@ -1,0 +1,66 @@
+source,model,case,mode,batch,micro_batch,status,native_executor,tokens_per_s_per_user,output_tokens_per_s,tokens_per_s_per_mw,power_watts,measured_output_tokens,measurement_s,reason
+default-m1,gpt-oss-2t-wide-proxy,rubin-tp8,rubin,1,1,ok,SampledNativeReplay,365.4718063869844,214.74897434450327,14913.123218368282,14400.0,400,1.862639862290166,
+default-m1,gpt-oss-2t-wide-proxy,rubin-tp8,rubin,4,1,ok,SampledNativeReplay,139.4099439181287,278.66842183016877,19351.973738206165,14400.0,1600,5.74159063123091,
+default-m1,gpt-oss-2t-wide-proxy,rubin-tp8,rubin,16,1,ok,SampledNativeReplay,44.087585239823255,313.19435513521256,21749.60799550087,14400.0,6400,20.434595627488196,
+default-m1,gpt-oss-2t-wide-proxy,rubin-tp8,rubin,64,1,infeasible,,,,,,,,"resident KV does not fit on target-a:0: required=290038611968, available=284000000000"
+default-m1,gpt-oss-2t-wide-proxy,rubin-tp8,rubin,256,1,infeasible,,,,,,,,"resident KV does not fit on target-a:0: required=290038611968, available=284000000000"
+default-m1,gpt-oss-2t-wide-proxy,rubin-tp16,rubin,1,1,ok,SampledNativeReplay,288.6708132647292,211.90463420223014,7357.799798688547,28800.0,400,1.88764158700872,
+default-m1,gpt-oss-2t-wide-proxy,rubin-tp16,rubin,4,1,ok,SampledNativeReplay,106.76513561782298,292.9228904152901,10170.93369497535,28800.0,1600,5.4621883517932215,
+default-m1,gpt-oss-2t-wide-proxy,rubin-tp16,rubin,16,1,ok,SampledNativeReplay,27.999840674652347,305.82553730653325,10618.942267587961,28800.0,6400,20.926963968954592,
+default-m1,gpt-oss-2t-wide-proxy,rubin-tp16,rubin,64,1,infeasible,,,,,,,,"resident KV does not fit on target-a:0: required=286111432704, available=284000000000"
+default-m1,gpt-oss-2t-wide-proxy,rubin-tp16,rubin,256,1,infeasible,,,,,,,,"resident KV does not fit on target-a:0: required=286111432704, available=284000000000"
+default-m1,gpt-oss-2t-wide-proxy,af-tp8,af,1,1,ok,SampledNativeReplay,434.4717755867967,280.85438014438313,148.88378930469844,1886400.0,400,1.424225606858493,
+default-m1,gpt-oss-2t-wide-proxy,af-tp8,af,4,1,ok,SampledNativeReplay,207.60095992294498,438.5873605911658,232.49966104281478,1886400.0,1600,3.648075945105628,
+default-m1,gpt-oss-2t-wide-proxy,af-tp8,af,16,1,ok,SampledNativeReplay,65.34268891529709,500.51154623618555,265.32630737711276,1886400.0,6400,12.786917800653324,
+default-m1,gpt-oss-2t-wide-proxy,af-tp8,af,64,1,infeasible,,,,,,,,"resident KV does not fit on prefill-a:0: required=286111432704, available=284000000000"
+default-m1,gpt-oss-2t-wide-proxy,af-tp8,af,256,1,infeasible,,,,,,,,"resident KV does not fit on prefill-a:0: required=286111432704, available=284000000000"
+default-m1,gpt-oss-2t-wide-proxy,pd-tp16,pd,1,1,ok,SampledNativeReplay,1641.4599404488476,534.083156250934,218.1712239587149,2448000.0,400,0.7489470418948462,
+default-m1,gpt-oss-2t-wide-proxy,pd-tp16,pd,4,1,infeasible,,,,,,,,"resident KV does not fit on target-a:1264: required=643088384, available=500000000"
+default-m1,gpt-oss-2t-wide-proxy,pd-tp16,pd,16,1,infeasible,,,,,,,,"resident KV does not fit on target-a:1264: required=643088384, available=500000000"
+default-m1,gpt-oss-2t-wide-proxy,pd-tp16,pd,64,1,infeasible,,,,,,,,"resident KV does not fit on target-a:1264: required=643088384, available=500000000"
+default-m1,gpt-oss-2t-wide-proxy,pd-tp16,pd,256,1,infeasible,,,,,,,,"resident KV does not fit on target-a:1264: required=643088384, available=500000000"
+default-m1,gpt-oss-2t-wide-proxy,draft-tp8,draft,1,1,ok,SampledNativeReplay,766.7732061721008,309.77378436249916,7170.689452835629,43200.0,400,1.2912648525864847,
+default-m1,gpt-oss-2t-wide-proxy,draft-tp8,draft,4,1,infeasible,,,,,,,,"resident KV does not fit on draft-a:16: required=524286976, available=500000000"
+default-m1,gpt-oss-2t-wide-proxy,draft-tp8,draft,16,1,infeasible,,,,,,,,"resident KV does not fit on draft-a:16: required=524286976, available=500000000"
+default-m1,gpt-oss-2t-wide-proxy,draft-tp8,draft,64,1,infeasible,,,,,,,,"resident KV does not fit on draft-a:16: required=524286976, available=500000000"
+default-m1,gpt-oss-2t-wide-proxy,draft-tp8,draft,256,1,infeasible,,,,,,,,"resident KV does not fit on draft-a:16: required=524286976, available=500000000"
+default-m4,gpt-oss-2t-wide-proxy,rubin-tp8,rubin,4,4,ok,SampledNativeReplay,182.4141864694201,456.70663738128945,31715.73870703399,14400.0,1600,3.503342997540481,
+default-m4,gpt-oss-2t-wide-proxy,rubin-tp8,rubin,16,4,ok,SampledNativeReplay,58.35396308135326,548.0924801033635,38061.9777849558,14400.0,6400,11.676861537660649,
+default-m4,gpt-oss-2t-wide-proxy,af-tp8,af,4,4,ok,SampledNativeReplay,240.9597150019389,647.7510157085738,343.37946125348486,1886400.0,1600,2.470084895582545,
+default-m4,gpt-oss-2t-wide-proxy,af-tp8,af,16,4,ok,SampledNativeReplay,88.04858379860552,878.573132361077,465.7406342032851,1886400.0,6400,7.284538718820872,
+pipeline-m16,gpt-oss-2t-wide-proxy,rubin-tp8-pp8,rubin,16,16,ok,SampledNativeReplay,69.15642315899491,693.0872862854693,6016.382693450254,115200.0,6400,9.234046167980008,
+pipeline-m16,gpt-oss-2t-wide-proxy,rubin-tp8-pp8,rubin,64,16,ok,SampledNativeReplay,43.339053825979896,1610.5360069261442,13980.347282345001,115200.0,25600,15.895329188485485,
+pipeline-m16,gpt-oss-2t-wide-proxy,rubin-tp8-pp8,rubin,256,16,ok,SampledNativeReplay,30.793936168201032,2658.955830633007,23081.213807578188,115200.0,102400,38.51135803772342,
+pipeline-m16,gpt-oss-2t-wide-proxy,af-tp8-pp8,af,16,16,ok,SampledNativeReplay,86.58795713021759,792.724225427485,382.2937043921128,2073600.0,6400,8.073425530232448,
+pipeline-m16,gpt-oss-2t-wide-proxy,af-tp8-pp8,af,64,16,ok,SampledNativeReplay,75.97803749111513,2142.088439233016,1033.0287612041936,2073600.0,25600,11.950953812703547,
+pipeline-m16,gpt-oss-2t-wide-proxy,af-tp8-pp8,af,256,16,ok,SampledNativeReplay,49.363841539433054,3039.7168371622033,1465.9128265635625,2073600.0,102400,33.687348356960065,
+pipeline-m16,gpt-oss-2t-wide-proxy,af-tp8-pp8-f2560,af,16,16,ok,SampledNativeReplay,95.59215924176684,837.7646584499382,606.0218883463094,1382400.0,6400,7.63937692459062,
+pipeline-m16,gpt-oss-2t-wide-proxy,af-tp8-pp8-f2560,af,64,16,ok,SampledNativeReplay,95.19486360009321,2351.1998727110604,1700.8100931069594,1382400.0,25600,10.888057751756262,
+pipeline-m16,gpt-oss-2t-wide-proxy,af-tp8-pp8-f2560,af,256,16,ok,SampledNativeReplay,51.65023784413622,3072.699046154403,2222.727897970488,1382400.0,102400,33.325749922745416,
+expert-sensitivity,gpt-oss-2t-expert-proxy,rubin-tp8,rubin,1,1,ok,SampledNativeReplay,1338.8246398097435,909.493646880757,63159.2810333859,14400.0,400,0.43980516122554475,
+expert-sensitivity,gpt-oss-2t-expert-proxy,rubin-tp8,rubin,16,1,ok,SampledNativeReplay,139.01423769313402,1347.5383889279144,93579.05478666072,14400.0,6400,4.749400872424691,
+expert-sensitivity,gpt-oss-2t-expert-proxy,af-tp8,af,1,1,ok,SampledNativeReplay,1232.8393267849733,896.4717463755495,750.0600287613366,1195200.0,400,0.44619364928923505,
+expert-sensitivity,gpt-oss-2t-expert-proxy,af-tp8,af,16,1,ok,SampledNativeReplay,160.58821834166554,1599.6955543882686,1338.4333621053117,1195200.0,6400,4.000761258880532,
+expert-sensitivity,gpt-oss-2t-expert-proxy,pd-tp16,pd,1,1,ok,SampledNativeReplay,4576.629666580491,1907.1828410865294,1324.432528532312,1440000.0,400,0.2097334305776988,
+expert-sensitivity,gpt-oss-2t-expert-proxy,pd-tp16,pd,16,1,infeasible,,,,,,,,"resident KV does not fit on target-a:560: required=503086080, available=500000000"
+expert-sensitivity,gpt-oss-2t-expert-proxy,draft-tp8,draft,1,1,ok,SampledNativeReplay,3409.1584468386295,1545.4622286736708,35774.58862670534,43200.0,400,0.2588222426783497,
+expert-sensitivity,gpt-oss-2t-expert-proxy,draft-tp8,draft,16,1,infeasible,,,,,,,,"resident KV does not fit on draft-a:16: required=524286976, available=500000000"
+turns2-sensitivity,gpt-oss-2t-wide-proxy,rubin-tp8-pp8,rubin,64,16,ok,SampledNativeReplay,47.16195332218582,1720.4040940514506,14934.06331641884,115200.0,51200,29.760449987901975,
+turns4-sensitivity,gpt-oss-2t-wide-proxy,rubin-tp8-pp8,rubin,64,16,ok,SampledNativeReplay,47.13065036287355,1791.5237490516658,15551.421432740155,115200.0,102400,57.15804775359798,
+seed43-sensitivity,gpt-oss-2t-wide-proxy,rubin-tp8-pp8,rubin,64,16,ok,SampledNativeReplay,36.269498971622156,1445.5129416515902,12547.855396281164,115200.0,25600,17.70997634289623,
+native-control,gpt-oss-2t-wide-proxy,rubin-tp8,rubin,1,1,ok,ModelAFExecutor,364.78765858253905,42.93224342051794,2981.4057930915237,14400.0,16,0.37268026837734197,
+native-control,gpt-oss-2t-wide-proxy,af-tp8,af,1,1,ok,ModelAFExecutor,434.51702483822925,66.75521836879541,35.38762636174481,1886400.0,16,0.23968163674645646,
+native-control,gpt-oss-2t-wide-proxy,pd-tp16,pd,1,1,ok,ModelAFExecutor,1641.5741553093744,74.66175578382435,30.499083245026288,2448000.0,16,0.21429980894537762,
+native-control,gpt-oss-2t-wide-proxy,draft-tp8,draft,1,1,ok,ModelAFExecutor,681.4406771472833,45.252113748941454,1047.5026330773485,43200.0,16,0.3535746438004628,
+replay-control,gpt-oss-2t-wide-proxy,rubin-tp8,rubin,1,1,ok,SampledNativeReplay,366.18565896911804,42.957334944244636,2983.148260016989,14400.0,16,0.37246258457995096,
+replay-control,gpt-oss-2t-wide-proxy,af-tp8,af,1,1,ok,SampledNativeReplay,434.51726177022124,66.76504046392031,35.392833155174046,1886400.0,16,0.23964637613971593,
+replay-control,gpt-oss-2t-wide-proxy,pd-tp16,pd,1,1,ok,SampledNativeReplay,1641.574753339081,74.67403715177974,30.504100143700875,2448000.0,16,0.21426456383333045,
+replay-control,gpt-oss-2t-wide-proxy,draft-tp8,draft,1,1,ok,SampledNativeReplay,675.7152234256275,45.23601722781616,1047.1300284216704,43200.0,16,0.3537004577441316,
+matched-legacy400,gpt-oss-2t-wide-proxy,rubin-tp8,rubin,1,1,ok,SampledNativeReplay,365.1894020914578,280.8824081917622,19505.7227910946,14400.0,400,1.424083489511079,
+matched-legacy400,gpt-oss-2t-wide-proxy,rubin-tp8,rubin,2,1,ok,SampledNativeReplay,236.8281576668237,346.8328830204706,24085.61687642157,14400.0,800,2.306586368146595,
+matched-legacy400,gpt-oss-2t-wide-proxy,af-tp8,af,1,1,ok,SampledNativeReplay,434.4717755768649,356.03601240268006,188.7383441490034,1886400.0,400,1.1234818559522464,
+matched-legacy400,gpt-oss-2t-wide-proxy,af-tp8,af,2,1,ok,SampledNativeReplay,299.7347621960989,472.18646469133705,250.3108909517266,1886400.0,800,1.69424593846194,
+matched-legacy400,gpt-oss-2t-wide-proxy,pd-tp16,pd,1,1,ok,SampledNativeReplay,1641.4599406090276,892.4521708834785,364.5637952955386,2448000.0,400,0.44820329094389677,
+matched-legacy400,gpt-oss-2t-wide-proxy,pd-tp16,pd,2,1,infeasible,,,,,,,,"resident KV does not fit on target-a:1264: required=643088384, available=500000000"
+matched-legacy400,gpt-oss-2t-wide-proxy,draft-tp8,draft,1,1,ok,SampledNativeReplay,765.5332195378455,469.09425591951526,10858.663331470261,43200.0,400,0.8527070944749107,
+matched-legacy400,gpt-oss-2t-wide-proxy,draft-tp8,draft,2,1,ok,SampledNativeReplay,451.25854207635183,515.3255847134245,11928.83297947742,43200.0,800,1.5524166153032837,

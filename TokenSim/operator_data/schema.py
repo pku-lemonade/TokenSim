@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any, Mapping
+import json
+import math
 from functools import cached_property
-from typing import Mapping
 
 from TokenSim.config.validation import number
 from TokenSim.errors import ConfigurationError
+from TokenSim.dtypes import CAST_OPERATIONS
 
 SCHEMA_VERSION = 1
 LATENCY_UNIT = "us"
@@ -31,7 +34,7 @@ EP_ALL2ALL_MODES = (
 # How far past the measured sequence range attention queries may extrapolate
 # (LookupPolicy.max_extrapolation_ratio, 16x, applies to every other axis).
 ATTENTION_SEQ_EXTRAPOLATION_RATIO = 64.0
-ELEMENTWISE_OPS = (
+ELEMENTWISE_OPS = CAST_OPERATIONS + (
     "rmsnorm",
     "layernorm",
     "rope",
@@ -40,7 +43,72 @@ ELEMENTWISE_OPS = (
     "gelu",
     "data_reorder",
     "other_residual",
+    "embedding_lookup",
+    "argmax",
+    "topk",
+    "weighted_combine",
+    "post_attention_norm",
 )
+
+
+def canonical_histogram(value: Any, *, field: str) -> str:
+    """Return a stable JSON representation for length/token histograms.
+
+    Tables are often written by parquet/CSV tooling with ``1`` versus ``1.0``
+    or with a different pair order.  Canonicalising at both package ingest and
+    query time keeps those representations equivalent and hashable.
+    """
+    raw = value
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise ValueError(
+                f"{field} must be a JSON list of [value,count] pairs"
+            ) from exc
+    if not isinstance(raw, (list, tuple)) or not raw:
+        raise ValueError(f"{field} must be a non-empty list of [value,count] pairs")
+    pairs: list[tuple[int, float]] = []
+    for index, item in enumerate(raw):
+        if not isinstance(item, (list, tuple)) or len(item) != 2:
+            raise ValueError(f"{field}[{index}] must contain exactly [value,count]")
+        try:
+            value_i = int(item[0])
+            count_f = float(item[1])
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"{field}[{index}] values must be numeric") from exc
+        if value_i <= 0 or not math.isfinite(count_f) or count_f <= 0:
+            raise ValueError(f"{field}[{index}] requires positive value and count")
+        pairs.append((value_i, count_f))
+    pairs.sort(key=lambda pair: pair[0])
+    return json.dumps(pairs, separators=(",", ":"), ensure_ascii=False)
+
+
+def normalize_table_key_value(table: str, field: str, value: Any) -> Any:
+    if table == "mla_attention" and field == "context_lengths":
+        return canonical_histogram(value, field=field)
+    if table == "routed_experts" and field == "expert_tokens":
+        raw = value
+        if isinstance(raw, str):
+            try:
+                raw = json.loads(raw)
+            except json.JSONDecodeError as exc:
+                raise ValueError(
+                    f"{field} must be a JSON list of positive counts"
+                ) from exc
+        if not isinstance(raw, (list, tuple)) or not raw:
+            raise ValueError(f"{field} must be a non-empty list of positive counts")
+        counts: list[int] = []
+        for index, item in enumerate(raw):
+            try:
+                count = int(item)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(f"{field}[{index}] must be an integer") from exc
+            if count <= 0:
+                raise ValueError(f"{field}[{index}] must be positive")
+            counts.append(count)
+        return json.dumps(counts, separators=(",", ":"))
+    return value
 
 
 @dataclass(frozen=True)
@@ -101,6 +169,40 @@ class TableSpec:
 
 
 TABLE_SPECS: Mapping[str, TableSpec] = {
+    "batched_gemm": TableSpec(
+        name="batched_gemm",
+        key_fields=("dtype", "groups", "m", "n", "k"),
+        axes=(AxisSpec("m"),),
+        dtype_fields=("dtype",),
+        description="One grouped launch of equally shaped independent GEMMs.",
+    ),
+    "mla_attention": TableSpec(
+        name="mla_attention",
+        key_fields=(
+            "attn_dtype",
+            "kv_cache_dtype",
+            "phase",
+            "execution_mode",
+            "batch_size",
+            "query_len",
+            "context_lengths",
+            "num_heads",
+            "kv_lora_rank",
+            "rope_head_dim",
+            "nope_head_dim",
+            "v_head_dim",
+        ),
+        axes=(AxisSpec("batch_size"),),
+        dtype_fields=("attn_dtype", "kv_cache_dtype"),
+        description="MLA core; context_lengths is a sorted context-length histogram normalized per request.",
+    ),
+    "routed_experts": TableSpec(
+        name="routed_experts",
+        key_fields=("dtype", "hidden_size", "inter_size", "expert_tokens"),
+        axes=(),
+        dtype_fields=("dtype",),
+        description="One grouped SwiGLU branch for an exact per-expert assignment histogram; excludes router/shared/combine.",
+    ),
     "mhc": TableSpec(
         name="mhc",
         key_fields=(
@@ -325,6 +427,12 @@ TABLE_SPECS: Mapping[str, TableSpec] = {
 
 INTEGER_FIELDS = frozenset(
     {
+        "groups",
+        "query_len",
+        "kv_lora_rank",
+        "rope_head_dim",
+        "nope_head_dim",
+        "v_head_dim",
         "m",
         "n",
         "k",
