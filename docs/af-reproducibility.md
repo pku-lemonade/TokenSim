@@ -46,17 +46,17 @@ Runner manifests report host elapsed time and output modification times.
 Those fields vary between forced executions independently of the seed.
 Compare simulation results and traces separately from those manifest fields.
 
-The supplied `plot_tps_user_vs_tps_mw.py` produces byte-identical PNG files when given the same two-point fixture twice.
-Its SVG files differ because Matplotlib inserts the current export date and randomly salted element identifiers.
-The plot coordinates remain equal.
-The following export settings make both SVG repetitions identical in the local check:
+The supplied plot is maintained in [scripts/plot_tps_user_vs_tps_mw.py](../scripts/plot_tps_user_vs_tps_mw.py).
+It reads saved metrics and writes three PNG/SVG pairs without running the simulation.
+SVG export uses a fixed salt for each figure's element identifiers and omits Matplotlib's export date.
+The salt setting is scoped to the export call and restores the caller's Matplotlib configuration afterward.
+PNG export and plot coordinates retain the supplied script's behavior.
+Repeated exports with identical input match byte for byte in the same Matplotlib and font environment.
+An eight-point synthetic fixture produces six identical output files across three fresh processes with different Python hash settings.
+PNG bytes match the original script, and normalized SVG content matches after excluding the export date and element identifiers.
 
-```python
-import matplotlib
-
-with matplotlib.rc_context({"svg.hashsalt": "tokensim-qps1"}):
-    fig.savefig(svg_path, metadata={"Date": None})
+```bash
+python scripts/plot_tps_user_vs_tps_mw.py \
+  --input path/to/results.json \
+  --output outputs/qps1-figures
 ```
-
-Apply those settings to SVG export when file byte reproducibility is required.
-The supplied external plotting script is unchanged.
