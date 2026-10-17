@@ -61,6 +61,13 @@ class TemplateAdmissionTest(NativeFixture, unittest.TestCase):
         for current, dag in ((block, first), (changed, second), (third_block, third)):
             reference = planner._build_runtime_layer(current, 0, link)
             self.assertEqual(dag.nodes, reference.nodes)
+            for actual, expected in zip(dag.nodes, reference.nodes):
+                self.assertEqual(tuple(vars(actual)), tuple(vars(expected)))
+                if actual.local_work is not None:
+                    self.assertEqual(
+                        tuple(actual.local_work.trace_mapping()),
+                        tuple(expected.local_work.trace_mapping()),
+                    )
             self.assertEqual(dag.terminal_node_ids, reference.terminal_node_ids)
         self.assertEqual(planner.template_cache.hits, 1)
 

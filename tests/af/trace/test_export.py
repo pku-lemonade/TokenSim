@@ -109,6 +109,44 @@ class TraceExportTest(unittest.TestCase):
                 write_chrome_trace(output, events())
             self.assertEqual(list(Path(directory).iterdir()), [])
 
+    def test_cycles_keep_standard_errors_and_preserve_destination(self):
+        mapping = {}
+        mapping["self"] = mapping
+        sequence = []
+        sequence.append(sequence)
+
+        @dataclass
+        class Record:
+            child: object = None
+
+        record = Record()
+        record.child = record
+        with TemporaryDirectory() as directory:
+            output = Path(directory) / "trace.json"
+            output.write_text("existing result")
+            for value in (mapping, sequence, record):
+                with self.subTest(kind=type(value)):
+                    event = replace(_valid_events()[0], details={"cycle": value})
+                    with self.assertRaisesRegex(ValueError, "Circular reference"):
+                        write_chrome_trace(output, [event])
+                    self.assertEqual(output.read_text(), "existing result")
+                    self.assertEqual(list(Path(directory).glob("*.tmp")), [])
+
+    def test_events_are_encoded_before_the_iterator_resumes(self):
+        details = {"value": 1}
+        event = replace(_valid_events()[0], details=details)
+
+        def events():
+            yield event
+            details["value"] = 2
+            yield event
+
+        with TemporaryDirectory() as directory:
+            output = Path(directory) / "trace.json"
+            write_chrome_trace(output, events())
+            rows = json.loads(output.read_text())["traceEvents"]
+            self.assertEqual([row["args"]["details"]["value"] for row in rows], [1, 2])
+
     def test_record_fields_keep_schema_order_and_attribute_semantics(self):
         @dataclass
         class Ordinary:

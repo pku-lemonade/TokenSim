@@ -229,6 +229,94 @@ Attribute-getter export and a custom pickle dispatch table also provide no usefu
 Disabling template caching reduces compilation cost in a short startup-heavy run but does not establish a benefit for the complete workload.
 Those substitutions are excluded from production.
 
+## Source sharing and trace encoding
+
+This follow-up uses `b9243e1` as its reference and keeps the original DeepSeek command, complete trace retention and Python interfaces.
+A warm-step profile still spreads simulation time across structural fingerprints, template compilation and binding, communication execution and event processing.
+The four-step export profile attributes 5.134 seconds to the standard-library JSON encoder, 1.382 seconds to archive unpickling and 1.131 seconds to dataclass conversion, within 9.457 profiled seconds.
+Profiler overhead makes these values unsuitable as normal command timings.
+
+Activation-copy planning memoizes the immutable source tensor-slice constructor within each call.
+The memo includes all constructor arguments and releases its entries when that call returns.
+Recipients retain their own transfer copies and dependency records while sharing equal source slices.
+This sharing also reduces repeated records in compiled templates and archive chunks.
+The four-step archive shrinks from 275,591,168 bytes to 248,893,440 bytes with all six exported JSON files byte-identical in that isolated screen.
+Extending the same constructor memo to output copies provides no additional established benefit and is excluded.
+
+Template compilation seeds static and dynamic record fields in their original order, then binding replaces the dynamic slots.
+The generic compiler derives this order from the source records and introduces no manually maintained field list.
+Eligible records reach the existing exporter with a reusable field dictionary, avoiding a temporary field-by-field copy.
+This change restores constructor field order for bound records, so trace object-key order can differ from the reference while every parsed value remains equal.
+
+Trace export uses a 1 MiB write buffer and omits circular-reference bookkeeping during normal standard-library JSON encoding.
+The encoder still bounds recursion and retries with the original circular checks after a recursion error, preserving the standard cycle error and atomic destination replacement.
+Events are encoded before resuming their iterator, preserving mutable input values at each yield.
+Three alternating passes over one fixed full-model archived step give median export times of 1.884 seconds for the reference, 1.801 seconds for the larger buffer and 1.750 seconds for omitting circular checks in isolation.
+These isolated gains do not establish their combined complete-command benefit.
+
+Eight fingerprint and cache variants provide no established command-level improvement in the four-step screens.
+Batching live event dictionaries delays their encoding and can observe later mutations, so that approach is excluded.
+A native JSON prototype built with the existing Pydantic core requires recursive validation to preserve the existing value contract and takes a median of 4.753 seconds for the same export, about 2.5 times the reference time.
+That prototype is excluded from production.
+The retained changes add no dependency, build step, model-specific cache key or alternate execution path.
+
+A fresh 16-step pair runs sequentially with the original 61-layer, batch-32 and context-8192 geometry and complete outputs.
+
+| Phase | `b9243e1` reference | Follow-up |
+| --- | ---: | ---: |
+| Simulation | 88.454 s | 85.914 s |
+| Complete trace export | 30.881 s | 28.574 s |
+| Complete command | 119.547 s | 114.697 s |
+| Peak resident memory | 1.711 GB | 1.523 GB |
+
+The complete command uses 4.06% less time in this pair.
+The archive shrinks from 1,099,522,048 bytes to 992,862,208 bytes.
+All iteration timings, service-query counts and cache hits match, and the five companion JSON files are byte-identical.
+Complete parsed trace values and array positions match across all 1,081,520 events and file metadata.
+
+The complete 100-step follow-up run is compared with the previously recorded `b9243e1` run in the preceding section.
+Both measurements include validation, archival, complete profile export and archive cleanup, with imports and diagnostic hashing outside the timed interval.
+The follow-up is one complete measurement, supported by the fresh 16-step pair and shorter screens.
+
+| Phase | `b9243e1` reference | Follow-up |
+| --- | ---: | ---: |
+| Simulation | 512.345 s | 493.415 s |
+| Complete trace export | 214.962 s | 195.035 s |
+| Complete command | 727.606 s | 688.741 s |
+| Peak resident memory | 2.426 GB | 2.120 GB |
+
+The complete command saves 38.865 seconds, using 5.34% less time with 12.61% lower peak resident memory.
+Its archive shrinks from 6,859,522,048 bytes to 6,193,377,280 bytes.
+This result does not meet the 2x whole-command target for adopting a more complex backend.
+All 100 iteration rows, service counts and cache hits match the reference, and the five companion JSON files are byte-identical.
+Every parsed value and array position matches across the complete 6,759,500-event trace and its metadata.
+The uncompressed trace remains 32,392,112,426 bytes; only object-key ordering changes.
+The retained losslessly compressed trace has a verified decompressed byte hash.
+
+The dense multi-head attention and grouped-query attention with mixture-of-experts fixtures each preserve all 400 iteration rows and complete parsed trace values.
+These short checks establish behavior across models and do not establish a uniform simulation speedup.
+Complete LPX result documents match for native Rubin, attention/feed-forward disaggregated, prefill/decode disaggregated and speculative-draft modes.
+
+A fresh short concurrent pair uses three streams with four iterations each, with both versions recording scalar timings and releasing completed iteration objects.
+The reference takes 72.456 seconds for simulation and 27.904 seconds for export, compared with 70.567 seconds and 25.337 seconds in the follow-up.
+The combined time falls from 100.360 seconds to 95.904 seconds, using 4.44% less time.
+Peak resident memory falls from 2.165 GB to 1.881 GB, and all iteration timings and complete parsed values match across 811,140 trace events.
+
+A concurrent saturation check uses three batch-32 streams with 24 iterations each and releases completed iteration objects after recording scalar timings.
+This protocol matches the preceding 72-iteration reference.
+Simulation falls from 416.880 seconds to 404.794 seconds, and full export falls from 198.917 seconds to 161.108 seconds.
+The combined time falls from 615.797 seconds to 565.902 seconds, using 8.10% less time.
+Peak resident memory falls from 3,906,404,352 bytes to 3,367,698,432 bytes, below the 4,000,000,000-byte per-process budget.
+The cache reaches 384 templates at completion 54 and execution continues through completion 71.
+Peak memory rises from 3,352,297,472 bytes at that saturation sample to 3,367,698,432 bytes at the end.
+All 72 iteration timings and the 4,866,840-event count match, and zero completed events remain in active trace memory.
+Every parsed value and array position in the complete concurrent trace matches the reference.
+Automatic garbage collection remains enabled and performs collections during the run.
+The measured memory budget applies to this configuration and does not impose a universal resident-memory cap.
+
+All 520 tests pass, including immutable recipient sharing, template field order, circular-reference failure atomicity, mutable event-iterator boundaries and the existing optional Rust contracts.
+Black 24.2.0, the 500-line source limit and whitespace checks pass.
+
 ## Native code and parallel execution
 
 A C++ prototype of recursive structural-key normalization reduced the initial geometry-interning candidate from 11.31 seconds to 10.08 seconds for the full-model one-step simulation.

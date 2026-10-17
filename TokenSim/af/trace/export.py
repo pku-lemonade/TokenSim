@@ -61,7 +61,10 @@ def write_chrome_trace(
     A failed export leaves any existing destination intact.
     """
     encoder = json.JSONEncoder(
-        ensure_ascii=False, separators=(",", ":"), default=_record_dict
+        ensure_ascii=False,
+        separators=(",", ":"),
+        default=_record_dict,
+        check_circular=False,
     )
     output = Path(path)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -72,6 +75,7 @@ def write_chrome_trace(
             NamedTemporaryFile(
                 mode="w",
                 encoding="utf-8",
+                buffering=1024 * 1024,
                 dir=output.parent,
                 delete=False,
                 prefix=f".{output.name}.",
@@ -94,7 +98,18 @@ def write_chrome_trace(
                 )
                 if index:
                     stream.write(",")
-                stream.write(encoder.encode(item))
+                try:
+                    encoded = encoder.encode(item)
+                except RecursionError:
+                    # The C encoder still bounds recursion. Retry with cycle
+                    # checks to preserve the standard encoder's failure type.
+                    encoded = json.dumps(
+                        item,
+                        ensure_ascii=False,
+                        separators=(",", ":"),
+                        default=_record_dict,
+                    )
+                stream.write(encoded)
             stream.write('],"metadata":')
             stream.write(
                 json.dumps(

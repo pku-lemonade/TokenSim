@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from functools import lru_cache
 from typing import Any, Mapping
 
 from TokenSim.af.planning.batching import AFBlock
@@ -63,6 +64,9 @@ class TensorCopyPlannerMixin:
             item for item in a_ownerships if item.domain_rank in eligible_ranks
         )
         byte_width = dtype_size_bytes(transfer_dtype, role="a_to_f_dtype")
+        # Recipients share immutable source slices. Scope the constructor memo
+        # to this call, with all constructor arguments included in its key.
+        tensor_slice_factory = lru_cache(maxsize=None, typed=True)(AFTensorSlice)
         copies: list[_TransferCopy] = []
         edges_by_consumer = dict(routing_edges_by_consumer or {})
         source_parts = (
@@ -96,7 +100,7 @@ class TensorCopyPlannerMixin:
                         if collective is not None
                         else producer_ids[source.domain_rank]
                     )
-                    tensor_slice = AFTensorSlice(
+                    tensor_slice = tensor_slice_factory(
                         tensor_item_id=f"request:{token[0]}:token:{token[1]}:activation",
                         interval=interval,
                         layout=source_layout,

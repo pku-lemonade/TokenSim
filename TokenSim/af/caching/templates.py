@@ -70,11 +70,11 @@ class DAGTemplate:
                 if all(child.kind == "static" for _, child in children):
                     recipe = Recipe("static", value)
                 else:
+                    # Seed fields in source order; binding replaces dynamic slots.
                     static = FrozenDict(
                         {
-                            name: child.value
+                            name: child.value if child.kind == "static" else None
                             for name, child in children
-                            if child.kind == "static"
                         }
                     )
                     dynamic = tuple(

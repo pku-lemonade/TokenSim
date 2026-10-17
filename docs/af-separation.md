@@ -260,12 +260,17 @@ Zero retains unlimited shape eligibility; larger graphs always use the validated
 The template cache executes a new shape through the validated reference planner and compiles a reusable template when that shape recurs.
 Probation retains at most 384 shape keys, and the compiled template cache retains at most 384 templates per planner.
 Internal binding recipes use fixed attribute slots to reduce the storage per cached template.
+Binding preserves each record's original field order so trace export can reuse an eligible field dictionary.
 Shapes whose keys leave probation require another observed recurrence before compilation.
+Activation-copy recipients share immutable source tensor slices within one planning call, using all constructor arguments as the sharing key.
+The constructor memo is released after that call, while each copy retains its own recipient and dependency records.
 `AFService(retain_trace=False)` validates full native events at forward completion and retains their timing records for serving metrics.
 Full exported traces defer immutable tensor and routing serialization until the export boundary.
 `TokenSim.af.trace.export.write_chrome_trace` writes events incrementally in their recorded order using compact JSON.
 The DeepSeek profile writer delegates to this shared exporter and preserves every JSON field and value.
 Export reads final dependency patches and replaces the destination only after the complete document has been written.
+Each event is encoded before the event iterator resumes, preserving the values of mutable input records at that boundary.
+The standard-library encoder omits circular-reference bookkeeping on the normal path and retries with its original circular checks after a recursion error.
 AF executors, fixed-batch decode and serving with full trace retention use `ArchivedTraceRecorder` by default.
 The recorder archives each iteration after dependency patches and invariant validation complete.
 Active events keep their stable append positions, while completed events and their position indexes move to a private temporary SQLite database.
