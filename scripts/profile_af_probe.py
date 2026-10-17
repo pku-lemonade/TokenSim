@@ -106,6 +106,8 @@ with ExitStack() as stack:
     )
     metrics["total_seconds"] = perf_counter() - started
 metrics["peak_rss_bytes"] = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+if sys.platform != "darwin":
+    metrics["peak_rss_bytes"] *= 1024
 metrics["hashes"] = {}
 for path in args.output.glob("*.json"):
     if path.name in ("progress.json", "measurement.json"):

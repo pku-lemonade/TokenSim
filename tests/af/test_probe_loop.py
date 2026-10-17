@@ -3,11 +3,14 @@
 import unittest
 from unittest.mock import patch
 
+import simpy
+
 from scripts import af_probe_loop
 from scripts.af_rust import backend
 from tests.af import test_rust_probe as contracts
 
 
+@unittest.skipUnless(simpy.__version__ == "4.1.2", "probe requires SimPy 4.1.2")
 class PythonLoopProbeTest(unittest.TestCase):
     def test_existing_event_contracts(self):
         names = (

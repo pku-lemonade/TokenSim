@@ -8,6 +8,7 @@ import simpy
 from scripts import af_probe_conditions
 
 
+@unittest.skipUnless(simpy.__version__ == "4.1.2", "probe requires SimPy 4.1.2")
 class ConditionProbeTest(unittest.TestCase):
     def test_nested_conditions_failure_and_processed_children(self):
         outcomes = []
