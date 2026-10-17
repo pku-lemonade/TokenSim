@@ -15,6 +15,11 @@ ROOT = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser()
 parser.add_argument("--source", type=Path, default=ROOT)
 parser.add_argument("--kernels", default="")
+parser.add_argument(
+    "--production-path",
+    action="store_true",
+    help="Keep production trace preparation while installing diagnostic kernels.",
+)
 parser.add_argument("--steps", type=int, default=4)
 parser.add_argument("--output", type=Path, required=True)
 parser.add_argument("--keep-trace", action="store_true")
@@ -25,7 +30,14 @@ from scripts import run_deepseek_mla as cli
 from TokenSim.af import factory
 
 args.output.mkdir(parents=True, exist_ok=True)
-metrics = dict(kernels=args.kernels, source=str(args.source), steps=args.steps, rows=[])
+metrics = dict(
+    kernels=args.kernels,
+    source=str(args.source),
+    steps=args.steps,
+    python_version=sys.version.split()[0],
+    production_path=not args.kernels or args.production_path,
+    rows=[],
+)
 original_simulate, original_export = cli.simulate, cli.write_profile
 original_run = factory.run_environment
 
@@ -43,8 +55,8 @@ def timed_run(*values, **options):
 
 def simulate(*values, **options):
     # Diagnostic kernels compare with the original archive/export path.
-    # An empty selection measures the production CLI, including its defaults.
-    if args.kernels:
+    # An empty selection or --production-path preserves production defaults.
+    if args.kernels and not args.production_path:
         options.pop("trace_output", None)
     start = perf_counter()
     result = original_simulate(*values, **options)

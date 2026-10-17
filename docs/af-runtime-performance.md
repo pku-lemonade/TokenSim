@@ -390,3 +390,8 @@ The Rust kernels remain optional experiments because the measured whole-run gain
 A complete native engine would need typed planning and execution state, native resource queues and dependency tracking, and bounded trace conversion with fewer Python callbacks.
 The existing Python model and provider interfaces could remain above that internal boundary.
 The [Rust experiment guide](../scripts/af_rust/README.md) records the implemented scope, reproduction commands and remaining engine work.
+
+## Integrated-runtime follow-up
+
+The [follow-up profiling report](../experiments/performance/follow-up-20261017/README.md) compares allocation, dependency, binding, JSON batching and interpreter prototypes with the integrated runtime at `e10f8a7`.
+Its measurements retain complete trace export and validation, and its diagnostic prototypes leave production behavior unchanged.
