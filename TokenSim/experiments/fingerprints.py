@@ -84,7 +84,15 @@ class InputFingerprints:
 
 def environment_identity():
     packages = {}
-    for name in ("simpy", "numpy", "pandas", "pydantic", "pyarrow", "PyYAML"):
+    for name in (
+        "simpy",
+        "numpy",
+        "pandas",
+        "pydantic",
+        "pyarrow",
+        "PyYAML",
+        "msgpack",
+    ):
         try:
             packages[name] = version(name)
         except PackageNotFoundError:

@@ -88,6 +88,17 @@ def _encode_event(event, options, encoder):
         )
 
 
+def _export_options(trace_config, metadata):
+    if trace_config is not None and not isinstance(trace_config, AFTraceConfig):
+        raise ConfigurationError("trace_config must be an AFTraceConfig")
+    options = trace_config or AFTraceConfig()
+    if options.mode != "full":
+        raise ConfigurationError("trace export requires full mode")
+    if options != AFTraceConfig():
+        metadata = dict(metadata or {}, trace_config=options.describe())
+    return options, metadata
+
+
 def write_chrome_trace(
     path: str | Path,
     events: Iterable[AFTraceEvent],
@@ -101,17 +112,11 @@ def write_chrome_trace(
     JSON values match AFTraceEvent.as_dict(); whitespace is compact.
     A failed export leaves any existing destination intact.
     """
-    if trace_config is not None and not isinstance(trace_config, AFTraceConfig):
-        raise ConfigurationError("trace_config must be an AFTraceConfig")
-    options = trace_config or AFTraceConfig()
-    if options.mode != "full":
-        raise ConfigurationError("trace export requires full mode")
-    if options != AFTraceConfig():
-        metadata = dict(metadata or {}, trace_config=options.describe())
+    options, metadata = _export_options(trace_config, metadata)
     output = Path(path)
     output.parent.mkdir(parents=True, exist_ok=True)
     prepared = getattr(events, "_write_prepared_trace", None)
-    if prepared is not None:
+    if prepared is not None and getattr(events, "trace_format", "json") == "json":
         result = prepared(output, metadata, options)
         if result is not None:
             return result

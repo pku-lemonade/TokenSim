@@ -6,11 +6,18 @@ import json
 from pathlib import Path
 
 from TokenSim.af.trace.config import AFTraceConfig, EVENT_FIELDS, EVENT_TYPES
+from TokenSim.af.trace.formats import TRACE_FORMATS
 from TokenSim.errors import ConfigurationError
 
 
 def add_trace_arguments(parser):
     group = parser.add_argument_group("trace collection and export")
+    group.add_argument(
+        "--trace-format",
+        choices=TRACE_FORMATS,
+        default="json",
+        help="saved trace representation; binary traces can be converted to JSON later",
+    )
     group.add_argument(
         "--trace-config", type=Path, help="JSON trace configuration file"
     )

@@ -86,6 +86,11 @@ class _PreparedHistory(ArchivedEventHistory):
         self.encoded_count = 0
         self.invalidated = False
 
+    @property
+    def trace_format(self):
+        recorder = self._recorder()
+        return getattr(recorder, "trace_format", "json")
+
     def __getitem__(self, index):
         if isinstance(index, slice):
             return super().__getitem__(index)
@@ -124,7 +129,16 @@ class PipelinedTraceRecorder(ArchivedTraceRecorder):
     This recorder needs an intended output directory to prepare files there.
     """
 
-    def __init__(self, directory, *, trace_config=None, resource_capacities=None):
+    trace_format = "json"
+
+    def __init__(
+        self,
+        directory,
+        *,
+        trace_config=None,
+        resource_capacities=None,
+        writer_factory=None,
+    ):
         if trace_config is not None and not isinstance(trace_config, AFTraceConfig):
             raise ConfigurationError("trace_config must be an AFTraceConfig")
         if trace_config is not None and trace_config.mode != "full":
@@ -135,11 +149,14 @@ class PipelinedTraceRecorder(ArchivedTraceRecorder):
         self.archive.chunk_size = 1024
         self.events = _PreparedHistory(self.archive, self)
         self.writer = None
+        self.writer_factory = writer_factory
         self.published = False
 
     def _writer(self):
         if self.writer is None:
-            self.writer = _PrefixWriter(self.directory, self.options)
+            self.writer = (self.writer_factory or _PrefixWriter)(
+                self.directory, self.options
+            )
         return self.writer
 
     def _prefix(self, start, end):

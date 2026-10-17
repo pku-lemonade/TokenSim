@@ -2,7 +2,7 @@
 
 The DeepSeek decode runner and the shared `simulate_decode` API support independent event collection, invariant validation and export choices.
 The default remains a complete validated trace with the existing output schema.
-The DeepSeek command prepares finalized JSON during simulation and publishes the complete file after execution.
+The DeepSeek command prepares finalized JSON during simulation and publishes the complete file after execution by default.
 This default preserves every trace event and field and needs no additional flag.
 Partial or repeated exports, changed export settings and edits to archived events use the complete archive as a fallback.
 See [the integrated performance measurements](af-integrated-defaults.md) for the implementation scope and validation.
@@ -93,17 +93,35 @@ An empty Python or JSON `fields` list exports an empty argument object for every
 Omitting `predecessor_ids` prevents dependency reconstruction and is recorded in trace configuration metadata.
 Resource release details can differ from event completion time, so timing-only exports are insufficient for reconstructing exact resource occupancy.
 
+## Saved representation
+
+`--trace-format json` saves the existing Chrome JSON and is the default.
+`--trace-format msgpack` saves a versioned MessagePack stream with the same selected events, fields and metadata.
+`--trace-format archive` saves an indexed SQLite snapshot of the retained internal events with the export configuration and metadata.
+The archive retains all internal event fields and applies event and field selections when generating JSON.
+JSON and MessagePack apply those selections while writing their saved event stream.
+All formats preserve the modeled results and support the existing collection and validation choices.
+Validate and off modes produce no saved trace in any representation.
+
+The [experiment runner](af-experiment-runner.md#saved-trace-formats-and-json-conversion) accepts `trace_format` in its constructor and individual `run` calls.
+Its `export_trace_json(source, output)` method converts a completed point or saved file to Chrome JSON without rerunning simulation.
+MessagePack requires the `trace` installation extra.
+Archive uses compatible TokenSim record definitions during conversion.
+The saved suffixes are `.trace.json`, `.trace.msgpack` and `.trace.sqlite3`.
+
 ## Configuration files and experiment reuse
 
 `--trace-config path.json` loads an object containing `mode`, `validate`, `detail`, `event_types`, `iterations`, `layers` and `fields` as needed.
 Explicit trace flags override matching file entries, and unknown keys are rejected.
 The [reusable experiment runner](af-experiment-runner.md) accepts the same settings as a Python configuration or mapping and checkpoints each complete point independently.
 The DeepSeek command uses that runner automatically and supports `--no-resume`, `--verify-checkpoints sha256` and `--seed`.
+`trace_format` is a separate runner option selected by `--trace-format` and is not accepted inside the trace selection file.
 
 ## Output contracts
 
 Default runs preserve the previous summary and trace contents.
 Nondefault runs record configured and effective trace choices in `summary.json` under `trace_config`.
+Nondefault saved formats also record `trace_format` in the command's `summary.json`.
 Full traces with nondefault settings record the same information in `metadata.trace_config`.
 This metadata key is reserved for the exporter configuration.
 Validation and off modes set each summary row's `profile` to JSON `null` and create no trace file.

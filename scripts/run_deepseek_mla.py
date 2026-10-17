@@ -21,6 +21,7 @@ from scripts.deepseek_v3_runtime import (
 )
 from scripts.af_trace_options import add_trace_arguments, trace_configuration
 from TokenSim.af.trace.config import AFTraceConfig
+from TokenSim.af.trace.formats import validate_trace_format
 from TokenSim.af.experiments import AFExperimentRunner
 from TokenSim.errors import ConfigurationError
 
@@ -84,6 +85,7 @@ def run(args):
         config,
         output / ".experiments",
         trace_config=trace_config,
+        trace_format=args.trace_format,
         fallback=args.fallback,
         seed=args.seed,
         resume=args.resume,
@@ -127,6 +129,11 @@ def run(args):
             "hypothetical_f_memory_gib": args.hypothetical_f_memory_gib,
             "fallback": args.fallback,
             **({"seed": args.seed} if args.seed != 42 else {}),
+            **(
+                {"trace_format": args.trace_format}
+                if args.trace_format != "json"
+                else {}
+            ),
             **({"trace_config": trace_config.describe()} if trace_kwargs else {}),
             "results": rows,
             "limitations": [
@@ -181,7 +188,10 @@ def main(argv=None):
     parser = build_parser()
     args = parser.parse_args(argv)
     try:
-        trace_configuration(args)
+        options = trace_configuration(args)
+        validate_trace_format(
+            args.trace_format, require_dependency=options.mode == "full"
+        )
         if args.seed < 0:
             raise ConfigurationError("seed must be nonnegative")
     except ConfigurationError as exc:

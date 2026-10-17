@@ -10,6 +10,7 @@ from typing import Any
 
 from TokenSim.af.factory import build_model_runtime, simulate_decode
 from TokenSim.af.trace.export import write_chrome_trace
+from TokenSim.af.trace.formats import write_trace
 from TokenSim.hardware import HardwareContext
 from TokenSim.hardware.device.sourced_value import SourcedValue
 
@@ -211,7 +212,11 @@ simulate = simulate_decode
 def write_profile(path: str | Path, executor, metadata: dict[str, Any] | None = None):
     options = getattr(executor.trace, "trace_config", None)
     kwargs = {"trace_config": options} if options is not None else {}
-    return write_chrome_trace(
+    trace_format = getattr(executor.trace, "trace_format", "json")
+    writer = write_chrome_trace if trace_format == "json" else write_trace
+    if trace_format != "json":
+        kwargs["trace_format"] = trace_format
+    return writer(
         path,
         executor.trace.events,
         metadata or {"timing": "simulated operator-table service time"},

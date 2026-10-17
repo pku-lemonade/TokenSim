@@ -6,10 +6,15 @@ from pathlib import Path
 
 from TokenSim.af import factory
 from TokenSim.af.trace.config import AFTraceConfig
-from TokenSim.af.trace.export import write_chrome_trace
+from TokenSim.af.trace.formats import (
+    TRACE_SUFFIXES,
+    convert_trace_to_json,
+    validate_trace_format,
+    write_trace,
+)
 from TokenSim.config.validation import integer
 from TokenSim.errors import ConfigurationError
-from TokenSim.experiments import ExperimentRunner
+from TokenSim.experiments import ExperimentResult, ExperimentRunner
 from TokenSim.experiments.fingerprints import identity
 
 
@@ -20,11 +25,12 @@ def _trace_config(value):
 
 
 def _write_profile(path, executor, metadata=None):
-    return write_chrome_trace(
+    return write_trace(
         path,
         executor.trace.events,
         metadata,
         trace_config=getattr(executor.trace, "trace_config", None),
+        trace_format=getattr(executor.trace, "trace_format", "json"),
     )
 
 
@@ -43,6 +49,7 @@ class AFExperimentRunner:
         output,
         *,
         trace_config=None,
+        trace_format="json",
         fallback="table_first",
         seed=42,
         resume=True,
@@ -58,6 +65,7 @@ class AFExperimentRunner:
             AFTraceConfig() if trace_config is None else _trace_config(trace_config)
         )
         self.fallback = fallback
+        self.trace_format = validate_trace_format(trace_format)
         self.seed = integer(seed, "experiment seed", minimum=0)
         self.profile_metadata = dict(profile_metadata or {})
         self._simulate = simulate
@@ -114,6 +122,7 @@ class AFExperimentRunner:
         *,
         steps=1,
         trace_config=None,
+        trace_format=None,
         fallback=None,
         seed=None,
         resume=None,
@@ -131,6 +140,10 @@ class AFExperimentRunner:
         options = (
             self.trace_config if trace_config is None else _trace_config(trace_config)
         )
+        trace_format = validate_trace_format(
+            self.trace_format if trace_format is None else trace_format,
+            require_dependency=options.mode == "full",
+        )
         inputs = list(self._inputs)
         data = self.runtime.hardware.operator_data_root
         if data is not None and fallback != "analytical_only":
@@ -144,18 +157,21 @@ class AFExperimentRunner:
             seed=seed,
             fallback=fallback,
             trace_config=asdict(options),
+            trace_format=trace_format,
             profile_metadata=self.profile_metadata,
         )
 
         def execute(directory):
             trace_path = (
                 directory
-                / f"decode-layers{self.runtime.plan.total_layers}-b{batch}.trace.json"
+                / f"decode-layers{self.runtime.plan.total_layers}-b{batch}.trace{TRACE_SUFFIXES[trace_format]}"
             )
             kwargs = {"trace_config": options} if options != AFTraceConfig() else {}
             # The original seed default keeps diagnostic wrappers compatible.
             if seed != 42:
                 kwargs["seed"] = seed
+            if trace_format != "json":
+                kwargs["trace_format"] = trace_format
             executor, measurements, compute, transfer = (
                 self._simulate or factory.simulate_decode
             )(
@@ -179,6 +195,14 @@ class AFExperimentRunner:
                     if options.mode == "full"
                     else None
                 )
+                if (
+                    trace_format != "json"
+                    and profile is not None
+                    and profile.suffix != TRACE_SUFFIXES[trace_format]
+                ):
+                    raise ConfigurationError(
+                        "write_profile must return the selected trace format"
+                    )
                 summary = dict(
                     batch_size=batch,
                     context_len=context,
@@ -194,11 +218,28 @@ class AFExperimentRunner:
                     summary=summary,
                     iterations=measurements,
                     trace_config=options.describe(),
+                    trace_format=trace_format,
                 )
             finally:
                 executor.trace.close()
 
         return self.runner.run(parameters, execute, resume=resume)
+
+    @staticmethod
+    def export_trace_json(source, output):
+        """Export a completed point or saved trace path without rerunning it.
+
+        Choose an output outside the checkpoint directory to keep derived
+        artifacts separate from the point's committed simulation artifacts.
+        """
+        trace_format = None
+        if isinstance(source, ExperimentResult):
+            profile = source.result["summary"]["profile"]
+            if profile is None:
+                raise ConfigurationError("the experiment has no saved trace")
+            trace_format = source.result.get("trace_format")
+            source = source.directory / profile
+        return convert_trace_to_json(source, output, trace_format=trace_format)
 
     def run_many(self, cases):
         """Evaluate a sequence of run() keyword mappings in the supplied order."""
