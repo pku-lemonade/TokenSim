@@ -339,6 +339,13 @@ Threads did not meet the requested near-linear scaling criterion and were not ad
 The process measurement includes startup and configuration costs for these short jobs.
 `scripts/lpx/runner.py` already runs independent experiment points in isolated processes.
 
+## Configuration namespace hash reuse
+
+Provider configuration namespaces retain their complete structural values and cache their hash until an extension creates a new immutable namespace.
+Service, communication-plan and phase caches reuse that hash without changing query fields, provider APIs or simulation scheduling.
+Namespace equality still compares the complete values, including when distinct values have equal hashes.
+The [archive follow-up measurements](../experiments/performance/archive-follow-up-20261017/README.md) compare this change with query and archive prototypes.
+
 ## Further native-backend gate
 
 The geometry and normalization changes provide roughly 1.5x to 1.6x simulation throughput relative to `d8677a0` for the tested DeepSeek cases.

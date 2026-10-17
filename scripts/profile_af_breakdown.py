@@ -71,12 +71,24 @@ def category(key):
         return "trace_validation"
     if any(
         part in path
-        for part in ("af/trace/archive", "af/trace/history.py", "af/trace/pipeline.py")
+        for part in (
+            "af/trace/archive",
+            "af/trace/binary_archive.py",
+            "af/trace/history.py",
+            "af/trace/pipeline.py",
+        )
     ):
         return "trace_archive"
     if "af/trace/" in path or ".AFTraceEvent." in path:
         return "trace_capture"
-    if any(part in path for part in ("af/caching/estimates.py", "af/providers/")):
+    if any(
+        part in path
+        for part in (
+            "af/caching/estimates.py",
+            "af/caching/namespace.py",
+            "af/providers/",
+        )
+    ):
         return "queries_and_estimates"
     if any(part in path for part in ("af/caching/templates.py", "af/planning/")):
         return "dag_planning"
@@ -148,6 +160,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--steps", type=int, default=8)
     parser.add_argument("--mode", choices=("calls", "sample"), default="calls")
+    parser.add_argument(
+        "--trace-format", choices=("json", "msgpack", "archive"), default="json"
+    )
+    parser.add_argument("--kernels", default="")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
@@ -214,6 +230,11 @@ def main():
         "profile_af_probe",
         "--steps",
         str(args.steps),
+        "--trace-format",
+        args.trace_format,
+        "--kernels",
+        args.kernels,
+        "--production-path",
         "--output",
         str(args.output),
     ]

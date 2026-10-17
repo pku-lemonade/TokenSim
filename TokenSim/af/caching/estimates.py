@@ -7,6 +7,7 @@ from functools import lru_cache, wraps
 import hashlib
 from operator import itemgetter
 
+from TokenSim.af.caching.namespace import EstimateNamespace
 
 _SCALARS = (str, int, type(None))
 _TAGGED_SCALARS = (bool, float)
@@ -276,26 +277,31 @@ def initialize_cache(provider, enabled=True, capacity=4096):
     provider.query_fast_path = True
     provider._fingerprints = FingerprintMemo()
     cluster = getattr(provider, "cluster_config", None)
-    provider._estimate_namespace = (
-        provider.fallback,
-        identity(getattr(provider, "lookup_policy", None)),
+    provider._estimate_namespace = EstimateNamespace(
         (
-            (cluster.af.transfer_topology_mode, cluster.af.communication_timing.enabled)
-            if cluster
-            else None
-        ),
-        (
-            cluster.af.execution_protocol
-            if cluster
-            else getattr(provider, "execution_protocol", None)
-        ),
-        getattr(provider, "require_device_scope", False),
-        identity(cluster.af.operation_service_profile) if cluster else None,
-        (
-            identity(getattr(cluster.af, "communication_domains", None))
-            if cluster
-            else None
-        ),
+            provider.fallback,
+            identity(getattr(provider, "lookup_policy", None)),
+            (
+                (
+                    cluster.af.transfer_topology_mode,
+                    cluster.af.communication_timing.enabled,
+                )
+                if cluster
+                else None
+            ),
+            (
+                cluster.af.execution_protocol
+                if cluster
+                else getattr(provider, "execution_protocol", None)
+            ),
+            getattr(provider, "require_device_scope", False),
+            identity(cluster.af.operation_service_profile) if cluster else None,
+            (
+                identity(getattr(cluster.af, "communication_domains", None))
+                if cluster
+                else None
+            ),
+        )
     )
 
 

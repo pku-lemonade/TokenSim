@@ -1,0 +1,1362 @@
+{
+  "reference_revision": "2b08559458d89e84943626173c554d016a14ad31",
+  "host": "Apple M5",
+  "python": "3.12.12",
+  "workload": {
+    "full_model": true,
+    "a_tp": 4,
+    "f_tp": 32,
+    "batches": 32,
+    "af_batch_size": 32,
+    "context": 8192,
+    "device": "a100_sxm_80g",
+    "network": "nvlink3",
+    "fallback": "analytical_only",
+    "seed": 42
+  },
+  "sample": {
+    "sampled_seconds": 46.51137712504715,
+    "samples": 41367,
+    "interval_seconds": 0.001,
+    "categories": {
+      "queries_and_estimates": {
+        "seconds": 11.012898312881589,
+        "percent": 23.677859039247757
+      },
+      "dag_planning": {
+        "seconds": 7.3066192413680255,
+        "percent": 15.709316070612086
+      },
+      "simpy_engine": {
+        "seconds": 5.316843697801232,
+        "percent": 11.431275585555655
+      },
+      "garbage_collection": {
+        "seconds": 4.430714994668961,
+        "percent": 9.526088601412207
+      },
+      "execution": {
+        "seconds": 4.190516258124262,
+        "percent": 9.009658533347531
+      },
+      "trace_archive": {
+        "seconds": 4.153192047029734,
+        "percent": 8.929411046814975
+      },
+      "resource_scheduler": {
+        "seconds": 2.464751979801804,
+        "percent": 5.299245329105712
+      },
+      "record_methods": {
+        "seconds": 2.3544701896607876,
+        "percent": 5.062138201865595
+      },
+      "trace_capture": {
+        "seconds": 1.9813092784024775,
+        "percent": 4.259837916808336
+      },
+      "trace_validation": {
+        "seconds": 1.932813212275505,
+        "percent": 4.155570812446775
+      },
+      "other_project": {
+        "seconds": 1.2575853704474866,
+        "percent": 2.7038231249666786
+      },
+      "trace_json": {
+        "seconds": 0.10966254258528352,
+        "percent": 0.23577573781669092
+      }
+    },
+    "gc_seconds": 4.430714994668961
+  },
+  "measurements": [
+    {
+      "name": "baseline",
+      "kernels": "",
+      "steps": 8,
+      "trace_format": "archive",
+      "production_path": true,
+      "total_seconds": 45.97812295798212,
+      "simulation_seconds": 45.184019749984145,
+      "export_seconds": 0.35323499981313944,
+      "peak_rss_bytes": 1114144768,
+      "events": 540760,
+      "compute_requests": 38768,
+      "compute_hits": 37384,
+      "transfer_requests": 494184,
+      "transfer_hits": 493944,
+      "template_entries": 99,
+      "template_requests": 488,
+      "template_hits": 274,
+      "rows": [
+        {
+          "step": 0,
+          "wall_seconds": 5.427613208070397
+        },
+        {
+          "step": 1,
+          "wall_seconds": 7.84364724997431
+        },
+        {
+          "step": 2,
+          "wall_seconds": 4.925945291295648
+        },
+        {
+          "step": 3,
+          "wall_seconds": 5.096048375125974
+        },
+        {
+          "step": 4,
+          "wall_seconds": 6.282375875394791
+        },
+        {
+          "step": 5,
+          "wall_seconds": 4.963807167019695
+        },
+        {
+          "step": 6,
+          "wall_seconds": 5.167196666821837
+        },
+        {
+          "step": 7,
+          "wall_seconds": 5.285874874796718
+        }
+      ],
+      "hashes": {
+        "summary.json": "77d66c09ba4e1dc58ed17d6ea204d76dadeb363e1fa9c20c00adf71e6f9d4740",
+        "model-spec.json": "c360c16a36fb18aad567ac954104c34c3b1259f4ff2f5cd41ebb72cf3d51248c",
+        "runtime-plan.json": "502aeb4eadedec19e1e3022b3ef6c6077311697aa4911d8960d7c182450db4f8",
+        "hardware-assumptions.json": "47590bd712724524bce14fbf6afd48c596135ef60b7694a5968a556d09309d08",
+        "cluster.json": "91c3a789260907f9984935aaf1f31f261861842efc69e3d8a4a5748bc342d77b"
+      },
+      "iteration_rows_sha256": "f4a12852293f3a150abf0a6c89e088f94293bf958bfc74869d30bfd76030146a",
+      "instrumentation": "none",
+      "implementation": "reference-with-selected-prototypes"
+    },
+    {
+      "name": "combined",
+      "kernels": "spanindex,pickledispatch,inlinescalars",
+      "steps": 8,
+      "trace_format": "archive",
+      "production_path": true,
+      "total_seconds": 45.31810012506321,
+      "simulation_seconds": 44.53714045789093,
+      "export_seconds": 0.3406760827638209,
+      "peak_rss_bytes": 1117093888,
+      "trace_bytes": 444186624,
+      "events": 540760,
+      "compute_requests": 38768,
+      "compute_hits": 37384,
+      "transfer_requests": 494184,
+      "transfer_hits": 493944,
+      "template_entries": 99,
+      "template_requests": 488,
+      "template_hits": 274,
+      "rows": [
+        {
+          "step": 0,
+          "wall_seconds": 5.313090458046645
+        },
+        {
+          "step": 1,
+          "wall_seconds": 7.7353263748809695
+        },
+        {
+          "step": 2,
+          "wall_seconds": 4.8422632911242545
+        },
+        {
+          "step": 3,
+          "wall_seconds": 5.030422166921198
+        },
+        {
+          "step": 4,
+          "wall_seconds": 6.188656624872237
+        },
+        {
+          "step": 5,
+          "wall_seconds": 4.945490625221282
+        },
+        {
+          "step": 6,
+          "wall_seconds": 5.130625041667372
+        },
+        {
+          "step": 7,
+          "wall_seconds": 5.157096541021019
+        }
+      ],
+      "hashes": {
+        "summary.json": "77d66c09ba4e1dc58ed17d6ea204d76dadeb363e1fa9c20c00adf71e6f9d4740",
+        "model-spec.json": "c360c16a36fb18aad567ac954104c34c3b1259f4ff2f5cd41ebb72cf3d51248c",
+        "runtime-plan.json": "502aeb4eadedec19e1e3022b3ef6c6077311697aa4911d8960d7c182450db4f8",
+        "hardware-assumptions.json": "47590bd712724524bce14fbf6afd48c596135ef60b7694a5968a556d09309d08",
+        "cluster.json": "91c3a789260907f9984935aaf1f31f261861842efc69e3d8a4a5748bc342d77b"
+      },
+      "iteration_rows_sha256": "f4a12852293f3a150abf0a6c89e088f94293bf958bfc74869d30bfd76030146a",
+      "instrumentation": "none",
+      "implementation": "reference-with-selected-prototypes"
+    },
+    {
+      "name": "confirm-baseline",
+      "kernels": "",
+      "steps": 16,
+      "trace_format": "archive",
+      "production_path": true,
+      "total_seconds": 87.46417041681707,
+      "simulation_seconds": 86.17743370868266,
+      "export_seconds": 0.7523690829984844,
+      "peak_rss_bytes": 1544962048,
+      "trace_bytes": 920854528,
+      "events": 1081520,
+      "compute_requests": 77536,
+      "compute_hits": 74768,
+      "transfer_requests": 988368,
+      "transfer_hits": 988128,
+      "template_entries": 163,
+      "template_requests": 976,
+      "template_hits": 634,
+      "rows": [
+        {
+          "step": 0,
+          "wall_seconds": 5.336114541627467
+        },
+        {
+          "step": 1,
+          "wall_seconds": 7.80470595927909
+        },
+        {
+          "step": 2,
+          "wall_seconds": 4.908984665758908
+        },
+        {
+          "step": 3,
+          "wall_seconds": 5.048628457821906
+        },
+        {
+          "step": 4,
+          "wall_seconds": 6.30863545788452
+        },
+        {
+          "step": 5,
+          "wall_seconds": 4.944165874738246
+        },
+        {
+          "step": 6,
+          "wall_seconds": 5.163291499949992
+        },
+        {
+          "step": 7,
+          "wall_seconds": 5.214224749710411
+        },
+        {
+          "step": 8,
+          "wall_seconds": 4.971068375278264
+        },
+        {
+          "step": 9,
+          "wall_seconds": 5.147662041708827
+        },
+        {
+          "step": 10,
+          "wall_seconds": 5.258959958795458
+        },
+        {
+          "step": 11,
+          "wall_seconds": 4.97867300035432
+        },
+        {
+          "step": 12,
+          "wall_seconds": 5.24852841719985
+        },
+        {
+          "step": 13,
+          "wall_seconds": 5.273338582832366
+        },
+        {
+          "step": 14,
+          "wall_seconds": 4.999687749892473
+        },
+        {
+          "step": 15,
+          "wall_seconds": 5.183507333043963
+        }
+      ],
+      "hashes": {
+        "summary.json": "923ec2703a657bc3ab698a9fa75a7d565b15f9b52abfcc0c89ec8e356dae4589",
+        "model-spec.json": "c360c16a36fb18aad567ac954104c34c3b1259f4ff2f5cd41ebb72cf3d51248c",
+        "runtime-plan.json": "502aeb4eadedec19e1e3022b3ef6c6077311697aa4911d8960d7c182450db4f8",
+        "hardware-assumptions.json": "47590bd712724524bce14fbf6afd48c596135ef60b7694a5968a556d09309d08",
+        "cluster.json": "91c3a789260907f9984935aaf1f31f261861842efc69e3d8a4a5748bc342d77b"
+      },
+      "iteration_rows_sha256": "233326271bcb261916563a96a49e38fa1ab99a087baa277e6df3ba5acb412fb7",
+      "instrumentation": "none",
+      "implementation": "reference-with-selected-prototypes"
+    },
+    {
+      "name": "confirm-combined",
+      "kernels": "spanindex,pickledispatch,inlinescalars",
+      "steps": 16,
+      "trace_format": "archive",
+      "production_path": true,
+      "total_seconds": 85.96155874989927,
+      "simulation_seconds": 84.7344492082484,
+      "export_seconds": 0.6936076250858605,
+      "peak_rss_bytes": 1535213568,
+      "trace_bytes": 886800384,
+      "events": 1081520,
+      "compute_requests": 77536,
+      "compute_hits": 74768,
+      "transfer_requests": 988368,
+      "transfer_hits": 988128,
+      "template_entries": 163,
+      "template_requests": 976,
+      "template_hits": 634,
+      "rows": [
+        {
+          "step": 0,
+          "wall_seconds": 5.2429071250371635
+        },
+        {
+          "step": 1,
+          "wall_seconds": 7.667011667042971
+        },
+        {
+          "step": 2,
+          "wall_seconds": 4.817730040755123
+        },
+        {
+          "step": 3,
+          "wall_seconds": 4.98117099981755
+        },
+        {
+          "step": 4,
+          "wall_seconds": 6.194618332665414
+        },
+        {
+          "step": 5,
+          "wall_seconds": 4.897507457993925
+        },
+        {
+          "step": 6,
+          "wall_seconds": 5.040465500205755
+        },
+        {
+          "step": 7,
+          "wall_seconds": 5.145693541970104
+        },
+        {
+          "step": 8,
+          "wall_seconds": 4.850048500113189
+        },
+        {
+          "step": 9,
+          "wall_seconds": 5.118635000195354
+        },
+        {
+          "step": 10,
+          "wall_seconds": 5.191720958799124
+        },
+        {
+          "step": 11,
+          "wall_seconds": 4.937048083171248
+        },
+        {
+          "step": 12,
+          "wall_seconds": 5.070206291973591
+        },
+        {
+          "step": 13,
+          "wall_seconds": 5.192880375310779
+        },
+        {
+          "step": 14,
+          "wall_seconds": 4.91164895799011
+        },
+        {
+          "step": 15,
+          "wall_seconds": 5.09119449974969
+        }
+      ],
+      "hashes": {
+        "summary.json": "923ec2703a657bc3ab698a9fa75a7d565b15f9b52abfcc0c89ec8e356dae4589",
+        "model-spec.json": "c360c16a36fb18aad567ac954104c34c3b1259f4ff2f5cd41ebb72cf3d51248c",
+        "runtime-plan.json": "502aeb4eadedec19e1e3022b3ef6c6077311697aa4911d8960d7c182450db4f8",
+        "hardware-assumptions.json": "47590bd712724524bce14fbf6afd48c596135ef60b7694a5968a556d09309d08",
+        "cluster.json": "91c3a789260907f9984935aaf1f31f261861842efc69e3d8a4a5748bc342d77b"
+      },
+      "iteration_rows_sha256": "233326271bcb261916563a96a49e38fa1ab99a087baa277e6df3ba5acb412fb7",
+      "instrumentation": "none",
+      "implementation": "reference-with-selected-prototypes"
+    },
+    {
+      "name": "confirm-namespacehash",
+      "kernels": "namespacehash",
+      "steps": 16,
+      "trace_format": "archive",
+      "production_path": true,
+      "total_seconds": 85.87062187492847,
+      "simulation_seconds": 84.5834129578434,
+      "export_seconds": 0.7470166669227183,
+      "peak_rss_bytes": 1536524288,
+      "trace_bytes": 920854528,
+      "events": 1081520,
+      "compute_requests": 77536,
+      "compute_hits": 74768,
+      "transfer_requests": 988368,
+      "transfer_hits": 988128,
+      "template_entries": 163,
+      "template_requests": 976,
+      "template_hits": 634,
+      "rows": [
+        {
+          "step": 0,
+          "wall_seconds": 5.247127208393067
+        },
+        {
+          "step": 1,
+          "wall_seconds": 7.652793959248811
+        },
+        {
+          "step": 2,
+          "wall_seconds": 4.794070917181671
+        },
+        {
+          "step": 3,
+          "wall_seconds": 4.970503875054419
+        },
+        {
+          "step": 4,
+          "wall_seconds": 6.168977916706353
+        },
+        {
+          "step": 5,
+          "wall_seconds": 4.826188458129764
+        },
+        {
+          "step": 6,
+          "wall_seconds": 5.036761166993529
+        },
+        {
+          "step": 7,
+          "wall_seconds": 5.15296212490648
+        },
+        {
+          "step": 8,
+          "wall_seconds": 4.8672256246209145
+        },
+        {
+          "step": 9,
+          "wall_seconds": 5.069644500035793
+        },
+        {
+          "step": 10,
+          "wall_seconds": 5.1568437912501395
+        },
+        {
+          "step": 11,
+          "wall_seconds": 4.927037124987692
+        },
+        {
+          "step": 12,
+          "wall_seconds": 5.140351749956608
+        },
+        {
+          "step": 13,
+          "wall_seconds": 5.176998416893184
+        },
+        {
+          "step": 14,
+          "wall_seconds": 4.897599208634347
+        },
+        {
+          "step": 15,
+          "wall_seconds": 5.116064707748592
+        }
+      ],
+      "hashes": {
+        "summary.json": "923ec2703a657bc3ab698a9fa75a7d565b15f9b52abfcc0c89ec8e356dae4589",
+        "model-spec.json": "c360c16a36fb18aad567ac954104c34c3b1259f4ff2f5cd41ebb72cf3d51248c",
+        "runtime-plan.json": "502aeb4eadedec19e1e3022b3ef6c6077311697aa4911d8960d7c182450db4f8",
+        "hardware-assumptions.json": "47590bd712724524bce14fbf6afd48c596135ef60b7694a5968a556d09309d08",
+        "cluster.json": "91c3a789260907f9984935aaf1f31f261861842efc69e3d8a4a5748bc342d77b"
+      },
+      "iteration_rows_sha256": "233326271bcb261916563a96a49e38fa1ab99a087baa277e6df3ba5acb412fb7",
+      "instrumentation": "none",
+      "implementation": "reference-with-selected-prototypes"
+    },
+    {
+      "name": "gc1m",
+      "kernels": "gc1m",
+      "steps": 8,
+      "trace_format": "archive",
+      "production_path": true,
+      "total_seconds": 46.72890295833349,
+      "simulation_seconds": 45.93632212514058,
+      "export_seconds": 0.36317095812410116,
+      "peak_rss_bytes": 1110179840,
+      "trace_bytes": 460959744,
+      "events": 540760,
+      "compute_requests": 38768,
+      "compute_hits": 37384,
+      "transfer_requests": 494184,
+      "transfer_hits": 493944,
+      "template_entries": 99,
+      "template_requests": 488,
+      "template_hits": 274,
+      "rows": [
+        {
+          "step": 0,
+          "wall_seconds": 5.676710792351514
+        },
+        {
+          "step": 1,
+          "wall_seconds": 8.261355749797076
+        },
+        {
+          "step": 2,
+          "wall_seconds": 5.151570958085358
+        },
+        {
+          "step": 3,
+          "wall_seconds": 5.182498124893755
+        },
+        {
+          "step": 4,
+          "wall_seconds": 5.167766457889229
+        },
+        {
+          "step": 5,
+          "wall_seconds": 5.215144041925669
+        },
+        {
+          "step": 6,
+          "wall_seconds": 5.198098917026073
+        },
+        {
+          "step": 7,
+          "wall_seconds": 5.881054584402591
+        }
+      ],
+      "hashes": {
+        "summary.json": "77d66c09ba4e1dc58ed17d6ea204d76dadeb363e1fa9c20c00adf71e6f9d4740",
+        "model-spec.json": "c360c16a36fb18aad567ac954104c34c3b1259f4ff2f5cd41ebb72cf3d51248c",
+        "runtime-plan.json": "502aeb4eadedec19e1e3022b3ef6c6077311697aa4911d8960d7c182450db4f8",
+        "hardware-assumptions.json": "47590bd712724524bce14fbf6afd48c596135ef60b7694a5968a556d09309d08",
+        "cluster.json": "91c3a789260907f9984935aaf1f31f261861842efc69e3d8a4a5748bc342d77b"
+      },
+      "iteration_rows_sha256": "f4a12852293f3a150abf0a6c89e088f94293bf958bfc74869d30bfd76030146a",
+      "instrumentation": "none",
+      "implementation": "reference-with-selected-prototypes"
+    },
+    {
+      "name": "inlinescalars",
+      "kernels": "inlinescalars",
+      "steps": 8,
+      "trace_format": "archive",
+      "production_path": true,
+      "total_seconds": 45.37271041702479,
+      "simulation_seconds": 44.57346279080957,
+      "export_seconds": 0.35859670815989375,
+      "peak_rss_bytes": 1100562432,
+      "trace_bytes": 460959744,
+      "events": 540760,
+      "compute_requests": 38768,
+      "compute_hits": 37384,
+      "transfer_requests": 494184,
+      "transfer_hits": 493944,
+      "template_entries": 99,
+      "template_requests": 488,
+      "template_hits": 274,
+      "rows": [
+        {
+          "step": 0,
+          "wall_seconds": 5.331488916184753
+        },
+        {
+          "step": 1,
+          "wall_seconds": 7.750897250138223
+        },
+        {
+          "step": 2,
+          "wall_seconds": 4.863798292353749
+        },
+        {
+          "step": 3,
+          "wall_seconds": 5.011004166211933
+        },
+        {
+          "step": 4,
+          "wall_seconds": 6.221787709277123
+        },
+        {
+          "step": 5,
+          "wall_seconds": 4.900354083627462
+        },
+        {
+          "step": 6,
+          "wall_seconds": 5.113425583112985
+        },
+        {
+          "step": 7,
+          "wall_seconds": 5.18568345811218
+        }
+      ],
+      "hashes": {
+        "summary.json": "77d66c09ba4e1dc58ed17d6ea204d76dadeb363e1fa9c20c00adf71e6f9d4740",
+        "model-spec.json": "c360c16a36fb18aad567ac954104c34c3b1259f4ff2f5cd41ebb72cf3d51248c",
+        "runtime-plan.json": "502aeb4eadedec19e1e3022b3ef6c6077311697aa4911d8960d7c182450db4f8",
+        "hardware-assumptions.json": "47590bd712724524bce14fbf6afd48c596135ef60b7694a5968a556d09309d08",
+        "cluster.json": "91c3a789260907f9984935aaf1f31f261861842efc69e3d8a4a5748bc342d77b"
+      },
+      "iteration_rows_sha256": "f4a12852293f3a150abf0a6c89e088f94293bf958bfc74869d30bfd76030146a",
+      "instrumentation": "none",
+      "implementation": "reference-with-selected-prototypes"
+    },
+    {
+      "name": "keyhash",
+      "kernels": "keyhash",
+      "steps": 8,
+      "trace_format": "archive",
+      "production_path": true,
+      "total_seconds": 46.282328417059034,
+      "simulation_seconds": 45.47243437496945,
+      "export_seconds": 0.3576372917741537,
+      "peak_rss_bytes": 1122861056,
+      "trace_bytes": 460959744,
+      "events": 540760,
+      "compute_requests": 38768,
+      "compute_hits": 37384,
+      "transfer_requests": 494184,
+      "transfer_hits": 493944,
+      "template_entries": 99,
+      "template_requests": 488,
+      "template_hits": 274,
+      "rows": [
+        {
+          "step": 0,
+          "wall_seconds": 5.409183166921139
+        },
+        {
+          "step": 1,
+          "wall_seconds": 7.860719624906778
+        },
+        {
+          "step": 2,
+          "wall_seconds": 4.9544976670295
+        },
+        {
+          "step": 3,
+          "wall_seconds": 5.185767124872655
+        },
+        {
+          "step": 4,
+          "wall_seconds": 6.381236458662897
+        },
+        {
+          "step": 5,
+          "wall_seconds": 4.976899415720254
+        },
+        {
+          "step": 6,
+          "wall_seconds": 5.192317958921194
+        },
+        {
+          "step": 7,
+          "wall_seconds": 5.320252415724099
+        }
+      ],
+      "hashes": {
+        "summary.json": "77d66c09ba4e1dc58ed17d6ea204d76dadeb363e1fa9c20c00adf71e6f9d4740",
+        "model-spec.json": "c360c16a36fb18aad567ac954104c34c3b1259f4ff2f5cd41ebb72cf3d51248c",
+        "runtime-plan.json": "502aeb4eadedec19e1e3022b3ef6c6077311697aa4911d8960d7c182450db4f8",
+        "hardware-assumptions.json": "47590bd712724524bce14fbf6afd48c596135ef60b7694a5968a556d09309d08",
+        "cluster.json": "91c3a789260907f9984935aaf1f31f261861842efc69e3d8a4a5748bc342d77b"
+      },
+      "iteration_rows_sha256": "f4a12852293f3a150abf0a6c89e088f94293bf958bfc74869d30bfd76030146a",
+      "instrumentation": "none",
+      "implementation": "reference-with-selected-prototypes"
+    },
+    {
+      "name": "namespacehash",
+      "kernels": "namespacehash",
+      "steps": 8,
+      "trace_format": "archive",
+      "production_path": true,
+      "total_seconds": 44.82077195774764,
+      "simulation_seconds": 44.025266458280385,
+      "export_seconds": 0.35531266685575247,
+      "peak_rss_bytes": 1112997888,
+      "trace_bytes": 460959744,
+      "events": 540760,
+      "compute_requests": 38768,
+      "compute_hits": 37384,
+      "transfer_requests": 494184,
+      "transfer_hits": 493944,
+      "template_entries": 99,
+      "template_requests": 488,
+      "template_hits": 274,
+      "rows": [
+        {
+          "step": 0,
+          "wall_seconds": 5.2492350419051945
+        },
+        {
+          "step": 1,
+          "wall_seconds": 7.659872790798545
+        },
+        {
+          "step": 2,
+          "wall_seconds": 4.808047625236213
+        },
+        {
+          "step": 3,
+          "wall_seconds": 4.960042499937117
+        },
+        {
+          "step": 4,
+          "wall_seconds": 6.183263665996492
+        },
+        {
+          "step": 5,
+          "wall_seconds": 4.825524041894823
+        },
+        {
+          "step": 6,
+          "wall_seconds": 5.018349125050008
+        },
+        {
+          "step": 7,
+          "wall_seconds": 5.127629708033055
+        }
+      ],
+      "hashes": {
+        "summary.json": "77d66c09ba4e1dc58ed17d6ea204d76dadeb363e1fa9c20c00adf71e6f9d4740",
+        "model-spec.json": "c360c16a36fb18aad567ac954104c34c3b1259f4ff2f5cd41ebb72cf3d51248c",
+        "runtime-plan.json": "502aeb4eadedec19e1e3022b3ef6c6077311697aa4911d8960d7c182450db4f8",
+        "hardware-assumptions.json": "47590bd712724524bce14fbf6afd48c596135ef60b7694a5968a556d09309d08",
+        "cluster.json": "91c3a789260907f9984935aaf1f31f261861842efc69e3d8a4a5748bc342d77b"
+      },
+      "iteration_rows_sha256": "f4a12852293f3a150abf0a6c89e088f94293bf958bfc74869d30bfd76030146a",
+      "instrumentation": "none",
+      "implementation": "reference-with-selected-prototypes"
+    },
+    {
+      "name": "pickledispatch",
+      "kernels": "pickledispatch",
+      "steps": 8,
+      "trace_format": "archive",
+      "production_path": true,
+      "total_seconds": 45.99911891669035,
+      "simulation_seconds": 45.206622917205095,
+      "export_seconds": 0.35286741610616446,
+      "peak_rss_bytes": 1105985536,
+      "events": 540760,
+      "compute_requests": 38768,
+      "compute_hits": 37384,
+      "transfer_requests": 494184,
+      "transfer_hits": 493944,
+      "template_entries": 99,
+      "template_requests": 488,
+      "template_hits": 274,
+      "rows": [
+        {
+          "step": 0,
+          "wall_seconds": 5.418808999937028
+        },
+        {
+          "step": 1,
+          "wall_seconds": 7.820058042183518
+        },
+        {
+          "step": 2,
+          "wall_seconds": 4.938929375261068
+        },
+        {
+          "step": 3,
+          "wall_seconds": 5.072936582844704
+        },
+        {
+          "step": 4,
+          "wall_seconds": 6.279090375173837
+        },
+        {
+          "step": 5,
+          "wall_seconds": 4.950544582679868
+        },
+        {
+          "step": 6,
+          "wall_seconds": 5.214856874663383
+        },
+        {
+          "step": 7,
+          "wall_seconds": 5.317840917035937
+        }
+      ],
+      "hashes": {
+        "summary.json": "77d66c09ba4e1dc58ed17d6ea204d76dadeb363e1fa9c20c00adf71e6f9d4740",
+        "model-spec.json": "c360c16a36fb18aad567ac954104c34c3b1259f4ff2f5cd41ebb72cf3d51248c",
+        "runtime-plan.json": "502aeb4eadedec19e1e3022b3ef6c6077311697aa4911d8960d7c182450db4f8",
+        "hardware-assumptions.json": "47590bd712724524bce14fbf6afd48c596135ef60b7694a5968a556d09309d08",
+        "cluster.json": "91c3a789260907f9984935aaf1f31f261861842efc69e3d8a4a5748bc342d77b"
+      },
+      "iteration_rows_sha256": "f4a12852293f3a150abf0a6c89e088f94293bf958bfc74869d30bfd76030146a",
+      "instrumentation": "none",
+      "implementation": "reference-with-selected-prototypes"
+    },
+    {
+      "name": "picklereduce",
+      "kernels": "picklereduce",
+      "steps": 8,
+      "trace_format": "archive",
+      "production_path": true,
+      "total_seconds": 45.83205820899457,
+      "simulation_seconds": 45.03977087512612,
+      "export_seconds": 0.35335779190063477,
+      "peak_rss_bytes": 1140064256,
+      "trace_bytes": 460959744,
+      "events": 540760,
+      "compute_requests": 38768,
+      "compute_hits": 37384,
+      "transfer_requests": 494184,
+      "transfer_hits": 493944,
+      "template_entries": 99,
+      "template_requests": 488,
+      "template_hits": 274,
+      "rows": [
+        {
+          "step": 0,
+          "wall_seconds": 5.343674750067294
+        },
+        {
+          "step": 1,
+          "wall_seconds": 7.785609125159681
+        },
+        {
+          "step": 2,
+          "wall_seconds": 4.927925082854927
+        },
+        {
+          "step": 3,
+          "wall_seconds": 5.072119750082493
+        },
+        {
+          "step": 4,
+          "wall_seconds": 6.281149333808571
+        },
+        {
+          "step": 5,
+          "wall_seconds": 4.950719874817878
+        },
+        {
+          "step": 6,
+          "wall_seconds": 5.20561004197225
+        },
+        {
+          "step": 7,
+          "wall_seconds": 5.280204499606043
+        }
+      ],
+      "hashes": {
+        "summary.json": "77d66c09ba4e1dc58ed17d6ea204d76dadeb363e1fa9c20c00adf71e6f9d4740",
+        "model-spec.json": "c360c16a36fb18aad567ac954104c34c3b1259f4ff2f5cd41ebb72cf3d51248c",
+        "runtime-plan.json": "502aeb4eadedec19e1e3022b3ef6c6077311697aa4911d8960d7c182450db4f8",
+        "hardware-assumptions.json": "47590bd712724524bce14fbf6afd48c596135ef60b7694a5968a556d09309d08",
+        "cluster.json": "91c3a789260907f9984935aaf1f31f261861842efc69e3d8a4a5748bc342d77b"
+      },
+      "iteration_rows_sha256": "f4a12852293f3a150abf0a6c89e088f94293bf958bfc74869d30bfd76030146a",
+      "instrumentation": "none",
+      "implementation": "reference-with-selected-prototypes"
+    },
+    {
+      "name": "plain-archive",
+      "kernels": "namespaceplain",
+      "steps": 8,
+      "trace_format": "archive",
+      "production_path": true,
+      "total_seconds": 46.11349674966186,
+      "simulation_seconds": 45.30766704166308,
+      "export_seconds": 0.36002987483516335,
+      "peak_rss_bytes": 1138868224,
+      "trace_bytes": 460959744,
+      "events": 540760,
+      "compute_requests": 38768,
+      "compute_hits": 37384,
+      "transfer_requests": 494184,
+      "transfer_hits": 493944,
+      "template_entries": 99,
+      "template_requests": 488,
+      "template_hits": 274,
+      "rows": [
+        {
+          "step": 0,
+          "wall_seconds": 5.421513041947037
+        },
+        {
+          "step": 1,
+          "wall_seconds": 7.8482867502607405
+        },
+        {
+          "step": 2,
+          "wall_seconds": 4.9414444589056075
+        },
+        {
+          "step": 3,
+          "wall_seconds": 5.111134791281074
+        },
+        {
+          "step": 4,
+          "wall_seconds": 6.289353874977678
+        },
+        {
+          "step": 5,
+          "wall_seconds": 4.960699374787509
+        },
+        {
+          "step": 6,
+          "wall_seconds": 5.195463832933456
+        },
+        {
+          "step": 7,
+          "wall_seconds": 5.347140042111278
+        }
+      ],
+      "hashes": {
+        "summary.json": "77d66c09ba4e1dc58ed17d6ea204d76dadeb363e1fa9c20c00adf71e6f9d4740",
+        "model-spec.json": "c360c16a36fb18aad567ac954104c34c3b1259f4ff2f5cd41ebb72cf3d51248c",
+        "runtime-plan.json": "502aeb4eadedec19e1e3022b3ef6c6077311697aa4911d8960d7c182450db4f8",
+        "hardware-assumptions.json": "47590bd712724524bce14fbf6afd48c596135ef60b7694a5968a556d09309d08",
+        "cluster.json": "91c3a789260907f9984935aaf1f31f261861842efc69e3d8a4a5748bc342d77b"
+      },
+      "iteration_rows_sha256": "f4a12852293f3a150abf0a6c89e088f94293bf958bfc74869d30bfd76030146a",
+      "instrumentation": "none",
+      "implementation": "integrated-namespace-cache"
+    },
+    {
+      "name": "plain-json",
+      "kernels": "namespaceplain",
+      "steps": 2,
+      "trace_format": "json",
+      "production_path": true,
+      "total_seconds": 16.37253737496212,
+      "simulation_seconds": 16.000204499810934,
+      "export_seconds": 0.00035666627809405327,
+      "peak_rss_bytes": 806453248,
+      "trace_bytes": 647251422,
+      "events": 135190,
+      "compute_requests": 9692,
+      "compute_hits": 9346,
+      "transfer_requests": 123546,
+      "transfer_hits": 123306,
+      "template_entries": 51,
+      "template_requests": 122,
+      "template_hits": 4,
+      "rows": [
+        {
+          "step": 0,
+          "wall_seconds": 6.745538165792823
+        },
+        {
+          "step": 1,
+          "wall_seconds": 9.204424040857702
+        }
+      ],
+      "hashes": {
+        "summary.json": "6005f234b89d586173ac99abe26004189b9270c4a41713b8fbf07e075f16c577",
+        "model-spec.json": "c360c16a36fb18aad567ac954104c34c3b1259f4ff2f5cd41ebb72cf3d51248c",
+        "runtime-plan.json": "502aeb4eadedec19e1e3022b3ef6c6077311697aa4911d8960d7c182450db4f8",
+        "hardware-assumptions.json": "47590bd712724524bce14fbf6afd48c596135ef60b7694a5968a556d09309d08",
+        "cluster.json": "91c3a789260907f9984935aaf1f31f261861842efc69e3d8a4a5748bc342d77b",
+        "decode-layers61-b32.trace.json": "94f3467373bd4ceae9e206d2489a068b8fe81cd172b2890b617c8af1fca0463d"
+      },
+      "iteration_rows_sha256": "858d3093ea58bd92e4068acb90390e8d521d6b94e8825d51f525766835b1fd2e",
+      "instrumentation": "none",
+      "implementation": "integrated-namespace-cache"
+    },
+    {
+      "name": "production-archive",
+      "kernels": "",
+      "steps": 8,
+      "trace_format": "archive",
+      "production_path": true,
+      "total_seconds": 45.17710916697979,
+      "simulation_seconds": 44.37037737481296,
+      "export_seconds": 0.36575112538412213,
+      "peak_rss_bytes": 1137606656,
+      "trace_bytes": 460959744,
+      "events": 540760,
+      "compute_requests": 38768,
+      "compute_hits": 37384,
+      "transfer_requests": 494184,
+      "transfer_hits": 493944,
+      "template_entries": 99,
+      "template_requests": 488,
+      "template_hits": 274,
+      "rows": [
+        {
+          "step": 0,
+          "wall_seconds": 5.2842182498425245
+        },
+        {
+          "step": 1,
+          "wall_seconds": 7.704612125176936
+        },
+        {
+          "step": 2,
+          "wall_seconds": 4.869740833062679
+        },
+        {
+          "step": 3,
+          "wall_seconds": 5.021541040856391
+        },
+        {
+          "step": 4,
+          "wall_seconds": 6.228272167034447
+        },
+        {
+          "step": 5,
+          "wall_seconds": 4.846304666716605
+        },
+        {
+          "step": 6,
+          "wall_seconds": 5.080949707888067
+        },
+        {
+          "step": 7,
+          "wall_seconds": 5.143301791045815
+        }
+      ],
+      "hashes": {
+        "summary.json": "77d66c09ba4e1dc58ed17d6ea204d76dadeb363e1fa9c20c00adf71e6f9d4740",
+        "model-spec.json": "c360c16a36fb18aad567ac954104c34c3b1259f4ff2f5cd41ebb72cf3d51248c",
+        "runtime-plan.json": "502aeb4eadedec19e1e3022b3ef6c6077311697aa4911d8960d7c182450db4f8",
+        "hardware-assumptions.json": "47590bd712724524bce14fbf6afd48c596135ef60b7694a5968a556d09309d08",
+        "cluster.json": "91c3a789260907f9984935aaf1f31f261861842efc69e3d8a4a5748bc342d77b"
+      },
+      "iteration_rows_sha256": "f4a12852293f3a150abf0a6c89e088f94293bf958bfc74869d30bfd76030146a",
+      "instrumentation": "none",
+      "implementation": "integrated-namespace-cache"
+    },
+    {
+      "name": "production-json",
+      "kernels": "",
+      "steps": 2,
+      "trace_format": "json",
+      "production_path": true,
+      "total_seconds": 15.940797500312328,
+      "simulation_seconds": 15.55476808315143,
+      "export_seconds": 0.0003516250289976597,
+      "peak_rss_bytes": 800522240,
+      "trace_bytes": 647251422,
+      "events": 135190,
+      "compute_requests": 9692,
+      "compute_hits": 9346,
+      "transfer_requests": 123546,
+      "transfer_hits": 123306,
+      "template_entries": 51,
+      "template_requests": 122,
+      "template_hits": 4,
+      "rows": [
+        {
+          "step": 0,
+          "wall_seconds": 6.552016875240952
+        },
+        {
+          "step": 1,
+          "wall_seconds": 8.951902584172785
+        }
+      ],
+      "hashes": {
+        "summary.json": "6005f234b89d586173ac99abe26004189b9270c4a41713b8fbf07e075f16c577",
+        "model-spec.json": "c360c16a36fb18aad567ac954104c34c3b1259f4ff2f5cd41ebb72cf3d51248c",
+        "runtime-plan.json": "502aeb4eadedec19e1e3022b3ef6c6077311697aa4911d8960d7c182450db4f8",
+        "hardware-assumptions.json": "47590bd712724524bce14fbf6afd48c596135ef60b7694a5968a556d09309d08",
+        "cluster.json": "91c3a789260907f9984935aaf1f31f261861842efc69e3d8a4a5748bc342d77b",
+        "decode-layers61-b32.trace.json": "94f3467373bd4ceae9e206d2489a068b8fe81cd172b2890b617c8af1fca0463d"
+      },
+      "iteration_rows_sha256": "858d3093ea58bd92e4068acb90390e8d521d6b94e8825d51f525766835b1fd2e",
+      "instrumentation": "none",
+      "implementation": "integrated-namespace-cache"
+    },
+    {
+      "name": "profile",
+      "kernels": "",
+      "steps": 8,
+      "trace_format": "archive",
+      "production_path": true,
+      "total_seconds": 46.511537708342075,
+      "simulation_seconds": 45.667547167278826,
+      "export_seconds": 0.3607652080245316,
+      "peak_rss_bytes": 1125449728,
+      "events": 540760,
+      "compute_requests": 38768,
+      "compute_hits": 37384,
+      "transfer_requests": 494184,
+      "transfer_hits": 493944,
+      "template_entries": 99,
+      "template_requests": 488,
+      "template_hits": 274,
+      "rows": [
+        {
+          "step": 0,
+          "wall_seconds": 5.415885707829148
+        },
+        {
+          "step": 1,
+          "wall_seconds": 7.733171582687646
+        },
+        {
+          "step": 2,
+          "wall_seconds": 5.28813570830971
+        },
+        {
+          "step": 3,
+          "wall_seconds": 5.072159875184298
+        },
+        {
+          "step": 4,
+          "wall_seconds": 6.207441083155572
+        },
+        {
+          "step": 5,
+          "wall_seconds": 5.314613707829267
+        },
+        {
+          "step": 6,
+          "wall_seconds": 5.092593249864876
+        },
+        {
+          "step": 7,
+          "wall_seconds": 5.349549791775644
+        }
+      ],
+      "hashes": {
+        "summary.json": "77d66c09ba4e1dc58ed17d6ea204d76dadeb363e1fa9c20c00adf71e6f9d4740",
+        "model-spec.json": "c360c16a36fb18aad567ac954104c34c3b1259f4ff2f5cd41ebb72cf3d51248c",
+        "runtime-plan.json": "502aeb4eadedec19e1e3022b3ef6c6077311697aa4911d8960d7c182450db4f8",
+        "hardware-assumptions.json": "47590bd712724524bce14fbf6afd48c596135ef60b7694a5968a556d09309d08",
+        "cluster.json": "91c3a789260907f9984935aaf1f31f261861842efc69e3d8a4a5748bc342d77b"
+      },
+      "iteration_rows_sha256": "f4a12852293f3a150abf0a6c89e088f94293bf958bfc74869d30bfd76030146a",
+      "instrumentation": "wall-stack-sample",
+      "implementation": "reference-with-selected-prototypes"
+    },
+    {
+      "name": "span-screen",
+      "kernels": "spanindex",
+      "steps": 8,
+      "trace_format": "archive",
+      "production_path": true,
+      "total_seconds": 45.63240533415228,
+      "simulation_seconds": 44.84883579192683,
+      "export_seconds": 0.3413725411519408,
+      "peak_rss_bytes": 1137819648,
+      "events": 540760,
+      "compute_requests": 38768,
+      "compute_hits": 37384,
+      "transfer_requests": 494184,
+      "transfer_hits": 493944,
+      "template_entries": 99,
+      "template_requests": 488,
+      "template_hits": 274,
+      "rows": [
+        {
+          "step": 0,
+          "wall_seconds": 5.31979158334434
+        },
+        {
+          "step": 1,
+          "wall_seconds": 7.882548916619271
+        },
+        {
+          "step": 2,
+          "wall_seconds": 4.8714853329584
+        },
+        {
+          "step": 3,
+          "wall_seconds": 5.018039165996015
+        },
+        {
+          "step": 4,
+          "wall_seconds": 6.2726388750597835
+        },
+        {
+          "step": 5,
+          "wall_seconds": 4.905665582977235
+        },
+        {
+          "step": 6,
+          "wall_seconds": 5.1742482502013445
+        },
+        {
+          "step": 7,
+          "wall_seconds": 5.213341625407338
+        }
+      ],
+      "hashes": {
+        "summary.json": "77d66c09ba4e1dc58ed17d6ea204d76dadeb363e1fa9c20c00adf71e6f9d4740",
+        "model-spec.json": "c360c16a36fb18aad567ac954104c34c3b1259f4ff2f5cd41ebb72cf3d51248c",
+        "runtime-plan.json": "502aeb4eadedec19e1e3022b3ef6c6077311697aa4911d8960d7c182450db4f8",
+        "hardware-assumptions.json": "47590bd712724524bce14fbf6afd48c596135ef60b7694a5968a556d09309d08",
+        "cluster.json": "91c3a789260907f9984935aaf1f31f261861842efc69e3d8a4a5748bc342d77b"
+      },
+      "iteration_rows_sha256": "f4a12852293f3a150abf0a6c89e088f94293bf958bfc74869d30bfd76030146a",
+      "instrumentation": "none",
+      "implementation": "reference-with-selected-prototypes"
+    },
+    {
+      "name": "tupletypes",
+      "kernels": "tupletypes",
+      "steps": 8,
+      "trace_format": "archive",
+      "production_path": true,
+      "total_seconds": 45.42775508388877,
+      "simulation_seconds": 44.628217624966055,
+      "export_seconds": 0.3529242081567645,
+      "peak_rss_bytes": 1126268928,
+      "trace_bytes": 460959744,
+      "events": 540760,
+      "compute_requests": 38768,
+      "compute_hits": 37384,
+      "transfer_requests": 494184,
+      "transfer_hits": 493944,
+      "template_entries": 99,
+      "template_requests": 488,
+      "template_hits": 274,
+      "rows": [
+        {
+          "step": 0,
+          "wall_seconds": 5.344230665825307
+        },
+        {
+          "step": 1,
+          "wall_seconds": 7.786257958039641
+        },
+        {
+          "step": 2,
+          "wall_seconds": 4.856819916050881
+        },
+        {
+          "step": 3,
+          "wall_seconds": 5.057092667091638
+        },
+        {
+          "step": 4,
+          "wall_seconds": 6.205547249875963
+        },
+        {
+          "step": 5,
+          "wall_seconds": 4.895356624852866
+        },
+        {
+          "step": 6,
+          "wall_seconds": 5.087843665853143
+        },
+        {
+          "step": 7,
+          "wall_seconds": 5.202846915926784
+        }
+      ],
+      "hashes": {
+        "summary.json": "77d66c09ba4e1dc58ed17d6ea204d76dadeb363e1fa9c20c00adf71e6f9d4740",
+        "model-spec.json": "c360c16a36fb18aad567ac954104c34c3b1259f4ff2f5cd41ebb72cf3d51248c",
+        "runtime-plan.json": "502aeb4eadedec19e1e3022b3ef6c6077311697aa4911d8960d7c182450db4f8",
+        "hardware-assumptions.json": "47590bd712724524bce14fbf6afd48c596135ef60b7694a5968a556d09309d08",
+        "cluster.json": "91c3a789260907f9984935aaf1f31f261861842efc69e3d8a4a5748bc342d77b"
+      },
+      "iteration_rows_sha256": "f4a12852293f3a150abf0a6c89e088f94293bf958bfc74869d30bfd76030146a",
+      "instrumentation": "none",
+      "implementation": "reference-with-selected-prototypes"
+    },
+    {
+      "name": "warm-profile",
+      "kernels": "",
+      "steps": 8,
+      "trace_format": "archive",
+      "production_path": true,
+      "total_seconds": 53.4350905418396,
+      "simulation_seconds": 52.628198916092515,
+      "export_seconds": 0.358731500338763,
+      "peak_rss_bytes": 1134477312,
+      "trace_bytes": 460959744,
+      "events": 540760,
+      "compute_requests": 38768,
+      "compute_hits": 37384,
+      "transfer_requests": 494184,
+      "transfer_hits": 493944,
+      "template_entries": 99,
+      "template_requests": 488,
+      "template_hits": 274,
+      "rows": [
+        {
+          "step": 0,
+          "wall_seconds": 5.40059108287096
+        },
+        {
+          "step": 1,
+          "wall_seconds": 7.806176499929279
+        },
+        {
+          "step": 2,
+          "wall_seconds": 4.945136334281415
+        },
+        {
+          "step": 3,
+          "wall_seconds": 5.116177957970649
+        },
+        {
+          "step": 4,
+          "wall_seconds": 6.413202582858503
+        },
+        {
+          "step": 5,
+          "wall_seconds": 4.993127750232816
+        },
+        {
+          "step": 6,
+          "wall_seconds": 5.182407999876887
+        },
+        {
+          "step": 7,
+          "wall_seconds": 12.576889916788787
+        }
+      ],
+      "hashes": {
+        "summary.json": "77d66c09ba4e1dc58ed17d6ea204d76dadeb363e1fa9c20c00adf71e6f9d4740",
+        "model-spec.json": "c360c16a36fb18aad567ac954104c34c3b1259f4ff2f5cd41ebb72cf3d51248c",
+        "runtime-plan.json": "502aeb4eadedec19e1e3022b3ef6c6077311697aa4911d8960d7c182450db4f8",
+        "hardware-assumptions.json": "47590bd712724524bce14fbf6afd48c596135ef60b7694a5968a556d09309d08",
+        "cluster.json": "91c3a789260907f9984935aaf1f31f261861842efc69e3d8a4a5748bc342d77b"
+      },
+      "iteration_rows_sha256": "f4a12852293f3a150abf0a6c89e088f94293bf958bfc74869d30bfd76030146a",
+      "instrumentation": "cprofile-step-7",
+      "implementation": "reference-with-selected-prototypes"
+    }
+  ],
+  "converted_traces": [
+    {
+      "name": "confirm-baseline",
+      "conversion_seconds": 26.751207666937262,
+      "bytes": 5179494044,
+      "sha256": "e084532f8e5429bd08e3ce63bea60a4edb92181a84b5c15b165a8b6f0c30c3d2"
+    },
+    {
+      "name": "confirm-combined",
+      "conversion_seconds": 26.92142445826903,
+      "bytes": 5179494044,
+      "sha256": "e084532f8e5429bd08e3ce63bea60a4edb92181a84b5c15b165a8b6f0c30c3d2"
+    },
+    {
+      "name": "confirm-namespacehash",
+      "conversion_seconds": 26.594037000089884,
+      "bytes": 5179494044,
+      "sha256": "e084532f8e5429bd08e3ce63bea60a4edb92181a84b5c15b165a8b6f0c30c3d2"
+    }
+  ],
+  "production_archive_equality": {
+    "chunks": 536,
+    "positions": 540760,
+    "iterations": 8
+  }
+}

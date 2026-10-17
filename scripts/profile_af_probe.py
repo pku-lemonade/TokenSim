@@ -22,6 +22,9 @@ parser.add_argument(
 )
 parser.add_argument("--steps", type=int, default=4)
 parser.add_argument(
+    "--trace-format", choices=("json", "msgpack", "archive"), default="json"
+)
+parser.add_argument(
     "--profile-step",
     type=int,
     help="Instrument one zero-based environment run and write runtime.prof.",
@@ -32,10 +35,17 @@ parser.add_argument("--semantic-digest", action="store_true")
 args = parser.parse_args()
 if args.profile_step is not None and not 0 <= args.profile_step < args.steps:
     parser.error("profile-step must select an existing zero-based step")
+if args.semantic_digest and args.trace_format != "json":
+    parser.error(
+        "semantic-digest requires trace-format json; convert binary traces first"
+    )
 sys.path.insert(0, str(args.source))
 from scripts import run_deepseek_mla as cli
 from TokenSim.af import factory
 
+supports_trace_format = hasattr(cli.build_parser().parse_args([]), "trace_format")
+if not supports_trace_format and args.trace_format != "json":
+    parser.error("selected source does not support binary trace formats")
 args.output.mkdir(parents=True, exist_ok=True)
 metrics = dict(
     kernels=args.kernels,
@@ -43,6 +53,7 @@ metrics = dict(
     steps=args.steps,
     python_version=sys.version.split()[0],
     production_path=not args.kernels or args.production_path,
+    trace_format=args.trace_format,
     rows=[],
 )
 original_simulate, original_export = cli.simulate, cli.write_profile
@@ -137,6 +148,7 @@ with ExitStack() as stack:
             "--output",
             str(args.output),
         ]
+        + (["--trace-format", args.trace_format] if supports_trace_format else [])
         + (
             ["--no-resume"]
             if hasattr(cli.build_parser().parse_args([]), "resume")
@@ -148,6 +160,9 @@ metrics["peak_rss_bytes"] = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
 if sys.platform != "darwin":
     metrics["peak_rss_bytes"] *= 1024
 metrics["hashes"] = {}
+metrics["trace_bytes"] = sum(
+    path.stat().st_size for path in args.output.glob("decode-layers61-b32.trace.*")
+)
 for path in args.output.glob("*.json"):
     if path.name in ("progress.json", "measurement.json"):
         continue
@@ -171,5 +186,6 @@ print(
     flush=True,
 )
 if not args.keep_trace:
-    (args.output / "decode-layers61-b32.trace.json").unlink()
+    for path in args.output.glob("decode-layers61-b32.trace.*"):
+        path.unlink()
     shutil.rmtree(args.output / ".experiments", ignore_errors=True)
