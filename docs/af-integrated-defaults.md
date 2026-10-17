@@ -63,6 +63,42 @@ The SimPy loop and condition prototypes add implementation maintenance without a
 The optional writing thread showed no advantage over synchronous prefix export in the concurrent comparison and is excluded.
 Sparse query normalization and specialized validation remain prototypes because their small screen gains do not establish a repeatable complete-command improvement.
 
+## Measurements
+
+The final source revision is `da6ac62`, and the fresh 16-step reference is `5119719`.
+That reference already includes the earlier runtime, cache, collection and bounded-trace improvements and configurable trace output.
+The host is an Apple M5 with 10 logical processors and 32 GiB of memory, running Python 3.12.12.
+The reference and final 16-step measurements run sequentially in fresh interpreters with complete trace output.
+
+| Workload | Reference total | Integrated total | Speedup | Integrated peak resident memory |
+| --- | ---: | ---: | ---: | ---: |
+| Original geometry, 16 steps | 115.265 s | 110.449 s | 1.044x | 1.488 GB |
+| Original configuration, 100 steps | 688.741 s, historical | 639.529 s | 1.077x, historical comparison | 2.108 GB |
+
+This fresh pair uses 4.18% less time.
+It is one pair, so small differences remain sensitive to host variation.
+All six output files are byte-identical, including the complete 1,081,520-event trace.
+All iteration rows, provider request counts, cache hits and template counts match.
+JSON preparation moves into the timed simulation, and the final publication call takes 0.000843 seconds.
+The total interval includes both stages.
+The [machine-readable evidence](../experiments/performance/integrated-defaults-20261017/results.json) records the full measurements and equality checks.
+
+The 100-step reference is the previously recorded complete run described in [the runtime performance notes](af-runtime-performance.md).
+It is a historical comparison, so the 49.212-second reduction does not establish a paired long-run speedup.
+The new run completes all 6,759,500 events with 2,107,670,528 bytes of peak resident memory.
+All 100 iteration rows, provider counts and all six JSON file hashes match that reference.
+The matching uncompressed trace contains 32,392,112,426 bytes.
+Its SHA-256 is `28f80d0b7a471c2e17bfb4feae77f5900e71c3912c72a17c820b930f5fa79b8a`.
+
+The concurrent check runs three batch-32 streams with four iterations per stream in one process.
+It completes in 92.794 seconds with 1,897,431,040 bytes of peak resident memory and no events remaining in active trace storage.
+All 811,140 events produce the same complete trace hash as the recorded concurrent reference, and all iteration rows, provider counts and template observations match.
+The hash is `af4384718c14133f639aafe2d6a654d930ec43b06f5aaee021db37ca089dfb9f`.
+This is a short concurrent memory and output check and does not establish a paired concurrent speedup or memory bound for arbitrary concurrency.
+
+All 604 unit tests pass, including trace selection, validation modes, interleaved completion, snapshot readback, late replacement, repeated export, output errors and temporary-file cleanup.
+All edited source, test and script files satisfy the 500-line limit, and the pinned Black formatter and `git diff --check` pass.
+
 ## Reproduction
 
 `scripts/profile_af_probe.py` with no `--kernels` selection measures the production command, including its default trace preparation.
