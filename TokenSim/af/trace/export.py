@@ -12,6 +12,8 @@ from typing import Any
 
 from TokenSim.af.runtime.host import host_collection
 from TokenSim.af.trace.metrics import AFTraceEvent
+from TokenSim.af.trace.config import AFTraceConfig, TIMING_FIELDS
+from TokenSim.errors import ConfigurationError
 
 
 @lru_cache(maxsize=128)
@@ -53,6 +55,8 @@ def write_chrome_trace(
     path: str | Path,
     events: Iterable[AFTraceEvent],
     metadata: Mapping[str, Any] | None = None,
+    *,
+    trace_config: AFTraceConfig | None = None,
 ) -> Path:
     """Write complete events in input order, with temporary memory per event.
 
@@ -60,6 +64,15 @@ def write_chrome_trace(
     JSON values match AFTraceEvent.as_dict(); whitespace is compact.
     A failed export leaves any existing destination intact.
     """
+    if trace_config is not None and not isinstance(trace_config, AFTraceConfig):
+        raise ConfigurationError("trace_config must be an AFTraceConfig")
+    options = trace_config or AFTraceConfig()
+    if options.mode != "full":
+        raise ConfigurationError("trace export requires full mode")
+    if options.filtered:
+        events = (event for event in events if options.includes(event))
+    if options != AFTraceConfig():
+        metadata = dict(metadata or {}, trace_config=options.describe())
     encoder = json.JSONEncoder(
         ensure_ascii=False,
         separators=(",", ":"),
@@ -85,7 +98,11 @@ def write_chrome_trace(
             temporary = Path(stream.name)
             stream.write('{"displayTimeUnit":"us","traceEvents":[')
             for index, event in enumerate(events):
-                row = _record_dict(event)
+                row = (
+                    {name: getattr(event, name) for name in TIMING_FIELDS}
+                    if options.detail == "timing"
+                    else _record_dict(event)
+                )
                 item = dict(
                     name=row["stage"] or row["operation"] or row["event_type"],
                     cat=row["event_type"],

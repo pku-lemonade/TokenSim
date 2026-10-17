@@ -209,8 +209,11 @@ simulate = simulate_decode
 
 
 def write_profile(path: str | Path, executor, metadata: dict[str, Any] | None = None):
+    options = getattr(executor.trace, "trace_config", None)
+    kwargs = {"trace_config": options} if options is not None else {}
     return write_chrome_trace(
         path,
         executor.trace.events,
         metadata or {"timing": "simulated operator-table service time"},
+        **kwargs,
     )

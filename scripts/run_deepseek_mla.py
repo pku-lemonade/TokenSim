@@ -17,6 +17,9 @@ from scripts.deepseek_v3_runtime import (
     simulate,
     write_profile,
 )
+from scripts.af_trace_options import add_trace_arguments, trace_configuration
+from TokenSim.af.trace.config import AFTraceConfig
+from TokenSim.errors import ConfigurationError
 
 
 def write_json(path: str | Path, value):
@@ -28,6 +31,11 @@ def write_json(path: str | Path, value):
 
 
 def run(args):
+    trace_config = trace_configuration(args)
+    # Keep the legacy call path intact for default runs and diagnostic wrappers.
+    trace_kwargs = (
+        {"trace_config": trace_config} if trace_config != AFTraceConfig() else {}
+    )
     config = configuration(
         full_model=args.full_model,
         a_tp=args.a_tp,
@@ -69,19 +77,25 @@ def run(args):
             steps=args.steps,
             trace=True,
             fallback=args.fallback,
+            **trace_kwargs,
         )
         step_us = sum(row["makespan_us"] for row in measurements) / args.steps
         try:
-            profile = write_profile(
-                output / f"decode-layers{config.plan.total_layers}-b{batch}.trace.json",
-                executor,
-                metadata={
-                    "model": MODEL_ID,
-                    "backend": "operator_table",
-                    "timing": "simulated service and queue durations; no GPU execution",
-                    "hardware_assumptions_file": "hardware-assumptions.json",
-                    "hypothetical_f_memory_gib": args.hypothetical_f_memory_gib,
-                },
+            profile = (
+                write_profile(
+                    output
+                    / f"decode-layers{config.plan.total_layers}-b{batch}.trace.json",
+                    executor,
+                    metadata={
+                        "model": MODEL_ID,
+                        "backend": "operator_table",
+                        "timing": "simulated service and queue durations; no GPU execution",
+                        "hardware_assumptions_file": "hardware-assumptions.json",
+                        "hypothetical_f_memory_gib": args.hypothetical_f_memory_gib,
+                    },
+                )
+                if trace_config.mode == "full"
+                else None
             )
         finally:
             executor.trace.close()
@@ -93,7 +107,7 @@ def run(args):
                 "avg_step_us": step_us,
                 "tokens_per_s": batch / (step_us / 1e6),
                 "tokens_per_s_per_user": 1e6 / step_us,
-                "profile": str(profile.name),
+                "profile": str(profile.name) if profile is not None else None,
                 "operator_stats": compute.stats_dict(),
                 "transfer": transfer.describe(),
             }
@@ -108,6 +122,7 @@ def run(args):
             "hardware_assumptions_file": "hardware-assumptions.json",
             "hypothetical_f_memory_gib": args.hypothetical_f_memory_gib,
             "fallback": args.fallback,
+            **({"trace_config": trace_config.describe()} if trace_kwargs else {}),
             "results": rows,
             "limitations": [
                 "CPU event simulation; no checkpoint loading or GPU execution",
@@ -140,11 +155,17 @@ def build_parser():
         choices=("table_first", "table_only", "analytical_only"),
         default="table_first",
     )
+    add_trace_arguments(parser)
     return parser
 
 
 def main(argv=None):
-    args = build_parser().parse_args(argv)
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    try:
+        trace_configuration(args)
+    except ConfigurationError as exc:
+        parser.error(str(exc))
     if (
         min(
             *args.batches,

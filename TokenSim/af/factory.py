@@ -12,6 +12,8 @@ from TokenSim.af.runtime.plan import AFRuntimePlan
 from TokenSim.af.runtime.compiler import compile_af_runtime_plan
 from TokenSim.af.runtime.host import host_collection, run_environment
 from TokenSim.af.trace.archive import ArchivedTraceRecorder
+from TokenSim.af.trace.config import AFTraceConfig
+from TokenSim.af.trace.transient import ValidationTraceRecorder
 from TokenSim.config.cluster_config import ClusterConfig
 from TokenSim.config.cluster_config import WorkerConfig
 from TokenSim.config.model_config import ModelSpec
@@ -49,11 +51,24 @@ def build_model_runtime(doc, *, hardware, model, block_size=16):
 
 @host_collection()
 def simulate_decode(
-    config, batch, context, *, steps=1, trace=True, fallback="table_first", seed=42
+    config,
+    batch,
+    context,
+    *,
+    steps=1,
+    trace=True,
+    fallback="table_first",
+    seed=42,
+    trace_config: AFTraceConfig | None = None,
 ):
     """Exact fixed-batch decode; every token advances its own SimPy iteration."""
     if any(type(value) is not int or value < 1 for value in (batch, context, steps)):
         raise ValueError("batch, context and steps must be positive")
+    if trace_config is not None and not isinstance(trace_config, AFTraceConfig):
+        raise ConfigurationError("trace_config must be an AFTraceConfig")
+    options = trace_config or AFTraceConfig(mode="full" if trace else "off")
+    if trace is False and options.enabled:
+        raise ConfigurationError("trace=False conflicts with an enabled trace_config")
     peak_context = context + steps
     if peak_context > config.model.max_position_embeddings:
         raise ConfigurationError("fixed-batch decode exceeds the model context limit")
@@ -85,6 +100,13 @@ def simulate_decode(
         dtype=config.model.activation_dtype,
         fallback=fallback,
     )
+    recorder = (
+        ValidationTraceRecorder()
+        if options.mode == "validate"
+        else ArchivedTraceRecorder(options.enabled)
+    )
+    recorder.validate_on_completion = options.validate
+    recorder.trace_config = trace_config
     executor = ModelAFExecutor(
         env,
         config.cluster,
@@ -98,7 +120,7 @@ def simulate_decode(
         moe_config=config.model.moe,
         random_seed=seed,
         runtime_plan=config.plan,
-        trace_recorder=ArchivedTraceRecorder(trace),
+        trace_recorder=recorder,
         model=config.model,
     )
     rows = []

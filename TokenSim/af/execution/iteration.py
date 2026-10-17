@@ -121,7 +121,8 @@ class ExecutorIterationMixin:
             for block_id, completed_at in iteration.block_completed_at.items()
         }
         if self.trace.enabled:
-            self.trace.validate_invariants(iteration.iteration_id)
+            if self.trace.validate_on_completion:
+                self.trace.validate_invariants(iteration.iteration_id)
             self.trace.complete_iteration(iteration.iteration_id)
         return iteration
 

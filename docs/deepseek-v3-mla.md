@@ -79,6 +79,8 @@ python benchmark.py \
 Outputs include model and cluster metadata, the runtime plan, hardware assumptions, summary statistics and a Chrome/Perfetto trace.
 `avg_step_us` reports elapsed step latency; summed component service includes work on concurrent resources.
 Operator statistics in `summary.json` report measured matches, interpolation, extrapolation, analytical estimates and missing shapes.
+Use `--trace off` to skip detailed events, `--trace validate` to validate and release events, or the default `--trace full` to retain and export them.
+Full mode supports optional event-type, layer, iteration and detail selections described in [configurable AF traces](af-trace-configuration.md).
 
 ## Operator data
 
