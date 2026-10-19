@@ -10,7 +10,6 @@ from TokenSim.af.caching.estimates import (
     cached_plan,
     initialize_cache,
     snapshot,
-    traffic_feature_fingerprint,
 )
 from TokenSim.af.providers.queries import AFServiceEstimate, AFTransferQuery
 from TokenSim.comm.traffic import (
@@ -78,7 +77,7 @@ class TransferPlanMixin:
             )
 
     def communication_plan(self, query):
-        """Static traffic only. Invocation identities and readiness stay outside."""
+        """Cache wire geometry; invocation provenance and readiness stay outside."""
         self.validate_query(query)
         endpoints = tuple(query.physical_endpoints)
         if (
@@ -131,15 +130,10 @@ class TransferPlanMixin:
             payload,
             query.dtype,
             endpoints,
-            query.participant_ranks,
-            self.node_by_worker,
-            self.placement,
-            query.logical_input_bytes_per_rank,
-            query.logical_output_bytes_per_rank,
-            traffic_feature_fingerprint(query.routing_edges),
-            traffic_feature_fingerprint(query.tensor_slices),
-            query.topology,
         )
+        # The provider pins node placement. Builders below consume only this
+        # geometry and the statistical/backend options, never routing records,
+        # tensor item identities, logical byte annotations or query topology.
         transport_backend = getattr(query, "transport_backend", "unspecified")
         if not isinstance(transport_backend, str) or not transport_backend:
             raise ConfigurationError("transport backend must be a nonempty string")

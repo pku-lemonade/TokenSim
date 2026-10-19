@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import cached_property
 import math
 
 from TokenSim.dtypes import dtype_size_bytes
@@ -97,7 +98,7 @@ class TrafficPhase:
             message.wire_bytes for messages in self.rounds for message in messages
         )
 
-    @property
+    @cached_property
     def resource_ids(self):
         return tuple(
             sorted(

@@ -197,9 +197,9 @@ class AFResourceRegistry:
         )
         timing = cluster_config.af.communication_timing
         host_keys = (
-            {"shared"}
+            ("shared",)
             if timing.host_resource_scope == "shared"
-            else {str(worker_id) for worker_id in self.worker_configs}
+            else tuple(str(worker_id) for worker_id in self.worker_configs)
         )
         self.host_submission_slots = (
             {key: simpy.Resource(env, capacity=1) for key in host_keys}

@@ -336,7 +336,7 @@ class TemplateTest(unittest.TestCase):
             )
             plan = _formal_runtime_plan(cluster, moe)
             planner = ParallelExecutionPlanner(cluster, runtime_plan=plan)
-            for replica in (0, 1, 0):
+            for replica in (0, 1, 0, 1, 0, 1):
                 placement = planner.placement(
                     f"a-pool:{replica*tp}",
                     cluster.execution_domains["f-domain"].logical_instances[replica],
@@ -378,7 +378,7 @@ class TemplateTest(unittest.TestCase):
                 bound = planner.build_layer(block, 0, cluster.af.links[0])
                 reference = planner._build_runtime_layer(block, 0, cluster.af.links[0])
                 self.assertEqual(bound.nodes, reference.nodes)
-            self.assertEqual(planner.template_cache.hits, 1)
+            self.assertEqual(planner.template_cache.hits, 2)
             self.assertEqual(len(planner.template_cache.templates), 2)
 
     def test_cached_dags_match_reference_for_every_bound_field(self):
@@ -387,6 +387,7 @@ class TemplateTest(unittest.TestCase):
         compared = []
 
         def checked(planner, block, layer, link):
+            warm = original(planner, block, layer, link)
             bound = original(planner, block, layer, link)
             reference = planner._build_runtime_layer(block, layer, link)
             self.assertEqual(bound.nodes, reference.nodes)
@@ -395,7 +396,8 @@ class TemplateTest(unittest.TestCase):
             AFExecutionDAG(bound.nodes)
             again = original(planner, block, layer, link)
             self.assertEqual(again.nodes, reference.nodes)
-            compared.extend((bound, again))
+            self.assertEqual(warm.nodes, reference.nodes)
+            compared.extend((warm, bound, again))
             return bound
 
         with patch.object(ParallelExecutionPlanner, "build_layer", checked):
@@ -405,14 +407,14 @@ class TemplateTest(unittest.TestCase):
         cache = executor.plan_builder.template_cache
         self.assertGreater(cache.hits, 0)
         self.assertEqual(cache.requests, len(compared))
-        self.assertIs(compared[0].predecessor_indices, compared[1].predecessor_indices)
+        self.assertIs(compared[1].predecessor_indices, compared[2].predecessor_indices)
         self.assertIs(
-            compared[0].nodes[0].physical_workers,
             compared[1].nodes[0].physical_workers,
+            compared[2].nodes[0].physical_workers,
         )
-        self.assertIs(compared[0].nodes[0].local_work, compared[1].nodes[0].local_work)
+        self.assertIs(compared[1].nodes[0].local_work, compared[2].nodes[0].local_work)
         with self.assertRaises(TypeError):
-            compared[0].nodes[0].metadata["changed"] = True
+            compared[1].nodes[0].metadata["changed"] = True
 
     def test_service_trace_and_completion_differential_matrix(self):
         for tp, block, batch, context, router, dtype in (
@@ -478,6 +480,8 @@ class TemplateTest(unittest.TestCase):
                 block, routing_snapshots=(replace(snapshot, assignments=assignments),)
             )
             bound = planner.build_layer(changed, 0, link)
+            planner.build_layer(changed, 0, link)
             reference = planner._build_runtime_layer(changed, 0, link)
             self.assertEqual(bound.nodes, reference.nodes)
         self.assertEqual(len(cache.templates), 2)
+        self.assertLessEqual(len(cache.probation), 2)

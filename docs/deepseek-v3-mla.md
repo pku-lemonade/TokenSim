@@ -1,75 +1,117 @@
-# DeepSeek V3 MLA simulation
+# DeepSeek-V3 multi-head latent attention (MLA)
 
-The runner uses the catalog model in `data/models/deepseek-v3-671b-mla.yaml` and the standard AF runtime.
-Architecture metadata retains the [official configuration reference](https://huggingface.co/deepseek-ai/DeepSeek-V3/blob/main/config.json) and the checked-in source snapshot.
-It simulates operator service and resource contention without loading weights or running GPU inference.
+Multi-head latent attention (MLA) compresses the key/value (KV) state retained for each token and changes the attention projections used during decode.
+TokenSim represents DeepSeek-V3 with the [catalog model](../data/models/deepseek-v3-671b-mla.yaml), whose architecture metadata references the [official configuration](https://huggingface.co/deepseek-ai/DeepSeek-V3/blob/main/config.json) and a [checked-in snapshot](../data/models/deepseek-v3-hf-config.json).
+The model supplies attention geometry, KV storage and operator shapes for latency estimation without loading checkpoint weights.
 
-| Parameter | Value |
+## Model geometry
+
+The model separates the attention head's content dimensions from its rotary position embedding (RoPE) dimensions.
+Its mixture-of-experts (MoE) structure follows three dense layers with 58 expert layers.
+
+| Parameter | Catalog value |
 | --- | --- |
-| Hidden size / layers | 7168 / 61 |
+| Hidden size | 7168 |
+| Transformer layers | 61 |
 | Query heads | 128 |
-| Query / KV latent rank | 1536 / 512 |
-| Per-head noPE / RoPE / value dimensions | 128 / 64 / 128 |
-| Dense / MoE layers | 3 / 58 |
-| Routed experts / top-k / shared experts | 256 / 8 / 1 |
+| Query compression rank | 1536 |
+| KV compression rank | 512 |
+| Content dimensions per query/key head | 128 |
+| RoPE dimensions per query/key head | 64 |
+| Value dimensions per head | 128 |
+| Dense layers / MoE layers | 3 / 58 |
+| Routed experts / selected experts per token | 256 / 8 |
+| Shared experts | 1 |
+| Vocabulary size | 129280 |
+| Catalog context limit | 163840 tokens |
 
-Multi-head latent attention (MLA) uses a 192-element query/key head and a 576-element compressed KV cache per token per layer.
-At BF16 precision, the cache uses 1152 bytes per token per layer on each A TP rank.
-A TP shards query heads and their projections while replicating the compressed latent cache.
+A query/key head has `128 + 64 = 192` elements before decode absorption.
+The query compression rank controls projection work and weight storage, while the KV compression rank controls both the retained cache and compressed attention work.
+These ranks have separate roles in the model.
 
-Decode composes query/KV projections, latent normalization, rotary embeddings, query absorption, compressed attention, value expansion and output projection.
-Prefill expands KV before causal attention and stores the compressed latent cache.
-Whole-model execution includes dense and MoE FFNs, shared experts, model boundaries, communication and precision conversions.
-AF MLA recomputation requires whole, equal-length contexts without cached prefixes or partial chunks.
-Ordinary prefill uses complete-model workers.
-Routing uses seeded synthetic assignments; it does not reproduce DeepSeek's `noaux_tc` grouping policy.
-The model uses BF16 architectural estimates, and multi-token prediction is unsupported.
+## Compressed KV cache
 
-## Run decode
+Each token retains one 512-element KV latent vector and one 64-element RoPE key vector per layer.
+The cache width is therefore
 
-A single-layer experiment uses one A worker and one F worker by default:
+$$
+d_{\mathrm{cache}} = r_{\mathrm{KV}} + d_{\mathrm{RoPE}} = 512 + 64 = 576.
+$$
 
-```bash
-python scripts/run_deepseek_mla.py \
-  --batches 1 4 \
-  --context 2048 \
-  --fallback analytical_only \
-  --output outputs/deepseek-mla
+At bfloat16 (BF16) precision, this is `576 * 2 = 1152` bytes per token per layer.
+The cached latent vector is shared by the query heads; the cache does not store a separate expanded key and value vector for every head.
+
+Tensor parallelism (TP) shards query heads and the corresponding head-specific projections.
+The current cache layout replicates the compressed KV state on each TP rank that owns the layer.
+Increasing TP reduces the local head count while retaining the 576-element cache width on each rank.
+
+For a rank covering `L` layers and requests with resident context lengths `s_i`, the logical cache allocation is
+
+$$
+M_{\mathrm{KV}} = 1152 L \sum_i s_i \quad \text{bytes at BF16}.
+$$
+
+A single 8192-token context covering all 61 layers therefore requires 549 mebibytes (MiB) of logical KV storage per rank.
+This calculation excludes block padding, model weights and execution workspaces.
+Configured KV block sizes determine the padded allocation used by capacity checks.
+
+## Attention computation
+
+The latency model decomposes MLA into projections, normalization, positional work and an attention core.
+Its decode path uses absorbed attention, with these stages for each new token:
+
+- Compress the query from hidden size 7168 to rank 1536, normalize it and project it into the local query heads.
+- Project the hidden state into the 576-element KV-plus-RoPE representation and normalize the 512-element latent component.
+- Apply RoPE to the positional query and key components.
+- Absorb the key expansion into each head's content query, mapping 128 content dimensions into the 512-dimensional latent space.
+- Compute attention scores and the weighted aggregation over the compressed KV cache.
+- Expand each head's aggregated latent value from 512 to 128 dimensions and apply the output projection.
+
+The compressed attention core includes softmax and the cache read/write work.
+Query absorption, value expansion and output projection have separate service estimates.
+Decode accepts one context length per query token, so batches with different request lengths retain their actual cache-read workload.
+
+Full-sequence prefill uses an expanded attention path.
+It expands the latent KV representation into the local key and value heads before causal attention, then retains the compressed cache for later decode.
+This path has a KV-expansion estimate and omits the separate decode query-absorption and post-attention value-expansion operations.
+The [standalone MLA operator adapter](../TokenSim/operator_data/mla.py) requires equal-length full sequences for prefill and rejects cached prefixes or partial chunks.
+
+Dense feed-forward networks (FFNs), routed experts, shared experts, model boundaries and required communication contribute separately to whole-model latency.
+An MLA-core measurement alone covers the attention core defined here.
+
+## Operator data and estimation
+
+| Operator table | Modeled MLA work |
+| --- | --- |
+| `gemm` | Query/KV projections, prefill KV expansion and output projection |
+| `batched_gemm` | Per-head query absorption and value expansion during decode |
+| `elementwise` | Normalization, RoPE and configured elementwise operations |
+| `mla_attention` | Phase-specific attention core, including its cache accesses |
+
+MLA-core lookup identifies the phase, execution mode, batch/query lengths, context-length distribution, local query-head count, latent dimensions and activation/cache precision.
+The query compression rank affects projection estimates and does not change the compressed attention core's cache width.
+Measurements must match the intended operator boundary to avoid charging a fused kernel together with its separately modeled components.
+
+`table_first` uses compatible measurements before analytical fallback.
+`table_only` rejects missing shapes, and `analytical_only` derives work from the supplied geometry and device parameters.
+Reported provenance distinguishes measurements, interpolation, extrapolation and analytical estimates.
+See [operator latency data](operator-latency-model.md) for package generation and lookup policies.
+
+## Inspect the catalog model
+
+Run this example from the repository root:
+
+```python
+from TokenSim.hardware import HardwareContext
+
+model = HardwareContext.load("data").model("deepseek-v3-671b-mla")
+shape = model.mla_dimensions.local_shape(model.num_attention_heads, tp=8)
+
+print(model.num_layers, model.num_attention_heads)  # 61 128
+print(shape["num_heads"], shape["kv_width"])  # 16 576
 ```
 
-The complete model defaults to one A rank and 32 F ranks with rank-reuse expert placement:
-
-```bash
-python scripts/run_deepseek_mla.py \
-  --full-model \
-  --batches 1 \
-  --context 2048 \
-  --fallback analytical_only \
-  --output outputs/deepseek-v3
-```
-
-`--a-tp`, `--f-tp`, `--af-batch-size`, `--device` and `--network` select the parallel layout and catalog hardware.
-Physical placement uses explicit eight-slot nodes and dedicated A/F inventory.
-Capacity checks account for weights, protocol buffers and padded KV blocks.
-`--hypothetical-f-memory-gib` changes F memory capacity while retaining the base device's compute and bandwidth parameters, and the output records that assumption.
-
-The decode runner uses fixed concurrency with prefilled KV state.
-`data/clusters/deepseek_v3/1a32f.json` declares a decode-only runtime with one A worker and 32 F workers.
-A serving cluster must additionally declare complete-model prefill workers with enough memory for the full model and its KV cache.
-AF prefill domains and phase selection are unsupported.
-
-Outputs include model and cluster metadata, the runtime plan, hardware assumptions, summary statistics and a Chrome/Perfetto trace.
-`avg_step_us` reports elapsed step latency; summed component service includes work on concurrent resources.
-Operator statistics in `summary.json` report measured matches, interpolation, extrapolation, analytical estimates and missing shapes.
-
-## Operator data
-
-The operator-data schema supports `batched_gemm` and `mla_attention` tables.
-A decode MLA core covers compressed query/key attention, softmax, compressed value aggregation and cache updates.
-It excludes query absorption, value expansion and output projection, which have separate service estimates.
-Prefill core records exclude KV expansion.
-Measured kernels spanning several components must have compatible coverage to avoid duplicate charges.
-
-`table_first` uses compatible measurements before analytical fallback, and `table_only` rejects missing shapes.
-MLA core keys retain phase, query/context lengths, head count, latent dimensions, precision and execution mode.
-See [operator latency data](operator-latency-model.md) for package generation, provenance and lookup policies.
+The catalog defaults to BF16 architectural estimates for weights, activations and KV storage.
+The official checkpoint declares 8-bit floating-point (FP8) quantization; its complete quantized execution behavior is outside these default estimates.
+Expert assignments are seeded synthetic inputs and do not reproduce the checkpoint's `noaux_tc` grouped routing policy.
+Multi-token prediction is outside the current model.

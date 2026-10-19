@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import Any, Mapping
 
+from TokenSim.af.planning.coalesce import rewrite_dependencies
 from TokenSim.af.planning.nodes import (
     ExecutionNode,
     ExecutionStage,
@@ -455,18 +456,5 @@ def group_routed_expert_nodes(
         if node.node_id in aliases and node.node_id not in replacements:
             continue
         node = replacements.get(node.node_id, node)
-        result.append(
-            replace(
-                node,
-                predecessor_ids=tuple(
-                    dict.fromkeys(
-                        aliases.get(pred, pred) for pred in node.predecessor_ids
-                    )
-                ),
-                input_producer_ids=tuple(
-                    (endpoint, aliases.get(producer, producer))
-                    for endpoint, producer in node.input_producer_ids
-                ),
-            )
-        )
-    return tuple(result)
+        result.append(node)
+    return rewrite_dependencies(result, aliases)

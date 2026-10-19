@@ -3,20 +3,22 @@
 from dataclasses import replace
 
 
-def _rewrite(nodes, aliases):
-    return tuple(
-        replace(
-            node,
-            predecessor_ids=tuple(
-                dict.fromkeys(aliases.get(key, key) for key in node.predecessor_ids)
-            ),
-            input_producer_ids=tuple(
-                (endpoint, aliases.get(producer, producer))
-                for endpoint, producer in node.input_producer_ids
-            ),
+def rewrite_dependencies(nodes, aliases):
+    result = []
+    for node in nodes:
+        predecessors = tuple(
+            dict.fromkeys(aliases.get(key, key) for key in node.predecessor_ids)
         )
-        for node in nodes
-    )
+        inputs = tuple(
+            (endpoint, aliases.get(producer, producer))
+            for endpoint, producer in node.input_producer_ids
+        )
+        if predecessors != node.predecessor_ids or inputs != node.input_producer_ids:
+            node = replace(
+                node, predecessor_ids=predecessors, input_producer_ids=inputs
+            )
+        result.append(node)
+    return tuple(result)
 
 
 def _merge(nodes, operations):
@@ -80,7 +82,7 @@ def _merge(nodes, operations):
         for node in nodes
         if node.node_id not in aliases or node.node_id in replacements
     )
-    return _rewrite(result, aliases)
+    return rewrite_dependencies(result, aliases)
 
 
 def coalesce_ready_transfers(nodes):

@@ -168,6 +168,7 @@ class ParallelExecutionPlanner(
         from TokenSim.af.caching.templates import TemplateCache
 
         self.template_cache = TemplateCache()
+        self._endpoints = {}
         self._runtime_links = {link.name: link for link in self.cluster_config.af.links}
 
     def placement(
