@@ -1,85 +1,169 @@
+"""Worker groups, shared cluster construction and rank assignment."""
+
+from __future__ import annotations
+
 import json
 from pathlib import Path
+from typing import Any
 
-from pydantic.dataclasses import dataclass, Field
-from pydantic import ConfigDict
+from pydantic import ConfigDict, field_validator
+from pydantic.dataclasses import Field, dataclass
 
-from TokenSim.config.constants import WORKER_ROLE_PREFIXES, WORKER_ROLES
+from TokenSim.config.af.domains import (
+    DomainRankMapping,
+    ExecutionDomainConfig,
+    PhysicalWorkerRef,
+)
+from TokenSim.config.af.settings import AFConfig
+from TokenSim.config.af.topology import ClusterTopologyMixin
+from TokenSim.config.af.validation import ClusterDomainValidationMixin
+from TokenSim.config.constants import (
+    LEGACY_ROLE_CAPABILITIES,
+    WORKER_CAPABILITIES,
+    WORKER_CAPABILITY_ORDER,
+    WORKER_ROLES,
+    WORKER_ROLE_PREFIXES,
+)
 from TokenSim.config.kv_transfer_config import KVTransferConfig
 from TokenSim.config.parallel_config import ParallelConfig, ParallelRankInfo
-from TokenSim.errors import ConfigurationError
 from TokenSim.config.validation import integer
+from TokenSim.errors import ConfigurationError
 
 
 @dataclass(config=ConfigDict(extra="forbid"))
 class WorkerConfig:
-    role: str
+    role: str | None
     hardware: str
     network: str
     nettype: str
+    name: str | None = None
+    capabilities: tuple[str, ...] = ()
     rank_info: ParallelRankInfo | None = None
+    physical_worker_ref: "PhysicalWorkerRef | None" = None
+    # Explicit topology device index (optional) and the operator-data backend
+    # (e.g. vllm, trtllm, analytical) whose tables price this worker's kernels.
     device_index: int | None = None
     operator_backend: str | None = None
 
 
 @dataclass(config=ConfigDict(extra="forbid"))
 class WorkerGroupConfig:
-    role: str
-    hardware: str
-    num_workers: int
+    role: str | None = None
+    hardware: str = ""
+    num_workers: int = 0
     network: str = "net1"
+    name: str | None = None
+    capabilities: tuple[str, ...] = ()
     # Explicit topology device indices for the group's workers (optional).
     device_indices: list[int] | None = None
     # Which operator-data backend (e.g. trtllm, vllm, analytical) to use.
     operator_backend: str | None = None
 
-    def __post_init__(self):
-        integer(self.num_workers, "worker group num_workers", minimum=1)
-        if self.device_indices is not None:
-            for index in self.device_indices:
-                integer(index, "device_index")
-
-    def workers(self, networks):
-        if self.role not in WORKER_ROLES:
+    @field_validator("num_workers", mode="before")
+    @classmethod
+    def _validate_num_workers_type(cls, value: Any) -> int:
+        if type(value) is not int:
             raise ConfigurationError(
-                f"unsupported worker role {self.role!r}; expected one of "
+                "worker group num_workers must be a positive integer"
+            )
+        return value
+
+    def __post_init__(self) -> None:
+        context = f"worker group {self.name!r}" if self.name else "worker group"
+        if self.role is not None and self.role not in WORKER_ROLES:
+            raise ConfigurationError(
+                f"{context} has unsupported role {self.role!r}; expected one of "
                 + f"{sorted(WORKER_ROLES)}"
             )
-        if self.network not in networks:
+        if self.num_workers < 1:
             raise ConfigurationError(
-                f"worker group {self.role!r} references unknown network {self.network!r}; "
-                + f"known networks: {sorted(networks)}"
+                f"{context} num_workers must be a positive integer"
             )
+        if not isinstance(self.hardware, str) or not self.hardware.strip():
+            raise ConfigurationError(f"{context} hardware must be a non-empty string")
+        if not isinstance(self.network, str) or not self.network.strip():
+            raise ConfigurationError(f"{context} network must be a non-empty string")
         if (
             self.device_indices is not None
             and len(self.device_indices) != self.num_workers
         ):
             raise ConfigurationError(
-                f"worker group {self.role!r}: device_indices must have num_workers entries"
+                f"{context} device_indices must have num_workers entries"
             )
+        if self.operator_backend is not None and (
+            not isinstance(self.operator_backend, str)
+            or not self.operator_backend.strip()
+        ):
+            raise ConfigurationError(
+                f"{context} operator_backend must be a non-empty string"
+            )
+
+        for index in self.device_indices or ():
+            integer(index, "device_index")
+
+        declared = tuple(self.capabilities)
+        if len(declared) != len(set(declared)):
+            raise ConfigurationError(
+                f"{context} capabilities contains duplicate values"
+            )
+        unknown = set(declared) - WORKER_CAPABILITIES
+        if unknown:
+            raise ConfigurationError(
+                f"{context} has unsupported capabilities {sorted(unknown)}; expected values "
+                + f"from {sorted(WORKER_CAPABILITIES)}"
+            )
+
+        inferred = LEGACY_ROLE_CAPABILITIES.get(self.role, frozenset())
+        if not declared:
+            if self.role is None:
+                raise ConfigurationError(
+                    f"{context} must declare a legacy role or non-empty capabilities"
+                )
+            declared = tuple(inferred)
+        elif self.role is not None:
+            declared_complete = set(declared) & {"prefill", "decode_full"}
+            if declared_complete != set(inferred):
+                raise ConfigurationError(
+                    f"{context} role {self.role!r} conflicts with capabilities "
+                    + f"{sorted(declared_complete)}"
+                )
+        self.capabilities = tuple(
+            capability
+            for capability in WORKER_CAPABILITY_ORDER
+            if capability in declared
+        )
+
+    def workers(self, networks):
         return [
             WorkerConfig(
-                self.role,
-                self.hardware,
-                self.network,
-                networks[self.network],
+                role=self.role,
+                hardware=self.hardware,
+                network=self.network,
+                nettype=networks[self.network],
+                name=self.name,
+                capabilities=self.capabilities,
+                physical_worker_ref=PhysicalWorkerRef(
+                    group_name=self.name or f"unbound:{self.role or 'af'}",
+                    worker_index=worker_index,
+                ),
                 device_index=(
-                    self.device_indices[index]
+                    self.device_indices[worker_index]
                     if self.device_indices is not None
                     else None
                 ),
                 operator_backend=self.operator_backend,
             )
-            for index in range(self.num_workers)
+            for worker_index in range(self.num_workers)
         ]
 
     def __str__(self):
-        role_prefix = WORKER_ROLE_PREFIXES[self.role]
-        return f"{role_prefix}{self.num_workers:g}"
+        if self.role is None:
+            return f"{self.name or 'af'}{self.num_workers:g}"
+        return f"{WORKER_ROLE_PREFIXES[self.role]}{self.num_workers:g}"
 
 
 @dataclass(config=ConfigDict(extra="forbid"))
-class ClusterConfig:
+class ClusterConfig(ClusterTopologyMixin, ClusterDomainValidationMixin):
     num_workers: int
     networks: dict[str, str]
     worker_groups: list[WorkerGroupConfig] = Field(default_factory=list)
@@ -93,9 +177,53 @@ class ClusterConfig:
     # Optional catalog topology id (data/topologies/*.yaml). When omitted a
     # two-level topology is synthesized from ``networks``.
     topology: str | None = None
+    af: AFConfig = Field(default_factory=AFConfig)
+
+    @field_validator("num_workers", mode="before")
+    @classmethod
+    def _validate_num_workers_type(cls, value: Any) -> int:
+        if type(value) is not int or value < 0:
+            raise ConfigurationError(
+                "cluster num_workers must be a non-negative integer"
+            )
+        return value
 
     def __post_init__(self) -> None:
-        integer(self.num_workers, "cluster num_workers", minimum=1)
+        self._normalize_group_names()
+        self._validate_groups()
+        self.af.validate_dtype_style()
+        if self.af.enabled:
+            self._normalize_execution_domains()
+            self._normalize_communication_fabrics()
+            self._validate_af_topology()
+            self._validate_execution_domains()
+        self._validate_cache_capacity()
+
+    def _normalize_group_names(self) -> None:
+        role_indexes: dict[str, int] = {}
+        for group in self.worker_groups:
+            if group.name is None:
+                role_name = group.role or "af"
+                index = role_indexes.get(role_name, 0)
+                group.name = f"legacy-{role_name}-{index}"
+                role_indexes[role_name] = index + 1
+
+    def _validate_groups(self) -> None:
+        names: set[str] = set()
+        for group in self.worker_groups:
+            if not isinstance(group.name, str) or not group.name.strip():
+                raise ConfigurationError("worker group name must be a non-empty string")
+            if group.name in names:
+                raise ConfigurationError(f"duplicate worker group name {group.name!r}")
+            names.add(group.name)
+            if group.network not in self.networks:
+                raise ConfigurationError(
+                    f"worker group {group.name!r} references unknown network "
+                    + f"{group.network!r}"
+                )
+
+    def _validate_cache_capacity(self) -> None:
+        integer(self.num_workers, "cluster num_workers")
         if sum(group.num_workers for group in self.worker_groups) != self.num_workers:
             raise ConfigurationError(
                 "cluster num_workers must equal the worker group total"
@@ -163,11 +291,41 @@ class ClusterConfig:
         effective_config = (
             parallel_config or self.parallel_config or ParallelConfig.default()
         )
-        validate_worker_count(len(workers), effective_config)
-        for global_rank, worker in enumerate(workers):
-            worker.rank_info = ParallelRankInfo.from_global_rank(
-                global_rank,
-                effective_config,
+        if not self.af.enabled:
+            validate_worker_count(len(workers), effective_config)
+            for global_rank, worker in enumerate(workers):
+                worker.rank_info = ParallelRankInfo.from_global_rank(
+                    global_rank,
+                    effective_config,
+                )
+            return workers
+
+        mappings: dict[str, tuple[ExecutionDomainConfig, DomainRankMapping]] = {}
+        for domain in sorted(self.af.execution_domains, key=lambda item: item.name):
+            for instance in sorted(
+                domain.logical_instances, key=lambda item: item.name
+            ):
+                for mapping in instance.rank_mapping:
+                    mappings.setdefault(
+                        mapping.physical_worker.identity,
+                        (domain, mapping),
+                    )
+        for worker in workers:
+            resolved = mappings.get(worker.physical_worker_ref.identity)
+            if resolved is None:
+                worker.rank_info = ParallelRankInfo()
+                continue
+            domain, mapping = resolved
+            worker.rank_info = ParallelRankInfo(
+                global_rank=mapping.domain_rank,
+                rank_in_dp_group=(
+                    mapping.pp_rank * domain.parallel.tensor_parallel_size
+                    + mapping.tp_rank
+                ),
+                tp_rank=mapping.tp_rank,
+                pp_rank=mapping.pp_rank,
+                dp_rank=mapping.dp_rank,
+                kv_cache_group_id=f"dp{mapping.dp_rank}-pp{mapping.pp_rank}",
             )
         return workers
 

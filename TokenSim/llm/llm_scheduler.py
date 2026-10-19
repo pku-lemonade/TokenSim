@@ -167,18 +167,22 @@ class LLMPagedAttnScheduler(PagedSchedulingMixin, PagedTokenBudgetMixin, LLMSche
         max_num_seqs=None,
         max_occupy_ratio: float = 1,
         connector=None,
+        block_manager: BlockManager | None = None,
         max_num_batched_tokens: int | None = DEFAULT_MAX_NUM_BATCHED_TOKENS,
         long_prefill_token_threshold: int = 0,
         adaptive_long_prefill_threshold: bool = False,
         mtp_acceptance_length: float = 1.0,
         mtp_enabled: bool | None = None,
         mtp_seed: int = 0,
+        max_parallem_sum: int | None = None,
     ):
         super().__init__(connector=connector)
 
         self.id = id
         self.cache_config = cache_config
-        self.max_num_seqs = max_num_seqs
+        self.max_num_seqs = (
+            max_parallem_sum if max_parallem_sum is not None else max_num_seqs
+        )
         if max_num_batched_tokens is not None and max_num_batched_tokens < 1:
             raise ConfigurationError("max_num_batched_tokens must be at least 1")
         self.max_num_batched_tokens = max_num_batched_tokens
@@ -192,7 +196,7 @@ class LLMPagedAttnScheduler(PagedSchedulingMixin, PagedTokenBudgetMixin, LLMSche
         self.mtp_seed = int(mtp_seed)
         # Grouped caches carry the speculative lookahead and the model's
         # context limit; uniform caches have neither.
-        layout = self.cache_config.hybrid_layout
+        layout = getattr(self.cache_config, "hybrid_layout", None)
         self.speculative_tokens = layout.speculative_tokens if layout else 0
         self.max_model_len = layout.max_model_len if layout else None
         self.mtp_enabled = (
@@ -231,7 +235,9 @@ class LLMPagedAttnScheduler(PagedSchedulingMixin, PagedTokenBudgetMixin, LLMSche
         # Requests admitted by the most recent schedule() call.
         self.last_admitted: list[Request] = []
 
-        if layout is not None:
+        if block_manager is not None:
+            self.block_manager = block_manager
+        elif layout is not None:
             from TokenSim.block.hybrid.manager import HybridKVBlockManager
 
             self.block_manager = HybridKVBlockManager(

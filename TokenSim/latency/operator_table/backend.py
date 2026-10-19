@@ -257,7 +257,7 @@ class OperatorTableLatencyBackend(StepComposition, OperatorQueries, LatencyBacke
                 context_groups[(q_len, kv_len)] += 1
             if self.model.components:
                 # Logits ownership follows proposals, not attention metadata.
-                rows = req.logits_tokens
+                rows = req.logits_tokens if getattr(req, "emit_logits", True) else 0
                 sampling += rows
                 if req.is_context_build:
                     prefill_logits_rows += rows
@@ -272,7 +272,9 @@ class OperatorTableLatencyBackend(StepComposition, OperatorQueries, LatencyBacke
                     )
                 else:
                     decode_logits_rows += rows
-            elif is_decode_step(req) or kv_len >= req.context_len:
+            elif getattr(req, "emit_logits", True) and (
+                is_decode_step(req) or kv_len >= req.context_len
+            ):
                 sampling += 1
         if self.model.components and self.is_last_stage:
             self.target_logits_counts["steps"] += 1
@@ -299,7 +301,7 @@ class OperatorTableLatencyBackend(StepComposition, OperatorQueries, LatencyBacke
             )
         return self._compose(
             tokens=tokens,
-            requests=max(1, sampling),
+            requests=sampling,
             attention_us=attention_us,
             requests_list=requests,
         )

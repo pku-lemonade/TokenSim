@@ -63,9 +63,15 @@ class CacheConfig:
         self.head_dim = model.head_dim
         kv_bytes = dtype_bytes(model.kv_cache_dtype)
         self.size_per_token_unsharded = int(
-            2 * model.kv_dim * kv_bytes * model.num_layers
+            model.kv_elements_per_token() * kv_bytes * model.num_layers
         )
-        if model.kv_cache_dim is not None:
+        if model.attention_type == "mla":
+            model.validate_mla_tp(self.parallel_config.tensor_parallel_size)
+            self.local_kv_heads = 1
+            self.size_per_token = int(
+                model.kv_dim * kv_bytes * self.num_layers_per_rank
+            )
+        elif model.kv_cache_dim is not None:
             if model.kv_dim % self.parallel_config.tensor_parallel_size != 0:
                 raise ConfigurationError(
                     f"model {model.model_id!r}: kv_cache_dim must be divisible by "
@@ -128,6 +134,12 @@ class CacheConfig:
             weight_bytes = dtype_bytes(model.dtype)
             self.model_param_size_unsharded = model.total_params() * weight_bytes
             self.model_param_size = self._rank_params() * weight_bytes
+            if model.attention_type == "mla":
+                tp = self.parallel_config.tensor_parallel_size
+                replicated = model.mla_dimensions.weight_elements(0, model.hidden_size)
+                self.model_param_size += (
+                    self.num_layers_per_rank * replicated * (1 - 1 / tp) * weight_bytes
+                )
 
         self.reserved_bytes = device.memory_reserved_bytes.value
         if self.hybrid_layout is not None:
@@ -236,6 +248,13 @@ def stage_layer_count(total_layers: int, pp_size: int, pp_rank: int) -> int:
     base = total_layers // pp_size
     remainder = total_layers % pp_size
     return base + (1 if pp_rank < remainder else 0)
+
+
+def stage_layer_range(total_layers: int, pp_size: int, pp_rank: int) -> range:
+    if not 1 <= pp_size <= total_layers or not 0 <= pp_rank < pp_size:
+        raise ConfigurationError("pipeline stage must own at least one model layer")
+    start = pp_rank * (total_layers // pp_size) + min(pp_rank, total_layers % pp_size)
+    return range(start, start + stage_layer_count(total_layers, pp_size, pp_rank))
 
 
 def num_kv_heads(model: ModelSpec) -> int:

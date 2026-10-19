@@ -13,8 +13,17 @@ class RoutingConfig:
     distribution: str = "uniform"
     hot_experts: list[int] | None = None
     hot_expert_fraction: float = 0.5
+    uniform_selection: str = "cyclic"
 
     def __post_init__(self) -> None:
+        if self.uniform_selection not in {"cyclic", "random_without_replacement"}:
+            raise ConfigurationError(
+                "uniform expert selection must be cyclic or random_without_replacement"
+            )
+        if self.distribution != "uniform" and self.uniform_selection != "cyclic":
+            raise ConfigurationError(
+                "uniform_selection applies only to uniform routing"
+            )
         if self.distribution not in {"uniform", "skew", "hot", "burst"}:
             raise ConfigurationError(
                 "moe_routing_distribution must be one of "

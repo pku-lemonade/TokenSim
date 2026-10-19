@@ -146,6 +146,8 @@ The [`docs/`](docs/) directory contains detailed feature descriptions, configura
 | Guide | Features covered |
 | --- | --- |
 | [Operator latency model](docs/operator-latency-model.md) | Operator tables, interpolation and extrapolation, formula-based fallback, communication timing, calibration and result provenance |
+| [AF separation](docs/af-separation.md) | Serving modes, execution domains, tensor/KV ownership, precision, communication, traces and validation |
+| [DeepSeek-V3 MLA](docs/deepseek-v3-mla.md) | Model dimensions, latent KV cache, fixed-concurrency decode and operator-data coverage |
 | [Parallelism](docs/parallelism.md) | Worker roles, tensor/pipeline/data/expert parallelism, conversation routing, synchronized data-parallel steps and communication topology |
 | [Mixture-of-experts](docs/moe.md) | Expert placement, token routing distributions and trace histograms, load imbalance, dispatch/combine communication and fused expert modules |
 | [Prefix caching](docs/prefix-cache.md) | Prefix matching conditions, cache isolation, reuse of generated output and cache-hit metrics |

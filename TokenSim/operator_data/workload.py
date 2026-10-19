@@ -7,10 +7,13 @@ the documentation; see ``docs/operator-latency-model.md`` for the derivations.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from typing import Any, Mapping
 
 from TokenSim.hardware.device import dtype_bytes, normalize_dtype
+from TokenSim.dtypes import CAST_OPERATIONS, dtype_size_bytes
+from TokenSim.hardware.weight_storage import weight_storage_bytes
 
 ACTIVATION_DTYPE_FOR_WEIGHT_ONLY = "fp16"
 
@@ -85,6 +88,7 @@ def context_attention_work(
     kv_cache_dtype: str,
     window_size: int = 0,
     causal: bool = True,
+    context_len: int | None = None,
 ) -> OperatorWork:
     """Prefill attention core: QK^T, softmax, and PV for one padded batch.
 
@@ -104,10 +108,19 @@ def context_attention_work(
         causal_factor = 0.5 if causal else 1.0
     flops = 4.0 * batch_size * input_seq_len * keys_per_query * h_q * causal_factor
     tokens = float(batch_size) * input_seq_len
+    prefix = 0 if context_len is None else context_len - input_seq_len
+    if prefix < 0:
+        raise ValueError("attention context must cover every query token")
+    if prefix:
+        keys_per_query = prefix + (input_seq_len * 0.5 if causal else input_seq_len)
+        if window_size:
+            keys_per_query = min(keys_per_query, window_size)
+        flops = 4.0 * batch_size * input_seq_len * keys_per_query * h_q
+    cached_keys = prefix if not window_size else min(prefix, window_size)
     return OperatorWork(
         flops=flops,
         activation_bytes=tokens * 2 * h_q * b_a,  # read Q, write O
-        kv_bytes=tokens * 4 * h_kv * b_kv,  # read K,V and write them to the cache
+        kv_bytes=(tokens * 4 + batch_size * cached_keys * 2) * h_kv * b_kv,
         details={
             "batch_size": batch_size,
             "input_seq_len": input_seq_len,
@@ -194,6 +207,10 @@ _ELEMENTWISE_FLOPS_PER_ELEMENT = {
     "gelu": 6.0,
     "data_reorder": 0.0,
     "other_residual": 1.0,
+    "embedding_lookup": 0.0,
+    "argmax": 1.0,
+    "topk": 8.0,
+    "weighted_combine": 2.0,
 }
 
 _ELEMENTWISE_BYTES_PER_ELEMENT = {
@@ -206,6 +223,10 @@ _ELEMENTWISE_BYTES_PER_ELEMENT = {
     "gelu": 2.0,
     "data_reorder": 2.0,
     "other_residual": 2.0,
+    "embedding_lookup": 2.0,
+    "argmax": 1.0,
+    "topk": 2.0,
+    "weighted_combine": 3.0,
 }
 
 
@@ -213,6 +234,17 @@ def elementwise_work(
     op_name: str, num_tokens: int, hidden_size: int, dtype: str
 ) -> OperatorWork:
     op = op_name.lower()
+    if op in CAST_OPERATIONS:
+        source, target = op.removeprefix("cast_").split("_to_")
+        if normalize_dtype(dtype) != target:
+            raise ValueError("cast table dtype must match its target dtype")
+        elements = float(num_tokens) * hidden_size
+        return OperatorWork(
+            flops=elements,
+            activation_bytes=elements
+            * (dtype_size_bytes(source) + dtype_size_bytes(target)),
+            details={"op_name": op, "source_dtype": source, "target_dtype": target},
+        )
     if op not in _ELEMENTWISE_FLOPS_PER_ELEMENT:
         raise ValueError(f"unsupported elementwise op {op_name!r}")
     elements = float(num_tokens) * hidden_size
@@ -232,6 +264,124 @@ def work_for_table(
     table: str, key: Mapping[str, Any], *, gated: bool = True, imbalance: float = 1.0
 ) -> OperatorWork:
     """Dispatch a table query key to the matching work formula."""
+    if table == "batched_gemm":
+        base = gemm_work(int(key["m"]), int(key["n"]), int(key["k"]), str(key["dtype"]))
+        g = int(key["groups"])
+        return OperatorWork(
+            base.flops * g,
+            base.weight_bytes * g,
+            base.activation_bytes * g,
+            details=dict(key),
+        )
+    if table == "routed_experts":
+        counts = json.loads(str(key["expert_tokens"]))
+        h, i = int(key["hidden_size"]), int(key["inter_size"])
+        tokens, experts = sum(counts), len(counts)
+        b = (
+            dtype_bytes(str(key["activation_dtype"]))
+            if "activation_dtype" in key
+            else activation_bytes_for(str(key["dtype"]))
+        )
+        projections = 3 if gated else 2
+        dtype = str(key["dtype"])
+        packed = normalize_dtype(dtype) in {"mxfp4", "mxfp4_wo"}
+        payload, scales = 0, 0
+        if packed:
+            tensors = ((i, h),) * (projections - 1) + ((h, i),)
+            for tensor in tensors:
+                weights, metadata = weight_storage_bytes(tensor, dtype)
+                payload += weights * experts
+                scales += metadata * experts
+        return OperatorWork(
+            2.0 * projections * tokens * h * i + (4.0 if gated else 1.0) * tokens * i,
+            (
+                payload + scales
+                if packed
+                else float(projections) * experts * h * i * dtype_bytes(dtype)
+            ),
+            (2.0 * tokens * h + 2.0 * projections * tokens * i) * b,
+            details={
+                **key,
+                **(
+                    {
+                        "weight_payload_bytes": payload,
+                        "weight_scale_bytes": scales,
+                        "dequant_elements": projections * experts * h * i,
+                    }
+                    if packed
+                    else {}
+                ),
+            },
+        )
+    if table == "mla_attention":
+        lengths = json.loads(str(key["context_lengths"]))
+        b, heads = int(key["batch_size"]), int(key["num_heads"])
+        rank, rope, value = (
+            int(key["kv_lora_rank"]),
+            int(key["rope_head_dim"]),
+            int(key["v_head_dim"]),
+        )
+        # Histogram contains (context length, relative count); interpolation may vary batch only.
+        mean_length = sum(length * weight for length, weight in lengths)
+        query = int(key["query_len"])
+        if (
+            key["phase"] == "decode"
+            and key["execution_mode"] == "absorbed"
+            and query == 1
+        ):
+            flops = (
+                2.0 * b * heads * mean_length * (2 * rank + rope)
+                + 5.0 * b * heads * mean_length
+            )
+            cache_element_bytes = dtype_bytes(str(key["kv_cache_dtype"]))
+            # Decode reads the existing latent+RoPE cache and appends the
+            # current token once.  The write is intentionally separate from
+            # the read length so a context of N does not silently price N+1
+            # cache entries.
+            cache_read = b * mean_length * (rank + rope) * cache_element_bytes
+            cache_write = b * query * (rank + rope) * cache_element_bytes
+            kv = cache_read + cache_write
+            activation = (
+                b * heads * (2 * rank + rope) * dtype_bytes(str(key["attn_dtype"]))
+            )
+        elif (
+            key["phase"] == "prefill"
+            and key["execution_mode"] == "expanded"
+            and mean_length >= query
+        ):
+            cached = mean_length - query
+            pairs = b * (query * cached + query * (query + 1) / 2)
+            flops = (
+                2.0 * heads * pairs * (int(key["nope_head_dim"]) + rope + value)
+                + 5.0 * heads * pairs
+            )
+            cache_element_bytes = dtype_bytes(str(key["kv_cache_dtype"]))
+            # Prefill writes one latent+RoPE entry per token; the expanded
+            # head representation is produced transiently by the attention
+            # kernel and is not the persisted cache layout.
+            cache_read = b * cached * (rank + rope) * cache_element_bytes
+            cache_write = b * query * (rank + rope) * cache_element_bytes
+            kv = cache_read + cache_write
+            activation = (
+                b
+                * query
+                * heads
+                * (int(key["nope_head_dim"]) + rope + value)
+                * dtype_bytes(str(key["attn_dtype"]))
+            )
+        else:
+            raise ValueError("Unsupported MLA phase/execution mode/query length")
+        return OperatorWork(
+            flops,
+            activation_bytes=activation,
+            kv_bytes=kv,
+            details={
+                **key,
+                "cache_layout": "latent_plus_rope_replicated_per_A_TP_rank",
+                "cache_read_bytes": locals().get("cache_read", 0.0),
+                "cache_write_bytes": locals().get("cache_write", kv),
+            },
+        )
     if table == "gemm":
         return gemm_work(int(key["m"]), int(key["n"]), int(key["k"]), str(key["dtype"]))
     if table == "grouped_gemm":
@@ -253,7 +403,12 @@ def work_for_table(
             str(key["attn_dtype"]),
             str(key["kv_cache_dtype"]),
             int(key.get("window_size", 0)),
+            context_len=int(key["context_len"]) if "context_len" in key else None,
         )
+    if table == "ragged_generation_attention":
+        from TokenSim.operator_data.ragged_attention import ragged_generation_work
+
+        return ragged_generation_work(key)
     if table == "generation_attention":
         return generation_attention_work(
             int(key["batch_size"]),
