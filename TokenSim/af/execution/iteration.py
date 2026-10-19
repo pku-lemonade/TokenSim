@@ -143,7 +143,9 @@ class ExecutorIterationMixin:
         }
         if self.trace.enabled:
             try:
-                self.trace.validate_invariants(iteration.iteration_id)
+                if self.trace.validate_on_completion:
+                    self.trace.validate_invariants(iteration.iteration_id)
+                self.trace.complete_iteration(iteration.iteration_id)
             except BaseException as error:
                 self.native_batches.abort(error)
                 raise

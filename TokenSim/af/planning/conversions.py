@@ -2,7 +2,7 @@
 
 from dataclasses import replace
 
-from TokenSim.af.planning.coalesce import _merge, _rewrite
+from TokenSim.af.planning.coalesce import _merge, rewrite_dependencies
 
 
 def _batch_stage(nodes, stage):
@@ -57,7 +57,7 @@ def _batch_stage(nodes, stage):
             routing_edges=edges,
             metadata={"conversion_members": tuple(n.node_id for n in group)},
         )
-    return _rewrite(
+    return rewrite_dependencies(
         tuple(
             replacements.get(node.node_id, node)
             for node in nodes
@@ -87,7 +87,7 @@ def batch_conversions(nodes):
             for member in node.metadata.get("coalesced_nodes", ())
         }
         converted_ids = {node.node_id for node in converted}
-        nodes = _rewrite(
+        nodes = rewrite_dependencies(
             tuple(
                 by_id.get(aliases.get(node.node_id, node.node_id), node)
                 for node in nodes

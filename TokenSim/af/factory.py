@@ -1,6 +1,7 @@
 """Construct a whole-model AF runtime from catalog models and cluster data."""
 
 from dataclasses import dataclass
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
@@ -10,7 +11,12 @@ from TokenSim.af.execution.model import ModelAFExecutor
 from TokenSim.af.providers.operator_table import build_operator_table_af_providers
 from TokenSim.af.runtime.plan import AFRuntimePlan
 from TokenSim.af.runtime.compiler import compile_af_runtime_plan
-from TokenSim.af.trace.recorder import AFTraceRecorder
+from TokenSim.af.runtime.host import host_collection, run_environment
+from TokenSim.af.trace.archive import ArchivedTraceRecorder
+from TokenSim.af.trace.config import AFTraceConfig
+from TokenSim.af.trace.formats import make_trace_recorder, validate_trace_format
+from TokenSim.af.trace.pipeline import PipelinedTraceRecorder
+from TokenSim.af.trace.transient import ValidationTraceRecorder
 from TokenSim.config.cluster_config import ClusterConfig
 from TokenSim.config.cluster_config import WorkerConfig
 from TokenSim.config.model_config import ModelSpec
@@ -46,12 +52,35 @@ def build_model_runtime(doc, *, hardware, model, block_size=16):
     return AFModelRuntime(doc, hardware, model, cluster, workers, placement, plan)
 
 
+@host_collection()
 def simulate_decode(
-    config, batch, context, *, steps=1, trace=True, fallback="table_first", seed=42
+    config,
+    batch,
+    context,
+    *,
+    steps=1,
+    trace=True,
+    fallback="table_first",
+    seed=42,
+    trace_config: AFTraceConfig | None = None,
+    trace_output: str | Path | None = None,
+    trace_format="json",
 ):
-    """Exact fixed-batch decode; every token advances its own SimPy iteration."""
+    """Exact fixed-batch decode; every token advances its own SimPy iteration.
+
+    An optional trace_output prepares the selected format in its directory.
+    Call write_trace after simulation to publish the complete file.
+    """
     if any(type(value) is not int or value < 1 for value in (batch, context, steps)):
         raise ValueError("batch, context and steps must be positive")
+    if trace_config is not None and not isinstance(trace_config, AFTraceConfig):
+        raise ConfigurationError("trace_config must be an AFTraceConfig")
+    if trace_output is not None and not isinstance(trace_output, (str, Path)):
+        raise ConfigurationError("trace_output must be a path")
+    options = trace_config or AFTraceConfig(mode="full" if trace else "off")
+    validate_trace_format(trace_format, require_dependency=options.mode == "full")
+    if trace is False and options.enabled:
+        raise ConfigurationError("trace=False conflicts with an enabled trace_config")
     if (
         config.cluster.af.execution_protocol == "vllm_afd"
         and config.cluster.af_domains[0].parallel.data_parallel_size > 1
@@ -89,6 +118,19 @@ def simulate_decode(
         dtype=config.model.activation_dtype,
         fallback=fallback,
     )
+    if options.mode == "validate":
+        recorder = ValidationTraceRecorder()
+    elif options.mode == "full" and trace_output is not None:
+        recorder = (
+            PipelinedTraceRecorder(Path(trace_output).parent, trace_config=options)
+            if trace_format == "json"
+            else make_trace_recorder(Path(trace_output).parent, options, trace_format)
+        )
+    else:
+        recorder = ArchivedTraceRecorder(options.enabled)
+    recorder.validate_on_completion = options.validate
+    recorder.trace_config = trace_config
+    recorder.trace_format = trace_format
     executor = ModelAFExecutor(
         env,
         config.cluster,
@@ -102,7 +144,7 @@ def simulate_decode(
         moe_config=config.model.moe,
         random_seed=seed,
         runtime_plan=config.plan,
-        trace_recorder=AFTraceRecorder(trace),
+        trace_recorder=recorder,
         model=config.model,
     )
     rows = []
@@ -119,7 +161,11 @@ def simulate_decode(
         ]
         iteration = executor.submit(source_worker, requests)
         env.process(executor.run_iteration(iteration))
-        env.run()
+        try:
+            run_environment(env)
+        except BaseException:
+            executor.trace.close()
+            raise
         rows.append(
             dict(
                 iteration_id=iteration.iteration_id,

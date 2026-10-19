@@ -34,6 +34,7 @@ class AFTraceRecorder:
         resource_capacities: Mapping[str, int] | None = None,
     ) -> None:
         self.enabled = enabled
+        self.validate_on_completion = True
         self.events: list[AFTraceEvent] = []
         self.iteration_event_indices: dict[int, list[int]] = {}
         self.resource_capacities = dict(resource_capacities or {})
@@ -50,6 +51,13 @@ class AFTraceRecorder:
         """Explicitly discard a drained batch, including its position indexes."""
         self.events.clear()
         self.iteration_event_indices.clear()
+
+    def complete_iteration(self, iteration_id: int) -> None:
+        """Finalize validated events; memory recorders keep their live objects."""
+
+    def close(self) -> None:
+        """Release history when its owner no longer needs trace readback."""
+        self.clear()
 
     def events_for(self, iteration_id: int) -> tuple[AFTraceEvent, ...]:
         return tuple(
