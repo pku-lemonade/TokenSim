@@ -33,6 +33,7 @@ def _components_for_binding(
     expert_tp_rank: int,
     ffn_projection_count: int,
     embedding_role: str = "both",
+    qk_norm: bool = False,
 ) -> tuple[AFModelComponent, ...]:
     _ = dp_rank
     components: list[AFModelComponent] = []
@@ -62,6 +63,9 @@ def _components_for_binding(
         q_width = q_heads * layers[0].head_dim
         kv_width = kv_partition.local_head_count * layers[0].head_dim
         attention_elements = 2 * hidden * q_width + 2 * hidden * kv_width
+        norm_elements = 2 * layers[0].head_dim if qk_norm else 0
+        norm_shape = (("qk_norm_elements", norm_elements),) if norm_elements else ()
+        attention_elements += norm_elements
         mla = layers[0].mla
         if mla:
             attention_elements = mla.weight_elements(q_heads, hidden)
@@ -83,6 +87,7 @@ def _components_for_binding(
                         ("q_heads_local", q_heads),
                         ("kv_heads_local", kv_partition.local_head_count),
                         ("head_dim", layer.head_dim),
+                        *norm_shape,
                     ),
                 )
             )
@@ -266,6 +271,11 @@ def _compile_physical_states(
             for component_id in sorted(physical_components[physical])
         )
         model_bytes = sum(component.bytes for component in components)
+        roles = {
+            item["domain"].capability
+            for item in preliminary
+            if item["mapping"].physical_worker.identity == physical
+        }
         buffers = ()
         if cluster_config.af.transfer_topology_mode == "physical":
             # Explicit conservative workspace assumption: one input and one
@@ -274,9 +284,22 @@ def _compile_physical_states(
             routing_expansion = (
                 max(1, moe_config.num_experts_per_tok) if moe_config is not None else 1
             )
+            workspace_tokens = cluster_config.af.af_block_size
+            if (
+                cluster_config.af.ffn_batching
+                or cluster_config.af.execution_protocol == "vllm_afd"
+            ) and "af_ffn" in roles:
+                workspace_tokens = max(
+                    workspace_tokens,
+                    cluster_config.af.ffn_batch_max_tokens
+                    or (
+                        workspace_tokens
+                        * cluster_config.af_domains[0].parallel.data_parallel_size
+                    ),
+                )
             workspace = (
                 2
-                * cluster_config.af.af_block_size
+                * workspace_tokens
                 * max(hidden * routing_expansion, model.vocab_size)
                 * dtype_size_bytes(
                     effective_dtypes.activation_dtype, role="activation_dtype"
@@ -297,11 +320,6 @@ def _compile_physical_states(
                     effective_dtypes.activation_dtype, role="activation_dtype"
                 )
             )
-            roles = {
-                item["domain"].capability
-                for item in preliminary
-                if item["mapping"].physical_worker.identity == physical
-            }
             # Dedicated logical protocol buffers for one eager iteration, reused
             # across layers. Kernel workspaces/allocator fragmentation are separate.
             if "af_attention" in roles:

@@ -61,7 +61,12 @@ class GPURooflineModel:
                 details={"effective_m": max(m, knee)},
                 compute_flops_override=effective_flops,
             )
-        if table in {"context_attention", "generation_attention", "mla_attention"}:
+        if table in {
+            "context_attention",
+            "generation_attention",
+            "mla_attention",
+            "ragged_generation_attention",
+        }:
             work = work_for_table(table, key)
             dtype = str(key["attn_dtype"])
             efficiency = float(params.get("attention_mfu", 0.45))

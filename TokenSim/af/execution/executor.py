@@ -13,6 +13,8 @@ from TokenSim.af.calibration.routing import RoutingReplay
 from TokenSim.af.calibration.services import OperationServiceProfile
 from TokenSim.af.communication.resources import AFResourceRegistry
 from TokenSim.af.execution.communication import ExecutorCommunicationMixin
+from TokenSim.af.execution.batching import FFNBatcher
+from TokenSim.af.execution.rendezvous import NativeRendezvous
 from TokenSim.af.execution.compute import ExecutorComputeMixin
 from TokenSim.af.execution.control import NativeControlMixin
 from TokenSim.af.execution.iteration import ExecutorIterationMixin
@@ -241,6 +243,8 @@ class AFExecutor(
         self._query_mappings = {}
         self._step_preparation = {}
         self._native_controls = {}
+        self.native_batches = NativeRendezvous(self)
+        self.ffn_batcher = FFNBatcher(self)
 
     def _effective_dtypes(self, link_name: str) -> dict[str, str]:
         cached = self._effective_dtype_bindings.get(link_name)

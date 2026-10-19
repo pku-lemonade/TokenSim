@@ -5,7 +5,11 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from TokenSim.af.planning.batching import AFIteration, validate_decode_requests
+from TokenSim.af.planning.batching import (
+    AFIteration,
+    validate_decode_requests,
+    request_batches,
+)
 from TokenSim.errors import ConfigurationError
 
 
@@ -18,6 +22,8 @@ class ExecutorSubmissionMixin:
         if self.plan_builder is None:
             raise ConfigurationError("AF submission requires a compiled runtime plan")
         validate_decode_requests(requests)
+        self.native_batches.check()
+        request_batches(requests, self.cluster_config.af.af_block_size)
         if self.operation_profile is not None:
             self.operation_profile.validate_workload(requests, "decode")
         if self.overhead_profile is not None:
@@ -102,7 +108,7 @@ class ExecutorSubmissionMixin:
                 a_tp_rank=self._canonical_a_tp_rank(placement),
             )
 
-        return self.builder.build(
+        iteration = self.builder.build(
             iteration_id=iteration_id,
             requests=requests,
             af_block_size=self.cluster_config.af.af_block_size,
@@ -114,6 +120,8 @@ class ExecutorSubmissionMixin:
                 routing_snapshot_factory if "moe" in layer_types.values() else None
             ),
         )
+        self.native_batches.register(iteration)
+        return iteration
 
     def _runtime_layer_types(self) -> dict[int, str]:
         layer_types = {

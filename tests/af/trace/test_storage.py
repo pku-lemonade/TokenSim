@@ -14,7 +14,7 @@ from TokenSim.af.trace.metrics import AFTraceEvent
 from TokenSim.af.trace.recorder import AFTraceRecorder
 from TokenSim.errors import SimulationStateError
 from TokenSim.reporting import get_af_stats
-from scripts.deepseek_v3_runtime import configuration, simulate
+from scripts.run_deepseek_mla import configuration, simulate
 from tests.af.support.execution import (
     FixedComputeProvider,
     FixedTransferProvider,

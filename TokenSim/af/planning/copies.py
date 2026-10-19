@@ -92,9 +92,7 @@ class TensorCopyPlannerMixin:
                 )
                 for source, a_owner, interval in source_parts:
                     predecessor = barrier_predecessor or (
-                        collective.node_id
-                        if collective is not None
-                        else producer_ids[source.domain_rank]
+                        producer_ids[source.domain_rank]
                     )
                     tensor_slice = AFTensorSlice(
                         tensor_item_id=f"request:{token[0]}:token:{token[1]}:activation",

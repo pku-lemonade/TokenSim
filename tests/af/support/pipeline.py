@@ -1,20 +1,14 @@
 """Small physical pipeline configurations for runtime and serving checks."""
 
 from copy import deepcopy
+from dataclasses import asdict
 from types import SimpleNamespace
 
 from TokenSim.config.cluster_config import ClusterConfig
 from tests.af.support.config import _cluster
 
 
-def pipeline_cluster(a_pp=2, f_pp=2, layers=2, resource_scope="fabric", namespace=""):
-    # Keep the existing TP/fabric contract and expand physical stage mappings.
-    from dataclasses import asdict
-
-    raw = asdict(
-        _cluster(a_tp=2, a_dp=1, f_tp=2, f_dp=1, f_ep=1, placement_strategy="dedicated")
-    )
-
+def cluster_document(cluster):
     def clean(value):
         if isinstance(value, dict):
             return {
@@ -26,7 +20,14 @@ def pipeline_cluster(a_pp=2, f_pp=2, layers=2, resource_scope="fabric", namespac
             return [clean(item) for item in value]
         return value
 
-    raw = clean(raw)
+    return clean(asdict(cluster))
+
+
+def pipeline_cluster(a_pp=2, f_pp=2, layers=2, resource_scope="fabric", namespace=""):
+    # Keep the existing TP/fabric contract and expand physical stage mappings.
+    raw = cluster_document(
+        _cluster(a_tp=2, a_dp=1, f_tp=2, f_dp=1, f_ep=1, placement_strategy="dedicated")
+    )
     raw["af"]["communication_resource_scope"] = resource_scope
     if resource_scope == "endpoint":
         raw["af"]["transfer_topology_mode"] = "flat_link"

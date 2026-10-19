@@ -14,6 +14,9 @@ class CompletedTiming:
     end_at: float
     service_duration: float
     resource_end_at: float | None = None
+    execution_group_id: str | None = None
+    input_ready_at: float | None = None
+    resource_queue_intervals: tuple[tuple[float, float], ...] | None = None
 
     @classmethod
     def from_event(cls, event):
@@ -38,6 +41,11 @@ def namespace_resource(service, resource):
 def namespace_event(service, event):
     return replace(
         event,
+        execution_group_id=(
+            f"{service}/{event.execution_group_id}"
+            if event.execution_group_id
+            else None
+        ),
         resource_id=namespace_resource(service, event.resource_id),
         resource_ids=tuple(
             namespace_resource(service, key) for key in event.resource_ids

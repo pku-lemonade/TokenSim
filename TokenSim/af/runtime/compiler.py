@@ -107,12 +107,19 @@ def compile_af_runtime_plan(
         domains = tuple(cluster_config.execution_domains.values())
         if len(domains) != 2 or any(
             domain.parallel.tensor_parallel_size != 1
-            or domain.parallel.data_parallel_size != 1
             or domain.parallel.pipeline_parallel_size != 1
             or domain.parallel.expert_parallel_size != 1
             for domain in domains
         ):
-            raise ConfigurationError("vllm_afd supports 1A1F with TP=DP=PP=EP=1")
+            raise ConfigurationError("vllm_afd requires TP=PP=EP=1")
+        a_domain, f_domain = cluster_config.af_domains
+        if f_domain.parallel.data_parallel_size != 1:
+            raise ConfigurationError("vllm_afd requires one F service replica")
+        if (
+            cluster_config.af.communication_timing.native_control_enabled
+            and a_domain.parallel.data_parallel_size != 1
+        ):
+            raise ConfigurationError("vllm_afd native control requires 1A1F")
     effective_dtypes, link_dtypes = _compile_dtypes(cluster_config, model, dtype)
     if cluster_config.af.execution_protocol == "vllm_afd" and any(
         value != "bf16" for value in model.operator_dtypes.values()

@@ -15,7 +15,7 @@ from TokenSim.config.simulation import SimulationConfig
 from TokenSim.errors import ConfigurationError, SimulationStateError
 from TokenSim.hardware import HardwareContext
 from TokenSim.llm.llm_engine import LLMEngine
-from scripts.deepseek_v3_runtime import configuration, simulate
+from scripts.run_deepseek_mla import configuration, simulate
 from tests.af.support.execution import _run_request
 from tests.af.support.observations import observe_services
 

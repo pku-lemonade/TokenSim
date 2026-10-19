@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from types import SimpleNamespace
 
 from TokenSim.af.execution.model import ModelAFExecutor
+from TokenSim.af.planning.batching import request_batches
 from TokenSim.af.providers.operator_table import build_operator_table_af_providers
 from TokenSim.af.runtime.admission import ResidentKV
 from TokenSim.af.trace.recorder import AFTraceRecorder
@@ -179,6 +180,8 @@ class AFService:
                     af_a_owners=session.owners,
                 )
             )
+        if phase == "decode":
+            request_batches(requests, self.runtime.cluster.af.af_block_size)
         start = self.env.now
         if self.execution_driver is not None:
             iteration = yield from self.execution_driver.forward(self, requests, phase)

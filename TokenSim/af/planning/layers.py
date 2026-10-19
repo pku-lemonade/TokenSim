@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, Mapping
 
 from TokenSim.af.planning.batching import AFBlock
+from TokenSim.af.planning.conversions import batch_conversions
 from TokenSim.af.planning.dag import AFExecutionDAG
 from TokenSim.af.planning.nodes import ExecutionNode
 from TokenSim.config.af.domains import ExecutionDomainConfig
@@ -160,6 +161,7 @@ class RuntimeLayerPlannerMixin:
                 attention_ids=post_attention_ids,
                 a_collective=a_collective,
             )
+        dag = AFExecutionDAG(batch_conversions(dag.nodes))
         if self.cluster_config.af.coalesce_ready_transfers:
             from TokenSim.af.planning.coalesce import coalesce_ready_transfers
 

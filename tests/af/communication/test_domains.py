@@ -1,6 +1,7 @@
 """Communication resource, volume and readiness regression contracts."""
 
 import unittest
+from dataclasses import replace
 
 import simpy
 
@@ -8,6 +9,24 @@ from TokenSim.af.communication.resources import DomainScheduler
 from TokenSim.comm.traffic import collective_plan, ring_volume
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.domains import CommunicationDomainConfig, transmission_service
+
+
+class PhysicalInventoryTest(unittest.TestCase):
+    def test_four_gpu_nodes_keep_their_real_node_boundaries(self):
+        from TokenSim.hardware.placement import build_topology_placement
+        from tests.af.support.config import _cluster
+        from tests.af.support.execution import af_test_hardware
+
+        cluster = _cluster(a_tp=1, a_dp=4, f_tp=1, f_dp=4, f_ep=4)
+        domains = replace(cluster.af.communication_domains, node_size=4, node_count=2)
+        cluster = replace(
+            cluster, af=replace(cluster.af, communication_domains=domains)
+        )
+        placement = build_topology_placement(
+            cluster, cluster.workers(), af_test_hardware()
+        )
+        self.assertEqual([placement.node_id(i) for i in range(8)], [0] * 4 + [1] * 4)
+        self.assertEqual(placement.topology.levels[0].size, 4)
 
 
 class VolumeTest(unittest.TestCase):

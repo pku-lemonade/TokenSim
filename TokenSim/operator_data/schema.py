@@ -77,6 +77,8 @@ def canonical_histogram(value: Any, *, field: str) -> str:
             count_f = float(item[1])
         except (TypeError, ValueError) as exc:
             raise ValueError(f"{field}[{index}] values must be numeric") from exc
+        if isinstance(item[0], bool) or float(item[0]) != value_i:
+            raise ValueError(f"{field}[{index}] value must be an integer")
         if value_i <= 0 or not math.isfinite(count_f) or count_f <= 0:
             raise ValueError(f"{field}[{index}] requires positive value and count")
         pairs.append((value_i, count_f))
@@ -85,7 +87,10 @@ def canonical_histogram(value: Any, *, field: str) -> str:
 
 
 def normalize_table_key_value(table: str, field: str, value: Any) -> Any:
-    if table == "mla_attention" and field == "context_lengths":
+    if (
+        table in {"mla_attention", "ragged_generation_attention"}
+        and field == "context_lengths"
+    ):
         return canonical_histogram(value, field=field)
     if table == "routed_experts" and field == "expert_tokens":
         raw = value
@@ -169,6 +174,22 @@ class TableSpec:
 
 
 TABLE_SPECS: Mapping[str, TableSpec] = {
+    "ragged_generation_attention": TableSpec(
+        name="ragged_generation_attention",
+        key_fields=(
+            "attn_dtype",
+            "kv_cache_dtype",
+            "batch_size",
+            "context_lengths",
+            "num_heads",
+            "num_kv_heads",
+            "head_dim",
+            "window_size",
+        ),
+        axes=(),
+        dtype_fields=("attn_dtype", "kv_cache_dtype"),
+        description="One decode attention invocation with an exact context-length histogram.",
+    ),
     "batched_gemm": TableSpec(
         name="batched_gemm",
         key_fields=("dtype", "groups", "m", "n", "k"),

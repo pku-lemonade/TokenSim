@@ -22,7 +22,7 @@ from TokenSim.operator_data.package import (
     PackageMeta,
     SourceRecord,
 )
-from scripts.deepseek_v3_runtime import configuration, simulate
+from scripts.run_deepseek_mla import configuration, simulate
 from tests.af.support.config import _cluster_dict
 from tests.af.support.execution import af_test_hardware
 from tests.af.support.model import _compute_query, _moe, _transfer_query

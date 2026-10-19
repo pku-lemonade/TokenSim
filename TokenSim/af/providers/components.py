@@ -7,6 +7,7 @@ import json
 import math
 from typing import Any, Mapping
 
+from TokenSim.af.providers.attention import attention_core
 from TokenSim.af.providers.compute import (
     OperatorComponent,
     _estimate_dataset_version,
@@ -49,7 +50,7 @@ class ComputeComponentsMixin:
                 resolver, "rope", "rope", tokens, q_local + kv_local, dtype
             ),
         ]
-        if self.execution_protocol == "vllm_afd":
+        if model.qk_norm:
             components[2:2] = [
                 self._elementwise(
                     resolver,
@@ -69,8 +70,8 @@ class ComputeComponentsMixin:
                 ),
             ]
         components.extend(
-            self._attention_core(
-                resolver, query, tokens, heads_local, kv_heads_local, dtype
+            attention_core(
+                self, resolver, query, tokens, heads_local, kv_heads_local, dtype
             )
         )
         components.append(
@@ -82,44 +83,6 @@ class ComputeComponentsMixin:
             )
         )
         return [component for component in components if component is not None]
-
-    def _attention_core(
-        self,
-        resolver: OperatorResolver,
-        query: AFComputeQuery,
-        tokens: int,
-        heads_local: int,
-        kv_heads_local: int,
-        dtype: str,
-    ) -> list[OperatorComponent]:
-        model = self.model
-        common = {
-            "attn_dtype": dtype,
-            "kv_cache_dtype": normalize_dtype(
-                query.kv_cache_dtype or model.kv_cache_dtype
-            ),
-            "num_heads": heads_local,
-            "num_kv_heads": kv_heads_local,
-            "head_dim": model.head_dim,
-            "window_size": (
-                model.attention_window(query.layer_id)
-                if model.attention_windows
-                else model.sliding_window
-            ),
-        }
-        lengths = [max(1, int(length)) for length in query.context_lengths]
-        components: list[OperatorComponent] = []
-        if query.phase == "prefill" or any(
-            length > 1 for length in query.query_lengths
-        ):
-            return prefill_components(self, resolver, query, tokens, common)
-        groups = Counter(lengths) if lengths else Counter({1: max(1, tokens)})
-        for context_len, count in sorted(groups.items()):
-            key = {**common, "batch_size": int(count), "context_len": int(context_len)}
-            components.append(
-                self._component(resolver, "attention_core", "generation_attention", key)
-            )
-        return components
 
     def _router_components(
         self,

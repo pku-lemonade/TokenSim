@@ -9,7 +9,7 @@ from math import isfinite
 import math
 import sys
 from typing import Any, Literal, Mapping
-from TokenSim.af.trace.occupancy import occupied_until
+from TokenSim.af.trace.occupancy import occupied_until, unique_executions
 
 from TokenSim.af.planning.batching import ForwardPhase
 from TokenSim.af.providers.queries import (
@@ -122,6 +122,9 @@ class AFTraceEvent:
     routing_edges: tuple[AFRoutingEdge, ...] = ()
     source_dtype: str | None = None
     target_dtype: str | None = None
+    execution_group_id: str | None = None
+    input_ready_at: float | None = None
+    resource_queue_intervals: tuple[tuple[float, float], ...] | None = None
 
     def as_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -264,11 +267,13 @@ def summarize_timeline(events, start, end, capacities=None):
     intervals = defaultdict(list)
     sums = defaultdict(float)
     resources = defaultdict(list)
+    counted = {id(event) for event in unique_executions(events)}
     for index, event in enumerate(events):
         left, right = max(start, event.start_at), min(end, event.end_at)
         if right > left:
             intervals[_category(event)].append((left, right))
-            sums[_category(event)] += right - left
+            if id(event) in counted:
+                sums[_category(event)] += right - left
         for resource in event.resource_ids or (event.resource_id,):
             if capacities.get(resource) == 1:
                 resources[resource].append(

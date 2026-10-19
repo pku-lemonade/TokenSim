@@ -7,7 +7,7 @@ from TokenSim.af.factory import build_model_runtime
 from TokenSim.block.replica_kv import ReplicaKVBlockManager
 from TokenSim.errors import ConfigurationError, OutOfBlocksError, SimulationStateError
 from TokenSim.operator_data.workload import work_for_table
-from scripts.deepseek_v3_runtime import configuration, simulate
+from scripts.run_deepseek_mla import configuration, simulate
 from tests.af.support.model import _request
 
 

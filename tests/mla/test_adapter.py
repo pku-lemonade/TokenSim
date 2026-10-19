@@ -14,7 +14,7 @@ from TokenSim.operator_data.package import (
     SourceRecord,
 )
 from TokenSim.operator_data.workload import work_for_table
-from scripts.deepseek_v3_runtime import configuration, simulate
+from scripts.run_deepseek_mla import configuration, simulate
 
 
 SOURCE = SourceRecord(

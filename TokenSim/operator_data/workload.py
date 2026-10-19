@@ -405,6 +405,10 @@ def work_for_table(
             int(key.get("window_size", 0)),
             context_len=int(key["context_len"]) if "context_len" in key else None,
         )
+    if table == "ragged_generation_attention":
+        from TokenSim.operator_data.ragged_attention import ragged_generation_work
+
+        return ragged_generation_work(key)
     if table == "generation_attention":
         return generation_attention_work(
             int(key["batch_size"]),

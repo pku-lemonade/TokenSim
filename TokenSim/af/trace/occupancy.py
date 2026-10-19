@@ -17,9 +17,48 @@ def occupied_until(event):
     return end
 
 
+def resource_queue_intervals(event):
+    intervals = getattr(event, "resource_queue_intervals", None)
+    if intervals is None:
+        return ((event.ready_at, event.start_at),)
+    previous = -math.inf
+    for start, end in intervals:
+        if not (
+            math.isfinite(start)
+            and math.isfinite(end)
+            and previous <= start <= end <= event.start_at
+        ):
+            raise SimulationStateError("invalid physical resource queue intervals")
+        previous = end
+    return intervals
+
+
+def unique_executions(events):
+    """Count one physical reservation for shared F batch member spans."""
+    seen = {}
+    for event in events:
+        group = getattr(event, "execution_group_id", None)
+        if group is not None:
+            signature = (
+                event.start_at,
+                event.end_at,
+                occupied_until(event),
+                event.resource_ids or (event.resource_id,),
+                resource_queue_intervals(event),
+            )
+            if group in seen:
+                if seen[group] != signature:
+                    raise SimulationStateError(
+                        "shared F execution has inconsistent resource intervals"
+                    )
+                continue
+            seen[group] = signature
+        yield event
+
+
 def validate_resource_capacity(events, capacities):
     intervals = {}
-    for event in events:
+    for event in unique_executions(events):
         end = occupied_until(event)
         if end <= event.start_at:
             continue

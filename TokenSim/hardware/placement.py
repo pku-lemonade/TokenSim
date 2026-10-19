@@ -17,7 +17,7 @@ def build_topology_placement(
 ) -> TopologyPlacement:
     """Resolve the cluster's topology and each worker's device index.
 
-    AF physical mode uses explicit eight-slot communication-domain inventory.
+    AF physical mode uses explicit communication-domain node inventory.
     For other modes, when the cluster names a ``topology`` from the catalog, workers are placed
     either at the explicit ``device_indices`` of their group or sequentially.
     Otherwise a two-level topology is synthesized from the legacy ``networks``
@@ -185,7 +185,7 @@ def validate_domain_placement(placement, worker_configs, config):
         )
     if placement.topology.levels[0].size != config.node_size:
         raise ConfigurationError(
-            "AF physical placement node size must equal communication_domains.node_size=8; migrate legacy placement"
+            "AF physical placement node size must equal communication_domains.node_size; migrate legacy placement"
         )
     mapping = placement.device_index_by_worker
     if set(mapping) != set(range(len(worker_configs))) or any(

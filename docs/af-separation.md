@@ -13,7 +13,7 @@ Use the standard CLI with a catalog model:
 
 ```bash
 python benchmark.py \
-  --cluster data/clusters/af/decode_full_duplex.json \
+  --cluster data/clusters/af/decode_half_duplex.json \
   --model llama-3-8b \
   --latency_backend operator_table \
   --latency_fallback analytical_only \
@@ -38,7 +38,10 @@ Use [DeepSeek V3 MLA](deepseek-v3-mla.md) for the full-model MLA example.
 | Field | Meaning |
 | --- | --- |
 | `af.enabled` | Enable decode AF execution |
-| `af.af_block_size` | Maximum requests per AF micro-batch |
+| `af.af_block_size` | Maximum query tokens per AF micro-batch |
+| `af.ffn_batching` | Combine ready F work from different A owners; defaults to `true` |
+| `af.ffn_batch_wait_us` | F collection window in microseconds; defaults to the uncalibrated assumption `5.0`, with no window for one A replica |
+| `af.ffn_batch_max_tokens` | Maximum original tokens combined on one F rank; `0` uses `af_block_size * A_DP` |
 | `af.execution_domains` | Domain capabilities, parallel sizes and physical rank mappings |
 | `af.links` | Decode A/F endpoints and communication resources |
 | `af.router_location` | Execute routing on the A or F leader |
@@ -46,6 +49,8 @@ Use [DeepSeek V3 MLA](deepseek-v3-mla.md) for the full-model MLA example.
 | `af.trace_enabled` | Collect detailed simulated events |
 
 `--block_size` specifies tokens per KV block independently of `af_block_size`.
+Recomputation and multi-token verification count every scheduled query token toward the AF micro-batch budget.
+A request exceeding that budget is rejected before ownership or iteration state changes.
 Serving requires a complete-model worker with `prefill` capability.
 AF configuration, links and execution domains have no `phases` field.
 Each enabled runtime has one decode link and its two A/F execution domains.
@@ -67,9 +72,11 @@ Expert parallelism (EP) reuses the F domain's `TP*DP` physical ranks.
 Intermediate EP sizes divide the `TP*DP` stage world and retain `Expert TP=(TP*DP)/EP` contiguous tensor shards per expert.
 Expert TP must divide base TP so one expert's shards fit within a base replica.
 The runtime resolves exact expert owners and scopes routed-expert collectives to those shards.
-The configurations `decode_tp2_dp2_ep1.json` and `decode_tp2_dp2_ep4_rank_reuse.json` demonstrate these layouts.
+The configuration `decode_tp2_dp2_ep4_rank_reuse.json` uses `TP=2`, `DP=2` and `EP=4`.
+An `EP=1` variant uses the same inventory with F `expert_parallel_size` set to one and every F `ep_rank` set to zero.
 
-Physical communication uses explicit eight-slot nodes, placement and node bandwidth budgets.
+Physical communication uses explicit node slots, placement and node bandwidth budgets.
+`communication_domains.node_size` defaults to eight and accepts any positive integer, including four for GB200 compute nodes.
 Declare `af.communication_domains.node_count` and choose `manual`, `mixed` or `dedicated` placement.
 The communication model below describes contention, collective volumes and measurement scopes.
 `flat_link` supports explicitly configured communication fabrics and lanes.
@@ -86,6 +93,17 @@ The graph owns post-attention normalization and the A-side residual addition.
 Router service includes projection and top-k selection; routed expert service excludes normalization, combination and residual work.
 Analytical routed-expert service uses the exact local assignment histogram and active-expert count.
 Measured aggregate MoE rows retain their balanced-equivalent batch interpretation.
+F batching combines compatible dense, shared-expert or grouped routed-expert queries across A owners under `partial_return`.
+The multi-A `vllm_afd` path batches F-side routing, routed experts and weighted combination under the same collection policy.
+The batch key retains the layer, physical F rank, TP/EP groups, precision and operator geometry.
+Each batch contains at most one block from each A owner.
+Collection starts when a compatible input becomes ready, waits for `ffn_batch_wait_us`, and freezes the available members before joining the device queue.
+A zero window collects inputs ready at the same simulated timestamp.
+Late inputs form another batch, and an atomic block exceeding the configured combination limit executes alone.
+Batch waiting and device queueing remain visible, and outputs retain their original request, A owner and layer dependencies.
+Setting `ffn_batching: false` retains independent F invocations for sensitivity comparisons.
+The physical F workspace reservation covers the inferred or configured aggregate token bound.
+This reservation covers one active F batch and does not model every queued input buffer or persistent-kernel lane.
 FFN weight accounting uses the model's projection count for gated and ungated activations.
 Combine and residual queries use the A rank's owned hidden interval.
 
@@ -93,8 +111,11 @@ With `partial_return`, F ranks return expert outputs and A ranks perform weighte
 An F-side router sends selected expert IDs and weights to all consumers that need them, including one-A/one-F deployments.
 Each token transmits one 32-bit expert ID and one 32-bit weight per selected expert.
 Native `vllm_afd` combines expert results on F and returns one hidden activation per original token.
-It supports all-MoE Qwen3 models without shared experts, BF16 precision and one A/F rank.
+It supports all-MoE Qwen3 models without shared experts, BF16 precision, single-rank A replicas and one F rank.
+Multiple A replicas can share that F service when native control is disabled.
+This path models protocol semantics and bounded batching without claiming calibrated multi-A connector timing.
 Its eager control protocol permits one in-flight transaction.
+Native control, call-order replay and native calibration profiles require 1A1F.
 
 The A scheduler retains an admitted request's owner until an explicit KV transfer occurs.
 Each logical KV block maps to local shards on all required A TP ranks.
@@ -116,7 +137,7 @@ Attention service-cache keys include that geometry so a local-attention estimate
 `operator_dtypes` selects component weight storage independently of activation and KV formats.
 The `routed_experts` entry supports weight-only MXFP4 storage with row padding and one scale byte per 32 weights.
 Packed formats cannot be selected for activations, KV blocks or communication tensors.
-LP30 packed-weight estimates use its supported compute-pipe fallback and charge an explicit analytical vector-dequantization term.
+Groq packed-weight estimates use the device's supported compute-pipe fallback and charge an explicit analytical vector-dequantization term.
 These vector efficiency and instruction-count inputs remain unmeasured assumptions.
 
 ## Request geometry and execution contracts
@@ -127,10 +148,20 @@ Decode recomputation records query lengths and available KV contexts separately 
 Cached keys contribute attention FLOPs and KV reads when a context suffix is rebuilt.
 Uneven requests retain separate query shapes.
 
-Wire precision changes create encode/decode nodes on the producer and consumer compute resources.
+Wire precision changes create batched encode/decode nodes on the producer and consumer compute resources.
+Conversions sharing a producer, receive boundary, rank, dtype and element width execute as one invocation while retaining every logical tensor slice.
+Source encoding is shared when the same token is sent to several expert destinations.
+The planner also batches messages produced by that shared encoding without changing their payload bytes.
 Conversion names record both formats, such as `cast_bf16_to_fp8`, and the table dtype identifies the output format.
 Analytical conversion estimates include source reads, target writes, conversion work and kernel overhead.
 Strict lookup requires a matching measurement.
+Variable-length decode uses one `ragged_generation_attention` query with the exact context-length histogram.
+Its analytical work sums per-request FLOPs and KV traffic, applies each request's attention window, and charges one kernel invocation.
+Uniform decode continues to use `generation_attention`.
+`table_only` requires a matching ragged measurement; `table_first` labels the missing-table fallback as analytical.
+Uniform measurements are not silently substituted for a ragged batch.
+The model field `qk_norm: true` declares per-head query/key root mean square (RMS) normalization independently of transport protocol.
+The Qwen3 catalog enables this field, and AF and ordinary operator-table execution both include its service and parameter storage.
 
 Mixed serving batches are partitioned by logical phase and whether they build context.
 Complete prefill and AF decode groups share physical compute resources and join at one serving-step completion barrier.
@@ -146,6 +177,11 @@ Complete-model prefill chunks omit output-head work when they do not emit logits
 `af_runtime_state` reports topology, component bytes, KV partitions and capacities.
 Runtime-state schema version 3.0 removes phase fields from decode request owners and partial destinations.
 `af_trace` reports dependency readiness, resource queueing, service time and provenance.
+Members of one shared F invocation retain separate dependency spans with the same `execution_group_id` and device-service interval.
+Their local routing edges describe each member, while `ffn_batch_*` details describe the combined provider query.
+Resource utilization, operation counts and additive timeline totals count a shared execution once.
+Trace consumers aggregating physical service should use `unique_executions` from `TokenSim.af.trace.occupancy`.
+Directly summing every member's service duration counts the shared interval repeatedly.
 `af_phase_fidelity` reports `prefill_aggregate` for prefill and `decode_af_rank_local` for decode.
 The fixed-batch `simulate_decode` helper checks the selected A replica's resident KV capacity and model context limit before submitting work.
 
@@ -157,7 +193,7 @@ Changing runtime configuration requires a new provider/runtime; service and DAG 
 ## Physical communication
 
 Physical AF communication uses the `node-domain-fifo-v1` model.
-Each node has eight GPU slots, one shared local communication resource, and independent inter-node transmit and receive resources.
+Each node has the configured number of GPU slots, one shared local communication resource, and independent inter-node transmit and receive resources.
 Empty slots remain part of the declared inventory.
 
 ```json
@@ -184,6 +220,7 @@ Place these fields inside the cluster's `af` object.
 Bandwidth is unidirectional bytes/s, with decimal GB units.
 The defaults above are simulator assumptions: 300 GB/s is a shared node budget.
 The physical mode reads these parameters independently of the catalog link name.
+Rack-wide NVLink deployments require explicit bandwidth and resource-sharing inputs; changing the node slot count does not calibrate those parameters.
 `manual` supports explicit device indices; `dedicated` separates A/F nodes; `mixed` reserves the configured A slots within each node.
 Placement rejects duplicate slots, insufficient inventory and conflicting overrides before execution.
 
@@ -250,11 +287,12 @@ Cancellation releases every endpoint reservation and leaves destination validity
 `compute_execution_mode: cuda_graph` selects an analytical GPU device-kernel overhead and charges one host submission per cohort forward in `AFService`.
 `graph_submit_us` defaults to 4 microseconds and `graph_device_kernel_us` defaults to 0.2 microseconds.
 These costs have no measured calibration and are explicit sensitivity inputs.
+CUDA graph launch costs do not represent persistent MegaMoE fusion or GPU communication SM occupancy.
 Graph overrides require analytical-only operator fallback to avoid rewriting measured timing scopes.
-LP30 device service remains unchanged by the GPU graph setting.
+Groq device service remains unchanged by the GPU graph setting.
 `coalesce_ready_transfers: true` batches matching endpoint messages and collectives while retaining payload bytes, tensor slices and producer dependencies.
 Endpoint batches wait for all their declared producers.
-The default disables batching; the LPX native experiment enables it explicitly.
+The default disables batching.
 `dag_template_cache_max_tokens` bounds the query-token count eligible for structural template caching.
 Zero retains unlimited shape eligibility; larger graphs always use the validated reference planner.
 `AFService(retain_trace=False)` validates full native events at forward completion and retains their timing records for serving metrics.

@@ -14,7 +14,7 @@ from TokenSim.config.af.domains import DomainCollectiveConfig
 from TokenSim.errors import ConfigurationError
 from TokenSim.moe.config import MoEModelConfig
 from TokenSim.moe.routing import LayerRoutingSnapshot, RoutingAssignment
-from scripts.deepseek_v3_runtime import configuration, simulate
+from scripts.run_deepseek_mla import configuration, simulate
 from tests.af.support.config import _cluster
 from tests.af.support.model import _formal_runtime_plan, _small_formal_moe_dag
 from tests.af.support.observations import observe_services
@@ -212,8 +212,8 @@ class ParallelExecutionPlannerTest(unittest.TestCase):
         )
         self.assertEqual(dense_stages["dense_ffn"], 4)
         self.assertEqual(dense_stages["residual"], 2)
-        self.assertEqual(dense_stages["encode"], 10)
-        self.assertEqual(dense_stages["decode"], 16)
+        self.assertEqual(dense_stages["encode"], 5)
+        self.assertEqual(dense_stages["decode"], 8)
         dense_collectives = [
             node.operation
             for node in dense.nodes
@@ -224,7 +224,7 @@ class ParallelExecutionPlannerTest(unittest.TestCase):
             dense_collectives, ["all_reduce", "reduce_scatter", "all_gather"]
         )
         dense_a_to_f = [node for node in dense.nodes if node.operation == "af_a_to_f"]
-        self.assertEqual(len(dense_a_to_f), 8)
+        self.assertEqual(len(dense_a_to_f), 4)
         self.assertEqual(
             {node.source_endpoint.domain_rank for node in dense_a_to_f}, {0}
         )
@@ -232,9 +232,9 @@ class ParallelExecutionPlannerTest(unittest.TestCase):
             {node.target_endpoint.domain_rank for node in dense_a_to_f},
             {0, 1, 2, 3},
         )
-        self.assertTrue(all(node.payload_bytes == 16 for node in dense_a_to_f))
+        self.assertTrue(all(node.payload_bytes == 32 for node in dense_a_to_f))
         dense_f_to_a = [node for node in dense.nodes if node.operation == "af_f_to_a"]
-        self.assertEqual(len(dense_f_to_a), 8)
+        self.assertEqual(len(dense_f_to_a), 4)
         self.assertEqual(
             {
                 (node.source_endpoint.domain_rank, node.target_endpoint.domain_rank)
@@ -243,7 +243,7 @@ class ParallelExecutionPlannerTest(unittest.TestCase):
             {(0, 0), (1, 0), (2, 1), (3, 1)},
         )
         self.assertIn("i5:b0:l0:residual:layout", dense.terminal_node_ids)
-        self.assertIn("i5:b0:l0:post_attention_norm:r0", dense.terminal_node_ids)
+        self.assertNotIn("i5:b0:l0:post_attention_norm:r0", dense.terminal_node_ids)
         self.assertIn("i5:b0:l0:post_attention_norm:r1", dense.terminal_node_ids)
 
         moe = planner.build_layer(block, 1, cluster.af.links[0])
@@ -253,8 +253,8 @@ class ParallelExecutionPlannerTest(unittest.TestCase):
         self.assertEqual(moe_stages["shared_expert"], 4)
         self.assertEqual(moe_stages["weighted_combine"], 2)
         self.assertEqual(moe_stages["residual"], 2)
-        self.assertEqual(moe_stages["encode"], 18)
-        self.assertEqual(moe_stages["decode"], 24)
+        self.assertEqual(moe_stages["encode"], 7)
+        self.assertEqual(moe_stages["decode"], 12)
         routed = [node for node in moe.nodes if node.stage == "routed_expert"]
         self.assertEqual(sum(node.local_work.assignment_count for node in routed), 4)
         self.assertEqual(
@@ -266,7 +266,7 @@ class ParallelExecutionPlannerTest(unittest.TestCase):
             all(node.local_work.original_token_count == 2 for node in shared)
         )
         moe_a_to_f = [node for node in moe.nodes if node.operation == "af_a_to_f"]
-        self.assertEqual(len(moe_a_to_f), 8)
+        self.assertEqual(len(moe_a_to_f), 4)
         self.assertEqual(
             len(
                 {
@@ -279,9 +279,9 @@ class ParallelExecutionPlannerTest(unittest.TestCase):
             ),
             4,
         )
-        self.assertTrue(all(node.payload_bytes == 16 for node in moe_a_to_f))
+        self.assertTrue(all(node.payload_bytes == 32 for node in moe_a_to_f))
         moe_f_to_a = [node for node in moe.nodes if node.operation == "af_f_to_a"]
-        self.assertEqual(len(moe_f_to_a), 16)
+        self.assertEqual(len(moe_f_to_a), 8)
         owner_intervals = {0: (0, 8), 1: (8, 16)}
         for node in moe_f_to_a:
             owner_interval = owner_intervals[node.target_endpoint.domain_rank]

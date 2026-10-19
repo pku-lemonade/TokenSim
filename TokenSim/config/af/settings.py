@@ -69,6 +69,9 @@ class AFConfig:
     graph_submit_us: float = 4.0
     graph_device_kernel_us: float = 0.2
     coalesce_ready_transfers: bool = False
+    ffn_batching: bool = True
+    ffn_batch_wait_us: float = 5.0
+    ffn_batch_max_tokens: int = 0
     operation_service_profile: dict[str, Any] | None = None
     transport_service_profile: dict[str, Any] | None = None
     engine_overhead_profile: dict[str, Any] | None = None
@@ -108,6 +111,7 @@ class AFConfig:
         "service_estimate_cache",
         "dag_template_cache",
         "coalesce_ready_transfers",
+        "ffn_batching",
         mode="before",
     )
     @classmethod
@@ -116,14 +120,21 @@ class AFConfig:
             raise ConfigurationError(f"af.{info.field_name} must be a boolean")
         return value
 
-    @field_validator("af_block_size", "dag_template_cache_max_tokens", mode="before")
+    @field_validator(
+        "af_block_size",
+        "dag_template_cache_max_tokens",
+        "ffn_batch_max_tokens",
+        mode="before",
+    )
     @classmethod
     def _validate_block_size_type(cls, value: Any, info) -> int:
         if type(value) is not int:
             raise ConfigurationError(f"{info.field_name} must be an integer")
         return value
 
-    @field_validator("graph_submit_us", "graph_device_kernel_us", mode="before")
+    @field_validator(
+        "graph_submit_us", "graph_device_kernel_us", "ffn_batch_wait_us", mode="before"
+    )
     @classmethod
     def _validate_graph_cost(cls, value: Any, info):
         from TokenSim.config.validation import number
@@ -146,6 +157,7 @@ class AFConfig:
         from TokenSim.config.validation import integer
 
         integer(self.dag_template_cache_max_tokens, "AF DAG cache token limit")
+        integer(self.ffn_batch_max_tokens, "AF F batch token limit")
         self._explicit_dtype_fields = frozenset(dtype_presence_input)
         if self.transfer_topology_mode not in {"physical", "flat_link"}:
             raise ConfigurationError(
@@ -213,7 +225,6 @@ class AFConfig:
             (
                 timing.a_step_prepare_us,
                 timing.f_step_prepare_us,
-                timing.compute_submit_us,
                 timing.host_receive_submit_us,
                 timing.native_control_enabled,
             )
@@ -221,6 +232,8 @@ class AFConfig:
             raise ConfigurationError(
                 "fixed host preparation requires vllm_afd and separated timing"
             )
+        if timing.compute_submit_us and not timing.enabled:
+            raise ConfigurationError("compute_submit_us requires separated timing")
         if self.execution_protocol == "vllm_afd":
             # The measured Qwen3 plugin owns gate, experts and combine on F.
             # Router placement is a protocol property, not a sweep parameter.

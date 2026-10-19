@@ -44,11 +44,18 @@ class ResidentKV:
         self.plan = plan
         self.leases = {}
         self.reserved = {state.physical_identity: 0 for state in plan.physical_states}
+        self.reserved_by_rank = {}
+
+    def _rank_bytes(self, domain, instance, context):
+        return {
+            binding.rank_key: rank_kv_bytes(self.plan, binding, context)
+            for binding in self.plan.bindings_for_instance(domain, instance)
+        }
 
     def _bytes(self, domain, instance, context):
         result = {}
-        for binding in self.plan.bindings_for_instance(domain, instance):
-            size = rank_kv_bytes(self.plan, binding, context)
+        for rank, size in self._rank_bytes(domain, instance, context).items():
+            binding = self.plan.binding(*rank)
             result[binding.physical_identity] = (
                 result.get(binding.physical_identity, 0) + size
             )
@@ -63,6 +70,17 @@ class ResidentKV:
                 "KV lease must have a unique request and bounded context"
             )
         sizes = self._bytes(domain, instance, maximum_context)
+        rank_sizes = self._rank_bytes(domain, instance, maximum_context)
+        replica = self.plan.replica_for_instance(domain, instance)
+        for rank, blocks in replica.local_gpu_blocks:
+            partition = self.plan.binding(*rank).kv_partition
+            budget = blocks * partition.bytes_per_block if partition else 0
+            required = self.reserved_by_rank.get(rank, 0) + rank_sizes[rank]
+            if required > budget:
+                raise ConfigurationError(
+                    f"resident KV exceeds compiled replica budget on {rank}: "
+                    f"required_bytes={required}, available_bytes={budget}"
+                )
         for physical, size in sizes.items():
             state = self.plan.physical_state(physical)
             required = (
@@ -80,6 +98,8 @@ class ResidentKV:
         )
         for physical, size in sizes.items():
             self.reserved[physical] += size
+        for rank, size in rank_sizes.items():
+            self.reserved_by_rank[rank] = self.reserved_by_rank.get(rank, 0) + size
 
     def commit(self, request_id, context):
         integer(context, "committed KV context")
@@ -96,6 +116,10 @@ class ResidentKV:
             lease.domain, lease.instance, lease.maximum_context
         ).items():
             self.reserved[physical] -= size
+        for rank, size in self._rank_bytes(
+            lease.domain, lease.instance, lease.maximum_context
+        ).items():
+            self.reserved_by_rank[rank] -= size
 
     def summary(self):
         current = {physical: 0 for physical in self.reserved}

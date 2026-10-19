@@ -1,9 +1,0 @@
-case,mode,batch,status,micro_batch,native_executor,tokens_per_s_per_user,output_tokens_per_s,tokens_per_s_per_mw,normalized_throughput,power_watts,reason
-rubin-tp8,rubin,1,ok,1,SampledNativeReplay,1338.8246398097435,909.493646880757,63159.2810333859,0.6749296749937783,14400.0,
-rubin-tp8,rubin,16,ok,1,SampledNativeReplay,139.01423769313402,1347.5383889279144,93579.05478666072,1.0,14400.0,
-af-tp8,af,1,ok,1,SampledNativeReplay,1232.8393267849733,896.4717463755495,750.0600287613366,0.008015255448682458,1195200.0,
-af-tp8,af,16,ok,1,SampledNativeReplay,160.58821834166554,1599.6955543882686,1338.4333621053117,0.014302702299746882,1195200.0,
-pd-tp16,pd,1,ok,1,SampledNativeReplay,4576.629666580491,1907.1828410865294,1324.432528532312,0.014153087264577757,1440000.0,
-pd-tp16,pd,16,infeasible,,,,,,,,"resident KV does not fit on target-a:560: required=503086080, available=500000000"
-draft-tp8,draft,1,ok,1,SampledNativeReplay,3409.1584468386295,1545.4622286736708,35774.58862670534,0.38229269047719483,43200.0,
-draft-tp8,draft,16,infeasible,,,,,,,,"resident KV does not fit on draft-a:16: required=524286976, available=500000000"

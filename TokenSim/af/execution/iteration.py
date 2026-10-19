@@ -13,6 +13,14 @@ from TokenSim.errors import ConfigurationError, SimulationStateError
 
 class ExecutorIterationMixin:
     def run_iteration(self, iteration: AFIteration):
+        self.native_batches.check()
+        if any(
+            block.token_count > self.cluster_config.af.af_block_size
+            for block in iteration.blocks
+        ):
+            raise ConfigurationError(
+                "AF block exceeds the compiled workspace token budget"
+            )
         if iteration.iteration_id in self.active_iterations:
             raise SimulationStateError(
                 f"AF iteration {iteration.iteration_id} is already active"
@@ -68,7 +76,15 @@ class ExecutorIterationMixin:
         try:
             if processes:
                 completion = self.env.all_of(done_events)
-                yield self.env.any_of((completion, failure_event))
+                signals = [completion, failure_event]
+                if self.native_batches.enabled:
+                    signals.append(self.native_batches.failure)
+                yield self.env.any_of(signals)
+                if (
+                    self.native_batches.enabled
+                    and self.native_batches.failure.triggered
+                ):
+                    failures.append(self.native_batches.failure.value)
                 if failures:
                     for process in processes:
                         if process.is_alive:
@@ -83,6 +99,7 @@ class ExecutorIterationMixin:
                         f"AF iteration {iteration.iteration_id} failed: {exc}"
                     ) from exc
         except simpy.Interrupt:
+            self.native_batches.abort(f"iteration {iteration.iteration_id} cancelled")
             for process in processes:
                 if process.is_alive:
                     process.interrupt(
@@ -90,6 +107,9 @@ class ExecutorIterationMixin:
                     )
             if processes:
                 yield self.env.all_of(done_events)
+            raise
+        except BaseException as error:
+            self.native_batches.abort(error)
             raise
         finally:
             state = self._native_controls.pop(iteration.iteration_id, None)
@@ -111,6 +131,7 @@ class ExecutorIterationMixin:
             if preparations:
                 yield self.env.all_of([process for process, _ in preparations.values()])
             self.active_iterations.pop(iteration.iteration_id, None)
+            self.native_batches.complete(iteration)
             for key in tuple(self.active_stages):
                 if key[0] == iteration.iteration_id:
                     self.active_stages.pop(key, None)

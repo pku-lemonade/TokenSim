@@ -212,6 +212,27 @@ def validate_decode_requests(requests: Sequence[Any]) -> None:
         raise ConfigurationError("AF separation only accepts decode requests")
 
 
+def request_batches(requests, token_limit):
+    """Pack whole requests within the compiled per-block activation budget."""
+    batches, current, tokens = [], [], 0
+    for request in requests:
+        count = request_work(request).queries
+        if count > token_limit:
+            raise ConfigurationError(
+                f"AF request {request.id} needs {count} query tokens, exceeding "
+                f"the af_block_size={token_limit} workspace token budget; "
+                "increase af_block_size or schedule a smaller query chunk"
+            )
+        if current and tokens + count > token_limit:
+            batches.append(tuple(current))
+            current, tokens = [], 0
+        current.append(request)
+        tokens += count
+    if current:
+        batches.append(tuple(current))
+    return tuple(batches)
+
+
 class AFBlockBuilder:
     def build(
         self,
@@ -248,8 +269,9 @@ class AFBlockBuilder:
             )
 
         blocks: list[AFBlock] = []
-        for block_id, start in enumerate(range(0, len(requests), af_block_size)):
-            block_requests = tuple(requests[start : start + af_block_size])
+        for block_id, block_requests in enumerate(
+            request_batches(requests, af_block_size)
+        ):
             work = tuple(request_work(request) for request in block_requests)
             token_count = sum(item.queries for item in work)
             forward_phases = {item.forward_phase for item in work}

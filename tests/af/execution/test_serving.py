@@ -243,8 +243,10 @@ class AFServingCorrectnessTest(unittest.TestCase):
 
 
 class MixedServingTest(unittest.TestCase):
-    def engine(self, *, capacity=None, compute=None, moe=False):
-        cluster = _with_prefill_pool(ClusterConfig(**_cluster_dict(af_block_size=8)))
+    def engine(self, *, capacity=None, compute=None, moe=False, af_block_size=8):
+        cluster = _with_prefill_pool(
+            ClusterConfig(**_cluster_dict(af_block_size=af_block_size))
+        )
         cluster.kv_cache_capacity_tokens_per_dp_rank = capacity
         hardware = af_test_hardware(capacity_gib=0.1, moe=_moe() if moe else None)
         env = simpy.Environment()
@@ -278,7 +280,7 @@ class MixedServingTest(unittest.TestCase):
         )
 
     def test_memory_pressure_recomputes_decode_context_through_af(self):
-        env, engine, compute = self.engine(capacity=16)
+        env, engine, compute = self.engine(capacity=16, af_block_size=16)
         requests = [Request(i, 8, 8, 4) for i in (1, 2)]
         original = LLMWorker.dynamic_batch
 

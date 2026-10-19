@@ -12,7 +12,6 @@ from pydantic.dataclasses import dataclass, Field
 from TokenSim.errors import ConfigurationError
 
 MODEL_VERSION = "node-domain-fifo-v1"
-AF_NODE_SIZE = 8
 
 
 @dataclass(frozen=True, config=ConfigDict(extra="forbid"))
@@ -110,10 +109,10 @@ class CommunicationDomainConfig:
             )
 
     def validate_physical_inventory(self) -> None:
-        """AF physical nodes have eight slots, including unused slots."""
-        if type(self.node_size) is not int or self.node_size != AF_NODE_SIZE:
+        """Validate the declared slots per node, including unused slots."""
+        if type(self.node_size) is not int or self.node_size < 1:
             raise ConfigurationError(
-                "af.communication_domains.node_size must be 8 for AF physical placement"
+                "af.communication_domains.node_size must be a positive integer"
             )
         if type(self.node_count) is not int or self.node_count < 1:
             raise ConfigurationError(
@@ -128,7 +127,7 @@ def physical_domain_config(af_config):
     config = af_config.communication_domains
     if config is None:
         raise ConfigurationError(
-            "AF physical requires explicit af.communication_domains with node_size=8, "
+            "AF physical requires explicit af.communication_domains with node_size, "
             "node_count and dedicated/mixed/manual placement; migrate the legacy placement"
         )
     config.validate_physical_inventory()

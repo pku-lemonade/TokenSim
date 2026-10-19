@@ -57,6 +57,7 @@ class ModelSpec(AttentionModelMixin):
     components: TransformerComponents | None = None
     operator_dtypes: Mapping[str, str] = field(default_factory=dict)
     operator_modules: Mapping[str, Mapping[str, Any]] = field(default_factory=dict)
+    qk_norm: bool = False
 
     def __post_init__(self) -> None:
         if self.attention_type not in {"mha", "gqa", "mqa", "mla"}:
@@ -94,6 +95,13 @@ class ModelSpec(AttentionModelMixin):
         for window in self.attention_windows:
             integer(window, "attention window")
         boolean(self.tie_word_embeddings, "tie_word_embeddings")
+        boolean(self.qk_norm, "qk_norm")
+        if self.qk_norm and (
+            self.attention_type == "mla" or self.components is not None
+        ):
+            raise ConfigurationError(
+                "qk_norm requires ordinary attention without a compressed module"
+            )
         if not isinstance(self.model_id, str) or not self.model_id:
             raise ConfigurationError("model_id must be a nonempty string")
         if self.num_attention_heads % self.num_key_value_heads != 0:
@@ -237,6 +245,7 @@ class ModelSpec(AttentionModelMixin):
         return (
             self.hidden_size * (self.q_dim + 2 * self.kv_dim)
             + self.q_dim * self.hidden_size
+            + (2 * self.head_dim if self.qk_norm else 0)
         )
 
     def dense_ffn_params_per_layer(self) -> int:
@@ -411,6 +420,7 @@ class ModelSpec(AttentionModelMixin):
             operator_modules={
                 str(k): dict(v) for k, v in (raw.get("operator_modules") or {}).items()
             },
+            qk_norm=raw.get("qk_norm", False),
             attention_type=attention_type,
             **{name: raw.get(name, 0) for name in MLADimensions.__dataclass_fields__},
         )
@@ -436,6 +446,7 @@ class ModelSpec(AttentionModelMixin):
                 else {}
             ),
             "tie_word_embeddings": self.tie_word_embeddings,
+            **({"qk_norm": True} if self.qk_norm else {}),
             "activation": self.activation,
             "dtype": self.dtype,
             "activation_dtype": self.activation_dtype,

@@ -52,7 +52,8 @@ class ExecutorComputeMixin:
         )
         if fused is not None:
             compute_submit_us = 0
-        if timing.enabled and compute_submit_us:
+        batched = fused is None and self.ffn_batcher.eligible(step)
+        if timing.enabled and compute_submit_us and not batched:
             submit_id = f"{step.node_id}:compute_submit"
             yield from self._run_communication_host_stage(
                 block,
@@ -155,29 +156,53 @@ class ExecutorComputeMixin:
             assignment_count=local_work.assignment_count,
         )
         stage_name = step.stage
-        ready_at, start_at, end_at, estimate = yield from self._run_resources_stage(
-            block,
-            layer_id,
-            step.node_id,
-            tuple(resource for _, resource in resources),
-            lambda: (
-                AFServiceEstimate(
-                    0,
-                    fused.source_id,
-                    dataset_version=fused.dataset_version,
-                    match_type=fused.match_type,
-                    details={
-                        "timing_scope": "device_service",
-                        "covered_by": "routed_experts",
-                        "semantic_completion_only": True,
-                    },
-                )
-                if fused is not None
-                else self._estimate(
-                    self.compute_provider, query, block, layer_id, stage_name
-                )
-            ),
-        )
+        execution_group_id = None
+        input_ready_at = None
+        queue_intervals = None
+        if batched:
+            (
+                ready_at,
+                start_at,
+                end_at,
+                estimate,
+                execution_group_id,
+                submit_id,
+                input_ready_at,
+                queue_intervals,
+            ) = yield from self.ffn_batcher.run(
+                block,
+                layer_id,
+                step,
+                query,
+                resources,
+                compute_submit_us if timing.enabled else 0,
+            )
+            if submit_id is not None:
+                step = replace(step, predecessor_ids=(submit_id,))
+        else:
+            ready_at, start_at, end_at, estimate = yield from self._run_resources_stage(
+                block,
+                layer_id,
+                step.node_id,
+                tuple(resource for _, resource in resources),
+                lambda: (
+                    AFServiceEstimate(
+                        0,
+                        fused.source_id,
+                        dataset_version=fused.dataset_version,
+                        match_type=fused.match_type,
+                        details={
+                            "timing_scope": "device_service",
+                            "covered_by": "routed_experts",
+                            "semantic_completion_only": True,
+                        },
+                    )
+                    if fused is not None
+                    else self._estimate(
+                        self.compute_provider, query, block, layer_id, stage_name
+                    )
+                ),
+            )
         if (
             self.cluster_config.af.execution_protocol == "vllm_afd"
             and step.stage == "routed_expert"
@@ -195,6 +220,9 @@ class ExecutorComputeMixin:
                     layer_id=layer_id,
                     phase=block.phase,
                     event_type="compute",
+                    execution_group_id=execution_group_id,
+                    input_ready_at=input_ready_at,
+                    resource_queue_intervals=queue_intervals,
                     stage=step.stage,
                     operation=step.operation,
                     resource_id=resource_ids[0],
@@ -250,3 +278,5 @@ class ExecutorComputeMixin:
                 )
             )
         self.active_stages.pop((block.iteration_id, block.block_id, step.node_id), None)
+        if step.stage == "weighted_combine":
+            self.native_batches.finish_stage(block, layer_id)

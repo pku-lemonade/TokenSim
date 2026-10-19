@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from dataclasses import replace
 import unittest
 
 import simpy
@@ -163,6 +164,7 @@ class AFParallelExecutionOracleTest(unittest.TestCase):
     def test_dp_replicas_execute_independently(self):
         env = simpy.Environment()
         cluster = _cluster()
+        cluster = replace(cluster, af=replace(cluster.af, ffn_batch_wait_us=0))
         moe = MoEModelConfig(
             is_moe_model=True,
             num_experts=4,

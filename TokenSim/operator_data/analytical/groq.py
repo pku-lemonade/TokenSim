@@ -51,7 +51,11 @@ class GroqTSPModel:
             work = work_for_table(table, key)
             efficiency = float(params.get("gemm_mfu", 0.8))
             peak = device.peak_compute_for(dtype).value
-        elif table in {"context_attention", "generation_attention"}:
+        elif table in {
+            "context_attention",
+            "generation_attention",
+            "ragged_generation_attention",
+        }:
             dtype = str(key["attn_dtype"])
             work = work_for_table(table, key)
             efficiency = float(params.get("attention_mfu", 0.6))

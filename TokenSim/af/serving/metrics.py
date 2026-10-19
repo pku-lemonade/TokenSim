@@ -4,7 +4,12 @@ from collections import defaultdict
 
 from TokenSim.config.validation import number
 from TokenSim.errors import SimulationStateError
-from TokenSim.af.trace.occupancy import occupied_until, validate_resource_capacity
+from TokenSim.af.trace.occupancy import (
+    occupied_until,
+    validate_resource_capacity,
+    unique_executions,
+    resource_queue_intervals,
+)
 from TokenSim.af.serving.timing import namespace_resource
 
 
@@ -15,18 +20,30 @@ class ResourceMetrics:
         self.busy = defaultdict(float)
         self.queue = defaultdict(float)
         self.counts = defaultdict(int)
+        self._execution_groups = {}
 
     def _resource(self, name):
         return namespace_resource(self.namespace, name) if self.namespace else name
 
     def observe(self, event):
+        group = getattr(event, "execution_group_id", None)
+        if group is not None:
+            # Online spans are emitted at completion, before simulation time
+            # advances. Keep only the latest shared invocation per device.
+            resources = event.resource_ids or (event.resource_id,)
+            if self._execution_groups.get(resources) == group:
+                return
+            self._execution_groups[resources] = group
         primary = self._resource(event.resource_id)
         if "start" not in self.window:
             self.queue[primary] += 0.0
             return
         start = self.window["start"]
         end = self.window.get("end", event.end_at)
-        queued = max(0.0, min(end, event.start_at) - max(start, event.ready_at))
+        queued = sum(
+            max(0.0, min(end, right) - max(start, left))
+            for left, right in resource_queue_intervals(event)
+        )
         self.queue[primary] += queued
         overlap = max(0.0, min(end, occupied_until(event)) - max(start, event.start_at))
         if not overlap:
@@ -85,6 +102,6 @@ def steady_metrics(events, traces, *, start, end, capacities=None, include_end=F
     traces = list(traces)
     validate_resource_capacity(traces, capacities or {})
     resources = ResourceMetrics(dict(start=start, end=end))
-    for event in traces:
+    for event in unique_executions(traces):
         resources.observe(event)
     return resources.summary(events, capacities=capacities, include_end=include_end)

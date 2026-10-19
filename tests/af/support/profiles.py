@@ -21,7 +21,7 @@ from TokenSim.af.execution.model import ModelAFExecutor
 from TokenSim.af.factory import build_model_runtime
 from TokenSim.af.providers.queries import AFServiceEstimate
 from TokenSim.config.model_config import ModelSpec
-from scripts.deepseek_v3_runtime import configuration
+from scripts.run_deepseek_mla import configuration
 
 
 class NativeFixture:
@@ -41,6 +41,7 @@ class NativeFixture:
                 dtype="bf16",
                 kv_cache_dtype="bf16",
                 attention_type="gqa",
+                qk_norm=True,
                 moe=dict(
                     num_experts=4,
                     num_experts_per_tok=2,

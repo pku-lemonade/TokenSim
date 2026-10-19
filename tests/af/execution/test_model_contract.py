@@ -15,7 +15,7 @@ from TokenSim.config.simulation import SimulationConfig
 from TokenSim.errors import ConfigurationError
 from TokenSim.llm.llm_engine import LLMEngine
 from TokenSim.llm.llm_request import Request
-from scripts.deepseek_v3_runtime import configuration
+from scripts.run_deepseek_mla import configuration
 from tests.af.support.config import _cluster_dict, _with_prefill_pool
 from tests.af.support.execution import af_test_hardware
 from tests.af.support.model import _moe

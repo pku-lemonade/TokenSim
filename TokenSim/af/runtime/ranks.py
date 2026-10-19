@@ -131,6 +131,7 @@ def compile_rank_components(
                     expert_tp_rank=mapping.tp_rank % view.expert_tensor_parallel_size,
                     ffn_projection_count=model.ffn_projection_count,
                     embedding_role=role,
+                    qk_norm=model.qk_norm,
                 )
                 components = stored_components(
                     components,

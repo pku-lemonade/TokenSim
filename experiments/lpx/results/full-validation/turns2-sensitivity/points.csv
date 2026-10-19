@@ -1,2 +1,0 @@
-case,mode,batch,status,micro_batch,native_executor,tokens_per_s_per_user,output_tokens_per_s,tokens_per_s_per_mw,normalized_throughput,power_watts,reason
-rubin-tp8-pp8,rubin,64,ok,16,SampledNativeReplay,47.16195332218582,1720.4040940514506,14934.06331641884,1.0,115200.0,

@@ -14,7 +14,11 @@ from TokenSim.af.trace.metrics import (
     _is_f_domain,
 )
 from TokenSim.errors import SimulationStateError
-from TokenSim.af.trace.occupancy import occupied_until, validate_resource_capacity
+from TokenSim.af.trace.occupancy import (
+    occupied_until,
+    validate_resource_capacity,
+    unique_executions,
+)
 
 
 class AFTraceRecorder:
@@ -59,7 +63,7 @@ class AFTraceRecorder:
         utilization: dict[str, float] = {}
         makespan = iteration.makespan or 0.0
         busy_by_resource: dict[str, _ResourceBusyTime] = {}
-        for event in events:
+        for event in unique_executions(events):
             for resource_id in set(event.resource_ids or (event.resource_id,)):
                 if resource_id not in busy_by_resource:
                     busy_by_resource[resource_id] = _ResourceBusyTime()
@@ -448,7 +452,13 @@ class AFTraceRecorder:
 
         combines = [event for event in events if event.stage == "weighted_combine"]
         combine_ranks = {event.participant_ranks[0] for event in combines}
-        if combine_ranks != attention_ranks or len(combines) != len(combine_ranks):
+        expected_ranks = (
+            {router.participant_ranks[0]}
+            if combines
+            and all(event.operation == "f_weighted_combine" for event in combines)
+            else attention_ranks
+        )
+        if combine_ranks != expected_ranks or len(combines) != len(combine_ranks):
             raise SimulationStateError(
                 f"AF trace invariant failed: combine does not cover every A owner "
                 f"for {context}"

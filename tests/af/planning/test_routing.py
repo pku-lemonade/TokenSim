@@ -7,10 +7,13 @@ import unittest
 import simpy
 
 from TokenSim.af.execution.executor import AFExecutor
-from TokenSim.af.providers.queries import AFServiceEstimate
+from TokenSim.af.planning.coalesce import coalesce_ready_transfers
+from TokenSim.af.planning.nodes import ExecutionNode
+from TokenSim.af.providers.queries import AFServiceEstimate, AFTensorSlice
 from TokenSim.errors import WorkloadValidationError
 from TokenSim.llm.llm_request import Request
 from TokenSim.moe.routing import RoutingAssignment
+
 from tests.af.support.config import _cluster
 from tests.af.support.execution import af_test_hardware, af_test_resources
 from tests.af.support.model import _moe, _runtime_plan
@@ -200,3 +203,40 @@ class ContinuousRoutingTest(unittest.TestCase):
         wrong = replace(snapshot.assignments[0], decode_step=99)
         with self.assertRaisesRegex(WorkloadValidationError, "different.*step"):
             replace(snapshot, assignments=(wrong, *snapshot.assignments[1:]))
+
+
+class CoalesceTest(unittest.TestCase):
+    def test_only_equivalent_readiness_and_endpoints_are_batched(self):
+        first = ExecutionNode(
+            node_id="one",
+            operation="af_f_to_a",
+            kind="communication",
+            predecessor_ids=("producer",),
+            stage=None,
+            direction="f_to_a",
+            source_domain="f",
+            target_domain="a",
+            logical_participants=("f", "a"),
+            domain_ranks=(0, 1),
+            physical_workers=("f:0", "a:0"),
+            dp_rank=0,
+            network="net",
+            payload_bytes=32,
+            tensor_slices=(
+                AFTensorSlice("first", (0, 16), "partial", payload_bytes=32),
+            ),
+        )
+        second = replace(
+            first,
+            node_id="two",
+            payload_bytes=64,
+            tensor_slices=(
+                AFTensorSlice("second", (0, 32), "partial", payload_bytes=64),
+            ),
+        )
+        different = replace(first, node_id="three", predecessor_ids=("later",))
+        nodes = coalesce_ready_transfers((first, second, different))
+        self.assertEqual(len(nodes), 2)
+        self.assertEqual(sum(node.payload_bytes for node in nodes), 128)
+        self.assertEqual(nodes[0].predecessor_ids, ("producer",))
+        self.assertEqual(sum(item.payload_bytes for item in nodes[0].tensor_slices), 96)

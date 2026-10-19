@@ -74,6 +74,22 @@ class AFConfigModelTest(unittest.TestCase):
         with self.assertRaises(ConfigurationError):
             AFConfig(trace_enabled="true")
 
+    def test_ffn_batch_bounds_require_valid_scalars(self):
+        for field, values in (
+            ("ffn_batching", (1, "true")),
+            ("ffn_batch_wait_us", (-1, True, float("nan"), float("inf"))),
+            ("ffn_batch_max_tokens", (-1, True, 1.5, "8")),
+        ):
+            for value in values:
+                with (
+                    self.subTest(field=field, value=value),
+                    self.assertRaises(ConfigurationError),
+                ):
+                    AFConfig(**{field: value})
+        self.assertEqual(
+            AFConfig(ffn_batch_wait_us=0, ffn_batch_max_tokens=0).ffn_batch_wait_us, 0
+        )
+
     def test_dtype_defaults_resolve_after_raw_presence_check(self):
         config = AFConfig()
         effective = config.resolve_dtypes(model_dtype="BFloat16")
@@ -259,7 +275,7 @@ class WorkerCapabilityTest(unittest.TestCase):
 
 class AFLoadingAndEntryPointTest(unittest.TestCase):
     def test_file_and_python_construction_normalize_equally(self):
-        path = Path(__file__).parents[3] / "data/clusters/af/decode_full_duplex.json"
+        path = Path(__file__).parents[3] / "data/clusters/af/decode_half_duplex.json"
         raw = json.loads(path.read_text())
         direct = ClusterConfig(**raw)
         loaded = ClusterConfig.from_file(path)
@@ -277,15 +293,21 @@ class AFLoadingAndEntryPointTest(unittest.TestCase):
             path.name: ClusterConfig.from_file(path)
             for path in sorted(example_dir.glob("*.json"))
         }
-        full = examples["decode_full_duplex.json"]
         decode = examples["decode_half_duplex.json"]
-        expert_tp = examples["decode_tp2_dp2_ep1.json"]
         rank_reuse = examples["decode_tp2_dp2_ep4_rank_reuse.json"]
-
-        self.assertEqual(
-            set(full.af_communication_resources),
-            {("af-fabric", "a_to_f"), ("af-fabric", "f_to_a")},
+        raw = json.loads(
+            (example_dir / "decode_tp2_dp2_ep4_rank_reuse.json").read_text()
         )
+        f_domain = next(
+            domain
+            for domain in raw["af"]["execution_domains"]
+            if domain["capability"] == "af_ffn"
+        )
+        f_domain["parallel"]["expert_parallel_size"] = 1
+        for instance in f_domain["logical_instances"]:
+            for rank in instance["rank_mapping"]:
+                rank["ep_rank"] = 0
+        expert_tp = ClusterConfig(**raw)
         self.assertEqual(
             set(decode.af_communication_resources), {("shared-af-fabric", "shared")}
         )

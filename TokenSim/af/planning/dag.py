@@ -299,9 +299,15 @@ class AFExecutionDAG:
             node for node in runtime_nodes if node.stage == "weighted_combine"
         )
         combine_ranks = {node.domain_ranks[0] for node in combine_nodes}
-        if combine_ranks != attention_ranks or len(combine_nodes) != len(combine_ranks):
+        expected_ranks = (
+            {routers[0].domain_ranks[0]}
+            if combine_nodes
+            and all(node.operation == "f_weighted_combine" for node in combine_nodes)
+            else attention_ranks
+        )
+        if combine_ranks != expected_ranks or len(combine_nodes) != len(combine_ranks):
             raise ConfigurationError(
-                "MoE weighted combine must execute once on every A tensor owner"
+                "MoE weighted combine must execute once on every protocol owner"
             )
         for node in combine_nodes:
             expected_domain = (

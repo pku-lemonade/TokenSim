@@ -129,7 +129,9 @@ class FixedTransferProvider:
         dispatch: float = 0.0,
         combine: float = 0.0,
         collective: float = 0.0,
+        timing_scope: str | None = None,
     ):
+        self.timing_scope = timing_scope
         self.durations = {"a_to_f": a_to_f, "f_to_a": f_to_a}
         self.operation_durations = {
             "ep_dispatch": dispatch,
@@ -150,7 +152,11 @@ class FixedTransferProvider:
             service_duration=duration,
             source_id="test-stub:transfer",
             payload_bytes=query.payload_bytes,
-            details={"direction": query.direction, "operation": query.operation},
+            details={
+                "direction": query.direction,
+                "operation": query.operation,
+                **({"timing_scope": self.timing_scope} if self.timing_scope else {}),
+            },
         )
 
 

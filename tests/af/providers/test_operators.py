@@ -106,15 +106,10 @@ class OperatorTableComputeProviderTest(unittest.TestCase):
             if item["name"] == "attention_core"
         ]
         self.assertEqual(
-            [item["table"] for item in attention], ["generation_attention"] * 2
+            [item["table"] for item in attention], ["ragged_generation_attention"]
         )
-        self.assertEqual(
-            [
-                (item["key"]["context_len"], item["key"]["batch_size"])
-                for item in attention
-            ],
-            [(4, 2), (8, 1)],
-        )
+        self.assertEqual(attention[0]["key"]["batch_size"], 3)
+        self.assertEqual(attention[0]["key"]["context_lengths"], "[[4,2],[8,1]]")
 
     def test_moe_expert_uses_balanced_equivalent_tokens(self):
         expert = self.provider.estimate(

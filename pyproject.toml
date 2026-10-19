@@ -22,7 +22,6 @@ dependencies = [
 # orjson speeds up parsing multi-gigabyte AgentX traces; json is the fallback.
 agentx = ["huggingface_hub>=0.34", "orjson>=3.10"]
 dev = ["pytest>=8", "black==24.2.0"]
-plot = ["matplotlib>=3.8"]
 
 [project.scripts]
 tokensim = "TokenSim.cli:cli"
@@ -45,9 +44,7 @@ testpaths = ["tests"]
 [tool.setuptools.data-files]
 "share/tokensim/data/clusters/af" = [
     "data/clusters/af/decode_half_duplex.json",
-    "data/clusters/af/decode_tp2_dp2_ep1.json",
     "data/clusters/af/decode_tp2_dp2_ep4_rank_reuse.json",
-    "data/clusters/af/decode_full_duplex.json",
 ]
 "share/tokensim/data/clusters/deepseek_v3" = [
     "data/clusters/deepseek_v3/1a32f.json",
@@ -65,10 +62,10 @@ testpaths = ["tests"]
 "share/tokensim/data/clusters/8_h100" = ["data/clusters/8_h100/moe_ep8_deepep.json", "data/clusters/8_h100/tp8.json", "data/clusters/8_h100/tp8_hbf1.json"]
 "share/tokensim/data/clusters/8_h200" = ["data/clusters/8_h200/h8.json"]
 "share/tokensim/data/clusters/8_l40s" = ["data/clusters/8_l40s/tp4_dp2_pcie.json"]
-"share/tokensim/data/devices" = ["data/devices/README.md", "data/devices/a100_pcie_80g.yaml", "data/devices/a100_sxm_40g.yaml", "data/devices/a100_sxm_80g.yaml", "data/devices/a30.yaml", "data/devices/b200_sxm.yaml", "data/devices/b300_sxm.yaml", "data/devices/gb200.yaml", "data/devices/gb300.yaml", "data/devices/groqchip_v1.yaml", "data/devices/groq_lp30.yaml", "data/devices/rubin.yaml", "data/devices/h100_pcie.yaml", "data/devices/h100_sxm.yaml", "data/devices/h20.yaml", "data/devices/h200_sxm.yaml", "data/devices/intel_arc_pro_b60.yaml", "data/devices/l4.yaml", "data/devices/l40s.yaml", "data/devices/rtx_4090.yaml", "data/devices/rtx_pro_6000_server.yaml", "data/devices/v100_sxm2.yaml"]
+"share/tokensim/data/devices" = ["data/devices/README.md", "data/devices/a100_pcie_80g.yaml", "data/devices/a100_sxm_40g.yaml", "data/devices/a100_sxm_80g.yaml", "data/devices/a30.yaml", "data/devices/b200_sxm.yaml", "data/devices/b300_sxm.yaml", "data/devices/gb200.yaml", "data/devices/gb300.yaml", "data/devices/groqchip_v1.yaml", "data/devices/h100_pcie.yaml", "data/devices/h100_sxm.yaml", "data/devices/h20.yaml", "data/devices/h200_sxm.yaml", "data/devices/intel_arc_pro_b60.yaml", "data/devices/l4.yaml", "data/devices/l40s.yaml", "data/devices/rtx_4090.yaml", "data/devices/rtx_pro_6000_server.yaml", "data/devices/v100_sxm2.yaml"]
 "share/tokensim/data/devices/hbf" = ["data/devices/hbf/b200_sxm_hbf1.yaml", "data/devices/hbf/b200_sxm_hbf1_48gib.yaml", "data/devices/hbf/b200_sxm_hbf2.yaml", "data/devices/hbf/h100_sxm_hbf1.yaml", "data/devices/hbf/h100_sxm_hbf1_48gib.yaml", "data/devices/hbf/h100_sxm_hbf2.yaml", "data/devices/hbf/h200_sxm_hbf1.yaml", "data/devices/hbf/h200_sxm_hbf2.yaml"]
 "share/tokensim/data/kv_transfer" = ["data/kv_transfer/mooncake_multi_connector.json", "data/kv_transfer/mooncake_p2p.json", "data/kv_transfer/mooncake_store_dram_agentx.json", "data/kv_transfer/mooncake_store_embedded.json", "data/kv_transfer/mooncake_store_standalone_ssd.json", "data/kv_transfer/mooncake_store_hbf.json"]
-"share/tokensim/data/models" = ["data/models/bert-base.yaml", "data/models/deepseek-v4-pro.yaml", "data/models/llama-2-70b.yaml", "data/models/llama-3-70b.yaml", "data/models/llama-3-8b.yaml", "data/models/llama-7b.yaml", "data/models/mixtral-8x7b.yaml", "data/models/moe-toy.yaml", "data/models/gpt-oss-2t-proxy.yaml", "data/models/gpt-oss-2t-wide-proxy.yaml", "data/models/gpt-oss-2t-expert-proxy.yaml", "data/models/gpt-oss-draft-proxy.yaml", "data/models/qwen3-235b-a22b.yaml", "data/models/deepseek-v3-671b-mla.yaml", "data/models/deepseek-v3-hf-config.json"]
+"share/tokensim/data/models" = ["data/models/bert-base.yaml", "data/models/deepseek-v4-pro.yaml", "data/models/llama-2-70b.yaml", "data/models/llama-3-70b.yaml", "data/models/llama-3-8b.yaml", "data/models/llama-7b.yaml", "data/models/mixtral-8x7b.yaml", "data/models/moe-toy.yaml", "data/models/qwen3-235b-a22b.yaml", "data/models/deepseek-v3-671b-mla.yaml", "data/models/deepseek-v3-hf-config.json"]
 "share/tokensim/data/operator_data" = ["data/operator_data/LICENSES.md"]
 "share/tokensim/data/operator_data/a100_sxm_80g/sglang" = ["data/operator_data/a100_sxm_80g/sglang/collective_perf.parquet", "data/operator_data/a100_sxm_80g/sglang/context_attention_perf.parquet", "data/operator_data/a100_sxm_80g/sglang/gemm_perf.parquet", "data/operator_data/a100_sxm_80g/sglang/generation_attention_perf.parquet", "data/operator_data/a100_sxm_80g/sglang/generation_meta.yaml", "data/operator_data/a100_sxm_80g/sglang/moe_perf.parquet"]
 "share/tokensim/data/operator_data/a100_sxm_80g/trtllm" = ["data/operator_data/a100_sxm_80g/trtllm/collective_perf.parquet", "data/operator_data/a100_sxm_80g/trtllm/context_attention_perf.parquet", "data/operator_data/a100_sxm_80g/trtllm/gemm_perf.parquet", "data/operator_data/a100_sxm_80g/trtllm/generation_attention_perf.parquet", "data/operator_data/a100_sxm_80g/trtllm/generation_meta.yaml", "data/operator_data/a100_sxm_80g/trtllm/moe_perf.parquet"]
@@ -101,4 +98,4 @@ testpaths = ["tests"]
 "share/tokensim/data/operator_data/rtx_pro_6000_server/trtllm" = ["data/operator_data/rtx_pro_6000_server/trtllm/collective_perf.parquet", "data/operator_data/rtx_pro_6000_server/trtllm/context_attention_perf.parquet", "data/operator_data/rtx_pro_6000_server/trtllm/gemm_perf.parquet", "data/operator_data/rtx_pro_6000_server/trtllm/generation_attention_perf.parquet", "data/operator_data/rtx_pro_6000_server/trtllm/generation_meta.yaml", "data/operator_data/rtx_pro_6000_server/trtllm/mhc_perf.parquet", "data/operator_data/rtx_pro_6000_server/trtllm/moe_perf.parquet"]
 "share/tokensim/data/operator_data/rtx_pro_6000_server/vllm" = ["data/operator_data/rtx_pro_6000_server/vllm/collective_perf.parquet", "data/operator_data/rtx_pro_6000_server/vllm/context_attention_perf.parquet", "data/operator_data/rtx_pro_6000_server/vllm/gemm_perf.parquet", "data/operator_data/rtx_pro_6000_server/vllm/generation_attention_perf.parquet", "data/operator_data/rtx_pro_6000_server/vllm/generation_meta.yaml", "data/operator_data/rtx_pro_6000_server/vllm/moe_perf.parquet"]
 "share/tokensim/data/operator_data/v100_sxm2/nccl" = ["data/operator_data/v100_sxm2/nccl/collective_perf.parquet", "data/operator_data/v100_sxm2/nccl/generation_meta.yaml"]
-"share/tokensim/data/topologies" = ["data/topologies/dgx_a100_8x_hdr.yaml", "data/topologies/gb200_nvl72.yaml", "data/topologies/gb300_nvl72.yaml", "data/topologies/groq_node8_rack72.yaml", "data/topologies/groq_lpx256.yaml", "data/topologies/rubin_nvl72.yaml", "data/topologies/hgx_b200_8x_xdr.yaml", "data/topologies/hgx_h100_8x_ndr.yaml", "data/topologies/links.yaml", "data/topologies/pcie_8x_4090.yaml", "data/topologies/pcie_8x_gen4.yaml", "data/topologies/pcie_8x_gen5.yaml"]
+"share/tokensim/data/topologies" = ["data/topologies/dgx_a100_8x_hdr.yaml", "data/topologies/gb200_nvl72.yaml", "data/topologies/gb300_nvl72.yaml", "data/topologies/groq_node8_rack72.yaml", "data/topologies/hgx_b200_8x_xdr.yaml", "data/topologies/hgx_h100_8x_ndr.yaml", "data/topologies/links.yaml", "data/topologies/pcie_8x_4090.yaml", "data/topologies/pcie_8x_gen4.yaml", "data/topologies/pcie_8x_gen5.yaml"]
