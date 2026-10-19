@@ -1,4 +1,4 @@
-"""Resident request cohorts executing the production whole-model AF DAG."""
+"""Resident cohorts with complete-model prefill and AF decode execution."""
 
 from dataclasses import dataclass, field
 from types import SimpleNamespace
@@ -91,25 +91,24 @@ class AFService:
             self.executor.resources.endpoint_resources = communication
         self.memory = ResidentKV(runtime.plan)
         self.sessions = {}
-        self.owners = {
-            (owner.phase, owner.dp_rank): owner for owner in runtime.plan.request_owners
-        }
+        self.owners = {owner.dp_rank: owner for owner in runtime.plan.request_owners}
+        from TokenSim.af.serving.prefill import CompletePrefill
+
+        self.prefill = CompletePrefill(self, seed)
         self.worker_ids = {
             worker.physical_worker_ref.identity: index
             for index, worker in enumerate(runtime.workers)
         }
         self.completed_passes = []
 
-    def admit(
-        self, request_id, dp_rank, *, phase="decode", maximum_context, current_context
-    ):
+    def admit(self, request_id, dp_rank, *, maximum_context, current_context):
         integer(dp_rank, "serving DP rank")
         integer(maximum_context, "serving maximum context", minimum=1)
         if maximum_context > self.runtime.model.max_position_embeddings:
             raise ConfigurationError(
                 "serving KV reservation exceeds the model context limit"
             )
-        owner = self.owners.get((phase, dp_rank))
+        owner = self.owners.get(dp_rank)
         if owner is None:
             raise ConfigurationError(
                 "serving request requires a configured scheduler owner"
@@ -139,11 +138,15 @@ class AFService:
         context=None,
         emit_logits=True,
     ):
+        if phase not in {"prefill", "decode"}:
+            raise ConfigurationError("serving phase must be prefill or decode")
+        if phase == "prefill":
+            self.prefill.validate()
         integer(query_tokens, "query tokens", minimum=1)
         boolean(emit_logits, "emit logits")
         if not sessions or len({session.dp_rank for session in sessions}) != 1:
             raise ConfigurationError("an AF micro-batch requires one scheduler owner")
-        owner = self.owners[(phase, sessions[0].dp_rank)]
+        owner = self.owners[sessions[0].dp_rank]
         for session in sessions:
             lease = self.memory.leases[session.request_id]
             if (lease.domain, lease.instance) != (owner.domain, owner.instance):
@@ -177,12 +180,14 @@ class AFService:
                 )
             )
         start = self.env.now
-        if self.execution_driver is None:
+        if self.execution_driver is not None:
+            iteration = yield from self.execution_driver.forward(self, requests, phase)
+        elif phase == "prefill":
+            iteration = yield from self.prefill.run(owner, requests)
+        else:
             iteration = yield from self._execute_native(
                 owner, requests, phase, start, query_tokens
             )
-        else:
-            iteration = yield from self.execution_driver.forward(self, requests, phase)
         for session, request in zip(sessions, requests):
             session.cached_context = request.context_len
             self.memory.commit(session.request_id, request.context_len)
@@ -220,7 +225,7 @@ class AFService:
                     else:
                         request.cancel()
         iteration = self.executor.submit(
-            self.worker_ids[owner.physical_worker], requests, phase
+            self.worker_ids[owner.physical_worker], requests
         )
         if graph_timing is not None and self.trace.enabled:
             submitted, finished, resource_ids = graph_timing
@@ -248,15 +253,17 @@ class AFService:
                 )
             )
         yield self.env.process(self.executor.run_iteration(iteration))
+        self.finish_trace(iteration.iteration_id)
+        return iteration
+
+    def finish_trace(self, iteration_id):
         if self.trace.enabled and isinstance(self.trace, StreamingTraceRecorder):
-            self.trace.release_iteration(iteration.iteration_id)
+            self.trace.release_iteration(iteration_id)
         elif self.trace.enabled and not self.retain_trace:
-            # Validation has completed; stable positions preserve active DAG offsets.
-            for index in self.trace.iteration_event_indices[iteration.iteration_id]:
+            for index in self.trace.iteration_event_indices[iteration_id]:
                 self.trace.events[index] = CompletedTiming.from_event(
                     self.trace.events[index]
                 )
-        return iteration
 
     def release(self, session):
         self.memory.release(session.request_id)
@@ -266,6 +273,11 @@ class AFService:
         return {
             "memory": self.memory.summary(),
             "passes": len(self.completed_passes),
+            "prefill_operator_stats": (
+                {"fidelity": "sampled_complete_model_profiles"}
+                if self.execution_driver is not None
+                else self.prefill.stats_dict()
+            ),
             "resource_capacities": self.executor.resources.resource_capacities(),
             "operator_stats": (
                 {"fidelity": "sampled_native_profiles"}

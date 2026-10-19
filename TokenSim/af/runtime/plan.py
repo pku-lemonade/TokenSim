@@ -200,44 +200,18 @@ class AFRuntimePlan(RuntimeGeometryMixin, RuntimeValidationMixin):
     def scheduler_replica_for_physical(
         self, physical_identity: str
     ) -> AFReplicaRuntime:
-        return self.scheduler_replicas_for_physical(physical_identity)[0]
-
-    def scheduler_replicas_for_physical(
-        self, physical_identity: str
-    ) -> tuple[AFReplicaRuntime, ...]:
-        matches = []
-        for replica in self.replicas:
-            if replica.leader_rank_key is None:
-                continue
-            binding = self.binding(*replica.leader_rank_key)
-            if binding.physical_identity == physical_identity:
-                matches.append(replica)
-        if not matches:
+        matches = [
+            replica
+            for replica in self.replicas
+            if replica.leader_rank_key is not None
+            and self.binding(*replica.leader_rank_key).physical_identity
+            == physical_identity
+        ]
+        if len(matches) != 1:
             raise ConfigurationError(
-                f"physical worker {physical_identity!r} is not an A scheduler leader"
+                f"physical worker {physical_identity!r} must lead exactly one A replica"
             )
-        signatures = {self._scheduler_replica_signature(replica) for replica in matches}
-        if len(signatures) != 1:
-            raise ConfigurationError(
-                f"physical worker {physical_identity!r} leads incompatible A replicas "
-                f"{[(item.domain, item.dp_rank) for item in matches]}"
-            )
-        return tuple(matches)
-
-    def _scheduler_replica_signature(
-        self, replica: AFReplicaRuntime
-    ) -> tuple[object, ...]:
-        domain = self.domain_runtime(replica.domain)
-        bindings = [self.binding(*rank_key) for rank_key in replica.rank_keys]
-        return (
-            domain.tensor_parallel_size,
-            domain.data_parallel_size,
-            replica.dp_rank,
-            tuple(
-                (binding.tp_rank, binding.physical_identity)
-                for binding in sorted(bindings, key=lambda item: item.tp_rank)
-            ),
-        )
+        return matches[0]
 
     def physical_state(self, physical_identity: str) -> AFPhysicalRuntimeState:
         try:

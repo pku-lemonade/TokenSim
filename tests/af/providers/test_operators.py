@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 import unittest
+from tests.af.support.config import _with_prefill_pool
 
 import simpy
 
@@ -383,7 +384,7 @@ class PrecisionConversionTest(unittest.TestCase):
                     env=env,
                     kv_transfer_config=KVTransferConfig.default(),
                     model_spec=hardware.model("TestModel"),
-                    cluster_config=cluster,
+                    cluster_config=_with_prefill_pool(cluster),
                     hardware=hardware,
                     config=SimulationConfig(
                         block_size=4, latency_fallback="analytical_only"
@@ -392,7 +393,7 @@ class PrecisionConversionTest(unittest.TestCase):
                 req = Request(1, 8, 4, 4)
                 req.generation_idx = 1
                 executor = engine.af_executor
-                iteration = executor.submit(0, [req], "decode")
+                iteration = executor.submit(0, [req])
                 env.run(until=env.process(executor.run_iteration(iteration)))
                 codecs = [
                     e for e in executor.trace.events if e.stage in {"encode", "decode"}

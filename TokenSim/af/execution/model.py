@@ -43,31 +43,30 @@ class ModelAFExecutor(AFExecutor):
             ):
                 raise ConfigurationError("vocab_size must divide the attention TP size")
 
-    def submit(self, source_a_worker_id, requests, phase=None):
+    def submit(self, source_a_worker_id, requests):
         requests = tuple(requests)
-        actual_phase = phase or (
-            "prefill" if requests and requests[0].is_prefill else "decode"
-        )
+        from TokenSim.af.planning.batching import validate_decode_requests
+
+        validate_decode_requests(requests)
         if self.model.attention_type == "mla" and any(
-            request.is_prefill or getattr(request, "needs_recompute", False)
-            for request in requests
+            getattr(request, "needs_recompute", False) for request in requests
         ):
-            work = tuple(request_work(request, actual_phase) for request in requests)
+            work = tuple(request_work(request) for request in requests)
             lengths = {request.context_len for request in requests}
             if len(lengths) != 1 or any(
                 item.offset != 0 or item.queries != request.context_len
                 for request, item in zip(requests, work)
             ):
                 raise ConfigurationError(
-                    "MLA supports only full equal-length, unchunked prefill or recomputation"
+                    "MLA supports only full equal-length, unchunked recomputation"
                 )
-        return super().submit(source_a_worker_id, requests, phase)
+        return super().submit(source_a_worker_id, requests)
 
     @staticmethod
     def _logits_rows(block):
         if block.logits_rows is not None:
             return block.logits_rows
-        return block.request_count if block.phase == "prefill" else block.token_count
+        return block.token_count
 
     def _boundary_nodes(self, block, operation):
         layer = 0 if operation == "embedding_lookup" else self.total_layers - 1

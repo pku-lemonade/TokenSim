@@ -60,11 +60,10 @@ def configuration(
                 ),
             )
         )
-    phases = ["prefill", "decode"]
     groups = [
         dict(
             name="a-pool",
-            capabilities=["prefill", "af_attention"],
+            capabilities=["af_attention"],
             hardware=device,
             num_workers=a_tp,
             network="af-net",
@@ -72,7 +71,7 @@ def configuration(
         ),
         dict(
             name="f-pool",
-            capabilities=["prefill", "af_ffn"],
+            capabilities=["af_ffn"],
             hardware=f_device,
             num_workers=f_tp,
             network="af-net",
@@ -105,7 +104,6 @@ def configuration(
         dict(
             name="a-domain",
             capability="af_attention",
-            phases=phases,
             worker_group="a-pool",
             parallel=dict(
                 tensor_parallel_size=a_tp,
@@ -136,7 +134,6 @@ def configuration(
         dict(
             name="f-domain",
             capability="af_ffn",
-            phases=phases,
             worker_group="f-pool",
             parallel=dict(
                 tensor_parallel_size=f_tp,
@@ -168,7 +165,6 @@ def configuration(
         worker_groups=groups,
         af=dict(
             enabled=True,
-            phases=phases,
             af_block_size=af_batch_size,
             latency_provider="operator_table",
             trace_enabled=True,
@@ -187,7 +183,6 @@ def configuration(
             links=[
                 dict(
                     name="af-link",
-                    phases=phases,
                     attention_group="a-pool",
                     ffn_group="f-pool",
                     attention_domain="a-domain",

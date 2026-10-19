@@ -125,7 +125,7 @@ class TimelineTest(unittest.TestCase):
 
 
 class AFResultFidelityTest(unittest.TestCase):
-    def _engine(self, phases, *, enabled=True):
+    def _engine(self, *, enabled=True):
         return SimpleNamespace(
             af_executor=(
                 SimpleNamespace(trace=SimpleNamespace(enabled=False))
@@ -134,11 +134,11 @@ class AFResultFidelityTest(unittest.TestCase):
             ),
             af_iteration_summaries=[],
             af_runtime_summary=lambda: {},
-            cluster_config=SimpleNamespace(af=SimpleNamespace(phases=tuple(phases))),
+            cluster_config=SimpleNamespace(af=SimpleNamespace()),
         )
 
     def test_decode_only_marks_prefill_aggregate_and_decode_rank_local(self):
-        stats = get_af_stats(self._engine(("decode",)))
+        stats = get_af_stats(self._engine())
 
         self.assertEqual(
             stats["af_phase_fidelity"],
@@ -149,7 +149,7 @@ class AFResultFidelityTest(unittest.TestCase):
         )
 
     def test_disabled_af_has_no_fidelity_claim(self):
-        stats = get_af_stats(self._engine((), enabled=False))
+        stats = get_af_stats(self._engine(enabled=False))
 
         self.assertIsNone(stats["af_phase_fidelity"])
 

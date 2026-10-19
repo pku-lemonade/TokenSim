@@ -1,18 +1,19 @@
 # Attention–FFN separation
 
-Attention–feed-forward network (AF) separation places attention and FFN work on independent execution domains.
+Attention–feed-forward network (AF) separation places decode attention and FFN work on independent execution domains.
+Prefill executes the complete model on ordinary workers.
 Attention workers retain request scheduling and key/value (KV) cache ownership.
 FFN workers execute dense, routed and shared experts on their assigned physical ranks.
 The engine compiles a model-specific runtime plan before starting workers.
 
 ## Run a simulation
 
-The examples under `data/clusters/af` cover both phases, decode-only execution, full/half duplex links and independent A/F parallelism.
+The examples under `data/clusters/af` cover decode AF execution, full/half duplex links and independent A/F parallelism.
 Use the standard CLI with a catalog model:
 
 ```bash
 python benchmark.py \
-  --cluster data/clusters/af/prefill_decode_full_duplex.json \
+  --cluster data/clusters/af/decode_full_duplex.json \
   --model llama-3-8b \
   --latency_backend operator_table \
   --latency_fallback analytical_only \
@@ -36,17 +37,21 @@ Use [DeepSeek V3 MLA](deepseek-v3-mla.md) for the full-model MLA example.
 
 | Field | Meaning |
 | --- | --- |
-| `af.enabled` | Enable AF execution |
-| `af.phases` | Select `prefill`, `decode`, or both |
+| `af.enabled` | Enable decode AF execution |
 | `af.af_block_size` | Maximum requests per AF micro-batch |
 | `af.execution_domains` | Domain capabilities, parallel sizes and physical rank mappings |
-| `af.links` | Phase-specific A/F endpoints and communication resources |
+| `af.links` | Decode A/F endpoints and communication resources |
 | `af.router_location` | Execute routing on the A or F leader |
 | `af.execution_protocol` | `partial_return` or restricted native `vllm_afd` execution |
 | `af.trace_enabled` | Collect detailed simulated events |
 
 `--block_size` specifies tokens per KV block independently of `af_block_size`.
-An unselected phase requires a worker with `prefill` or `decode_full` capability.
+Serving requires a complete-model worker with `prefill` capability.
+AF configuration, links and execution domains have no `phases` field.
+Each enabled runtime has one decode link and its two A/F execution domains.
+Configurations containing the removed field are rejected.
+The executor accepts decode requests and rejects prefill requests before changing ownership or creating an iteration.
+Decode-only runtime helpers can use a cluster without a prefill worker.
 Omitted execution domains are generated from the endpoint groups, with one single-rank replica per worker.
 Explicit domains support independent tensor parallelism (TP) and data parallelism (DP).
 Pipeline parallelism partitions consecutive layers onto distinct physical ranks within each A/F domain.
@@ -95,7 +100,7 @@ The A scheduler retains an admitted request's owner until an explicit KV transfe
 Each logical KV block maps to local shards on all required A TP ranks.
 Allocation, swapping, forking and release update the shard set atomically.
 The replica's usable capacity is the minimum capacity across those ranks.
-Equivalent prefill/decode domains sharing physical ranks reuse one scheduler and cache.
+Each decode A replica owns one scheduler and cache.
 Prefix lookup occurs once on the A scheduler leader, and every logical hit or miss maps to local shards on each A TP rank.
 Reference counts, eviction, free, preemption and swap update the complete shard set.
 F ranks own no prefix-cache blocks.
@@ -118,9 +123,8 @@ These vector efficiency and instruction-count inputs remain unmeasured assumptio
 
 Routing snapshots retain each request's absolute token identity and decode step.
 External assignments are validated against that request's position, including requests at different decode positions in one block.
-Prefill records query lengths and available KV contexts separately for every request.
-Cached keys contribute attention FLOPs and KV reads when only a suffix is computed.
-Whole-prompt measurements used for cached prefill are scaled by an analytical growth ratio and labeled extrapolated.
+Decode recomputation records query lengths and available KV contexts separately for every request.
+Cached keys contribute attention FLOPs and KV reads when a context suffix is rebuilt.
 Uneven requests retain separate query shapes.
 
 Wire precision changes create encode/decode nodes on the producer and consumer compute resources.
@@ -129,20 +133,20 @@ Analytical conversion estimates include source reads, target writes, conversion 
 Strict lookup requires a matching measurement.
 
 Mixed serving batches are partitioned by logical phase and whether they build context.
-AF groups run concurrently on shared physical resources and join at one serving-step completion barrier.
+Complete prefill and AF decode groups share physical compute resources and join at one serving-step completion barrier.
 Recomputation retains decode ownership while rebuilding context with prefill attention kernels.
-MLA prefill/recomputation require equal-length, whole contexts without cached prefixes or partial chunks.
+AF MLA recomputation requires equal-length, whole contexts without cached prefixes or partial chunks.
 Unsupported MLA passes fail before ownership or iteration state changes.
 Failure or cancellation interrupts sibling groups and releases their resources.
 
 ## Results and calibration
 
 The engine includes embedding lookup, final normalization, language-model head and token selection in whole-model latency.
-Incomplete prefill chunks skip logits, logits collectives and sampling work.
-The chunk completing a prompt produces one logits row per completed request.
+Complete-model prefill chunks omit output-head work when they do not emit logits.
 `af_runtime_state` reports topology, component bytes, KV partitions and capacities.
+Runtime-state schema version 3.0 removes phase fields from decode request owners and partial destinations.
 `af_trace` reports dependency readiness, resource queueing, service time and provenance.
-`af_phase_fidelity` identifies AF and aggregate phases.
+`af_phase_fidelity` reports `prefill_aggregate` for prefill and `decode_af_rank_local` for decode.
 The fixed-batch `simulate_decode` helper checks the selected A replica's resident KV capacity and model context limit before submitting work.
 
 `communication_timing` separates host submission, transport service and completion work.
@@ -233,7 +237,10 @@ Caches retain static traffic plans and service estimates.
 Every invocation creates its own readiness events, resource reservations and queueing delays.
 Trace records keep dependency waiting, resource queueing and service duration separate.
 The node FIFO and coarse phase resource reservations are modeling approximations.
-The cohort-serving API under `TokenSim.af.serving` executes independent streams through `ModelAFExecutor` and exports steady-state token counts, queue delays and resource utilization.
+The cohort-serving API under `TokenSim.af.serving` executes decode streams through `ModelAFExecutor` and exports steady-state token counts, queue delays and resource utilization.
+Its complete-model prefill path uses the ordinary operator-table latency backend on colocated ranks and never submits an AF iteration.
+Prefill reserves the participating pipeline stage, including its expert ranks, and uses the shared endpoint budgets for model collectives.
+Prefill traces contain aggregate model compute and ordinary TP/EP/PP communication without A/F activation transfers.
 Its resident KV leases account for each stage's bounded or full-context layer windows and reserve the declared peak context before execution.
 This fixed-cohort mode does not page or preempt requests.
 KV handoffs verify model/cache identity and source coverage before scheduling copies.

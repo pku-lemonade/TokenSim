@@ -295,7 +295,7 @@ class RoutingReplayTest(unittest.TestCase):
         request = SimpleNamespace(
             id=0, is_prefill=False, context_len=129, generation_idx=0
         )
-        iteration = executor.submit(0, [request], "decode")
+        iteration = executor.submit(0, [request])
         records = []
         for snapshot in iteration.blocks[0].routing_snapshots:
             self.assertEqual(sum(snapshot.histogram.values()), 2)

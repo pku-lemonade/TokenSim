@@ -1,0 +1,56 @@
+{
+  "num_workers": 7,
+  "networks": {
+    "af_net": "ib_ndr400"
+  },
+  "worker_groups": [
+    {
+      "name": "prefill-pool",
+      "role": "prefill",
+      "hardware": "h100_sxm",
+      "num_workers": 1,
+      "network": "af_net"
+    },
+    {
+      "name": "attention-pool",
+      "capabilities": [
+        "af_attention"
+      ],
+      "hardware": "h100_sxm",
+      "num_workers": 4,
+      "network": "af_net"
+    },
+    {
+      "name": "ffn-pool",
+      "capabilities": [
+        "af_ffn"
+      ],
+      "hardware": "h100_sxm",
+      "num_workers": 2,
+      "network": "af_net"
+    }
+  ],
+  "af": {
+    "communication_domains": {
+      "node_size": 8,
+      "node_count": 1,
+      "placement_strategy": "manual"
+    },
+    "enabled": true,
+    "af_block_size": 4,
+    "trace_enabled": true,
+    "latency_provider": "operator_table",
+    "links": [
+      {
+        "name": "attention-ffn",
+        "attention_group": "attention-pool",
+        "ffn_group": "ffn-pool",
+        "network": "af_net",
+        "resource_group": "af-fabric",
+        "duplex": "full",
+        "a_to_f_capacity": 1,
+        "f_to_a_capacity": 1
+      }
+    ]
+  }
+}

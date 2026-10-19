@@ -110,7 +110,7 @@ class NativeControlTest(unittest.TestCase):
         request = SimpleNamespace(
             id=0, is_prefill=False, prefill_len=128, context_len=129, generation_idx=0
         )
-        process = env.process(ex.run_iteration(ex.submit(0, [request], "decode")))
+        process = env.process(ex.run_iteration(ex.submit(0, [request])))
 
         def cancel():
             yield env.timeout(50e-6)
@@ -218,7 +218,7 @@ class NativeControlTest(unittest.TestCase):
         request = SimpleNamespace(
             id=0, is_prefill=False, prefill_len=128, context_len=129, generation_idx=0
         )
-        running = env.process(ex.run_iteration(ex.submit(0, [request], "decode")))
+        running = env.process(ex.run_iteration(ex.submit(0, [request])))
         env.run(until=1e-6)
         with self.assertRaisesRegex(SimulationStateError, "in-flight"):
             self.fixture.run_step(env, ex)
@@ -286,7 +286,7 @@ class NativeOrderTest(unittest.TestCase):
         request = SimpleNamespace(
             id=0, is_prefill=False, prefill_len=128, context_len=129, generation_idx=0
         )
-        process = env.process(ex.run_iteration(ex.submit(0, [request], "decode")))
+        process = env.process(ex.run_iteration(ex.submit(0, [request])))
         env.run(until=10e-6)
         process.interrupt("cancel preposted iteration")
         with self.assertRaises(simpy.Interrupt):

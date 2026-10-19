@@ -87,7 +87,7 @@ class AFBlockRoutingSnapshotTest(unittest.TestCase):
             requests=requests,
             af_block_size=2,
             source_a_worker_id=0,
-            link=SimpleNamespace(name="af-link", phases=("decode",)),
+            link=SimpleNamespace(name="af-link"),
             layer_types={0: "dense", 1: "moe", 2: "dense", 3: "moe"},
             routing_snapshot_factory=factory,
         )
@@ -101,67 +101,40 @@ class AFBlockRoutingSnapshotTest(unittest.TestCase):
             block.routing_snapshot_for_layer(3),
         )
 
-    def test_snapshot_phase_isolated_and_mismatch_rejected(self):
-        def factory(iteration_id, phase, layer_id, block_requests, _placement):
-            return _snapshot(iteration_id, phase, layer_id, block_requests)
-
+    def test_prefill_is_rejected_and_routing_phase_must_match_decode(self):
         builder = AFBlockBuilder()
-        prefill = builder.build(
-            1,
-            (_request(1, "prefill"),),
-            1,
-            0,
-            SimpleNamespace(name="prefill-link", phases=("prefill",)),
-            layer_types={0: "moe"},
-            routing_snapshot_factory=factory,
-        ).blocks[0]
-        decode = builder.build(
-            2,
-            (_request(1, "decode"),),
-            1,
-            0,
-            SimpleNamespace(name="decode-link", phases=("decode",)),
-            layer_types={0: "moe"},
-            routing_snapshot_factory=factory,
-        ).blocks[0]
-
-        self.assertEqual(prefill.routing_snapshot_for_layer(0).phase, "prefill")
-        self.assertEqual(decode.routing_snapshot_for_layer(0).phase, "decode")
-        self.assertIsNot(
-            prefill.routing_snapshot_for_layer(0),
-            decode.routing_snapshot_for_layer(0),
-        )
-
-        bad_snapshot = _snapshot(1, "decode", 0, (_request(1, "decode"),))
+        with self.assertRaisesRegex(ConfigurationError, "only accepts decode"):
+            builder.build(
+                1, (_request(1, "prefill"),), 1, 0, SimpleNamespace(name="af")
+            )
+        bad_snapshot = _snapshot(1, "prefill", 0, (_request(1, "prefill"),))
         with self.assertRaisesRegex(ConfigurationError, "phase mismatch"):
             AFBlock(
                 iteration_id=1,
                 block_id=0,
-                phase="prefill",
-                request_ids=(1,),
-                request_count=1,
-                token_count=1,
-                context_lengths=(1,),
-                source_a_worker_id=0,
-                link_name="af-link",
-                routing_snapshots=(bad_snapshot,),
-            )
-
-        with self.assertRaisesRegex(ConfigurationError, "multiple steps"):
-            AFBlock(
-                iteration_id=2,
-                block_id=0,
-                phase="decode",
                 request_ids=(1,),
                 request_count=1,
                 token_count=1,
                 context_lengths=(9,),
                 source_a_worker_id=0,
-                link_name="af-link",
-                routing_snapshots=(
-                    _snapshot(2, "decode", 0, (_request(1, "decode"),), 1),
-                    _snapshot(2, "decode", 1, (_request(1, "decode"),), 2),
-                ),
+                link_name="af",
+                routing_snapshots=(bad_snapshot,),
+            )
+        snapshots = (
+            _snapshot(2, "decode", 0, (_request(1, "decode"),), 1),
+            _snapshot(2, "decode", 1, (_request(1, "decode"),), 2),
+        )
+        with self.assertRaisesRegex(ConfigurationError, "multiple steps"):
+            AFBlock(
+                iteration_id=2,
+                block_id=0,
+                request_ids=(1,),
+                request_count=1,
+                token_count=1,
+                context_lengths=(9,),
+                source_a_worker_id=0,
+                link_name="af",
+                routing_snapshots=snapshots,
             )
 
 
@@ -327,7 +300,6 @@ def _domain(
     return ExecutionDomainConfig(
         name=name,
         capability=capability,
-        phases=("prefill", "decode"),
         worker_group=f"{name}-pool",
         parallel=DomainParallelConfig(
             tensor_parallel_size=1,
@@ -345,9 +317,7 @@ class IndependentAFReplicaSelectorTest(unittest.TestCase):
         f_domain = _domain("f", "af_ffn", dp_size=3)
         selector = IndependentRoundRobinAFReplicaSelector()
 
-        selections = [
-            selector.select_for_block("decode", a_domain, f_domain) for _ in range(6)
-        ]
+        selections = [selector.select_for_block(a_domain, f_domain) for _ in range(6)]
 
         self.assertEqual(
             [item.a_owner.name for item in selections],
@@ -363,18 +333,18 @@ class IndependentAFReplicaSelectorTest(unittest.TestCase):
         f_domain = _domain("f", "af_ffn", dp_size=2)
         selector = IndependentRoundRobinAFReplicaSelector()
 
-        self.assertEqual(selector.select_a_owner("decode", a_domain).name, "a-dp0")
-        self.assertEqual(selector.select_a_owner("decode", a_domain).name, "a-dp1")
-        self.assertEqual(selector.select_f_service("decode", f_domain).name, "f-dp0")
-        self.assertEqual(selector.select_f_service("decode", f_domain).name, "f-dp1")
+        self.assertEqual(selector.select_a_owner(a_domain).name, "a-dp0")
+        self.assertEqual(selector.select_a_owner(a_domain).name, "a-dp1")
+        self.assertEqual(selector.select_f_service(f_domain).name, "f-dp0")
+        self.assertEqual(selector.select_f_service(f_domain).name, "f-dp1")
 
     def test_ep_one_routes_only_inside_selected_f_service_replica(self):
         a_domain = _domain("a", "af_attention", dp_size=1)
         f_domain = _domain("f", "af_ffn", dp_size=2, expert_parallel_size=1)
         selector = IndependentRoundRobinAFReplicaSelector()
 
-        first = selector.select_for_block("decode", a_domain, f_domain)
-        second = selector.select_for_block("decode", a_domain, f_domain)
+        first = selector.select_for_block(a_domain, f_domain)
+        second = selector.select_for_block(a_domain, f_domain)
 
         self.assertEqual(first.expert_parallel_mode, "expert_tp")
         self.assertEqual(first.routed_expert_instances, (first.f_service,))
@@ -387,8 +357,8 @@ class IndependentAFReplicaSelectorTest(unittest.TestCase):
         f_domain = _domain("f", "af_ffn", dp_size=3, expert_parallel_size=3)
         selector = IndependentRoundRobinAFReplicaSelector()
 
-        first = selector.select_for_block("decode", a_domain, f_domain)
-        second = selector.select_for_block("decode", a_domain, f_domain)
+        first = selector.select_for_block(a_domain, f_domain)
+        second = selector.select_for_block(a_domain, f_domain)
 
         expected_world = ("f-dp0", "f-dp1", "f-dp2")
         self.assertEqual(first.expert_parallel_mode, "rank_reuse")

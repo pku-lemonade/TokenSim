@@ -136,7 +136,6 @@ def _block(histogram=((0, 10), (2, 2))):
     return AFBlock(
         iteration_id=3,
         block_id=4,
-        phase="decode",
         request_ids=(1,),
         request_count=1,
         token_count=12,
@@ -185,7 +184,6 @@ def _small_formal_moe_dag(cluster=None):
     runtime_plan = _formal_runtime_plan(cluster, moe_config)
     planner = ParallelExecutionPlanner(cluster, runtime_plan=runtime_plan)
     placement = planner.placement(
-        "decode",
         "a-pool:0",
         cluster.execution_domains["f-domain"].logical_instances[0],
     )
@@ -214,7 +212,6 @@ def _small_formal_moe_dag(cluster=None):
     block = AFBlock(
         iteration_id=6,
         block_id=0,
-        phase="decode",
         request_ids=(1,),
         request_count=1,
         token_count=1,
@@ -271,6 +268,9 @@ def _request(request_id, prefill_len=8, decode_len=8):
 
 
 def _engine(cluster, *, moe_config=None):
+    from tests.af.support.config import _with_prefill_pool
+
+    cluster = _with_prefill_pool(cluster)
     env = simpy.Environment()
     hardware = _runtime_hardware()
     engine = LLMEngine(
@@ -297,50 +297,3 @@ def _engine(cluster, *, moe_config=None):
         ),
     )
     return env, engine
-
-
-def _split_phase_alias_cluster():
-    base = _cluster(a_tp=2, a_dp=1, f_tp=1, f_dp=1, f_ep=1)
-    attention = base.execution_domains["a-domain"]
-    ffn = base.execution_domains["f-domain"]
-    prefill_attention = replace(
-        attention,
-        name="prefill-a",
-        phases=("prefill",),
-    )
-    decode_attention = replace(
-        attention,
-        name="decode-a",
-        phases=("decode",),
-        logical_instances=[
-            replace(instance, name=f"{instance.name}-decode")
-            for instance in attention.logical_instances
-        ],
-    )
-    link = base.af.links[0]
-    af = replace(
-        base.af,
-        links=[
-            replace(
-                link,
-                name="prefill-af",
-                phases=("prefill",),
-                attention_domain="prefill-a",
-            ),
-            replace(
-                link,
-                name="decode-af",
-                phases=("decode",),
-                attention_domain="decode-a",
-            ),
-        ],
-        execution_domains=[prefill_attention, decode_attention, ffn],
-    )
-    return base.__class__(
-        num_workers=base.num_workers,
-        networks=base.networks,
-        worker_groups=base.worker_groups,
-        kv_transfer=base.kv_transfer,
-        parallel_config=base.parallel_config,
-        af=af,
-    )

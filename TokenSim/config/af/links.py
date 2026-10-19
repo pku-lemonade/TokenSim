@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import InitVar
 from typing import Any
 
-from pydantic import field_validator, model_validator
+from pydantic import ConfigDict, field_validator, model_validator
 from pydantic.dataclasses import dataclass
 
 from TokenSim.config.af.common import (
@@ -13,7 +13,6 @@ from TokenSim.config.af.common import (
     _NEW_DTYPE_FIELDS,
     _canonical_config_dtype,
     _capture_explicit_fields,
-    _normalize_phases,
 )
 from TokenSim.config.af.communication import (
     AFCommunicationFabricConfig,
@@ -57,10 +56,9 @@ class AFEffectiveDTypes:
         }
 
 
-@dataclass
+@dataclass(config=ConfigDict(extra="forbid"))
 class AFLinkConfig:
     name: str
-    phases: tuple[str, ...]
     attention_group: str
     ffn_group: str
     resource_group: str
@@ -84,7 +82,6 @@ class AFLinkConfig:
             field_names=_AF_LINK_DTYPE_FIELDS,
             positional_names=(
                 "name",
-                "phases",
                 "attention_group",
                 "ffn_group",
                 "resource_group",
@@ -95,6 +92,7 @@ class AFLinkConfig:
                 "half_duplex_capacity",
                 "attention_domain",
                 "ffn_domain",
+                "colocated",
                 "a_to_f_dtype",
                 "f_to_a_dtype",
             ),
@@ -129,7 +127,6 @@ class AFLinkConfig:
                 raise ConfigurationError(
                     f"AF link {self.name!r} field {field_name} must be a non-empty string"
                 )
-        self.phases = _normalize_phases(self.phases, f"AF link {self.name!r} phases")
         for role in self._explicit_dtype_fields:
             setattr(self, role, _canonical_config_dtype(getattr(self, role), role))
         self._inline_fabric_declared = any(

@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 import math
 from typing import Literal, Mapping, Protocol
 
-from TokenSim.af.planning.batching import AFPhase
+from TokenSim.af.planning.batching import ForwardPhase
 
 
 # How a provider answered: measured row, interpolated between rows, extrapolated
@@ -34,7 +34,7 @@ AFCommunicationKind = Literal["endpoint_leg", "collective"]
 @dataclass(frozen=True)
 class AFRoutingEdge:
     iteration_id: int
-    phase: AFPhase
+    phase: ForwardPhase
     decode_step: int
     layer_id: int
     request_id: int
@@ -161,7 +161,7 @@ class AFComputeQuery:
     iteration_id: int
     block_id: int
     layer_id: int
-    phase: AFPhase
+    phase: ForwardPhase
     stage: AFComputeStage
     token_count: int
     context_lengths: tuple[int, ...]
@@ -206,7 +206,7 @@ class AFTransferQuery:
     iteration_id: int
     block_id: int
     layer_id: int
-    phase: AFPhase
+    phase: ForwardPhase
     direction: str
     token_count: int
     hidden_size: int

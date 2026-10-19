@@ -29,7 +29,6 @@
   "af": {
     "communication_domains": {"node_size": 8, "node_count": 2, "placement_strategy": "manual"},
     "enabled": true,
-    "phases": ["decode"],
     "af_block_size": 1,
     "trace_enabled": true,
     "weight_dtype": "bf16",
@@ -65,7 +64,6 @@
     "links": [
       {
         "name": "decode-attention-ffn",
-        "phases": ["decode"],
         "attention_group": "decode-attention-pool",
         "ffn_group": "decode-ffn-pool",
         "attention_domain": "decode-a",
@@ -79,7 +77,6 @@
       {
         "name": "decode-a",
         "capability": "af_attention",
-        "phases": ["decode"],
         "worker_group": "decode-attention-pool",
         "parallel": {
           "tensor_parallel_size": 2,
@@ -124,7 +121,6 @@
       {
         "name": "decode-f",
         "capability": "af_ffn",
-        "phases": ["decode"],
         "worker_group": "decode-ffn-pool",
         "parallel": {
           "tensor_parallel_size": 2,

@@ -46,8 +46,6 @@ class LPXConcurrencyTest(unittest.TestCase):
         )
         budgets = {}
         for owner in runtime.plan.request_owners:
-            if owner.phase != "decode":
-                continue
             for binding in runtime.plan.bindings_for_instance(
                 owner.domain, owner.instance
             ):
@@ -67,7 +65,7 @@ class LPXConcurrencyTest(unittest.TestCase):
             ),
         )
         owners = sorted(
-            (o for o in runtime.plan.request_owners if o.phase == "decode"),
+            runtime.plan.request_owners,
             key=lambda o: o.dp_rank,
         )
         for micro, expected in ((1, 6), (2, 5)):

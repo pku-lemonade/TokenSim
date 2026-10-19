@@ -19,40 +19,18 @@ from tests.af.support.model import (
     _request,
     _runtime_hardware,
     _runtime_plan,
-    _split_phase_alias_cluster,
 )
 
 
 class AFRuntimeStateRegressionTest(unittest.TestCase):
-    def test_split_phase_domains_share_equivalent_physical_scheduler_state(self):
-        cluster = _split_phase_alias_cluster()
-        _, engine = _engine(cluster)
-
-        self.assertEqual(len(engine.request_workers), 1)
-        manager = engine.request_workers[0].scheduler.block_manager
-        self.assertIs(
-            engine.af_replica_block_managers[("prefill-a", 0)],
-            manager,
+    def test_runtime_only_exposes_decode_owners(self):
+        plan = _runtime_plan()
+        self.assertEqual({owner.domain for owner in plan.request_owners}, {"a-domain"})
+        self.assertTrue(
+            all("phase" not in owner.as_dict() for owner in plan.request_owners)
         )
-        self.assertIs(
-            engine.af_replica_block_managers[("decode-a", 0)],
-            manager,
-        )
-        request = _request(11)
-        manager.allocate(request)
-        self.assertEqual(
-            request.af_a_owners,
-            {"prefill-a": "a0", "decode-a": "a0-decode"},
-        )
-        summary = engine.af_runtime_summary()
-        replica_usage = {
-            item["domain"]: item["logical_gpu_usage"]
-            for item in summary["replicas"]
-            if item["domain"] in {"prefill-a", "decode-a"}
-        }
-        self.assertEqual(
-            replica_usage["prefill-a"],
-            replica_usage["decode-a"],
+        self.assertTrue(
+            all("phase" not in item.as_dict() for item in plan.partial_destinations)
         )
 
 
@@ -66,7 +44,7 @@ class RuntimePlannerAndSummaryTest(unittest.TestCase):
         summary = plan.summary({replica.replica_key: manager})
 
         self.assertEqual(summary["schema"], "tokensim.af_runtime_state")
-        self.assertEqual(summary["version"], "2.0")
+        self.assertEqual(summary["version"], "3.0")
         self.assertGreater(summary["replicas"][0]["logical_gpu_usage"]["used"], 0)
         self.assertEqual(summary["replicas"][0]["logical_cpu_usage"]["used"], 0)
         manager.swap_out(req)
@@ -128,7 +106,7 @@ class RuntimePlannerAndSummaryTest(unittest.TestCase):
             Request(
                 request_id,
                 4,
-                1,
+                2,
                 block_size=4,
             )
             for request_id in (40, 41)
@@ -150,7 +128,7 @@ class RuntimePlannerAndSummaryTest(unittest.TestCase):
         monitor = env.process(stop_when_done())
         env.run(until=monitor)
 
-        self.assertEqual(len(engine.request_workers), 2)
+        self.assertEqual(len(engine.decode_workers.workers), 2)
         self.assertEqual({worker.dp_rank for worker in engine.request_workers}, {0, 1})
         self.assertTrue(all(request.is_done for request in requests))
         self.assertEqual(

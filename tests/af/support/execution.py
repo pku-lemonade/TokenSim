@@ -13,7 +13,7 @@ from TokenSim.hardware.links import LinkClass
 from TokenSim.llm.llm_engine import LLMEngine, Task
 from TokenSim.llm.llm_request import Request
 from TokenSim.workload.source import LLMSource
-from tests.af.support.config import _cluster_dict
+from tests.af.support.config import _cluster_dict, _with_prefill_pool
 from tests.support.hardware import make_device, make_links, make_model, make_topology
 
 
@@ -251,8 +251,8 @@ class _DTypeCheckingComputeProvider(FixedComputeProvider):
         self.validated_contracts.append((model_id, effective_dtypes))
 
 
-def _typed_cluster(*, phases=("decode",), trace_enabled=True):
-    values = _cluster_dict(phases=phases, trace_enabled=trace_enabled)
+def _typed_cluster(*, trace_enabled=True):
+    values = _cluster_dict(trace_enabled=trace_enabled)
     values["af"].update(
         {
             "weight_dtype": "fp8",
@@ -266,7 +266,7 @@ def _typed_cluster(*, phases=("decode",), trace_enabled=True):
             "f_to_a_dtype": "fp16",
         }
     )
-    return ClusterConfig(**values)
+    return _with_prefill_pool(ClusterConfig(**values))
 
 
 def _disabled_cluster():
@@ -286,6 +286,7 @@ def _disabled_cluster():
 
 
 def _build_engine(cluster, compute=None, transfer=None):
+    cluster = _with_prefill_pool(cluster)
     env = simpy.Environment()
     hardware = af_test_hardware(layers=1, capacity_gib=0.1)
     engine = LLMEngine(

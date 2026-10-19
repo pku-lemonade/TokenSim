@@ -12,7 +12,6 @@ from TokenSim.config.cluster_config import ClusterConfig, WorkerGroupConfig
 def _full_link(**overrides) -> AFLinkConfig:
     values = {
         "name": "af-link",
-        "phases": ("prefill", "decode"),
         "attention_group": "attention",
         "ffn_group": "ffn",
         "network": "net1",
@@ -43,7 +42,6 @@ def _af_group(name: str, capability: str, **overrides) -> WorkerGroupConfig:
 
 def _cluster(
     *,
-    phases=("prefill", "decode"),
     links=None,
     extra_groups=None,
     networks=None,
@@ -60,8 +58,7 @@ def _cluster(
         worker_groups=groups,
         af=AFConfig(
             enabled=True,
-            phases=phases,
-            links=[_full_link(phases=phases)] if links is None else links,
+            links=[_full_link()] if links is None else links,
             communication_fabrics=communication_fabrics or [],
         ),
     )
@@ -132,7 +129,6 @@ def _explicit_decode_cluster_raw(
         ],
         "af": {
             "enabled": True,
-            "phases": ["decode"],
             "communication_fabrics": [
                 {
                     "resource_group": "af-fabric",
@@ -147,7 +143,6 @@ def _explicit_decode_cluster_raw(
             "links": [
                 {
                     "name": "decode-af",
-                    "phases": ["decode"],
                     "attention_group": "attention",
                     "ffn_group": "ffn",
                     "attention_domain": "a-domain",
@@ -159,7 +154,6 @@ def _explicit_decode_cluster_raw(
                 {
                     "name": "a-domain",
                     "capability": "af_attention",
-                    "phases": ["decode"],
                     "worker_group": "attention",
                     "parallel": {
                         "tensor_parallel_size": a_tp,
@@ -171,7 +165,6 @@ def _explicit_decode_cluster_raw(
                 {
                     "name": "f-domain",
                     "capability": "af_ffn",
-                    "phases": ["decode"],
                     "worker_group": "ffn",
                     "parallel": {
                         "tensor_parallel_size": f_tp,

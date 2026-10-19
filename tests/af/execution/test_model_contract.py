@@ -16,16 +16,16 @@ from TokenSim.errors import ConfigurationError
 from TokenSim.llm.llm_engine import LLMEngine
 from TokenSim.llm.llm_request import Request
 from scripts.deepseek_v3_runtime import configuration
-from tests.af.support.config import _cluster_dict
+from tests.af.support.config import _cluster_dict, _with_prefill_pool
 from tests.af.support.execution import af_test_hardware
 from tests.af.support.model import _moe
 
 
 class ModelLayersTest(unittest.TestCase):
-    def test_implicit_prefill_and_decode_execute_each_layer_kind(self):
-        for phase in ("prefill", "decode"):
+    def test_decode_executes_each_layer_kind(self):
+        for phase in ("decode",):
             with self.subTest(phase=phase):
-                cluster = ClusterConfig(**_cluster_dict())
+                cluster = _with_prefill_pool(ClusterConfig(**_cluster_dict()))
                 cluster.af.latency_provider = "operator_table"
                 moe = replace(_moe(), first_k_dense_replace=1, num_shared_experts=1)
                 hardware = af_test_hardware(layers=2, moe=moe, capacity_gib=0.1)
@@ -41,7 +41,7 @@ class ModelLayersTest(unittest.TestCase):
                 req = Request(1, 8, 3, 4)
                 req.generation_idx = int(phase == "decode")
                 executor = engine.af_executor
-                iteration = executor.submit(0, [req], phase)
+                iteration = executor.submit(0, [req])
                 env.run(until=env.process(executor.run_iteration(iteration)))
                 stages = {
                     layer: {
@@ -63,7 +63,7 @@ class ModelLayersTest(unittest.TestCase):
 
 class ModelBoundaryTest(unittest.TestCase):
     def engine(self):
-        cluster = ClusterConfig(**_cluster_dict())
+        cluster = _with_prefill_pool(ClusterConfig(**_cluster_dict()))
         cluster.af.latency_provider = "operator_table"
         hardware = af_test_hardware(capacity_gib=0.1)
         env = simpy.Environment()
@@ -81,7 +81,7 @@ class ModelBoundaryTest(unittest.TestCase):
         self.assertIsInstance(engine.af_executor, ModelAFExecutor)
         req = Request(1, 8, 3, 4)
         req.generation_idx = 1
-        iteration = engine.af_executor.submit(0, [req], "decode")
+        iteration = engine.af_executor.submit(0, [req])
         env.run(until=env.process(engine.af_executor.run_iteration(iteration)))
         boundaries = [
             e
@@ -97,33 +97,24 @@ class ModelBoundaryTest(unittest.TestCase):
             iteration.makespan, sum(e.service_duration for e in boundaries)
         )
 
-    def test_partial_prefill_has_no_logits_until_its_prompt_is_complete(self):
+    def test_prefill_is_rejected_before_ownership_or_iteration_changes(self):
         env, engine = self.engine()
-        req = Request(1, 16, 3, 4)
-        req.scheduled_tokens = 8
-        first = engine.af_executor.submit(0, [req], "prefill")
-        env.run(until=env.process(engine.af_executor.run_iteration(first)))
-        self.assertFalse(
-            any(
-                e.operation == "lm_head"
-                for e in engine.af_executor.trace.events_for(first.iteration_id)
-            )
-        )
-        req.num_computed_tokens = 8
-        second = engine.af_executor.submit(0, [req], "prefill")
-        env.run(until=env.process(engine.af_executor.run_iteration(second)))
-        head = [
-            e
-            for e in engine.af_executor.trace.events_for(second.iteration_id)
-            if e.operation == "lm_head"
-        ]
-        self.assertEqual(len(head), 1)
-        self.assertEqual(head[0].local_work["token_count"], 1)
+        for scheduled in (8, 16):
+            req = Request(1, 16, 3, 4)
+            req.scheduled_tokens = scheduled
+            before = engine.af_executor._next_iteration_id
+            with self.assertRaisesRegex(ConfigurationError, "only accepts decode"):
+                engine.af_executor.submit(0, [req])
+            self.assertEqual(req.af_a_owners, {})
+            self.assertEqual(engine.af_executor._next_iteration_id, before)
+        self.assertFalse(engine.af_executor.trace.events)
 
 
 class QueryGeometryTest(unittest.TestCase):
     def test_initial_chunk_does_not_read_uncomputed_prompt_keys(self):
         req = Request(1, 64, 3, 4)
+        req.generation_idx = 1
+        req.prepare_recompute()
         req.scheduled_tokens = 8
         link = ClusterConfig(**_cluster_dict()).af.links[0]
         block = AFBlockBuilder().build(0, [req], 8, 0, link).blocks[0]
@@ -139,15 +130,18 @@ class QueryGeometryTest(unittest.TestCase):
     def test_cached_suffix_uses_actual_query_positions_and_full_kv(self):
         req = Request(1, 64, 3, 4)
         req.start_context_build(56)
+        req.generation_idx = 1
+        req.prepare_recompute()
+        req.num_computed_tokens = 57
         req.scheduled_tokens = 8
         link = ClusterConfig(**_cluster_dict()).af.links[0]
         block = AFBlockBuilder().build(0, [req], 8, 0, link).blocks[0]
-        self.assertEqual(block.context_lengths, (64,))
-        self.assertEqual(block.query_offsets, (56,))
+        self.assertEqual(block.context_lengths, (65,))
+        self.assertEqual(block.query_offsets, (57,))
         self.assertEqual(block.logits_rows, 1)
         self.assertEqual(
             ParallelExecutionPlanner._block_tokens(block),
-            tuple((1, i) for i in range(56, 64)),
+            tuple((1, i) for i in range(57, 65)),
         )
 
 
@@ -161,16 +155,14 @@ class MLAPrefillValidationTest(unittest.TestCase):
                 req.num_computed_tokens = computed
                 req.scheduled_tokens = scheduled
                 before = len(executor.trace.events)
-                with self.assertRaisesRegex(ConfigurationError, "unchunked prefill"):
-                    executor.submit(0, [req], "prefill")
+                with self.assertRaisesRegex(ConfigurationError, "only accepts decode"):
+                    executor.submit(0, [req])
                 self.assertEqual(len(executor.trace.events), before)
                 self.assertEqual(req.af_a_owners, {})
 
-    def test_whole_equal_length_prefill_is_accepted(self):
+    def test_whole_equal_length_prefill_is_rejected(self):
         runtime = configuration(af_batch_size=2)
         executor, _, _, _ = simulate_decode(runtime, 1, 16)
         requests = [Request(i, 16, 3, 16) for i in (1, 2)]
-        for req in requests:
-            req.scheduled_tokens = 16
-        iteration = executor.submit(0, requests, "prefill")
-        self.assertEqual(iteration.blocks[0].token_count, 32)
+        with self.assertRaisesRegex(ConfigurationError, "only accepts decode"):
+            executor.submit(0, requests)

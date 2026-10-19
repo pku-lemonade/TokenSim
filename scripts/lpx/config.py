@@ -87,6 +87,14 @@ class Case:
             raise ConfigurationError(f"unknown scenario mode {self.mode!r}")
         if (self.mode in {"af", "pd"}) != (self.prefill is not None):
             raise ConfigurationError("AF/PD scenarios require a separate prefill pool")
+        if self.prefill is not None and not self.prefill.colocated:
+            raise ConfigurationError(
+                "LPX prefill requires a complete-model colocated layout"
+            )
+        if self.draft is not None and not self.draft.colocated:
+            raise ConfigurationError(
+                "LPX draft prefill requires a complete-model colocated layout"
+            )
         if (self.mode == "draft") != (self.draft is not None):
             raise ConfigurationError("external draft scenarios require a draft pool")
 

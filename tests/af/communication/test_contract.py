@@ -142,7 +142,7 @@ def dag_for(executor, operation="all_reduce", ranks=tuple(range(8))):
 
 
 def run_dag(executor, dag, iteration=1):
-    block = AFBlock(iteration, 0, "prefill", (0,), 1, 1, (1,), 0, "af-link")
+    block = AFBlock(iteration, 0, (0,), 1, 1, (1,), 0, "af-link")
     process = executor.env.process(
         executor._run_dag(block, -1, executor.cluster_config.af.links[0], dag)
     )
@@ -289,7 +289,7 @@ class SubgroupReadinessTests(unittest.TestCase):
                     return original_phase(phase)
 
                 provider.phase_estimate = broken
-            block = AFBlock(1, 0, "prefill", (0,), 1, 1, (1,), 0, "af-link")
+            block = AFBlock(1, 0, (0,), 1, 1, (1,), 0, "af-link")
             operation = env.process(
                 executor._run_dag(block, -1, executor.cluster_config.af.links[0], dag)
             )

@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import InitVar
 from typing import Any
 
-from pydantic import field_validator, model_validator
+from pydantic import ConfigDict, field_validator, model_validator
 from pydantic.dataclasses import Field, dataclass
 
 from TokenSim.config.af.common import (
@@ -15,7 +15,6 @@ from TokenSim.config.af.common import (
     _NEW_DTYPE_FIELDS,
     _canonical_config_dtype,
     _capture_explicit_fields,
-    _normalize_phases,
 )
 from TokenSim.config.af.communication import (
     AFCommunicationFabricConfig,
@@ -23,15 +22,13 @@ from TokenSim.config.af.communication import (
 )
 from TokenSim.config.af.domains import ExecutionDomainConfig
 from TokenSim.config.af.links import AFEffectiveDTypes, AFLinkConfig
-from TokenSim.config.constants import AF_PHASE_ORDER
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.domains import CommunicationDomainConfig
 
 
-@dataclass
+@dataclass(config=ConfigDict(extra="forbid"))
 class AFConfig:
     enabled: bool = False
-    phases: tuple[str, ...] = AF_PHASE_ORDER
     af_block_size: int = 1
     links: list[AFLinkConfig] = Field(default_factory=list)
     communication_fabrics: list[AFCommunicationFabricConfig] = Field(
@@ -86,7 +83,6 @@ class AFConfig:
             field_names=_AF_CONFIG_DTYPE_FIELDS,
             positional_names=(
                 "enabled",
-                "phases",
                 "af_block_size",
                 "links",
                 "communication_fabrics",
@@ -171,7 +167,6 @@ class AFConfig:
             raise ConfigurationError("af.enabled must be a boolean")
         if type(self.trace_enabled) is not bool:
             raise ConfigurationError("af.trace_enabled must be a boolean")
-        self.phases = _normalize_phases(self.phases, "af.phases")
         if self.execution_protocol not in {"partial_return", "vllm_afd"}:
             raise ConfigurationError(
                 "af.execution_protocol must be partial_return or vllm_afd"
@@ -227,10 +222,6 @@ class AFConfig:
                 "fixed host preparation requires vllm_afd and separated timing"
             )
         if self.execution_protocol == "vllm_afd":
-            if set(self.phases) != {"decode"}:
-                raise ConfigurationError(
-                    "vllm_afd supports decode-only AF; prefill is not calibrated"
-                )
             # The measured Qwen3 plugin owns gate, experts and combine on F.
             # Router placement is a protocol property, not a sweep parameter.
             self.router_location = "f"

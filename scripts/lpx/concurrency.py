@@ -30,7 +30,7 @@ def resident_capacity(runtime, maximum_context, *, micro_batch=1):
     if maximum_context > runtime.model.max_position_embeddings:
         raise ConfigurationError("capacity probe exceeds model context limit")
     owners = sorted(
-        (owner for owner in runtime.plan.request_owners if owner.phase == "decode"),
+        runtime.plan.request_owners,
         key=lambda owner: owner.dp_rank,
     )
     limits = []

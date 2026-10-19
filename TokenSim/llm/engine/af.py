@@ -1,4 +1,4 @@
-"""AF execution plans, physical workers and phase selection for the engine."""
+"""Decode AF execution plans and physical workers for the engine."""
 
 from __future__ import annotations
 
@@ -37,6 +37,12 @@ class AFEngineMixin:
         latency_backend_type = config.latency_backend_type
         random_seed = config.random_seed
         af_dtype = af_dtype or self.model_spec.dtype
+        if cluster_config.af.enabled and not any(
+            "prefill" in worker.capabilities for worker in worker_configs
+        ):
+            raise ConfigurationError(
+                "AF serving requires a complete-model worker with 'prefill' capability"
+            )
         self.af_runtime_plan: AFRuntimePlan | None = (
             compile_af_runtime_plan(
                 cluster_config=cluster_config,
@@ -82,33 +88,18 @@ class AFEngineMixin:
                 has_af_scheduler_binding = any(
                     binding.is_scheduler_leader for binding in runtime_bindings
                 )
-                scheduler_replicas = (
-                    self.af_runtime_plan.scheduler_replicas_for_physical(
+                replica = (
+                    self.af_runtime_plan.scheduler_replica_for_physical(
                         physical_identity
                     )
-                    if self.af_runtime_plan is not None
-                    and physical_identity is not None
-                    and has_af_scheduler_binding
-                    else ()
+                    if self.af_runtime_plan is not None and has_af_scheduler_binding
+                    else None
                 )
-                replica = scheduler_replicas[0] if scheduler_replicas else None
                 if replica is not None:
-                    block_manager = next(
-                        (
-                            self.af_replica_block_managers[item.replica_key]
-                            for item in scheduler_replicas
-                            if item.replica_key in self.af_replica_block_managers
-                        ),
-                        None,
+                    block_manager = ReplicaKVBlockManager.from_plan(
+                        self.af_runtime_plan, replica
                     )
-                    if block_manager is None:
-                        block_manager = ReplicaKVBlockManager.from_plan(
-                            self.af_runtime_plan,
-                            replica,
-                            aliases=scheduler_replicas,
-                        )
-                    for item in scheduler_replicas:
-                        self.af_replica_block_managers[item.replica_key] = block_manager
+                    self.af_replica_block_managers[replica.replica_key] = block_manager
                     cache_config_override = AFCacheConfig.from_plan(
                         self.af_runtime_plan, replica
                     )
@@ -229,10 +220,10 @@ class AFEngineMixin:
         worker_config: WorkerConfig,
         phase: str,
     ) -> bool:
-        if self.cluster_config.af.enabled and phase in self.cluster_config.af.phases:
+        if self.cluster_config.af.enabled and phase == "decode":
             physical = worker_config.physical_worker_ref
             return physical is not None and physical.identity in (
-                self.cluster_config.af_request_owner_identities(phase)
+                self.cluster_config.af_request_owner_identities()
             )
         capability = "prefill" if phase == "prefill" else "decode_full"
         return capability in worker_config.capabilities
@@ -252,10 +243,10 @@ class AFEngineMixin:
         )
 
     def _worker_supports_phase(self, worker: LLMWorker, phase: str) -> bool:
-        if self.cluster_config.af.enabled and phase in self.cluster_config.af.phases:
+        if self.cluster_config.af.enabled and phase == "decode":
             physical = worker.physical_worker_ref
             return physical is not None and physical.identity in (
-                self.cluster_config.af_request_owner_identities(phase)
+                self.cluster_config.af_request_owner_identities()
             )
         capability = "prefill" if phase == "prefill" else "decode_full"
         return capability in worker.capabilities
@@ -264,11 +255,7 @@ class AFEngineMixin:
         return (
             self.af_executor is not None
             and bool(requests)
-            and all(
-                ("prefill" if req.is_prefill else "decode")
-                in self.cluster_config.af.phases
-                for req in requests
-            )
+            and all(not req.is_prefill for req in requests)
         )
 
     def run_complete_compute(self, worker_id: int, latency: float):

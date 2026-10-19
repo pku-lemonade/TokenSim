@@ -161,7 +161,6 @@ class ParallelExecutionPlannerTest(unittest.TestCase):
         runtime_plan = _formal_runtime_plan(cluster, moe_config)
         planner = ParallelExecutionPlanner(cluster, runtime_plan=runtime_plan)
         placement = planner.placement(
-            "decode",
             "a-pool:0",
             cluster.execution_domains["f-domain"].logical_instances[0],
         )
@@ -195,7 +194,6 @@ class ParallelExecutionPlannerTest(unittest.TestCase):
         block = AFBlock(
             iteration_id=5,
             block_id=0,
-            phase="decode",
             request_ids=(1, 2),
             request_count=2,
             token_count=2,
@@ -340,7 +338,6 @@ class TemplateTest(unittest.TestCase):
             planner = ParallelExecutionPlanner(cluster, runtime_plan=plan)
             for replica in (0, 1, 0):
                 placement = planner.placement(
-                    "decode",
                     f"a-pool:{replica*tp}",
                     cluster.execution_domains["f-domain"].logical_instances[replica],
                 )
@@ -369,7 +366,6 @@ class TemplateTest(unittest.TestCase):
                 block = AFBlock(
                     0,
                     0,
-                    "decode",
                     (0,),
                     1,
                     1,
@@ -468,7 +464,6 @@ class TemplateTest(unittest.TestCase):
                     ),
                 )()
             ],
-            "decode",
         )
         block = iteration.blocks[0]
         snapshot = block.routing_snapshot_for_layer(0)

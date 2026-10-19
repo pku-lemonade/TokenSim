@@ -78,7 +78,7 @@ class Operators:
             iteration_id=0,
             block_id=0,
             layer_id=layer,
-            phase="decode" if query_len == 1 else "prefill",
+            phase="decode",
             stage=stage,
             token_count=tokens,
             context_lengths=(context,) * batch,
@@ -191,7 +191,7 @@ class Operators:
                 )
             )
         else:
-            # Deterministic balanced prefill approximation, with exact assignment conservation.
+            # Deterministic balanced multi-query decode approximation, with exact assignment conservation.
             total = batch * query_len * m.moe.num_experts_per_tok
             base, extra = divmod(total, m.moe.num_experts)
             counts = Counter(
@@ -213,7 +213,11 @@ class Operators:
         seed=42,
         logits=True,
         logits_rows=None,
+        *,
+        prefill=False,
     ):
+        if prefill:
+            return self.prefill(layout, pool, batch, query_len, context, seed, logits)
         m = self.model
         tokens = batch * query_len
         a_pool, f_pool = f"{pool}:a", f"{pool}:a" if layout.colocated else f"{pool}:f"
@@ -402,3 +406,40 @@ class Operators:
             )
             elem("sample", "argmax", layout.a_device, m.vocab_size, rows)
         return tasks
+
+    def prefill(self, layout, pool, batch, query_len, context, seed, logits):
+        """Use the complete-model serving path for serialized prefill probes."""
+        import simpy
+
+        from TokenSim.af.serving.service import AFService
+        from scripts.lpx.native_config import configuration
+
+        runtime = configuration(
+            self.hardware, self.model, layout, namespace=pool, micro_batch=batch
+        )
+        env = simpy.Environment()
+        service = AFService(env, runtime, seed=seed)
+        sessions = [
+            service.admit(
+                index, 0, maximum_context=context, current_context=context - query_len
+            )
+            for index in range(batch)
+        ]
+        env.run(
+            until=env.process(
+                service.forward(
+                    sessions,
+                    phase="prefill",
+                    query_tokens=query_len,
+                    emit_logits=logits,
+                )
+            )
+        )
+        return [
+            Task(
+                event.operation,
+                f"{pool}:a" if event.event_type == "compute" else f"{pool}:tx",
+                event.service_duration,
+            )
+            for event in service.trace.events
+        ]

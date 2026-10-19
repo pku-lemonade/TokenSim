@@ -917,21 +917,17 @@ It uses DP8 with expert parallelism, and the cluster selects `vllm`.
 
 ### 8.9 Attention-FFN Disaggregation (AF)
 
-AF clusters (`docs/af-separation.md`) price their per-layer stages with the
-same tables. With `af.latency_provider = operator_table` the engine builds
-`OperatorTableAFComputeProvider` and `TopologyAFTransferProvider`
-(`TokenSim/af/operator_provider.py`): the A stage is rmsnorm + QKV GEMM + RoPE
-+ attention core + output GEMM + residual for the A domain's TP shard, the
-router stage is rmsnorm + router GEMM on the A leader, and the F stage is one
-`moe` lookup (routed assignments converted to balanced input tokens,
-`assignments * ep_size / top_k`) or the dense gate/up + SwiGLU + down GEMMs.
-Every operator goes through the shared `OperatorResolver`, so match types,
-calibrations, extrapolation and analytical fallback behave exactly as in
-Section 3. Cross-domain transfers use the link class named by the cluster's
-`networks` mapping (`latency_us + bytes / (bandwidth * efficiency)`); TP
-collectives inside a domain use the hierarchical collective model of
-Section 6. `af.operator_backend` and `af.latency_fallback` override the
-run-wide flags for the AF devices.
+AF clusters use disaggregation for decode.
+Prefill uses the ordinary complete-model latency backend.
+With `af.latency_provider = operator_table`, the engine builds `OperatorTableAFComputeProvider` and `TopologyAFTransferProvider` from `TokenSim/af/providers/operator_table.py`.
+The A stage prices normalization, projections, rotary embeddings and attention on the A domain's TP shard.
+The F stage prices dense FFNs or the assigned routed and shared experts.
+Routing and combination follow the configured execution protocol.
+Every operator uses the shared `OperatorResolver` for measurement matching, extrapolation and analytical fallback.
+Cross-domain decode transfers use the configured physical communication domains or explicit flat links.
+TP and EP collectives use their declared communication resources.
+`af.operator_backend` and `af.latency_fallback` override the run-wide flags for AF devices.
+See [AF separation](af-separation.md) for the decode execution and complete-model prefill contracts.
 
 ---
 

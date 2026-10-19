@@ -54,29 +54,24 @@ class AFLinkTopologyTest(unittest.TestCase):
             ):
                 _full_link(**overrides)
 
-    def test_one_or_two_links_build_phase_map(self):
+    def test_one_decode_link_resolves_both_domains(self):
         cluster = _cluster()
-        self.assertIs(cluster.phase_to_af_link["prefill"], cluster.af.links[0])
-        self.assertIs(cluster.phase_to_af_link["decode"], cluster.af.links[0])
+        self.assertIs(cluster.af_link, cluster.af.links[0])
+        self.assertEqual(
+            [domain.capability for domain in cluster.af_domains],
+            ["af_attention", "af_ffn"],
+        )
 
-        links = [
-            _full_link(name="prefill-link", phases=("prefill",), resource_group="p"),
-            _full_link(name="decode-link", phases=("decode",), resource_group="d"),
-        ]
-        split = _cluster(links=links)
-        self.assertEqual(split.phase_to_af_link["prefill"].name, "prefill-link")
-        self.assertEqual(split.phase_to_af_link["decode"].name, "decode-link")
-
-    def test_missing_or_ambiguous_phase_link_is_rejected(self):
-        with self.assertRaisesRegex(ConfigurationError, "decode.*exactly one"):
-            _cluster(links=[_full_link(phases=("prefill",))])
-        with self.assertRaisesRegex(ConfigurationError, "prefill.*exactly one"):
-            _cluster(
-                links=[
-                    _full_link(name="one"),
-                    _full_link(name="two", phases=("prefill",), resource_group="two"),
-                ]
-            )
+    def test_missing_or_multiple_decode_links_are_rejected(self):
+        for links in (
+            [],
+            [_full_link(name="one"), _full_link(name="two", resource_group="two")],
+        ):
+            with (
+                self.subTest(links=links),
+                self.assertRaisesRegex(ConfigurationError, "exactly one link"),
+            ):
+                _cluster(links=links)
 
     def test_endpoint_validation_includes_context(self):
         with self.assertRaisesRegex(ConfigurationError, "af-link.*missing"):
@@ -113,22 +108,10 @@ class AFLinkTopologyTest(unittest.TestCase):
                 af=AFConfig(enabled=True, links=[_full_link()]),
             )
 
-    def test_partial_af_requires_complete_other_phase(self):
-        decode_link = _full_link(phases=("decode",))
-        with self.assertRaisesRegex(ConfigurationError, "Decode-only.*prefill"):
-            _cluster(phases=("decode",), links=[decode_link])
-        decode_cluster = _cluster(
-            phases=("decode",),
-            links=[decode_link],
-            extra_groups=[
-                WorkerGroupConfig(role="prefill", hardware="device", num_workers=1)
-            ],
-        )
-        self.assertIn("prefill", decode_cluster.worker_groups[-1].capabilities)
-
-        prefill_link = _full_link(phases=("prefill",))
-        with self.assertRaisesRegex(ConfigurationError, "Prefill-only.*decode_full"):
-            _cluster(phases=("prefill",), links=[prefill_link])
+    def test_decode_runtime_can_be_built_without_a_serving_prefill_pool(self):
+        cluster = _cluster()
+        self.assertEqual(len(cluster.af_request_owner_identities()), 1)
+        self.assertEqual(len(cluster.execution_domains), 2)
 
     def test_unknown_link_network_is_rejected(self):
         with self.assertRaisesRegex(ConfigurationError, "af-link.*unknown network"):
@@ -150,14 +133,12 @@ class AFCommunicationResourceTest(unittest.TestCase):
 
     def test_half_duplex_has_one_shared_resource(self):
         link = _full_link(
-            phases=("decode",),
             duplex="half",
             a_to_f_capacity=None,
             f_to_a_capacity=None,
             half_duplex_capacity=2,
         )
         cluster = _cluster(
-            phases=("decode",),
             links=[link],
             extra_groups=[
                 WorkerGroupConfig(role="prefill", hardware="device", num_workers=1)
@@ -168,25 +149,31 @@ class AFCommunicationResourceTest(unittest.TestCase):
         self.assertEqual(set(resources), {("fabric", "shared")})
         self.assertEqual(resources[("fabric", "shared")].capacity, 2)
 
-    def test_shared_resource_group_must_have_identical_definition(self):
-        links = [
-            _full_link(name="prefill-link", phases=("prefill",)),
-            _full_link(
-                name="decode-link",
-                phases=("decode",),
-                a_to_f_capacity=2,
+    def test_inline_fabric_capacity_must_match_registry(self):
+        fabric = AFCommunicationFabricConfig(
+            resource_group="fabric",
+            network="net1",
+            duplex="full",
+            lanes=(
+                AFCommunicationLaneConfig("a_to_f", 1),
+                AFCommunicationLaneConfig("f_to_a", 1),
             ),
-        ]
-        with self.assertRaisesRegex(
-            ConfigurationError, "fabric.*prefill-link.*decode-link"
-        ):
-            _cluster(links=links)
-
-        links[1] = _full_link(name="decode-link", phases=("decode",))
-        cluster = _cluster(links=links)
-        self.assertEqual(len(cluster.af_communication_resources), 2)
+        )
+        with self.assertRaisesRegex(ConfigurationError, "capacity differs"):
+            _cluster(
+                links=[_full_link(a_to_f_capacity=2)], communication_fabrics=[fabric]
+            )
 
     def test_shared_fabric_rejects_network_and_duplex_conflicts(self):
+        fabric = AFCommunicationFabricConfig(
+            resource_group="fabric",
+            network="net1",
+            duplex="full",
+            lanes=(
+                AFCommunicationLaneConfig("a_to_f", 1),
+                AFCommunicationLaneConfig("f_to_a", 1),
+            ),
+        )
         for overrides in (
             dict(network="net2"),
             dict(
@@ -202,10 +189,8 @@ class AFCommunicationResourceTest(unittest.TestCase):
             ):
                 _cluster(
                     networks={"net1": "test-network", "net2": "test-network"},
-                    links=[
-                        _full_link(name="prefill-link", phases=("prefill",)),
-                        _full_link(name="decode-link", phases=("decode",), **overrides),
-                    ],
+                    links=[_full_link(**overrides)],
+                    communication_fabrics=[fabric],
                 )
 
     def test_explicit_fabric_registry_supports_independent_collective_lane(self):
@@ -221,7 +206,6 @@ class AFCommunicationResourceTest(unittest.TestCase):
         )
         link = AFLinkConfig(
             name="af-link",
-            phases=("prefill", "decode"),
             attention_group="attention",
             ffn_group="ffn",
             resource_group="fabric",
@@ -250,7 +234,6 @@ class AFCommunicationResourceTest(unittest.TestCase):
     def test_fabric_registry_rejects_missing_conflicting_and_invalid_lanes(self):
         reference_only = AFLinkConfig(
             name="af-link",
-            phases=("prefill", "decode"),
             attention_group="attention",
             ffn_group="ffn",
             resource_group="missing",
@@ -451,7 +434,7 @@ class AFCollectiveConfigTest(unittest.TestCase):
         ]
 
         cluster = ClusterConfig(**raw)
-        link = cluster.phase_to_af_link["decode"]
+        link = cluster.af_link
         collective = cluster.execution_domains["a-domain"].communication_plan[0]
 
         self.assertEqual(link.duplex, "half")

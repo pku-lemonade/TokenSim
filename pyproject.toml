@@ -47,7 +47,7 @@ testpaths = ["tests"]
     "data/clusters/af/decode_half_duplex.json",
     "data/clusters/af/decode_tp2_dp2_ep1.json",
     "data/clusters/af/decode_tp2_dp2_ep4_rank_reuse.json",
-    "data/clusters/af/prefill_decode_full_duplex.json",
+    "data/clusters/af/decode_full_duplex.json",
 ]
 "share/tokensim/data/clusters/deepseek_v3" = [
     "data/clusters/deepseek_v3/1a32f.json",

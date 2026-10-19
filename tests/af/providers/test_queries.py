@@ -308,7 +308,6 @@ class AFExecutorDTypeContractTest(unittest.TestCase):
         block = AFBlock(
             iteration_id=0,
             block_id=0,
-            phase="decode",
             request_ids=(7,),
             request_count=1,
             token_count=1,

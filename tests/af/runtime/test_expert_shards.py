@@ -85,7 +85,7 @@ class ExpertShardTest(unittest.TestCase):
         request = SimpleNamespace(
             id=1, is_prefill=False, prefill_len=8, context_len=8, generation_idx=0
         )
-        iteration = executor.submit(0, [request], "decode")
+        iteration = executor.submit(0, [request])
         env.process(executor.run_iteration(iteration))
         env.run()
         routed = [e for e in executor.trace.events if e.stage == "routed_expert"]

@@ -78,7 +78,6 @@ class AFTensorOwnership:
 
 @dataclass(frozen=True)
 class AFRequestOwner:
-    phase: str
     domain: str
     instance: str
     dp_rank: int
@@ -87,7 +86,6 @@ class AFRequestOwner:
 
     def as_dict(self) -> dict[str, object]:
         return {
-            "phase": self.phase,
             "domain": self.domain,
             "instance": self.instance,
             "dp_rank": self.dp_rank,
@@ -98,7 +96,6 @@ class AFRequestOwner:
 
 @dataclass(frozen=True)
 class AFPartialDestination:
-    phase: str
     source_domain: str
     source_rank: int
     source_dp_rank: int
@@ -111,7 +108,6 @@ class AFPartialDestination:
 
     def as_dict(self) -> dict[str, object]:
         return {
-            "phase": self.phase,
             "source_domain": self.source_domain,
             "source_rank": self.source_rank,
             "source_dp_rank": self.source_dp_rank,

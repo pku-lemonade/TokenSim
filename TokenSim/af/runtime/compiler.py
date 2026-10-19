@@ -392,7 +392,7 @@ def compile_af_runtime_plan(
 
     plan = AFRuntimePlan(
         mla=mla,
-        schema_version="2.0",
+        schema_version="3.0",
         component_weight_dtypes=tuple(sorted(model.operator_dtypes.items())),
         model=model_id,
         block_size=block_size,

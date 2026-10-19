@@ -166,7 +166,7 @@ class StepComposition:
         )
 
         lm_head_us = 0.0
-        if self.is_last_stage:
+        if self.is_last_stage and requests:
             lm_head_us = self.gemm(
                 max(1, requests),
                 self.vocab_local,

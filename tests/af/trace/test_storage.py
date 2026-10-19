@@ -31,7 +31,7 @@ from tests.af.support.observations import (
 
 
 def iteration(identity=7, end=4):
-    return AFIteration(identity, "decode", (), (), 0, end, {0: end}, {0: 0})
+    return AFIteration(identity, (), (), 0, end, {0: end}, {0: 0})
 
 
 def reference_summary(recorder, current):

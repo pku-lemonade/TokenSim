@@ -251,25 +251,24 @@ def _compile_request_owners(
 ) -> tuple[AFRequestOwner, ...]:
     by_key = {binding.rank_key: binding for binding in bindings}
     owners: list[AFRequestOwner] = []
-    for phase, (a_domain, _) in sorted(cluster_config.phase_to_af_domains.items()):
-        for instance in sorted(
-            a_domain.logical_instances,
-            key=lambda item: min(mapping.dp_rank for mapping in item.rank_mapping),
-        ):
-            leader_mapping = min(
-                instance.rank_mapping, key=lambda item: (item.pp_rank, item.tp_rank)
+    a_domain, _ = cluster_config.af_domains
+    for instance in sorted(
+        a_domain.logical_instances,
+        key=lambda item: min(mapping.dp_rank for mapping in item.rank_mapping),
+    ):
+        leader_mapping = min(
+            instance.rank_mapping, key=lambda item: (item.pp_rank, item.tp_rank)
+        )
+        leader = by_key[(a_domain.name, leader_mapping.domain_rank)]
+        owners.append(
+            AFRequestOwner(
+                domain=a_domain.name,
+                instance=instance.name,
+                dp_rank=leader.dp_rank,
+                leader_rank=leader.domain_rank,
+                physical_worker=leader.physical_identity,
             )
-            leader = by_key[(a_domain.name, leader_mapping.domain_rank)]
-            owners.append(
-                AFRequestOwner(
-                    phase=phase,
-                    domain=a_domain.name,
-                    instance=instance.name,
-                    dp_rank=leader.dp_rank,
-                    leader_rank=leader.domain_rank,
-                    physical_worker=leader.physical_identity,
-                )
-            )
+        )
     return tuple(owners)
 
 
@@ -278,33 +277,29 @@ def _compile_partial_destinations(
     ownerships: tuple[AFTensorOwnership, ...],
 ) -> tuple[AFPartialDestination, ...]:
     destinations: list[AFPartialDestination] = []
-    for phase, (a_domain, f_domain) in sorted(
-        cluster_config.phase_to_af_domains.items()
-    ):
-        a_owners = tuple(item for item in ownerships if item.domain == a_domain.name)
-        f_owners = tuple(item for item in ownerships if item.domain == f_domain.name)
-        for source in f_owners:
-            for target in a_owners:
-                interval = source.interval.intersection(target.interval)
-                if interval is None:
-                    continue
-                destinations.append(
-                    AFPartialDestination(
-                        phase=phase,
-                        source_domain=source.domain,
-                        source_rank=source.domain_rank,
-                        source_dp_rank=source.dp_rank,
-                        target_domain=target.domain,
-                        target_rank=target.domain_rank,
-                        target_dp_rank=target.dp_rank,
-                        interval=interval,
-                    )
+    a_domain, f_domain = cluster_config.af_domains
+    a_owners = tuple(item for item in ownerships if item.domain == a_domain.name)
+    f_owners = tuple(item for item in ownerships if item.domain == f_domain.name)
+    for source in f_owners:
+        for target in a_owners:
+            interval = source.interval.intersection(target.interval)
+            if interval is None:
+                continue
+            destinations.append(
+                AFPartialDestination(
+                    source_domain=source.domain,
+                    source_rank=source.domain_rank,
+                    source_dp_rank=source.dp_rank,
+                    target_domain=target.domain,
+                    target_rank=target.domain_rank,
+                    target_dp_rank=target.dp_rank,
+                    interval=interval,
                 )
+            )
     return tuple(
         sorted(
             destinations,
             key=lambda item: (
-                item.phase,
                 item.source_domain,
                 item.source_rank,
                 item.target_domain,
@@ -355,7 +350,6 @@ def _compile_collective_plans(
                                 )
                             )
                         )
-                        and bool(set(link.phases) & set(domain.phases))
                     ]
                     if candidates:
                         link = candidates[0]
@@ -449,10 +443,7 @@ def _compile_dtypes(cluster_config, model, dtype):
     )
     if not link_dtypes:
         raise ConfigurationError("AF runtime plan requires at least one AF link")
-    decode_link = cluster_config.phase_to_af_link.get("decode")
-    primary_link_name = (
-        decode_link.name if decode_link is not None else link_dtypes[0][0]
-    )
+    primary_link_name = cluster_config.af_link.name
     effective_dtypes = next(
         effective for name, effective in link_dtypes if name == primary_link_name
     )

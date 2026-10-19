@@ -136,7 +136,6 @@ def capture_profile(
         service.admit(
             index + sample * batch,
             dp_rank,
-            phase=phase,
             maximum_context=context,
             current_context=context - queries,
         )

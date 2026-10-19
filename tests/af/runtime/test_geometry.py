@@ -229,9 +229,7 @@ class AFRuntimePlanTest(unittest.TestCase):
                 destinations = tuple(
                     item
                     for item in plan.partial_destinations
-                    if item.phase == "decode"
-                    and item.source_dp_rank == 0
-                    and item.target_dp_rank == 0
+                    if item.source_dp_rank == 0 and item.target_dp_rank == 0
                 )
                 actual = tuple(
                     (

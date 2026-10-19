@@ -59,7 +59,7 @@ class RouterPlacementTest(unittest.TestCase):
             )
             for i in range(2)
         ]
-        iteration = executor.submit(0, requests, "decode")
+        iteration = executor.submit(0, requests)
         env.process(executor.run_iteration(iteration))
         env.run()
         executor.trace.validate_invariants(iteration.iteration_id)
@@ -161,7 +161,7 @@ class ContinuousRoutingTest(unittest.TestCase):
 
     def test_synthetic_routes_preserve_each_request_position_in_one_block(self):
         env, executor = self.make_executor()
-        iteration = executor.submit(0, self.requests(), "decode")
+        iteration = executor.submit(0, self.requests())
         self.assertEqual(len(iteration.blocks), 1)
         snapshot = iteration.blocks[0].routing_snapshot_for_layer(0)
         self.assertEqual(dict(snapshot.request_decode_steps), {11: 1, 22: 3})
@@ -194,7 +194,7 @@ class ContinuousRoutingTest(unittest.TestCase):
                 )
                 for k, weight in enumerate((0.7, 0.3))
             ]
-        iteration = executor.submit(0, requests, "decode")
+        iteration = executor.submit(0, requests)
         snapshot = iteration.blocks[0].routing_snapshot_for_layer(0)
         self.assertEqual(snapshot.assignment_count, 4)
         wrong = replace(snapshot.assignments[0], decode_step=99)

@@ -44,7 +44,7 @@ def historical_runtime(args):
     peak_context = args.context + args.output_tokens
     if peak_context > runtime.model.max_position_embeddings:
         raise ConfigurationError("decode exceeds the model context limit")
-    owner = next(o for o in runtime.plan.request_owners if o.phase == "decode")
+    owner = next(iter(runtime.plan.request_owners))
     replica = runtime.plan.replica_for_instance(owner.domain, owner.instance)
     blocks = -(-peak_context // runtime.plan.block_size)
     if min(args.users, args.requests) * blocks > replica.logical_gpu_blocks:

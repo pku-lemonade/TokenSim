@@ -130,7 +130,7 @@ def run_case(args, runtime, qps):
         trace_recorder=AFTraceRecorder(False),
     )
     executor.trace.resource_capacities = executor.resources.resource_capacities()
-    owner = next(o for o in runtime.plan.request_owners if o.phase == "decode")
+    owner = next(iter(runtime.plan.request_owners))
     source_worker = next(
         index
         for index, worker in enumerate(runtime.workers)
@@ -178,7 +178,7 @@ def run_case(args, runtime, qps):
                     SimpleNamespace(**{**vars(r), "generation_idx": iteration_id})
                     for r in requests
                 ]
-                iteration = executor.submit(source_worker, routed, "decode")
+                iteration = executor.submit(source_worker, routed)
                 yield env.process(executor.run_iteration(iteration))
                 if executor.trace.enabled:
                     events = executor.trace.events_for(iteration.iteration_id)

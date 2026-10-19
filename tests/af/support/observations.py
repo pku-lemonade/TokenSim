@@ -248,5 +248,5 @@ def lookup_visits(steps):
             recorder.record(replace(event, iteration_id=step))
         recorder.events_for(step)
         recorder.validate_invariants(step)
-        recorder.summarize(AFIteration(step, "decode", (), (), 0, 4))
+        recorder.summarize(AFIteration(step, (), (), 0, 4))
     return dict(events=len(recorder.events), visits=recorder.events.visits)

@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from TokenSim.af.planning.batching import AFIteration, AFPhase, phase_for_requests
+from TokenSim.af.planning.batching import AFIteration, validate_decode_requests
 from TokenSim.errors import ConfigurationError
 
 
@@ -14,24 +14,19 @@ class ExecutorSubmissionMixin:
         self,
         source_a_worker_id: int,
         requests: Sequence[Any],
-        phase: AFPhase | None = None,
     ) -> AFIteration:
         if self.plan_builder is None:
             raise ConfigurationError("AF submission requires a compiled runtime plan")
-        resolved_phase = phase or phase_for_requests(requests)
+        validate_decode_requests(requests)
         if self.operation_profile is not None:
-            self.operation_profile.validate_workload(requests, resolved_phase)
+            self.operation_profile.validate_workload(requests, "decode")
         if self.overhead_profile is not None:
-            self.overhead_profile.validate_workload(requests, resolved_phase)
-        if resolved_phase not in self.cluster_config.af.phases:
-            raise ConfigurationError(
-                f"AF phase {resolved_phase!r} is not selected by af.phases"
-            )
-        link = self.cluster_config.phase_to_af_link[resolved_phase]
+            self.overhead_profile.validate_workload(requests, "decode")
+        link = self.cluster_config.af_link
         source_group = self.resources.group_for_worker(source_a_worker_id)
         if source_group != link.attention_group:
             raise ConfigurationError(
-                f"AF phase {resolved_phase!r} requires attention group "
+                f"AF decode requires attention group "
                 f"{link.attention_group!r}, but worker {source_a_worker_id} belongs to "
                 f"{source_group!r}"
             )
@@ -41,7 +36,7 @@ class ExecutorSubmissionMixin:
                 f"AF source worker {source_a_worker_id} has no physical identity"
             )
         source_identity = source_worker.physical_worker_ref.identity
-        a_domain, f_domain = self.cluster_config.phase_to_af_domains[resolved_phase]
+        a_domain, f_domain = self.cluster_config.af_domains
         a_instance = self.plan_builder.instance_for_physical(a_domain, source_identity)
         owner_key = a_domain.name
         for request in requests:
@@ -52,7 +47,7 @@ class ExecutorSubmissionMixin:
             previous = owners.get(owner_key)
             if previous is not None and previous != a_instance.name:
                 raise ConfigurationError(
-                    f"request {request.id} AF {resolved_phase} owner is "
+                    f"request {request.id} AF decode owner is "
                     f"{previous!r}, cannot move to {a_instance.name!r} without KV transfer"
                 )
             owners[owner_key] = a_instance.name
@@ -63,13 +58,12 @@ class ExecutorSubmissionMixin:
 
         def placement_factory(_block_id, _block_requests):
             selection = self.replica_selector.select_for_preselected_a(
-                resolved_phase,
                 a_domain,
                 f_domain,
                 a_instance,
             )
             placement = self.plan_builder.placement(
-                resolved_phase, source_identity, selection.f_service
+                source_identity, selection.f_service
             )
             if placement.a_instance != selection.a_owner.name:
                 raise ConfigurationError(
@@ -96,13 +90,13 @@ class ExecutorSubmissionMixin:
                     block_requests,
                     phase=snapshot_phase,
                     layer_id=layer_id,
-                    decode_step=self._routing_step(snapshot_phase, block_requests),
+                    decode_step=self._routing_step(block_requests),
                 )
             return self.expert_routing.snapshot_for_layer(
                 block_requests,
                 iteration_id=snapshot_iteration_id,
                 phase=snapshot_phase,
-                decode_step=self._routing_step(snapshot_phase, block_requests),
+                decode_step=self._routing_step(block_requests),
                 layer_id=layer_id,
                 a_dp_rank=placement.a_dp_rank,
                 a_tp_rank=self._canonical_a_tp_rank(placement),
@@ -114,7 +108,6 @@ class ExecutorSubmissionMixin:
             af_block_size=self.cluster_config.af.af_block_size,
             source_a_worker_id=source_a_worker_id,
             link=link,
-            phase=resolved_phase,
             placement_factory=placement_factory,
             layer_types=layer_types,
             routing_snapshot_factory=(
@@ -135,9 +128,7 @@ class ExecutorSubmissionMixin:
         return layer_types
 
     @staticmethod
-    def _routing_step(phase: AFPhase, requests: Sequence[Any]) -> int:
-        if phase == "prefill":
-            return 0
+    def _routing_step(requests: Sequence[Any]) -> int:
         steps = {int(getattr(request, "generation_idx", 0)) for request in requests}
         if not steps or min(steps) < 0:
             raise ConfigurationError(

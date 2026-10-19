@@ -7,7 +7,6 @@
     {
       "name": "a-pool",
       "capabilities": [
-        "prefill",
         "af_attention"
       ],
       "hardware": "a100_sxm_80g",
@@ -18,7 +17,6 @@
     {
       "name": "f-pool",
       "capabilities": [
-        "prefill",
         "af_ffn"
       ],
       "hardware": "a100_sxm_80g",
@@ -29,10 +27,6 @@
   ],
   "af": {
     "enabled": true,
-    "phases": [
-      "prefill",
-      "decode"
-    ],
     "af_block_size": 1,
     "latency_provider": "operator_table",
     "trace_enabled": true,
@@ -44,10 +38,6 @@
       {
         "name": "a-domain",
         "capability": "af_attention",
-        "phases": [
-          "prefill",
-          "decode"
-        ],
         "worker_group": "a-pool",
         "parallel": {
           "tensor_parallel_size": 1,
@@ -78,10 +68,6 @@
       {
         "name": "f-domain",
         "capability": "af_ffn",
-        "phases": [
-          "prefill",
-          "decode"
-        ],
         "worker_group": "f-pool",
         "parallel": {
           "tensor_parallel_size": 32,
@@ -497,10 +483,6 @@
     "links": [
       {
         "name": "af-link",
-        "phases": [
-          "prefill",
-          "decode"
-        ],
         "attention_group": "a-pool",
         "ffn_group": "f-pool",
         "attention_domain": "a-domain",

@@ -86,9 +86,9 @@ def _complete_compute(worker, running):
     return latency
 
 
-def _af_compute(worker, phase, requests):
+def _af_compute(worker, requests):
     engine = worker.engine
-    iteration = engine.af_executor.submit(worker.id, requests, phase)
+    iteration = engine.af_executor.submit(worker.id, requests)
     yield from engine.af_executor.run_iteration(iteration)
     engine.record_af_iteration(iteration)
     return iteration.makespan or 0.0
@@ -96,24 +96,21 @@ def _af_compute(worker, phase, requests):
 
 def run_worker_compute(worker, running):
     engine = worker.engine
-    selected = engine.cluster_config.af.phases if engine.af_executor is not None else ()
-    if not any(
-        ("prefill" if req.is_prefill else "decode") in selected for req in running
-    ):
+    if engine.af_executor is None:
+        return (yield from _complete_compute(worker, running))
+    if all(req.is_prefill for req in running):
         return (yield from _complete_compute(worker, running))
     groups = {}
     for req in running:
-        phase = "prefill" if req.is_prefill else "decode"
-        building = req.is_prefill or req.needs_recompute
-        groups.setdefault((phase, building), []).append(req)
+        groups.setdefault((req.is_prefill, req.needs_recompute), []).append(req)
     start = worker.env.now
     jobs = [
         (
-            _af_compute(worker, phase, requests)
-            if phase in selected
+            _af_compute(worker, requests)
+            if not prefill
             else _complete_compute(worker, requests)
         )
-        for (phase, _), requests in groups.items()
+        for (prefill, _), requests in groups.items()
     ]
     if (
         len(jobs) == 1

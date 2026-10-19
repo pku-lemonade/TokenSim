@@ -57,9 +57,7 @@ def simulate_decode(
         raise ConfigurationError("fixed-batch decode exceeds the model context limit")
     # This helper submits every request to one decode A replica. It has no
     # scheduler admission loop, so check the resident KV budget explicitly.
-    owner = next(
-        owner for owner in config.plan.request_owners if owner.phase == "decode"
-    )
+    owner = next(iter(config.plan.request_owners))
     leader = config.plan.binding(owner.domain, owner.leader_rank)
     source_worker = next(
         index
@@ -111,7 +109,7 @@ def simulate_decode(
             )
             for i in range(batch)
         ]
-        iteration = executor.submit(source_worker, requests, "decode")
+        iteration = executor.submit(source_worker, requests)
         env.process(executor.run_iteration(iteration))
         env.run()
         rows.append(

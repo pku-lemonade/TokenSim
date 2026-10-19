@@ -134,10 +134,8 @@ def point(
         complete_events.append(env.event())
 
     def token_control(bundle, cohort, round_index, step, reverse=False):
-        draft_owner = services["draft"].owners[("decode", bundle["draft"][0].dp_rank)]
-        target_owner = services["target"].owners[
-            ("decode", bundle["target"][0].dp_rank)
-        ]
+        draft_owner = services["draft"].owners[bundle["draft"][0].dp_rank]
+        target_owner = services["target"].owners[bundle["target"][0].dp_rank]
         pair = (
             (target_owner.physical_worker, draft_owner.physical_worker)
             if reverse

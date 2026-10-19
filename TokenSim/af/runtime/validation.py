@@ -310,7 +310,6 @@ class RuntimeValidationMixin:
         }
         destination_keys = [
             (
-                item.phase,
                 item.source_domain,
                 item.source_rank,
                 item.target_domain,

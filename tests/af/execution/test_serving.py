@@ -1,4 +1,4 @@
-"""Serving integration, phase selection, mixed batches, budgets and CLI export."""
+"""Serving integration, decode-only AF, mixed batches, budgets and CLI export."""
 
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ from TokenSim.llm.llm_engine import LLMEngine, LLMWorker
 from TokenSim.llm.llm_request import Request
 from TokenSim.moe import ExpertRouting, normalize_expert_histogram
 from TokenSim.reporting import get_af_stats
-from tests.af.support.config import _cluster, _cluster_dict
+from tests.af.support.config import _cluster, _cluster_dict, _with_prefill_pool
 from tests.af.support.execution import (
     FixedComputeProvider,
     FixedTransferProvider,
@@ -117,30 +117,26 @@ class AFEngineIntegrationTest(unittest.TestCase):
             },
         )
 
-    def test_af_prefill_uses_compatibility_path_and_full_decode(self):
-        compute = _DTypeCheckingComputeProvider()
-        transfer = FixedTransferProvider(0.0001, 0.0001)
-        env, engine, roofline = _build_engine(
-            _typed_cluster(phases=("prefill",)), compute, transfer
+    def test_prefill_uses_complete_backend_and_never_submits_af(self):
+        compute, transfer = _DTypeCheckingComputeProvider(), FixedTransferProvider(
+            0.0001, 0.0001
         )
+        env, engine, _ = _build_engine(_typed_cluster(), compute, transfer)
+        original = LLMWorker.dynamic_batch
+        prefill_calls = []
 
-        request = _run_request(env, engine, decode_len=2)
+        def observe(worker, requests):
+            prefill_calls.append(tuple(request.is_prefill for request in requests))
+            return original(worker, requests)
 
+        with patch.object(LLMWorker, "dynamic_batch", observe):
+            request = _run_request(env, engine, decode_len=2)
         self.assertTrue(request.is_done)
-        self.assertEqual(request.step_calls, 2)
+        self.assertEqual(prefill_calls, [(True,)])
         self.assertEqual(
-            [item["phase"] for item in engine.af_iteration_summaries],
-            ["prefill"],
+            [item["phase"] for item in engine.af_iteration_summaries], ["decode"]
         )
-        self.assertEqual({query.phase for query in compute.queries}, {"prefill"})
-        self.assertEqual({query.phase for query in transfer.queries}, {"prefill"})
-        self.assertEqual(
-            get_af_stats(engine)["af_phase_fidelity"],
-            {
-                "prefill": "prefill_af_rank_local",
-                "decode": "decode_aggregate",
-            },
-        )
+        self.assertEqual({query.phase for query in transfer.queries}, {"decode"})
 
     def test_af_disabled_keeps_complete_backend_and_creates_no_af_state(self):
         env, engine, roofline = _build_engine(_disabled_cluster())
@@ -168,7 +164,9 @@ class AFEngineIntegrationTest(unittest.TestCase):
 class AFServingCorrectnessTest(unittest.TestCase):
     def make_engine(self, *, utilization=1.0, capacity=None, total=None, replicas=1):
         hardware = af_test_hardware(capacity_gib=0.1)
-        cluster = _cluster(a_tp=1, a_dp=replicas, f_tp=1, f_dp=1, f_ep=1)
+        cluster = _with_prefill_pool(
+            _cluster(a_tp=1, a_dp=replicas, f_tp=1, f_dp=1, f_ep=1)
+        )
         cluster.kv_cache_capacity_tokens_per_dp_rank = capacity
         cluster.kv_cache_capacity_tokens_total = total
         return LLMEngine(
@@ -235,9 +233,10 @@ class AFServingCorrectnessTest(unittest.TestCase):
     def test_total_limit_is_divided_by_attention_domain_replicas(self):
         engine = self.make_engine(total=64, replicas=2)
         self.assertEqual(engine.parallel_config.data_parallel_size, 1)
-        self.assertEqual(len(engine.request_workers), 2)
+        self.assertEqual(len(engine.decode_workers.workers), 2)
         self.assertEqual(
-            [w.cache_config.num_gpu_blocks for w in engine.request_workers], [8, 8]
+            [w.cache_config.num_gpu_blocks for w in engine.decode_workers.workers],
+            [8, 8],
         )
         with self.assertRaisesRegex(ConfigurationError, "one KV block per A replica"):
             self.make_engine(total=7, replicas=2)
@@ -245,7 +244,7 @@ class AFServingCorrectnessTest(unittest.TestCase):
 
 class MixedServingTest(unittest.TestCase):
     def engine(self, *, capacity=None, compute=None, moe=False):
-        cluster = ClusterConfig(**_cluster_dict(af_block_size=8))
+        cluster = _with_prefill_pool(ClusterConfig(**_cluster_dict(af_block_size=8)))
         cluster.kv_cache_capacity_tokens_per_dp_rank = capacity
         hardware = af_test_hardware(capacity_gib=0.1, moe=_moe() if moe else None)
         env = simpy.Environment()
@@ -264,49 +263,37 @@ class MixedServingTest(unittest.TestCase):
         )
         return env, engine, compute
 
-    def test_staggered_moe_requests_never_use_the_complete_backend(self):
-        env, engine, _ = self.engine(moe=True)
-        requests = [Request(1, 8, 4, 4), Request(2, 8, 3, 4)]
-        batches = []
-        original = LLMWorker.step
+    def test_mixed_batch_prefill_uses_complete_backend_and_decode_uses_af(self):
+        env, engine, compute = self.engine(moe=True)
+        worker = engine.decode_workers.workers[0]
+        prefill, decode = Request(1, 8, 4, 4), Request(2, 8, 3, 4)
+        decode.generation_idx = 1
+        with patch.object(worker, "dynamic_batch", return_value=0.001) as complete:
+            env.run(until=env.process(run_worker_compute(worker, [prefill, decode])))
+        self.assertEqual(complete.call_count, 1)
+        self.assertEqual(complete.call_args.args[0], [prefill])
+        self.assertEqual({query.phase for query in compute.queries}, {"decode"})
+        self.assertEqual(
+            [item["phase"] for item in engine.af_iteration_summaries], ["decode"]
+        )
 
-        def step(worker, running, latency):
-            batches.append(tuple(req.is_prefill for req in running))
-            return original(worker, running, latency)
-
-        def source():
-            requests[0].arrive(env)
-            engine.add_requests([requests[0]])
-            yield env.timeout(0.001)
-            requests[1].arrive(env)
-            engine.add_requests([requests[1]])
-
-        with (
-            patch.object(
-                LLMWorker,
-                "dynamic_batch",
-                side_effect=AssertionError("complete backend called"),
-            ),
-            patch.object(LLMWorker, "step", step),
-        ):
-            env.process(source())
-            env.run()
-        engine.raise_if_failed()
-        self.assertTrue(all(req.is_done for req in requests))
-        self.assertTrue(any(len(set(batch)) == 2 for batch in batches))
-        self.assertEqual(len(engine.timing_recorder.timing.time), 2)
-
-    def test_memory_pressure_recomputes_through_the_af_graph(self):
+    def test_memory_pressure_recomputes_decode_context_through_af(self):
         env, engine, compute = self.engine(capacity=16)
         requests = [Request(i, 8, 8, 4) for i in (1, 2)]
-        with patch.object(
-            LLMWorker,
-            "dynamic_batch",
-            side_effect=AssertionError("complete backend called"),
-        ):
+        original = LLMWorker.dynamic_batch
+
+        def complete(worker, running):
+            self.assertTrue(all(request.is_prefill for request in running))
+            return original(worker, running)
+
+        with patch.object(LLMWorker, "dynamic_batch", complete):
+            from TokenSim.llm.engine.messages import Task
+
+            worker = engine.decode_workers.workers[0]
             for req in requests:
+                req.generation_idx = 1
                 req.arrive(env)
-                engine.add_requests_burst([req])
+            worker.send_task(worker, Task.ADD, requests)
             env.run()
         engine.raise_if_failed()
         self.assertTrue(all(req.is_done for req in requests))
@@ -317,23 +304,24 @@ class MixedServingTest(unittest.TestCase):
                 for q in compute.queries
             )
         )
+        self.assertEqual(
+            {item["phase"] for item in engine.af_iteration_summaries}, {"decode"}
+        )
         self.assertEqual(engine.af_executor.active_iterations, {})
 
-    def test_failed_group_cancels_other_inflight_groups_and_releases_resources(self):
-        class FailPrefill(FixedComputeProvider):
+    def test_failed_decode_cancels_complete_prefill_and_releases_resources(self):
+        class FailDecode(FixedComputeProvider):
             def estimate(self, query):
-                if query.phase == "prefill":
-                    raise ValueError("prefill failed")
-                return super().estimate(query)
+                raise ValueError("decode failed")
 
-        env, engine, _ = self.engine(compute=FailPrefill(0.001, 0.002))
+        env, engine, _ = self.engine(compute=FailDecode(0.001, 0.002))
         decode, prefill = Request(1, 8, 4, 4), Request(2, 8, 4, 4)
         decode.generation_idx = 1
-        process = env.process(
-            run_worker_compute(engine.request_workers[0], [decode, prefill])
-        )
-        with self.assertRaisesRegex(SimulationStateError, "prefill failed"):
-            env.run(until=process)
+        worker = engine.decode_workers.workers[0]
+        with patch.object(worker, "dynamic_batch", return_value=0.1):
+            process = env.process(run_worker_compute(worker, [decode, prefill]))
+            with self.assertRaisesRegex(SimulationStateError, "decode failed"):
+                env.run(until=process)
         self.assertEqual(engine.af_executor.active_iterations, {})
         for resource in engine.af_resources.compute_slots.values():
             self.assertEqual(resource.count, 0)
@@ -409,7 +397,16 @@ class AFMergeCompatibilityTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory)
             cluster_path = path / "cluster.json"
-            cluster_path.write_text(json.dumps(_cluster_dict()))
+            from pydantic import TypeAdapter
+
+            cluster_path.write_text(
+                TypeAdapter(ClusterConfig)
+                .dump_json(
+                    _with_prefill_pool(ClusterConfig(**_cluster_dict())),
+                    exclude_none=True,
+                )
+                .decode()
+            )
             args = build_parser().parse_args(
                 [
                     "--cluster",

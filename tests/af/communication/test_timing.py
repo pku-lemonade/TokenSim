@@ -82,11 +82,11 @@ def run_case(
     )
     requests = [
         SimpleNamespace(
-            id=i, is_prefill=True, prefill_len=1, prefill_compute_len=1, context_len=1
+            id=i, is_prefill=False, prefill_len=1, prefill_compute_len=1, context_len=1
         )
         for i in range(2)
     ]
-    iteration = executor.submit(0, requests, "prefill")
+    iteration = executor.submit(0, requests)
     env.process(executor.run_iteration(iteration))
     env.run()
     executor.trace.validate_invariants(iteration.iteration_id)
@@ -232,7 +232,7 @@ class CommunicationTimingTest(unittest.TestCase):
         request = SimpleNamespace(
             id=0, is_prefill=False, context_len=4096, generation_idx=0
         )
-        iteration = executor.submit(0, [request], "decode")
+        iteration = executor.submit(0, [request])
         env.process(executor.run_iteration(iteration))
         env.run()
         executor.trace.validate_invariants(iteration.iteration_id)
@@ -259,7 +259,7 @@ class AFResourceRegistryTest(unittest.TestCase):
 
     def test_transfer_direction_resolves_its_link_lane(self):
         cluster, registry = self._registry()
-        link = cluster.phase_to_af_link["decode"]
+        link = cluster.af_link
 
         a_to_f = registry.communication_resources_for_step(link, "a_to_f")
         f_to_a = registry.communication_resources_for_step(link, "f_to_a")
@@ -270,8 +270,8 @@ class AFResourceRegistryTest(unittest.TestCase):
 
     def test_collective_uses_only_its_explicit_lane(self):
         cluster, registry = self._registry()
-        link = cluster.phase_to_af_link["decode"]
-        a_domain, _ = cluster.phase_to_af_domains["decode"]
+        link = cluster.af_link
+        a_domain, _ = cluster.af_domains
         plan = a_domain.communication_plan[0]
 
         collective = registry.communication_resources_for_step(
@@ -289,7 +289,7 @@ class AFResourceRegistryTest(unittest.TestCase):
 
     def test_collective_lane_is_never_inferred(self):
         cluster, registry = self._registry()
-        link = cluster.phase_to_af_link["decode"]
+        link = cluster.af_link
 
         with self.assertRaisesRegex(ConfigurationError, "explicit resource_lane"):
             registry.communication_resources_for_step(

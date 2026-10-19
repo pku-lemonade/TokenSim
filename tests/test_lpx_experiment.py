@@ -62,7 +62,12 @@ class LPXExperimentTest(unittest.TestCase):
                 self.base,
             ),
             Case("pd", "pd", self.lpu, self.base),
-            Case("draft", "draft", self.base, draft=self.lpu),
+            Case(
+                "draft",
+                "draft",
+                self.base,
+                draft=replace(self.lpu, a_cp=1, f_ep=2, colocated=True),
+            ),
         ]
         for case in cases:
             with self.subTest(case=case.mode):
@@ -85,7 +90,12 @@ class LPXExperimentTest(unittest.TestCase):
         self.assertEqual(expected_committed_tokens(4, 0), 1)
         self.assertEqual(expected_committed_tokens(4, 1), 5)
         self.assertEqual(expected_committed_tokens(4, 0.5), 1.9375)
-        case = Case("draft", "draft", self.base, draft=self.lpu)
+        case = Case(
+            "draft",
+            "draft",
+            self.base,
+            draft=replace(self.lpu, a_cp=1, f_ep=2, colocated=True),
+        )
         reject = point(
             self.hardware,
             self.model,

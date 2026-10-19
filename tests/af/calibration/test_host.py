@@ -1,5 +1,6 @@
 import copy
 import unittest
+from tests.af.support.config import _with_prefill_pool
 
 from TokenSim.af.calibration.host import HOST_COVERAGE
 from TokenSim.af.factory import build_model_runtime, simulate_decode
@@ -161,11 +162,22 @@ class HostProfileTest(HostProfileFixture, unittest.TestCase):
         from TokenSim.af.execution.model import ModelAFExecutor
 
         runtime = self.runtime()
+        from pydantic import TypeAdapter
+
+        raw = TypeAdapter(ClusterConfig).dump_python(
+            _with_prefill_pool(runtime.cluster), mode="json", exclude_none=True
+        )
+        runtime = build_model_runtime(
+            raw, hardware=runtime.hardware, model=runtime.model
+        )
         profile = self.document(runtime)
         doc = copy.deepcopy(runtime.doc)
         doc["af"].update(
             engine_overhead_profile=profile,
             calibration_environment=profile["environment"],
+        )
+        doc["af"]["communication_timing"] = dict(
+            enabled=True, native_control_enabled=True
         )
         env = simpy.Environment()
         with patch.object(runtime.hardware, "model", return_value=runtime.model):
@@ -173,7 +185,7 @@ class HostProfileTest(HostProfileFixture, unittest.TestCase):
                 env=env,
                 kv_transfer_config=KVTransferConfig.default(),
                 model_spec=runtime.model,
-                cluster_config=ClusterConfig(**doc),
+                cluster_config=_with_prefill_pool(ClusterConfig(**doc)),
                 hardware=runtime.hardware,
                 config=SimulationConfig(
                     block_size=16,
@@ -189,7 +201,7 @@ class HostProfileTest(HostProfileFixture, unittest.TestCase):
         request = SimpleNamespace(
             id=0, is_prefill=False, prefill_len=128, context_len=129, generation_idx=0
         )
-        iteration = ex.submit(0, [request], "decode")
+        iteration = ex.submit(0, [request])
         env.run(until=env.process(ex.run_iteration(iteration)))
         boundaries = {
             e.operation
@@ -342,7 +354,6 @@ class HostProfileTest(HostProfileFixture, unittest.TestCase):
                         generation_idx=0,
                     )
                 ],
-                "decode",
             )
 
         with patch.object(ex.compute_provider, "estimate", fused):

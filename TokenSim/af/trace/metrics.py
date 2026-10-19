@@ -11,7 +11,7 @@ import sys
 from typing import Any, Literal, Mapping
 from TokenSim.af.trace.occupancy import occupied_until
 
-from TokenSim.af.planning.batching import AFPhase
+from TokenSim.af.planning.batching import ForwardPhase
 from TokenSim.af.providers.queries import (
     AFComputeStage,
     AFEndpoint,
@@ -55,7 +55,7 @@ class AFTraceEvent:
     iteration_id: int
     block_id: int
     layer_id: int
-    phase: AFPhase
+    phase: ForwardPhase
     event_type: Literal[
         "compute",
         "transfer",

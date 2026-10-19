@@ -7,9 +7,6 @@ def get_af_stats(engine) -> dict[str, Any]:
     executor = getattr(engine, "af_executor", None)
     summaries = getattr(engine, "af_iteration_summaries", [])
     runtime_summary = getattr(engine, "af_runtime_summary", None)
-    cluster_config = getattr(engine, "cluster_config", None)
-    af_config = getattr(cluster_config, "af", None)
-    phases = set(getattr(af_config, "phases", ())) if executor is not None else set()
     stats: dict[str, Any] = {
         "af_enabled": executor is not None,
         "af_iteration_count": len(summaries),
@@ -25,14 +22,8 @@ def get_af_stats(engine) -> dict[str, Any]:
         ),
         "af_phase_fidelity": (
             {
-                "prefill": (
-                    "prefill_af_rank_local"
-                    if "prefill" in phases
-                    else "prefill_aggregate"
-                ),
-                "decode": (
-                    "decode_af_rank_local" if "decode" in phases else "decode_aggregate"
-                ),
+                "prefill": "prefill_aggregate",
+                "decode": "decode_af_rank_local",
             }
             if executor is not None
             else None

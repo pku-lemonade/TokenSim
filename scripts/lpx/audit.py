@@ -48,7 +48,6 @@ def cluster_doc(batch):
             dict(
                 name=name,
                 capability=capability,
-                phases=["prefill", "decode"],
                 worker_group=name,
                 parallel=dict(
                     tensor_parallel_size=tp,
@@ -83,7 +82,6 @@ def cluster_doc(batch):
         worker_groups=groups,
         af=dict(
             enabled=True,
-            phases=["prefill", "decode"],
             af_block_size=batch,
             latency_provider="operator_table",
             trace_enabled=True,
@@ -115,7 +113,6 @@ def cluster_doc(batch):
             links=[
                 dict(
                     name="a-f",
-                    phases=["prefill", "decode"],
                     attention_group="a",
                     ffn_group="f",
                     attention_domain="a",

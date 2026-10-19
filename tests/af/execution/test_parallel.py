@@ -72,11 +72,13 @@ class ZeroTransferProvider:
 def _request(request_id, *, prefill_tokens=12, histogram=None):
     return SimpleNamespace(
         id=request_id,
-        is_prefill=True,
+        is_prefill=False,
+        generation_idx=1,
+        scheduled_query_tokens=prefill_tokens,
         prefill_len=prefill_tokens,
         prefill_compute_len=prefill_tokens,
         context_len=prefill_tokens,
-        prefill_expert_histogram=histogram,
+        expert_histogram=histogram,
         af_a_owners={},
     )
 
@@ -130,7 +132,7 @@ class AFParallelExecutionOracleTest(unittest.TestCase):
         env = simpy.Environment()
         executor, _, _ = _executor(env)
         requests = [_request(index, prefill_tokens=1) for index in range(4)]
-        first = executor.submit(0, requests, "prefill")
+        first = executor.submit(0, requests)
         self.assertEqual(
             [block.placement.f_instance for block in first.blocks],
             ["f0", "f1", "f0", "f1"],
@@ -141,17 +143,17 @@ class AFParallelExecutionOracleTest(unittest.TestCase):
         with self.assertRaisesRegex(
             ConfigurationError, "cannot move.*without KV transfer"
         ):
-            executor.submit(2, [requests[0]], "prefill")
+            executor.submit(2, [requests[0]])
 
         requests[0].is_prefill = False
         with self.assertRaisesRegex(
             ConfigurationError, "cannot move.*without KV transfer"
         ):
-            executor.submit(2, [requests[0]], "decode")
+            executor.submit(2, [requests[0]])
 
         other, _, _ = _executor(simpy.Environment())
         replay = other.submit(
-            0, [_request(index + 10, prefill_tokens=1) for index in range(4)], "prefill"
+            0, [_request(index + 10, prefill_tokens=1) for index in range(4)]
         )
         self.assertEqual(
             [block.placement for block in first.blocks],
@@ -181,8 +183,8 @@ class AFParallelExecutionOracleTest(unittest.TestCase):
             moe_config=moe,
             resources=af_test_resources(env, cluster, cluster.workers()),
         )
-        slow = executor.submit(0, [_request(20, prefill_tokens=1)], "prefill")
-        fast = executor.submit(2, [_request(21, prefill_tokens=1)], "prefill")
+        slow = executor.submit(0, [_request(20, prefill_tokens=1)])
+        fast = executor.submit(2, [_request(21, prefill_tokens=1)])
         env.process(executor.run_iteration(slow))
         env.process(executor.run_iteration(fast))
         env.run()

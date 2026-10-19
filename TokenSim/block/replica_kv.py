@@ -30,8 +30,6 @@ class ReplicaKVBlockManager(ReplicaMappingMixin):
         replica: AFReplicaRuntime,
         gpu_blocks_by_rank: Mapping[RankKey, int] | None = None,
         cpu_blocks_by_rank: Mapping[RankKey, int] | None = None,
-        rank_key_aliases: Mapping[RankKey, RankKey] | None = None,
-        owner_instances: Mapping[str, str] | None = None,
     ) -> None:
         if not replica.is_attention or replica.leader_rank_key is None:
             raise ConfigurationError(
@@ -46,10 +44,7 @@ class ReplicaKVBlockManager(ReplicaMappingMixin):
         self.dp_rank = replica.dp_rank
         self.rank_keys = tuple(replica.rank_keys)
         self.leader_rank_key = replica.leader_rank_key
-        self.rank_key_aliases = dict(rank_key_aliases or {})
-        self.owner_instances = dict(
-            owner_instances or {replica.domain: replica.instance}
-        )
+        self.owner_instances = {replica.domain: replica.instance}
         gpu_capacities = dict(gpu_blocks_by_rank or replica.local_gpu_blocks)
         cpu_capacities = dict(cpu_blocks_by_rank or replica.local_cpu_blocks)
         if set(gpu_capacities) != set(self.rank_keys):
@@ -88,32 +83,8 @@ class ReplicaKVBlockManager(ReplicaMappingMixin):
         cls,
         plan: AFRuntimePlan,
         replica: AFReplicaRuntime,
-        aliases: tuple[AFReplicaRuntime, ...] = (),
     ) -> "ReplicaKVBlockManager":
-        canonical_by_physical = {
-            plan.binding(*rank_key).physical_identity: rank_key
-            for rank_key in replica.rank_keys
-        }
-        rank_key_aliases: dict[RankKey, RankKey] = {}
-        owner_instances = {replica.domain: replica.instance}
-        for alias in aliases:
-            owner_instances[alias.domain] = alias.instance
-            for rank_key in alias.rank_keys:
-                physical = plan.binding(*rank_key).physical_identity
-                try:
-                    rank_key_aliases[rank_key] = canonical_by_physical[physical]
-                except KeyError as exc:
-                    raise ConfigurationError(
-                        f"AF replica alias {alias.replica_key} uses physical worker "
-                        f"{physical!r} outside canonical replica {replica.replica_key}"
-                    ) from exc
-        return cls(
-            block_size=plan.block_size,
-            model=plan.model,
-            replica=replica,
-            rank_key_aliases=rank_key_aliases,
-            owner_instances=owner_instances,
-        )
+        return cls(block_size=plan.block_size, model=plan.model, replica=replica)
 
     def can_allocate(self, req: Request) -> bool:
         self._validate_request_owner(req, set_if_missing=False)
@@ -315,7 +286,6 @@ class ReplicaKVBlockManager(ReplicaMappingMixin):
         return free, total - free, total
 
     def rank_status(self, rank_key: RankKey) -> dict[str, int]:
-        rank_key = self.rank_key_aliases.get(rank_key, rank_key)
         try:
             manager = self.rank_managers[rank_key]
         except KeyError as exc:

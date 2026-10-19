@@ -7,7 +7,7 @@ import simpy
 
 from TokenSim.config.cluster_config import ClusterConfig
 from TokenSim.errors import ConfigurationError, SimulationStateError
-from tests.af.support.config import _cluster_dict, _load_cluster, _two_link_cluster
+from tests.af.support.config import _cluster_dict, _load_cluster
 from tests.af.support.execution import (
     FixedComputeProvider,
     FixedTransferProvider,
@@ -19,7 +19,7 @@ from tests.af.support.execution import (
 
 class AFExecutorEndToEndTest(unittest.TestCase):
     def test_complete_and_af_compute_share_a_physical_worker_slot(self):
-        values = _cluster_dict(phases=("decode",))
+        values = _cluster_dict()
         values["worker_groups"][0] = {
             "name": "a-pool",
             "capabilities": ["prefill", "af_attention"],
@@ -27,7 +27,6 @@ class AFExecutorEndToEndTest(unittest.TestCase):
             "num_workers": 1,
             "network": "af-net",
         }
-        values["worker_groups"].pop(1)
         values["num_workers"] = sum(
             group["num_workers"] for group in values["worker_groups"]
         )
@@ -137,26 +136,25 @@ class AFExecutorEndToEndTest(unittest.TestCase):
         self.assertAlmostEqual(summary["resource_utilization"]["worker:0"], 4 / 10)
         self.assertAlmostEqual(summary["resource_utilization"]["worker:1"], 6 / 10)
 
-    def test_same_resource_group_contends_across_phase_links(self):
-        makespans = {}
-        for shared in (True, False):
-            cluster = _two_link_cluster(shared_resource=shared)
-            cluster.af.transfer_topology_mode = "flat_link"
-            env = simpy.Environment()
-            executor = _executor(
-                env,
-                cluster,
-                FixedComputeProvider(0.0, 0.0),
-                FixedTransferProvider(0.003, 0.003),
-            )
-            prefill = executor.submit(0, _requests(env, 1, phase="prefill"))
-            decode = executor.submit(1, _requests(env, 1, phase="decode"))
-            env.process(executor.run_iteration(prefill))
-            env.process(executor.run_iteration(decode))
-            env.run()
-            makespans[shared] = max(prefill.end_at, decode.end_at)
-
-        self.assertGreater(makespans[True], makespans[False])
+    def test_decode_iterations_contend_on_shared_transfer_resources(self):
+        cluster = _load_cluster(attention_workers=2)
+        cluster.af.transfer_topology_mode = "flat_link"
+        env = simpy.Environment()
+        executor = _executor(
+            env,
+            cluster,
+            FixedComputeProvider(0.0, 0.0),
+            FixedTransferProvider(0.003, 0.003),
+        )
+        iterations = [executor.submit(rank, _requests(env, 1)) for rank in (0, 1)]
+        for iteration in iterations:
+            env.process(executor.run_iteration(iteration))
+        env.run()
+        sends = [
+            event for event in executor.trace.events if event.direction == "a_to_f"
+        ]
+        self.assertTrue(any(event.queue_duration > 0 for event in sends))
+        self.assertEqual({iteration.phase for iteration in iterations}, {"decode"})
 
     def test_a_and_f_bottlenecks_are_visible_in_queue_time(self):
         queue_totals = {}
@@ -316,7 +314,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
             )
 
     def test_decode_only_rejects_prefill_submission(self):
-        cluster = _load_cluster(phases=("decode",))
+        cluster = _load_cluster()
         env = simpy.Environment()
         executor = _executor(
             env,
@@ -324,7 +322,7 @@ class AFExecutorEndToEndTest(unittest.TestCase):
             FixedComputeProvider(0.0, 0.0),
             FixedTransferProvider(0.0, 0.0),
         )
-        source_worker_id = cluster.worker_groups[0].num_workers
+        source_worker_id = 0
 
-        with self.assertRaisesRegex(ConfigurationError, "not selected"):
+        with self.assertRaisesRegex(ConfigurationError, "only accepts decode"):
             executor.submit(source_worker_id, _requests(env, 1, phase="prefill"))

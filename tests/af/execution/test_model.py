@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
+from tests.af.support.config import _with_prefill_pool
 from unittest.mock import patch
 
 import simpy
@@ -111,8 +112,8 @@ class ModelExecutorTest(unittest.TestCase):
             ],
         ):
             previous = executor._next_iteration_id
-            with self.assertRaisesRegex(ConfigurationError, "equal-length"):
-                executor.submit(0, requests, "prefill")
+            with self.assertRaisesRegex(ConfigurationError, "only accepts decode"):
+                executor.submit(0, requests)
             self.assertEqual(executor._next_iteration_id, previous)
             self.assertFalse(executor.active_iterations)
 
@@ -213,7 +214,7 @@ class ModelExecutorTest(unittest.TestCase):
             )
             for i in range(3)
         ]
-        iteration = executor.submit(0, requests, "decode")
+        iteration = executor.submit(0, requests)
         with patch.object(executor.compute_provider, "estimate", fail):
             executor.env.process(executor.run_iteration(iteration))
             with self.assertRaisesRegex(
@@ -240,12 +241,29 @@ class ModelExecutorTest(unittest.TestCase):
         config = build_model_runtime(
             doc, hardware=hardware, model=hardware.model("deepseek-v3-671b-mla")
         )
+        from dataclasses import replace
+        from TokenSim.hardware.device.sourced_value import SourcedValue
+
+        cluster = _with_prefill_pool(config.cluster)
+        base = hardware.device(cluster.worker_groups[-1].hardware)
+        hardware.devices.add(
+            replace(
+                base,
+                device_id="test-prefill-memory",
+                display_name="test-prefill-memory",
+                aliases=(),
+                memory_capacity_bytes=SourcedValue(
+                    2048 * 2**30, "test:virtual-prefill", "D"
+                ),
+            )
+        )
+        cluster.worker_groups[-1].hardware = "test-prefill-memory"
         env = simpy.Environment()
         engine = LLMEngine(
             env=env,
             kv_transfer_config=KVTransferConfig.default(),
             model_spec=config.model,
-            cluster_config=config.cluster,
+            cluster_config=cluster,
             hardware=hardware,
             config=SimulationConfig(
                 block_size=16,

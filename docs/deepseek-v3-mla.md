@@ -20,7 +20,8 @@ A TP shards query heads and their projections while replicating the compressed l
 Decode composes query/KV projections, latent normalization, rotary embeddings, query absorption, compressed attention, value expansion and output projection.
 Prefill expands KV before causal attention and stores the compressed latent cache.
 Whole-model execution includes dense and MoE FFNs, shared experts, model boundaries, communication and precision conversions.
-MLA prefill and recomputation require whole, equal-length contexts without cached prefixes or partial chunks.
+AF MLA recomputation requires whole, equal-length contexts without cached prefixes or partial chunks.
+Ordinary prefill uses complete-model workers.
 Routing uses seeded synthetic assignments; it does not reproduce DeepSeek's `noaux_tc` grouping policy.
 The model uses BF16 architectural estimates, and multi-token prediction is unsupported.
 
@@ -53,28 +54,9 @@ Capacity checks account for weights, protocol buffers and padded KV blocks.
 `--hypothetical-f-memory-gib` changes F memory capacity while retaining the base device's compute and bandwidth parameters, and the output records that assumption.
 
 The decode runner uses fixed concurrency with prefilled KV state.
-Use the standard serving CLI and `data/clusters/deepseek_v3/1a32f.json` to simulate request arrivals and prefill/decode scheduling.
-The serving cluster uses five eight-slot nodes, one A worker and 32 F workers on A100 SXM 80 GB devices.
-Host submission costs 5 microseconds per message and completion costs zero by configuration; these values are simulation assumptions.
-
-```bash
-python benchmark.py \
-  --cluster data/clusters/deepseek_v3/1a32f.json \
-  --model deepseek-v3-671b-mla \
-  --latency_backend operator_table \
-  --latency_fallback analytical_only \
-  --qps 1 \
-  --request_count 1 \
-  --prefill_mean_len 16 \
-  --prefill_range_len 0 \
-  --decode_mean_len 2 \
-  --decode_range_len 0 \
-  --batching paged-attn \
-  --distribution burst \
-  --block_size 16 \
-  --verbose none \
-  --results_path outputs/deepseek-v3-serving
-```
+`data/clusters/deepseek_v3/1a32f.json` declares a decode-only runtime with one A worker and 32 F workers.
+A serving cluster must additionally declare complete-model prefill workers with enough memory for the full model and its KV cache.
+AF prefill domains and phase selection are unsupported.
 
 Outputs include model and cluster metadata, the runtime plan, hardware assumptions, summary statistics and a Chrome/Perfetto trace.
 `avg_step_us` reports elapsed step latency; summed component service includes work on concurrent resources.

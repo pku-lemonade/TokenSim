@@ -12,7 +12,6 @@ from TokenSim.config.af.links import AFEffectiveDTypes, AFLinkConfig
 from TokenSim.config.af.settings import AFConfig
 from TokenSim.config.cluster_config import ClusterConfig, WorkerGroupConfig
 from TokenSim.config.constants import (
-    AF_PHASES,
     LEGACY_ROLE_CAPABILITIES,
     WORKER_CAPABILITIES,
 )
@@ -27,7 +26,6 @@ from tests.af.support.config_validation import (
 
 class AFConfigModelTest(unittest.TestCase):
     def test_public_constant_sets(self):
-        self.assertEqual(AF_PHASES, {"prefill", "decode"})
         self.assertEqual(
             WORKER_CAPABILITIES,
             {"prefill", "decode_full", "af_attention", "af_ffn"},
@@ -37,24 +35,33 @@ class AFConfigModelTest(unittest.TestCase):
         cluster = ClusterConfig(num_workers=0, networks={})
 
         self.assertFalse(cluster.af.enabled)
-        self.assertEqual(cluster.af.phases, ("prefill", "decode"))
         self.assertEqual(cluster.af.af_block_size, 1)
         self.assertEqual(cluster.af.links, [])
         self.assertTrue(cluster.af.trace_enabled)
-        self.assertEqual(cluster.phase_to_af_link, {})
         self.assertEqual(cluster.af_communication_resources, {})
 
-    def test_phase_order_is_canonical(self):
-        self.assertEqual(
-            AFConfig(phases=("decode", "prefill")).phases, ("prefill", "decode")
-        )
-        self.assertEqual(AFConfig(phases=("prefill",)).phases, ("prefill",))
-        self.assertEqual(AFConfig(phases=("decode",)).phases, ("decode",))
+    def test_removed_phase_fields_are_rejected(self):
+        from pydantic import ValidationError
+        from TokenSim.config.af.domains import ExecutionDomainConfig
 
-    def test_invalid_phases_are_rejected(self):
-        for phases in ((), ("decode", "decode"), ("training",)):
-            with self.subTest(phases=phases), self.assertRaises(ConfigurationError):
-                AFConfig(phases=phases)
+        for constructor, values in (
+            (AFConfig, {}),
+            (
+                AFLinkConfig,
+                dict(
+                    name="af", attention_group="a", ffn_group="f", resource_group="net"
+                ),
+            ),
+            (
+                ExecutionDomainConfig,
+                dict(name="a", capability="af_attention", worker_group="a"),
+            ),
+        ):
+            with (
+                self.subTest(constructor=constructor),
+                self.assertRaises(ValidationError),
+            ):
+                constructor(**values, phases=["decode"])
 
     def test_invalid_block_sizes_are_rejected(self):
         for value in (0, -1, True, 1.5, "2"):
@@ -252,17 +259,13 @@ class WorkerCapabilityTest(unittest.TestCase):
 
 class AFLoadingAndEntryPointTest(unittest.TestCase):
     def test_file_and_python_construction_normalize_equally(self):
-        path = (
-            Path(__file__).parents[3]
-            / "data/clusters/af/prefill_decode_full_duplex.json"
-        )
+        path = Path(__file__).parents[3] / "data/clusters/af/decode_full_duplex.json"
         raw = json.loads(path.read_text())
         direct = ClusterConfig(**raw)
         loaded = ClusterConfig.from_file(path)
 
-        self.assertEqual(loaded.af.phases, direct.af.phases)
         self.assertEqual(loaded.worker_groups, direct.worker_groups)
-        self.assertEqual(loaded.phase_to_af_link, direct.phase_to_af_link)
+        self.assertEqual(loaded.af_link, direct.af_link)
         self.assertEqual(
             loaded.af_communication_resources, direct.af_communication_resources
         )
@@ -274,17 +277,15 @@ class AFLoadingAndEntryPointTest(unittest.TestCase):
             path.name: ClusterConfig.from_file(path)
             for path in sorted(example_dir.glob("*.json"))
         }
-        full = examples["prefill_decode_full_duplex.json"]
+        full = examples["decode_full_duplex.json"]
         decode = examples["decode_half_duplex.json"]
         expert_tp = examples["decode_tp2_dp2_ep1.json"]
         rank_reuse = examples["decode_tp2_dp2_ep4_rank_reuse.json"]
 
-        self.assertEqual(full.af.phases, ("prefill", "decode"))
         self.assertEqual(
             set(full.af_communication_resources),
             {("af-fabric", "a_to_f"), ("af-fabric", "f_to_a")},
         )
-        self.assertEqual(decode.af.phases, ("decode",))
         self.assertEqual(
             set(decode.af_communication_resources), {("shared-af-fabric", "shared")}
         )

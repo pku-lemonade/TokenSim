@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from typing import Literal
 
+from pydantic import ConfigDict
 from pydantic.dataclasses import Field, dataclass
 
-from TokenSim.config.af.common import _COLLECTIVE_OPERATIONS, _normalize_phases
-from TokenSim.config.constants import WORKER_CAPABILITIES
+from TokenSim.config.af.common import _COLLECTIVE_OPERATIONS
 from TokenSim.errors import ConfigurationError
 
 
@@ -230,11 +230,10 @@ class DomainCollectiveConfig:
             )
 
 
-@dataclass
+@dataclass(config=ConfigDict(extra="forbid"))
 class ExecutionDomainConfig:
     name: str
     capability: str
-    phases: tuple[str, ...]
     worker_group: str
     parallel: DomainParallelConfig = Field(default_factory=DomainParallelConfig)
     logical_instances: list[LogicalInstanceConfig] = Field(default_factory=list)
@@ -290,14 +289,11 @@ class ExecutionDomainConfig:
                 raise ConfigurationError(
                     f"execution domain field {field_name} must be a non-empty string"
                 )
-        if self.capability not in WORKER_CAPABILITIES:
+        if self.capability not in {"af_attention", "af_ffn"}:
             raise ConfigurationError(
                 f"execution domain {self.name!r} has unsupported capability "
                 f"{self.capability!r}"
             )
-        self.phases = _normalize_phases(
-            self.phases, f"execution domain {self.name!r} phases"
-        )
         instance_names = [instance.name for instance in self.logical_instances]
         if len(instance_names) != len(set(instance_names)):
             raise ConfigurationError(

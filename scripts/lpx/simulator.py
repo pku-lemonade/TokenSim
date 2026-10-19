@@ -162,6 +162,7 @@ def point(
                 prefix,
                 workload.seed,
                 logits=left == 0,
+                prefill=True,
             )
             yield from run_tasks(tasks, trace and left == 0)
         if case.prefill:
@@ -198,6 +199,7 @@ def point(
                         prefix,
                         workload.seed,
                         logits=left == 0,
+                        prefill=True,
                     )
                 )
         timings["ttft_s"] = env.now

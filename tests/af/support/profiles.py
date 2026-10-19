@@ -55,12 +55,9 @@ class NativeFixture:
         doc = copy.deepcopy(self.base.doc)
         doc["af"].update(
             execution_protocol="vllm_afd",
-            phases=["decode"],
             communication_timing=dict(enabled=True),
         )
         doc["af"].update(overrides)
-        for entry in doc["af"]["links"] + doc["af"]["execution_domains"]:
-            entry["phases"] = ["decode"]
         return doc
 
 
@@ -136,7 +133,7 @@ class FixedHostFixture:
             )
             for i in range(count)
         ]
-        iteration = executor.submit(0, requests, "decode")
+        iteration = executor.submit(0, requests)
         process = env.process(executor.run_iteration(iteration))
         env.run(until=process)
         return iteration
@@ -280,7 +277,7 @@ class OperationProfileFixture:
         request = SimpleNamespace(
             id=0, is_prefill=False, prefill_len=128, context_len=129, generation_idx=0
         )
-        block = ex.submit(0, [request], "decode").blocks[0]
+        block = ex.submit(0, [request]).blocks[0]
         node = ex._control_nodes(block)[0]
         return env, ex, block, node
 

@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from TokenSim.moe.routing import LayerRoutingSnapshot
 
 
-AFPhase = Literal["prefill", "decode"]
+ForwardPhase = Literal["prefill", "decode"]
 
 
 @dataclass(frozen=True)
@@ -41,7 +41,7 @@ class AFBlockPlacement:
 class AFBlock:
     iteration_id: int
     block_id: int
-    phase: AFPhase
+    phase: Literal["decode"] = field(default="decode", init=False)
     request_ids: tuple[int, ...]
     request_count: int
     token_count: int
@@ -54,7 +54,7 @@ class AFBlock:
     query_lengths: tuple[int, ...] = ()
     query_offsets: tuple[int, ...] = ()
     logits_rows: int | None = None
-    forward_phase: AFPhase | None = None
+    forward_phase: ForwardPhase | None = None
 
     def __post_init__(self) -> None:
         from TokenSim.moe.routing import LayerRoutingSnapshot
@@ -133,7 +133,7 @@ class AFBlock:
 @dataclass
 class AFIteration:
     iteration_id: int
-    phase: AFPhase
+    phase: Literal["decode"] = field(default="decode", init=False)
     blocks: tuple[AFBlock, ...]
     request_ids: tuple[int, ...]
     start_at: float | None = None
@@ -157,9 +157,9 @@ class AFRequestWork:
     forward_phase: str
 
 
-def request_work(request, phase):
+def request_work(request):
     context = int(request.context_len)
-    building = bool(request.is_prefill or getattr(request, "needs_recompute", False))
+    building = bool(getattr(request, "needs_recompute", False))
     default_queries = (
         int(getattr(request, "prefill_compute_len", request.prefill_len))
         if building
@@ -172,12 +172,6 @@ def request_work(request, phase):
     )
     if building:
         offset = int(getattr(request, "num_computed_tokens", context - queries))
-        if request.is_prefill and not getattr(request, "needs_recompute", False):
-            offset = max(
-                offset,
-                int(getattr(request, "cached_prefill_tokens", 0)),
-                context - default_queries,
-            )
     else:
         queries = int(
             getattr(request, "scheduled_query_tokens", 0)
@@ -198,7 +192,7 @@ def request_work(request, phase):
         offset,
         offset + queries,
         rows if emit_logits else 0,
-        "prefill" if building else phase,
+        "prefill" if building else "decode",
     )
 
 
@@ -206,22 +200,16 @@ AFLayerType = Literal["dense", "moe"]
 
 
 RoutingSnapshotFactory = Callable[
-    [int, AFPhase, int, tuple[Any, ...], AFBlockPlacement | None],
+    [int, str, int, tuple[Any, ...], AFBlockPlacement | None],
     LayerRoutingSnapshot,
 ]
 
 
-def phase_for_requests(requests: Sequence[Any]) -> AFPhase:
+def validate_decode_requests(requests: Sequence[Any]) -> None:
     if not requests:
         raise ConfigurationError("AF iteration requires at least one request")
-    prefill = [bool(request.is_prefill) for request in requests]
-    if all(prefill):
-        return "prefill"
-    if not any(prefill):
-        return "decode"
-    raise ConfigurationError(
-        "AF iteration requires a homogeneous Prefill or Decode batch"
-    )
+    if any(request.is_prefill for request in requests):
+        raise ConfigurationError("AF separation only accepts decode requests")
 
 
 class AFBlockBuilder:
@@ -232,7 +220,6 @@ class AFBlockBuilder:
         af_block_size: int,
         source_a_worker_id: int,
         link: AFLinkConfig,
-        phase: AFPhase | None = None,
         placement_factory: (
             Callable[[int, tuple[Any, ...]], AFBlockPlacement] | None
         ) = None,
@@ -240,13 +227,9 @@ class AFBlockBuilder:
         layer_types: Mapping[int, AFLayerType] | None = None,
         routing_snapshot_factory: RoutingSnapshotFactory | None = None,
     ) -> AFIteration:
-        resolved_phase = phase or phase_for_requests(requests)
+        validate_decode_requests(requests)
         if type(af_block_size) is not int or af_block_size < 1:
             raise ConfigurationError("af_block_size must be a positive integer")
-        if resolved_phase not in link.phases:
-            raise ConfigurationError(
-                f"AF link {link.name!r} does not cover phase {resolved_phase!r}"
-            )
         normalized_layer_types = _normalize_layer_types(layer_types)
         moe_layer_ids = tuple(
             layer_id
@@ -267,9 +250,7 @@ class AFBlockBuilder:
         blocks: list[AFBlock] = []
         for block_id, start in enumerate(range(0, len(requests), af_block_size)):
             block_requests = tuple(requests[start : start + af_block_size])
-            work = tuple(
-                request_work(request, resolved_phase) for request in block_requests
-            )
+            work = tuple(request_work(request) for request in block_requests)
             token_count = sum(item.queries for item in work)
             forward_phases = {item.forward_phase for item in work}
             if len(forward_phases) != 1:
@@ -283,7 +264,7 @@ class AFBlockBuilder:
                 tuple(
                     routing_snapshot_factory(
                         iteration_id,
-                        resolved_phase,
+                        "decode",
                         layer_id,
                         block_requests,
                         placement,
@@ -297,7 +278,6 @@ class AFBlockBuilder:
                 AFBlock(
                     iteration_id=iteration_id,
                     block_id=block_id,
-                    phase=resolved_phase,
                     request_ids=tuple(int(request.id) for request in block_requests),
                     request_count=len(block_requests),
                     token_count=token_count,
@@ -323,7 +303,6 @@ class AFBlockBuilder:
             )
         return AFIteration(
             iteration_id=iteration_id,
-            phase=resolved_phase,
             blocks=tuple(blocks),
             request_ids=tuple(int(request.id) for request in requests),
         )

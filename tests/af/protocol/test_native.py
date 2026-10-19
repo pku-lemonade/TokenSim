@@ -106,9 +106,8 @@ class NativeProtocolTest(NativeFixture, unittest.TestCase):
         )
         self.assertEqual(runtime.cluster.af.router_location, "f")
 
-    def test_unsupported_phase_and_execution_fail_early(self):
+    def test_unsupported_execution_settings_fail_early(self):
         for override in (
-            dict(phases=["prefill", "decode"]),
             dict(communication_timing=dict(enabled=False)),
             dict(transport_router_logits=True),
             dict(routed_expert_execution="per_expert"),
@@ -186,7 +185,6 @@ class NativeProtocolTest(NativeFixture, unittest.TestCase):
                         generation_idx=0,
                     )
                 ],
-                "decode",
             )
             env.process(executor.run_iteration(iteration))
             env.run()
@@ -270,7 +268,7 @@ class FixedHostTest(FixedHostFixture, unittest.TestCase):
         request = SimpleNamespace(
             id=0, is_prefill=False, prefill_len=128, context_len=129, generation_idx=0
         )
-        iteration = ex.submit(0, [request], "decode")
+        iteration = ex.submit(0, [request])
         process = env.process(ex.run_iteration(iteration))
 
         def cancel():
@@ -316,7 +314,7 @@ class FixedHostTest(FixedHostFixture, unittest.TestCase):
         request = SimpleNamespace(
             id=0, is_prefill=False, prefill_len=128, context_len=129, generation_idx=0
         )
-        process = env.process(ex.run_iteration(ex.submit(0, [request], "decode")))
+        process = env.process(ex.run_iteration(ex.submit(0, [request])))
 
         def cancel():
             yield env.timeout(150e-6)

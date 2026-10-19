@@ -6,7 +6,6 @@ from typing import Any, Mapping
 
 from pydantic_core import ArgsKwargs
 
-from TokenSim.config.constants import AF_PHASES, AF_PHASE_ORDER
 from TokenSim.dtypes import canonicalize_dtype
 from TokenSim.errors import ConfigurationError
 
@@ -77,20 +76,3 @@ def _canonical_config_dtype(value: str, role: str) -> str:
         if role == "af_dtype":
             message = message.replace("dtype=", "af_dtype=", 1)
         raise ConfigurationError(message) from exc
-
-
-def _normalize_phases(phases: tuple[str, ...], context: str) -> tuple[str, ...]:
-    values = tuple(phases)
-    if not values:
-        raise ConfigurationError(
-            f"{context} must be a non-empty selection from {sorted(AF_PHASES)}"
-        )
-    if len(values) != len(set(values)):
-        raise ConfigurationError(f"{context} contains duplicate phases")
-    unknown = set(values) - AF_PHASES
-    if unknown:
-        raise ConfigurationError(
-            f"{context} contains unsupported phases {sorted(unknown)}; expected values "
-            + f"from {sorted(AF_PHASES)}"
-        )
-    return tuple(phase for phase in AF_PHASE_ORDER if phase in values)

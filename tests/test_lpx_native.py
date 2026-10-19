@@ -49,12 +49,45 @@ class NativeLPXTest(unittest.TestCase):
         env.process(service.forward([session], phase="prefill", query_tokens=2))
         env.run()
         self.assertEqual(session.cached_context, 20)
-        heads = [e for e in service.trace.events if e.operation == "lm_head"]
-        self.assertEqual(len(heads), 2)
-        self.assertEqual({e.local_work["token_count"] for e in heads}, {1})
-        norms = [e for e in service.trace.events if e.operation == "final_norm"]
-        self.assertEqual(len(norms), 2)
-        self.assertEqual({e.local_work["token_count"] for e in norms}, {1})
+        forwards = [
+            e for e in service.trace.events if e.operation == "complete_model_prefill"
+        ]
+        self.assertEqual([e.details["logits_rows"] for e in forwards], [0, 1])
+        self.assertEqual(service.executor._next_iteration_id, 0)
+        self.assertFalse(
+            any(e.operation in {"af_a_to_f", "af_f_to_a"} for e in service.trace.events)
+        )
+
+    def test_prefill_bypasses_af_submission_and_rejects_split_pools(self):
+        from TokenSim.errors import ConfigurationError
+
+        runtime = configuration(self.hardware, self.model, self.base, namespace="full")
+        env = simpy.Environment()
+        service = AFService(env, runtime)
+        session = service.admit(0, 0, maximum_context=24, current_context=16)
+        with patch.object(
+            service.executor,
+            "submit",
+            side_effect=AssertionError("AF prefill submitted"),
+        ):
+            env.run(
+                until=env.process(
+                    service.forward([session], phase="prefill", query_tokens=2)
+                )
+            )
+        self.assertEqual(session.cached_context, 18)
+        split = configuration(self.hardware, self.model, self.lpu, namespace="split")
+        other = AFService(env, split)
+        session = other.admit(1, 0, maximum_context=24, current_context=16)
+        with self.assertRaisesRegex(ConfigurationError, "complete-model pool"):
+            env.run(
+                until=env.process(
+                    other.forward([session], phase="prefill", query_tokens=2)
+                )
+            )
+        self.assertEqual(session.cached_context, 16)
+        self.assertFalse(other.trace.events)
+        self.assertEqual(other.executor._next_iteration_id, 0)
 
     @classmethod
     def setUpClass(cls):
@@ -112,7 +145,12 @@ class NativeLPXTest(unittest.TestCase):
                 self.base,
             ),
             Case("pd", "pd", self.lpu, self.base),
-            Case("draft", "draft", self.base, draft=self.lpu),
+            Case(
+                "draft",
+                "draft",
+                self.base,
+                draft=replace(self.lpu, a_pp=4, f_pp=4, f_ep=2, colocated=True),
+            ),
         ]
         for case in cases:
             with self.subTest(mode=case.mode):
@@ -134,7 +172,12 @@ class NativeLPXTest(unittest.TestCase):
         self.assertEqual(low["tokens_per_s_per_mw"], 2 * high["tokens_per_s_per_mw"])
 
     def test_graph_submission_and_full_verification_are_charged(self):
-        case = Case("draft", "draft", self.base, draft=self.lpu)
+        case = Case(
+            "draft",
+            "draft",
+            self.base,
+            draft=replace(self.lpu, a_pp=4, f_pp=4, f_ep=2, colocated=True),
+        )
         for acceptance in (0, 1):
             result = self.run_point(
                 case,
@@ -209,7 +252,12 @@ class NativeLPXTest(unittest.TestCase):
         self,
     ):
         for acceptance in (0, 1):
-            case = Case("draft", "draft", self.base, draft=self.lpu)
+            case = Case(
+                "draft",
+                "draft",
+                self.base,
+                draft=replace(self.lpu, a_pp=4, f_pp=4, f_ep=2, colocated=True),
+            )
             result = point(
                 self.hardware,
                 self.model,
@@ -259,7 +307,12 @@ class NativeLPXTest(unittest.TestCase):
             self.hardware,
             self.model,
             self.workload,
-            Case("draft", "draft", self.base, draft=self.lpu),
+            Case(
+                "draft",
+                "draft",
+                self.base,
+                draft=replace(self.lpu, a_pp=4, f_pp=4, f_ep=2, colocated=True),
+            ),
             1,
             trace=True,
             **settings,

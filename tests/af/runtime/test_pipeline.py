@@ -97,7 +97,7 @@ class PipelineRuntimeTest(unittest.TestCase):
             moe_config=model.moe,
             trace_recorder=trace,
         )
-        iteration = executor.submit(0, [decode_request(1)], "decode")
+        iteration = executor.submit(0, [decode_request(1)])
         env.process(executor.run_iteration(iteration))
         env.run()
         handoffs = [
@@ -143,7 +143,7 @@ class PipelineRuntimeTest(unittest.TestCase):
             moe_config=moe,
             trace_recorder=trace,
         )
-        iteration = executor.submit(0, [decode_request(1)], "decode")
+        iteration = executor.submit(0, [decode_request(1)])
         env.process(executor.run_iteration(iteration))
         env.run()
         stage_zero = {
@@ -186,7 +186,7 @@ class PipelineRuntimeTest(unittest.TestCase):
         def run():
             processes = []
             for request_id in (1, 2, 3, 4):
-                iteration = executor.submit(0, [decode_request(request_id)], "decode")
+                iteration = executor.submit(0, [decode_request(request_id)])
                 process = env.process(executor.run_iteration(iteration))
                 if parallel:
                     processes.append(process)

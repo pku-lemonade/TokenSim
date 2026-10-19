@@ -8,7 +8,7 @@ The simulator exports independent architecture and execution assumptions; matchi
 
 ## Native execution
 
-`scripts/reproduce_lpx.py` version 2 executes whole-model production `ModelAFExecutor` DAGs through `AFService`.
+`scripts/reproduce_lpx.py` version 2 executes decode through production `ModelAFExecutor` DAGs in `AFService`.
 Independent request cohorts share physical compute resources, pipeline stages and transmit/receive endpoint budgets.
 Pipeline parallelism (PP) owns its stage's weights and KV layers and charges activation handoffs.
 Expert parallelism (EP) supports tensor-sharded experts with resolved physical collective groups.
@@ -16,9 +16,18 @@ Colocated A/F domains share one physical compute and memory inventory.
 The native factory defaults to the reference planner because independently sampled routing rarely reuses an exact structural template.
 Factory callers can enable structural caching for repeated routes, with eligibility limited to at most 32 query tokens.
 Differential coverage compares complete native results and traces between reference and cached planning.
+All LPX deployments use complete-model prefill on colocated ranks through the ordinary operator-table latency backend.
+AF separation applies to decode.
+Prefill never submits an AF iteration or sends A/F activation transfers.
+The complete-model prefill path reserves each participating pipeline stage and its expert ranks, and charges ordinary TP/EP collectives and PP handoffs against shared endpoint resources.
+Its trace identifies aggregate prefill compute as `complete_model_prefill`.
+Stage compute releases its GPU reservations before the stage's ordinary model collectives acquire endpoint budgets.
+`services[*].prefill_operator_stats` reports the ordinary prefill backend separately from decode operator statistics.
+Split A/F pools reject prefill; AF and PD scenarios use their separate complete-model prefill pool.
+Reported prefill, TTFT and factory-throughput estimates change with this execution model, so archived results require a new run for comparison.
 Intermediate prefill chunks extend KV without final normalization or unused vocabulary logits.
 The final suffix chunk normalizes and projects the output row for each request.
-Full traces undergo invariant validation before optional retention as compact timing records.
+Decode traces undergo AF invariant validation before optional retention as compact timing records.
 The compact history produces the same serving metrics as the full history.
 Worker and host resource names include their service namespace when metrics are aggregated.
 KV handoff and draft token-control transfers participate in endpoint utilization and queue accounting.

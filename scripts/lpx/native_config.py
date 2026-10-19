@@ -143,7 +143,6 @@ def configuration(
                 name=f"{namespace}-{name}-domain",
                 capability=capability,
                 worker_group=group,
-                phases=["prefill", "decode"],
                 parallel=dict(
                     tensor_parallel_size=tp,
                     pipeline_parallel_size=pp,
@@ -178,7 +177,6 @@ def configuration(
         worker_groups=groups,
         af=dict(
             enabled=True,
-            phases=["prefill", "decode"],
             af_block_size=micro_batch,
             transfer_topology_mode="flat_link",
             communication_resource_scope="endpoint",
@@ -203,7 +201,6 @@ def configuration(
             links=[
                 dict(
                     name=f"{namespace}-link",
-                    phases=["prefill", "decode"],
                     attention_group=a_name,
                     ffn_group=f_name,
                     attention_domain=domains[0]["name"],

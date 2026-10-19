@@ -369,21 +369,7 @@ class TensorCopyPlannerMixin:
                 )
                 for token in range(offset, offset + queries)
             )
-        if block.phase == "decode":
-            return tuple(
-                (request_id, max(0, context_len - 1))
-                for request_id, context_len in zip(
-                    block.request_ids, block.context_lengths
-                )
-            )
-        tokens: list[tuple[int, int]] = []
-        for request_id, context_len in zip(block.request_ids, block.context_lengths):
-            tokens.extend((request_id, token_id) for token_id in range(context_len))
-            if len(tokens) >= block.token_count:
-                break
-        if len(tokens) != block.token_count:
-            raise ConfigurationError(
-                f"AF block {block.block_id} cannot reconstruct {block.token_count} "
-                "Prefill token identities from its context lengths"
-            )
-        return tuple(tokens)
+        return tuple(
+            (request_id, max(0, context_len - 1))
+            for request_id, context_len in zip(block.request_ids, block.context_lengths)
+        )

@@ -140,7 +140,7 @@ class OperationProfileTest(OperationProfileFixture, unittest.TestCase):
         request = SimpleNamespace(
             id=0, is_prefill=False, prefill_len=128, context_len=129, generation_idx=0
         )
-        process = ex.env.process(ex.run_iteration(ex.submit(0, [request], "decode")))
+        process = ex.env.process(ex.run_iteration(ex.submit(0, [request])))
         ex.env.run(until=ex.env.now + (rows[0]["makespan_us"] - 1000000 + 5) / 1e6)
         self.assertTrue(
             any(r.users for r in ex.resources.host_submission_slots.values())
@@ -277,7 +277,7 @@ class OperationProfileTest(OperationProfileFixture, unittest.TestCase):
         request = SimpleNamespace(
             id=0, is_prefill=False, prefill_len=128, context_len=129, generation_idx=0
         )
-        process = ex.env.process(ex.run_iteration(ex.submit(0, [request], "decode")))
+        process = ex.env.process(ex.run_iteration(ex.submit(0, [request])))
         ex.env.run(until=ex.env.now + 1e-6)
         process.interrupt("cancel input prepare")
         with self.assertRaises(simpy.Interrupt):
