@@ -116,6 +116,12 @@ class StepComposition:
             attn_elem_us += self.elementwise(
                 "rope", T, self.q_dim_local + self.kv_dim_local
             )
+            if model.qk_norm:
+                attn_elem_us += self.elementwise(
+                    "rmsnorm", T * (self.q_dim_local // model.head_dim), model.head_dim
+                ) + self.elementwise(
+                    "rmsnorm", T * (self.kv_dim_local // model.head_dim), model.head_dim
+                )
         dense_ffn_gemm_us = 0.0
         dense_ffn_elem_us = 0.0
         if self.dense_layers_local:
@@ -166,7 +172,7 @@ class StepComposition:
         )
 
         lm_head_us = 0.0
-        if self.is_last_stage:
+        if self.is_last_stage and requests:
             lm_head_us = self.gemm(
                 max(1, requests),
                 self.vocab_local,

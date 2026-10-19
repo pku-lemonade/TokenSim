@@ -30,6 +30,7 @@ from TokenSim.llm.llm_scheduler import (
 from TokenSim.parallel import ParallelCommunicator
 from TokenSim.moe import MoEModelConfig, ExpertPlacement
 from TokenSim.config.model_config import ModelSpec
+from .af_worker import bind_af_worker, run_worker_compute
 from .messages import (
     Task,
     WorkerStatus,
@@ -59,6 +60,11 @@ class LLMWorker(Worker):
         moe_config: MoEModelConfig | None = None,
         expert_placement: ExpertPlacement | None = None,
         kv_cache_capacity_tokens_per_dp_rank: int | None = None,
+        runtime_role: str | None = None,
+        cache_config_override=None,
+        block_manager=None,
+        runtime_bindings=(),
+        runtime_state=None,
     ):
         config = engine.config
         super().__init__(env, id)
@@ -68,7 +74,7 @@ class LLMWorker(Worker):
             raise ConfigurationError("prefill_schedule_interval must be positive")
         self.prefill_schedule_interval = config.prefill_schedule_interval
 
-        self.role = worker_config.role
+        self.role = runtime_role or worker_config.role
         self.hardware = worker_config.hardware
         self.device = hardware.device(worker_config.hardware)
         self.network = worker_config.network
@@ -78,7 +84,7 @@ class LLMWorker(Worker):
         self.parallel_config = parallel_config or ParallelConfig.default()
         self.moe_config = moe_config or model_spec.moe
         self.expert_placement = expert_placement
-        self.rank_info = worker_config.rank_info or ParallelRankInfo()
+        bind_af_worker(self, worker_config, runtime_bindings, runtime_state)
         self.global_rank = self.rank_info.global_rank
         self.tp_rank = self.rank_info.tp_rank
         self.pp_rank = self.rank_info.pp_rank
@@ -103,7 +109,7 @@ class LLMWorker(Worker):
             raise ConfigurationError(
                 "hybrid KV allocation requires a finite prefill token budget"
             )
-        self.cache_config = CacheConfig(
+        self.cache_config = cache_config_override or CacheConfig(
             self.block_size,
             self.device,
             self.model_spec,
@@ -182,13 +188,23 @@ class LLMWorker(Worker):
             max_num_seqs=config.max_num_seqs,
         )
         self.owned_expert_ids = (
-            self.expert_placement.experts_for_rank(self.rank_info)
-            if self.expert_placement is not None
-            else []
+            sorted(
+                {
+                    expert
+                    for binding in runtime_bindings
+                    for expert in binding.expert_ids
+                }
+            )
+            if runtime_bindings
+            else (
+                self.expert_placement.experts_for_rank(self.rank_info)
+                if self.expert_placement is not None
+                else []
+            )
         )
 
         self.kv_transfer_config = kv_transfer_config.with_worker_defaults(
-            worker_config.role,
+            self.role,
             kv_rank=id,
         )
         if self.cache_config.hybrid_layout is not None:
@@ -210,6 +226,7 @@ class LLMWorker(Worker):
                     config.max_occupy_ratio if self.role != "prefill" else 1
                 ),
                 connector=self.connector,
+                block_manager=block_manager,
                 max_num_batched_tokens=config.max_num_batched_tokens,
                 long_prefill_token_threshold=config.long_prefill_token_threshold,
                 adaptive_long_prefill_threshold=config.adaptive_long_prefill_threshold,
@@ -308,9 +325,7 @@ class LLMWorker(Worker):
                             yield self.env.timeout(load_latency)
                         running = [req for req in running if not req.cancel_requested]
                         if running:
-                            latency = self.dynamic_batch(running)
-                            if latency:
-                                yield self.env.timeout(latency)
+                            latency = yield from run_worker_compute(self, running)
                             save_latency = self.complete_step(running, latency)
                             if save_latency:
                                 yield self.env.timeout(save_latency)

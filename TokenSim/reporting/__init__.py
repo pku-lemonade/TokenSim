@@ -34,3 +34,5 @@ from .console import (
     print_slo_stats,
 )
 from .export import export_result, _missing_shape_report, write_failure
+
+from .af import get_af_stats

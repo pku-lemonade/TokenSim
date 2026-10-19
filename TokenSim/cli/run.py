@@ -34,8 +34,19 @@ def main(args, preloaded_agentx_traces=None):
     if args.sim_time is not None:
         number(args.sim_time, "sim_time", positive=True)
     config = simulation_config(args)
-    hardware = HardwareContext.load(args.data_root)
     cluster = ClusterConfig.from_file(args.cluster)
+    from TokenSim.af.providers.queries import resolve_af_latency_providers
+
+    af_compute_provider, af_transfer_provider = (
+        resolve_af_latency_providers(
+            cluster.af,
+            getattr(args, "af_compute_provider", None),
+            getattr(args, "af_transfer_provider", None),
+        )
+        if cluster.af.enabled
+        else (None, None)
+    )
+    hardware = HardwareContext.load(args.data_root)
     workload_config = (
         WorkloadConfig.from_file(args.workload_config)
         if args.workload_config
@@ -106,6 +117,9 @@ def main(args, preloaded_agentx_traces=None):
         parallel_config=parallel,
         kv_transfer_config=kv_config,
         config=config,
+        af_compute_provider=af_compute_provider,
+        af_transfer_provider=af_transfer_provider,
+        af_dtype=getattr(args, "af_dtype", None),
     )
     progress = TqdmManager(verbose=args.verbose, program_id=args.program_id)
     replay = logs = None
@@ -218,7 +232,7 @@ def main(args, preloaded_agentx_traces=None):
         engine.raise_if_failed()
         if run.termination_reason == "completed":
             connectors = [
-                w.connector for w in engine.workers if w.connector.async_offload
+                w.connector for w in engine.request_workers if w.connector.async_offload
             ]
             deadline = env.now + (replay.cancellation_timeout if replay else 10.0)
             if replay and replay.issue_window_end_at is not None:
@@ -238,7 +252,7 @@ def main(args, preloaded_agentx_traces=None):
                         + [env.timeout(deadline - env.now)]
                     )
                 )
-            for w in engine.workers:
+            for w in engine.request_workers:
                 manager = getattr(w.scheduler, "block_manager", None)
                 if manager is not None and hasattr(manager, "validate_conservation"):
                     manager.validate_conservation()

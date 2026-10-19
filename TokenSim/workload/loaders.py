@@ -152,6 +152,15 @@ def load_json_pairs_workload(
                     num_experts=num_experts,
                     request_id=request_id,
                 ),
+                routing_assignments=_assignments_or_none(
+                    extra.get("routing_assignments"), request_id=request_id
+                ),
+                prefill_routing_assignments=_assignments_or_none(
+                    extra.get("prefill_routing_assignments"), request_id=request_id
+                ),
+                decode_routing_assignments=_assignments_or_none(
+                    extra.get("decode_routing_assignments"), request_id=request_id
+                ),
                 cache_salt=_optional_str(extra.get("cache_salt")),
                 reuse_group=_optional_str(extra.get("reuse_group")),
             )
@@ -243,6 +252,17 @@ def load_qwen_jsonl_workload(
                 decode_expert_histogram=_histogram_or_none(
                     row.get("decode_expert_histogram"),
                     num_experts=num_experts,
+                    request_id=unique_request_id,
+                ),
+                routing_assignments=_assignments_or_none(
+                    row.get("routing_assignments"), request_id=unique_request_id
+                ),
+                prefill_routing_assignments=_assignments_or_none(
+                    row.get("prefill_routing_assignments"),
+                    request_id=unique_request_id,
+                ),
+                decode_routing_assignments=_assignments_or_none(
+                    row.get("decode_routing_assignments"),
                     request_id=unique_request_id,
                 ),
                 cache_salt=_optional_str(row.get("cache_salt")),
@@ -373,3 +393,19 @@ def _histogram_or_none(
         num_experts=num_experts,
         request_id=request_id,
     )
+
+
+def _assignments_or_none(
+    value: Any,
+    *,
+    request_id: int,
+) -> list[dict[str, Any]] | None:
+    if value is None:
+        return None
+    if not isinstance(value, list) or not all(
+        isinstance(record, dict) for record in value
+    ):
+        raise WorkloadValidationError(
+            f"routing assignments for request {request_id} must be a list of objects"
+        )
+    return [dict(record) for record in value]

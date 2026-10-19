@@ -334,9 +334,11 @@ class CollectiveModel:
             )
         level = self.topology.levels[layout.lowest_common_level]
         link = self.links.get(level.link)
+        # Oversubscription reduces the effective bandwidth available to this
+        # endpoint.  It must never make a path faster (the old division did).
         latency_us = (
             link.transfer_us(message_bytes, streams=level.links_per_endpoint)
-            / level.oversubscription
+            * level.oversubscription
         )
         return CollectiveEstimate(
             latency_us=latency_us,
