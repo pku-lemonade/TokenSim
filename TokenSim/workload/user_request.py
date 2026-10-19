@@ -23,6 +23,9 @@ class UserRequest:
     expert_histogram: dict[int, int] | list | None = None
     prefill_expert_histogram: dict[int, int] | list | None = None
     decode_expert_histogram: dict[int, int] | list | None = None
+    routing_assignments: list[dict[str, Any]] | None = None
+    prefill_routing_assignments: list[dict[str, Any]] | None = None
+    decode_routing_assignments: list[dict[str, Any]] | None = None
     cache_salt: str | None = None
     reuse_group: str | None = None
 
@@ -67,6 +70,9 @@ class UserRequest:
             expert_histogram=self.expert_histogram,
             prefill_expert_histogram=self.prefill_expert_histogram,
             decode_expert_histogram=self.decode_expert_histogram,
+            routing_assignments=self.routing_assignments,
+            prefill_routing_assignments=self.prefill_routing_assignments,
+            decode_routing_assignments=self.decode_routing_assignments,
             cache_salt=self.cache_salt,
             reuse_group=self.reuse_group,
         )

@@ -12,6 +12,7 @@ from TokenSim.results import LLMResult, MetricData
 from TokenSim.config.config import ClusterConfig
 from TokenSim.llm.llm_request import LLMTime, Request
 from .metrics import RunReport, get_agentx_metrics, slo_report
+from .af import get_af_stats
 from .stats import (
     get_prefix_reuse_stats,
     get_connector_stats,
@@ -96,12 +97,12 @@ def export_result(
             {
                 "worker_id": w.id,
                 "long_prefill_token_threshold": getattr(
-                    w.scheduler, "long_prefill_token_threshold", None
+                    getattr(w, "scheduler", None), "long_prefill_token_threshold", None
                 ),
                 "prefill_schedule_interval": getattr(
                     w, "prefill_schedule_interval", None
                 ),
-                "counts": dict(getattr(w.scheduler, "stats", {})),
+                "counts": dict(getattr(getattr(w, "scheduler", None), "stats", {})),
             }
             for w in engine.workers
         ],
@@ -112,13 +113,19 @@ def export_result(
         **moe_stats,
         **mooncake_stats,
         **latency_stats,
+        **get_af_stats(engine),
         agentx_metrics=get_agentx_metrics(
             run,
             requests,
             duration,
             num_gpus=len(engine.workers),
         ),
-        slo=slo_report(engine.workload_config, first_token, decode_token, duration),
+        slo=slo_report(
+            getattr(engine, "workload_config", None),
+            first_token,
+            decode_token,
+            duration,
+        ),
     )
 
     results_path = Path(run.results_path)
@@ -132,6 +139,16 @@ def export_result(
     result_dict["prefill_time"] = asdict(result.prefill_time)
     result_dict["decode_time"] = asdict(result.decode_time)
 
+    if getattr(engine, "af_executor", None) is None:
+        for name in (
+            "af_enabled",
+            "af_iteration_count",
+            "af_trace",
+            "af_runtime_state",
+            "af_latency_providers",
+            "af_operator_stats",
+        ):
+            result_dict.pop(name, None)
     result_file = results_path / run.result_name
     with open(result_file, "w") as f:
         json.dump(result_dict, f, indent=4)
@@ -164,11 +181,20 @@ def write_failure(run, env, engine, unfinished, error):
         "simulation_time": env.now,
         "failure": str(error) if error else None,
         "unfinished_request_ids": unfinished,
+        "unfinished_af_iterations": (
+            engine.af_executor.unfinished_snapshot()
+            if getattr(engine, "af_executor", None) is not None
+            else []
+        ),
         "workers": [
             {
                 "worker_id": w.id,
-                "running": [r.id for r in w.scheduler.running],
-                "waiting": [r.id for r in w.scheduler.waiting],
+                "running": [
+                    r.id for r in getattr(getattr(w, "scheduler", None), "running", [])
+                ],
+                "waiting": [
+                    r.id for r in getattr(getattr(w, "scheduler", None), "waiting", [])
+                ],
             }
             for w in engine.workers
         ],

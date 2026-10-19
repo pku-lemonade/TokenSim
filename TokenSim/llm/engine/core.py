@@ -24,11 +24,12 @@ from TokenSim.moe import build_expert_placement
 from TokenSim.config.model_config import ModelSpec
 from .messages import Task, Worker, RequestCompletionDebugPrinter
 from .worker import LLMWorker
+from .af import AFEngineMixin
 
 logger = logging.getLogger(__name__)
 
 
-class LLMEngine(Worker):
+class LLMEngine(AFEngineMixin, Worker):
     def __init__(
         self,
         env: simpy.Environment,
@@ -39,8 +40,16 @@ class LLMEngine(Worker):
         parallel_config: ParallelConfig | None = None,
         config: SimulationConfig | None = None,
         workload_config: WorkloadConfig | None = None,
+        af_compute_provider=None,
+        af_transfer_provider=None,
+        af_dtype: str | None = None,
     ):
         config = config or SimulationConfig()
+        if config.dp_lockstep and cluster_config.af.enabled:
+            raise ConfigurationError(
+                "dp_lockstep cannot be combined with AF execution; "
+                "AF replicas synchronize through their execution DAG"
+            )
         self.config = config
         self.workload_config = workload_config or WorkloadConfig()
         from TokenSim.timing import TimingRecorder
@@ -71,35 +80,20 @@ class LLMEngine(Worker):
         self.placement = build_topology_placement(
             cluster_config, worker_configs, hardware
         )
-        self.workers: list[LLMWorker] = []
-        self.workers = [
-            LLMWorker(
-                env=env,
-                id=id,
-                engine=self,
-                worker_config=worker_config,
-                kv_transfer_config=kv_transfer_config,
-                hardware=hardware,
-                model_spec=self.model_spec,
-                placement=self.placement,
-                parallel_config=self.parallel_config,
-                moe_config=self.moe_config,
-                expert_placement=self.expert_placement,
-                kv_cache_capacity_tokens_per_dp_rank=cluster_config.effective_kv_cache_capacity_per_dp_rank(
-                    self.parallel_config
-                ),
-            )
-            for id, worker_config in enumerate(worker_configs)
-        ]
-        for worker in self.workers:
-            worker.connector.bind_runtime(worker)
-            worker.parallel_communicator.workers = self.workers
+        self.cluster_config = cluster_config
+        self._initialize_workers(
+            kv_transfer_config,
+            worker_configs,
+            af_compute_provider,
+            af_transfer_provider,
+            af_dtype,
+        )
 
         self.prefill_workers = self._build_worker_pool(
             [
                 worker
-                for worker in self.workers
-                if worker.role == "hybrid" or worker.role == "prefill"
+                for worker in self.request_workers
+                if self._worker_supports_phase(worker, "prefill")
                 if self._is_schedulable_worker(worker)
             ],
             pool_type_map[config.prefill_worker_pool_type],
@@ -107,8 +101,8 @@ class LLMEngine(Worker):
         self.decode_workers = self._build_worker_pool(
             [
                 worker
-                for worker in self.workers
-                if worker.role == "hybrid" or worker.role == "decode"
+                for worker in self.request_workers
+                if self._worker_supports_phase(worker, "decode")
                 if self._is_schedulable_worker(worker)
             ],
             pool_type_map[config.decode_worker_pool_type],
@@ -186,7 +180,7 @@ class LLMEngine(Worker):
         if self.dp_coordinator is not None:
             self.dp_coordinator.reset_stats()
         seen_mooncake_stats: set[int] = set()
-        for worker in self.workers:
+        for worker in self.request_workers:
             worker.preempted_cnt = 0
             stats = getattr(worker.scheduler, "stats", None)
             if stats is not None:
@@ -287,13 +281,21 @@ class LLMEngine(Worker):
                     )
 
     def _build_worker_pool(self, workers, pool_cls):
-        if self.parallel_config.data_parallel_size > 1:
+        if len({getattr(worker, "dp_rank", 0) for worker in workers}) > 1:
             return DataParallelWorkerPool(
-                workers, pool_cls, sticky_sessions=self.config.sticky_sessions
+                workers,
+                pool_cls,
+                sticky_sessions=getattr(
+                    getattr(self, "config", None), "sticky_sessions", False
+                ),
             )
         return pool_cls(workers)
 
     def _is_schedulable_worker(self, worker: LLMWorker) -> bool:
+        if self.af_runtime_plan is not None and worker.af_runtime_bindings:
+            return any(
+                binding.is_scheduler_leader for binding in worker.af_runtime_bindings
+            )
         if self.parallel_config.world_size == 1:
             return True
         return worker.tp_rank == 0 and worker.pp_rank == 0
@@ -349,7 +351,7 @@ class LLMEngine(Worker):
         return events
 
     def _broadcast_stop(self) -> None:
-        for worker in self.workers:
+        for worker in self.request_workers:
             self.send_task(worker, Task.STOP)
 
     def dispatch_prefill_to_decode(

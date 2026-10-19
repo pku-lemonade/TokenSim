@@ -915,6 +915,26 @@ It uses DP8 with expert parallelism, and the cluster selects `vllm`.
     --verbose none
 ```
 
+### 8.9 Attention-FFN Disaggregation (AF)
+
+AF clusters use disaggregation for decode.
+Variable-length AF decode attention uses the `ragged_generation_attention` table with an exact `[context_length, request_count]` histogram.
+Its analytical estimate sums actual per-request work and pays one attention-kernel launch, including each request's bounded attention window.
+Strict lookup requires a compatible ragged measurement, and a missing table remains an explicitly labeled analytical fallback under `table_first`.
+The model's `qk_norm` field selects per-head query/key root mean square normalization for both ordinary and AF execution.
+Shared F invocations aggregate the exact expert assignment histograms from their ready A owners before operator lookup.
+See [AF separation](af-separation.md) for collection windows, token bounds and shared trace accounting.
+Prefill uses the ordinary complete-model latency backend.
+With `af.latency_provider = operator_table`, the engine builds `OperatorTableAFComputeProvider` and `TopologyAFTransferProvider` from `TokenSim/af/providers/operator_table.py`.
+The A stage prices normalization, projections, rotary embeddings and attention on the A domain's TP shard.
+The F stage prices dense FFNs or the assigned routed and shared experts.
+Routing and combination follow the configured execution protocol.
+Every operator uses the shared `OperatorResolver` for measurement matching, extrapolation and analytical fallback.
+Cross-domain decode transfers use the configured physical communication domains or explicit flat links.
+TP and EP collectives use their declared communication resources.
+`af.operator_backend` and `af.latency_fallback` override the run-wide flags for AF devices.
+See [AF separation](af-separation.md) for the decode execution and complete-model prefill contracts.
+
 ---
 
 ## 9. Result Provenance
@@ -936,6 +956,8 @@ Every simulation result (`result_<qps>.json`) records the data sources and estim
 | `parallel_groups` | TP/EP group of rank 0 and the topology level each spans (`ep_group_size`, `ep_group_link`, ...) |
 | `parallel_link_type_counts` | Communication event counts per topology level |
 | `parallel_comm_match_type_counts` | Communication estimates by match type (measured, interpolated, extrapolated, analytical) |
+| `af_latency_providers` | AF runs only: which compute / transfer provider answered (`operator_table` + `topology_links`, or the injected test providers) |
+| `af_operator_stats` | AF runs only: the operator match-type counts and missing shapes behind the AF stage service times |
 
 The full missing-shape report is exported to `missing_shapes_<qps>.json` whenever a miss was recorded.
 The following report comes from the H100 example in section 8.8.

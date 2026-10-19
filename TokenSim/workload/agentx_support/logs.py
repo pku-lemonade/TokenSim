@@ -16,7 +16,7 @@ class ReplayLogs:
             for name in ("events", "requests", "cache_windows")
         }
         configurations, indices, workers = [], {}, []
-        for worker in engine.workers:
+        for worker in engine.request_workers:
             cache = worker.cache_config.to_dict()
             identity = json.dumps(cache, sort_keys=True)
             if identity not in indices:
@@ -33,7 +33,7 @@ class ReplayLogs:
 
     def snapshot(self, env, replay):
         workers = []
-        for worker in self.engine.workers:
+        for worker in self.engine.request_workers:
             scheduler = worker.scheduler
             manager = getattr(scheduler, "block_manager", None)
             record = {

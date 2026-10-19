@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import math
+from numbers import Real
 from typing import Any, Mapping, Protocol
 
 from TokenSim.errors import ConfigurationError
@@ -17,6 +19,22 @@ class Calibration:
     calibration_id: str = "uncalibrated"
     grade: str = "D"
 
+    def __post_init__(self) -> None:
+        for name, value, positive in (
+            ("multiplier", self.multiplier, True),
+            ("offset_us", self.offset_us, False),
+        ):
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, Real)
+                or not math.isfinite(value)
+                or (value <= 0 if positive else value < 0)
+            ):
+                raise ConfigurationError(
+                    f"calibration {name} must be finite and "
+                    + ("positive" if positive else "nonnegative")
+                )
+
     def apply(self, roofline_us: float) -> float:
         value = roofline_us * self.multiplier + self.offset_us
         if value < 0:
@@ -30,8 +48,8 @@ class Calibration:
         if not raw:
             return cls()
         return cls(
-            multiplier=float(raw.get("multiplier", 1.0)),
-            offset_us=float(raw.get("offset_us", 0.0)),
+            multiplier=raw.get("multiplier", 1.0),
+            offset_us=raw.get("offset_us", 0.0),
             calibration_id=str(raw.get("calibration_id", "uncalibrated")),
             grade=str(raw.get("grade", "D")).upper(),
         )
@@ -134,8 +152,17 @@ def register_model(model: AnalyticalModel) -> None:
 
 def analytical_model_for(family: str) -> AnalyticalModel:
     # Import lazily so that the family modules can import this one.
-    if not _MODELS:
+    if family not in _MODELS or "generic" not in _MODELS:
+        previous = dict(_MODELS)
         from TokenSim.operator_data.analytical import gpu, groq  # noqa: F401
+
+        _MODELS.update(previous)
+        for model in (
+            gpu.GPURooflineModel(),
+            gpu.GenericRooflineModel(),
+            groq.GroqTSPModel(),
+        ):
+            _MODELS.setdefault(model.family, model)
 
     try:
         return _MODELS[family]
