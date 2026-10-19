@@ -52,6 +52,14 @@ def simulate_decode(
     """Exact fixed-batch decode; every token advances its own SimPy iteration."""
     if any(type(value) is not int or value < 1 for value in (batch, context, steps)):
         raise ValueError("batch, context and steps must be positive")
+    if (
+        config.cluster.af.execution_protocol == "vllm_afd"
+        and config.cluster.af_domains[0].parallel.data_parallel_size > 1
+    ):
+        raise ConfigurationError(
+            "fixed-batch native decode requires one A replica; "
+            "multi-A vllm_afd must submit every peer through AFService or AFExecutor"
+        )
     peak_context = context + steps
     if peak_context > config.model.max_position_embeddings:
         raise ConfigurationError("fixed-batch decode exceeds the model context limit")

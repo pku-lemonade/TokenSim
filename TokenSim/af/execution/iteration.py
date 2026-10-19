@@ -142,7 +142,11 @@ class ExecutorIterationMixin:
             for block_id, completed_at in iteration.block_completed_at.items()
         }
         if self.trace.enabled:
-            self.trace.validate_invariants(iteration.iteration_id)
+            try:
+                self.trace.validate_invariants(iteration.iteration_id)
+            except BaseException as error:
+                self.native_batches.abort(error)
+                raise
         return iteration
 
     def _run_control_guarded(self, block, state, failure_event, failures, done):

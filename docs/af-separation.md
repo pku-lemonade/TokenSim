@@ -39,8 +39,8 @@ Use [DeepSeek V3 MLA](deepseek-v3-mla.md) for the full-model MLA example.
 | --- | --- |
 | `af.enabled` | Enable decode AF execution |
 | `af.af_block_size` | Maximum query tokens per AF micro-batch |
-| `af.ffn_batching` | Combine ready F work from different A owners; defaults to `true` |
-| `af.ffn_batch_wait_us` | F collection window in microseconds; defaults to the uncalibrated assumption `5.0`, with no window for one A replica |
+| `af.ffn_batching` | Combine ready F work across A owners under `partial_return`; defaults to `true` |
+| `af.ffn_batch_wait_us` | `partial_return` F collection window in microseconds; defaults to the uncalibrated assumption `5.0`, with no window for one A replica |
 | `af.ffn_batch_max_tokens` | Maximum original tokens combined on one F rank; `0` uses `af_block_size * A_DP` |
 | `af.execution_domains` | Domain capabilities, parallel sizes and physical rank mappings |
 | `af.links` | Decode A/F endpoints and communication resources |
@@ -50,7 +50,9 @@ Use [DeepSeek V3 MLA](deepseek-v3-mla.md) for the full-model MLA example.
 
 `--block_size` specifies tokens per KV block independently of `af_block_size`.
 Recomputation and multi-token verification count every scheduled query token toward the AF micro-batch budget.
-A request exceeding that budget is rejected before ownership or iteration state changes.
+Requests are packed into blocks by their scheduled query-token counts.
+A request exceeding `af_block_size` is rejected before AF ownership assignment or execution.
+Increase `af_block_size` to reserve sufficient workspace, or schedule a smaller query chunk.
 Serving requires a complete-model worker with `prefill` capability.
 AF configuration, links and execution domains have no `phases` field.
 Each enabled runtime has one decode link and its two A/F execution domains.
@@ -94,14 +96,13 @@ Router service includes projection and top-k selection; routed expert service ex
 Analytical routed-expert service uses the exact local assignment histogram and active-expert count.
 Measured aggregate MoE rows retain their balanced-equivalent batch interpretation.
 F batching combines compatible dense, shared-expert or grouped routed-expert queries across A owners under `partial_return`.
-The multi-A `vllm_afd` path batches F-side routing, routed experts and weighted combination under the same collection policy.
 The batch key retains the layer, physical F rank, TP/EP groups, precision and operator geometry.
 Each batch contains at most one block from each A owner.
 Collection starts when a compatible input becomes ready, waits for `ffn_batch_wait_us`, and freezes the available members before joining the device queue.
 A zero window collects inputs ready at the same simulated timestamp.
 Late inputs form another batch, and an atomic block exceeding the configured combination limit executes alone.
 Batch waiting and device queueing remain visible, and outputs retain their original request, A owner and layer dependencies.
-Setting `ffn_batching: false` retains independent F invocations for sensitivity comparisons.
+Setting `ffn_batching: false` retains independent F invocations under `partial_return` for sensitivity comparisons.
 The physical F workspace reservation covers the inferred or configured aggregate token bound.
 This reservation covers one active F batch and does not model every queued input buffer or persistent-kernel lane.
 FFN weight accounting uses the model's projection count for gated and ungated activations.
@@ -113,7 +114,15 @@ Each token transmits one 32-bit expert ID and one 32-bit weight per selected exp
 Native `vllm_afd` combines expert results on F and returns one hidden activation per original token.
 It supports all-MoE Qwen3 models without shared experts, BF16 precision, single-rank A replicas and one F rank.
 Multiple A replicas can share that F service when native control is disabled.
-This path models protocol semantics and bounded batching without claiming calibrated multi-A connector timing.
+Each A owner's submission sequence identifies a shared transaction round, and block indices identify matching microbatches within that round.
+Peers must submit matching microbatch counts and forward phases, with potentially different token counts.
+F waits for every mapped A peer before routing, then combines their expert and weighted-combine queries.
+Rounds and F layer/microbatch invocations retain transaction order.
+Native peer synchronization is mandatory even when `ffn_batching` is disabled; `ffn_batch_wait_us` does not release a partial native transaction.
+A native peer batch exceeding `ffn_batch_max_tokens` fails without splitting its transaction.
+Missing peers leave the transaction pending; idle-peer placeholders are not synthesized.
+Peer cancellation or failure aborts in-flight native transactions and requires a new executor for retry.
+This path models peer synchronization without claiming calibrated multi-A connector timing.
 Its eager control protocol permits one in-flight transaction.
 Native control, call-order replay and native calibration profiles require 1A1F.
 
@@ -129,6 +138,9 @@ F ranks own no prefix-cache blocks.
 Memory accounting includes model components, declared protocol buffers and KV blocks.
 `gpu_memory_utilization` limits each physical worker's budget.
 An explicit KV limit caps the available memory calculation.
+`AFService` admission enforces the compiled per-rank KV budgets and shared physical capacity before adding a lease.
+Sliding-window cohorts charge their bounded resident KV bytes against those budgets.
+Failed admission leaves existing leases unchanged, and release returns the reserved budget.
 A total KV limit is divided by A-domain DP replicas.
 Weight, activation, KV-cache and directional wire dtypes have independent roles.
 GEMM/expert queries use weight precision; normalization, rotary embeddings and residuals use activation precision; attention uses KV-cache precision.
@@ -178,12 +190,16 @@ Complete-model prefill chunks omit output-head work when they do not emit logits
 Runtime-state schema version 3.0 removes phase fields from decode request owners and partial destinations.
 `af_trace` reports dependency readiness, resource queueing, service time and provenance.
 Members of one shared F invocation retain separate dependency spans with the same `execution_group_id` and device-service interval.
+`input_ready_at` preserves each member's readiness before shared collection and host submission.
+`resource_queue_intervals` records the shared collection wait and device-resource queue separately from host service and host queueing.
+Physical queue totals use these intervals once per execution, independently of member order, including compact timing records and clipped measurement windows.
 Their local routing edges describe each member, while `ffn_batch_*` details describe the combined provider query.
 Resource utilization, operation counts and additive timeline totals count a shared execution once.
 Trace consumers aggregating physical service should use `unique_executions` from `TokenSim.af.trace.occupancy`.
 Directly summing every member's service duration counts the shared interval repeatedly.
 `af_phase_fidelity` reports `prefill_aggregate` for prefill and `decode_af_rank_local` for decode.
 The fixed-batch `simulate_decode` helper checks the selected A replica's resident KV capacity and model context limit before submitting work.
+The helper requires one A replica for `vllm_afd`; multi-A native execution must submit every peer through the service or executor interfaces.
 
 `communication_timing` separates host submission, transport service and completion work.
 Optional host, operation and transport profiles validate their timing scope, runtime identity, environment and workload range before use.

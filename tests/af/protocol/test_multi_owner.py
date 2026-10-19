@@ -21,7 +21,7 @@ from tests.af.support.model import _moe
 
 
 class NativeMultiOwnerTest(unittest.TestCase):
-    def runtime(self, *, native_control=False, batching=True, max_tokens=0):
+    def runtime(self, *, native_control=False, batching=True, max_tokens=0, layers=1):
         cluster = _cluster(a_tp=1, a_dp=2, f_tp=1, f_dp=1, f_ep=1)
         cluster = replace(
             cluster,
@@ -38,7 +38,9 @@ class NativeMultiOwnerTest(unittest.TestCase):
                 ),
             ),
         )
-        hardware = af_test_hardware(layers=1, capacity_gib=0.1, moe=_moe())
+        hardware = af_test_hardware(
+            layers=layers, capacity_gib=0.1, moe=replace(_moe(), num_moe_layers=layers)
+        )
         model = replace(
             hardware.model("TestModel"),
             model_id="qwen3-tiny",
@@ -65,7 +67,7 @@ class NativeMultiOwnerTest(unittest.TestCase):
             transfer,
             model.model_id,
             "bf16",
-            1,
+            layers,
             16,
             runtime_plan=plan,
             moe_config=model.moe,
@@ -233,3 +235,52 @@ class NativeMultiOwnerTest(unittest.TestCase):
         self.assertEqual(len(errors), 2)
         self.assertFalse(any(q.stage == "router" for q in provider.queries))
         self.assertTrue(any("workspace budget" in error for error in errors))
+
+    def test_f_layer_microbatch_order_spans_multiple_layers(self):
+        env, executor, provider, _ = self.runtime(layers=2)
+        for owner in range(2):
+            env.process(
+                executor.run_iteration(submit_owner(executor, owner, count=4)[0])
+            )
+        env.run()
+        routers = [q for q in provider.queries if q.stage == "router"]
+        self.assertEqual(
+            [(q.layer_id, q.block_id) for q in routers],
+            [(0, 0), (0, 1), (1, 0), (1, 1)],
+        )
+        self.assertFalse(executor.native_batches.rounds)
+        self.assertFalse(executor.ffn_batcher.changed)
+
+    def test_peer_failure_before_router_aborts_other_owner(self):
+        env, executor, provider, _ = self.runtime()
+        original = provider.estimate
+
+        def fail(query):
+            if query.stage == "attention" and query.dp_rank == 1:
+                raise ValueError("peer attention failed")
+            return original(query)
+
+        provider.estimate = fail
+        errors = []
+
+        def guarded(iteration):
+            try:
+                yield from executor.run_iteration(iteration)
+            except SimulationStateError as error:
+                errors.append(str(error))
+
+        for owner in range(2):
+            env.process(guarded(submit_owner(executor, owner)[0]))
+        env.run()
+        self.assertEqual(len(errors), 2)
+        self.assertTrue(all("peer attention failed" in error for error in errors))
+        self.assertFalse(executor.active_iterations)
+        self.assertFalse(executor.ffn_batcher.changed)
+
+    def test_fixed_batch_helper_rejects_missing_native_peers(self):
+        from TokenSim.af.factory import simulate_decode
+
+        _, executor, _, _ = self.runtime()
+        runtime = SimpleNamespace(cluster=executor.cluster_config)
+        with self.assertRaisesRegex(ConfigurationError, "submit every peer"):
+            simulate_decode(runtime, 2, 8)
