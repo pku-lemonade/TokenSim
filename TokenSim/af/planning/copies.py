@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from functools import lru_cache
 from typing import Any, Mapping
 
 from TokenSim.af.planning.batching import AFBlock
@@ -63,8 +64,29 @@ class TensorCopyPlannerMixin:
             item for item in a_ownerships if item.domain_rank in eligible_ranks
         )
         byte_width = dtype_size_bytes(transfer_dtype, role="a_to_f_dtype")
+        # Recipients share immutable source slices. Scope the constructor memo
+        # to this call, with all constructor arguments included in its key.
+        tensor_slice_factory = lru_cache(maxsize=None, typed=True)(AFTensorSlice)
         copies: list[_TransferCopy] = []
         edges_by_consumer = dict(routing_edges_by_consumer or {})
+        source_parts = (
+            (
+                (
+                    canonical,
+                    ownership_by_rank[canonical.domain_rank],
+                    (0, self.hidden_size),
+                ),
+            )
+            if replicated
+            else tuple(
+                (
+                    source_by_rank[a_owner.domain_rank],
+                    a_owner,
+                    (a_owner.interval.start, a_owner.interval.end),
+                )
+                for a_owner in sharded_owners
+            )
+        )
         for target, consumer_id, consumer_tokens in target_specs:
             for token in consumer_tokens:
                 matching_edges = tuple(
@@ -72,29 +94,11 @@ class TensorCopyPlannerMixin:
                     for edge in edges_by_consumer.get(consumer_id, ())
                     if (edge.request_id, edge.token_id) == token
                 )
-                source_parts = (
-                    (
-                        (
-                            canonical,
-                            ownership_by_rank[canonical.domain_rank],
-                            (0, self.hidden_size),
-                        ),
-                    )
-                    if replicated
-                    else tuple(
-                        (
-                            source_by_rank[a_owner.domain_rank],
-                            a_owner,
-                            (a_owner.interval.start, a_owner.interval.end),
-                        )
-                        for a_owner in sharded_owners
-                    )
-                )
                 for source, a_owner, interval in source_parts:
                     predecessor = barrier_predecessor or (
                         producer_ids[source.domain_rank]
                     )
-                    tensor_slice = AFTensorSlice(
+                    tensor_slice = tensor_slice_factory(
                         tensor_item_id=f"request:{token[0]}:token:{token[1]}:activation",
                         interval=interval,
                         layout=source_layout,
@@ -345,9 +349,20 @@ class TensorCopyPlannerMixin:
             f"rank={binding.domain_rank}"
         )
 
-    @staticmethod
-    def _endpoint(binding: Any) -> AFEndpoint:
-        return AFEndpoint(
+    def _endpoint(self, binding: Any) -> AFEndpoint:
+        key = (
+            binding.domain,
+            binding.domain_rank,
+            binding.physical_identity,
+            binding.hardware,
+            binding.dp_rank,
+            binding.tp_rank,
+            binding.ep_rank,
+        )
+        endpoint = self._endpoints.get(key)
+        if endpoint is not None:
+            return endpoint
+        endpoint = AFEndpoint(
             domain=binding.domain,
             domain_rank=binding.domain_rank,
             physical_worker=binding.physical_identity,
@@ -356,6 +371,8 @@ class TensorCopyPlannerMixin:
             tp_rank=binding.tp_rank,
             ep_rank=binding.ep_rank,
         )
+        self._endpoints[key] = endpoint
+        return endpoint
 
     @staticmethod
     def _block_tokens(block: AFBlock) -> tuple[tuple[int, int], ...]:

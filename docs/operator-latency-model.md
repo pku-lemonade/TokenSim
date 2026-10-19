@@ -923,7 +923,7 @@ Its analytical estimate sums actual per-request work and pays one attention-kern
 Strict lookup requires a compatible ragged measurement, and a missing table remains an explicitly labeled analytical fallback under `table_first`.
 The model's `qk_norm` field selects per-head query/key root mean square normalization for both ordinary and AF execution.
 Shared F invocations aggregate the exact expert assignment histograms from their ready A owners before operator lookup.
-See [AF separation](af-separation.md) for collection windows, token bounds and shared trace accounting.
+See [Attention-FFN Disaggregation (AFD)](afd.md) for FFN collection windows, token bounds and physical resource accounting.
 Prefill uses the ordinary complete-model latency backend.
 With `af.latency_provider = operator_table`, the engine builds `OperatorTableAFComputeProvider` and `TopologyAFTransferProvider` from `TokenSim/af/providers/operator_table.py`.
 The A stage prices normalization, projections, rotary embeddings and attention on the A domain's TP shard.
@@ -933,7 +933,7 @@ Every operator uses the shared `OperatorResolver` for measurement matching, extr
 Cross-domain decode transfers use the configured physical communication domains or explicit flat links.
 TP and EP collectives use their declared communication resources.
 `af.operator_backend` and `af.latency_fallback` override the run-wide flags for AF devices.
-See [AF separation](af-separation.md) for the decode execution and complete-model prefill contracts.
+See [Attention-FFN Disaggregation (AFD)](afd.md) for decode execution and complete-model prefill modeling.
 
 ---
 

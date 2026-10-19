@@ -1,7 +1,7 @@
 """Validated structural DAG templates with per-execution identity bindings.
 
 The cache is local to one planner/runtime plan. Exact token counts and routing
-incidence are shape classes: a changed count or branch compiles another template.
+incidence are shape classes: only recurring shapes compile reusable templates.
 Context affects provider queries, not static planning. No SimPy state lives here.
 """
 
@@ -14,7 +14,7 @@ from TokenSim.af.caching.estimates import FrozenDict, identity
 from TokenSim.af.providers.queries import AFRoutingEdge
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Recipe:
     kind: str
     value: object
@@ -70,11 +70,11 @@ class DAGTemplate:
                 if all(child.kind == "static" for _, child in children):
                     recipe = Recipe("static", value)
                 else:
+                    # Seed fields in source order; binding replaces dynamic slots.
                     static = FrozenDict(
                         {
-                            name: child.value
+                            name: child.value if child.kind == "static" else None
                             for name, child in children
-                            if child.kind == "static"
                         }
                     )
                     dynamic = tuple(
@@ -104,14 +104,19 @@ class DAGTemplate:
             memo[id(value)] = recipe
             return recipe
 
-        indices = {node.node_id: i for i, node in enumerate(dag.nodes)}
-        return cls(
-            tuple(compile_value(node) for node in dag.nodes),
-            tuple(
-                tuple(indices[p] for p in node.predecessor_ids) for node in dag.nodes
-            ),
-            tuple(indices[node_id] for node_id in dag.terminal_node_ids),
-        )
+        try:
+            indices = {node.node_id: i for i, node in enumerate(dag.nodes)}
+            return cls(
+                tuple(compile_value(node) for node in dag.nodes),
+                tuple(
+                    tuple(indices[p] for p in node.predecessor_ids)
+                    for node in dag.nodes
+                ),
+                tuple(indices[node_id] for node_id in dag.terminal_node_ids),
+            )
+        finally:
+            # The recursive closure otherwise retains its memo until cyclic GC.
+            del compile_value
 
     def bind(self, block, layer_id, tokens, edges):
         prefix = f"i{block.iteration_id}:b{block.block_id}:l{layer_id}"
@@ -150,17 +155,22 @@ class DAGTemplate:
             memo[key] = result
             return result
 
-        return BoundDAG(
-            tuple(bind_value(node) for node in self.nodes),
-            self.predecessor_indices,
-            self.terminal_indices,
-        )
+        try:
+            return BoundDAG(
+                tuple(bind_value(node) for node in self.nodes),
+                self.predecessor_indices,
+                self.terminal_indices,
+            )
+        finally:
+            # Bound nodes belong to the returned DAG, not a dead closure cycle.
+            del bind_value
 
 
 class TemplateCache:
-    def __init__(self, limit=128):
+    def __init__(self, limit=384):
         self.limit = limit
         self.templates = OrderedDict()
+        self.probation = OrderedDict()
         self.requests = 0
         self.hits = 0
         self.static_fingerprints = {}
@@ -242,9 +252,17 @@ class TemplateCache:
         template = self.templates.get(key)
         if template is None:
             dag = planner._build_runtime_layer(block, layer_id, link)
+            # One-use routing shapes execute the validated graph directly.
+            # Keep only keys during probation, never their graphs or recipes.
+            if key not in self.probation:
+                self.probation[key] = None
+                while len(self.probation) > self.limit:
+                    self.probation.popitem(last=False)
+                return dag
+            del self.probation[key]
             template = DAGTemplate.compile(dag, block, layer_id, tokens, edges)
             self.templates[key] = template
-            if len(self.templates) > self.limit:
+            while len(self.templates) > self.limit:
                 self.templates.popitem(last=False)
         else:
             self.hits += 1

@@ -1,5 +1,6 @@
 """Communication resource, volume and readiness regression contracts."""
 
+from dataclasses import asdict, replace
 import unittest
 from dataclasses import replace
 
@@ -7,6 +8,7 @@ import simpy
 
 from TokenSim.af.communication.resources import DomainScheduler
 from TokenSim.comm.traffic import collective_plan, ring_volume
+from TokenSim.comm.traffic_types import TrafficPhase, Transmission
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.domains import CommunicationDomainConfig, transmission_service
 
@@ -30,6 +32,29 @@ class PhysicalInventoryTest(unittest.TestCase):
 
 
 class VolumeTest(unittest.TestCase):
+    def test_immutable_phase_resource_cache_survives_serialization_and_replacement(
+        self,
+    ):
+        phase = TrafficPhase(
+            "point",
+            "point_to_point",
+            (0, 1),
+            1,
+            32,
+            32,
+            ((Transmission(0, 1, 32, 0, 1),),),
+        )
+        fields, fingerprint = asdict(phase), hash(phase)
+        resources = phase.resource_ids
+        self.assertIs(phase.resource_ids, resources)
+        self.assertEqual(asdict(phase), fields)
+        self.assertEqual(hash(phase), fingerprint)
+        local = replace(phase, rounds=((Transmission(0, 1, 32, 0, 0),),))
+        self.assertNotEqual(local.resource_ids, resources)
+        self.assertEqual(
+            replace(phase, rounds=((Transmission(0, 1, 0, 0, 1),),)).resource_ids, ()
+        )
+
     def test_numeric_tensor_identity_across_hierarchical_phases(self):
         from tests.af.support.observations import execute_hierarchy
 
