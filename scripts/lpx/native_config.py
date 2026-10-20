@@ -25,7 +25,7 @@ def runtime_configurations(
             raise ConfigurationError(
                 "external drafting requires an explicit draft model"
             )
-        layouts.append(("draft", draft_spec, case.draft, 1))
+        layouts.append(("draft", draft_spec, case.draft, case.draft_a_replicas))
     return {
         name: configuration(
             hardware,

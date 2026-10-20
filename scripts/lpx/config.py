@@ -79,8 +79,14 @@ class Case:
     decode: Layout
     prefill: Layout | None = None
     draft: Layout | None = None
+    draft_a_replicas: int = 1
 
     def __post_init__(self):
+        integer(self.draft_a_replicas, "draft attention replicas", minimum=1)
+        if self.mode != "draft" and self.draft_a_replicas != 1:
+            raise ConfigurationError(
+                "draft attention replicas require external drafting"
+            )
         if self.mode not in {"rubin", "af", "pd", "draft"}:
             raise ConfigurationError(f"unknown scenario mode {self.mode!r}")
         if (self.mode in {"af", "pd"}) != (self.prefill is not None):
@@ -98,10 +104,15 @@ class Case:
 
     def inventory(self):
         result = {}
-        for layout in (self.decode, self.prefill, self.draft):
+        for role, layout in (
+            ("target", self.decode),
+            ("prefill", self.prefill),
+            ("draft", self.draft),
+        ):
             if layout:
+                replicas = self.draft_a_replicas if role == "draft" else 1
                 for device, count in layout.inventory().items():
-                    result[device] = result.get(device, 0) + count
+                    result[device] = result.get(device, 0) + count * replicas
         return result
 
 

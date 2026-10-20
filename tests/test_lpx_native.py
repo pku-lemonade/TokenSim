@@ -16,6 +16,33 @@ from TokenSim.af.factory import build_model_runtime
 
 
 class NativeLPXTest(unittest.TestCase):
+    def test_external_draft_replicas_distribute_clients_and_charge_inventory(self):
+        draft_layout = replace(self.base, a_device="groq_lp30", f_device="groq_lp30")
+        case = Case(
+            "draft-dp2", "draft", self.base, draft=draft_layout, draft_a_replicas=2
+        )
+        result = point(
+            self.hardware,
+            self.model,
+            self.workload,
+            case,
+            4,
+            draft_spec=self.model,
+            warmup_steps=1,
+            measurement_seconds=1e-9,
+        )
+        self.assertEqual(result["inventory"], {"rubin": 2, "groq_lp30": 4})
+        self.assertEqual(result["inventory"], case.inventory())
+        self.assertEqual(result["services"]["draft"]["memory"]["requests"], 4)
+        self.assertEqual(
+            {
+                event["source"]
+                for event in result["control_events"]
+                if event["source"].startswith("draft-a:")
+            },
+            {"draft-a:0", "draft-a:2"},
+        )
+
     def test_host_collection_policy_preserves_native_events(self):
         case = Case("af", "af", self.lpu, self.base)
         settings = dict(warmup_steps=1, measurement_seconds=1e-9, trace=True)
