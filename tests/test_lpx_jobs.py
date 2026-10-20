@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 from TokenSim.hardware import HardwareContext
 from scripts.lpx.config import Case, Layout, Workload
-from scripts.lpx.runner import evaluate_jobs
+from scripts.lpx.runner import evaluate, evaluate_jobs
 
 
 class LPXJobsTest(unittest.TestCase):
@@ -80,3 +80,32 @@ class LPXJobsTest(unittest.TestCase):
                 forced = (*cached[0][:4], dict(cached[0][4], resume=False))
                 with self.assertRaisesRegex(AssertionError, "executed"):
                     list(evaluate_jobs([forced]))
+
+    def test_reference_results_reuse_the_same_complete_checkpoint(self):
+        workload = Workload(cached_tokens=16, new_tokens=2, output_tokens=4)
+        case = Case("reference", "rubin", Layout(a_tp=1, f_ep=1))
+        with TemporaryDirectory() as directory:
+            settings = dict(
+                warmup_steps=1, measurement_seconds=1e-9, checkpoint_output=directory
+            )
+            job = (self.model, workload, case, 1, settings)
+            full = evaluate(job)
+            with patch(
+                "scripts.lpx.runner.point", side_effect=AssertionError("executed")
+            ):
+                reference = evaluate(
+                    (*job[:4], dict(settings, result_format="reference"))
+                )
+            self.assertTrue(reference["reused"])
+            self.assertEqual(reference["point_audit"], "passed")
+            self.assertEqual(
+                reference["output_tokens_per_s"], full["output_tokens_per_s"]
+            )
+            self.assertNotIn("token_events", reference)
+            self.assertEqual(
+                json.loads(Path(reference["result_file"]).read_text()), full
+            )
+            self.assertEqual(
+                json.loads(Path(reference["manifest_file"]).read_text())["key"],
+                reference["checkpoint_key"],
+            )

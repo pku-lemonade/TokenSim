@@ -20,6 +20,9 @@ def evaluate(job):
     settings = dict(settings)
     output = settings.pop("checkpoint_output", None)
     resume = settings.pop("resume", True)
+    result_format = settings.pop("result_format", "full")
+    if result_format not in {"full", "reference"}:
+        raise ConfigurationError("result format must be full or reference")
     parameters = dict(
         target=target.to_dict(),
         workload=asdict(workload),
@@ -63,6 +66,8 @@ def evaluate(job):
             )
 
     if output is None:
+        if result_format == "reference":
+            raise ConfigurationError("result references require a checkpoint directory")
         return execute(None)
     runner = ExperimentRunner(
         output,
@@ -75,7 +80,39 @@ def evaluate(job):
         ),
         resume=resume,
     )
-    return runner.run(parameters, execute).result
+    receipt = runner.run(parameters, execute)
+    if result_format == "full":
+        return receipt.result
+    from scripts.lpx.export import _point_evidence
+    from scripts.lpx.validation import validate_point, power_snapshot
+    from scripts.lpx.replay_validation import validate_replay_profiles
+
+    hardware = HardwareContext.load(ROOT / "data")
+    row = receipt.result
+    if row.get("native_executor") == "SampledNativeReplay" and row["status"] == "ok":
+        validate_replay_profiles(row)
+    validate_point(
+        row,
+        case,
+        workload,
+        a_replicas=settings.get("a_dp", 1),
+        watts=power_snapshot(hardware, settings.get("power_overrides", {})),
+        facility_watts=settings.get("facility_watts", 0),
+        model=target.to_dict(),
+        executor=(
+            "SampledNativeReplay"
+            if settings.get("execution_backend") == "sampled-replay"
+            else "ModelAFExecutor"
+        ),
+    )
+    return dict(
+        _point_evidence(row),
+        result_file=str(receipt.directory / "result.json"),
+        manifest_file=str(receipt.directory / "manifest.json"),
+        checkpoint_key=receipt.key,
+        reused=receipt.reused,
+        point_audit="passed",
+    )
 
 
 def evaluate_jobs(jobs, *, processes=1):
