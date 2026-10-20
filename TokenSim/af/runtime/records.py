@@ -176,6 +176,7 @@ class AFResolvedCollectivePlan:
     resource_lane: str
     payload_bytes: int | None = None
     pp_rank: int = 0
+    algorithm: str = "ring"
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -190,6 +191,7 @@ class AFResolvedCollectivePlan:
             "resource_lane": self.resource_lane,
             "payload_bytes": self.payload_bytes,
             **({"pp_rank": self.pp_rank} if self.pp_rank else {}),
+            **({"algorithm": self.algorithm} if self.algorithm != "ring" else {}),
         }
 
 

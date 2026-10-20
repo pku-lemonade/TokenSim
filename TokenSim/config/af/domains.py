@@ -8,6 +8,7 @@ from pydantic import ConfigDict
 from pydantic.dataclasses import Field, dataclass
 
 from TokenSim.config.af.common import _COLLECTIVE_OPERATIONS
+from TokenSim.comm.collective_types import ALGORITHMS
 from TokenSim.errors import ConfigurationError
 
 
@@ -191,8 +192,13 @@ class DomainCollectiveConfig:
     resource_lane: str | None = None
     network: str | None = None
     payload_bytes: int | None = None
+    algorithm: str = "ring"
 
     def __post_init__(self) -> None:
+        if self.algorithm not in ALGORITHMS:
+            raise ConfigurationError(
+                f"domain collective algorithm must be one of {ALGORITHMS}"
+            )
         if self.operation not in _COLLECTIVE_OPERATIONS:
             raise ConfigurationError(
                 "domain collective operation must be one of "

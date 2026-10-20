@@ -155,6 +155,7 @@ def configuration(
                     network=f"{namespace}-{name}-up",
                     resource_group=f"{name}-up",
                     resource_lane="collective",
+                    algorithm=getattr(layout, f"{name}_collective_algorithm"),
                 )
             )
         domains.append(

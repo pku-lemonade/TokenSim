@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from TokenSim.config.validation import integer, number, boolean
+from TokenSim.comm.collective_types import ALGORITHMS
 from TokenSim.errors import ConfigurationError
 
 
@@ -19,11 +20,16 @@ class Layout:
     f_ep: int = 8
     f_pp: int = 1
     colocated: bool = True
+    a_collective_algorithm: str = "ring"
+    f_collective_algorithm: str = "ring"
 
     def __post_init__(self):
         for name in ("a_tp", "a_cp", "a_pp", "f_tp", "f_ep", "f_pp"):
             integer(getattr(self, name), name, minimum=1)
         boolean(self.colocated, "colocated")
+        for name in ("a_collective_algorithm", "f_collective_algorithm"):
+            if getattr(self, name) not in ALGORITHMS:
+                raise ConfigurationError(f"{name} must be one of {ALGORITHMS}")
         if self.colocated and (
             self.a_device != self.f_device
             or self.a_cp != 1
