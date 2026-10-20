@@ -1,6 +1,6 @@
 """Validated inputs for the LPX analytical serving experiment."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import json
 from pathlib import Path
 
@@ -128,6 +128,33 @@ class Case:
                 for device, count in layout.inventory().items():
                     result[device] = result.get(device, 0) + count * replicas
         return result
+
+
+def with_collective_algorithms(cases, *, gpu=None, lpu=None):
+    policies = {"rubin": gpu, "groq_lp30": lpu}
+
+    def updated(layout):
+        if layout is None:
+            return None
+        changes = {
+            f"{domain}_collective_algorithm": policies[
+                getattr(layout, f"{domain}_device")
+            ]
+            for domain in ("a", "f")
+            if policies.get(getattr(layout, f"{domain}_device")) is not None
+        }
+        return replace(layout, **changes) if changes else layout
+
+    return [
+        replace(
+            case,
+            **{
+                role: updated(getattr(case, role))
+                for role in ("decode", "prefill", "draft")
+            },
+        )
+        for case in cases
+    ]
 
 
 def load_cases(path):

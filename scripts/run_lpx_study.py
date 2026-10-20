@@ -15,7 +15,9 @@ import hashlib
 
 from TokenSim.config.validation import integer, number
 from TokenSim.hardware import HardwareContext
-from scripts.lpx.config import load_cases
+from scripts.lpx.config import load_cases, with_collective_algorithms
+from scripts.lpx.hardware_overrides import communication_hypothesis
+from TokenSim.comm.collective_types import ALGORITHMS
 from scripts.lpx.frontier import pareto
 from scripts.lpx_power import POWER_SCOPES, processor_power_rows
 from scripts.lpx.runner import evaluate_jobs
@@ -146,6 +148,7 @@ def run_grid(args, workload, cases, selected, *, phase, prior=()):
     for case, clients in selected:
         formal = phase == "formal"
         settings = dict(
+            communication_overrides=getattr(args, "communication_overrides", {}),
             checkpoint_output=str(args.output / ".experiments"),
             result_format="reference",
             resume=not args.no_resume,
@@ -176,7 +179,8 @@ def run_grid(args, workload, cases, selected, *, phase, prior=()):
         schema="tokensim.lpx_study_index",
         version=1,
         phase=phase,
-        variant=f"mb{args.micro_batch}-adp{args.a_replicas}-pf{int(args.prefill_tp8_pp4)}",
+        variant=study_variant(args),
+        communication_overrides=getattr(args, "communication_overrides", {}),
         git_revision=revision,
         git_worktree_dirty=dirty,
         source_sha256=source_identity(),
@@ -207,6 +211,17 @@ def run_grid(args, workload, cases, selected, *, phase, prior=()):
     return rows
 
 
+def study_variant(args):
+    value = f"mb{args.micro_batch}-adp{args.a_replicas}-pf{int(args.prefill_tp8_pp4)}"
+    for option in ("gpu_collective_algorithm", "lpu_collective_algorithm"):
+        policy = getattr(args, option, None)
+        if policy is not None:
+            value += f"-{option.split('_')[0]}{policy}"
+    for name, amount in sorted(getattr(args, "communication_overrides", {}).items()):
+        value += f"-{name}{amount:g}"
+    return value
+
+
 def main(argv=None):
     cli = argparse.ArgumentParser(description=__doc__)
     cli.add_argument(
@@ -222,6 +237,10 @@ def main(argv=None):
     cli.add_argument("--maximum-users", type=int, default=512)
     cli.add_argument("--micro-batch", type=int, default=1)
     cli.add_argument("--a-replicas", type=int, default=1)
+    cli.add_argument("--gpu-collective-algorithm", choices=ALGORITHMS)
+    cli.add_argument("--lpu-collective-algorithm", choices=ALGORITHMS)
+    cli.add_argument("--c2c-latency-us", type=float)
+    cli.add_argument("--collective-launch-us", type=float)
     cli.add_argument("--cases", nargs="+")
     cli.add_argument("--prefill-tp8-pp4", action="store_true")
     cli.add_argument("--jobs", type=int, default=4)
@@ -236,6 +255,17 @@ def main(argv=None):
     cli.add_argument("--phase", choices=("coarse", "formal", "all"), default="all")
     cli.add_argument("--no-resume", action="store_true")
     args = cli.parse_args(argv)
+    args.communication_overrides = {
+        name: value
+        for name, value in (
+            ("latency_us", args.c2c_latency_us),
+            ("launch_us", args.collective_launch_us),
+        )
+        if value is not None
+    }
+    communication_hypothesis(
+        HardwareContext.load(ROOT / "data"), **args.communication_overrides
+    )
     for name in (
         "jobs",
         "micro_batch",
@@ -258,6 +288,9 @@ def main(argv=None):
     args.profile_cache = args.profile_cache.resolve()
     args.output.mkdir(parents=True, exist_ok=True)
     workload, cases = study_cases(args.model)
+    cases = with_collective_algorithms(
+        cases, gpu=args.gpu_collective_algorithm, lpu=args.lpu_collective_algorithm
+    )
     if args.cases:
         unknown = set(args.cases) - {c.name for c in cases}
         if unknown:
@@ -298,6 +331,10 @@ def main(argv=None):
             or previous["workload"] != asdict(workload)
             or previous["cases"] != [asdict(c) for c in cases]
             or previous["source_sha256"] != source_identity()
+            or previous.get("communication_overrides", {})
+            != args.communication_overrides
+            or previous["variant"] != study_variant(args)
+            or previous["replay_samples"] != args.samples
         ):
             cli.error(
                 "formal phase requires matching coarse model, workload, configurations and code"

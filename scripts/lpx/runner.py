@@ -10,7 +10,7 @@ from TokenSim.errors import ConfigurationError
 from TokenSim.config.validation import integer
 from TokenSim.experiments import ExperimentRunner
 from scripts.lpx.native_simulation import point
-from scripts.lpx.hardware_overrides import reserve_memory
+from scripts.lpx.hardware_overrides import reserve_memory, communication_hypothesis
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -54,6 +54,9 @@ def evaluate(job):
             hardware = reserve_memory(
                 HardwareContext.load(ROOT / "data"),
                 options.pop("memory_reserve_overrides", {}),
+            )
+            hardware = communication_hypothesis(
+                hardware, **options.pop("communication_overrides", {})
             )
             return point(hardware, target, workload, case, clients, **options)
         except ConfigurationError as exc:

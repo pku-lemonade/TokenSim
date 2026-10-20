@@ -18,60 +18,16 @@ from TokenSim.af.runtime.admission import ResidentKV
 from TokenSim.config.validation import integer, number
 from TokenSim.errors import ConfigurationError
 from TokenSim.experiments import ExperimentRunner
-from TokenSim.hardware import HardwareContext, DeviceCatalog, LinkCatalog
+from TokenSim.hardware import HardwareContext
 from TokenSim.latency.operator_table import OperatorTableLatencyBackend
 from TokenSim.utils import BoundedCache
 from scripts.lpx.aa import scaled_efficiency, serial
+from scripts.lpx.hardware_overrides import communication_hypothesis
 from scripts.lpx.config import Layout
 from scripts.lpx.native_config import configuration
 from scripts.reproduce_lpx import repository_state, write_json
 
 TARGETS = ((10000, 1500, 3382), (100000, 2000, 3431))
-
-
-def communication_hypothesis(hardware, latency_us=None, launch_us=None):
-    if latency_us is not None:
-        number(latency_us, "C2C latency microseconds")
-        hardware = replace(
-            hardware,
-            links=LinkCatalog(
-                [
-                    (
-                        replace(
-                            link,
-                            latency_us=latency_us,
-                            source_id="assumption:aa-communication-variant",
-                            grade="D",
-                        )
-                        if link.link_id in {"groq_lp30_injection", "groq_lp30_c2c_112g"}
-                        else link
-                    )
-                    for link in hardware.links
-                ]
-            ),
-        )
-    if launch_us is not None:
-        number(launch_us, "collective launch microseconds")
-        hardware = replace(
-            hardware,
-            devices=DeviceCatalog(
-                [
-                    (
-                        replace(
-                            device,
-                            analytical={
-                                **device.analytical,
-                                "collective_launch_us": launch_us,
-                            },
-                        )
-                        if device.device_id == "groq_lp30"
-                        else device
-                    )
-                    for device in hardware.devices
-                ]
-            ),
-        )
-    return hardware
 
 
 @contextmanager

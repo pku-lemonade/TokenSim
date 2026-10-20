@@ -3,9 +3,27 @@
 import unittest
 
 from scripts.run_lpx_study import study_cases, extension_candidates, formal_candidates
+from scripts.lpx.config import with_collective_algorithms
 
 
 class LPXStudyTest(unittest.TestCase):
+    def test_policy_override_reaches_every_pool_and_preserves_inventory(self):
+        _, cases = study_cases("gpt-oss-2t-expert-proxy")
+        changed = with_collective_algorithms(cases, gpu="auto", lpu="direct")
+        for before, after in zip(cases, changed):
+            self.assertEqual(before.inventory(), after.inventory())
+            for role in ("decode", "prefill", "draft"):
+                layout = getattr(after, role)
+                if layout is None:
+                    continue
+                for domain in ("a", "f"):
+                    device = getattr(layout, f"{domain}_device")
+                    self.assertEqual(
+                        getattr(layout, f"{domain}_collective_algorithm"),
+                        "auto" if device == "rubin" else "direct",
+                    )
+        self.assertTrue(all(c.decode.a_collective_algorithm == "ring" for c in cases))
+
     def test_wide_study_reduces_ffn_inventory_without_changing_target(self):
         workload, cases = study_cases("gpt-oss-2t-wide-proxy")
         cases = {case.name: case for case in cases}

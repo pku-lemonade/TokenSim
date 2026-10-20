@@ -14,13 +14,14 @@ if str(ROOT) not in sys.path:
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware import HardwareContext
 from scripts.lpx.audit import run_audit
-from scripts.lpx.config import load_cases
+from scripts.lpx.config import load_cases, with_collective_algorithms
+from TokenSim.comm.collective_types import ALGORITHMS
 from scripts.lpx.frontier import pareto
 from scripts.lpx.runner import evaluate_jobs
 from scripts.lpx.architecture import describe_model
 from scripts.lpx.validation import power_snapshot, validate_summary
 from scripts.lpx.export import write_points_csv
-from scripts.lpx.hardware_overrides import reserve_memory
+from scripts.lpx.hardware_overrides import reserve_memory, communication_hypothesis
 
 
 def write_json(path, value):
@@ -82,6 +83,10 @@ def parser():
     result.add_argument("--retain-timing-history", action="store_true")
     result.add_argument("--lp30-reserve-bytes", type=int, default=0)
     result.add_argument("--rubin-reserve-bytes", type=int, default=0)
+    result.add_argument("--c2c-latency-us", type=float)
+    result.add_argument("--collective-launch-us", type=float)
+    result.add_argument("--gpu-collective-algorithm", choices=ALGORITHMS)
+    result.add_argument("--lpu-collective-algorithm", choices=ALGORITHMS)
     result.add_argument("--plot", action="store_true")
     result.add_argument("--audit-only", action="store_true")
     result.add_argument("--skip-audit", action="store_true")
@@ -148,6 +153,9 @@ def main(argv=None):
     args = parser().parse_args(argv)
     try:
         raw, workload, cases = load_cases(args.config)
+        cases = with_collective_algorithms(
+            cases, gpu=args.gpu_collective_algorithm, lpu=args.lpu_collective_algorithm
+        )
         updates = {
             name: value
             for name, value in (
@@ -204,6 +212,15 @@ def main(argv=None):
         target = hardware.models.resolve(args.model)
         draft = hardware.models.resolve(args.draft_model)
         hardware = reserve_memory(hardware, reserves)
+        communication_overrides = {
+            name: value
+            for name, value in (
+                ("latency_us", args.c2c_latency_us),
+                ("launch_us", args.collective_launch_us),
+            )
+            if value is not None
+        }
+        hardware = communication_hypothesis(hardware, **communication_overrides)
         if args.routing_selection:
             target = replace(
                 target,
@@ -243,6 +260,7 @@ def main(argv=None):
                         dict(
                             power_overrides=power,
                             memory_reserve_overrides=reserves,
+                            communication_overrides=communication_overrides,
                             facility_watts=args.facility_watts,
                             trace=args.trace and batch == 1,
                             stream_metrics=not args.retain_timing_history,
@@ -348,6 +366,7 @@ def main(argv=None):
                 ),
                 "result_scope": "finite_measurement_window",
                 "additional_memory_reserve_bytes": reserves,
+                "communication_overrides": communication_overrides,
                 "micro_batch": args.micro_batch,
                 "ffn_batching": args.ffn_batching,
                 "ffn_batch_wait_us": args.ffn_batch_wait_us,
