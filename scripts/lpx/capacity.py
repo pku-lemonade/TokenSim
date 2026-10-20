@@ -18,18 +18,26 @@ def classify(row, isolated_latency, *, wait_fraction=0.01):
         - unfinished
         - arrivals["pending_at_end"]
     )
+    samples = arrivals["backlog_samples"]
+    unfinished_growth = (
+        samples[-1]["total_unfinished"] - samples[len(samples) // 2]["total_unfinished"]
+    )
+    tolerance = max(1, 0.01 * arrivals["arrivals"])
     checks = dict(
         requests_completed=requests["completed_requests"] > 0,
         boundary_balanced=balance == 0,
         wait_budget=wait is not None and wait <= budget,
         no_pending_arrivals=arrivals["pending_at_end"] == 0,
         no_backlog_growth=arrivals["backlog_growth_per_s"] <= 0,
+        no_total_unfinished_growth=unfinished_growth <= tolerance,
     )
     return dict(
         passed=all(checks.values()),
         checks=checks,
         admission_wait_budget_s=budget,
         incomplete_at_boundary=unfinished,
+        total_unfinished_growth=unfinished_growth,
+        unfinished_boundary_tolerance=tolerance,
     )
 
 

@@ -34,6 +34,20 @@ def evaluate(job):
     def execute(directory):
         options = dict(settings)
         try:
+            backend = options.pop("execution_backend", "native")
+            samples = options.pop("replay_samples", 4)
+            prefill_samples = options.pop("replay_prefill_samples", 1)
+            cache = options.pop(
+                "replay_cache", str(ROOT / "outputs/lpx-replay-profile-cache")
+            )
+            if backend == "sampled-replay":
+                from scripts.lpx.replay_driver import ReplayConfig
+
+                options["execution_factory"] = ReplayConfig(
+                    workload, samples, prefill_samples, cache
+                )
+            elif backend != "native":
+                raise ConfigurationError("unknown LPX execution backend")
             hardware = reserve_memory(
                 HardwareContext.load(ROOT / "data"),
                 options.pop("memory_reserve_overrides", {}),
@@ -53,7 +67,12 @@ def evaluate(job):
     runner = ExperimentRunner(
         output,
         inputs=(ROOT / "data",),
-        code_paths=(ROOT / "TokenSim", ROOT / "scripts/lpx"),
+        code_paths=(ROOT / "TokenSim", ROOT / "scripts/lpx")
+        + (
+            (ROOT / "scripts/lpx/replay_engine.cpp",)
+            if settings.get("execution_backend") == "sampled-replay"
+            else ()
+        ),
         resume=resume,
     )
     return runner.run(parameters, execute).result

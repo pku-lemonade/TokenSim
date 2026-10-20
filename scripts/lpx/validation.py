@@ -9,6 +9,7 @@ from TokenSim.af.serving.timing import namespace_resource
 from scripts.lpx.config import Case, Layout, Workload
 from scripts.lpx.event_validation import validate_accounting_events
 from scripts.lpx.requests import request_metrics
+from scripts.lpx.replay_validation import validate_replay_profiles
 from scripts.lpx.validation_checks import equal as _equal, require as _require
 
 
@@ -303,15 +304,22 @@ def validate_summary(
     expected_cases=None,
     expected_batches=None,
 ):
+    replay = payload.get("version") == 3
     _require(
         payload.get("schema") == "tokensim.lpx_projection"
-        and payload.get("version") == 2,
-        "native summary schema",
+        and payload.get("version") in {2, 3},
+        "summary schema",
     )
     _require(
-        payload.get("executor") == "production_ModelAFExecutor",
+        payload.get("executor")
+        == ("sampled_native_dag_replay" if replay else "production_ModelAFExecutor"),
         "summary executor",
     )
+    if replay:
+        _require(
+            payload["run_settings"]["execution_backend"] == "sampled-replay",
+            "replay backend declaration",
+        )
     workload = Workload(**payload["workload"])
     if original_workload:
         _require(
@@ -359,6 +367,8 @@ def validate_summary(
                 "token_events" in row and "decode_intervals" in row,
                 "missing required token-accounting events",
             )
+        if replay and row["status"] == "ok":
+            validate_replay_profiles(row)
         validate_point(
             row,
             cases[row["case"]],
@@ -367,6 +377,7 @@ def validate_summary(
             watts=powers,
             facility_watts=payload["facility_watts"],
             model=payload["model"],
+            executor="SampledNativeReplay" if replay else "ModelAFExecutor",
         )
     feasible = [row for row in rows if row["status"] == "ok"]
     rubin = [row for row in feasible if row["mode"] == "rubin"]
@@ -417,8 +428,14 @@ def validate_summary(
         rejected=len(rows) - len(feasible),
         power_model=powers,
         original_workload=original_workload,
-        execution_fidelity="native_per_pass_dags",
-        numerical_accuracy="unvalidated_hardware_hypotheses",
+        execution_fidelity=(
+            "sampled_native_operator_dags" if replay else "native_per_pass_dags"
+        ),
+        numerical_accuracy=(
+            "requires_separate_native_control"
+            if replay
+            else "unvalidated_hardware_hypotheses"
+        ),
         grid_coverage=grid_coverage,
         event_accounting=(
             "token_events_and_intervals"

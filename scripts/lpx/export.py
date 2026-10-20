@@ -67,6 +67,7 @@ def _point_evidence(row):
         total_resource_queue_s=sum(metric["resource_queue_s"].values()),
         turns=row["turns"],
         request_statistics=row.get("request_statistics"),
+        replay_profiles=row.get("replay_profiles"),
         arrivals=row.get("arrivals"),
         handoff_bytes_all_phases=sum(e["bytes"] for e in row["handoff_events"]),
         control_bytes_all_phases=sum(e["bytes"] for e in row["control_events"]),

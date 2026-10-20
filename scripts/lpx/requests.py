@@ -47,9 +47,9 @@ class Arrivals:
             self.emitted.append(self.env.now)
             yield self.queue.put(self.env.now)
 
-    def acquire(self):
+    def acquire(self, count=1):
         if self.qps is None:
-            self.emitted.append(self.env.now)
+            self.emitted.extend([self.env.now] * count)
             arrival = self.env.now
         else:
             pending = self.queue.get()
@@ -60,10 +60,10 @@ class Arrivals:
             arrival = done[pending]
         if self.stop.triggered:
             return None
-        self.admitted.append((arrival, self.env.now))
+        self.admitted.extend([(arrival, self.env.now)] * count)
         return arrival
 
-    def summary(self):
+    def summary(self, completed_requests=()):
         start, end = self.measurement["start"], self.measurement["end"]
         emitted = [t for t in self.emitted if start <= t <= end]
         admitted = [(a, t) for a, t in self.admitted if start <= t <= end]
@@ -72,6 +72,10 @@ class Arrivals:
             samples.append(
                 dict(
                     time_s=float(t),
+                    total_unfinished=int(
+                        sum(a <= t for a in emitted)
+                        - sum(r["last_output_at"] <= t for r in completed_requests)
+                    ),
                     pending=int(
                         sum(a <= t for a in emitted) - sum(b <= t for _, b in admitted)
                     ),

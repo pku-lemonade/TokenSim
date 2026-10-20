@@ -24,7 +24,11 @@ def collect_metrics(
     control_events,
     communication,
     windows=None,
+    *,
+    driver=None,
 ):
+    if driver is not None:
+        return driver.metrics(token_events), []
     capacities = resource_capacities(services)
     transport = [
         transport_timing(row, communication)

@@ -286,6 +286,8 @@ class LPXResultAuditTest(unittest.TestCase):
                         "--batches",
                         "1",
                         "2",
+                        "--seed",
+                        "7",
                         "--warmup-steps",
                         "1",
                         "--measurement-seconds",
@@ -295,6 +297,7 @@ class LPXResultAuditTest(unittest.TestCase):
                 0,
             )
             payload = json.loads((output / "summary.json").read_text())
+            self.assertEqual(payload["workload"]["seed"], 7)
             self.assertEqual(payload["run_settings"]["client_counts"], [1, 2])
             self.assertEqual(payload["validation"]["grid_coverage"], "declared")
             self.assertEqual([row["batch"] for row in payload["results"]], [1, 2])

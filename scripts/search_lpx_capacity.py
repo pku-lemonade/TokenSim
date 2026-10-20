@@ -22,6 +22,10 @@ from scripts.reproduce_lpx import parser, write_json, repository_state
 def run_search(job):
     target, draft, workload, case, users, options = job
     settings = dict(
+        execution_backend=options["execution_backend"],
+        replay_samples=options["replay_samples"],
+        replay_prefill_samples=options["replay_prefill_samples"],
+        replay_cache=str(options["replay_cache"]),
         draft_spec=draft,
         stream_metrics=not options["retain_timing_history"],
         micro_batch=options["micro_batch"],
@@ -110,12 +114,15 @@ def main(argv=None):
         cli.error(
             "capacity search selects QPS itself and does not support audit-only, plot or trace"
         )
+    if args.micro_batch != 1:
+        cli.error("open arrival capacity search requires micro-batch 1")
     integer(args.jobs, "jobs", minimum=1)
     number(args.duration_multiple, "duration multiple", positive=True)
     raw, workload, cases = load_cases(args.config)
     overrides = {
         name: value
         for name, value in (
+            ("seed", args.seed),
             ("cached_tokens", args.cached_tokens),
             ("new_tokens", args.new_tokens),
             ("output_tokens", args.output_tokens),

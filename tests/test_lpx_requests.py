@@ -101,6 +101,41 @@ class RequestExperimentTest(unittest.TestCase):
             busy["arrivals"]["pending_at_end"],
         )
 
+    def test_synchronized_closed_cohorts_count_every_client_request(self):
+        result = point(
+            self.hardware,
+            self.model,
+            self.workload,
+            self.case,
+            4,
+            micro_batch=2,
+            warmup_steps=1,
+            measurement_turns=2,
+            measurement_seconds=1e-9,
+        )
+        self.assertGreaterEqual(result["arrivals"]["admissions"], 8)
+        self.assertGreaterEqual(
+            result["arrivals"]["arrivals"],
+            result["request_statistics"]["completed_requests"],
+        )
+
+    def test_growing_admitted_work_is_not_stable_capacity(self):
+        row = dict(
+            status="ok",
+            arrivals=dict(
+                arrivals=100,
+                admissions=100,
+                pending_at_end=0,
+                admission_wait_s={"p95": 0},
+                backlog_growth_per_s=0,
+                backlog_samples=[{"total_unfinished": i * 5} for i in range(9)],
+            ),
+            request_statistics={"completed_requests": 60},
+        )
+        verdict = classify(row, 1)
+        self.assertFalse(verdict["passed"])
+        self.assertFalse(verdict["checks"]["no_total_unfinished_growth"])
+
     def test_capacity_refines_and_rechecks_the_window(self):
         def evaluate(qps, multiplier):
             passed = qps <= 3
@@ -112,6 +147,7 @@ class RequestExperimentTest(unittest.TestCase):
                     pending_at_end=0 if passed else 20,
                     admission_wait_s={"p95": 0 if passed else 1},
                     backlog_growth_per_s=0 if passed else 1,
+                    backlog_samples=[{"total_unfinished": 1}] * 9,
                 ),
                 request_statistics={"completed_requests": 99 if passed else 79},
             )

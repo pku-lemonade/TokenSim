@@ -7,7 +7,7 @@ from TokenSim.config.validation import boolean, integer, number
 from TokenSim.errors import ConfigurationError
 from scripts.lpx.native_config import runtime_configurations, session_prefix_context
 from scripts.lpx.native_metrics import collect_metrics
-from scripts.lpx.native_setup import create_serving
+from scripts.lpx.native_setup import create_serving, allocated_power
 from scripts.lpx.requests import Arrivals, request_metrics
 from scripts.lpx.control import token_control as send_tokens
 
@@ -37,8 +37,13 @@ def point(
     qps=None,
     arrival_pattern="uniform",
     dag_template_cache=True,
+    execution_factory=None,
 ):
     boolean(stream_metrics, "stream metrics")
+    if qps is not None and min(micro_batch, clients) > 1:
+        raise ConfigurationError(
+            "open arrivals require micro-batch 1; synchronized cohorts support fixed-client runs"
+        )
     for value, name in (
         (clients, "clients"),
         (micro_batch, "micro-batch"),
@@ -77,7 +82,7 @@ def point(
         dag_template_cache=dag_template_cache,
     )
     measurement = {}
-    env, communication, services, windows = create_serving(
+    env, communication, services, windows, driver = create_serving(
         hardware,
         runtimes,
         case,
@@ -85,17 +90,12 @@ def point(
         measurement,
         trace=trace,
         stream_metrics=stream_metrics,
+        execution_factory=execution_factory,
         endpoint_transfer_occupancy=endpoint_transfer_occupancy,
     )
-    inventory = {}
-    for runtime in runtimes.values():
-        for worker in runtime.workers:
-            inventory[worker.hardware] = inventory.get(worker.hardware, 0) + 1
-    power = facility_watts
-    for device, count in inventory.items():
-        watts = (power_overrides or {}).get(device, hardware.device(device).tdp_w)
-        number(watts, f"{device} power", positive=True)
-        power += count * watts
+    inventory, power = allocated_power(
+        hardware, runtimes, power_overrides, facility_watts
+    )
     stop = env.event()
     begin_measurement = env.event()
     arrivals = Arrivals(
@@ -180,7 +180,11 @@ def point(
         round_index = 0
         while not stop.triggered:
             warm_turn = not warmed
-            submitted = env.now if warm_turn else (yield from arrivals.acquire())
+            submitted = (
+                env.now
+                if warm_turn
+                else (yield from arrivals.acquire(len(bundle["target"])))
+            )
             if submitted is None:
                 return
             started = env.now
@@ -420,6 +424,7 @@ def point(
         control_events,
         communication,
         windows,
+        driver=driver,
     )
     intervals = [
         row
@@ -452,7 +457,7 @@ def point(
             else "decode_time_weighted_no_complete_requests"
         ),
         request_statistics=requests,
-        arrivals=arrivals.summary(),
+        arrivals=arrivals.summary(requests["requests"]),
         output_tokens_per_s=metric["output_tokens_per_s"],
         tokens_per_s_per_mw=metric["output_tokens_per_s"] * 1e6 / power,
         power_watts=power,
@@ -478,7 +483,8 @@ def point(
         graph_device_kernel_us_assumption=graph_kernel_us,
         warmup_mode=warmup_mode,
         handoff_mode=handoff_mode,
-        native_executor="ModelAFExecutor",
+        native_executor="SampledNativeReplay" if driver else "ModelAFExecutor",
+        replay_profiles=driver.describe() if driver else None,
         trace=[event.as_dict() for event in traces] if trace else [],
     )
     return result

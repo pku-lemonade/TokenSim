@@ -63,6 +63,15 @@ def parser():
         nargs="+",
         help="concurrent clients; --micro-batch independently controls cohort size",
     )
+    result.add_argument(
+        "--execution-backend", choices=("native", "sampled-replay"), default="native"
+    )
+    result.add_argument("--replay-samples", type=int, default=4)
+    result.add_argument("--replay-prefill-samples", type=int, default=1)
+    result.add_argument(
+        "--replay-cache", type=Path, default=ROOT / "outputs/lpx-replay-profile-cache"
+    )
+    result.add_argument("--seed", type=int)
     result.add_argument("--output-tokens", type=int)
     result.add_argument("--new-tokens", type=int)
     result.add_argument("--acceptance", type=float)
@@ -137,6 +146,7 @@ def main(argv=None):
         updates = {
             name: value
             for name, value in (
+                ("seed", args.seed),
                 ("output_tokens", args.output_tokens),
                 ("new_tokens", args.new_tokens),
                 ("cached_tokens", args.cached_tokens),
@@ -242,6 +252,10 @@ def main(argv=None):
                             execution_mode=args.execution_mode,
                             graph_kernel_us=args.graph_kernel_us,
                             endpoint_transfer_occupancy=args.endpoint_transfer_occupancy,
+                            execution_backend=args.execution_backend,
+                            replay_samples=args.replay_samples,
+                            replay_prefill_samples=args.replay_prefill_samples,
+                            replay_cache=str(args.replay_cache),
                             handoff_mode=args.handoff_mode,
                             qps=args.qps,
                             arrival_pattern=args.arrival_pattern,
@@ -300,8 +314,12 @@ def main(argv=None):
         end_revision, end_dirty = repository_state()
         payload = {
             "schema": "tokensim.lpx_projection",
-            "version": 2,
-            "executor": "production_ModelAFExecutor",
+            "version": 3 if args.execution_backend == "sampled-replay" else 2,
+            "executor": (
+                "sampled_native_dag_replay"
+                if args.execution_backend == "sampled-replay"
+                else "production_ModelAFExecutor"
+            ),
             "git_revision": revision,
             "git_worktree_dirty": dirty,
             "end_git_revision": end_revision,
@@ -314,7 +332,12 @@ def main(argv=None):
                 "client_counts": list(batches),
                 "stream_metrics": not args.retain_timing_history,
                 "event_accounting_required": True,
-                "execution_backend": "native",
+                "execution_backend": args.execution_backend,
+                "replay_samples": (
+                    args.replay_samples
+                    if args.execution_backend == "sampled-replay"
+                    else None
+                ),
                 "result_scope": "finite_measurement_window",
                 "additional_memory_reserve_bytes": reserves,
                 "micro_batch": args.micro_batch,

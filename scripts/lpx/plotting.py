@@ -131,7 +131,11 @@ def generate_plots(summary_path, output=None, reference_path=None):
             "plots require TokenSim summary and explicitly digitized reference"
         )
     workload = summary["workload"]
-    fidelity = "Native per-pass operator DAGs."
+    fidelity = (
+        "Sampled native DAG replay; finite routing corpus."
+        if summary.get("version") == 3
+        else "Native per-pass operator DAGs."
+    )
     caption = (
         f"{summary['model']['model_id']} | Cached ISL = {workload['cached_tokens']:,} | "
         f"New ISL = {workload['new_tokens']:,} | OSL = {workload['output_tokens']:,}"
@@ -219,7 +223,11 @@ def generate_plots(summary_path, output=None, reference_path=None):
         )
         draw_reference(axes[0], reference["curves"])
         axes[1].set_title(
-            "TokenSim: native analytical operators",
+            (
+                "TokenSim: sampled native DAG replay"
+                if summary.get("version") == 3
+                else "TokenSim: native analytical operators"
+            ),
             fontsize=12,
             pad=15,
         )
