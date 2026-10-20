@@ -17,6 +17,7 @@ from TokenSim.config.validation import integer, number
 from TokenSim.hardware import HardwareContext
 from scripts.lpx.config import load_cases
 from scripts.lpx.frontier import pareto
+from scripts.lpx_power import POWER_SCOPES, processor_power_rows
 from scripts.lpx.runner import evaluate_jobs
 from scripts.lpx.replay_profiles import source_identity
 from scripts.reproduce_lpx import repository_state, write_json
@@ -120,6 +121,18 @@ def extension_candidates(rows, limit):
     return candidates
 
 
+def formal_candidates(rows):
+    identities = set()
+    for scope in POWER_SCOPES:
+        scoped = processor_power_rows(rows, scope)
+        for mode in ("rubin", "af", "pd", "draft"):
+            identities.update(
+                (row["case"], row["batch"])
+                for row in pareto([row for row in scoped if row["mode"] == mode])
+            )
+    return identities
+
+
 def run_grid(args, workload, cases, selected, *, phase, prior=()):
     hardware = HardwareContext.load(ROOT / "data")
     target, draft = hardware.models.resolve(args.model), hardware.models.resolve(
@@ -175,6 +188,7 @@ def run_grid(args, workload, cases, selected, *, phase, prior=()):
         execution_backend="sampled-replay",
         replay_samples=args.samples,
         ffn_batching=False,
+        selection_power_scopes=list(POWER_SCOPES),
         state="running",
     )
     completed = {}
@@ -313,10 +327,7 @@ def main(argv=None):
             args.isolated_latencies[row["case"]] = row["request_statistics"][
                 "latency_s"
             ]["mean"]
-    frontier = []
-    for mode in ("rubin", "af", "pd", "draft"):
-        frontier.extend(pareto([r for r in rows if r["mode"] == mode]))
-    identities = {(r["case"], r["batch"]) for r in frontier}
+    identities = formal_candidates(rows)
     write_json(
         args.output / "formal-selection.json",
         [dict(case=c, users=n) for c, n in sorted(identities)],

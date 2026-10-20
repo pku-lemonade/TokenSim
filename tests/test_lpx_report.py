@@ -3,9 +3,14 @@
 import unittest
 
 from scripts.report_lpx_study import power_rows, combine_indexes
+from scripts.lpx_power import processor_power_rows
 
 
 class LPXReportTest(unittest.TestCase):
+    def test_power_scope_rejects_unknown_names(self):
+        with self.assertRaisesRegex(ValueError, "power scope"):
+            processor_power_rows([], "facility")
+
     def test_combined_frontiers_keep_serving_variants_distinct(self):
         base = dict(
             model={"model_id": "proxy"},

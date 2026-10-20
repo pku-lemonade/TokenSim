@@ -2,7 +2,7 @@
 
 import unittest
 
-from scripts.run_lpx_study import study_cases, extension_candidates
+from scripts.run_lpx_study import study_cases, extension_candidates, formal_candidates
 
 
 class LPXStudyTest(unittest.TestCase):
@@ -42,6 +42,37 @@ class LPXStudyTest(unittest.TestCase):
             dict(case="full", status="infeasible", batch=16),
         ]
         self.assertEqual(extension_candidates(rows, 16), {"grow"})
+
+    def test_formal_selection_retains_frontiers_for_both_power_scopes(self):
+        rows = [
+            dict(
+                case="small",
+                mode="rubin",
+                batch=1,
+                status="ok",
+                inventory={"rubin": 8},
+                power_watts=14400,
+                tokens_per_s_per_user=1000,
+                output_tokens_per_s=1000,
+            ),
+            dict(
+                case="pipeline",
+                mode="rubin",
+                batch=32,
+                status="ok",
+                inventory={"rubin": 72},
+                power_watts=129600,
+                tokens_per_s_per_user=800,
+                output_tokens_per_s=3000,
+            ),
+            dict(case="full", mode="rubin", batch=64, status="infeasible"),
+        ]
+        self.assertEqual(formal_candidates(rows), {("small", 1), ("pipeline", 32)})
+        self.assertNotIn("power_scope", rows[0])
+        # Selection also supports a study containing only AF candidates.
+        for row in rows:
+            row["mode"] = "af"
+        self.assertEqual(formal_candidates(rows), {("small", 1), ("pipeline", 32)})
 
 
 if __name__ == "__main__":
