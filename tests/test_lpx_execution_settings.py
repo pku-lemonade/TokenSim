@@ -3,6 +3,7 @@
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
+from unittest.mock import patch
 
 import simpy
 
@@ -12,6 +13,8 @@ from scripts.lpx.config import Case, Layout, Workload
 from scripts.lpx.hardware_overrides import communication_hypothesis
 from scripts.lpx.native_config import configuration
 from scripts.lpx.runner import evaluate
+from scripts.reproduce_lpx import parser
+from scripts.search_lpx_capacity import run_search
 from tests import test_lpx_native
 
 
@@ -90,6 +93,53 @@ class ExecutionSettingsTest(unittest.TestCase):
         for value in (-1, float("nan"), float("inf"), True):
             with self.subTest(value=value), self.assertRaises(ConfigurationError):
                 communication_hypothesis(original, value)
+
+    def test_capacity_search_keeps_overrides_in_isolated_and_rate_probes(self):
+        options = vars(
+            parser().parse_args(
+                ["--c2c-latency-us", "0.35", "--collective-launch-us", "0"]
+            )
+        )
+        options.update(
+            checkpoint_output="unused",
+            duration_multiple=100,
+            resolution=0.02,
+            max_probes=24,
+            maximum_multiple=64,
+        )
+
+        def probe(trial, latency, **kwargs):
+            self.assertEqual(latency, 1)
+            trial(0.1, 2)
+            return {"capacity_qps": 0.1}
+
+        with (
+            patch(
+                "scripts.search_lpx_capacity.evaluate",
+                side_effect=[
+                    {"status": "ok", "request_statistics": {"latency_s": {"mean": 1}}},
+                    {"status": "ok"},
+                ],
+            ) as evaluate_point,
+            patch("scripts.search_lpx_capacity.search", probe),
+        ):
+            run_search(
+                (
+                    self.fixture.model,
+                    self.fixture.model,
+                    self.fixture.workload,
+                    Case("capacity", "rubin", self.fixture.base),
+                    4,
+                    options,
+                )
+            )
+        self.assertEqual(evaluate_point.call_count, 2)
+        for call in evaluate_point.call_args_list:
+            settings = call.args[0][4]
+            self.assertEqual(
+                settings["communication_overrides"],
+                {"latency_us": 0.35, "launch_us": 0},
+            )
 
     def test_native_and_replay_workers_apply_overrides_and_separate_checkpoints(self):
         f = self.fixture
