@@ -1,0 +1,1020 @@
+{
+  "schema": "tokensim.lpx_draft_sensitivity_evidence",
+  "version": 1,
+  "source": {
+    "path": "outputs/lpx-study/draft-sensitivity/sensitivity.json",
+    "sha256": "dce3cdf289f391512e2a4c17f2843f29c004954acd4df5bb7b9423f0c4d9fd54"
+  },
+  "source_sha256": "e75255e67a1b086c09eb946eed40371b9ac1c79338e9ada6b6aeaf4eec440e44",
+  "scope": "Two complete turns per user; 400K cached / 4K new / 400 output. Acceptance and draft quality are unmeasured assumptions.",
+  "results": [
+    {
+      "model": "gpt-oss-2t-wide-proxy",
+      "users": 1,
+      "draft_tokens": 1,
+      "acceptance": 0.5,
+      "generation_tps_p50": 459.31878145525394,
+      "output_tps": 375.1443370152165,
+      "completed_requests": 2,
+      "committed_target_tokens": 800,
+      "verification": {
+        "cycles": 533,
+        "committed_tokens": 798,
+        "draft_catchup_tokens": 265
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/1f26efc57d8d2c68409ffdc34ae6fbe824658701b5103483e316ab82b3a11972/result.json",
+        "sha256": "980462691f663f87bdae2842409aa708ba99a2cc1bbda5ff5c99e84696a6a343",
+        "checkpoint_key": "1f26efc57d8d2c68409ffdc34ae6fbe824658701b5103483e316ab82b3a11972"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-wide-proxy",
+      "users": 4,
+      "draft_tokens": 1,
+      "acceptance": 0.5,
+      "generation_tps_p50": 136.28806601298942,
+      "output_tps": 476.5813185203698,
+      "completed_requests": 8,
+      "committed_target_tokens": 3246,
+      "verification": {
+        "cycles": 2168,
+        "committed_tokens": 3235,
+        "draft_catchup_tokens": 1067
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/ab762cf5e1653aaad8bdebd0aa9fc694945402ad94069e768d4eb6d6121994dd/result.json",
+        "sha256": "2c127bf74edc82acb355a77e7a384a441c627715295efcbcdf49528358f1732b",
+        "checkpoint_key": "ab762cf5e1653aaad8bdebd0aa9fc694945402ad94069e768d4eb6d6121994dd"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-expert-proxy",
+      "users": 1,
+      "draft_tokens": 1,
+      "acceptance": 0.5,
+      "generation_tps_p50": 1820.983746904205,
+      "output_tps": 1493.0690425431637,
+      "completed_requests": 2,
+      "committed_target_tokens": 800,
+      "verification": {
+        "cycles": 533,
+        "committed_tokens": 798,
+        "draft_catchup_tokens": 265
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/b201dcb48fd4003e96b4225d6d770977cd1a2821e63eb43964f6b8064f3682e0/result.json",
+        "sha256": "f5ce9cd154d36ad369e6f14570a66a52f2b2102d7e224dff9e09243df4099870",
+        "checkpoint_key": "b201dcb48fd4003e96b4225d6d770977cd1a2821e63eb43964f6b8064f3682e0"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-expert-proxy",
+      "users": 4,
+      "draft_tokens": 1,
+      "acceptance": 0.5,
+      "generation_tps_p50": 624.5984229724975,
+      "output_tps": 2107.968586105284,
+      "completed_requests": 8,
+      "committed_target_tokens": 3241,
+      "verification": {
+        "cycles": 2165,
+        "committed_tokens": 3230,
+        "draft_catchup_tokens": 1065
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/ddb3a75808eaba63e1073a9c4da5436ce22c41548de58f6ee2315d39245e1f3b/result.json",
+        "sha256": "9b12b092bc4c51983d92ec19aedc94b59741fadbd5ac74470fd8195888de36aa",
+        "checkpoint_key": "ddb3a75808eaba63e1073a9c4da5436ce22c41548de58f6ee2315d39245e1f3b"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-wide-proxy",
+      "users": 1,
+      "draft_tokens": 1,
+      "acceptance": 0.8,
+      "generation_tps_p50": 549.8143025064305,
+      "output_tps": 433.209558515969,
+      "completed_requests": 2,
+      "committed_target_tokens": 800,
+      "verification": {
+        "cycles": 444,
+        "committed_tokens": 798,
+        "draft_catchup_tokens": 354
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/4d94a0a06f7c3c6955daada3e3048c1379d597425ae4cbd172fcd3fd64ac7d79/result.json",
+        "sha256": "6e77d428641538544fca3ca7d2e2815bc9f97e2816344829d81c12aa154d6411",
+        "checkpoint_key": "4d94a0a06f7c3c6955daada3e3048c1379d597425ae4cbd172fcd3fd64ac7d79"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-wide-proxy",
+      "users": 4,
+      "draft_tokens": 1,
+      "acceptance": 0.8,
+      "generation_tps_p50": 158.96146318434148,
+      "output_tps": 537.953623085447,
+      "completed_requests": 8,
+      "committed_target_tokens": 3212,
+      "verification": {
+        "cycles": 1783,
+        "committed_tokens": 3201,
+        "draft_catchup_tokens": 1418
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/0e76b5d19a6769766ef5937ede9aa2be3ab8bdc78cf723c13e0985f8e146ec53/result.json",
+        "sha256": "230f124545d6306993a89875fff9ee9b8e97c561406706d8df7b8bb242018f71",
+        "checkpoint_key": "0e76b5d19a6769766ef5937ede9aa2be3ab8bdc78cf723c13e0985f8e146ec53"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-expert-proxy",
+      "users": 1,
+      "draft_tokens": 1,
+      "acceptance": 0.8,
+      "generation_tps_p50": 2163.8792879256093,
+      "output_tps": 1715.2974130276448,
+      "completed_requests": 2,
+      "committed_target_tokens": 800,
+      "verification": {
+        "cycles": 444,
+        "committed_tokens": 798,
+        "draft_catchup_tokens": 354
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/8086c39493dc046f4160c036aa3efc654262c566e28f6c76c5a4d4e911ae3ede/result.json",
+        "sha256": "c9049a2f7ae8b84ccc355bb78e005c7f873f82a83116f1a5ecb153005e7136d1",
+        "checkpoint_key": "8086c39493dc046f4160c036aa3efc654262c566e28f6c76c5a4d4e911ae3ede"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-expert-proxy",
+      "users": 4,
+      "draft_tokens": 1,
+      "acceptance": 0.8,
+      "generation_tps_p50": 709.6911870006786,
+      "output_tps": 2363.930054166007,
+      "completed_requests": 8,
+      "committed_target_tokens": 3213,
+      "verification": {
+        "cycles": 1783,
+        "committed_tokens": 3202,
+        "draft_catchup_tokens": 1419
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/b93b1442f27b973feba8479a7e3c0be8a200780ff3bba0cf2ee9bda4c6d5c0c5/result.json",
+        "sha256": "7e847ee407895c8727fc530c69bdc6c3efad5441d3403dd2839615ab35c8382f",
+        "checkpoint_key": "b93b1442f27b973feba8479a7e3c0be8a200780ff3bba0cf2ee9bda4c6d5c0c5"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-wide-proxy",
+      "users": 1,
+      "draft_tokens": 1,
+      "acceptance": 0.95,
+      "generation_tps_p50": 599.1687491514954,
+      "output_tps": 463.26872981199625,
+      "completed_requests": 2,
+      "committed_target_tokens": 800,
+      "verification": {
+        "cycles": 407,
+        "committed_tokens": 798,
+        "draft_catchup_tokens": 391
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/a236c92eeb9041f1c8e4f58a1169100c8296f2ed21334073e88b47ab5e85d2d2/result.json",
+        "sha256": "132b7e5a5dffaff47cb7cd4e86b97d498e922bf506ccf2a59c65f9432f855106",
+        "checkpoint_key": "a236c92eeb9041f1c8e4f58a1169100c8296f2ed21334073e88b47ab5e85d2d2"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-wide-proxy",
+      "users": 4,
+      "draft_tokens": 1,
+      "acceptance": 0.95,
+      "generation_tps_p50": 167.41928678456537,
+      "output_tps": 566.9640498772484,
+      "completed_requests": 8,
+      "committed_target_tokens": 3230,
+      "verification": {
+        "cycles": 1653,
+        "committed_tokens": 3219,
+        "draft_catchup_tokens": 1566
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/2819573f76c05960194767c75d2acb775daacf53525e19480982c04b1d505d64/result.json",
+        "sha256": "6023e72cbbd67267c649751d91fceb46c50975d283b9e161dc2cf3210b54a0f3",
+        "checkpoint_key": "2819573f76c05960194767c75d2acb775daacf53525e19480982c04b1d505d64"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-expert-proxy",
+      "users": 1,
+      "draft_tokens": 1,
+      "acceptance": 0.95,
+      "generation_tps_p50": 2347.5409270665323,
+      "output_tps": 1828.645081244213,
+      "completed_requests": 2,
+      "committed_target_tokens": 800,
+      "verification": {
+        "cycles": 407,
+        "committed_tokens": 798,
+        "draft_catchup_tokens": 391
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/410af565c6fd67a167ec9beb11ea154a04f31173ae1acb3cbacc51ae2c607c10/result.json",
+        "sha256": "d6ec5ae8cd6c40049933ef34cb34f823cfaab8fc9cc4abfef443a7f337480abd",
+        "checkpoint_key": "410af565c6fd67a167ec9beb11ea154a04f31173ae1acb3cbacc51ae2c607c10"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-expert-proxy",
+      "users": 4,
+      "draft_tokens": 1,
+      "acceptance": 0.95,
+      "generation_tps_p50": 750.2985283392752,
+      "output_tps": 2484.0718717048176,
+      "completed_requests": 8,
+      "committed_target_tokens": 3232,
+      "verification": {
+        "cycles": 1654,
+        "committed_tokens": 3221,
+        "draft_catchup_tokens": 1567
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/f967d9f06a2cc7899d096ca6d3358b61cbe4416f3a373cb0ba5cc51214c951ce/result.json",
+        "sha256": "828788f632eb3166c2dc1d235081eb3ff5dacf8d4d2a2353568f1f5e81836bc7",
+        "checkpoint_key": "f967d9f06a2cc7899d096ca6d3358b61cbe4416f3a373cb0ba5cc51214c951ce"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-wide-proxy",
+      "users": 1,
+      "draft_tokens": 2,
+      "acceptance": 0.5,
+      "generation_tps_p50": 474.35839303717245,
+      "output_tps": 385.0004728914318,
+      "completed_requests": 2,
+      "committed_target_tokens": 800,
+      "verification": {
+        "cycles": 457,
+        "committed_tokens": 798,
+        "draft_catchup_tokens": 108
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/d7c19b4bd4331f9df57efafe506bd998ff10db90be83a1a1ebda2917ccb43d19/result.json",
+        "sha256": "effa519a06889b75cdb7a6a97257b9b3d85011b0f15621e2bcc5ec5979493580",
+        "checkpoint_key": "d7c19b4bd4331f9df57efafe506bd998ff10db90be83a1a1ebda2917ccb43d19"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-wide-proxy",
+      "users": 4,
+      "draft_tokens": 2,
+      "acceptance": 0.5,
+      "generation_tps_p50": 141.48127141804991,
+      "output_tps": 483.1476971285399,
+      "completed_requests": 8,
+      "committed_target_tokens": 3239,
+      "verification": {
+        "cycles": 1849,
+        "committed_tokens": 3228,
+        "draft_catchup_tokens": 443
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/5603d8eb2a009a3c572be7a984e6864b1a34f564d3ae8708f30d6bac116a515b/result.json",
+        "sha256": "e6d8d052802dfc388e9ef3ec4a39d5b74de9ae9fdd5f0ee1796c90ae52931333",
+        "checkpoint_key": "5603d8eb2a009a3c572be7a984e6864b1a34f564d3ae8708f30d6bac116a515b"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-expert-proxy",
+      "users": 1,
+      "draft_tokens": 2,
+      "acceptance": 0.5,
+      "generation_tps_p50": 2011.5680106093737,
+      "output_tps": 1618.1069248002073,
+      "completed_requests": 2,
+      "committed_target_tokens": 800,
+      "verification": {
+        "cycles": 457,
+        "committed_tokens": 798,
+        "draft_catchup_tokens": 108
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/c2178ba6fbc000c350295b9962e795758601bc5818fd7b1ddb796a42b345bf1e/result.json",
+        "sha256": "646fd412d6139afaad8e337841396bf228db37b378554e573b78c99f7935a61c",
+        "checkpoint_key": "c2178ba6fbc000c350295b9962e795758601bc5818fd7b1ddb796a42b345bf1e"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-expert-proxy",
+      "users": 4,
+      "draft_tokens": 2,
+      "acceptance": 0.5,
+      "generation_tps_p50": 680.5870030031444,
+      "output_tps": 2283.9975247235034,
+      "completed_requests": 8,
+      "committed_target_tokens": 3241,
+      "verification": {
+        "cycles": 1849,
+        "committed_tokens": 3230,
+        "draft_catchup_tokens": 444
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/6374f532a2399c9d3484dfe662600f958b9ce93c4c3f23a71f7c6379f0ca2761/result.json",
+        "sha256": "c27f89ecde0eb552e8b9e6bb110fd72fe6267f834700137d5df5aaced19268b7",
+        "checkpoint_key": "6374f532a2399c9d3484dfe662600f958b9ce93c4c3f23a71f7c6379f0ca2761"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-wide-proxy",
+      "users": 1,
+      "draft_tokens": 2,
+      "acceptance": 0.8,
+      "generation_tps_p50": 668.8895881907956,
+      "output_tps": 503.7351453107226,
+      "completed_requests": 2,
+      "committed_target_tokens": 800,
+      "verification": {
+        "cycles": 323,
+        "committed_tokens": 798,
+        "draft_catchup_tokens": 211
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/5870d66c79c007c5d880b11c579deb07be60c46304b16832d15477a2b2387148/result.json",
+        "sha256": "dc5681f1fb27845db9498ff0b6ad7ebecd917feeea1e57b2ef17d9342f32c914",
+        "checkpoint_key": "5870d66c79c007c5d880b11c579deb07be60c46304b16832d15477a2b2387148"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-wide-proxy",
+      "users": 4,
+      "draft_tokens": 2,
+      "acceptance": 0.8,
+      "generation_tps_p50": 183.33050993882978,
+      "output_tps": 598.5978425558197,
+      "completed_requests": 8,
+      "committed_target_tokens": 3227,
+      "verification": {
+        "cycles": 1317,
+        "committed_tokens": 3216,
+        "draft_catchup_tokens": 845
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/094e776f3c1f7771eda96f9ea911e9fd7e2fe4fddf8b91fba292d968a629274a/result.json",
+        "sha256": "54272bfda924fd5aaeaec088455485f3ec5d3b4cc13294d5931ab16b0a54fcc7",
+        "checkpoint_key": "094e776f3c1f7771eda96f9ea911e9fd7e2fe4fddf8b91fba292d968a629274a"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-expert-proxy",
+      "users": 1,
+      "draft_tokens": 2,
+      "acceptance": 0.8,
+      "generation_tps_p50": 2806.7808732015806,
+      "output_tps": 2094.8837471941006,
+      "completed_requests": 2,
+      "committed_target_tokens": 800,
+      "verification": {
+        "cycles": 323,
+        "committed_tokens": 798,
+        "draft_catchup_tokens": 211
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/a42d2d507be920d49a730de78cb77e05d9ef41a92bccc62784cd252697f700f9/result.json",
+        "sha256": "da009038ff72d972bd84317d0192f9ed324a571fb583895834ce5e74203b0b68",
+        "checkpoint_key": "a42d2d507be920d49a730de78cb77e05d9ef41a92bccc62784cd252697f700f9"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-expert-proxy",
+      "users": 4,
+      "draft_tokens": 2,
+      "acceptance": 0.8,
+      "generation_tps_p50": 916.2399120477387,
+      "output_tps": 2779.3485154653545,
+      "completed_requests": 8,
+      "committed_target_tokens": 3227,
+      "verification": {
+        "cycles": 1317,
+        "committed_tokens": 3216,
+        "draft_catchup_tokens": 845
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/a732f4fa416a9e7c6d13d66438b8977256a4882c4976a20a39cb84df9a884118/result.json",
+        "sha256": "ebfcea0d67265dd0c086e6f2e4737a17e47297a061bb3a599ab8ead4684c874c",
+        "checkpoint_key": "a732f4fa416a9e7c6d13d66438b8977256a4882c4976a20a39cb84df9a884118"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-wide-proxy",
+      "users": 1,
+      "draft_tokens": 2,
+      "acceptance": 0.95,
+      "generation_tps_p50": 772.776261366585,
+      "output_tps": 560.3581748622122,
+      "completed_requests": 2,
+      "committed_target_tokens": 800,
+      "verification": {
+        "cycles": 279,
+        "committed_tokens": 798,
+        "draft_catchup_tokens": 254
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/bfafcd88581368aa6f2a8ea077fd27723d83d2004cc72f73d3259ad4867ec124/result.json",
+        "sha256": "5845a1c9d97155684aac6a72fd1d413b4bdc31a5b026b1e0265f64e2afcb865a",
+        "checkpoint_key": "bfafcd88581368aa6f2a8ea077fd27723d83d2004cc72f73d3259ad4867ec124"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-wide-proxy",
+      "users": 4,
+      "draft_tokens": 2,
+      "acceptance": 0.95,
+      "generation_tps_p50": 199.80111766740444,
+      "output_tps": 657.6468225372918,
+      "completed_requests": 8,
+      "committed_target_tokens": 3233,
+      "verification": {
+        "cycles": 1130,
+        "committed_tokens": 3222,
+        "draft_catchup_tokens": 1017
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/24bebac9c5a62d0cb5cca152e4638e62256e3074eeb192a1102cab9ece64f6a3/result.json",
+        "sha256": "2963b1337031cdb96fdce5b47d2fc2a4435941f9d2442282d50cd64b5e30261a",
+        "checkpoint_key": "24bebac9c5a62d0cb5cca152e4638e62256e3074eeb192a1102cab9ece64f6a3"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-expert-proxy",
+      "users": 1,
+      "draft_tokens": 2,
+      "acceptance": 0.95,
+      "generation_tps_p50": 3223.832167919706,
+      "output_tps": 2318.2672053759347,
+      "completed_requests": 2,
+      "committed_target_tokens": 800,
+      "verification": {
+        "cycles": 279,
+        "committed_tokens": 798,
+        "draft_catchup_tokens": 254
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/3404a3e62d58c57944d94af05499ade813569646098d3e62752ad60b26f672ae/result.json",
+        "sha256": "9c3709d484e63677c6623ec06f194d73b2472d3d3e1e1abb15adeeac604a962d",
+        "checkpoint_key": "3404a3e62d58c57944d94af05499ade813569646098d3e62752ad60b26f672ae"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-expert-proxy",
+      "users": 4,
+      "draft_tokens": 2,
+      "acceptance": 0.95,
+      "generation_tps_p50": 952.6945395638099,
+      "output_tps": 3013.6866729715875,
+      "completed_requests": 8,
+      "committed_target_tokens": 3236,
+      "verification": {
+        "cycles": 1131,
+        "committed_tokens": 3225,
+        "draft_catchup_tokens": 1018
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/c92865c770c8808ab5893a7bad2b91555ba735baf60eb78e2b3517ba86b96e0a/result.json",
+        "sha256": "31e770b272c467c486b78e1d9d0b4a7571fe82d5b77f9a49da6280d2e0a38bd3",
+        "checkpoint_key": "c92865c770c8808ab5893a7bad2b91555ba735baf60eb78e2b3517ba86b96e0a"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-wide-proxy",
+      "users": 1,
+      "draft_tokens": 4,
+      "acceptance": 0.5,
+      "generation_tps_p50": 445.05990707120606,
+      "output_tps": 365.6262023067221,
+      "completed_requests": 2,
+      "committed_target_tokens": 800,
+      "verification": {
+        "cycles": 408,
+        "committed_tokens": 798,
+        "draft_catchup_tokens": 28
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/b40b8171981e871c9ca5e8bf50bd4f3fb6c7b04c45783f1e936b88081525e625/result.json",
+        "sha256": "15e365b8236117d21b6ce009e7824128d6d61cfc5042f0fe59a8a07d9214cb25",
+        "checkpoint_key": "b40b8171981e871c9ca5e8bf50bd4f3fb6c7b04c45783f1e936b88081525e625"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-wide-proxy",
+      "users": 4,
+      "draft_tokens": 4,
+      "acceptance": 0.5,
+      "generation_tps_p50": 126.76470195201475,
+      "output_tps": 448.80090446425584,
+      "completed_requests": 8,
+      "committed_target_tokens": 3307,
+      "verification": {
+        "cycles": 1704,
+        "committed_tokens": 3296,
+        "draft_catchup_tokens": 107
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/10e39cd8a0c00669b6d073284b7953c710a6079258a9c6d7d97274bb80184103/result.json",
+        "sha256": "5d840705a7cf66c3886ec6edbd60f08fd2ab68f9c1cebdadebc643869d8544c2",
+        "checkpoint_key": "10e39cd8a0c00669b6d073284b7953c710a6079258a9c6d7d97274bb80184103"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-expert-proxy",
+      "users": 1,
+      "draft_tokens": 4,
+      "acceptance": 0.5,
+      "generation_tps_p50": 2028.3373807454122,
+      "output_tps": 1629.4070114025826,
+      "completed_requests": 2,
+      "committed_target_tokens": 800,
+      "verification": {
+        "cycles": 408,
+        "committed_tokens": 798,
+        "draft_catchup_tokens": 28
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/d74444d303dc86ec9b59bc30dce54f0ddab002dba4989bcca1c59f26e6bb4c38/result.json",
+        "sha256": "ffe1ea2f38e8f8a735df34dab49b1c7a3371cf9f58f04e9c7393a4f1ec553d25",
+        "checkpoint_key": "d74444d303dc86ec9b59bc30dce54f0ddab002dba4989bcca1c59f26e6bb4c38"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-expert-proxy",
+      "users": 4,
+      "draft_tokens": 4,
+      "acceptance": 0.5,
+      "generation_tps_p50": 673.4348384698629,
+      "output_tps": 2363.0817479947373,
+      "completed_requests": 8,
+      "committed_target_tokens": 3309,
+      "verification": {
+        "cycles": 1706,
+        "committed_tokens": 3298,
+        "draft_catchup_tokens": 107
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/6cddbe5b7dd0bb2044fdf4502e69a1d1a0534194b3a2aa3777eae5a96081bf17/result.json",
+        "sha256": "df20d7fc52dbbcd9da847070bd5715e254c2db8a6ed8de0af64d61e2dd21096a",
+        "checkpoint_key": "6cddbe5b7dd0bb2044fdf4502e69a1d1a0534194b3a2aa3777eae5a96081bf17"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-wide-proxy",
+      "users": 1,
+      "draft_tokens": 4,
+      "acceptance": 0.8,
+      "generation_tps_p50": 755.4592708747374,
+      "output_tps": 551.1074199926107,
+      "completed_requests": 2,
+      "committed_target_tokens": 800,
+      "verification": {
+        "cycles": 240,
+        "committed_tokens": 798,
+        "draft_catchup_tokens": 102
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/74c5a2fc8906179a63103fb434d4d476d6ffedc97c0e7e5166c644cb4af78f48/result.json",
+        "sha256": "306dae567a9dd9d7bfc88ce53ef0b28a9d61ee59847b497ef0109fdfff71c525",
+        "checkpoint_key": "74c5a2fc8906179a63103fb434d4d476d6ffedc97c0e7e5166c644cb4af78f48"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-wide-proxy",
+      "users": 4,
+      "draft_tokens": 4,
+      "acceptance": 0.8,
+      "generation_tps_p50": 190.59136449610952,
+      "output_tps": 639.9093787414115,
+      "completed_requests": 8,
+      "committed_target_tokens": 3254,
+      "verification": {
+        "cycles": 972,
+        "committed_tokens": 3243,
+        "draft_catchup_tokens": 397
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/ecdb34b823dbbd800fbbdeafd92a4399dc3eca01f606cb753eb12200e3568cdb/result.json",
+        "sha256": "2e68c2e4f5b47eb4dc6ed4e86b5401b676a181f61a31156f983f778b6b2f7c8d",
+        "checkpoint_key": "ecdb34b823dbbd800fbbdeafd92a4399dc3eca01f606cb753eb12200e3568cdb"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-expert-proxy",
+      "users": 1,
+      "draft_tokens": 4,
+      "acceptance": 0.8,
+      "generation_tps_p50": 3414.186214658851,
+      "output_tps": 2414.436259220925,
+      "completed_requests": 2,
+      "committed_target_tokens": 800,
+      "verification": {
+        "cycles": 240,
+        "committed_tokens": 798,
+        "draft_catchup_tokens": 102
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/2b97919fa20ae095accd09089f2e0411d1a25f59d4c8f1afe1217a15b3ebb5f4/result.json",
+        "sha256": "03dc7dfb2e3a3d06b88b35c34b6924bb5d07869d04fb3f139d05d9a1c974ae4e",
+        "checkpoint_key": "2b97919fa20ae095accd09089f2e0411d1a25f59d4c8f1afe1217a15b3ebb5f4"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-expert-proxy",
+      "users": 4,
+      "draft_tokens": 4,
+      "acceptance": 0.8,
+      "generation_tps_p50": 1006.6602415936463,
+      "output_tps": 3182.088631306384,
+      "completed_requests": 8,
+      "committed_target_tokens": 3252,
+      "verification": {
+        "cycles": 971,
+        "committed_tokens": 3241,
+        "draft_catchup_tokens": 397
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/48d49f95da802aabed2363f17c2f2458ca57898be88b7d776af6ece4a1f30a2d/result.json",
+        "sha256": "f701337ca31770a90493216a3b3892c871794451ae767f4833a66eea5fad8c37",
+        "checkpoint_key": "48d49f95da802aabed2363f17c2f2458ca57898be88b7d776af6ece4a1f30a2d"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-wide-proxy",
+      "users": 1,
+      "draft_tokens": 4,
+      "acceptance": 0.95,
+      "generation_tps_p50": 1021.6945436065405,
+      "output_tps": 679.9015989104107,
+      "completed_requests": 2,
+      "committed_target_tokens": 800,
+      "verification": {
+        "cycles": 177,
+        "committed_tokens": 798,
+        "draft_catchup_tokens": 147
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/2e021c5e0f32d85f239d6511a71d4a3ab4283fb0f2bfd64b1375ecbfdd5aea98/result.json",
+        "sha256": "3e70335038e01b25b7b8aab69bb1bb777a8d3f15923c19e3370e0207e595436a",
+        "checkpoint_key": "2e021c5e0f32d85f239d6511a71d4a3ab4283fb0f2bfd64b1375ecbfdd5aea98"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-wide-proxy",
+      "users": 4,
+      "draft_tokens": 4,
+      "acceptance": 0.95,
+      "generation_tps_p50": 234.0767694092801,
+      "output_tps": 763.6369091624953,
+      "completed_requests": 8,
+      "committed_target_tokens": 3286,
+      "verification": {
+        "cycles": 724,
+        "committed_tokens": 3275,
+        "draft_catchup_tokens": 585
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/6e9f07de1ac1c3962bba861c36db80393445481963590043e1269477bad75e20/result.json",
+        "sha256": "9752e719cf5c102454639cf0d20b667675802f1a17802ea524d85a895eaeb426",
+        "checkpoint_key": "6e9f07de1ac1c3962bba861c36db80393445481963590043e1269477bad75e20"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-expert-proxy",
+      "users": 1,
+      "draft_tokens": 4,
+      "acceptance": 0.95,
+      "generation_tps_p50": 4577.009439500847,
+      "output_tps": 2940.8278031427203,
+      "completed_requests": 2,
+      "committed_target_tokens": 800,
+      "verification": {
+        "cycles": 177,
+        "committed_tokens": 798,
+        "draft_catchup_tokens": 147
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/669dffda7dedb1eba4ea0a0e3a1bd91616aa62f8902e5f55f0557571aab880fb/result.json",
+        "sha256": "a725cf353eec13badb52d6ba9b484dcf96c759bb5d26b6fb16348cf92623ff51",
+        "checkpoint_key": "669dffda7dedb1eba4ea0a0e3a1bd91616aa62f8902e5f55f0557571aab880fb"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-expert-proxy",
+      "users": 4,
+      "draft_tokens": 4,
+      "acceptance": 0.95,
+      "generation_tps_p50": 1206.189862574871,
+      "output_tps": 3657.679109002763,
+      "completed_requests": 8,
+      "committed_target_tokens": 3281,
+      "verification": {
+        "cycles": 723,
+        "committed_tokens": 3270,
+        "draft_catchup_tokens": 584
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/c80fc921edb10bd240ec12b5641cf30d08a356d391f55e702db48fed7f5ddae0/result.json",
+        "sha256": "aa2172768ee35603708ad69fdca206b0217dc6b24280ef926397ff4f3420945a",
+        "checkpoint_key": "c80fc921edb10bd240ec12b5641cf30d08a356d391f55e702db48fed7f5ddae0"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-wide-proxy",
+      "users": 1,
+      "draft_tokens": 8,
+      "acceptance": 0.5,
+      "generation_tps_p50": 359.7046679337299,
+      "output_tps": 306.0986160085488,
+      "completed_requests": 2,
+      "committed_target_tokens": 800,
+      "verification": {
+        "cycles": 396,
+        "committed_tokens": 798,
+        "draft_catchup_tokens": 3
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/2fa5ffd40c195e7a2c5174caa847ff7c941ea96ac26e0842c88985f018e616b3/result.json",
+        "sha256": "ebc120ee3aebc7b7ab23abe3f6dc2b03dda657b1969b4037b44b02f951912652",
+        "checkpoint_key": "2fa5ffd40c195e7a2c5174caa847ff7c941ea96ac26e0842c88985f018e616b3"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-wide-proxy",
+      "users": 4,
+      "draft_tokens": 8,
+      "acceptance": 0.5,
+      "generation_tps_p50": 101.51199235028571,
+      "output_tps": 376.2220484801078,
+      "completed_requests": 8,
+      "committed_target_tokens": 3306,
+      "verification": {
+        "cycles": 1657,
+        "committed_tokens": 3295,
+        "draft_catchup_tokens": 3
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/f95a633221c1dce08a8c1df9dd303490194d94fccfebdf86101818a8041de72f/result.json",
+        "sha256": "f91681a12151d06a0b3e7ec86e8494d9799eb65eb77faa1cfa2c3daa848f178b",
+        "checkpoint_key": "f95a633221c1dce08a8c1df9dd303490194d94fccfebdf86101818a8041de72f"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-expert-proxy",
+      "users": 1,
+      "draft_tokens": 8,
+      "acceptance": 0.5,
+      "generation_tps_p50": 1737.4456820952855,
+      "output_tps": 1436.6335254987468,
+      "completed_requests": 2,
+      "committed_target_tokens": 800,
+      "verification": {
+        "cycles": 396,
+        "committed_tokens": 798,
+        "draft_catchup_tokens": 3
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/8a28e248902bd4428db3258df94d366d85a4e947967d6bfe6c0f4ff375de389c/result.json",
+        "sha256": "5b7ac20bde3cc2814b58830fe50770de7e946d0a4493deaf889466a8744cc011",
+        "checkpoint_key": "8a28e248902bd4428db3258df94d366d85a4e947967d6bfe6c0f4ff375de389c"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-expert-proxy",
+      "users": 4,
+      "draft_tokens": 8,
+      "acceptance": 0.5,
+      "generation_tps_p50": 652.1165350832355,
+      "output_tps": 2217.1506667720846,
+      "completed_requests": 8,
+      "committed_target_tokens": 3307,
+      "verification": {
+        "cycles": 1658,
+        "committed_tokens": 3296,
+        "draft_catchup_tokens": 3
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/994d9b39eec2d372cca431496a4a2167eec71f4ac838e3e124485aa83ebe9270/result.json",
+        "sha256": "286b69509b48445644e709204d903f711387487fdd479778e2ae923c3d134efe",
+        "checkpoint_key": "994d9b39eec2d372cca431496a4a2167eec71f4ac838e3e124485aa83ebe9270"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-wide-proxy",
+      "users": 1,
+      "draft_tokens": 8,
+      "acceptance": 0.8,
+      "generation_tps_p50": 799.6494421977379,
+      "output_tps": 574.2765264705985,
+      "completed_requests": 2,
+      "committed_target_tokens": 800,
+      "verification": {
+        "cycles": 178,
+        "committed_tokens": 798,
+        "draft_catchup_tokens": 30
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/c6a83ce54dfefc7c67828396df9f0c2f84fb8ff10dcd2732c527e70769971b2b/result.json",
+        "sha256": "438cfe1f5703cbe0be50ce340d13ed38b51e15515e5613f7a08a97df1c9189fd",
+        "checkpoint_key": "c6a83ce54dfefc7c67828396df9f0c2f84fb8ff10dcd2732c527e70769971b2b"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-wide-proxy",
+      "users": 4,
+      "draft_tokens": 8,
+      "acceptance": 0.8,
+      "generation_tps_p50": 194.60905811392078,
+      "output_tps": 643.5367321352443,
+      "completed_requests": 8,
+      "committed_target_tokens": 3312,
+      "verification": {
+        "cycles": 760,
+        "committed_tokens": 3301,
+        "draft_catchup_tokens": 124
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/b0a19ef752d0a3c98c313cfe498101beb035a50bc3e4c4cdd9fc17b9a3e76fa1/result.json",
+        "sha256": "b4e66efe3ff531a2305f35eaf8ee9be5d7b7791390ded16891e2a961c64535e5",
+        "checkpoint_key": "b0a19ef752d0a3c98c313cfe498101beb035a50bc3e4c4cdd9fc17b9a3e76fa1"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-expert-proxy",
+      "users": 1,
+      "draft_tokens": 8,
+      "acceptance": 0.8,
+      "generation_tps_p50": 3851.5123416968345,
+      "output_tps": 2624.951301658639,
+      "completed_requests": 2,
+      "committed_target_tokens": 800,
+      "verification": {
+        "cycles": 178,
+        "committed_tokens": 798,
+        "draft_catchup_tokens": 30
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/7887f8254f3f30529891d9080d7e3f9bd08892ba161a4760f075d046adae8ab1/result.json",
+        "sha256": "3c57e4cba34348ca276f8d12c07c0d311fc32a0c063b92754ee4668888363cac",
+        "checkpoint_key": "7887f8254f3f30529891d9080d7e3f9bd08892ba161a4760f075d046adae8ab1"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-expert-proxy",
+      "users": 4,
+      "draft_tokens": 8,
+      "acceptance": 0.8,
+      "generation_tps_p50": 1063.7850738929478,
+      "output_tps": 3430.9667382372627,
+      "completed_requests": 8,
+      "committed_target_tokens": 3308,
+      "verification": {
+        "cycles": 759,
+        "committed_tokens": 3297,
+        "draft_catchup_tokens": 124
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/7e9ea840e1cca03cba069be5673966d3cc865f3d81347703ac896cd242b478a7/result.json",
+        "sha256": "db11e99c025f4ffdff800743626f62540898178cb5d58e425ecf37034ddacee6",
+        "checkpoint_key": "7e9ea840e1cca03cba069be5673966d3cc865f3d81347703ac896cd242b478a7"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-wide-proxy",
+      "users": 1,
+      "draft_tokens": 8,
+      "acceptance": 0.95,
+      "generation_tps_p50": 1316.935147000458,
+      "output_tps": 797.7424013327735,
+      "completed_requests": 2,
+      "committed_target_tokens": 800,
+      "verification": {
+        "cycles": 108,
+        "committed_tokens": 798,
+        "draft_catchup_tokens": 73
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/7a4e72c0a97838e37cbb1e62323c96639abffe8c715a40a9ce33bc2431ff4ad5/result.json",
+        "sha256": "284948a97a6af467729f132d1782de52c0a363425e3b1de010978dd1a11cfd7c",
+        "checkpoint_key": "7a4e72c0a97838e37cbb1e62323c96639abffe8c715a40a9ce33bc2431ff4ad5"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-wide-proxy",
+      "users": 4,
+      "draft_tokens": 8,
+      "acceptance": 0.95,
+      "generation_tps_p50": 295.36096750926447,
+      "output_tps": 857.8608212471256,
+      "completed_requests": 8,
+      "committed_target_tokens": 3371,
+      "verification": {
+        "cycles": 454,
+        "committed_tokens": 3360,
+        "draft_catchup_tokens": 300
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/e0e778005ff97b55e539c46a7ff38949f124af5712a745d9427ae0fac1edf3fa/result.json",
+        "sha256": "296cbb51ae343fd3304acf58a92a4bd47e7be868785bc060867f91c057b0d10c",
+        "checkpoint_key": "e0e778005ff97b55e539c46a7ff38949f124af5712a745d9427ae0fac1edf3fa"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-expert-proxy",
+      "users": 1,
+      "draft_tokens": 8,
+      "acceptance": 0.95,
+      "generation_tps_p50": 6287.713515126942,
+      "output_tps": 3558.239850841151,
+      "completed_requests": 2,
+      "committed_target_tokens": 800,
+      "verification": {
+        "cycles": 108,
+        "committed_tokens": 798,
+        "draft_catchup_tokens": 73
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/d292191d389fa9acec4a80382d8eeba3bd3cff31644ec33b4b0255ffec41626d/result.json",
+        "sha256": "6292f3f9034624d6bdc9c3a62bb3a52b6724f7eb7dc4e4040719ebce10a3f350",
+        "checkpoint_key": "d292191d389fa9acec4a80382d8eeba3bd3cff31644ec33b4b0255ffec41626d"
+      }
+    },
+    {
+      "model": "gpt-oss-2t-expert-proxy",
+      "users": 4,
+      "draft_tokens": 8,
+      "acceptance": 0.95,
+      "generation_tps_p50": 1455.2690308449612,
+      "output_tps": 4277.551795124481,
+      "completed_requests": 8,
+      "committed_target_tokens": 3376,
+      "verification": {
+        "cycles": 455,
+        "committed_tokens": 3365,
+        "draft_catchup_tokens": 300
+      },
+      "point_audit": "passed",
+      "source": {
+        "path": "outputs/lpx-study/draft-sensitivity/.experiments/95d271ef8f891a691da88e1f042f9cbe229cb94d017a6c0903cdf9f1e67d95d0/result.json",
+        "sha256": "b0f67cc5549caf4cd6df2a541a5c541d9b651658e90f59ade326dbb4b29e1798",
+        "checkpoint_key": "95d271ef8f891a691da88e1f042f9cbe229cb94d017a6c0903cdf9f1e67d95d0"
+      }
+    }
+  ]
+}
