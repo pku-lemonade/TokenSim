@@ -1,6 +1,10 @@
 """AA serial requests, native token conversion and physical fit boundaries."""
 
 from pathlib import Path
+import json
+import subprocess
+import sys
+import tempfile
 import unittest
 
 from TokenSim.config.model_config import ModelSpec
@@ -69,6 +73,68 @@ class AASerialTest(unittest.TestCase):
         self.assertEqual(self.hardware.device("groq_lp30").analytical["gemm_mfu"], 0.8)
         with self.assertRaises(ConfigurationError):
             scaled_efficiency(self.hardware, 2)
+
+    def test_cli_spawns_a_worker_and_writes_serial_measurements(self):
+        import yaml
+
+        root = Path(__file__).resolve().parents[1]
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "run"
+            model = Path(directory) / "model.yaml"
+            model.write_text(
+                yaml.safe_dump(
+                    dict(
+                        model_id="aa-cli-test",
+                        hidden_size=32,
+                        intermediate_size=64,
+                        num_layers=2,
+                        num_attention_heads=4,
+                        num_key_value_heads=2,
+                        head_dim=8,
+                        vocab_size=64,
+                        max_position_embeddings=262144,
+                    )
+                )
+            )
+            run = subprocess.run(
+                [
+                    sys.executable,
+                    str(root / "scripts/calibrate_lpx_aa.py"),
+                    "--model",
+                    str(model),
+                    "--rho-in",
+                    "1",
+                    "--rho-out",
+                    "1",
+                    "--lpu-counts",
+                    "1",
+                    "--tp",
+                    "1",
+                    "--weight-dtypes",
+                    "bf16",
+                    "--kv-dtypes",
+                    "bf16",
+                    "--requests",
+                    "1",
+                    "--warmup-requests",
+                    "0",
+                    "--no-fit",
+                    "--jobs",
+                    "2",
+                    "--output",
+                    str(output),
+                ],
+                cwd=root,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(run.returncode, 0, run.stderr)
+            result = json.loads((output / "aa-summary.json").read_text())["results"][0]
+            self.assertEqual(result["status"], "ok")
+            self.assertEqual([r["requests"] for r in result["prefit"]], [1, 1])
+            self.assertEqual(
+                [r["input_tokens"] for r in result["prefit"]], [10000, 100000]
+            )
 
 
 if __name__ == "__main__":
