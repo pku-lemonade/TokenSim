@@ -285,35 +285,34 @@ def _compile_physical_states(
             if item["mapping"].physical_worker.identity == physical
         }
         buffers = ()
-        if cluster_config.af.transfer_topology_mode == "physical":
-            # Explicit conservative workspace assumption: one input and one
-            # output buffer for the largest activation/logit boundary in a
-            # configured AF block. Reused across layers, not silently zero.
-            routing_expansion = (
-                max(1, moe_config.num_experts_per_tok) if moe_config is not None else 1
+        # Explicit conservative workspace assumption: one input and one
+        # output buffer for the largest activation/logit boundary in a
+        # configured AF block. Reused across layers, not silently zero.
+        routing_expansion = (
+            max(1, moe_config.num_experts_per_tok) if moe_config is not None else 1
+        )
+        workspace_tokens = cluster_config.af.af_block_size
+        if (
+            cluster_config.af.ffn_batching
+            or cluster_config.af.execution_protocol == "vllm_afd"
+        ) and "af_ffn" in roles:
+            workspace_tokens = max(
+                workspace_tokens,
+                cluster_config.af.ffn_batch_max_tokens
+                or (
+                    workspace_tokens
+                    * cluster_config.af_domains[0].parallel.data_parallel_size
+                ),
             )
-            workspace_tokens = cluster_config.af.af_block_size
-            if (
-                cluster_config.af.ffn_batching
-                or cluster_config.af.execution_protocol == "vllm_afd"
-            ) and "af_ffn" in roles:
-                workspace_tokens = max(
-                    workspace_tokens,
-                    cluster_config.af.ffn_batch_max_tokens
-                    or (
-                        workspace_tokens
-                        * cluster_config.af_domains[0].parallel.data_parallel_size
-                    ),
-                )
-            workspace = (
-                2
-                * workspace_tokens
-                * max(hidden * routing_expansion, model.vocab_size)
-                * dtype_size_bytes(
-                    effective_dtypes.activation_dtype, role="activation_dtype"
-                )
+        workspace = (
+            2
+            * workspace_tokens
+            * max(hidden * routing_expansion, model.vocab_size)
+            * dtype_size_bytes(
+                effective_dtypes.activation_dtype, role="activation_dtype"
             )
-            buffers += (("communication_workspace", workspace),)
+        )
+        buffers += (("communication_workspace", workspace),)
         if (
             cluster_config.af.execution_protocol == "vllm_afd"
             and cluster_config.af.communication_timing.native_control_enabled

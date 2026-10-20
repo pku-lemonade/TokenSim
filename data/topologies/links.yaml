@@ -20,6 +20,8 @@ links:
     display_name: LP30 individual 112 Gb/s C2C link
     bandwidth_per_direction_bytes_per_s: 14.0e9
     latency_us: 0.05
+    half_bandwidth_bytes: 0
+    collective_efficiency: 1.0
     source_id: nvidia-lpx-architecture
     grade: C
     notes: Individual link per direction; latency is an assumption.
@@ -28,10 +30,12 @@ links:
     bandwidth_per_direction_bytes_per_s: 1.25e12
     bandwidth_scope: endpoint
     latency_us: 0.05
+    half_bandwidth_bytes: 0
+    collective_efficiency: 1.0
     source_id: nvidia-lpx-architecture
     grade: C
     notes: Published 2.5 TB/s bidirectional divided by two; do not multiply this budget
-      by 96 ports. Latency and routing efficiency are assumptions.
+      by 96 ports. Explicit alpha-beta service uses no NCCL bandwidth ramp and unit collective efficiency; latency and routing efficiency are assumptions.
   ethernet1600Gb:
     display_name: Assumed 1600 Gb/s unidirectional inter-rack service
     bandwidth_per_direction_bytes_per_s: 200.0e9

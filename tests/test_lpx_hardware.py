@@ -31,6 +31,10 @@ class LPXHardwareTest(unittest.TestCase):
         aggregate = self.hardware.link("groq_lp30_injection")
         individual = self.hardware.link("groq_lp30_c2c_112g")
         self.assertEqual(aggregate.bandwidth_per_direction_bytes_per_s, 1.25e12)
+        for link in (aggregate, individual):
+            self.assertEqual(link.half_bandwidth_bytes, 0)
+            self.assertEqual(link.collective_efficiency, 1)
+            self.assertEqual(link.transfer_us(1024), link.analytical_transfer_us(1024))
         self.assertEqual(individual.bandwidth_per_direction_bytes_per_s, 112e9 / 8)
         topology = self.hardware.topology("groq_lpx256")
         self.assertEqual(topology.levels[0].size * topology.levels[1].size, 256)
@@ -86,6 +90,7 @@ class LPXHardwareTest(unittest.TestCase):
             "data/devices/groq_lp30.yaml",
             "data/devices/rubin.yaml",
             "data/models/gpt-oss-2t-wide-proxy.yaml",
+            "data/models/gemma-4-31b-text.yaml",
             "data/models/gpt-oss-2t-expert-proxy.yaml",
             "data/models/gpt-oss-draft-proxy.yaml",
             "data/topologies/groq_lpx256.yaml",

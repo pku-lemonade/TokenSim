@@ -47,6 +47,12 @@ class LayerAttentionTest(unittest.TestCase):
         binding = next(
             b for b in runtime.plan.rank_bindings if b.capability == "af_attention"
         )
+        self.assertIn(
+            "communication_workspace",
+            dict(
+                runtime.plan.physical_state(binding.physical_identity).protocol_buffers
+            ),
+        )
         local = runtime.plan.local_shape(
             binding.domain, binding.domain_rank, 1, "attention"
         )
