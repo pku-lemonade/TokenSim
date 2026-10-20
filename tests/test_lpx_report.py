@@ -2,10 +2,31 @@
 
 import unittest
 
-from scripts.report_lpx_study import power_rows
+from scripts.report_lpx_study import power_rows, combine_indexes
 
 
 class LPXReportTest(unittest.TestCase):
+    def test_combined_frontiers_keep_serving_variants_distinct(self):
+        base = dict(
+            model={"model_id": "proxy"},
+            draft_model={},
+            workload={},
+            source_sha256="source",
+            state="complete",
+            phase="formal",
+            cases=[{"name": "ruby"}],
+            results=[{"case": "ruby", "batch": 4, "status": "ok"}],
+        )
+        merged = combine_indexes(
+            [dict(base, variant="mb1-adp1"), dict(base, variant="mb4-adp1")]
+        )
+        self.assertEqual(
+            {r["case"] for r in merged["results"]}, {"ruby@mb1-adp1", "ruby@mb4-adp1"}
+        )
+        self.assertEqual(merged["state"], "complete")
+        with self.assertRaises(ValueError):
+            combine_indexes([base, dict(base, source_sha256="different")])
+
     def test_common_baseline_and_rack_rounding_preserve_measured_throughput(self):
         rows = [
             dict(

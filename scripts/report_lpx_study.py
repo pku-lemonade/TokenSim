@@ -12,6 +12,7 @@ import csv
 import hashlib
 import json
 import math
+from copy import deepcopy
 
 import matplotlib
 
@@ -193,6 +194,39 @@ def export_case(output, index, *, verify_bytes=False):
     return summary
 
 
+def combine_indexes(indexes):
+    result = deepcopy(indexes[0])
+    rows, cases = {}, {}
+    source_states, phases = set(), set()
+    for index in indexes:
+        for key in ("model", "draft_model", "workload", "source_sha256"):
+            if index[key] != result[key]:
+                raise ValueError(f"cannot combine different {key}")
+        variant = index.get("variant", "mb1-adp1-pf0")
+        source_states.add(index["state"])
+        phases.add(index["phase"])
+        for case in index["cases"]:
+            alias = f"{case['name']}@{variant}"
+            cases[alias] = dict(
+                case, name=alias, original_case=case["name"], variant=variant
+            )
+        for row in index["results"]:
+            alias = f"{row['case']}@{variant}"
+            key = (alias, row["batch"])
+            if key in rows:
+                raise ValueError("duplicate case/user points in analysis inputs")
+            rows[key] = dict(
+                row, case=alias, original_case=row["case"], variant=variant
+            )
+    result.update(
+        results=list(rows.values()),
+        cases=list(cases.values()),
+        state="complete" if source_states == {"complete"} else "running",
+        phase=next(iter(phases)) if len(phases) == 1 else "mixed",
+    )
+    return result
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--index", type=Path, nargs="+", required=True)
@@ -200,10 +234,14 @@ def main(argv=None):
     parser.add_argument("--verify-bytes", action="store_true")
     args = parser.parse_args(argv)
     args.output.mkdir(parents=True, exist_ok=True)
+    groups = {}
     for path in args.index:
         index = json.loads(path.read_text())
         if index.get("schema") != "tokensim.lpx_study_index":
             parser.error("expected an audited study index")
+        groups.setdefault(index["model"]["model_id"], []).append(index)
+    for model, indexes in groups.items():
+        index = combine_indexes(indexes)
         result = export_case(
             args.output / index["model"]["model_id"],
             index,
