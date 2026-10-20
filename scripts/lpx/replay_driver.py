@@ -100,6 +100,10 @@ class ReplayConfig:
     cache: str = str(ROOT / "outputs/lpx-replay-profile-cache")
 
     def __call__(self, runtimes, measurement):
+        if any(r.cluster.af.ffn_batching for r in runtimes.values()):
+            raise ConfigurationError(
+                "sampled replay cannot model dynamic FFN batching; use native or disable FFN batching"
+            )
         integer(self.samples, "decode profile samples", minimum=1)
         integer(self.prefill_samples, "prefill profile samples", minimum=1)
         return ReplayDriver(self, runtimes, measurement)

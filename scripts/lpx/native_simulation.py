@@ -41,6 +41,8 @@ def point(
     arrival_pattern="uniform",
     dag_template_cache=True,
     execution_factory=None,
+    ffn_batching=False,
+    ffn_batch_wait_us=5.0,
 ):
     boolean(stream_metrics, "stream metrics")
     number(warmup_seconds, "warm-up seconds")
@@ -64,12 +66,7 @@ def point(
         raise ConfigurationError(
             "serving interactivity requires at least two output tokens"
         )
-    peak_context = (
-        workload.cached_tokens
-        + workload.new_tokens
-        + workload.output_tokens
-        + (workload.draft_tokens if case.mode == "draft" else 0)
-    )
+    peak_context = workload.maximum_context(case.mode == "draft")
     if peak_context > target.max_position_embeddings:
         raise ConfigurationError("workload exceeds the target context limit")
     runtimes = runtime_configurations(
@@ -84,6 +81,8 @@ def point(
         graph_kernel_us=graph_kernel_us,
         endpoint_transfer_occupancy=endpoint_transfer_occupancy,
         dag_template_cache=dag_template_cache,
+        ffn_batching=ffn_batching,
+        ffn_batch_wait_us=ffn_batch_wait_us,
     )
     measurement = {}
     env, communication, services, windows, driver = create_serving(

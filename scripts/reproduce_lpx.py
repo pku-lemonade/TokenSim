@@ -106,6 +106,10 @@ def parser():
     result.add_argument("--cached-tokens", type=int)
     result.add_argument("--prefill-chunk", type=int)
     result.add_argument("--micro-batch", type=int, default=1)
+    result.add_argument(
+        "--ffn-batching", action=argparse.BooleanOptionalAction, default=False
+    )
+    result.add_argument("--ffn-batch-wait-us", type=float, default=5.0)
     result.add_argument("--a-replicas", type=int, default=1)
     result.add_argument("--warmup-steps", type=int, default=2)
     result.add_argument("--warmup-seconds", type=float, default=0.0)
@@ -245,6 +249,8 @@ def main(argv=None):
                             checkpoint_output=str(args.output / ".experiments"),
                             resume=args.resume,
                             micro_batch=args.micro_batch,
+                            ffn_batching=args.ffn_batching,
+                            ffn_batch_wait_us=args.ffn_batch_wait_us,
                             a_dp=args.a_replicas,
                             warmup_steps=args.warmup_steps,
                             warmup_seconds=args.warmup_seconds,
@@ -343,6 +349,8 @@ def main(argv=None):
                 "result_scope": "finite_measurement_window",
                 "additional_memory_reserve_bytes": reserves,
                 "micro_batch": args.micro_batch,
+                "ffn_batching": args.ffn_batching,
+                "ffn_batch_wait_us": args.ffn_batch_wait_us,
                 "simulation_processes": args.jobs,
                 "resume": args.resume,
                 "interactivity_statistic": "per_request_generation_tps_p50",

@@ -71,6 +71,14 @@ class Workload:
             self.acceptance_probability, "acceptance_probability", minimum=0, maximum=1
         )
 
+    def maximum_context(self, speculative=False):
+        return (
+            self.cached_tokens
+            + self.new_tokens
+            + self.output_tokens
+            + (self.draft_tokens if speculative else 0)
+        )
+
 
 @dataclass(frozen=True)
 class Case:

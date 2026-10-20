@@ -55,6 +55,8 @@ def configuration(
     graph_kernel_us=0.2,
     endpoint_transfer_occupancy="wire",
     dag_template_cache=False,
+    ffn_batching=False,
+    ffn_batch_wait_us=5.0,
 ):
     if layout.a_cp != 1:
         raise ConfigurationError(
@@ -204,6 +206,8 @@ def configuration(
             compute_execution_mode=execution_mode,
             graph_device_kernel_us=graph_kernel_us,
             coalesce_ready_transfers=True,
+            ffn_batching=ffn_batching,
+            ffn_batch_wait_us=ffn_batch_wait_us,
             dag_template_cache_max_tokens=32,
             dag_template_cache=dag_template_cache,
             activation_dtype=model.activation_dtype,

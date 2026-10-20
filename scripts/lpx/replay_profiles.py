@@ -129,6 +129,8 @@ def capture_profile(
     seed,
     sample,
 ):
+    if runtime.cluster.af.ffn_batching:
+        raise ConfigurationError("native DAG profiles require fixed FFN batches")
     started = perf_counter()
     env = simpy.Environment()
     service = AFService(env, runtime, seed=seed, retain_trace=True)
@@ -143,12 +145,12 @@ def capture_profile(
     ]
     for session in sessions:
         session.generated = 1 + sample if phase == "decode" else 0
-    env.process(
+    completed = env.process(
         service.forward(
             sessions, phase=phase, query_tokens=queries, emit_logits=emit_logits
         )
     )
-    env.run()
+    env.run(until=completed)
     result = extract_profile(
         service.trace.events,
         namespace,

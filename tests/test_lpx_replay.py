@@ -283,6 +283,42 @@ class NativeReplayControlTest(unittest.TestCase):
                     replay["arrivals"]["pending_at_end"] > 0,
                 )
 
+    def test_multi_replica_profiles_require_fixed_ffn_batches(self):
+        dynamic = configuration(
+            self.hardware,
+            self.model,
+            self.gpu,
+            namespace="guard",
+            a_dp=2,
+            ffn_batching=True,
+        )
+        with self.assertRaisesRegex(ConfigurationError, "dynamic FFN batching"):
+            ReplayConfig(self.workload)({"target": dynamic}, {})
+        fixed = configuration(
+            self.hardware,
+            self.model,
+            self.gpu,
+            namespace="guard",
+            a_dp=2,
+            ffn_batching=False,
+        )
+        with tempfile.TemporaryDirectory() as cache:
+            profile = cached_profile(
+                fixed,
+                "target",
+                cache,
+                batch=1,
+                queries=1,
+                phase="decode",
+                emit_logits=True,
+                context=18,
+                dp_rank=1,
+                seed=42,
+                sample=0,
+            )
+        self.assertGreater(profile.metadata["native_duration_s"], 0)
+        profile.verify()
+
     def test_cached_native_profile_reconstructs_and_detects_body_corruption(self):
         runtime = configuration(
             self.hardware, self.model, self.gpu, namespace="profile"

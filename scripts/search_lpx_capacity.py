@@ -30,6 +30,8 @@ def run_search(job):
         draft_spec=draft,
         stream_metrics=not options["retain_timing_history"],
         micro_batch=options["micro_batch"],
+        ffn_batching=options["ffn_batching"],
+        ffn_batch_wait_us=options["ffn_batch_wait_us"],
         a_dp=options["a_replicas"],
         warmup_steps=options["warmup_steps"],
         warmup_seconds=options["warmup_seconds"],
