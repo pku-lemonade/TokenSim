@@ -18,7 +18,7 @@ from TokenSim.af.runtime.admission import ResidentKV
 from TokenSim.config.validation import integer, number
 from TokenSim.errors import ConfigurationError
 from TokenSim.experiments import ExperimentRunner
-from TokenSim.hardware import HardwareContext
+from TokenSim.hardware import HardwareContext, DeviceCatalog, LinkCatalog
 from TokenSim.latency.operator_table import OperatorTableLatencyBackend
 from TokenSim.utils import BoundedCache
 from scripts.lpx.aa import scaled_efficiency, serial
@@ -27,6 +27,51 @@ from scripts.lpx.native_config import configuration
 from scripts.reproduce_lpx import repository_state, write_json
 
 TARGETS = ((10000, 1500, 3382), (100000, 2000, 3431))
+
+
+def communication_hypothesis(hardware, latency_us=None, launch_us=None):
+    if latency_us is not None:
+        number(latency_us, "C2C latency microseconds")
+        hardware = replace(
+            hardware,
+            links=LinkCatalog(
+                [
+                    (
+                        replace(
+                            link,
+                            latency_us=latency_us,
+                            source_id="assumption:aa-communication-variant",
+                            grade="D",
+                        )
+                        if link.link_id in {"groq_lp30_injection", "groq_lp30_c2c_112g"}
+                        else link
+                    )
+                    for link in hardware.links
+                ]
+            ),
+        )
+    if launch_us is not None:
+        number(launch_us, "collective launch microseconds")
+        hardware = replace(
+            hardware,
+            devices=DeviceCatalog(
+                [
+                    (
+                        replace(
+                            device,
+                            analytical={
+                                **device.analytical,
+                                "collective_launch_us": launch_us,
+                            },
+                        )
+                        if device.device_id == "groq_lp30"
+                        else device
+                    )
+                    for device in hardware.devices
+                ]
+            ),
+        )
+    return hardware
 
 
 @contextmanager
@@ -70,6 +115,9 @@ def evaluate_candidate(parameters):
     output = options.pop("output")
     resume = options.pop("resume")
     hardware = HardwareContext.load(ROOT / "data")
+    hardware = communication_hypothesis(
+        hardware, options.get("c2c_latency_us"), options.get("collective_launch_us")
+    )
     base = hardware.models.resolve(options["model"])
     options["model_spec"] = base.to_dict()
 
@@ -127,6 +175,12 @@ def evaluate_candidate(parameters):
             prefit=raw,
             efficiency_scale=1.0,
             fit_status="disabled",
+        )
+        result["communication_hypothesis"] = dict(
+            c2c_latency_us=hardware.link("groq_lp30_injection").latency_us,
+            collective_launch_us=hardware.device("groq_lp30").analytical[
+                "collective_launch_us"
+            ],
         )
         selected = raw
         if options["fit"]:
@@ -205,6 +259,8 @@ def main(argv=None):
     parser.add_argument("--model", default="gemma-4-31b-text")
     parser.add_argument("--rho-in", type=float, required=True)
     parser.add_argument("--rho-out", type=float, required=True)
+    parser.add_argument("--c2c-latency-us", type=float)
+    parser.add_argument("--collective-launch-us", type=float)
     parser.add_argument("--lpu-counts", nargs="+", type=int, default=[64, 128, 256])
     parser.add_argument("--tp", nargs="+", type=int, default=[8, 16, 32])
     parser.add_argument(
@@ -266,6 +322,8 @@ def main(argv=None):
                             ),
                             rho_in=args.rho_in,
                             rho_out=args.rho_out,
+                            c2c_latency_us=args.c2c_latency_us,
+                            collective_launch_us=args.collective_launch_us,
                             requests=args.requests,
                             warmup=args.warmup_requests,
                             prefill_chunk=args.prefill_chunk,

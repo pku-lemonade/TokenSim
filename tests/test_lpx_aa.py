@@ -12,7 +12,7 @@ from TokenSim.errors import ConfigurationError
 from TokenSim.hardware import HardwareContext
 from scripts.lpx.aa import serial, scaled_efficiency
 from scripts.lpx.config import Layout
-from scripts.calibrate_lpx_aa import dense_step_cache
+from scripts.calibrate_lpx_aa import dense_step_cache, communication_hypothesis
 
 
 class AASerialTest(unittest.TestCase):
@@ -74,6 +74,19 @@ class AASerialTest(unittest.TestCase):
         self.assertEqual(self.hardware.device("groq_lp30").analytical["gemm_mfu"], 0.8)
         with self.assertRaises(ConfigurationError):
             scaled_efficiency(self.hardware, 2)
+
+    def test_communication_constraints_do_not_mutate_the_device_catalog(self):
+        original = self.hardware.link("groq_lp30_injection")
+        variant = communication_hypothesis(self.hardware, 0.35, 0)
+        self.assertEqual(variant.link("groq_lp30_injection").latency_us, 0.35)
+        self.assertEqual(
+            variant.device("groq_lp30").analytical["collective_launch_us"], 0
+        )
+        self.assertEqual(self.hardware.link("groq_lp30_injection"), original)
+        self.assertEqual(
+            variant.link("groq_lp30_injection").bandwidth_per_direction_bytes_per_s,
+            original.bandwidth_per_direction_bytes_per_s,
+        )
 
     def test_exact_step_cache_preserves_every_request_timestamp(self):
         settings = dict(
