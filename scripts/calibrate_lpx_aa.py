@@ -8,21 +8,61 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 import argparse
+from contextlib import contextmanager
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import asdict, replace
 from multiprocessing import get_context
+from unittest.mock import patch
 
 from TokenSim.af.runtime.admission import ResidentKV
 from TokenSim.config.validation import integer, number
 from TokenSim.errors import ConfigurationError
 from TokenSim.experiments import ExperimentRunner
 from TokenSim.hardware import HardwareContext
+from TokenSim.latency.operator_table import OperatorTableLatencyBackend
+from TokenSim.utils import BoundedCache
 from scripts.lpx.aa import scaled_efficiency, serial
 from scripts.lpx.config import Layout
 from scripts.lpx.native_config import configuration
 from scripts.reproduce_lpx import repository_state, write_json
 
 TARGETS = ((10000, 1500, 3382), (100000, 2000, 3431))
+
+
+@contextmanager
+def dense_step_cache():
+    """Memoize pure isolated dense costs; SimPy still executes every token.
+
+    This process-local scope excludes stochastic MoE and compressed modules.
+    Operator counters describe unique evaluated geometries while request
+    timestamps and admission remain fully executed.
+    """
+    original = OperatorTableLatencyBackend.estimate_step_latency
+
+    def estimate(backend, requests):
+        if backend.model.is_moe or backend.model.components or len(requests) != 1:
+            raise ConfigurationError(
+                "AA step caching requires one ordinary dense request"
+            )
+        request = requests[0]
+        key = (
+            request.prefill_len,
+            request.num_computed_tokens,
+            request.query_tokens,
+            request.generation_idx > 0,
+            request.needs_recompute,
+            bool(getattr(request, "emit_logits", True)),
+        )
+        if not hasattr(backend, "_aa_step_cache"):
+            backend._aa_step_cache = BoundedCache(8192)
+        cached = backend._aa_step_cache.get(key)
+        if cached is None:
+            cached = original(backend, requests)
+            backend._aa_step_cache[key] = cached
+        return cached
+
+    with patch.object(OperatorTableLatencyBackend, "estimate_step_latency", estimate):
+        yield
 
 
 def evaluate_candidate(parameters):
@@ -56,7 +96,7 @@ def evaluate_candidate(parameters):
             return dict(status="infeasible", reason=str(exc), hypothesis=options)
 
         def sample(input_tokens, output_tokens, scale=1, requests=None, warmup=None):
-            return serial(
+            result = serial(
                 scaled_efficiency(hardware, scale),
                 model,
                 layout,
@@ -68,6 +108,12 @@ def evaluate_candidate(parameters):
                 rho_in=rho_in,
                 rho_out=rho_out,
             )
+            result["exact_step_cache"] = options.get("step_cache", True)
+            if result["exact_step_cache"]:
+                result["operator_statistics_scope"] = (
+                    "unique evaluated dense step geometries; all requests and token clocks executed"
+                )
+            return result
 
         raw = [sample(i, o) for i, o, _ in lengths]
         print(
@@ -147,6 +193,9 @@ def evaluate_candidate(parameters):
         code_paths=(ROOT / "TokenSim", ROOT / "scripts/lpx", Path(__file__)),
         resume=resume,
     )
+    if options.get("step_cache", True):
+        with dense_step_cache():
+            return runner.run(options, run).result
     return runner.run(options, run).result
 
 
@@ -169,6 +218,9 @@ def main(argv=None):
     parser.add_argument("--prefill-chunk", type=int, default=4096)
     parser.add_argument("--jobs", type=int, default=4)
     parser.add_argument("--fit", action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument(
+        "--step-cache", action=argparse.BooleanOptionalAction, default=True
+    )
     parser.add_argument("--resume", action=argparse.BooleanOptionalAction, default=True)
     args = parser.parse_args(argv)
     for name, value in (
@@ -218,6 +270,7 @@ def main(argv=None):
                             warmup=args.warmup_requests,
                             prefill_chunk=args.prefill_chunk,
                             fit=args.fit,
+                            step_cache=args.step_cache,
                             lengths=TARGETS,
                             output=str(args.output),
                             resume=args.resume,

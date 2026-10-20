@@ -12,6 +12,7 @@ from TokenSim.errors import ConfigurationError
 from TokenSim.hardware import HardwareContext
 from scripts.lpx.aa import serial, scaled_efficiency
 from scripts.lpx.config import Layout
+from scripts.calibrate_lpx_aa import dense_step_cache
 
 
 class AASerialTest(unittest.TestCase):
@@ -73,6 +74,25 @@ class AASerialTest(unittest.TestCase):
         self.assertEqual(self.hardware.device("groq_lp30").analytical["gemm_mfu"], 0.8)
         with self.assertRaises(ConfigurationError):
             scaled_efficiency(self.hardware, 2)
+
+    def test_exact_step_cache_preserves_every_request_timestamp(self):
+        settings = dict(
+            input_tokens=20, output_tokens=8, requests=4, warmup=2, prefill_chunk=4
+        )
+        original = serial(self.hardware, self.model, self.layout, **settings)
+        with dense_step_cache():
+            cached = serial(self.hardware, self.model, self.layout, **settings)
+        for key in (
+            "request_timings",
+            "native_generation_tps",
+            "standardized_generation_tps",
+            "memory",
+        ):
+            self.assertEqual(original[key], cached[key])
+        self.assertLess(
+            cached["operator_statistics"]["operator_query_count"],
+            original["operator_statistics"]["operator_query_count"],
+        )
 
     def test_cli_spawns_a_worker_and_writes_serial_measurements(self):
         import yaml
