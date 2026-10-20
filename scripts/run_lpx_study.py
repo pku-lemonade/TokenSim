@@ -139,11 +139,12 @@ def run_grid(args, workload, cases, selected, *, phase, prior=()):
             draft_spec=draft,
             stream_metrics=True,
             execution_backend="sampled-replay",
+            ffn_batching=False,
             replay_samples=args.samples,
             replay_prefill_samples=1,
             replay_cache=str(args.profile_cache),
-            micro_batch=1,
-            a_dp=1,
+            micro_batch=args.micro_batch,
+            a_dp=args.a_replicas,
             warmup_steps=args.formal_warmup_steps if formal else 2,
             warmup_seconds=max(1, 10 * iso.get(case.name, 0)) if formal else 0,
             measurement_turns=(
@@ -162,6 +163,7 @@ def run_grid(args, workload, cases, selected, *, phase, prior=()):
         schema="tokensim.lpx_study_index",
         version=1,
         phase=phase,
+        variant=f"mb{args.micro_batch}-adp{args.a_replicas}-pf{int(args.prefill_tp8_pp4)}",
         git_revision=revision,
         git_worktree_dirty=dirty,
         source_sha256=source_identity(),
@@ -172,6 +174,7 @@ def run_grid(args, workload, cases, selected, *, phase, prior=()):
         cases=[asdict(case) for case in cases],
         execution_backend="sampled-replay",
         replay_samples=args.samples,
+        ffn_batching=False,
         state="running",
     )
     completed = {}
@@ -203,6 +206,10 @@ def main(argv=None):
     )
     cli.add_argument("--users", nargs="+", type=int, default=[1, 2, 4, 8, 16, 32, 64])
     cli.add_argument("--maximum-users", type=int, default=512)
+    cli.add_argument("--micro-batch", type=int, default=1)
+    cli.add_argument("--a-replicas", type=int, default=1)
+    cli.add_argument("--cases", nargs="+")
+    cli.add_argument("--prefill-tp8-pp4", action="store_true")
     cli.add_argument("--jobs", type=int, default=4)
     cli.add_argument("--formal-jobs", type=int, default=2)
     cli.add_argument("--samples", type=int, default=16)
@@ -217,6 +224,8 @@ def main(argv=None):
     args = cli.parse_args(argv)
     for name in (
         "jobs",
+        "micro_batch",
+        "a_replicas",
         "formal_jobs",
         "samples",
         "coarse_turns",
@@ -235,6 +244,20 @@ def main(argv=None):
     args.profile_cache = args.profile_cache.resolve()
     args.output.mkdir(parents=True, exist_ok=True)
     workload, cases = study_cases(args.model)
+    if args.cases:
+        unknown = set(args.cases) - {c.name for c in cases}
+        if unknown:
+            cli.error(f"unknown study cases: {sorted(unknown)}")
+        cases = [c for c in cases if c.name in args.cases]
+    if args.prefill_tp8_pp4:
+        cases = [
+            (
+                replace(c, prefill=replace(c.prefill, a_tp=8, f_ep=8, a_pp=4, f_pp=4))
+                if c.prefill
+                else c
+            )
+            for c in cases
+        ]
     workload = replace(workload, seed=args.seed)
     write_json(
         args.output / "configuration.json",
