@@ -1,0 +1,2118 @@
+{
+  "schema": "tokensim.lpx_formal_study_evidence",
+  "version": 1,
+  "model": "gpt-oss-2t-expert-proxy",
+  "workload": {
+    "cached_tokens": 400000,
+    "new_tokens": 4000,
+    "output_tokens": 400,
+    "prefill_chunk": 4000,
+    "seed": 42,
+    "draft_tokens": 4,
+    "acceptance_probability": 0.8
+  },
+  "source_sha256": "e75255e67a1b086c09eb946eed40371b9ac1c79338e9ada6b6aeaf4eec440e44",
+  "analysis_source": {
+    "path": "outputs/lpx-study/final-analysis/gpt-oss-2t-expert-proxy/analysis.json",
+    "sha256": "80710499d227fcc4ab2815d343241fb9a161d1c8789511ad87a63294569b9ab8"
+  },
+  "index_sources": [
+    {
+      "path": "outputs/lpx-study/expert-fixed16/formal/index.json",
+      "sha256": "e0202014f27c52558b79802e68f7c39bacf4817cb34bbaa2c271865c94b61971"
+    }
+  ],
+  "scope": "Observed finite-grid frontiers under unmeasured hardware, model and processor-power hypotheses. Fixed FFN batches; finite routing corpus.",
+  "power_assumptions": "Allocated processor TDP; optional rounding to complete 72-GPU/256-LPU processor inventories. Host/network power excluded.",
+  "execution_fidelity": "sampled_native_operator_dags; numerical accuracy requires native controls",
+  "coarse": [
+    {
+      "source": {
+        "path": "outputs/lpx-study/expert-fixed16/coarse/index.json",
+        "sha256": "20e932cef7bd0b92c8167ea67d41cca3433bbfb0d5df8df60583e86b0c662574"
+      },
+      "points": 101,
+      "feasible": 82,
+      "rejected": [
+        {
+          "case": "pd-tp16",
+          "users": 4,
+          "reason": "resident KV exceeds compiled replica budget on ('target-a-domain', 560): required_bytes=414105600, available_bytes=406114304"
+        },
+        {
+          "case": "pd-tp16",
+          "users": 8,
+          "reason": "resident KV exceeds compiled replica budget on ('target-a-domain', 560): required_bytes=414105600, available_bytes=406114304"
+        },
+        {
+          "case": "pd-tp16",
+          "users": 16,
+          "reason": "resident KV exceeds compiled replica budget on ('target-a-domain', 560): required_bytes=414105600, available_bytes=406114304"
+        },
+        {
+          "case": "pd-tp16",
+          "users": 32,
+          "reason": "resident KV exceeds compiled replica budget on ('target-a-domain', 560): required_bytes=414105600, available_bytes=406114304"
+        },
+        {
+          "case": "pd-tp16",
+          "users": 64,
+          "reason": "resident KV exceeds compiled replica budget on ('target-a-domain', 560): required_bytes=414105600, available_bytes=406114304"
+        },
+        {
+          "case": "pd-compact",
+          "users": 4,
+          "reason": "resident KV exceeds compiled replica budget on ('target-a-domain', 0): required_bytes=414236672, available_bytes=389693440"
+        },
+        {
+          "case": "pd-compact",
+          "users": 8,
+          "reason": "resident KV exceeds compiled replica budget on ('target-a-domain', 0): required_bytes=414236672, available_bytes=389693440"
+        },
+        {
+          "case": "pd-compact",
+          "users": 16,
+          "reason": "resident KV exceeds compiled replica budget on ('target-a-domain', 0): required_bytes=414236672, available_bytes=389693440"
+        },
+        {
+          "case": "pd-compact",
+          "users": 32,
+          "reason": "resident KV exceeds compiled replica budget on ('target-a-domain', 0): required_bytes=414236672, available_bytes=389693440"
+        },
+        {
+          "case": "pd-compact",
+          "users": 64,
+          "reason": "resident KV exceeds compiled replica budget on ('target-a-domain', 0): required_bytes=414236672, available_bytes=389693440"
+        },
+        {
+          "case": "draft-tp8",
+          "users": 4,
+          "reason": "resident KV exceeds compiled replica budget on ('draft-a-domain', 16): required_bytes=414109696, available_bytes=385130496"
+        },
+        {
+          "case": "draft-tp8",
+          "users": 8,
+          "reason": "resident KV exceeds compiled replica budget on ('draft-a-domain', 16): required_bytes=414109696, available_bytes=385130496"
+        },
+        {
+          "case": "draft-tp8",
+          "users": 16,
+          "reason": "resident KV exceeds compiled replica budget on ('draft-a-domain', 16): required_bytes=414109696, available_bytes=385130496"
+        },
+        {
+          "case": "draft-tp8",
+          "users": 32,
+          "reason": "resident KV exceeds compiled replica budget on ('draft-a-domain', 16): required_bytes=414109696, available_bytes=385130496"
+        },
+        {
+          "case": "draft-tp8",
+          "users": 64,
+          "reason": "resident KV exceeds compiled replica budget on ('draft-a-domain', 16): required_bytes=414109696, available_bytes=385130496"
+        },
+        {
+          "case": "draft-lpx256",
+          "users": 32,
+          "reason": "resident KV exceeds compiled replica budget on ('draft-a-domain', 24): required_bytes=414109696, available_bytes=317394944"
+        },
+        {
+          "case": "draft-lpx256",
+          "users": 64,
+          "reason": "resident KV exceeds compiled replica budget on ('draft-a-domain', 24): required_bytes=414109696, available_bytes=317394944"
+        },
+        {
+          "case": "draft-pipeline-lpx256",
+          "users": 32,
+          "reason": "resident KV exceeds compiled replica budget on ('draft-a-domain', 24): required_bytes=414109696, available_bytes=317394944"
+        },
+        {
+          "case": "draft-pipeline-lpx256",
+          "users": 64,
+          "reason": "resident KV exceeds compiled replica budget on ('draft-a-domain', 24): required_bytes=414109696, available_bytes=317394944"
+        }
+      ]
+    }
+  ],
+  "formal_points": [
+    {
+      "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+      "mode": "rubin",
+      "users": 1,
+      "inventory": {
+        "rubin": 8
+      },
+      "generation_tps_p50": 1478.1371115656843,
+      "output_tps": 1114.0072509210718,
+      "allocated_processor_watts": 14400.0,
+      "processor_rack_watts": 129600,
+      "completed_requests": 500,
+      "minimum_completed_requests_per_user": 500,
+      "warmup_s": 3.591017596750789,
+      "measurement_s": 179.53204508735297,
+      "little_law_complete_request_users": 1.0,
+      "mean_active_users": 1.0,
+      "memory": {
+        "target": {
+          "reserved_peak_kv_bytes": 14912520192,
+          "maximum_worker_reserved_kv_bytes": 1864065024,
+          "resident_current_kv_bytes": 14912483328
+        }
+      },
+      "source": {
+        "path": "outputs/lpx-study/expert-fixed16/.experiments/e555aca5397f378bfe31146b1a5c4233384f18636070ef1093e548499f254131/result.json",
+        "sha256": "653521f51c978189a9d9e58e237842e48fbf892456a45c33acdba1f6e531cf4c",
+        "checkpoint_key": "e555aca5397f378bfe31146b1a5c4233384f18636070ef1093e548499f254131"
+      }
+    },
+    {
+      "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+      "mode": "rubin",
+      "users": 2,
+      "inventory": {
+        "rubin": 8
+      },
+      "generation_tps_p50": 1361.7493558197873,
+      "output_tps": 1977.0079595912716,
+      "allocated_processor_watts": 14400.0,
+      "processor_rack_watts": 129600,
+      "completed_requests": 500,
+      "minimum_completed_requests_per_user": 250,
+      "warmup_s": 3.5909963985514834,
+      "measurement_s": 101.16297156504528,
+      "little_law_complete_request_users": 1.999996629818105,
+      "mean_active_users": 1.9999999999999998,
+      "memory": {
+        "target": {
+          "reserved_peak_kv_bytes": 29825040384,
+          "maximum_worker_reserved_kv_bytes": 3728130048,
+          "resident_current_kv_bytes": 29810257920
+        }
+      },
+      "source": {
+        "path": "outputs/lpx-study/expert-fixed16/.experiments/a1cb3814b7bf6f837116540674afb970944395ea8a8666b274beea48ad372d24/result.json",
+        "sha256": "cccadc54050627f50786db8a33d9720c13284676e880a9429fdf5aa32fadaa04",
+        "checkpoint_key": "a1cb3814b7bf6f837116540674afb970944395ea8a8666b274beea48ad372d24"
+      }
+    },
+    {
+      "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+      "mode": "rubin",
+      "users": 4,
+      "inventory": {
+        "rubin": 8
+      },
+      "generation_tps_p50": 616.7400498137582,
+      "output_tps": 2171.6606309886456,
+      "allocated_processor_watts": 14400.0,
+      "processor_rack_watts": 129600,
+      "completed_requests": 500,
+      "minimum_completed_requests_per_user": 125,
+      "warmup_s": 3.591576034194333,
+      "measurement_s": 92.09864430288404,
+      "little_law_complete_request_users": 3.9946567055171585,
+      "mean_active_users": 3.999999999999935,
+      "memory": {
+        "target": {
+          "reserved_peak_kv_bytes": 59650080768,
+          "maximum_worker_reserved_kv_bytes": 7456260096,
+          "resident_current_kv_bytes": 59606065152
+        }
+      },
+      "source": {
+        "path": "outputs/lpx-study/expert-fixed16/.experiments/aee3fc4d78abb0a593978b7c035b9856135977db2931c497e686bdf77dd8e437/result.json",
+        "sha256": "8d6fe27e45716df0984780b7184192da2b75614e14351abd5b311903af59bce1",
+        "checkpoint_key": "aee3fc4d78abb0a593978b7c035b9856135977db2931c497e686bdf77dd8e437"
+      }
+    },
+    {
+      "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+      "mode": "rubin",
+      "users": 8,
+      "inventory": {
+        "rubin": 8
+      },
+      "generation_tps_p50": 324.8275979045354,
+      "output_tps": 2433.8343452084077,
+      "allocated_processor_watts": 14400.0,
+      "processor_rack_watts": 129600,
+      "completed_requests": 504,
+      "minimum_completed_requests_per_user": 63,
+      "warmup_s": 3.5920094822385664,
+      "measurement_s": 82.8437647767415,
+      "little_law_complete_request_users": 7.972751283423724,
+      "mean_active_users": 7.999999999999914,
+      "memory": {
+        "target": {
+          "reserved_peak_kv_bytes": 119300161536,
+          "maximum_worker_reserved_kv_bytes": 14912520192,
+          "resident_current_kv_bytes": 119197937664
+        }
+      },
+      "source": {
+        "path": "outputs/lpx-study/expert-fixed16/.experiments/5e2a3d611e4286646f4b834c63e5bd1ee90afa885bb37cc7a6aad47a2e697518/result.json",
+        "sha256": "d0461b4de3bae18118db8d8e9120b0be27e4e4d0ef478ed955812af9f1aed4ae",
+        "checkpoint_key": "5e2a3d611e4286646f4b834c63e5bd1ee90afa885bb37cc7a6aad47a2e697518"
+      }
+    },
+    {
+      "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+      "mode": "rubin",
+      "users": 16,
+      "inventory": {
+        "rubin": 8
+      },
+      "generation_tps_p50": 159.58844435453386,
+      "output_tps": 2466.445826784669,
+      "allocated_processor_watts": 14400.0,
+      "processor_rack_watts": 129600,
+      "completed_requests": 512,
+      "minimum_completed_requests_per_user": 32,
+      "warmup_s": 3.5930116554336435,
+      "measurement_s": 83.15285005361903,
+      "little_law_complete_request_users": 15.864511889162923,
+      "mean_active_users": 15.999999999999995,
+      "memory": {
+        "target": {
+          "reserved_peak_kv_bytes": 238600323072,
+          "maximum_worker_reserved_kv_bytes": 29825040384,
+          "resident_current_kv_bytes": 238389866496
+        }
+      },
+      "source": {
+        "path": "outputs/lpx-study/expert-fixed16/.experiments/c9befa066235384d0eee13b5ea33a2616cc4e1f4f7093bcc5cbaa87e03fe4af9/result.json",
+        "sha256": "a6afc204a395ee37454769574cfce477536cd321c3681c354d5ab140c7680734",
+        "checkpoint_key": "c9befa066235384d0eee13b5ea33a2616cc4e1f4f7093bcc5cbaa87e03fe4af9"
+      }
+    },
+    {
+      "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+      "mode": "rubin",
+      "users": 32,
+      "inventory": {
+        "rubin": 8
+      },
+      "generation_tps_p50": 89.193282647129,
+      "output_tps": 2726.673190849892,
+      "allocated_processor_watts": 14400.0,
+      "processor_rack_watts": 129600,
+      "completed_requests": 640,
+      "minimum_completed_requests_per_user": 20,
+      "warmup_s": 3.5948124237390284,
+      "measurement_s": 94.02190217012826,
+      "little_law_complete_request_users": 31.598602681455283,
+      "mean_active_users": 31.999999999999986,
+      "memory": {
+        "target": {
+          "reserved_peak_kv_bytes": 477200646144,
+          "maximum_worker_reserved_kv_bytes": 59650080768,
+          "resident_current_kv_bytes": 476757024768
+        }
+      },
+      "source": {
+        "path": "outputs/lpx-study/expert-fixed16/.experiments/57b2778a29e2b4b70fe4b5de828fb0d9dab2f2dbf3adff2c0a5963b498959040/result.json",
+        "sha256": "99eb5c668e6309402f57ec50e3fbc7f8d82e8ee4c346ac84bb4795bc3d6b66f3",
+        "checkpoint_key": "57b2778a29e2b4b70fe4b5de828fb0d9dab2f2dbf3adff2c0a5963b498959040"
+      }
+    },
+    {
+      "case": "rubin-pipeline@mb1-adp1-pf0",
+      "mode": "rubin",
+      "users": 2,
+      "inventory": {
+        "rubin": 72
+      },
+      "generation_tps_p50": 1054.3203699670753,
+      "output_tps": 1866.6578933921946,
+      "allocated_processor_watts": 129600.0,
+      "processor_rack_watts": 129600,
+      "completed_requests": 500,
+      "minimum_completed_requests_per_user": 250,
+      "warmup_s": 3.4973044681706202,
+      "measurement_s": 107.14389643007753,
+      "little_law_complete_request_users": 1.999531457796396,
+      "mean_active_users": 1.9999999999999822,
+      "memory": {
+        "target": {
+          "reserved_peak_kv_bytes": 29825040384,
+          "maximum_worker_reserved_kv_bytes": 414236672,
+          "resident_current_kv_bytes": 29810294784
+        }
+      },
+      "source": {
+        "path": "outputs/lpx-study/expert-fixed16/.experiments/a39f00d995671457315e7f8e08c3a44e72fa05d6048fdd175a595b0c3386da1c/result.json",
+        "sha256": "f18c23da6143e1aeb72480e26d0e8df2610d70121e73e58a4050de2a8451c590",
+        "checkpoint_key": "a39f00d995671457315e7f8e08c3a44e72fa05d6048fdd175a595b0c3386da1c"
+      }
+    },
+    {
+      "case": "rubin-pipeline@mb1-adp1-pf0",
+      "mode": "rubin",
+      "users": 16,
+      "inventory": {
+        "rubin": 72
+      },
+      "generation_tps_p50": 153.03548643937626,
+      "output_tps": 2421.0282310352713,
+      "allocated_processor_watts": 129600.0,
+      "processor_rack_watts": 129600,
+      "completed_requests": 512,
+      "minimum_completed_requests_per_user": 32,
+      "warmup_s": 3.4984757276848817,
+      "measurement_s": 85.14687989071894,
+      "little_law_complete_request_users": 15.853528430144927,
+      "mean_active_users": 15.99999999999999,
+      "memory": {
+        "target": {
+          "reserved_peak_kv_bytes": 238600323072,
+          "maximum_worker_reserved_kv_bytes": 3313893376,
+          "resident_current_kv_bytes": 238428610560
+        }
+      },
+      "source": {
+        "path": "outputs/lpx-study/expert-fixed16/.experiments/d0271a1a796451dc8a1ba846abf44e034a5d07d23f7bff275fadaceff02ad3d7/result.json",
+        "sha256": "5af97a23334d78b714f3612bff71adb393d1c396f65bee865e2ac15f0662a467",
+        "checkpoint_key": "d0271a1a796451dc8a1ba846abf44e034a5d07d23f7bff275fadaceff02ad3d7"
+      }
+    },
+    {
+      "case": "rubin-pipeline@mb1-adp1-pf0",
+      "mode": "rubin",
+      "users": 32,
+      "inventory": {
+        "rubin": 72
+      },
+      "generation_tps_p50": 84.9277736924223,
+      "output_tps": 2698.630869147548,
+      "allocated_processor_watts": 129600.0,
+      "processor_rack_watts": 129600,
+      "completed_requests": 640,
+      "minimum_completed_requests_per_user": 20,
+      "warmup_s": 3.4992604007214347,
+      "measurement_s": 95.72076083217613,
+      "little_law_complete_request_users": 31.572414121900785,
+      "mean_active_users": 32.00000000000002,
+      "memory": {
+        "target": {
+          "reserved_peak_kv_bytes": 477200646144,
+          "maximum_worker_reserved_kv_bytes": 6627786752,
+          "resident_current_kv_bytes": 476828835840
+        }
+      },
+      "source": {
+        "path": "outputs/lpx-study/expert-fixed16/.experiments/f1c7ed1263035861d7b3dd507b7f4b25f7ddbbecbf986f36f3f3a234ad704ab9/result.json",
+        "sha256": "4cac056aa1abc75964f1018b4add6eacf1fc9855cc25b40e3265b4a7b135a72c",
+        "checkpoint_key": "f1c7ed1263035861d7b3dd507b7f4b25f7ddbbecbf986f36f3f3a234ad704ab9"
+      }
+    },
+    {
+      "case": "rubin-pipeline@mb1-adp1-pf0",
+      "mode": "rubin",
+      "users": 64,
+      "inventory": {
+        "rubin": 72
+      },
+      "generation_tps_p50": 47.4516077943784,
+      "output_tps": 3045.932537527653,
+      "allocated_processor_watts": 129600.0,
+      "processor_rack_watts": 129600,
+      "completed_requests": 1280,
+      "minimum_completed_requests_per_user": 20,
+      "warmup_s": 3.5171271711574206,
+      "measurement_s": 169.0556155317754,
+      "little_law_complete_request_users": 63.343849107083294,
+      "mean_active_users": 64.00000000000003,
+      "memory": {
+        "target": {
+          "reserved_peak_kv_bytes": 954401292288,
+          "maximum_worker_reserved_kv_bytes": 13255573504,
+          "resident_current_kv_bytes": 953580367872
+        }
+      },
+      "source": {
+        "path": "outputs/lpx-study/expert-fixed16/.experiments/73a253c26bad50fe32fa1ebc0ab197cc2b971121e92160d06fde154356251f87/result.json",
+        "sha256": "27d11d94566bea5f3842d1cece3e76dd7f36849bfccdf1b6d45ef27a06578396",
+        "checkpoint_key": "73a253c26bad50fe32fa1ebc0ab197cc2b971121e92160d06fde154356251f87"
+      }
+    },
+    {
+      "case": "rubin-pipeline@mb1-adp1-pf0",
+      "mode": "rubin",
+      "users": 128,
+      "inventory": {
+        "rubin": 72
+      },
+      "generation_tps_p50": 25.792000079066618,
+      "output_tps": 3299.744822183387,
+      "allocated_processor_watts": 129600.0,
+      "processor_rack_watts": 129600,
+      "completed_requests": 2560,
+      "minimum_completed_requests_per_user": 20,
+      "warmup_s": 3.5207260391207047,
+      "measurement_s": 312.8475247722134,
+      "little_law_complete_request_users": 126.6383963848644,
+      "mean_active_users": 128.00000000000014,
+      "memory": {
+        "target": {
+          "reserved_peak_kv_bytes": 1908802584576,
+          "maximum_worker_reserved_kv_bytes": 26511147008,
+          "resident_current_kv_bytes": 1907236454400
+        }
+      },
+      "source": {
+        "path": "outputs/lpx-study/expert-fixed16/.experiments/5bde5d55416e7fc95cbdb9f1e577278111c6324eb516c7a5827320e105ac61ee/result.json",
+        "sha256": "9f3cb7526c9aa783c38f522bb3af0b0df0727bb157b34cf2b072802fddf22a10",
+        "checkpoint_key": "5bde5d55416e7fc95cbdb9f1e577278111c6324eb516c7a5827320e105ac61ee"
+      }
+    },
+    {
+      "case": "rubin-pipeline@mb1-adp1-pf0",
+      "mode": "rubin",
+      "users": 256,
+      "inventory": {
+        "rubin": 72
+      },
+      "generation_tps_p50": 13.292566565870892,
+      "output_tps": 3407.3248081426427,
+      "allocated_processor_watts": 129600.0,
+      "processor_rack_watts": 129600,
+      "completed_requests": 5120,
+      "minimum_completed_requests_per_user": 20,
+      "warmup_s": 3.561518414935464,
+      "measurement_s": 606.0822247015867,
+      "little_law_complete_request_users": 253.40819327889787,
+      "mean_active_users": 255.99999999999972,
+      "memory": {
+        "target": {
+          "reserved_peak_kv_bytes": 3817605169152,
+          "maximum_worker_reserved_kv_bytes": 53022294016,
+          "resident_current_kv_bytes": 3814476079104
+        }
+      },
+      "source": {
+        "path": "outputs/lpx-study/expert-fixed16/.experiments/d26d1ec949e229b8978c1038aba1f2ded8a80e0c1e0f58d96a3c6543f07d1627/result.json",
+        "sha256": "243fb635981f01aad2cc3995d7f0f82e2728deddd40fa9e1024a31d612b23138",
+        "checkpoint_key": "d26d1ec949e229b8978c1038aba1f2ded8a80e0c1e0f58d96a3c6543f07d1627"
+      }
+    },
+    {
+      "case": "af-tp8@mb1-adp1-pf0",
+      "mode": "af",
+      "users": 1,
+      "inventory": {
+        "rubin": 24,
+        "groq_lp30": 2560
+      },
+      "generation_tps_p50": 1232.7972415816087,
+      "output_tps": 1135.1280107087387,
+      "allocated_processor_watts": 1195200.0,
+      "processor_rack_watts": 1281600,
+      "completed_requests": 500,
+      "minimum_completed_requests_per_user": 500,
+      "warmup_s": 3.524505131106506,
+      "measurement_s": 176.1915820182485,
+      "little_law_complete_request_users": 1.0,
+      "mean_active_users": 1.0,
+      "memory": {
+        "target": {
+          "reserved_peak_kv_bytes": 14912520192,
+          "maximum_worker_reserved_kv_bytes": 1864065024,
+          "resident_current_kv_bytes": 14912483328
+        },
+        "prefill": {
+          "reserved_peak_kv_bytes": 29825040384,
+          "maximum_worker_reserved_kv_bytes": 1864065024,
+          "resident_current_kv_bytes": 29795549184
+        }
+      },
+      "source": {
+        "path": "outputs/lpx-study/expert-fixed16/.experiments/2f5ebc1d359c8beadfb853b38ba2fd3be8fad0a96c6ccafa43adcd903f456131/result.json",
+        "sha256": "dd1bca79a4d5b3e11aea84a72cb0f37924c3b1e3e75060f548b4e823a760f9d1",
+        "checkpoint_key": "2f5ebc1d359c8beadfb853b38ba2fd3be8fad0a96c6ccafa43adcd903f456131"
+      }
+    },
+    {
+      "case": "af-pipeline@mb1-adp1-pf0",
+      "mode": "af",
+      "users": 2,
+      "inventory": {
+        "rubin": 144,
+        "groq_lp30": 2560
+      },
+      "generation_tps_p50": 1209.1594015837975,
+      "output_tps": 2106.0586835349723,
+      "allocated_processor_watts": 1411200.0,
+      "processor_rack_watts": 1411200,
+      "completed_requests": 500,
+      "minimum_completed_requests_per_user": 250,
+      "warmup_s": 3.7985866453839265,
+      "measurement_s": 94.9641154653414,
+      "little_law_complete_request_users": 1.9999488893112187,
+      "mean_active_users": 1.9999999999999976,
+      "memory": {
+        "target": {
+          "reserved_peak_kv_bytes": 29825040384,
+          "maximum_worker_reserved_kv_bytes": 414236672,
+          "resident_current_kv_bytes": 29662801920
+        },
+        "prefill": {
+          "reserved_peak_kv_bytes": 29825040384,
+          "maximum_worker_reserved_kv_bytes": 414236672,
+          "resident_current_kv_bytes": 29795549184
+        }
+      },
+      "source": {
+        "path": "outputs/lpx-study/expert-fixed16/.experiments/99a263bb3701c444dc7bd363ad30b4c5e4a0e473f9c6419d7c7beed9c754e58a/result.json",
+        "sha256": "95e260bf5f8a4371f956865b0c9b7a4056142426c999e348daa45d5e86c6f3bb",
+        "checkpoint_key": "99a263bb3701c444dc7bd363ad30b4c5e4a0e473f9c6419d7c7beed9c754e58a"
+      }
+    },
+    {
+      "case": "af-pipeline@mb1-adp1-pf0",
+      "mode": "af",
+      "users": 4,
+      "inventory": {
+        "rubin": 144,
+        "groq_lp30": 2560
+      },
+      "generation_tps_p50": 1209.1439723229703,
+      "output_tps": 4210.702851451771,
+      "allocated_processor_watts": 1411200.0,
+      "processor_rack_watts": 1411200,
+      "completed_requests": 500,
+      "minimum_completed_requests_per_user": 125,
+      "warmup_s": 3.7990183037501897,
+      "measurement_s": 47.49800854055607,
+      "little_law_complete_request_users": 3.9993863817677733,
+      "mean_active_users": 3.9999999999999702,
+      "memory": {
+        "target": {
+          "reserved_peak_kv_bytes": 59650080768,
+          "maximum_worker_reserved_kv_bytes": 828473344,
+          "resident_current_kv_bytes": 59163439104
+        },
+        "prefill": {
+          "reserved_peak_kv_bytes": 59650080768,
+          "maximum_worker_reserved_kv_bytes": 828473344,
+          "resident_current_kv_bytes": 59591098368
+        }
+      },
+      "source": {
+        "path": "outputs/lpx-study/expert-fixed16/.experiments/19208a6a2fa49ef8481f56c95ac156958a8535cd09e20227a1719f7717a5af2f/result.json",
+        "sha256": "1555713bcfba7f94d56ca15b44f02c30b73f0864ebbb8c33d90a6d97140e0e9e",
+        "checkpoint_key": "19208a6a2fa49ef8481f56c95ac156958a8535cd09e20227a1719f7717a5af2f"
+      }
+    },
+    {
+      "case": "af-pipeline@mb1-adp1-pf0",
+      "mode": "af",
+      "users": 8,
+      "inventory": {
+        "rubin": 144,
+        "groq_lp30": 2560
+      },
+      "generation_tps_p50": 1209.0867027049749,
+      "output_tps": 8417.68684232226,
+      "allocated_processor_watts": 1411200.0,
+      "processor_rack_watts": 1411200,
+      "completed_requests": 792,
+      "minimum_completed_requests_per_user": 99,
+      "warmup_s": 3.799167795168773,
+      "measurement_s": 37.98228729447427,
+      "little_law_complete_request_users": 7.925921243510799,
+      "mean_active_users": 8.000000000000039,
+      "memory": {
+        "target": {
+          "reserved_peak_kv_bytes": 119300161536,
+          "maximum_worker_reserved_kv_bytes": 1656946688,
+          "resident_current_kv_bytes": 119289950208
+        },
+        "prefill": {
+          "reserved_peak_kv_bytes": 119300161536,
+          "maximum_worker_reserved_kv_bytes": 1656946688,
+          "resident_current_kv_bytes": 119182196736
+        }
+      },
+      "source": {
+        "path": "outputs/lpx-study/expert-fixed16/.experiments/f1e118fbd0b96917c50fd94ee590c754b42b486d05337af1a76b11d595275865/result.json",
+        "sha256": "540358ee2b04d40d578127ffe7a14f9660818c01bc253b460699568544d135fc",
+        "checkpoint_key": "f1e118fbd0b96917c50fd94ee590c754b42b486d05337af1a76b11d595275865"
+      }
+    },
+    {
+      "case": "af-pipeline@mb1-adp1-pf0",
+      "mode": "af",
+      "users": 16,
+      "inventory": {
+        "rubin": 144,
+        "groq_lp30": 2560
+      },
+      "generation_tps_p50": 888.020744942449,
+      "output_tps": 12745.177673131508,
+      "allocated_processor_watts": 1411200.0,
+      "processor_rack_watts": 1411200,
+      "completed_requests": 1203,
+      "minimum_completed_requests_per_user": 75,
+      "warmup_s": 3.7999731825307874,
+      "measurement_s": 37.98228729447427,
+      "little_law_complete_request_users": 15.895744953701296,
+      "mean_active_users": 15.999999999999986,
+      "memory": {
+        "target": {
+          "reserved_peak_kv_bytes": 238600323072,
+          "maximum_worker_reserved_kv_bytes": 3313893376,
+          "resident_current_kv_bytes": 238323511296
+        },
+        "prefill": {
+          "reserved_peak_kv_bytes": 238600323072,
+          "maximum_worker_reserved_kv_bytes": 3313893376,
+          "resident_current_kv_bytes": 238364393472
+        }
+      },
+      "source": {
+        "path": "outputs/lpx-study/expert-fixed16/.experiments/3f36692bbb0895bcff3762eefcca97fe0a40cee9715ee93738694bc1029b0d1a/result.json",
+        "sha256": "8c0cb31d38e592d3d671f0ce28c7bb997eebbd4987dbb16024c91d39656b5ff3",
+        "checkpoint_key": "3f36692bbb0895bcff3762eefcca97fe0a40cee9715ee93738694bc1029b0d1a"
+      }
+    },
+    {
+      "case": "af-pipeline@mb1-adp1-pf0",
+      "mode": "af",
+      "users": 32,
+      "inventory": {
+        "rubin": 144,
+        "groq_lp30": 2560
+      },
+      "generation_tps_p50": 398.8794115340795,
+      "output_tps": 12122.203079301758,
+      "allocated_processor_watts": 1411200.0,
+      "processor_rack_watts": 1411200,
+      "completed_requests": 1134,
+      "minimum_completed_requests_per_user": 35,
+      "warmup_s": 3.807072704211382,
+      "measurement_s": 37.98228729447427,
+      "little_law_complete_request_users": 31.49231636720781,
+      "mean_active_users": 31.999999999999932,
+      "memory": {
+        "target": {
+          "reserved_peak_kv_bytes": 477200646144,
+          "maximum_worker_reserved_kv_bytes": 6627786752,
+          "resident_current_kv_bytes": 476538163200
+        },
+        "prefill": {
+          "reserved_peak_kv_bytes": 477200646144,
+          "maximum_worker_reserved_kv_bytes": 6627786752,
+          "resident_current_kv_bytes": 476728786944
+        }
+      },
+      "source": {
+        "path": "outputs/lpx-study/expert-fixed16/.experiments/3a3d7c913cfb0c5cca4bc8d113a094d3b4aa707c3f3218bfc2c6fcdc053030d1/result.json",
+        "sha256": "22f794b5fba0d6f001b393285c354612178eb99956a8b9745c4f1444b034bf6b",
+        "checkpoint_key": "3a3d7c913cfb0c5cca4bc8d113a094d3b4aa707c3f3218bfc2c6fcdc053030d1"
+      }
+    },
+    {
+      "case": "pd-tp16@mb1-adp1-pf0",
+      "mode": "pd",
+      "users": 1,
+      "inventory": {
+        "groq_lp30": 3136,
+        "rubin": 16
+      },
+      "generation_tps_p50": 4575.552109896485,
+      "output_tps": 3450.285708601871,
+      "allocated_processor_watts": 1440000.0,
+      "processor_rack_watts": 1627200,
+      "completed_requests": 500,
+      "minimum_completed_requests_per_user": 500,
+      "warmup_s": 1.1594248298367957,
+      "measurement_s": 57.96621407362935,
+      "little_law_complete_request_users": 1.0,
+      "mean_active_users": 1.0,
+      "memory": {
+        "target": {
+          "reserved_peak_kv_bytes": 29825040384,
+          "maximum_worker_reserved_kv_bytes": 103526400,
+          "resident_current_kv_bytes": 29824966656
+        },
+        "prefill": {
+          "reserved_peak_kv_bytes": 29825040384,
+          "maximum_worker_reserved_kv_bytes": 1864065024,
+          "resident_current_kv_bytes": 29795549184
+        }
+      },
+      "source": {
+        "path": "outputs/lpx-study/expert-fixed16/.experiments/295e48b1d334b6c3ebf9f3dd21337bba367964543b5ac6217ae840f83a1624fa/result.json",
+        "sha256": "0dfbc2fce193cec650ff161ea32967605ef8d925063d47de436c4951105a3165",
+        "checkpoint_key": "295e48b1d334b6c3ebf9f3dd21337bba367964543b5ac6217ae840f83a1624fa"
+      }
+    },
+    {
+      "case": "pd-tp16@mb1-adp1-pf0",
+      "mode": "pd",
+      "users": 2,
+      "inventory": {
+        "groq_lp30": 3136,
+        "rubin": 16
+      },
+      "generation_tps_p50": 4575.202736357236,
+      "output_tps": 6894.67006345846,
+      "allocated_processor_watts": 1440000.0,
+      "processor_rack_watts": 1627200,
+      "completed_requests": 500,
+      "minimum_completed_requests_per_user": 250,
+      "warmup_s": 1.1595571963405324,
+      "measurement_s": 29.00791454256729,
+      "little_law_complete_request_users": 1.9992016039623763,
+      "mean_active_users": 1.999999999999991,
+      "memory": {
+        "target": {
+          "reserved_peak_kv_bytes": 59650080768,
+          "maximum_worker_reserved_kv_bytes": 207052800,
+          "resident_current_kv_bytes": 59325603840
+        },
+        "prefill": {
+          "reserved_peak_kv_bytes": 59650080768,
+          "maximum_worker_reserved_kv_bytes": 3728130048,
+          "resident_current_kv_bytes": 59591098368
+        }
+      },
+      "source": {
+        "path": "outputs/lpx-study/expert-fixed16/.experiments/a6bfe03dc570aadd7f3fab5f33b3139473fd349e6c8dcc9c226f86eb84c26b8f/result.json",
+        "sha256": "4cc484b5e18c470789e6cfa6ad4911fb49ef777168fab7f1e12d98d41bc9edab",
+        "checkpoint_key": "a6bfe03dc570aadd7f3fab5f33b3139473fd349e6c8dcc9c226f86eb84c26b8f"
+      }
+    },
+    {
+      "case": "pd-compact@mb1-adp1-pf0",
+      "mode": "pd",
+      "users": 2,
+      "inventory": {
+        "groq_lp30": 2848,
+        "rubin": 16
+      },
+      "generation_tps_p50": 4239.789137709819,
+      "output_tps": 6507.688924032766,
+      "allocated_processor_watts": 1310400.0,
+      "processor_rack_watts": 1512000,
+      "completed_requests": 500,
+      "minimum_completed_requests_per_user": 250,
+      "warmup_s": 1.1753562942519462,
+      "measurement_s": 30.73287649958251,
+      "little_law_complete_request_users": 1.9992471944998886,
+      "mean_active_users": 1.9999999999999736,
+      "memory": {
+        "target": {
+          "reserved_peak_kv_bytes": 59650080768,
+          "maximum_worker_reserved_kv_bytes": 207118336,
+          "resident_current_kv_bytes": 59325603840
+        },
+        "prefill": {
+          "reserved_peak_kv_bytes": 59650080768,
+          "maximum_worker_reserved_kv_bytes": 3728130048,
+          "resident_current_kv_bytes": 59591098368
+        }
+      },
+      "source": {
+        "path": "outputs/lpx-study/expert-fixed16/.experiments/362bb8e64d2989c5a8c8c261ad0901706fc66ba87a229152754879a211441090/result.json",
+        "sha256": "08ff83bd81b39d0f2ad1fa4468787b9eb41c2976fb4613a86e579838f2787910",
+        "checkpoint_key": "362bb8e64d2989c5a8c8c261ad0901706fc66ba87a229152754879a211441090"
+      }
+    },
+    {
+      "case": "draft-tp8@mb1-adp1-pf0",
+      "mode": "draft",
+      "users": 1,
+      "inventory": {
+        "rubin": 8,
+        "groq_lp30": 64
+      },
+      "generation_tps_p50": 3392.0288049572637,
+      "output_tps": 2400.5848092910765,
+      "allocated_processor_watts": 43200.0,
+      "processor_rack_watts": 244800,
+      "completed_requests": 500,
+      "minimum_completed_requests_per_user": 500,
+      "warmup_s": 1.6756113066940233,
+      "measurement_s": 83.31303240190984,
+      "little_law_complete_request_users": 1.0,
+      "mean_active_users": 1.0,
+      "memory": {
+        "target": {
+          "reserved_peak_kv_bytes": 14912667648,
+          "maximum_worker_reserved_kv_bytes": 1864083456,
+          "resident_current_kv_bytes": 14912483328
+        },
+        "draft": {
+          "reserved_peak_kv_bytes": 3313926144,
+          "maximum_worker_reserved_kv_bytes": 103527424,
+          "resident_current_kv_bytes": 3313885184
+        }
+      },
+      "source": {
+        "path": "outputs/lpx-study/expert-fixed16/.experiments/a950ee8fcd2e2bd062d8faa773caa4009aede14ea2e5d4ce700f849af8a9108b/result.json",
+        "sha256": "cdff4a89bd41b4c7b25e562257b82c454815be2a4f4c78581e587f605b949a4c",
+        "checkpoint_key": "a950ee8fcd2e2bd062d8faa773caa4009aede14ea2e5d4ce700f849af8a9108b"
+      }
+    },
+    {
+      "case": "draft-tp8@mb1-adp1-pf0",
+      "mode": "draft",
+      "users": 2,
+      "inventory": {
+        "rubin": 8,
+        "groq_lp30": 64
+      },
+      "generation_tps_p50": 1952.1819102130207,
+      "output_tps": 3155.8370149666753,
+      "allocated_processor_watts": 43200.0,
+      "processor_rack_watts": 244800,
+      "completed_requests": 500,
+      "minimum_completed_requests_per_user": 250,
+      "warmup_s": 1.675798141251128,
+      "measurement_s": 63.419941857204385,
+      "little_law_complete_request_users": 1.9983544075802533,
+      "mean_active_users": 1.9999999999999964,
+      "memory": {
+        "target": {
+          "reserved_peak_kv_bytes": 29825335296,
+          "maximum_worker_reserved_kv_bytes": 3728166912,
+          "resident_current_kv_bytes": 29815603200
+        },
+        "draft": {
+          "reserved_peak_kv_bytes": 6627852288,
+          "maximum_worker_reserved_kv_bytes": 207054848,
+          "resident_current_kv_bytes": 6625689600
+        }
+      },
+      "source": {
+        "path": "outputs/lpx-study/expert-fixed16/.experiments/44bb1a7777b45acb74b13dbe3677efbb57a76ff44d025678d2d301d903bc1fb8/result.json",
+        "sha256": "899e60b38361eb39f801846d233512fae287023bfe93f54d12a7944b0d12f75d",
+        "checkpoint_key": "44bb1a7777b45acb74b13dbe3677efbb57a76ff44d025678d2d301d903bc1fb8"
+      }
+    },
+    {
+      "case": "draft-lpx256@mb1-adp1-pf0",
+      "mode": "draft",
+      "users": 1,
+      "inventory": {
+        "rubin": 8,
+        "groq_lp30": 256
+      },
+      "generation_tps_p50": 3444.2350029955664,
+      "output_tps": 2426.893546510865,
+      "allocated_processor_watts": 129600.0,
+      "processor_rack_watts": 244800,
+      "completed_requests": 500,
+      "minimum_completed_requests_per_user": 500,
+      "warmup_s": 1.6567300435438117,
+      "measurement_s": 82.40987755212387,
+      "little_law_complete_request_users": 1.0,
+      "mean_active_users": 1.0,
+      "memory": {
+        "target": {
+          "reserved_peak_kv_bytes": 14912667648,
+          "maximum_worker_reserved_kv_bytes": 1864083456,
+          "resident_current_kv_bytes": 14912483328
+        },
+        "draft": {
+          "reserved_peak_kv_bytes": 1656963072,
+          "maximum_worker_reserved_kv_bytes": 103527424,
+          "resident_current_kv_bytes": 1656942592
+        }
+      },
+      "source": {
+        "path": "outputs/lpx-study/expert-fixed16/.experiments/f03d34b41975925b02efb7f284fe13beb5921435f61974735c5d24b5342db91f/result.json",
+        "sha256": "84b142acaf17c97a35bbd989d2a0bdf5da7ee5ad336fa8d7ce94f16fcbf64872",
+        "checkpoint_key": "f03d34b41975925b02efb7f284fe13beb5921435f61974735c5d24b5342db91f"
+      }
+    },
+    {
+      "case": "draft-pipeline-lpx256@mb1-adp1-pf0",
+      "mode": "draft",
+      "users": 2,
+      "inventory": {
+        "rubin": 72,
+        "groq_lp30": 256
+      },
+      "generation_tps_p50": 2353.760499029003,
+      "output_tps": 3641.3622310358155,
+      "allocated_processor_watts": 244800.0,
+      "processor_rack_watts": 244800,
+      "completed_requests": 500,
+      "minimum_completed_requests_per_user": 250,
+      "warmup_s": 1.6730925444450064,
+      "measurement_s": 54.9321894688572,
+      "little_law_complete_request_users": 1.9989751791880197,
+      "mean_active_users": 2.000000000000001,
+      "memory": {
+        "target": {
+          "reserved_peak_kv_bytes": 29825335296,
+          "maximum_worker_reserved_kv_bytes": 414240768,
+          "resident_current_kv_bytes": 29811400704
+        },
+        "draft": {
+          "reserved_peak_kv_bytes": 3313926144,
+          "maximum_worker_reserved_kv_bytes": 103527424,
+          "resident_current_kv_bytes": 3312377856
+        }
+      },
+      "source": {
+        "path": "outputs/lpx-study/expert-fixed16/.experiments/8df8362ca4d4a1d18720f08721217a2856ba6ab97124056a1a3a95f0a12eeb9a/result.json",
+        "sha256": "334f1cab17772d826efc9684b82f5d6dd447dce1424ce575442c990e360c793d",
+        "checkpoint_key": "8df8362ca4d4a1d18720f08721217a2856ba6ab97124056a1a3a95f0a12eeb9a"
+      }
+    },
+    {
+      "case": "draft-pipeline-lpx256@mb1-adp1-pf0",
+      "mode": "draft",
+      "users": 4,
+      "inventory": {
+        "rubin": 72,
+        "groq_lp30": 256
+      },
+      "generation_tps_p50": 1366.086433278706,
+      "output_tps": 4709.365634597555,
+      "allocated_processor_watts": 244800.0,
+      "processor_rack_watts": 244800,
+      "completed_requests": 502,
+      "minimum_completed_requests_per_user": 125,
+      "warmup_s": 1.6732420453635626,
+      "measurement_s": 42.69449764589837,
+      "little_law_complete_request_users": 3.9965867466442875,
+      "mean_active_users": 3.9999999999999987,
+      "memory": {
+        "target": {
+          "reserved_peak_kv_bytes": 59650670592,
+          "maximum_worker_reserved_kv_bytes": 828481536,
+          "resident_current_kv_bytes": 59615539200
+        },
+        "draft": {
+          "reserved_peak_kv_bytes": 6627852288,
+          "maximum_worker_reserved_kv_bytes": 103527424,
+          "resident_current_kv_bytes": 6623948800
+        }
+      },
+      "source": {
+        "path": "outputs/lpx-study/expert-fixed16/.experiments/5f518413bdf597f9c09cb160cf8e341beabc9aa38d17a4bbcfc62474fb4778aa/result.json",
+        "sha256": "26ae79ab13f3d61b205ce9eec008cf37e9d5325ff53b3faef7fd39568ca3f4f3",
+        "checkpoint_key": "5f518413bdf597f9c09cb160cf8e341beabc9aa38d17a4bbcfc62474fb4778aa"
+      }
+    },
+    {
+      "case": "draft-pipeline-lpx256@mb1-adp1-pf0",
+      "mode": "draft",
+      "users": 8,
+      "inventory": {
+        "rubin": 72,
+        "groq_lp30": 256
+      },
+      "generation_tps_p50": 647.8674915972806,
+      "output_tps": 4878.149221030394,
+      "allocated_processor_watts": 244800.0,
+      "processor_rack_watts": 244800,
+      "completed_requests": 506,
+      "minimum_completed_requests_per_user": 63,
+      "warmup_s": 1.6735969165244613,
+      "measurement_s": 41.85316823024014,
+      "little_law_complete_request_users": 7.936589152454462,
+      "mean_active_users": 7.99999999999999,
+      "memory": {
+        "target": {
+          "reserved_peak_kv_bytes": 119301341184,
+          "maximum_worker_reserved_kv_bytes": 1656963072,
+          "resident_current_kv_bytes": 119262818304
+        },
+        "draft": {
+          "reserved_peak_kv_bytes": 13255704576,
+          "maximum_worker_reserved_kv_bytes": 103527424,
+          "resident_current_kv_bytes": 13251424256
+        }
+      },
+      "source": {
+        "path": "outputs/lpx-study/expert-fixed16/.experiments/5aeca09d38daa9c7fe92f4ae04dfef89fea174b544bb45267ddaf6393225970d/result.json",
+        "sha256": "1b173e6892f78bc5ff30f335637ec6b3209cee23c69a6f792008b9ee17f3ac6c",
+        "checkpoint_key": "5aeca09d38daa9c7fe92f4ae04dfef89fea174b544bb45267ddaf6393225970d"
+      }
+    },
+    {
+      "case": "draft-pipeline-lpx256@mb1-adp1-pf0",
+      "mode": "draft",
+      "users": 16,
+      "inventory": {
+        "rubin": 72,
+        "groq_lp30": 256
+      },
+      "generation_tps_p50": 350.7895024309422,
+      "output_tps": 5416.807393440274,
+      "allocated_processor_watts": 244800.0,
+      "processor_rack_watts": 244800,
+      "completed_requests": 512,
+      "minimum_completed_requests_per_user": 32,
+      "warmup_s": 1.6744757324416686,
+      "measurement_s": 38.227683755335875,
+      "little_law_complete_request_users": 15.77628175568934,
+      "mean_active_users": 16.00000000000001,
+      "memory": {
+        "target": {
+          "reserved_peak_kv_bytes": 238602682368,
+          "maximum_worker_reserved_kv_bytes": 3313926144,
+          "resident_current_kv_bytes": 238464368640
+        },
+        "draft": {
+          "reserved_peak_kv_bytes": 26511409152,
+          "maximum_worker_reserved_kv_bytes": 207054848,
+          "resident_current_kv_bytes": 26496040960
+        }
+      },
+      "source": {
+        "path": "outputs/lpx-study/expert-fixed16/.experiments/19a3988bb2f7b1716fc4c5c4513a79c7115b170a34571c8c27c87571d2ea7e98/result.json",
+        "sha256": "3df58c4694a8c77a4ec959273a5c12154883ca42d2efc67e82e6f46fc2892e80",
+        "checkpoint_key": "19a3988bb2f7b1716fc4c5c4513a79c7115b170a34571c8c27c87571d2ea7e98"
+      }
+    }
+  ],
+  "power_scopes": {
+    "allocated_processors": {
+      "normalization_tps_per_mw": 189352.30492013137,
+      "frontiers": {
+        "rubin": [
+          {
+            "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+            "users": 32,
+            "generation_tps_p50": 89.193282647129,
+            "output_tps": 2726.673190849892,
+            "processor_watts": 14400.0,
+            "normalized_efficiency": 1.0
+          },
+          {
+            "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+            "users": 16,
+            "generation_tps_p50": 159.58844435453386,
+            "output_tps": 2466.445826784669,
+            "processor_watts": 14400.0,
+            "normalized_efficiency": 0.9045623197754362
+          },
+          {
+            "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+            "users": 8,
+            "generation_tps_p50": 324.8275979045354,
+            "output_tps": 2433.8343452084077,
+            "processor_watts": 14400.0,
+            "normalized_efficiency": 0.8926021473258381
+          },
+          {
+            "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+            "users": 4,
+            "generation_tps_p50": 616.7400498137582,
+            "output_tps": 2171.6606309886456,
+            "processor_watts": 14400.0,
+            "normalized_efficiency": 0.7964506484591756
+          },
+          {
+            "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+            "users": 2,
+            "generation_tps_p50": 1361.7493558197873,
+            "output_tps": 1977.0079595912716,
+            "processor_watts": 14400.0,
+            "normalized_efficiency": 0.7250623089799212
+          },
+          {
+            "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+            "users": 1,
+            "generation_tps_p50": 1478.1371115656843,
+            "output_tps": 1114.0072509210718,
+            "processor_watts": 14400.0,
+            "normalized_efficiency": 0.4085591389020995
+          }
+        ],
+        "draft": [
+          {
+            "case": "draft-tp8@mb1-adp1-pf0",
+            "users": 2,
+            "generation_tps_p50": 1952.1819102130207,
+            "output_tps": 3155.8370149666753,
+            "processor_watts": 43200.0,
+            "normalized_efficiency": 0.38579822297210165
+          },
+          {
+            "case": "draft-tp8@mb1-adp1-pf0",
+            "users": 1,
+            "generation_tps_p50": 3392.0288049572637,
+            "output_tps": 2400.5848092910765,
+            "processor_watts": 43200.0,
+            "normalized_efficiency": 0.2934693233921964
+          },
+          {
+            "case": "draft-lpx256@mb1-adp1-pf0",
+            "users": 1,
+            "generation_tps_p50": 3444.2350029955664,
+            "output_tps": 2426.893546510865,
+            "processor_watts": 129600.0,
+            "normalized_efficiency": 0.09889518091354285
+          }
+        ],
+        "af": [
+          {
+            "case": "af-pipeline@mb1-adp1-pf0",
+            "users": 16,
+            "generation_tps_p50": 888.020744942449,
+            "output_tps": 12745.177673131508,
+            "processor_watts": 1411200.0,
+            "normalized_efficiency": 0.047696524040992325
+          },
+          {
+            "case": "af-pipeline@mb1-adp1-pf0",
+            "users": 8,
+            "generation_tps_p50": 1209.0867027049749,
+            "output_tps": 8417.68684232226,
+            "processor_watts": 1411200.0,
+            "normalized_efficiency": 0.03150167170213491
+          },
+          {
+            "case": "af-pipeline@mb1-adp1-pf0",
+            "users": 4,
+            "generation_tps_p50": 1209.1439723229703,
+            "output_tps": 4210.702851451771,
+            "processor_watts": 1411200.0,
+            "normalized_efficiency": 0.015757794432880484
+          },
+          {
+            "case": "af-pipeline@mb1-adp1-pf0",
+            "users": 2,
+            "generation_tps_p50": 1209.1594015837975,
+            "output_tps": 2106.0586835349723,
+            "processor_watts": 1411200.0,
+            "normalized_efficiency": 0.00788154400097
+          },
+          {
+            "case": "af-tp8@mb1-adp1-pf0",
+            "users": 1,
+            "generation_tps_p50": 1232.7972415816087,
+            "output_tps": 1135.1280107087387,
+            "processor_watts": 1195200.0,
+            "normalized_efficiency": 0.005015724340845389
+          }
+        ],
+        "pd": [
+          {
+            "case": "pd-compact@mb1-adp1-pf0",
+            "users": 2,
+            "generation_tps_p50": 4239.789137709819,
+            "output_tps": 6507.688924032766,
+            "processor_watts": 1310400.0,
+            "normalized_efficiency": 0.026227222734005344
+          },
+          {
+            "case": "pd-tp16@mb1-adp1-pf0",
+            "users": 2,
+            "generation_tps_p50": 4575.202736357236,
+            "output_tps": 6894.67006345846,
+            "processor_watts": 1440000.0,
+            "normalized_efficiency": 0.02528601552468935
+          },
+          {
+            "case": "pd-tp16@mb1-adp1-pf0",
+            "users": 1,
+            "generation_tps_p50": 4575.552109896485,
+            "output_tps": 3450.285708601871,
+            "processor_watts": 1440000.0,
+            "normalized_efficiency": 0.0126538292897743
+          }
+        ]
+      },
+      "joint_frontier": [
+        {
+          "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+          "users": 32,
+          "generation_tps_p50": 89.193282647129,
+          "output_tps": 2726.673190849892,
+          "processor_watts": 14400.0,
+          "normalized_efficiency": 1.0
+        },
+        {
+          "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+          "users": 16,
+          "generation_tps_p50": 159.58844435453386,
+          "output_tps": 2466.445826784669,
+          "processor_watts": 14400.0,
+          "normalized_efficiency": 0.9045623197754362
+        },
+        {
+          "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+          "users": 8,
+          "generation_tps_p50": 324.8275979045354,
+          "output_tps": 2433.8343452084077,
+          "processor_watts": 14400.0,
+          "normalized_efficiency": 0.8926021473258381
+        },
+        {
+          "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+          "users": 4,
+          "generation_tps_p50": 616.7400498137582,
+          "output_tps": 2171.6606309886456,
+          "processor_watts": 14400.0,
+          "normalized_efficiency": 0.7964506484591756
+        },
+        {
+          "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+          "users": 2,
+          "generation_tps_p50": 1361.7493558197873,
+          "output_tps": 1977.0079595912716,
+          "processor_watts": 14400.0,
+          "normalized_efficiency": 0.7250623089799212
+        },
+        {
+          "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+          "users": 1,
+          "generation_tps_p50": 1478.1371115656843,
+          "output_tps": 1114.0072509210718,
+          "processor_watts": 14400.0,
+          "normalized_efficiency": 0.4085591389020995
+        },
+        {
+          "case": "draft-tp8@mb1-adp1-pf0",
+          "users": 2,
+          "generation_tps_p50": 1952.1819102130207,
+          "output_tps": 3155.8370149666753,
+          "processor_watts": 43200.0,
+          "normalized_efficiency": 0.38579822297210165
+        },
+        {
+          "case": "draft-tp8@mb1-adp1-pf0",
+          "users": 1,
+          "generation_tps_p50": 3392.0288049572637,
+          "output_tps": 2400.5848092910765,
+          "processor_watts": 43200.0,
+          "normalized_efficiency": 0.2934693233921964
+        },
+        {
+          "case": "draft-lpx256@mb1-adp1-pf0",
+          "users": 1,
+          "generation_tps_p50": 3444.2350029955664,
+          "output_tps": 2426.893546510865,
+          "processor_watts": 129600.0,
+          "normalized_efficiency": 0.09889518091354285
+        },
+        {
+          "case": "pd-compact@mb1-adp1-pf0",
+          "users": 2,
+          "generation_tps_p50": 4239.789137709819,
+          "output_tps": 6507.688924032766,
+          "processor_watts": 1310400.0,
+          "normalized_efficiency": 0.026227222734005344
+        },
+        {
+          "case": "pd-tp16@mb1-adp1-pf0",
+          "users": 2,
+          "generation_tps_p50": 4575.202736357236,
+          "output_tps": 6894.67006345846,
+          "processor_watts": 1440000.0,
+          "normalized_efficiency": 0.02528601552468935
+        },
+        {
+          "case": "pd-tp16@mb1-adp1-pf0",
+          "users": 1,
+          "generation_tps_p50": 4575.552109896485,
+          "output_tps": 3450.285708601871,
+          "processor_watts": 1440000.0,
+          "normalized_efficiency": 0.0126538292897743
+        }
+      ],
+      "comparisons": {
+        "minimum_generation_tps": [
+          {
+            "threshold": 100,
+            "objective": "tokens_per_s_per_mw",
+            "modes": {
+              "rubin": {
+                "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+                "users": 16,
+                "value": 171280.96019337978,
+                "relative_to_rubin": 1.0
+              },
+              "af": {
+                "case": "af-pipeline@mb1-adp1-pf0",
+                "users": 16,
+                "value": 9031.446763840355,
+                "relative_to_rubin": 0.052728842444855886
+              },
+              "pd": {
+                "case": "pd-compact@mb1-adp1-pf0",
+                "users": 2,
+                "value": 4966.185076337581,
+                "relative_to_rubin": 0.028994379005878146
+              },
+              "draft": {
+                "case": "draft-tp8@mb1-adp1-pf0",
+                "users": 2,
+                "value": 73051.78275385822,
+                "relative_to_rubin": 0.42650264612821664
+              }
+            }
+          },
+          {
+            "threshold": 250,
+            "objective": "tokens_per_s_per_mw",
+            "modes": {
+              "rubin": {
+                "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+                "users": 8,
+                "value": 169016.2739728061,
+                "relative_to_rubin": 1.0
+              },
+              "af": {
+                "case": "af-pipeline@mb1-adp1-pf0",
+                "users": 16,
+                "value": 9031.446763840355,
+                "relative_to_rubin": 0.05343536779951421
+              },
+              "pd": {
+                "case": "pd-compact@mb1-adp1-pf0",
+                "users": 2,
+                "value": 4966.185076337581,
+                "relative_to_rubin": 0.029382881065858877
+              },
+              "draft": {
+                "case": "draft-tp8@mb1-adp1-pf0",
+                "users": 2,
+                "value": 73051.78275385822,
+                "relative_to_rubin": 0.432217448868929
+              }
+            }
+          },
+          {
+            "threshold": 500,
+            "objective": "tokens_per_s_per_mw",
+            "modes": {
+              "rubin": {
+                "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+                "users": 4,
+                "value": 150809.76604087817,
+                "relative_to_rubin": 1.0
+              },
+              "af": {
+                "case": "af-pipeline@mb1-adp1-pf0",
+                "users": 16,
+                "value": 9031.446763840355,
+                "relative_to_rubin": 0.059886352196795466
+              },
+              "pd": {
+                "case": "pd-compact@mb1-adp1-pf0",
+                "users": 2,
+                "value": 4966.185076337581,
+                "relative_to_rubin": 0.03293012917340816
+              },
+              "draft": {
+                "case": "draft-tp8@mb1-adp1-pf0",
+                "users": 2,
+                "value": 73051.78275385822,
+                "relative_to_rubin": 0.48439689730741287
+              }
+            }
+          },
+          {
+            "threshold": 1000,
+            "objective": "tokens_per_s_per_mw",
+            "modes": {
+              "rubin": {
+                "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+                "users": 2,
+                "value": 137292.21941606054,
+                "relative_to_rubin": 1.0
+              },
+              "af": {
+                "case": "af-pipeline@mb1-adp1-pf0",
+                "users": 8,
+                "value": 5964.914145636522,
+                "relative_to_rubin": 0.043446847687413394
+              },
+              "pd": {
+                "case": "pd-compact@mb1-adp1-pf0",
+                "users": 2,
+                "value": 4966.185076337581,
+                "relative_to_rubin": 0.036172370855828945
+              },
+              "draft": {
+                "case": "draft-tp8@mb1-adp1-pf0",
+                "users": 2,
+                "value": 73051.78275385822,
+                "relative_to_rubin": 0.5320897503483185
+              }
+            }
+          },
+          {
+            "threshold": 2000,
+            "objective": "tokens_per_s_per_mw",
+            "modes": {
+              "rubin": null,
+              "af": null,
+              "pd": {
+                "case": "pd-compact@mb1-adp1-pf0",
+                "users": 2,
+                "value": 4966.185076337581,
+                "relative_to_rubin": null
+              },
+              "draft": {
+                "case": "draft-tp8@mb1-adp1-pf0",
+                "users": 1,
+                "value": 55569.09280766381,
+                "relative_to_rubin": null
+              }
+            }
+          },
+          {
+            "threshold": 4000,
+            "objective": "tokens_per_s_per_mw",
+            "modes": {
+              "rubin": null,
+              "af": null,
+              "pd": {
+                "case": "pd-compact@mb1-adp1-pf0",
+                "users": 2,
+                "value": 4966.185076337581,
+                "relative_to_rubin": null
+              },
+              "draft": null
+            }
+          }
+        ],
+        "minimum_normalized_efficiency": [
+          {
+            "threshold": 0.1,
+            "objective": "tokens_per_s_per_user",
+            "modes": {
+              "rubin": {
+                "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+                "users": 1,
+                "value": 1478.1371115656843,
+                "relative_to_rubin": 1.0
+              },
+              "af": null,
+              "pd": null,
+              "draft": {
+                "case": "draft-tp8@mb1-adp1-pf0",
+                "users": 1,
+                "value": 3392.0288049572637,
+                "relative_to_rubin": 2.2947998385375303
+              }
+            }
+          },
+          {
+            "threshold": 0.25,
+            "objective": "tokens_per_s_per_user",
+            "modes": {
+              "rubin": {
+                "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+                "users": 1,
+                "value": 1478.1371115656843,
+                "relative_to_rubin": 1.0
+              },
+              "af": null,
+              "pd": null,
+              "draft": {
+                "case": "draft-tp8@mb1-adp1-pf0",
+                "users": 1,
+                "value": 3392.0288049572637,
+                "relative_to_rubin": 2.2947998385375303
+              }
+            }
+          },
+          {
+            "threshold": 0.5,
+            "objective": "tokens_per_s_per_user",
+            "modes": {
+              "rubin": {
+                "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+                "users": 2,
+                "value": 1361.7493558197873,
+                "relative_to_rubin": 1.0
+              },
+              "af": null,
+              "pd": null,
+              "draft": null
+            }
+          },
+          {
+            "threshold": 0.75,
+            "objective": "tokens_per_s_per_user",
+            "modes": {
+              "rubin": {
+                "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+                "users": 4,
+                "value": 616.7400498137582,
+                "relative_to_rubin": 1.0
+              },
+              "af": null,
+              "pd": null,
+              "draft": null
+            }
+          },
+          {
+            "threshold": 1.0,
+            "objective": "tokens_per_s_per_user",
+            "modes": {
+              "rubin": {
+                "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+                "users": 32,
+                "value": 89.193282647129,
+                "relative_to_rubin": 1.0
+              },
+              "af": null,
+              "pd": null,
+              "draft": null
+            }
+          }
+        ]
+      }
+    },
+    "processor_racks": {
+      "normalization_tps_per_mw": 26291.08648258212,
+      "frontiers": {
+        "rubin": [
+          {
+            "case": "rubin-pipeline@mb1-adp1-pf0",
+            "users": 256,
+            "generation_tps_p50": 13.292566565870892,
+            "output_tps": 3407.3248081426427,
+            "processor_watts": 129600,
+            "normalized_efficiency": 1.0
+          },
+          {
+            "case": "rubin-pipeline@mb1-adp1-pf0",
+            "users": 128,
+            "generation_tps_p50": 25.792000079066618,
+            "output_tps": 3299.744822183387,
+            "processor_watts": 129600,
+            "normalized_efficiency": 0.9684268474487179
+          },
+          {
+            "case": "rubin-pipeline@mb1-adp1-pf0",
+            "users": 64,
+            "generation_tps_p50": 47.4516077943784,
+            "output_tps": 3045.932537527653,
+            "processor_watts": 129600,
+            "normalized_efficiency": 0.8939366538372411
+          },
+          {
+            "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+            "users": 32,
+            "generation_tps_p50": 89.193282647129,
+            "output_tps": 2726.673190849892,
+            "processor_watts": 129600,
+            "normalized_efficiency": 0.8002387046676132
+          },
+          {
+            "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+            "users": 16,
+            "generation_tps_p50": 159.58844435453386,
+            "output_tps": 2466.445826784669,
+            "processor_watts": 129600,
+            "normalized_efficiency": 0.7238657790682264
+          },
+          {
+            "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+            "users": 8,
+            "generation_tps_p50": 324.8275979045354,
+            "output_tps": 2433.8343452084077,
+            "processor_watts": 129600,
+            "normalized_efficiency": 0.7142947861595585
+          },
+          {
+            "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+            "users": 4,
+            "generation_tps_p50": 616.7400498137582,
+            "output_tps": 2171.6606309886456,
+            "processor_watts": 129600,
+            "normalized_efficiency": 0.6373506352546512
+          },
+          {
+            "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+            "users": 2,
+            "generation_tps_p50": 1361.7493558197873,
+            "output_tps": 1977.0079595912716,
+            "processor_watts": 129600,
+            "normalized_efficiency": 0.5802229229414008
+          },
+          {
+            "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+            "users": 1,
+            "generation_tps_p50": 1478.1371115656843,
+            "output_tps": 1114.0072509210718,
+            "processor_watts": 129600,
+            "normalized_efficiency": 0.32694483609513153
+          }
+        ],
+        "draft": [
+          {
+            "case": "draft-pipeline-lpx256@mb1-adp1-pf0",
+            "users": 16,
+            "generation_tps_p50": 350.7895024309422,
+            "output_tps": 5416.807393440274,
+            "processor_watts": 244800,
+            "normalized_efficiency": 0.8416343385813875
+          },
+          {
+            "case": "draft-pipeline-lpx256@mb1-adp1-pf0",
+            "users": 8,
+            "generation_tps_p50": 647.8674915972806,
+            "output_tps": 4878.149221030394,
+            "processor_watts": 244800,
+            "normalized_efficiency": 0.757940534883169
+          },
+          {
+            "case": "draft-pipeline-lpx256@mb1-adp1-pf0",
+            "users": 4,
+            "generation_tps_p50": 1366.086433278706,
+            "output_tps": 4709.365634597555,
+            "processor_watts": 244800,
+            "normalized_efficiency": 0.7317158508925914
+          },
+          {
+            "case": "draft-pipeline-lpx256@mb1-adp1-pf0",
+            "users": 2,
+            "generation_tps_p50": 2353.760499029003,
+            "output_tps": 3641.3622310358155,
+            "processor_watts": 244800,
+            "normalized_efficiency": 0.565775238116165
+          },
+          {
+            "case": "draft-lpx256@mb1-adp1-pf0",
+            "users": 1,
+            "generation_tps_p50": 3444.2350029955664,
+            "output_tps": 2426.893546510865,
+            "processor_watts": 244800,
+            "normalized_efficiency": 0.37707763936717326
+          }
+        ],
+        "af": [
+          {
+            "case": "af-pipeline@mb1-adp1-pf0",
+            "users": 16,
+            "generation_tps_p50": 888.020744942449,
+            "output_tps": 12745.177673131508,
+            "processor_watts": 1411200,
+            "normalized_efficiency": 0.3435174415414023
+          },
+          {
+            "case": "af-pipeline@mb1-adp1-pf0",
+            "users": 8,
+            "generation_tps_p50": 1209.0867027049749,
+            "output_tps": 8417.68684232226,
+            "processor_watts": 1411200,
+            "normalized_efficiency": 0.22687971262002757
+          },
+          {
+            "case": "af-pipeline@mb1-adp1-pf0",
+            "users": 4,
+            "generation_tps_p50": 1209.1439723229703,
+            "output_tps": 4210.702851451771,
+            "processor_watts": 1411200,
+            "normalized_efficiency": 0.11348997304848121
+          },
+          {
+            "case": "af-pipeline@mb1-adp1-pf0",
+            "users": 2,
+            "generation_tps_p50": 1209.1594015837975,
+            "output_tps": 2106.0586835349723,
+            "processor_watts": 1411200,
+            "normalized_efficiency": 0.05676404905905327
+          },
+          {
+            "case": "af-tp8@mb1-adp1-pf0",
+            "users": 1,
+            "generation_tps_p50": 1232.7972415816087,
+            "output_tps": 1135.1280107087387,
+            "processor_watts": 1281600,
+            "normalized_efficiency": 0.03368866552660096
+          }
+        ],
+        "pd": [
+          {
+            "case": "pd-compact@mb1-adp1-pf0",
+            "users": 2,
+            "generation_tps_p50": 4239.789137709819,
+            "output_tps": 6507.688924032766,
+            "processor_watts": 1512000,
+            "normalized_efficiency": 0.1637067022319774
+          },
+          {
+            "case": "pd-tp16@mb1-adp1-pf0",
+            "users": 2,
+            "generation_tps_p50": 4575.202736357236,
+            "output_tps": 6894.67006345846,
+            "processor_watts": 1627200,
+            "normalized_efficiency": 0.16116250866118853
+          },
+          {
+            "case": "pd-tp16@mb1-adp1-pf0",
+            "users": 1,
+            "generation_tps_p50": 4575.552109896485,
+            "output_tps": 3450.285708601871,
+            "processor_watts": 1627200,
+            "normalized_efficiency": 0.08065022622956354
+          }
+        ]
+      },
+      "joint_frontier": [
+        {
+          "case": "rubin-pipeline@mb1-adp1-pf0",
+          "users": 256,
+          "generation_tps_p50": 13.292566565870892,
+          "output_tps": 3407.3248081426427,
+          "processor_watts": 129600,
+          "normalized_efficiency": 1.0
+        },
+        {
+          "case": "rubin-pipeline@mb1-adp1-pf0",
+          "users": 128,
+          "generation_tps_p50": 25.792000079066618,
+          "output_tps": 3299.744822183387,
+          "processor_watts": 129600,
+          "normalized_efficiency": 0.9684268474487179
+        },
+        {
+          "case": "rubin-pipeline@mb1-adp1-pf0",
+          "users": 64,
+          "generation_tps_p50": 47.4516077943784,
+          "output_tps": 3045.932537527653,
+          "processor_watts": 129600,
+          "normalized_efficiency": 0.8939366538372411
+        },
+        {
+          "case": "draft-pipeline-lpx256@mb1-adp1-pf0",
+          "users": 16,
+          "generation_tps_p50": 350.7895024309422,
+          "output_tps": 5416.807393440274,
+          "processor_watts": 244800,
+          "normalized_efficiency": 0.8416343385813875
+        },
+        {
+          "case": "draft-pipeline-lpx256@mb1-adp1-pf0",
+          "users": 8,
+          "generation_tps_p50": 647.8674915972806,
+          "output_tps": 4878.149221030394,
+          "processor_watts": 244800,
+          "normalized_efficiency": 0.757940534883169
+        },
+        {
+          "case": "draft-pipeline-lpx256@mb1-adp1-pf0",
+          "users": 4,
+          "generation_tps_p50": 1366.086433278706,
+          "output_tps": 4709.365634597555,
+          "processor_watts": 244800,
+          "normalized_efficiency": 0.7317158508925914
+        },
+        {
+          "case": "draft-pipeline-lpx256@mb1-adp1-pf0",
+          "users": 2,
+          "generation_tps_p50": 2353.760499029003,
+          "output_tps": 3641.3622310358155,
+          "processor_watts": 244800,
+          "normalized_efficiency": 0.565775238116165
+        },
+        {
+          "case": "draft-lpx256@mb1-adp1-pf0",
+          "users": 1,
+          "generation_tps_p50": 3444.2350029955664,
+          "output_tps": 2426.893546510865,
+          "processor_watts": 244800,
+          "normalized_efficiency": 0.37707763936717326
+        },
+        {
+          "case": "pd-compact@mb1-adp1-pf0",
+          "users": 2,
+          "generation_tps_p50": 4239.789137709819,
+          "output_tps": 6507.688924032766,
+          "processor_watts": 1512000,
+          "normalized_efficiency": 0.1637067022319774
+        },
+        {
+          "case": "pd-tp16@mb1-adp1-pf0",
+          "users": 2,
+          "generation_tps_p50": 4575.202736357236,
+          "output_tps": 6894.67006345846,
+          "processor_watts": 1627200,
+          "normalized_efficiency": 0.16116250866118853
+        },
+        {
+          "case": "pd-tp16@mb1-adp1-pf0",
+          "users": 1,
+          "generation_tps_p50": 4575.552109896485,
+          "output_tps": 3450.285708601871,
+          "processor_watts": 1627200,
+          "normalized_efficiency": 0.08065022622956354
+        }
+      ],
+      "comparisons": {
+        "minimum_generation_tps": [
+          {
+            "threshold": 100,
+            "objective": "tokens_per_s_per_mw",
+            "modes": {
+              "rubin": {
+                "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+                "users": 16,
+                "value": 19031.21779926442,
+                "relative_to_rubin": 1.0
+              },
+              "af": {
+                "case": "af-pipeline@mb1-adp1-pf0",
+                "users": 16,
+                "value": 9031.446763840355,
+                "relative_to_rubin": 0.4745595820037029
+              },
+              "pd": {
+                "case": "pd-compact@mb1-adp1-pf0",
+                "users": 2,
+                "value": 4304.027066159237,
+                "relative_to_rubin": 0.2261561562458495
+              },
+              "draft": {
+                "case": "draft-pipeline-lpx256@mb1-adp1-pf0",
+                "users": 16,
+                "value": 22127.48118235406,
+                "relative_to_rubin": 1.162693917738113
+              }
+            }
+          },
+          {
+            "threshold": 250,
+            "objective": "tokens_per_s_per_mw",
+            "modes": {
+              "rubin": {
+                "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+                "users": 8,
+                "value": 18779.585996978454,
+                "relative_to_rubin": 1.0
+              },
+              "af": {
+                "case": "af-pipeline@mb1-adp1-pf0",
+                "users": 16,
+                "value": 9031.446763840355,
+                "relative_to_rubin": 0.4809183101956279
+              },
+              "pd": {
+                "case": "pd-compact@mb1-adp1-pf0",
+                "users": 2,
+                "value": 4304.027066159237,
+                "relative_to_rubin": 0.22918647231369926
+              },
+              "draft": {
+                "case": "draft-pipeline-lpx256@mb1-adp1-pf0",
+                "users": 16,
+                "value": 22127.48118235406,
+                "relative_to_rubin": 1.1782731092109413
+              }
+            }
+          },
+          {
+            "threshold": 500,
+            "objective": "tokens_per_s_per_mw",
+            "modes": {
+              "rubin": {
+                "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+                "users": 4,
+                "value": 16756.640671208686,
+                "relative_to_rubin": 1.0
+              },
+              "af": {
+                "case": "af-pipeline@mb1-adp1-pf0",
+                "users": 16,
+                "value": 9031.446763840355,
+                "relative_to_rubin": 0.5389771697711592
+              },
+              "pd": {
+                "case": "pd-compact@mb1-adp1-pf0",
+                "users": 2,
+                "value": 4304.027066159237,
+                "relative_to_rubin": 0.2568550075525836
+              },
+              "draft": {
+                "case": "draft-pipeline-lpx256@mb1-adp1-pf0",
+                "users": 8,
+                "value": 19927.080151267946,
+                "relative_to_rubin": 1.1892049571431533
+              }
+            }
+          },
+          {
+            "threshold": 1000,
+            "objective": "tokens_per_s_per_mw",
+            "modes": {
+              "rubin": {
+                "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+                "users": 2,
+                "value": 15254.691046228947,
+                "relative_to_rubin": 1.0
+              },
+              "af": {
+                "case": "af-pipeline@mb1-adp1-pf0",
+                "users": 8,
+                "value": 5964.914145636522,
+                "relative_to_rubin": 0.3910216291867206
+              },
+              "pd": {
+                "case": "pd-compact@mb1-adp1-pf0",
+                "users": 2,
+                "value": 4304.027066159237,
+                "relative_to_rubin": 0.28214449267546576
+              },
+              "draft": {
+                "case": "draft-pipeline-lpx256@mb1-adp1-pf0",
+                "users": 4,
+                "value": 19237.604716493282,
+                "relative_to_rubin": 1.2610943517763957
+              }
+            }
+          },
+          {
+            "threshold": 2000,
+            "objective": "tokens_per_s_per_mw",
+            "modes": {
+              "rubin": null,
+              "af": null,
+              "pd": {
+                "case": "pd-compact@mb1-adp1-pf0",
+                "users": 2,
+                "value": 4304.027066159237,
+                "relative_to_rubin": null
+              },
+              "draft": {
+                "case": "draft-pipeline-lpx256@mb1-adp1-pf0",
+                "users": 2,
+                "value": 14874.845715015586,
+                "relative_to_rubin": null
+              }
+            }
+          },
+          {
+            "threshold": 4000,
+            "objective": "tokens_per_s_per_mw",
+            "modes": {
+              "rubin": null,
+              "af": null,
+              "pd": {
+                "case": "pd-compact@mb1-adp1-pf0",
+                "users": 2,
+                "value": 4304.027066159237,
+                "relative_to_rubin": null
+              },
+              "draft": null
+            }
+          }
+        ],
+        "minimum_normalized_efficiency": [
+          {
+            "threshold": 0.1,
+            "objective": "tokens_per_s_per_user",
+            "modes": {
+              "rubin": {
+                "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+                "users": 1,
+                "value": 1478.1371115656843,
+                "relative_to_rubin": 1.0
+              },
+              "af": {
+                "case": "af-pipeline@mb1-adp1-pf0",
+                "users": 4,
+                "value": 1209.1439723229703,
+                "relative_to_rubin": 0.8180188176469035
+              },
+              "pd": {
+                "case": "pd-tp16@mb1-adp1-pf0",
+                "users": 2,
+                "value": 4575.202736357236,
+                "relative_to_rubin": 3.0952492164350387
+              },
+              "draft": {
+                "case": "draft-lpx256@mb1-adp1-pf0",
+                "users": 1,
+                "value": 3444.2350029955664,
+                "relative_to_rubin": 2.3301187528857428
+              }
+            }
+          },
+          {
+            "threshold": 0.25,
+            "objective": "tokens_per_s_per_user",
+            "modes": {
+              "rubin": {
+                "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+                "users": 1,
+                "value": 1478.1371115656843,
+                "relative_to_rubin": 1.0
+              },
+              "af": {
+                "case": "af-pipeline@mb1-adp1-pf0",
+                "users": 16,
+                "value": 888.020744942449,
+                "relative_to_rubin": 0.6007702113654616
+              },
+              "pd": null,
+              "draft": {
+                "case": "draft-lpx256@mb1-adp1-pf0",
+                "users": 1,
+                "value": 3444.2350029955664,
+                "relative_to_rubin": 2.3301187528857428
+              }
+            }
+          },
+          {
+            "threshold": 0.5,
+            "objective": "tokens_per_s_per_user",
+            "modes": {
+              "rubin": {
+                "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+                "users": 2,
+                "value": 1361.7493558197873,
+                "relative_to_rubin": 1.0
+              },
+              "af": null,
+              "pd": null,
+              "draft": {
+                "case": "draft-pipeline-lpx256@mb1-adp1-pf0",
+                "users": 2,
+                "value": 2353.760499029003,
+                "relative_to_rubin": 1.72848291719001
+              }
+            }
+          },
+          {
+            "threshold": 0.75,
+            "objective": "tokens_per_s_per_user",
+            "modes": {
+              "rubin": {
+                "case": "rubin-tp4-pp2@mb1-adp1-pf0",
+                "users": 32,
+                "value": 89.193282647129,
+                "relative_to_rubin": 1.0
+              },
+              "af": null,
+              "pd": null,
+              "draft": {
+                "case": "draft-pipeline-lpx256@mb1-adp1-pf0",
+                "users": 8,
+                "value": 647.8674915972806,
+                "relative_to_rubin": 7.263635470850501
+              }
+            }
+          },
+          {
+            "threshold": 1.0,
+            "objective": "tokens_per_s_per_user",
+            "modes": {
+              "rubin": {
+                "case": "rubin-pipeline@mb1-adp1-pf0",
+                "users": 256,
+                "value": 13.292566565870892,
+                "relative_to_rubin": 1.0
+              },
+              "af": null,
+              "pd": null,
+              "draft": null
+            }
+          }
+        ]
+      }
+    }
+  }
+}
