@@ -105,8 +105,16 @@ def evaluate(job):
             else "ModelAFExecutor"
         ),
     )
+    compact = _point_evidence(row)
+    if row["status"] == "ok":
+        compact.pop("turns", None)
+        compact["request_statistics"] = {
+            key: value
+            for key, value in row["request_statistics"].items()
+            if key != "requests"
+        }
     return dict(
-        _point_evidence(row),
+        compact,
         result_file=str(receipt.directory / "result.json"),
         manifest_file=str(receipt.directory / "manifest.json"),
         checkpoint_key=receipt.key,

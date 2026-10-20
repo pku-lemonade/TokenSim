@@ -22,6 +22,7 @@ from scripts.reproduce_lpx import parser, write_json, repository_state
 def run_search(job):
     target, draft, workload, case, users, options = job
     settings = dict(
+        result_format="reference",
         execution_backend=options["execution_backend"],
         replay_samples=options["replay_samples"],
         replay_prefill_samples=options["replay_prefill_samples"],
@@ -31,6 +32,7 @@ def run_search(job):
         micro_batch=options["micro_batch"],
         a_dp=options["a_replicas"],
         warmup_steps=options["warmup_steps"],
+        warmup_seconds=options["warmup_seconds"],
         execution_mode=options["execution_mode"],
         graph_kernel_us=options["graph_kernel_us"],
         endpoint_transfer_occupancy=options["endpoint_transfer_occupancy"],
@@ -65,6 +67,7 @@ def run_search(job):
     if isolated["status"] != "ok":
         return dict(case=case.name, users=users, status="infeasible", isolated=isolated)
     latency = isolated["request_statistics"]["latency_s"]["mean"]
+    settings["warmup_seconds"] = max(settings["warmup_seconds"], 1.0, 10 * latency)
 
     def trial(qps, multiplier):
         result = evaluate(

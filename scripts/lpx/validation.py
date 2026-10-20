@@ -117,6 +117,10 @@ def validate_point(
     number(seconds, "measurement duration", positive=True)
     _equal(metric["duration_s"], seconds, "wall-clock duration")
     _equal(timings["warmup_s"], metric["start_s"], "warm-up boundary")
+    _require(
+        timings["warmup_s"] + 1e-10 >= row.get("minimum_warmup_seconds", 0),
+        "warm-up time minimum",
+    )
     _equal(timings["measurement_s"], seconds, "measurement boundary")
     number(timings["drain_s"], "drain duration")
     _require(seconds + 1e-10 >= timings["minimum_measurement_s"], "measurement minimum")

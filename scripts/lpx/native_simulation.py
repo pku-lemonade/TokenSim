@@ -24,6 +24,7 @@ def point(
     micro_batch=1,
     a_dp=1,
     warmup_steps=2,
+    warmup_seconds=0.0,
     warmup_mode="resident_decode",
     measurement_seconds=0.05,
     measurement_turns=1,
@@ -42,6 +43,7 @@ def point(
     execution_factory=None,
 ):
     boolean(stream_metrics, "stream metrics")
+    number(warmup_seconds, "warm-up seconds")
     if qps is not None and min(micro_batch, clients) > 1:
         raise ConfigurationError(
             "open arrivals require micro-batch 1; synchronized cohorts support fixed-client runs"
@@ -350,6 +352,7 @@ def point(
                 completed_steps += 1
                 if (
                     completed_steps >= warmup_steps
+                    and env.now >= warmup_seconds
                     and not warm_events[cohort].triggered
                 ):
                     warm_events[cohort].succeed()
@@ -489,4 +492,6 @@ def point(
         replay_profiles=driver.describe() if driver else None,
         trace=[event.as_dict() for event in traces] if trace else [],
     )
+    if warmup_seconds:
+        result["minimum_warmup_seconds"] = warmup_seconds
     return result

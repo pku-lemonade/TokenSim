@@ -51,6 +51,22 @@ class RequestExperimentTest(unittest.TestCase):
         self.assertEqual(stats["completed_requests"], 3)
         self.assertAlmostEqual(stats["little_law_complete_request_users"], 14.1 / 12)
 
+    def test_warmup_seconds_are_active_work_and_bound_the_measurement_start(self):
+        result = point(
+            self.hardware,
+            self.model,
+            self.workload,
+            self.case,
+            2,
+            warmup_steps=1,
+            warmup_seconds=0.001,
+            measurement_turns=1,
+            measurement_seconds=1e-9,
+        )
+        self.assertGreaterEqual(result["timings"]["warmup_s"], 0.001)
+        self.assertEqual(result["minimum_warmup_seconds"], 0.001)
+        self.assertGreater(result["services"]["target"]["passes"], 10)
+
     def test_serial_client_submits_only_after_previous_completion(self):
         result = point(
             self.hardware,
