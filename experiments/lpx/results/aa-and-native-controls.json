@@ -1,0 +1,404 @@
+{
+  "schema": "tokensim.lpx_control_evidence",
+  "version": 1,
+  "evidence_scope": "\u6761\u4ef6\u6027\u90e8\u7f72\u5047\u8bbe\uff1b\u4e0d\u8bc1\u660e\u771f\u5b9e LP30 \u914d\u7f6e\u6216 Figure 11 \u7cbe\u786e\u590d\u73b0",
+  "aa": {
+    "source": {
+      "path": "outputs/lpx-study/aa-rho1/aa-summary.json",
+      "sha256": "e9f181be578d2039d5b8dbefff4cc8297eb14839d1b1ee35ae86ed429ac6803e"
+    },
+    "targets": [
+      3382,
+      3431
+    ],
+    "input_lengths": [
+      10000,
+      100000
+    ],
+    "assumed_output_lengths": [
+      1500,
+      2000
+    ],
+    "feasible": 7,
+    "rejected": 29,
+    "results": [
+      {
+        "name": "lpu128-tp8-pp16-wfp8-kvfp8",
+        "lpu_count": 128,
+        "layout": {
+          "a_device": "groq_lp30",
+          "f_device": "groq_lp30",
+          "a_tp": 8,
+          "a_cp": 1,
+          "a_pp": 16,
+          "f_tp": 1,
+          "f_ep": 8,
+          "f_pp": 16,
+          "colocated": true
+        },
+        "weight_dtype": "fp8",
+        "kv_dtype": "fp8",
+        "requests": 50,
+        "warmup": 5,
+        "rho_in": 1.0,
+        "rho_out": 1.0,
+        "raw_tps": [
+          3348.0714644637346,
+          3137.6706640280654
+        ],
+        "fitted_tps": [
+          3382.034522483131,
+          3186.672434519546
+        ],
+        "efficiency_scale": 1.1048936631944444,
+        "fit_status": "fit_10k_only",
+        "relative_errors": [
+          1.0207712339171948e-05,
+          0.07121176493163917
+        ],
+        "context_ratio_relative_error": 0.07122124563799026,
+        "holdout_passed": false
+      },
+      {
+        "name": "lpu256-tp8-pp32-wfp8-kvbf16",
+        "lpu_count": 256,
+        "layout": {
+          "a_device": "groq_lp30",
+          "f_device": "groq_lp30",
+          "a_tp": 8,
+          "a_cp": 1,
+          "a_pp": 32,
+          "f_tp": 1,
+          "f_ep": 8,
+          "f_pp": 32,
+          "colocated": true
+        },
+        "weight_dtype": "fp8",
+        "kv_dtype": "bf16",
+        "requests": 50,
+        "warmup": 5,
+        "rho_in": 1.0,
+        "rho_out": 1.0,
+        "raw_tps": [
+          3335.246498865312,
+          3126.4042413376374
+        ],
+        "fitted_tps": [
+          3371.0052036903385,
+          3177.9027273893616
+        ],
+        "efficiency_scale": 1.1111111111111112,
+        "fit_status": "target_outside_physical_efficiency_bounds",
+        "relative_errors": [
+          0.0032509746628213154,
+          0.07376778566325803
+        ],
+        "context_ratio_relative_error": 0.07074680707772185,
+        "holdout_passed": false
+      },
+      {
+        "name": "lpu256-tp8-pp32-wfp8-kvfp8",
+        "lpu_count": 256,
+        "layout": {
+          "a_device": "groq_lp30",
+          "f_device": "groq_lp30",
+          "a_tp": 8,
+          "a_cp": 1,
+          "a_pp": 32,
+          "f_tp": 1,
+          "f_ep": 8,
+          "f_pp": 32,
+          "colocated": true
+        },
+        "weight_dtype": "fp8",
+        "kv_dtype": "fp8",
+        "requests": 50,
+        "warmup": 5,
+        "rho_in": 1.0,
+        "rho_out": 1.0,
+        "raw_tps": [
+          3337.5939642788626,
+          3128.4668386669105
+        ],
+        "fitted_tps": [
+          3373.1633310319453,
+          3179.820616502845
+        ],
+        "efficiency_scale": 1.1111111111111112,
+        "fit_status": "target_outside_physical_efficiency_bounds",
+        "relative_errors": [
+          0.002612853036089491,
+          0.07320879728859075
+        ],
+        "context_ratio_relative_error": 0.07078088430094409,
+        "holdout_passed": false
+      },
+      {
+        "name": "lpu256-tp16-pp16-wfp8-kvbf16",
+        "lpu_count": 256,
+        "layout": {
+          "a_device": "groq_lp30",
+          "f_device": "groq_lp30",
+          "a_tp": 16,
+          "a_cp": 1,
+          "a_pp": 16,
+          "f_tp": 1,
+          "f_ep": 16,
+          "f_pp": 16,
+          "colocated": true
+        },
+        "weight_dtype": "fp8",
+        "kv_dtype": "bf16",
+        "requests": 50,
+        "warmup": 5,
+        "rho_in": 1.0,
+        "rho_out": 1.0,
+        "raw_tps": [
+          3524.7780187231365,
+          3362.5079266267317
+        ],
+        "fitted_tps": [
+          3381.5493186981184,
+          3130.9688530313474
+        ],
+        "efficiency_scale": 0.5784830729166668,
+        "fit_status": "fit_10k_only",
+        "relative_errors": [
+          0.00013325881191061928,
+          0.08744714280636912
+        ],
+        "context_ratio_relative_error": 0.08732552088962175,
+        "holdout_passed": false
+      },
+      {
+        "name": "lpu256-tp16-pp16-wfp8-kvfp8",
+        "lpu_count": 256,
+        "layout": {
+          "a_device": "groq_lp30",
+          "f_device": "groq_lp30",
+          "a_tp": 16,
+          "a_cp": 1,
+          "a_pp": 16,
+          "f_tp": 1,
+          "f_ep": 16,
+          "f_pp": 16,
+          "colocated": true
+        },
+        "weight_dtype": "fp8",
+        "kv_dtype": "fp8",
+        "requests": 50,
+        "warmup": 5,
+        "rho_in": 1.0,
+        "rho_out": 1.0,
+        "raw_tps": [
+          3531.5482695535434,
+          3410.919222629658
+        ],
+        "fitted_tps": [
+          3381.7973848454185,
+          3188.8913188921106
+        ],
+        "efficiency_scale": 0.5598307291666667,
+        "fit_status": "fit_10k_only",
+        "relative_errors": [
+          5.9909862383689116e-05,
+          0.07056504841384126
+        ],
+        "context_ratio_relative_error": 0.07050936275767716,
+        "holdout_passed": false
+      },
+      {
+        "name": "lpu256-tp16-pp16-wbf16-kvfp8",
+        "lpu_count": 256,
+        "layout": {
+          "a_device": "groq_lp30",
+          "f_device": "groq_lp30",
+          "a_tp": 16,
+          "a_cp": 1,
+          "a_pp": 16,
+          "f_tp": 1,
+          "f_ep": 16,
+          "f_pp": 16,
+          "colocated": true
+        },
+        "weight_dtype": "bf16",
+        "kv_dtype": "fp8",
+        "requests": 50,
+        "warmup": 5,
+        "rho_in": 1.0,
+        "rho_out": 1.0,
+        "raw_tps": [
+          3360.912679002891,
+          3251.4783910443907
+        ],
+        "fitted_tps": [
+          3382.106988798655,
+          3277.913641964057
+        ],
+        "efficiency_scale": 1.0655164930555556,
+        "fit_status": "fit_10k_only",
+        "relative_errors": [
+          3.1634771926469796e-05,
+          0.04461858293090726
+        ],
+        "context_ratio_relative_error": 0.044648805248062695,
+        "holdout_passed": true
+      },
+      {
+        "name": "lpu256-tp32-pp8-wfp8-kvfp8",
+        "lpu_count": 256,
+        "layout": {
+          "a_device": "groq_lp30",
+          "f_device": "groq_lp30",
+          "a_tp": 32,
+          "a_cp": 1,
+          "a_pp": 8,
+          "f_tp": 1,
+          "f_ep": 32,
+          "f_pp": 8,
+          "colocated": true
+        },
+        "weight_dtype": "fp8",
+        "kv_dtype": "fp8",
+        "requests": 50,
+        "warmup": 5,
+        "rho_in": 1.0,
+        "rho_out": 1.0,
+        "raw_tps": [
+          3475.641147485587,
+          3394.86723426242
+        ],
+        "fitted_tps": [
+          3382.3211224282877,
+          3240.420414198146
+        ],
+        "efficiency_scale": 0.5287434895833334,
+        "fit_status": "fit_10k_only",
+        "relative_errors": [
+          9.49504518887867e-05,
+          0.05554636718212014
+        ],
+        "context_ratio_relative_error": 0.05563603496734737,
+        "holdout_passed": false
+      }
+    ]
+  },
+  "communication_sensitivity": [
+    {
+      "variant": "static",
+      "communication": {
+        "c2c_latency_us": 0.35,
+        "collective_launch_us": 0.0
+      },
+      "fit_status": "target_outside_physical_efficiency_bounds",
+      "efficiency_scale": 1.1111111111111112,
+      "fitted_tps": [
+        3215.3736758921127,
+        3124.8183388347097
+      ],
+      "relative_errors": [
+        0.049268576022438615,
+        0.08923977300066754
+      ],
+      "context_ratio_relative_error": 0.04204257476943596,
+      "holdout_tolerance_passed": true,
+      "source": {
+        "path": "outputs/lpx-study/aa-c2c035-static/aa-summary.json",
+        "sha256": "0584fb23f0cbba85c371567285767dd843c3e829ebb290277f5806e1fa634509"
+      }
+    },
+    {
+      "variant": "extra-launch",
+      "communication": {
+        "c2c_latency_us": 0.35,
+        "collective_launch_us": 0.5
+      },
+      "fit_status": "target_outside_physical_efficiency_bounds",
+      "efficiency_scale": 1.1111111111111112,
+      "fitted_tps": [
+        2695.375340837456,
+        2631.4501227559285
+      ],
+      "relative_errors": [
+        0.20302325817934475,
+        0.233036979668922
+      ],
+      "context_ratio_relative_error": 0.037659469736861184,
+      "holdout_tolerance_passed": false,
+      "source": {
+        "path": "outputs/lpx-study/aa-c2c035-extra-launch/aa-summary.json",
+        "sha256": "2d556d603a1a02397ed903cc4de6d9e43879dd8b790b4bff01df0a5bcadcef38"
+      }
+    }
+  ],
+  "native_full_workload": {
+    "source": {
+      "path": "outputs/lpx-study/native-fixed-control42/summary.json",
+      "sha256": "176a8d393938c5e0839ffbf4c3849dc3675c4230a96f520c5cf35f64bf2eff05"
+    },
+    "workload": {
+      "cached_tokens": 400000,
+      "new_tokens": 4000,
+      "output_tokens": 400,
+      "prefill_chunk": 4000,
+      "seed": 42,
+      "draft_tokens": 4,
+      "acceptance_probability": 0.8
+    },
+    "code_revision": "0b8231e5da19510a03bf5f0fa33d7d31fe757760",
+    "ffn_batching": false,
+    "results": [
+      {
+        "case": "rubin-tp8",
+        "mode": "rubin",
+        "clients": 1,
+        "tokens_per_s_per_user": 363.9441474242718,
+        "output_tokens_per_s": 309.1608485947692,
+        "tokens_per_s_per_mw": 21469.50337463675,
+        "power_watts": 14400.0,
+        "inventory": {
+          "rubin": 8
+        }
+      },
+      {
+        "case": "af-tp8",
+        "mode": "af",
+        "clients": 1,
+        "tokens_per_s_per_user": 434.4715386928037,
+        "output_tokens_per_s": 384.81000832483375,
+        "tokens_per_s_per_mw": 203.991734692978,
+        "power_watts": 1886400.0,
+        "inventory": {
+          "rubin": 24,
+          "groq_lp30": 4096
+        }
+      },
+      {
+        "case": "pd-tp16",
+        "mode": "pd",
+        "clients": 1,
+        "tokens_per_s_per_user": 1641.4593426554502,
+        "output_tokens_per_s": 1098.3126372151146,
+        "tokens_per_s_per_mw": 448.65712304538994,
+        "power_watts": 2448000.0,
+        "inventory": {
+          "groq_lp30": 5376,
+          "rubin": 16
+        }
+      },
+      {
+        "case": "draft-tp8",
+        "mode": "draft",
+        "clients": 1,
+        "tokens_per_s_per_user": 764.1197888551459,
+        "output_tokens_per_s": 555.8070142034039,
+        "tokens_per_s_per_mw": 12865.903106560276,
+        "power_watts": 43200.0,
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 64
+        }
+      }
+    ]
+  }
+}
