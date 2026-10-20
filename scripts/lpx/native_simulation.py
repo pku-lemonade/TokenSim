@@ -8,6 +8,8 @@ from TokenSim.errors import ConfigurationError
 from scripts.lpx.native_config import runtime_configurations, session_prefix_context
 from scripts.lpx.native_metrics import collect_metrics
 from scripts.lpx.native_setup import create_serving
+from scripts.lpx.requests import Arrivals, request_metrics
+from scripts.lpx.control import token_control as send_tokens
 
 
 def point(
@@ -32,6 +34,9 @@ def point(
     draft_spec=None,
     trace=False,
     stream_metrics=False,
+    qps=None,
+    arrival_pattern="uniform",
+    dag_template_cache=True,
 ):
     boolean(stream_metrics, "stream metrics")
     for value, name in (
@@ -69,6 +74,7 @@ def point(
         execution_mode=execution_mode,
         graph_kernel_us=graph_kernel_us,
         endpoint_transfer_occupancy=endpoint_transfer_occupancy,
+        dag_template_cache=dag_template_cache,
     )
     measurement = {}
     env, communication, services, windows = create_serving(
@@ -92,6 +98,15 @@ def point(
         power += count * watts
     stop = env.event()
     begin_measurement = env.event()
+    arrivals = Arrivals(
+        env,
+        begin_measurement,
+        stop,
+        measurement,
+        qps=qps,
+        pattern=arrival_pattern,
+        seed=workload.seed,
+    )
     token_events, handoff_events, control_events, decode_intervals, turns = (
         [],
         [],
@@ -100,6 +115,7 @@ def point(
         [],
     )
     verification_events = []
+    active_turns = {}
     warm_events = []
     complete_events = []
     initial_sessions = []
@@ -133,36 +149,17 @@ def point(
         complete_events.append(env.event())
 
     def token_control(bundle, cohort, round_index, step, reverse=False):
-        draft_owner = services["draft"].owners[bundle["draft"][0].dp_rank]
-        target_owner = services["target"].owners[bundle["target"][0].dp_rank]
-        pair = (
-            (target_owner.physical_worker, draft_owner.physical_worker)
-            if reverse
-            else (draft_owner.physical_worker, target_owner.physical_worker)
-        )
-        size = len(bundle["target"]) * 4 * (1 if reverse else workload.draft_tokens)
-        keys = tuple(
-            communication.format_key(key)
-            for key, _ in communication.for_step("handoff", "a_to_f", pair)
-        )
-        duration = hardware.link("ethernet1600Gb").analytical_transfer_us(size) / 1e6
-        times = yield from communication.run_transfer(
-            keys,
-            duration,
-            hardware.link("ethernet1600Gb").latency_us / 1e6,
-            (cohort, round_index, step, int(reverse)),
-        )
-        control_events.append(
-            dict(
-                source=pair[0],
-                target=pair[1],
-                bytes=size,
-                network="handoff",
-                ready_s=times[0],
-                start_s=times[1],
-                end_s=times[2],
-                injection_end_s=times[3],
-            )
+        return send_tokens(
+            services,
+            communication,
+            hardware,
+            control_events,
+            workload,
+            bundle,
+            cohort,
+            round_index,
+            step,
+            reverse,
         )
 
     def prefill(name, sessions):
@@ -182,8 +179,23 @@ def point(
         rng = np.random.default_rng(np.random.SeedSequence([workload.seed, cohort]))
         round_index = 0
         while not stop.triggered:
-            started = env.now
             warm_turn = not warmed
+            submitted = env.now if warm_turn else (yield from arrivals.acquire())
+            if submitted is None:
+                return
+            started = env.now
+            turn = dict(
+                cohort=cohort,
+                round=round_index,
+                start=started,
+                submitted_at=submitted,
+                ttft_s=0.0,
+                end=started,
+                completed=False,
+                warmup=warm_turn,
+            )
+            turns.append(turn)
+            active_turns[cohort] = turn
             prefill_name = "prefill" if case.prefill else "target"
             do_prefill = not warm_turn or warmup_mode == "prefill_and_decode"
             draft_prefill = (
@@ -339,17 +351,8 @@ def point(
                     warmed = True
                     # Restore the fixed prefix and start a measured complete turn.
                     break
-            turns.append(
-                dict(
-                    cohort=cohort,
-                    round=round_index,
-                    start=started,
-                    ttft_s=first - started,
-                    end=env.now,
-                    completed=remaining == 0,
-                    warmup=warm_turn,
-                )
-            )
+            turn.update(ttft_s=first - started, end=env.now, completed=remaining == 0)
+            active_turns.pop(cohort, None)
             if not warm_turn and remaining == 0:
                 measured_turns += 1
                 if (
@@ -395,10 +398,20 @@ def point(
             measurement["end"] = env.now
             stop.succeed()
 
+    finished = [env.event() for _ in initial_sessions]
+
+    def run_stream(index, bundle):
+        try:
+            yield from stream(index, bundle)
+        finally:
+            if index in active_turns:
+                active_turns.pop(index).update(end=env.now)
+            finished[index].succeed()
+
     for index, bundle in enumerate(initial_sessions):
-        env.process(stream(index, bundle))
+        env.process(run_stream(index, bundle))
     env.process(observe())
-    env.run()
+    env.run(until=env.all_of(finished))
     metric, traces = collect_metrics(
         services,
         measurement,
@@ -422,6 +435,7 @@ def point(
         raise ConfigurationError(
             "measurement interval contains no completed decode pass"
         )
+    requests = request_metrics(turns, workload, clients, micro_batch, measurement)
     result = dict(
         case=case.name,
         mode=case.mode,
@@ -429,7 +443,16 @@ def point(
         clients=clients,
         micro_batch=micro_batch,
         status="ok",
-        tokens_per_s_per_user=tokens / user_seconds,
+        tokens_per_s_per_user=requests["generation_tps"]["p50"]
+        or tokens / user_seconds,
+        decode_weighted_tokens_per_s_per_user=tokens / user_seconds,
+        interactivity_statistic=(
+            "per_request_generation_tps_p50"
+            if requests["completed_requests"]
+            else "decode_time_weighted_no_complete_requests"
+        ),
+        request_statistics=requests,
+        arrivals=arrivals.summary(),
         output_tokens_per_s=metric["output_tokens_per_s"],
         tokens_per_s_per_mw=metric["output_tokens_per_s"] * 1e6 / power,
         power_watts=power,

@@ -8,6 +8,7 @@ from TokenSim.dtypes import dtype_size_bytes
 from TokenSim.af.serving.timing import namespace_resource
 from scripts.lpx.config import Case, Layout, Workload
 from scripts.lpx.event_validation import validate_accounting_events
+from scripts.lpx.requests import request_metrics
 from scripts.lpx.validation_checks import equal as _equal, require as _require
 
 
@@ -134,7 +135,9 @@ def validate_point(
     )
     number(row["tokens_per_s_per_user"], "interactivity", positive=True)
     _require(
-        row["tokens_per_s_per_user"] + 1e-9 >= metric["decode_tokens_per_s"] / clients,
+        row.get("decode_weighted_tokens_per_s_per_user", row["tokens_per_s_per_user"])
+        + 1e-9
+        >= metric["decode_tokens_per_s"] / clients,
         "per-user decode-time bound",
     )
     completed = Counter()
@@ -160,10 +163,28 @@ def validate_point(
             complete_user_seconds += cohort_size * (elapsed - turn["ttft_s"])
     if complete_decode_tokens == metric["decode_tokens"]:
         _equal(
-            row["tokens_per_s_per_user"],
+            row.get(
+                "decode_weighted_tokens_per_s_per_user", row["tokens_per_s_per_user"]
+            ),
             complete_decode_tokens / complete_user_seconds,
             "complete-turn interactivity",
         )
+    if "request_statistics" in row:
+        expected = request_metrics(
+            row["turns"],
+            workload,
+            clients,
+            micro,
+            {"start": metric["start_s"], "end": metric["end_s"]},
+        )
+        actual = row["request_statistics"]
+        _require(actual == expected, "request-level statistics and timestamps")
+        if expected["completed_requests"]:
+            _equal(
+                row["tokens_per_s_per_user"],
+                expected["generation_tps"]["p50"],
+                "request P50 interactivity",
+            )
     minimum = timings["minimum_complete_turns_per_cohort"]
     for cohort in range(math.ceil(clients / micro)):
         _require(completed[cohort] >= minimum, "complete turns per cohort")

@@ -18,7 +18,12 @@ from TokenSim.af.factory import build_model_runtime
 class NativeLPXTest(unittest.TestCase):
     def test_reference_planning_preserves_complete_native_point_results(self):
         case = Case("base", "rubin", self.base)
-        settings = dict(warmup_steps=1, measurement_seconds=1e-9, trace=True)
+        settings = dict(
+            warmup_steps=1,
+            measurement_seconds=1e-9,
+            trace=True,
+            dag_template_cache=False,
+        )
         reference = point(self.hardware, self.model, self.workload, case, 1, **settings)
 
         def cached(doc, **kwargs):

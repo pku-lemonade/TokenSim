@@ -107,6 +107,17 @@ def parser():
     result.add_argument("--measurement-seconds", type=float, default=0.05)
     result.add_argument("--measurement-turns", type=int, default=1)
     result.add_argument(
+        "--qps",
+        type=float,
+        help="open arrival rate; users bound simultaneously active requests",
+    )
+    result.add_argument(
+        "--arrival-pattern", choices=("uniform", "poisson"), default="uniform"
+    )
+    result.add_argument(
+        "--dag-template-cache", action=argparse.BooleanOptionalAction, default=True
+    )
+    result.add_argument(
         "--execution-mode", choices=("eager", "cuda_graph"), default="cuda_graph"
     )
     result.add_argument("--graph-kernel-us", type=float, default=0.2)
@@ -232,6 +243,9 @@ def main(argv=None):
                             graph_kernel_us=args.graph_kernel_us,
                             endpoint_transfer_occupancy=args.endpoint_transfer_occupancy,
                             handoff_mode=args.handoff_mode,
+                            qps=args.qps,
+                            arrival_pattern=args.arrival_pattern,
+                            dag_template_cache=args.dag_template_cache,
                             draft_spec=draft,
                         ),
                     )
@@ -306,13 +320,16 @@ def main(argv=None):
                 "micro_batch": args.micro_batch,
                 "simulation_processes": args.jobs,
                 "resume": args.resume,
-                "interactivity_statistic": "committed_tokens_per_decode_user_second",
+                "interactivity_statistic": "per_request_generation_tps_p50",
                 "routing_selection": target.moe.routing.uniform_selection,
                 "a_replicas": args.a_replicas,
                 "warmup_steps": args.warmup_steps,
                 "warmup_mode": args.warmup_mode,
                 "measurement_seconds": args.measurement_seconds,
                 "measurement_turns": args.measurement_turns,
+                "target_qps": args.qps,
+                "arrival_pattern": args.arrival_pattern,
+                "dag_template_cache": args.dag_template_cache,
                 "execution_mode": args.execution_mode,
                 "graph_device_kernel_us": args.graph_kernel_us,
                 "endpoint_transfer_occupancy": args.endpoint_transfer_occupancy,

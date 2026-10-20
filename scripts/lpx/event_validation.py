@@ -93,7 +93,7 @@ def validate_accounting_events(row, workload):
     require(token_keys == interval_keys, "decode tokens disagree with pass intervals")
     number(user_seconds, "measured per-user decode time", positive=True)
     equal(
-        row["tokens_per_s_per_user"],
+        row.get("decode_weighted_tokens_per_s_per_user", row["tokens_per_s_per_user"]),
         decode / user_seconds,
         "event-derived interactivity",
     )

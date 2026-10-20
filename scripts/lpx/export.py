@@ -16,6 +16,10 @@ POINT_FIELDS = (
     "native_executor",
     "tokens_per_s_per_user",
     "output_tokens_per_s",
+    "achieved_qps",
+    "target_qps",
+    "latency_p50_s",
+    "admission_wait_p95_s",
     "tokens_per_s_per_mw",
     "normalized_throughput",
     "power_watts",
@@ -29,7 +33,21 @@ def write_points_csv(path, rows):
             stream, fieldnames=POINT_FIELDS, extrasaction="ignore", lineterminator="\n"
         )
         writer.writeheader()
-        writer.writerows(rows)
+        for row in rows:
+            requests, arrivals = row.get("request_statistics", {}), row.get(
+                "arrivals", {}
+            )
+            writer.writerow(
+                {
+                    **row,
+                    "achieved_qps": requests.get("achieved_qps"),
+                    "target_qps": arrivals.get("target_qps"),
+                    "latency_p50_s": requests.get("latency_s", {}).get("p50"),
+                    "admission_wait_p95_s": arrivals.get("admission_wait_s", {}).get(
+                        "p95"
+                    ),
+                }
+            )
 
 
 def _point_evidence(row):
@@ -48,6 +66,8 @@ def _point_evidence(row):
         ),
         total_resource_queue_s=sum(metric["resource_queue_s"].values()),
         turns=row["turns"],
+        request_statistics=row.get("request_statistics"),
+        arrivals=row.get("arrivals"),
         handoff_bytes_all_phases=sum(e["bytes"] for e in row["handoff_events"]),
         control_bytes_all_phases=sum(e["bytes"] for e in row["control_events"]),
     )
