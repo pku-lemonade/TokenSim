@@ -400,5 +400,99 @@
         }
       }
     ]
-  }
+  },
+  "tokenizer_sensitivity": [
+    {
+      "source": {
+        "path": "outputs/lpx-study/aa-rho-in0.8-out1/aa-summary.json",
+        "sha256": "ba195f55c0cbca5a1d7721d4823f14e64eab658fc681f2bbb4e46dc88fc1175e"
+      },
+      "hypothesis": "lpu256-tp16-pp16-wbf16-kvfp8",
+      "rho_in": 0.8,
+      "rho_out": 1.0,
+      "fit_status": "disabled",
+      "efficiency_scale": 1.0,
+      "predicted_tps": [
+        3363.4213089408204,
+        3275.1106342644666
+      ],
+      "relative_errors": [
+        0.005493403624831306,
+        0.04543554815958417
+      ],
+      "context_ratio_relative_error": 0.04016277486779485,
+      "holdout_passed": true,
+      "requests_per_length": 50,
+      "warmup_per_length": 5
+    },
+    {
+      "source": {
+        "path": "outputs/lpx-study/aa-rho-in1-out0.8/aa-summary.json",
+        "sha256": "6571c8a0cd66b8e848849ebccfdfe28481c4f2d24bd88357b8742dd02d9547d0"
+      },
+      "hypothesis": "lpu256-tp16-pp16-wbf16-kvfp8",
+      "rho_in": 1.0,
+      "rho_out": 0.8,
+      "fit_status": "disabled",
+      "efficiency_scale": 1.0,
+      "predicted_tps": [
+        4201.375870543657,
+        4064.641281466657
+      ],
+      "relative_errors": [
+        0.24227553830386062,
+        0.18468122456037794
+      ],
+      "context_ratio_relative_error": 0.04636194786715264,
+      "holdout_passed": false,
+      "requests_per_length": 50,
+      "warmup_per_length": 5
+    },
+    {
+      "source": {
+        "path": "outputs/lpx-study/aa-rho-in1-out1.2/aa-summary.json",
+        "sha256": "5caee2023b8222cfb713260895bd1ee4b40303c0f62f43aef1511c142b48f208"
+      },
+      "hypothesis": "lpu256-tp16-pp16-wbf16-kvfp8",
+      "rho_in": 1.0,
+      "rho_out": 1.2,
+      "fit_status": "disabled",
+      "efficiency_scale": 1.0,
+      "predicted_tps": [
+        2800.6039021706506,
+        2709.369825645006
+      ],
+      "relative_errors": [
+        0.17190895855391763,
+        0.21032648625910633
+      ],
+      "context_ratio_relative_error": 0.04639287926373503,
+      "holdout_passed": false,
+      "requests_per_length": 50,
+      "warmup_per_length": 5
+    },
+    {
+      "source": {
+        "path": "outputs/lpx-study/aa-rho-in1.2-out1/aa-summary.json",
+        "sha256": "54ee063af5a05b353e4e13196640a9811e68f0ba7b55b0c8122ae1bd0984e736"
+      },
+      "hypothesis": "lpu256-tp16-pp16-wbf16-kvfp8",
+      "rho_in": 1.2,
+      "rho_out": 1.0,
+      "fit_status": "disabled",
+      "efficiency_scale": 1.0,
+      "predicted_tps": [
+        3358.4077884322496,
+        3228.1847513107305
+      ],
+      "relative_errors": [
+        0.006975816548713931,
+        0.05911257612628085
+      ],
+      "context_ratio_relative_error": 0.052503010950210705,
+      "holdout_passed": false,
+      "requests_per_length": 50,
+      "warmup_per_length": 5
+    }
+  ]
 }
