@@ -2,11 +2,45 @@
 
 import unittest
 
-from scripts.report_lpx_study import power_rows, combine_indexes
+from scripts.report_lpx_study import power_rows, combine_indexes, observed_comparisons
 from scripts.lpx_power import processor_power_rows
 
 
 class LPXReportTest(unittest.TestCase):
+    def test_gain_comparisons_use_observed_feasible_points(self):
+        rows = [
+            dict(
+                case=case,
+                mode=mode,
+                batch=users,
+                tokens_per_s_per_user=speed,
+                tokens_per_s_per_mw=efficiency,
+                normalized_throughput=efficiency / 100,
+            )
+            for case, mode, users, speed, efficiency in (
+                ("gpu-fast", "rubin", 1, 1000, 20),
+                ("gpu-efficient", "rubin", 8, 100, 100),
+                ("af-fast", "af", 4, 2000, 60),
+                ("af-efficient", "af", 16, 80, 120),
+            )
+        ]
+        result = observed_comparisons(rows, (500, 1500), (0.5, 1.3))
+        at_speed = result["minimum_generation_tps"][0]["modes"]
+        self.assertEqual(at_speed["af"]["case"], "af-fast")
+        self.assertEqual(at_speed["af"]["relative_to_rubin"], 3)
+        self.assertIsNone(at_speed["draft"])
+        no_gpu = result["minimum_generation_tps"][1]["modes"]
+        self.assertIsNone(no_gpu["rubin"])
+        self.assertIsNone(no_gpu["af"]["relative_to_rubin"])
+        at_efficiency = result["minimum_normalized_efficiency"][0]["modes"]
+        self.assertEqual(at_efficiency["af"]["relative_to_rubin"], 20)
+        self.assertTrue(
+            all(
+                row is None
+                for row in result["minimum_normalized_efficiency"][1]["modes"].values()
+            )
+        )
+
     def test_power_scope_rejects_unknown_names(self):
         with self.assertRaisesRegex(ValueError, "power scope"):
             processor_power_rows([], "facility")

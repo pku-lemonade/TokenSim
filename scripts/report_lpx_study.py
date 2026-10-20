@@ -58,6 +58,66 @@ def power_rows(rows, scope, *, rubin_watts=1800, lp30_watts=450):
     return result, baseline
 
 
+def observed_comparisons(
+    rows,
+    generation_floors=(100, 250, 500, 1000, 2000, 4000),
+    efficiency_floors=(0.1, 0.25, 0.5, 0.75, 1.0),
+):
+    result = {}
+    for name, thresholds, constraint, objective in (
+        (
+            "minimum_generation_tps",
+            generation_floors,
+            "tokens_per_s_per_user",
+            "tokens_per_s_per_mw",
+        ),
+        (
+            "minimum_normalized_efficiency",
+            efficiency_floors,
+            "normalized_throughput",
+            "tokens_per_s_per_user",
+        ),
+    ):
+        comparisons = []
+        for threshold in thresholds:
+            selected = {}
+            for mode in ("rubin", "af", "pd", "draft"):
+                feasible = [
+                    r for r in rows if r["mode"] == mode and r[constraint] >= threshold
+                ]
+                selected[mode] = (
+                    max(feasible, key=lambda r: (r[objective], r[constraint]))
+                    if feasible
+                    else None
+                )
+            baseline = selected["rubin"]
+            comparisons.append(
+                dict(
+                    threshold=threshold,
+                    objective=objective,
+                    modes={
+                        mode: (
+                            dict(
+                                case=row["case"],
+                                users=row["batch"],
+                                value=row[objective],
+                                relative_to_rubin=(
+                                    row[objective] / baseline[objective]
+                                    if baseline is not None
+                                    else None
+                                ),
+                            )
+                            if row is not None
+                            else None
+                        )
+                        for mode, row in selected.items()
+                    },
+                )
+            )
+        result[name] = comparisons
+    return result
+
+
 def export_case(output, index, *, verify_bytes=False):
     output.mkdir(parents=True, exist_ok=True)
     sources = {
@@ -78,6 +138,7 @@ def export_case(output, index, *, verify_bytes=False):
             frontiers=frontiers,
             joint_frontier=joint,
             results=rows,
+            comparisons=observed_comparisons(rows),
         )
         with (output / f"points-{scope}.csv").open(
             "w", newline="", encoding="utf-8"
