@@ -204,6 +204,22 @@
     "after_source": {
       "path": "outputs/lpx-study/colocated-layout-validation/after.json",
       "sha256": "4a7c1cf0dd4ef1b49e25a5e5cd53043bf408fa77700f9e808da8ced63b10baaa"
+    },
+    "applied_revision": "b372e05",
+    "integrated_tests_passed": 539,
+    "validation_fixture": {
+      "layers": 4,
+      "hidden_size": 32,
+      "cached_tokens": 16,
+      "new_tokens": 2,
+      "output_tokens": 8,
+      "users": 2,
+      "modes": [
+        "rubin",
+        "af",
+        "pd",
+        "draft"
+      ]
     }
   }
 }
