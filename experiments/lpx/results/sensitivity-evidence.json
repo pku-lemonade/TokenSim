@@ -1,0 +1,1244 @@
+{
+  "schema": "tokensim.lpx_sensitivity_evidence",
+  "version": 1,
+  "scope": "Deterministic simulation diagnostics. Two-turn controls and four-request native controls are distinct from formal 500-request convergence runs.",
+  "studies": {
+    "route_samples_4": {
+      "source": {
+        "path": "outputs/lpx-study/wide-corpus4-control16/summary.json",
+        "sha256": "6b4b7cb6c1e13f7b45ef39913b9f3642c35fe913dfe54ddcf29d8c2e2603d06a"
+      },
+      "git_revision": "af5f068ef950d4bce6dd6c61b806bf455d6bb441",
+      "source_sha256": null,
+      "workload": {
+        "cached_tokens": 400000,
+        "new_tokens": 4000,
+        "output_tokens": 400,
+        "prefill_chunk": 4000,
+        "seed": 42,
+        "draft_tokens": 4,
+        "acceptance_probability": 0.8
+      },
+      "settings": {
+        "client_counts": [
+          4,
+          16
+        ],
+        "stream_metrics": true,
+        "event_accounting_required": true,
+        "execution_backend": "sampled-replay",
+        "replay_samples": 4,
+        "result_scope": "finite_measurement_window",
+        "additional_memory_reserve_bytes": {
+          "rubin": 0,
+          "groq_lp30": 0
+        },
+        "micro_batch": 1,
+        "ffn_batching": false,
+        "ffn_batch_wait_us": 5.0,
+        "simulation_processes": 2,
+        "resume": true,
+        "interactivity_statistic": "per_request_generation_tps_p50",
+        "routing_selection": "random_without_replacement",
+        "a_replicas": 1,
+        "warmup_steps": 2,
+        "warmup_seconds": 0.0,
+        "warmup_mode": "resident_decode",
+        "measurement_seconds": 0.001,
+        "measurement_turns": 2,
+        "target_qps": null,
+        "arrival_pattern": "uniform",
+        "dag_template_cache": true,
+        "execution_mode": "cuda_graph",
+        "graph_device_kernel_us": 0.2,
+        "endpoint_transfer_occupancy": "wire",
+        "handoff_mode": "incremental"
+      },
+      "rows": [
+        {
+          "case": "rubin-tp8",
+          "users": 4,
+          "generation_tps_p50": 116.33177317473773,
+          "output_tps": 412.23225398019696,
+          "completed_requests": 8,
+          "window_s": 7.767465959016927
+        },
+        {
+          "case": "rubin-tp8",
+          "users": 16,
+          "generation_tps_p50": 34.37173426820779,
+          "output_tps": 484.5408026351932,
+          "completed_requests": 32,
+          "window_s": 26.447721080051764
+        },
+        {
+          "case": "af-f4-ep128-pp5",
+          "users": 4,
+          "generation_tps_p50": 221.99800081849725,
+          "output_tps": 797.2281868927734,
+          "completed_requests": 8,
+          "window_s": 4.110491894136646
+        },
+        {
+          "case": "af-f4-ep128-pp5",
+          "users": 16,
+          "generation_tps_p50": 67.8235644982806,
+          "output_tps": 1040.883181974016,
+          "completed_requests": 32,
+          "window_s": 13.322340335734397
+        },
+        {
+          "case": "draft-lpx256",
+          "users": 4,
+          "generation_tps_p50": 191.46556330870982,
+          "output_tps": 642.8600003456603,
+          "completed_requests": 8,
+          "window_s": 5.061755278365977
+        },
+        {
+          "case": "draft-lpx256",
+          "users": 16,
+          "generation_tps_p50": 48.91891233679564,
+          "output_tps": 699.1942914355855,
+          "completed_requests": 32,
+          "window_s": 19.229275989074125
+        }
+      ]
+    },
+    "route_samples_16": {
+      "source": {
+        "path": "outputs/lpx-study/wide-fixed16/coarse/index.json",
+        "sha256": "837d4433fdb9c0be5b4811dcd63cf053757557a71a4d811337fcd78e186f988f"
+      },
+      "git_revision": "01862fbd0164b3de417ce748512f9f54bbb12aac",
+      "source_sha256": "e75255e67a1b086c09eb946eed40371b9ac1c79338e9ada6b6aeaf4eec440e44",
+      "workload": {
+        "cached_tokens": 400000,
+        "new_tokens": 4000,
+        "output_tokens": 400,
+        "prefill_chunk": 4000,
+        "seed": 42,
+        "draft_tokens": 4,
+        "acceptance_probability": 0.8
+      },
+      "settings": {},
+      "rows": [
+        {
+          "case": "rubin-tp8",
+          "users": 1,
+          "generation_tps_p50": 364.77392396317754,
+          "output_tps": 309.75791472210364,
+          "completed_requests": 2,
+          "window_s": 2.582662014359544
+        },
+        {
+          "case": "rubin-tp8",
+          "users": 4,
+          "generation_tps_p50": 123.75169166709685,
+          "output_tps": 435.9920983485864,
+          "completed_requests": 8,
+          "window_s": 7.341876176482267
+        },
+        {
+          "case": "rubin-tp8",
+          "users": 16,
+          "generation_tps_p50": 34.30410905265124,
+          "output_tps": 492.5575997586158,
+          "completed_requests": 32,
+          "window_s": 26.01523153084972
+        },
+        {
+          "case": "af-f4-ep128-pp5",
+          "users": 1,
+          "generation_tps_p50": 434.4717755853156,
+          "output_tps": 384.81019369262026,
+          "completed_requests": 2,
+          "window_s": 2.0789470058556354
+        },
+        {
+          "case": "af-f4-ep128-pp5",
+          "users": 4,
+          "generation_tps_p50": 221.99800081849725,
+          "output_tps": 797.2281868927734,
+          "completed_requests": 8,
+          "window_s": 4.110491894136646
+        },
+        {
+          "case": "af-f4-ep128-pp5",
+          "users": 16,
+          "generation_tps_p50": 67.885783340051,
+          "output_tps": 1041.570073521977,
+          "completed_requests": 32,
+          "window_s": 13.312594469149204
+        },
+        {
+          "case": "draft-lpx256",
+          "users": 1,
+          "generation_tps_p50": 755.4592708747374,
+          "output_tps": 551.1074199926107,
+          "completed_requests": 2,
+          "window_s": 1.451622625604871
+        },
+        {
+          "case": "draft-lpx256",
+          "users": 4,
+          "generation_tps_p50": 190.59136449610952,
+          "output_tps": 639.9093787414115,
+          "completed_requests": 8,
+          "window_s": 5.08509502767414
+        },
+        {
+          "case": "draft-lpx256",
+          "users": 16,
+          "generation_tps_p50": 51.87237320836232,
+          "output_tps": 708.0104578168574,
+          "completed_requests": 32,
+          "window_s": 18.95169746697564
+        }
+      ]
+    },
+    "route_samples_64": {
+      "source": {
+        "path": "outputs/lpx-study/wide-corpus64-control16/summary.json",
+        "sha256": "0bddd24c2e8d62cb774be4bf11e5dec00ea491e7d0940f8550dd30278c3019d3"
+      },
+      "git_revision": "af5f068ef950d4bce6dd6c61b806bf455d6bb441",
+      "source_sha256": null,
+      "workload": {
+        "cached_tokens": 400000,
+        "new_tokens": 4000,
+        "output_tokens": 400,
+        "prefill_chunk": 4000,
+        "seed": 42,
+        "draft_tokens": 4,
+        "acceptance_probability": 0.8
+      },
+      "settings": {
+        "client_counts": [
+          4,
+          16
+        ],
+        "stream_metrics": true,
+        "event_accounting_required": true,
+        "execution_backend": "sampled-replay",
+        "replay_samples": 64,
+        "result_scope": "finite_measurement_window",
+        "additional_memory_reserve_bytes": {
+          "rubin": 0,
+          "groq_lp30": 0
+        },
+        "micro_batch": 1,
+        "ffn_batching": false,
+        "ffn_batch_wait_us": 5.0,
+        "simulation_processes": 2,
+        "resume": true,
+        "interactivity_statistic": "per_request_generation_tps_p50",
+        "routing_selection": "random_without_replacement",
+        "a_replicas": 1,
+        "warmup_steps": 2,
+        "warmup_seconds": 0.0,
+        "warmup_mode": "resident_decode",
+        "measurement_seconds": 0.001,
+        "measurement_turns": 2,
+        "target_qps": null,
+        "arrival_pattern": "uniform",
+        "dag_template_cache": true,
+        "execution_mode": "cuda_graph",
+        "graph_device_kernel_us": 0.2,
+        "endpoint_transfer_occupancy": "wire",
+        "handoff_mode": "incremental"
+      },
+      "rows": [
+        {
+          "case": "rubin-tp8",
+          "users": 4,
+          "generation_tps_p50": 118.97169933499916,
+          "output_tps": 421.1682478015294,
+          "completed_requests": 8,
+          "window_s": 7.60503674415023
+        },
+        {
+          "case": "rubin-tp8",
+          "users": 16,
+          "generation_tps_p50": 34.99012116635418,
+          "output_tps": 489.6877216788712,
+          "completed_requests": 32,
+          "window_s": 26.16769715211116
+        },
+        {
+          "case": "af-f4-ep128-pp5",
+          "users": 4,
+          "generation_tps_p50": 221.99800081849725,
+          "output_tps": 797.2281868927734,
+          "completed_requests": 8,
+          "window_s": 4.110491894136646
+        },
+        {
+          "case": "af-f4-ep128-pp5",
+          "users": 16,
+          "generation_tps_p50": 67.8235644982806,
+          "output_tps": 1040.883181974016,
+          "completed_requests": 32,
+          "window_s": 13.322340335734397
+        },
+        {
+          "case": "draft-lpx256",
+          "users": 4,
+          "generation_tps_p50": 190.3995316932817,
+          "output_tps": 638.5157712615336,
+          "completed_requests": 8,
+          "window_s": 5.096193620356441
+        },
+        {
+          "case": "draft-lpx256",
+          "users": 16,
+          "generation_tps_p50": 52.212922153964215,
+          "output_tps": 709.8133598025327,
+          "completed_requests": 32,
+          "window_s": 18.893699047494525
+        }
+      ]
+    },
+    "prefill_chunk_256": {
+      "source": {
+        "path": "outputs/lpx-study/wide-prefill256-control/summary.json",
+        "sha256": "3627b0fc57093c05c08373819a9509ad7353aa8d27e5dc64f27de7752ea910bd"
+      },
+      "git_revision": "c5c2743145b9bc75eb85dd7aa97572dc18cc5344",
+      "source_sha256": null,
+      "workload": {
+        "cached_tokens": 400000,
+        "new_tokens": 4000,
+        "output_tokens": 400,
+        "prefill_chunk": 256,
+        "seed": 42,
+        "draft_tokens": 4,
+        "acceptance_probability": 0.8
+      },
+      "settings": {
+        "client_counts": [
+          1,
+          4
+        ],
+        "stream_metrics": true,
+        "event_accounting_required": true,
+        "execution_backend": "sampled-replay",
+        "replay_samples": 16,
+        "result_scope": "finite_measurement_window",
+        "additional_memory_reserve_bytes": {
+          "rubin": 0,
+          "groq_lp30": 0
+        },
+        "micro_batch": 1,
+        "ffn_batching": false,
+        "ffn_batch_wait_us": 5.0,
+        "simulation_processes": 2,
+        "resume": true,
+        "interactivity_statistic": "per_request_generation_tps_p50",
+        "routing_selection": "random_without_replacement",
+        "a_replicas": 1,
+        "warmup_steps": 2,
+        "warmup_seconds": 0.0,
+        "warmup_mode": "resident_decode",
+        "measurement_seconds": 0.001,
+        "measurement_turns": 2,
+        "target_qps": null,
+        "arrival_pattern": "uniform",
+        "dag_template_cache": true,
+        "execution_mode": "cuda_graph",
+        "graph_device_kernel_us": 0.2,
+        "endpoint_transfer_occupancy": "wire",
+        "handoff_mode": "incremental"
+      },
+      "rows": [
+        {
+          "case": "rubin-tp8",
+          "users": 1,
+          "generation_tps_p50": 364.7739239627333,
+          "output_tps": 273.74451570943,
+          "completed_requests": 2,
+          "window_s": 2.9224329770652697
+        },
+        {
+          "case": "rubin-tp8",
+          "users": 4,
+          "generation_tps_p50": 139.50830871044437,
+          "output_tps": 387.83604815634635,
+          "completed_requests": 8,
+          "window_s": 8.250909154040267
+        },
+        {
+          "case": "af-f4-ep128-pp5",
+          "users": 1,
+          "generation_tps_p50": 434.4717755817047,
+          "output_tps": 347.78023519167675,
+          "completed_requests": 2,
+          "window_s": 2.300303234768604
+        },
+        {
+          "case": "af-f4-ep128-pp5",
+          "users": 4,
+          "generation_tps_p50": 213.67975037816063,
+          "output_tps": 612.4955919269639,
+          "completed_requests": 8,
+          "window_s": 5.224527396078924
+        },
+        {
+          "case": "draft-lpx256",
+          "users": 1,
+          "generation_tps_p50": 755.4592708749678,
+          "output_tps": 446.5796937209089,
+          "completed_requests": 2,
+          "window_s": 1.7913935883075822
+        },
+        {
+          "case": "draft-lpx256",
+          "users": 4,
+          "generation_tps_p50": 165.4192580639298,
+          "output_tps": 470.7616204632291,
+          "completed_requests": 8,
+          "window_s": 6.88671263560074
+        }
+      ]
+    },
+    "draft_formal_samples_16": {
+      "source": {
+        "path": "outputs/lpx-study/wide-draft16-check/formal/index.json",
+        "sha256": "522fd9f602fb21ea2eed07d1e63a00953d37f690f1cee1c77ede195e4c5af2f2"
+      },
+      "git_revision": "06c3db97d45f929674f895d8b1c2f31789d96508",
+      "source_sha256": "e75255e67a1b086c09eb946eed40371b9ac1c79338e9ada6b6aeaf4eec440e44",
+      "workload": {
+        "cached_tokens": 400000,
+        "new_tokens": 4000,
+        "output_tokens": 400,
+        "prefill_chunk": 4000,
+        "seed": 42,
+        "draft_tokens": 4,
+        "acceptance_probability": 0.8
+      },
+      "settings": {},
+      "rows": [
+        {
+          "case": "draft-lpx256",
+          "users": 1,
+          "generation_tps_p50": 761.398379366692,
+          "output_tps": 553.9529862923222,
+          "completed_requests": 500,
+          "window_s": 361.041469130125
+        },
+        {
+          "case": "draft-lpx256",
+          "users": 4,
+          "generation_tps_p50": 192.8078480402579,
+          "output_tps": 705.3565369834249,
+          "completed_requests": 502,
+          "window_s": 285.28125770347623
+        },
+        {
+          "case": "draft-lpx256",
+          "users": 16,
+          "generation_tps_p50": 51.48769155244696,
+          "output_tps": 801.5466372739712,
+          "completed_requests": 512,
+          "window_s": 258.5077278905436
+        }
+      ]
+    },
+    "draft_formal_samples_64": {
+      "source": {
+        "path": "outputs/lpx-study/wide-draft64-check/formal/index.json",
+        "sha256": "77bd824f45413199aaf42df499e59b61440c840f4dbb6238443e1cd9d09c6340"
+      },
+      "git_revision": "c5c2743145b9bc75eb85dd7aa97572dc18cc5344",
+      "source_sha256": "e75255e67a1b086c09eb946eed40371b9ac1c79338e9ada6b6aeaf4eec440e44",
+      "workload": {
+        "cached_tokens": 400000,
+        "new_tokens": 4000,
+        "output_tokens": 400,
+        "prefill_chunk": 4000,
+        "seed": 42,
+        "draft_tokens": 4,
+        "acceptance_probability": 0.8
+      },
+      "settings": {},
+      "rows": [
+        {
+          "case": "draft-lpx256",
+          "users": 1,
+          "generation_tps_p50": 761.0105344119445,
+          "output_tps": 553.575431101179,
+          "completed_requests": 500,
+          "window_s": 361.2877103345384
+        },
+        {
+          "case": "draft-lpx256",
+          "users": 4,
+          "generation_tps_p50": 192.88736130344864,
+          "output_tps": 705.1609072094836,
+          "completed_requests": 502,
+          "window_s": 285.35614771427277
+        },
+        {
+          "case": "draft-lpx256",
+          "users": 16,
+          "generation_tps_p50": 51.50943128685785,
+          "output_tps": 801.9211640452882,
+          "completed_requests": 512,
+          "window_s": 258.3745251899833
+        }
+      ]
+    },
+    "expert_native_output32": {
+      "source": {
+        "path": "outputs/lpx-study/expert-fixed-users4-32-native/summary.json",
+        "sha256": "50e4a1f568bd157f6db4381177c8e74bf514858a4a99d6a0fe245fbfdedd8312"
+      },
+      "git_revision": "9abacc5a37f4789c81fc7d7133f2ca708678179f",
+      "source_sha256": null,
+      "workload": {
+        "cached_tokens": 400000,
+        "new_tokens": 4000,
+        "output_tokens": 32,
+        "prefill_chunk": 4000,
+        "seed": 42,
+        "draft_tokens": 4,
+        "acceptance_probability": 0.8
+      },
+      "settings": {
+        "client_counts": [
+          4
+        ],
+        "stream_metrics": true,
+        "event_accounting_required": true,
+        "execution_backend": "native",
+        "replay_samples": null,
+        "result_scope": "finite_measurement_window",
+        "additional_memory_reserve_bytes": {
+          "rubin": 0,
+          "groq_lp30": 0
+        },
+        "micro_batch": 1,
+        "ffn_batching": false,
+        "ffn_batch_wait_us": 5.0,
+        "simulation_processes": 1,
+        "resume": true,
+        "interactivity_statistic": "per_request_generation_tps_p50",
+        "routing_selection": "random_without_replacement",
+        "a_replicas": 1,
+        "warmup_steps": 2,
+        "warmup_seconds": 0.0,
+        "warmup_mode": "resident_decode",
+        "measurement_seconds": 0.001,
+        "measurement_turns": 1,
+        "target_qps": null,
+        "arrival_pattern": "uniform",
+        "dag_template_cache": true,
+        "execution_mode": "cuda_graph",
+        "graph_device_kernel_us": 0.2,
+        "endpoint_transfer_occupancy": "wire",
+        "handoff_mode": "incremental"
+      },
+      "rows": [
+        {
+          "case": "rubin-tp8",
+          "users": 4,
+          "generation_tps_p50": 190.6770459991302,
+          "output_tps": 398.9335871614748,
+          "completed_requests": 4,
+          "window_s": 0.32336209372059005
+        }
+      ]
+    },
+    "expert_replay_output32": {
+      "source": {
+        "path": "outputs/lpx-study/expert-fixed-users4-32-sampled-replay/summary.json",
+        "sha256": "6249ac3b69e9dc5cad56de02b4d27338fe411185dabb3b175c1533424b2a6298"
+      },
+      "git_revision": "9abacc5a37f4789c81fc7d7133f2ca708678179f",
+      "source_sha256": null,
+      "workload": {
+        "cached_tokens": 400000,
+        "new_tokens": 4000,
+        "output_tokens": 32,
+        "prefill_chunk": 4000,
+        "seed": 42,
+        "draft_tokens": 4,
+        "acceptance_probability": 0.8
+      },
+      "settings": {
+        "client_counts": [
+          4
+        ],
+        "stream_metrics": true,
+        "event_accounting_required": true,
+        "execution_backend": "sampled-replay",
+        "replay_samples": 16,
+        "result_scope": "finite_measurement_window",
+        "additional_memory_reserve_bytes": {
+          "rubin": 0,
+          "groq_lp30": 0
+        },
+        "micro_batch": 1,
+        "ffn_batching": false,
+        "ffn_batch_wait_us": 5.0,
+        "simulation_processes": 1,
+        "resume": true,
+        "interactivity_statistic": "per_request_generation_tps_p50",
+        "routing_selection": "random_without_replacement",
+        "a_replicas": 1,
+        "warmup_steps": 2,
+        "warmup_seconds": 0.0,
+        "warmup_mode": "resident_decode",
+        "measurement_seconds": 0.001,
+        "measurement_turns": 1,
+        "target_qps": null,
+        "arrival_pattern": "uniform",
+        "dag_template_cache": true,
+        "execution_mode": "cuda_graph",
+        "graph_device_kernel_us": 0.2,
+        "endpoint_transfer_occupancy": "wire",
+        "handoff_mode": "incremental"
+      },
+      "rows": [
+        {
+          "case": "rubin-tp8",
+          "users": 4,
+          "generation_tps_p50": 165.2018790247228,
+          "output_tps": 398.4865651448879,
+          "completed_requests": 4,
+          "window_s": 0.3237248411451367
+        }
+      ]
+    },
+    "expert_native_output400": {
+      "source": {
+        "path": "outputs/lpx-study/expert-full-users4-native/summary.json",
+        "sha256": "113e1a16cb813684ff7de148026dd05655355d02c8899b206944ee19c972285f"
+      },
+      "git_revision": "9abacc5a37f4789c81fc7d7133f2ca708678179f",
+      "source_sha256": null,
+      "workload": {
+        "cached_tokens": 400000,
+        "new_tokens": 4000,
+        "output_tokens": 400,
+        "prefill_chunk": 4000,
+        "seed": 42,
+        "draft_tokens": 4,
+        "acceptance_probability": 0.8
+      },
+      "settings": {
+        "client_counts": [
+          4
+        ],
+        "stream_metrics": true,
+        "event_accounting_required": true,
+        "execution_backend": "native",
+        "replay_samples": null,
+        "result_scope": "finite_measurement_window",
+        "additional_memory_reserve_bytes": {
+          "rubin": 0,
+          "groq_lp30": 0
+        },
+        "micro_batch": 1,
+        "ffn_batching": false,
+        "ffn_batch_wait_us": 5.0,
+        "simulation_processes": 1,
+        "resume": true,
+        "interactivity_statistic": "per_request_generation_tps_p50",
+        "routing_selection": "random_without_replacement",
+        "a_replicas": 1,
+        "warmup_steps": 2,
+        "warmup_seconds": 0.0,
+        "warmup_mode": "resident_decode",
+        "measurement_seconds": 0.001,
+        "measurement_turns": 1,
+        "target_qps": null,
+        "arrival_pattern": "uniform",
+        "dag_template_cache": true,
+        "execution_mode": "cuda_graph",
+        "graph_device_kernel_us": 0.2,
+        "endpoint_transfer_occupancy": "wire",
+        "handoff_mode": "incremental"
+      },
+      "rows": [
+        {
+          "case": "rubin-tp8",
+          "users": 4,
+          "generation_tps_p50": 478.4398305261874,
+          "output_tps": 1613.209091718498,
+          "completed_requests": 4,
+          "window_s": 0.9924317983445704
+        }
+      ]
+    },
+    "expert_replay_output400_samples16": {
+      "source": {
+        "path": "outputs/lpx-study/expert-full-users4-sampled-replay/summary.json",
+        "sha256": "9d267b394f610d776d7c3405204776eb7b34864e3f572598a2a9f0dfa4cad7cf"
+      },
+      "git_revision": "9abacc5a37f4789c81fc7d7133f2ca708678179f",
+      "source_sha256": null,
+      "workload": {
+        "cached_tokens": 400000,
+        "new_tokens": 4000,
+        "output_tokens": 400,
+        "prefill_chunk": 4000,
+        "seed": 42,
+        "draft_tokens": 4,
+        "acceptance_probability": 0.8
+      },
+      "settings": {
+        "client_counts": [
+          4
+        ],
+        "stream_metrics": true,
+        "event_accounting_required": true,
+        "execution_backend": "sampled-replay",
+        "replay_samples": 16,
+        "result_scope": "finite_measurement_window",
+        "additional_memory_reserve_bytes": {
+          "rubin": 0,
+          "groq_lp30": 0
+        },
+        "micro_batch": 1,
+        "ffn_batching": false,
+        "ffn_batch_wait_us": 5.0,
+        "simulation_processes": 1,
+        "resume": true,
+        "interactivity_statistic": "per_request_generation_tps_p50",
+        "routing_selection": "random_without_replacement",
+        "a_replicas": 1,
+        "warmup_steps": 2,
+        "warmup_seconds": 0.0,
+        "warmup_mode": "resident_decode",
+        "measurement_seconds": 0.001,
+        "measurement_turns": 1,
+        "target_qps": null,
+        "arrival_pattern": "uniform",
+        "dag_template_cache": true,
+        "execution_mode": "cuda_graph",
+        "graph_device_kernel_us": 0.2,
+        "endpoint_transfer_occupancy": "wire",
+        "handoff_mode": "incremental"
+      },
+      "rows": [
+        {
+          "case": "rubin-tp8",
+          "users": 4,
+          "generation_tps_p50": 476.6813584606447,
+          "output_tps": 1608.219987758111,
+          "completed_requests": 4,
+          "window_s": 0.9955105720529093
+        }
+      ]
+    },
+    "expert_replay_output400_samples64": {
+      "source": {
+        "path": "outputs/lpx-study/expert-full-users4-replay64/summary.json",
+        "sha256": "87dd31e089b77b5de0699bdaeb86d3eaa3772b931ef9dafc10969b923edf1501"
+      },
+      "git_revision": "0c9af01b97d838e4da46424623f083a42cf34beb",
+      "source_sha256": null,
+      "workload": {
+        "cached_tokens": 400000,
+        "new_tokens": 4000,
+        "output_tokens": 400,
+        "prefill_chunk": 4000,
+        "seed": 42,
+        "draft_tokens": 4,
+        "acceptance_probability": 0.8
+      },
+      "settings": {
+        "client_counts": [
+          4
+        ],
+        "stream_metrics": true,
+        "event_accounting_required": true,
+        "execution_backend": "sampled-replay",
+        "replay_samples": 64,
+        "result_scope": "finite_measurement_window",
+        "additional_memory_reserve_bytes": {
+          "rubin": 0,
+          "groq_lp30": 0
+        },
+        "micro_batch": 1,
+        "ffn_batching": false,
+        "ffn_batch_wait_us": 5.0,
+        "simulation_processes": 1,
+        "resume": true,
+        "interactivity_statistic": "per_request_generation_tps_p50",
+        "routing_selection": "random_without_replacement",
+        "a_replicas": 1,
+        "warmup_steps": 2,
+        "warmup_seconds": 0.0,
+        "warmup_mode": "resident_decode",
+        "measurement_seconds": 0.001,
+        "measurement_turns": 1,
+        "target_qps": null,
+        "arrival_pattern": "uniform",
+        "dag_template_cache": true,
+        "execution_mode": "cuda_graph",
+        "graph_device_kernel_us": 0.2,
+        "endpoint_transfer_occupancy": "wire",
+        "handoff_mode": "incremental"
+      },
+      "rows": [
+        {
+          "case": "rubin-tp8",
+          "users": 4,
+          "generation_tps_p50": 480.87091163458797,
+          "output_tps": 1612.6437412543166,
+          "completed_requests": 4,
+          "window_s": 0.9927797188204383
+        }
+      ]
+    },
+    "expert_replay_output400_samples256": {
+      "source": {
+        "path": "outputs/lpx-study/expert-full-users4-replay256/summary.json",
+        "sha256": "d2ac5b4dcfa311067e40db6fd8eec8c33e7a665badfa10cf9d3321bbff1db44f"
+      },
+      "git_revision": "0c9af01b97d838e4da46424623f083a42cf34beb",
+      "source_sha256": null,
+      "workload": {
+        "cached_tokens": 400000,
+        "new_tokens": 4000,
+        "output_tokens": 400,
+        "prefill_chunk": 4000,
+        "seed": 42,
+        "draft_tokens": 4,
+        "acceptance_probability": 0.8
+      },
+      "settings": {
+        "client_counts": [
+          4
+        ],
+        "stream_metrics": true,
+        "event_accounting_required": true,
+        "execution_backend": "sampled-replay",
+        "replay_samples": 256,
+        "result_scope": "finite_measurement_window",
+        "additional_memory_reserve_bytes": {
+          "rubin": 0,
+          "groq_lp30": 0
+        },
+        "micro_batch": 1,
+        "ffn_batching": false,
+        "ffn_batch_wait_us": 5.0,
+        "simulation_processes": 1,
+        "resume": true,
+        "interactivity_statistic": "per_request_generation_tps_p50",
+        "routing_selection": "random_without_replacement",
+        "a_replicas": 1,
+        "warmup_steps": 2,
+        "warmup_seconds": 0.0,
+        "warmup_mode": "resident_decode",
+        "measurement_seconds": 0.001,
+        "measurement_turns": 1,
+        "target_qps": null,
+        "arrival_pattern": "uniform",
+        "dag_template_cache": true,
+        "execution_mode": "cuda_graph",
+        "graph_device_kernel_us": 0.2,
+        "endpoint_transfer_occupancy": "wire",
+        "handoff_mode": "incremental"
+      },
+      "rows": [
+        {
+          "case": "rubin-tp8",
+          "users": 4,
+          "generation_tps_p50": 465.8039905435474,
+          "output_tps": 1612.8394808393898,
+          "completed_requests": 4,
+          "window_s": 0.9926592317586198
+        }
+      ]
+    },
+    "routing_seed_0": {
+      "source": {
+        "path": "outputs/lpx-study/wide-seed0-control16/summary.json",
+        "sha256": "58d633862763607e80398bccebd05459e60cf8bfcef21a3782f835b523e29132"
+      },
+      "git_revision": "c5c2743145b9bc75eb85dd7aa97572dc18cc5344",
+      "source_sha256": null,
+      "workload": {
+        "cached_tokens": 400000,
+        "new_tokens": 4000,
+        "output_tokens": 400,
+        "prefill_chunk": 4000,
+        "seed": 0,
+        "draft_tokens": 4,
+        "acceptance_probability": 0.8
+      },
+      "settings": {
+        "client_counts": [
+          4
+        ],
+        "stream_metrics": true,
+        "event_accounting_required": true,
+        "execution_backend": "sampled-replay",
+        "replay_samples": 16,
+        "result_scope": "finite_measurement_window",
+        "additional_memory_reserve_bytes": {
+          "rubin": 0,
+          "groq_lp30": 0
+        },
+        "micro_batch": 1,
+        "ffn_batching": false,
+        "ffn_batch_wait_us": 5.0,
+        "simulation_processes": 1,
+        "resume": true,
+        "interactivity_statistic": "per_request_generation_tps_p50",
+        "routing_selection": "random_without_replacement",
+        "a_replicas": 1,
+        "warmup_steps": 2,
+        "warmup_seconds": 0.0,
+        "warmup_mode": "resident_decode",
+        "measurement_seconds": 0.001,
+        "measurement_turns": 2,
+        "target_qps": null,
+        "arrival_pattern": "uniform",
+        "dag_template_cache": true,
+        "execution_mode": "cuda_graph",
+        "graph_device_kernel_us": 0.2,
+        "endpoint_transfer_occupancy": "wire",
+        "handoff_mode": "incremental"
+      },
+      "rows": [
+        {
+          "case": "rubin-tp8",
+          "users": 4,
+          "generation_tps_p50": 116.39183371199556,
+          "output_tps": 423.6636107939488,
+          "completed_requests": 8,
+          "window_s": 7.555522632688
+        },
+        {
+          "case": "af-f4-ep128-pp5",
+          "users": 4,
+          "generation_tps_p50": 221.99800081849725,
+          "output_tps": 797.2281868927734,
+          "completed_requests": 8,
+          "window_s": 4.110491894136646
+        },
+        {
+          "case": "draft-lpx256",
+          "users": 4,
+          "generation_tps_p50": 194.2422063430575,
+          "output_tps": 645.6888951712486,
+          "completed_requests": 8,
+          "window_s": 5.099979300598991
+        }
+      ]
+    },
+    "routing_seed_1": {
+      "source": {
+        "path": "outputs/lpx-study/wide-seed1-control16/summary.json",
+        "sha256": "eda38f4e2a58defa3fa3dd7584fbd97ea1e079711b9c7cac73c28c5514ec495f"
+      },
+      "git_revision": "c5c2743145b9bc75eb85dd7aa97572dc18cc5344",
+      "source_sha256": null,
+      "workload": {
+        "cached_tokens": 400000,
+        "new_tokens": 4000,
+        "output_tokens": 400,
+        "prefill_chunk": 4000,
+        "seed": 1,
+        "draft_tokens": 4,
+        "acceptance_probability": 0.8
+      },
+      "settings": {
+        "client_counts": [
+          4
+        ],
+        "stream_metrics": true,
+        "event_accounting_required": true,
+        "execution_backend": "sampled-replay",
+        "replay_samples": 16,
+        "result_scope": "finite_measurement_window",
+        "additional_memory_reserve_bytes": {
+          "rubin": 0,
+          "groq_lp30": 0
+        },
+        "micro_batch": 1,
+        "ffn_batching": false,
+        "ffn_batch_wait_us": 5.0,
+        "simulation_processes": 1,
+        "resume": true,
+        "interactivity_statistic": "per_request_generation_tps_p50",
+        "routing_selection": "random_without_replacement",
+        "a_replicas": 1,
+        "warmup_steps": 2,
+        "warmup_seconds": 0.0,
+        "warmup_mode": "resident_decode",
+        "measurement_seconds": 0.001,
+        "measurement_turns": 2,
+        "target_qps": null,
+        "arrival_pattern": "uniform",
+        "dag_template_cache": true,
+        "execution_mode": "cuda_graph",
+        "graph_device_kernel_us": 0.2,
+        "endpoint_transfer_occupancy": "wire",
+        "handoff_mode": "incremental"
+      },
+      "rows": [
+        {
+          "case": "rubin-tp8",
+          "users": 4,
+          "generation_tps_p50": 117.2688378446714,
+          "output_tps": 410.8417630340714,
+          "completed_requests": 8,
+          "window_s": 7.796188917956651
+        },
+        {
+          "case": "af-f4-ep128-pp5",
+          "users": 4,
+          "generation_tps_p50": 221.99800081849725,
+          "output_tps": 797.2281868927734,
+          "completed_requests": 8,
+          "window_s": 4.110491894136646
+        },
+        {
+          "case": "draft-lpx256",
+          "users": 4,
+          "generation_tps_p50": 190.5481438586321,
+          "output_tps": 640.3909641875465,
+          "completed_requests": 8,
+          "window_s": 5.212440816111242
+        }
+      ]
+    },
+    "routing_seed_2": {
+      "source": {
+        "path": "outputs/lpx-study/wide-seed2-control16/summary.json",
+        "sha256": "7617e67d081f4b94d6ef558c6879d9b1cbda52aebfde3ede6d2dee837d9f53ba"
+      },
+      "git_revision": "c5c2743145b9bc75eb85dd7aa97572dc18cc5344",
+      "source_sha256": null,
+      "workload": {
+        "cached_tokens": 400000,
+        "new_tokens": 4000,
+        "output_tokens": 400,
+        "prefill_chunk": 4000,
+        "seed": 2,
+        "draft_tokens": 4,
+        "acceptance_probability": 0.8
+      },
+      "settings": {
+        "client_counts": [
+          4
+        ],
+        "stream_metrics": true,
+        "event_accounting_required": true,
+        "execution_backend": "sampled-replay",
+        "replay_samples": 16,
+        "result_scope": "finite_measurement_window",
+        "additional_memory_reserve_bytes": {
+          "rubin": 0,
+          "groq_lp30": 0
+        },
+        "micro_batch": 1,
+        "ffn_batching": false,
+        "ffn_batch_wait_us": 5.0,
+        "simulation_processes": 1,
+        "resume": true,
+        "interactivity_statistic": "per_request_generation_tps_p50",
+        "routing_selection": "random_without_replacement",
+        "a_replicas": 1,
+        "warmup_steps": 2,
+        "warmup_seconds": 0.0,
+        "warmup_mode": "resident_decode",
+        "measurement_seconds": 0.001,
+        "measurement_turns": 2,
+        "target_qps": null,
+        "arrival_pattern": "uniform",
+        "dag_template_cache": true,
+        "execution_mode": "cuda_graph",
+        "graph_device_kernel_us": 0.2,
+        "endpoint_transfer_occupancy": "wire",
+        "handoff_mode": "incremental"
+      },
+      "rows": [
+        {
+          "case": "rubin-tp8",
+          "users": 4,
+          "generation_tps_p50": 120.93888495609475,
+          "output_tps": 425.40857903101994,
+          "completed_requests": 8,
+          "window_s": 7.524530904597929
+        },
+        {
+          "case": "af-f4-ep128-pp5",
+          "users": 4,
+          "generation_tps_p50": 221.99800081849725,
+          "output_tps": 797.2281868927734,
+          "completed_requests": 8,
+          "window_s": 4.110491894136646
+        },
+        {
+          "case": "draft-lpx256",
+          "users": 4,
+          "generation_tps_p50": 193.76087371189078,
+          "output_tps": 635.7454513576027,
+          "completed_requests": 8,
+          "window_s": 5.127838497370972
+        }
+      ]
+    },
+    "routing_seed_3": {
+      "source": {
+        "path": "outputs/lpx-study/wide-seed3-control16/summary.json",
+        "sha256": "e78a613bfaacc9178534ad75b9ae30e9b7b85a2f0a15519ed80e000c731ec065"
+      },
+      "git_revision": "c5c2743145b9bc75eb85dd7aa97572dc18cc5344",
+      "source_sha256": null,
+      "workload": {
+        "cached_tokens": 400000,
+        "new_tokens": 4000,
+        "output_tokens": 400,
+        "prefill_chunk": 4000,
+        "seed": 3,
+        "draft_tokens": 4,
+        "acceptance_probability": 0.8
+      },
+      "settings": {
+        "client_counts": [
+          4
+        ],
+        "stream_metrics": true,
+        "event_accounting_required": true,
+        "execution_backend": "sampled-replay",
+        "replay_samples": 16,
+        "result_scope": "finite_measurement_window",
+        "additional_memory_reserve_bytes": {
+          "rubin": 0,
+          "groq_lp30": 0
+        },
+        "micro_batch": 1,
+        "ffn_batching": false,
+        "ffn_batch_wait_us": 5.0,
+        "simulation_processes": 1,
+        "resume": true,
+        "interactivity_statistic": "per_request_generation_tps_p50",
+        "routing_selection": "random_without_replacement",
+        "a_replicas": 1,
+        "warmup_steps": 2,
+        "warmup_seconds": 0.0,
+        "warmup_mode": "resident_decode",
+        "measurement_seconds": 0.001,
+        "measurement_turns": 2,
+        "target_qps": null,
+        "arrival_pattern": "uniform",
+        "dag_template_cache": true,
+        "execution_mode": "cuda_graph",
+        "graph_device_kernel_us": 0.2,
+        "endpoint_transfer_occupancy": "wire",
+        "handoff_mode": "incremental"
+      },
+      "rows": [
+        {
+          "case": "rubin-tp8",
+          "users": 4,
+          "generation_tps_p50": 116.3149222560119,
+          "output_tps": 412.59760288474826,
+          "completed_requests": 8,
+          "window_s": 7.760587986000543
+        },
+        {
+          "case": "af-f4-ep128-pp5",
+          "users": 4,
+          "generation_tps_p50": 221.99800081849725,
+          "output_tps": 797.2281868927734,
+          "completed_requests": 8,
+          "window_s": 4.110491894136646
+        },
+        {
+          "case": "draft-lpx256",
+          "users": 4,
+          "generation_tps_p50": 197.39713681465022,
+          "output_tps": 661.4643009059392,
+          "completed_requests": 8,
+          "window_s": 5.143134701813284
+        }
+      ]
+    },
+    "routing_seed_4": {
+      "source": {
+        "path": "outputs/lpx-study/wide-seed4-control16/summary.json",
+        "sha256": "bc0ce64593f451cfe6404a408621dc4562339cec62ade513c9cddb7332b965ed"
+      },
+      "git_revision": "c5c2743145b9bc75eb85dd7aa97572dc18cc5344",
+      "source_sha256": null,
+      "workload": {
+        "cached_tokens": 400000,
+        "new_tokens": 4000,
+        "output_tokens": 400,
+        "prefill_chunk": 4000,
+        "seed": 4,
+        "draft_tokens": 4,
+        "acceptance_probability": 0.8
+      },
+      "settings": {
+        "client_counts": [
+          4
+        ],
+        "stream_metrics": true,
+        "event_accounting_required": true,
+        "execution_backend": "sampled-replay",
+        "replay_samples": 16,
+        "result_scope": "finite_measurement_window",
+        "additional_memory_reserve_bytes": {
+          "rubin": 0,
+          "groq_lp30": 0
+        },
+        "micro_batch": 1,
+        "ffn_batching": false,
+        "ffn_batch_wait_us": 5.0,
+        "simulation_processes": 1,
+        "resume": true,
+        "interactivity_statistic": "per_request_generation_tps_p50",
+        "routing_selection": "random_without_replacement",
+        "a_replicas": 1,
+        "warmup_steps": 2,
+        "warmup_seconds": 0.0,
+        "warmup_mode": "resident_decode",
+        "measurement_seconds": 0.001,
+        "measurement_turns": 2,
+        "target_qps": null,
+        "arrival_pattern": "uniform",
+        "dag_template_cache": true,
+        "execution_mode": "cuda_graph",
+        "graph_device_kernel_us": 0.2,
+        "endpoint_transfer_occupancy": "wire",
+        "handoff_mode": "incremental"
+      },
+      "rows": [
+        {
+          "case": "rubin-tp8",
+          "users": 4,
+          "generation_tps_p50": 117.93935809144915,
+          "output_tps": 416.2858912315402,
+          "completed_requests": 8,
+          "window_s": 7.694231458395683
+        },
+        {
+          "case": "af-f4-ep128-pp5",
+          "users": 4,
+          "generation_tps_p50": 221.99800081849725,
+          "output_tps": 797.2281868927734,
+          "completed_requests": 8,
+          "window_s": 4.110491894136646
+        },
+        {
+          "case": "draft-lpx256",
+          "users": 4,
+          "generation_tps_p50": 203.12934983342745,
+          "output_tps": 636.1331017372487,
+          "completed_requests": 8,
+          "window_s": 5.093273705065366
+        }
+      ]
+    }
+  }
+}
