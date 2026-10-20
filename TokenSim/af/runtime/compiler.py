@@ -162,8 +162,13 @@ def compile_af_runtime_plan(
             layer_type="moe" if layer_id in moe_layer_ids else "dense",
             hidden_size=hidden,
             num_attention_heads=attention_heads,
-            num_kv_heads=kv_heads,
-            head_dim=head_dim,
+            num_kv_heads=(
+                kv_heads
+                if mla
+                else model.attention_geometry(layer_id).num_key_value_heads
+            ),
+            head_dim=model.attention_geometry(layer_id).head_dim,
+            k_eq_v=model.attention_geometry(layer_id).k_eq_v,
             dense_intermediate_size=intermediate,
             routed_intermediate_size=moe_intermediate,
             shared_intermediate_size=(
@@ -235,8 +240,6 @@ def compile_af_runtime_plan(
         weight_bytes=weight_bytes,
         weight_dtype=effective_dtypes.weight_dtype,
         kv_bytes=kv_bytes,
-        kv_heads=kv_heads,
-        head_dim=head_dim,
         mla=mla,
         router_location=cluster_config.af.router_location,
     )

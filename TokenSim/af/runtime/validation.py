@@ -232,18 +232,21 @@ class RuntimeValidationMixin:
                         "must have exactly one scheduler leader"
                     )
                 for binding in bindings:
-                    expected_partitions = kv_head_partitions(
-                        num_kv_heads=self.num_kv_heads,
-                        tensor_parallel_size=domain.tensor_parallel_size,
-                        head_dim=self.head_dim,
-                        num_layers=stage_layer_count(
-                            self.total_layers,
-                            domain.pipeline_parallel_size,
-                            binding.pp_rank,
+                    from TokenSim.af.runtime.layer_kv import layer_kv_partitions
+                    from TokenSim.config.cache_config import stage_layer_range
+
+                    expected_partitions = layer_kv_partitions(
+                        tuple(
+                            self.layer_plan(i)
+                            for i in stage_layer_range(
+                                self.total_layers,
+                                domain.pipeline_parallel_size,
+                                binding.pp_rank,
+                            )
                         ),
-                        block_size=self.block_size,
-                        dtype_size_bytes=self.kv_dtype_size_bytes,
-                        mla_cache_width=self.mla.cache_width if self.mla else 0,
+                        domain.tensor_parallel_size,
+                        self.block_size,
+                        self.kv_dtype_size_bytes,
                     )
                     if binding.kv_partition != expected_partitions[binding.tp_rank]:
                         raise ConfigurationError(

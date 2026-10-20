@@ -58,6 +58,8 @@ class ModelSpec(AttentionModelMixin):
     operator_dtypes: Mapping[str, str] = field(default_factory=dict)
     operator_modules: Mapping[str, Mapping[str, Any]] = field(default_factory=dict)
     qk_norm: bool = False
+    k_eq_v: bool = False
+    attention_geometries: tuple = ()
 
     def __post_init__(self) -> None:
         if self.attention_type not in {"mha", "gqa", "mqa", "mla"}:
@@ -96,6 +98,7 @@ class ModelSpec(AttentionModelMixin):
             integer(window, "attention window")
         boolean(self.tie_word_embeddings, "tie_word_embeddings")
         boolean(self.qk_norm, "qk_norm")
+        self.validate_attention_geometries()
         if self.qk_norm and (
             self.attention_type == "mla" or self.components is not None
         ):
@@ -229,25 +232,6 @@ class ModelSpec(AttentionModelMixin):
 
     # -- parameter accounting --------------------------------------------
 
-    def attention_params_per_layer(self) -> int:
-        if self.attention_type == "mla":
-            return self.mla_dimensions.weight_elements(
-                self.num_attention_heads, self.hidden_size
-            )
-        if self.components is not None:
-            spec = self.components
-            return (
-                self.hidden_size * (spec.q_lora_rank + self.head_dim)
-                + spec.q_lora_rank * self.q_dim
-                + self.q_dim * spec.o_lora_rank
-                + spec.o_groups * spec.o_lora_rank * self.hidden_size
-            )
-        return (
-            self.hidden_size * (self.q_dim + 2 * self.kv_dim)
-            + self.q_dim * self.hidden_size
-            + (2 * self.head_dim if self.qk_norm else 0)
-        )
-
     def dense_ffn_params_per_layer(self) -> int:
         return (
             (self.ffn_projection_count + 1) * self.hidden_size * self.intermediate_size
@@ -273,7 +257,7 @@ class ModelSpec(AttentionModelMixin):
             return packed_weight_memory(self)["parameter_elements"]
         moe_layers = len(self.moe_layer_indices())
         dense_layers = self.num_layers - moe_layers
-        params = self.num_layers * self.attention_params_per_layer()
+        params = sum(self.attention_params_per_layer(i) for i in range(self.num_layers))
         params += dense_layers * self.dense_ffn_params_per_layer()
         if moe_layers:
             per_layer = (
@@ -421,6 +405,8 @@ class ModelSpec(AttentionModelMixin):
                 str(k): dict(v) for k, v in (raw.get("operator_modules") or {}).items()
             },
             qk_norm=raw.get("qk_norm", False),
+            k_eq_v=raw.get("k_eq_v", False),
+            attention_geometries=raw.get("attention_geometries", ()),
             attention_type=attention_type,
             **{name: raw.get(name, 0) for name in MLADimensions.__dataclass_fields__},
         )
@@ -447,6 +433,12 @@ class ModelSpec(AttentionModelMixin):
             ),
             "tie_word_embeddings": self.tie_word_embeddings,
             **({"qk_norm": True} if self.qk_norm else {}),
+            **({"k_eq_v": True} if self.k_eq_v else {}),
+            **(
+                {"attention_geometries": [vars(g) for g in self.attention_geometries]}
+                if self.attention_geometries
+                else {}
+            ),
             "activation": self.activation,
             "dtype": self.dtype,
             "activation_dtype": self.activation_dtype,

@@ -266,7 +266,12 @@ class ComputeEstimateMixin:
             if self.model.gated:
                 components.append(
                     self._elementwise(
-                        resolver, "swiglu", "swiglu", tokens, local_width, dtype
+                        resolver,
+                        self.model.activation,
+                        self.model.activation,
+                        tokens,
+                        local_width,
+                        dtype,
                     )
                 )
             components.append(
@@ -321,6 +326,24 @@ class ComputeEstimateMixin:
             ]
         else:
             raise ValueError(f"unsupported AF compute stage={query.stage!r}")
+        if self.model.architecture == "gemma4_text":
+            h = self.model.hidden_size
+            if query.stage == "layout" and query.operation == "post_attention_norm":
+                components = [
+                    self._elementwise(resolver, name, op, tokens, h, dtype)
+                    for name, op in (
+                        ("post_attn_norm", "rmsnorm"),
+                        ("attn_residual", "residual_add"),
+                        ("pre_ffn_norm", "rmsnorm"),
+                    )
+                ]
+            elif query.stage == "residual":
+                components.insert(
+                    0,
+                    self._elementwise(
+                        resolver, "post_ffn_norm", "rmsnorm", tokens, h, dtype
+                    ),
+                )
         latency_us = sum(component.latency_us for component in components)
         match_type = _worst_match(component.match_type for component in components)
         return AFServiceEstimate(

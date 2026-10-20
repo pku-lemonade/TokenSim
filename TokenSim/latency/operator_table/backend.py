@@ -173,6 +173,10 @@ class OperatorTableLatencyBackend(StepComposition, OperatorQueries, LatencyBacke
             from TokenSim.latency.speculative import SpeculativeEstimator
 
             self.native_mtp = SpeculativeEstimator(self, max_num_seqs=max_num_seqs)
+        self.include_pp_transfer = self.include_step_overhead = True
+        from .layers import layer_backends
+
+        self._layer_backends = layer_backends(self)
 
     def _init_dimensions(self) -> None:
         model = self.model
@@ -226,12 +230,23 @@ class OperatorTableLatencyBackend(StepComposition, OperatorQueries, LatencyBacke
             if distribution
             else _MOE_DISTRIBUTION_CANDIDATES.get(routing, ("uniform", "balanced"))
         )
-        self.moe_dtype = model.operator_dtype("routed_expert")
+        self.moe_dtype = model.operator_dtype(
+            "routed_experts", model.operator_dtype("routed_expert")
+        )
 
     def estimate_step_latency(self, requests: list[Request]) -> float:
         """Latency of one step: decode tokens and prefill/recompute chunks may mix."""
         if not requests:
             return 0.0
+        if self._layer_backends:
+            steps = self.stats.step_count
+            for child in self._layer_backends:
+                child.moe_token_multiplier = self.moe_token_multiplier
+            latency = sum(
+                child.estimate_step_latency(requests) for child in self._layer_backends
+            )
+            self.stats.step_count = steps + 1
+            return latency
         self.stats.step_count += 1
         tokens = 0
         sampling = 0

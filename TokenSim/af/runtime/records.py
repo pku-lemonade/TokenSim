@@ -137,6 +137,7 @@ class AFLayerRuntime:
     mla: MLADimensions | None = None
     tie_word_embeddings: bool = True
     attention_window: int = 0
+    k_eq_v: bool = False
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -152,6 +153,7 @@ class AFLayerRuntime:
             "num_attention_heads": self.num_attention_heads,
             "num_kv_heads": self.num_kv_heads,
             "head_dim": self.head_dim,
+            **({"k_eq_v": True} if self.k_eq_v else {}),
             "dense_intermediate_size": self.dense_intermediate_size,
             "routed_intermediate_size": self.routed_intermediate_size,
             "shared_intermediate_size": self.shared_intermediate_size,
@@ -227,6 +229,10 @@ class AFKVHeadPartition:
     replica_factor: int
     bytes_per_token: int
     bytes_per_block: int
+    layer_partitions: tuple = ()
+
+    def for_layer(self, layer_id):
+        return dict(self.layer_partitions)[layer_id] if self.layer_partitions else self
 
     @property
     def local_head_count(self) -> int:
@@ -240,6 +246,15 @@ class AFKVHeadPartition:
             "local_head_count": self.local_head_count,
             "bytes_per_token": self.bytes_per_token,
             "bytes_per_block": self.bytes_per_block,
+            **(
+                {
+                    "layer_partitions": {
+                        str(i): p.as_dict() for i, p in self.layer_partitions
+                    }
+                }
+                if self.layer_partitions
+                else {}
+            ),
         }
 
 

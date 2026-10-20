@@ -19,7 +19,12 @@ def rank_kv_bytes(plan, binding, context):
     )
     per_layer = binding.kv_partition.bytes_per_token // len(layers)
     return sum(
-        per_layer * min(context, plan.layer_plan(layer).attention_window or context)
+        (
+            binding.kv_partition.for_layer(layer).bytes_per_token
+            if binding.kv_partition.layer_partitions
+            else per_layer
+        )
+        * min(context, plan.layer_plan(layer).attention_window or context)
         for layer in layers
     )
 

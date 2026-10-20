@@ -125,8 +125,13 @@ class OperatorTableAFComputeProvider(
         return resolver
 
     def estimate_signature(self, query):
-        if self.model.attention_windows and query.stage in {"a", "attention"}:
-            return (self.model.attention_window(query.layer_id),)
+        if (
+            self.model.attention_windows or self.model.attention_geometries
+        ) and query.stage in {"a", "attention"}:
+            return (
+                self.model.attention_window(query.layer_id),
+                self.model.attention_geometry(query.layer_id),
+            )
         return ()
 
     @property

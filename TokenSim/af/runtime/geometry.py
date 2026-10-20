@@ -93,28 +93,34 @@ class RuntimeGeometryMixin:
             "tp_size": domain_plan.tensor_parallel_size,
         }
         if operation in {"attention", "a_rank_compute"}:
+            partition = (
+                binding.kv_partition.for_layer(layer_id)
+                if binding.kv_partition
+                else None
+            )
             if binding.kv_partition is None:
                 raise ConfigurationError(
                     f"attention rank {binding.rank_key!r} has no KV partition"
                 )
             shape.update(
                 {
-                    "num_heads": self.num_attention_heads
+                    "num_heads": layer.num_attention_heads
                     // domain_plan.tensor_parallel_size,
-                    "num_kv_heads": binding.kv_partition.local_head_count,
-                    "head_dim": self.head_dim,
+                    "num_kv_heads": partition.local_head_count,
+                    "head_dim": layer.head_dim,
+                    "kv_projections": 1 if layer.k_eq_v else 2,
                     "query_width": (
-                        self.num_attention_heads
+                        layer.num_attention_heads
                         // domain_plan.tensor_parallel_size
-                        * self.head_dim
+                        * layer.head_dim
                     ),
-                    "kv_width": (binding.kv_partition.local_head_count * self.head_dim),
+                    "kv_width": (partition.local_head_count * layer.head_dim),
                 }
             )
             if self.mla is not None:
                 shape.update(
                     self.mla.local_shape(
-                        self.num_attention_heads, domain_plan.tensor_parallel_size
+                        layer.num_attention_heads, domain_plan.tensor_parallel_size
                     )
                 )
         elif operation == "dense_ffn":

@@ -30,7 +30,7 @@ def _owners(service, session):
             continue
         stages = plan.domain_runtime(binding.domain).pipeline_parallel_size
         for layer in stage_layer_range(plan.total_layers, stages, binding.pp_rank):
-            for head in binding.kv_partition.global_head_ids:
+            for head in binding.kv_partition.for_layer(layer).global_head_ids:
                 result[(layer, head)].append(binding)
     return result
 
@@ -87,6 +87,12 @@ def plan_handoff(
         producer = min(sources[(layer, head)], key=lambda binding: binding.domain_rank)
         consumers = sorted(destination, key=lambda binding: binding.domain_rank)
         canonical = consumers[0]
+        if model.attention_geometries:
+            element_bytes = (
+                source.runtime.plan.kv_dtype_size_bytes
+                * model.attention_geometry(layer).head_dim
+                * 2
+            )
         size = (context - first) * element_bytes
         if producer.physical_identity != canonical.physical_identity:
             copies.append(

@@ -7,7 +7,7 @@ from typing import Any, Mapping
 from TokenSim.llm.llm_request import Request
 from TokenSim.operator_data.analytical import Calibration
 from TokenSim.operator_data.lookup import MissingOperatorDataError
-from TokenSim.operator_data.workload import context_attention_work
+from TokenSim.errors import ConfigurationError
 from .stats import OperatorEstimate
 
 
@@ -62,38 +62,24 @@ class OperatorQueries:
             "head_dim": model.head_dim,
             "window_size": model.sliding_window,
         }
-        latency = self.query("context_attention", key).latency_us
-        if kv_len > q_len:
-            # Prefix-cache hit: queries attend to cached keys as well. Scale by
-            # the analytical work ratio because tables assume kv_len == q_len.
-            base = context_attention_work(
-                batch,
-                q_len,
-                self.heads_local,
-                self.kv_heads_local,
-                model.head_dim,
-                model.activation_dtype,
-                model.kv_cache_dtype,
-                model.sliding_window,
+        if kv_len <= q_len:
+            return self.query("context_attention", key).latency_us
+        full = {**key, "context_len": int(kv_len)}
+        if self.fallback == "analytical_only":
+            return self.query("context_attention", full).latency_us
+        estimate = self.query("context_attention", key)
+        if estimate.match_type == "analytical":
+            return self.query("context_attention", full).latency_us
+        base_us = self._analytical_reference_us("context_attention", key)
+        full_us = self._analytical_reference_us("context_attention", full)
+        if base_us is None or full_us is None or base_us <= 0:
+            raise ConfigurationError(
+                "cached prefill requires an analytical latency reference"
             )
-            full_keys = float(
-                min(kv_len, model.sliding_window) if model.sliding_window else kv_len
-            )
-            # queries q_len each attend to (kv_len - q_len) cached keys + causal part of their own block
-            full_flops = (
-                4.0
-                * batch
-                * q_len
-                * ((kv_len - q_len) + 0.5 * q_len)
-                * self.q_dim_local
-            )
-            if model.sliding_window:
-                full_flops = min(
-                    full_flops, 4.0 * batch * q_len * full_keys * self.q_dim_local
-                )
-            if base.flops > 0:
-                latency *= max(1.0, full_flops / base.flops)
-        return latency
+        # Scale measured device service by roofline growth, including KV reads.
+        # Multiplying launch overhead by the FLOP ratio creates seconds of
+        # fictitious latency for a short query over a long cached prefix.
+        return estimate.latency_us * max(1.0, full_us / base_us)
 
     def _attention_decode(
         self, batch: int, context_len: int, query_width: int = 1

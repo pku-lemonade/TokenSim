@@ -13,7 +13,7 @@ def attention_core(provider, resolver, query, tokens, heads, kv_heads, dtype):
         "kv_cache_dtype": query.kv_cache_dtype or model.kv_cache_dtype,
         "num_heads": heads,
         "num_kv_heads": kv_heads,
-        "head_dim": model.head_dim,
+        "head_dim": model.attention_geometry(query.layer_id).head_dim,
         "window_size": model.attention_window(query.layer_id),
     }
     lengths = tuple(query.context_lengths) or (1,) * tokens
