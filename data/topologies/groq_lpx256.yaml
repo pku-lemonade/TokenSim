@@ -1,0 +1,23 @@
+schema_version: 1
+topology_id: groq_lpx256
+source_id: nvidia-lpx-architecture
+description: >
+  LPX has 16 trays of 16 LP30 chips.
+  These switched hierarchy levels approximate scheduled C2C routing.
+  Each level uses one aggregate injection budget per endpoint.
+  The rack routes and inter-rack oversubscription are unmeasured assumptions.
+levels:
+  - name: tray
+    size: 16
+    link: groq_lp30_injection
+    fabric: switched
+    collective_algorithm: direct
+  - name: rack
+    size: 16
+    link: groq_lp30_injection
+    fabric: switched
+    collective_algorithm: direct
+  - name: system
+    size: null
+    link: ethernet1600Gb
+    fabric: fat_tree
