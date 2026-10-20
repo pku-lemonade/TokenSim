@@ -23,7 +23,6 @@ from TokenSim.af.runtime.records import (
 from TokenSim.af.runtime.topology import (
     _compile_collective_plans,
     _compile_dtypes,
-    _compile_partial_destinations,
     _compile_request_owners,
     _tensor_interval,
     _validate_parallel_shapes,
@@ -395,8 +394,10 @@ def compile_af_runtime_plan(
         for binding in bindings
     )
     request_owners = _compile_request_owners(cluster_config, bindings)
-    partial_destinations = _compile_partial_destinations(
-        cluster_config, tensor_ownerships
+    from TokenSim.af.runtime.destinations import compile_partial_destinations
+
+    partial_destinations = compile_partial_destinations(
+        cluster_config, tensor_ownerships, total_layers
     )
     collective_plans = _compile_collective_plans(cluster_config, binding_by_key)
 

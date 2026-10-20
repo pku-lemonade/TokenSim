@@ -7,7 +7,6 @@ from typing import Mapping, TYPE_CHECKING
 
 from TokenSim.af.runtime.records import (
     AFKVHeadPartition,
-    AFPartialDestination,
     AFRankBinding,
     AFReplicaRuntime,
     AFRequestOwner,
@@ -270,44 +269,6 @@ def _compile_request_owners(
             )
         )
     return tuple(owners)
-
-
-def _compile_partial_destinations(
-    cluster_config: ClusterConfig,
-    ownerships: tuple[AFTensorOwnership, ...],
-) -> tuple[AFPartialDestination, ...]:
-    destinations: list[AFPartialDestination] = []
-    a_domain, f_domain = cluster_config.af_domains
-    a_owners = tuple(item for item in ownerships if item.domain == a_domain.name)
-    f_owners = tuple(item for item in ownerships if item.domain == f_domain.name)
-    for source in f_owners:
-        for target in a_owners:
-            interval = source.interval.intersection(target.interval)
-            if interval is None:
-                continue
-            destinations.append(
-                AFPartialDestination(
-                    source_domain=source.domain,
-                    source_rank=source.domain_rank,
-                    source_dp_rank=source.dp_rank,
-                    target_domain=target.domain,
-                    target_rank=target.domain_rank,
-                    target_dp_rank=target.dp_rank,
-                    interval=interval,
-                )
-            )
-    return tuple(
-        sorted(
-            destinations,
-            key=lambda item: (
-                item.source_domain,
-                item.source_rank,
-                item.target_domain,
-                item.target_rank,
-                item.interval.start,
-            ),
-        )
-    )
 
 
 def _compile_collective_plans(

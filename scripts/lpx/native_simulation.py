@@ -3,6 +3,7 @@
 import numpy as np
 
 from TokenSim.af.serving.handoff import plan_handoff, execute_handoff
+from TokenSim.af.runtime.host import host_collection
 from TokenSim.config.validation import boolean, integer, number
 from TokenSim.errors import ConfigurationError
 from scripts.lpx.native_config import runtime_configurations, session_prefix_context
@@ -12,6 +13,7 @@ from scripts.lpx.requests import Arrivals, request_metrics
 from scripts.lpx.control import token_control as send_tokens
 
 
+@host_collection()
 def point(
     hardware,
     target,

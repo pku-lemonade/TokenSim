@@ -16,6 +16,44 @@ from TokenSim.af.factory import build_model_runtime
 
 
 class NativeLPXTest(unittest.TestCase):
+    def test_host_collection_policy_preserves_native_events(self):
+        case = Case("af", "af", self.lpu, self.base)
+        settings = dict(warmup_steps=1, measurement_seconds=1e-9, trace=True)
+        original = point.__wrapped__(
+            self.hardware, self.model, self.workload, case, 2, **settings
+        )
+        amortized = point(self.hardware, self.model, self.workload, case, 2, **settings)
+        self.assertEqual(original, amortized)
+
+    def test_return_routes_exclude_stages_without_a_shared_layer(self):
+        from TokenSim.config.cache_config import stage_layer_range
+        from TokenSim.errors import ConfigurationError
+
+        model = replace(
+            self.model, num_layers=4, moe=replace(self.model.moe, num_moe_layers=4)
+        )
+        layout = Layout(
+            a_tp=2, a_pp=4, f_device="groq_lp30", f_ep=4, f_pp=2, colocated=False
+        )
+        runtime = configuration(self.hardware, model, layout, namespace="sparse")
+        plan = runtime.plan
+        self.assertEqual(len(plan.partial_destinations), 32)
+        destination = plan.partial_destinations[0]
+        for route in plan.partial_destinations:
+            source = plan.binding(route.source_domain, route.source_rank)
+            target = plan.binding(route.target_domain, route.target_rank)
+            self.assertTrue(
+                set(stage_layer_range(4, 2, source.pp_rank)).intersection(
+                    stage_layer_range(4, 4, target.pp_rank)
+                )
+            )
+        invalid = replace(destination, target_rank=4)
+        broken = replace(
+            plan, partial_destinations=(invalid, *plan.partial_destinations[1:])
+        )
+        with self.assertRaisesRegex(ConfigurationError, "share a model layer"):
+            broken.validate()
+
     def test_reference_planning_preserves_complete_native_point_results(self):
         case = Case("base", "rubin", self.base)
         settings = dict(

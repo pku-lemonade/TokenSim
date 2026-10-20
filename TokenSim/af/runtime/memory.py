@@ -247,6 +247,7 @@ def _compile_physical_states(
 ):
     physical_components: dict[str, dict[str, AFModelComponent]] = {}
     physical_bindings: dict[str, list[RankKey]] = {}
+    physical_roles: dict[str, set[str]] = {}
     physical_kv_bytes: dict[str, list[int]] = {}
     for item in preliminary:
         domain = item["domain"]
@@ -254,6 +255,7 @@ def _compile_physical_states(
         rank_key = (domain.name, mapping.domain_rank)
         physical = mapping.physical_worker.identity
         physical_bindings.setdefault(physical, []).append(rank_key)
+        physical_roles.setdefault(physical, set()).add(domain.capability)
         ledger = physical_components.setdefault(physical, {})
         for component in item["components"]:
             ledger.setdefault(component.component_id, component)
@@ -279,11 +281,7 @@ def _compile_physical_states(
             for component_id in sorted(physical_components[physical])
         )
         model_bytes = sum(component.bytes for component in components)
-        roles = {
-            item["domain"].capability
-            for item in preliminary
-            if item["mapping"].physical_worker.identity == physical
-        }
+        roles = physical_roles[physical]
         buffers = ()
         # Explicit conservative workspace assumption: one input and one
         # output buffer for the largest activation/logit boundary in a
