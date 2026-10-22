@@ -14,7 +14,7 @@ sources:
     notes: FP8 peak equals the published rack peak divided by 256; tray and rack totals are rounded differently.
   assumption-lp30-analytical:
     grade: D
-    reference: docs/lpx-study-guide.md
+    reference: docs/lpx.md
     notes: FP16/BF16 peak is assumed to be half the FP8 peak; FP32 is one quarter of FP16; efficiency, launch cost and 450 W chip TDP are unmeasured assumptions. Packed weights use the FP8 fallback pipe with an assumed two vector operations per decoded element.
 peak_compute:
   fp8: {value: 1.23046875e15, source_id: derived-lp30-rack-compute}

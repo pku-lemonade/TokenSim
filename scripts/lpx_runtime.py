@@ -1,47 +1,55 @@
-"""Map declared LPX layouts to validated production AF physical ranks."""
+"""Build native AF runtimes for LP30, Rubin and mixed-device layouts."""
+
+from dataclasses import dataclass
 
 from TokenSim.af.factory import build_model_runtime
-from TokenSim.config.validation import boolean
+from TokenSim.config.validation import boolean, integer
+from TokenSim.comm.collective_types import ALGORITHMS
 from TokenSim.errors import ConfigurationError
 
 
-def session_prefix_context(
-    workload, case, service, *, handoff_mode, warmup_mode, warming
-):
-    if warming and warmup_mode == "resident_decode":
-        return workload.cached_tokens + workload.new_tokens
-    if service == "target" and case.prefill and handoff_mode == "full":
-        return 0
-    return workload.cached_tokens
+@dataclass(frozen=True)
+class Layout:
+    a_device: str = "rubin"
+    f_device: str = "rubin"
+    a_tp: int = 8
+    a_cp: int = 1
+    a_pp: int = 1
+    f_tp: int = 1
+    f_ep: int = 8
+    f_pp: int = 1
+    colocated: bool = True
+    a_collective_algorithm: str = "ring"
+    f_collective_algorithm: str = "ring"
 
+    def __post_init__(self):
+        for name in ("a_tp", "a_cp", "a_pp", "f_tp", "f_ep", "f_pp"):
+            integer(getattr(self, name), name, minimum=1)
+        boolean(self.colocated, "colocated")
+        for name in ("a_collective_algorithm", "f_collective_algorithm"):
+            if getattr(self, name) not in ALGORITHMS:
+                raise ConfigurationError(f"{name} must be one of {ALGORITHMS}")
+        if self.colocated and (
+            self.a_device != self.f_device
+            or self.a_cp != 1
+            or self.a_pp != self.f_pp
+            or self.a_tp != self.f_tp * self.f_ep
+        ):
+            raise ConfigurationError("colocated A/F requires matching rank inventories")
 
-def runtime_configurations(
-    hardware, target, case, *, draft_spec=None, a_dp=1, verification_width=1, **settings
-):
-    layouts = [("target", target, case.decode, a_dp)]
-    if case.prefill:
-        layouts.append(("prefill", target, case.prefill, 1))
-    if case.draft:
-        if draft_spec is None:
-            raise ConfigurationError(
-                "external drafting requires an explicit draft model"
-            )
-        layouts.append(("draft", draft_spec, case.draft, case.draft_a_replicas))
-    return {
-        name: configuration(
-            hardware,
-            model,
-            layout,
-            namespace=name,
-            a_dp=replicas,
-            **{
-                **settings,
-                "micro_batch": settings.get("micro_batch", 1)
-                * (verification_width if name == "target" else 1),
-            },
-        )
-        for name, model, layout, replicas in layouts
-    }
+    @property
+    def a_ranks(self):
+        return self.a_tp * self.a_cp * self.a_pp
+
+    @property
+    def f_ranks(self):
+        return self.f_tp * self.f_ep * self.f_pp
+
+    def inventory(self):
+        result = {self.a_device: self.a_ranks}
+        if not self.colocated:
+            result[self.f_device] = result.get(self.f_device, 0) + self.f_ranks
+        return result
 
 
 def configuration(

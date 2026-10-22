@@ -7,6 +7,8 @@ import unittest
 import simpy
 
 from TokenSim.af.serving.service import AFService
+from TokenSim.af.serving.handoff import plan_handoff
+from TokenSim.af.runtime.admission import rank_kv_bytes
 from TokenSim.config.attention_geometry import AttentionGeometry
 from TokenSim.config.cache_config import stage_layer_range
 from TokenSim.config.model_config import ModelSpec
@@ -15,8 +17,8 @@ from TokenSim.errors import ConfigurationError
 from TokenSim.hardware import HardwareContext
 from TokenSim.latency.operator_table import OperatorTableLatencyBackend
 from TokenSim.llm.llm_request import Request
-from scripts.lpx.config import Layout
-from scripts.lpx.native_config import configuration
+from scripts.lpx_runtime import Layout
+from scripts.lpx_runtime import configuration
 
 
 class NonuniformPrefillTest(unittest.TestCase):
@@ -147,7 +149,7 @@ class NonuniformPrefillTest(unittest.TestCase):
                 OperatorTableLatencyBackend(
                     model=self.model, pipeline_layer_counts=counts, **settings
                 )
-        compressed = self.hardware.model("gpt-oss-2t-wide-proxy")
+        compressed = self.hardware.model("deepseek-v4-pro")
         with self.assertRaisesRegex(ConfigurationError, "dense ordinary"):
             OperatorTableLatencyBackend(
                 model=compressed,
@@ -168,6 +170,40 @@ class NonuniformPrefillTest(unittest.TestCase):
         self.assertTrue(backend.is_last_stage)
         self.assertFalse(backend._layer_backends)
         self.assertGreater(backend.estimate_step_latency([Request(0, 16, 1, 16)]), 0)
+
+    def test_kv_handoff_preserves_layer_geometry_across_stage_boundaries(self):
+        source = configuration(
+            self.hardware,
+            self.model,
+            replace(self.layout, a_pp=3, f_pp=3),
+            namespace="source",
+            pipeline_layer_counts=(2, 2, 1),
+        )
+        target = self.runtime((1, 4))
+        env = simpy.Environment()
+        before_service = AFService(env, source, trace=False)
+        after_service = AFService(env, target, trace=False)
+        before = before_service.admit(1, 0, maximum_context=24, current_context=16)
+        after = after_service.admit(1, 0, maximum_context=24, current_context=0)
+        copies = plan_handoff(
+            before_service,
+            before,
+            after_service,
+            after,
+            context=16,
+            mode="full",
+            cross_network="cross",
+            replication_network="replication",
+        )
+        expected = sum(
+            rank_kv_bytes(target.plan, binding, 16)
+            for binding in target.plan.rank_bindings
+            if binding.kv_partition
+        )
+        self.assertEqual(sum(copy.bytes for copy in copies), expected)
+        self.assertEqual({copy.layer_id for copy in copies}, set(range(5)))
+        before_service.release(before)
+        after_service.release(after)
 
 
 if __name__ == "__main__":

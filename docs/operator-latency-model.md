@@ -403,12 +403,12 @@ The backend uses these token counts to estimate each step, following the rules b
 | --- | --- |
 | `T` for GEMM, elementwise, MoE and communication | sum of the step's query tokens (MTP verification positions included) |
 | decode attention (request already sampled, not recomputing) | `generation_attention(batch=count, context_len=bucket(kv_len))` |
-| context chunk (`q_len` = this step's tokens, `kv_len = num_computed_tokens + q_len`) | requests grouped by `(q_len, kv_len)`: `context_attention(batch=count, input_seq_len=q_len)`, scaled by the FLOPs ratio when `kv_len > q_len` (cached prefix and earlier chunks alike) |
+| context chunk (`q_len` = this step's tokens, `kv_len = num_computed_tokens + q_len`) | requests grouped by `(q_len, kv_len)` issue `context_attention(batch=count, input_seq_len=q_len)`; cached context uses the analytical full-context latency or scales measured rows by analytical latency growth |
 | LM head rows | requests sampling this step: decodes plus the last chunk of each context build |
 
 Chunking keeps `input_seq_len <= max_num_batched_tokens`.
 With a budget within the measured prefill range, long prompts use table measurements for each chunk, up to 16,384 tokens in the AIConfigurator data.
-The floating-point operation count (FLOPs) ratio accounts for the extra work of attending to the existing context, following AIConfigurator's prefix correction.
+The cached-context correction includes key/value reads, compute work and fixed overhead through the analytical latency estimate.
 Uniform KV caches allocate blocks for the whole prompt when the request is admitted.
 Grouped caches reserve pages for each chunk.
 
@@ -418,7 +418,7 @@ Compressed-attention models differ as described below the table.
 | Component | Operator Queries |
 | --- | --- |
 | **Attention block** (per layer) | `rmsnorm(T, h)` + `gemm(T, q_local + 2*kv_local, h)` + `rope(T, q_local + kv_local)` + attention core + `gemm(T, h, q_local)` + `residual_add(T, h)` |
-| **Attention core** | context chunks grouped by `(query_len, kv_len)` issue one `context_attention(batch=count, input_seq_len=query_len)` each, scaled by the FLOPs ratio when `kv_len > query_len`; decode tokens are bucketed by context length (4.4) |
+| **Attention core** | Context chunks grouped by `(query_len, kv_len)` issue one `context_attention` query each, with the cached-context correction below; decode tokens are bucketed by context length (4.4) |
 | **Dense FFN** (per dense layer) | `rmsnorm(T, h)` + `gemm(T, g*inter_local, h)` + `swiglu(T, inter_local)` (gated FFNs) + `gemm(T, h, inter_local)` + `residual_add(T, h)`, where `g` is 2 for gated FFNs and 1 otherwise |
 | **MoE layer** | `rmsnorm(T, h)` + router `gemm(T, E, h)` + `moe(num_tokens = T * replicas_per_group)` + straggler time (4.5) + `residual_add(T, h)` |
 | **LM head** (last PP stage only) | `gemm(B, vocab_local, h)` + `rmsnorm(B, h)` |
@@ -430,10 +430,19 @@ They also add a formula-based estimate for combining residual streams before the
 The LM head projects hidden states to vocabulary logits.
 The operator modules in section 2.3 replace the individual operations included in their measurements.
 
+Models with per-layer attention windows or head geometries use separate backend groups for the layers owned by each pipeline stage.
+Each group prices its actual dimensions and multiplicity, while the stage charges output processing, pipeline transfer and fixed step overhead once.
+Shared K/V projections reduce projection work while retaining separate transformed K and V cache tensors.
+An explicit `pipeline_layer_counts` partition is supported for dense ordinary attention and must assign every model layer to one nonempty stage.
+
 #### Prefix-Cache Scaling
 
 When `kv_len > query_len` (prefix-cache hit, or a later chunk of a long prompt), the table value for `input_seq_len = query_len` underestimates the work because queries also attend to the tokens already in KV.
-The backend scales the measured latency by `max(1.0, full_flops / base_flops)`, where `full_flops = 4 * batch * q_len * ((kv_len - q_len) + 0.5 * q_len) * q_dim_local` (bounded by the sliding window) and `base_flops` is the work of the measured padded batch.
+Analytical fallback evaluates the full context directly by supplying `context_len = kv_len`.
+For a measured row, the backend scales its latency by `max(1.0, full_analytical_us / base_analytical_us)`.
+The two reference estimates use the same query length and differ in whether the cached context is included.
+This correction accounts for KV reads and compute growth without multiplying fixed overhead by a floating-point operation count ratio.
+Missing analytical references produce a configuration error.
 
 ### 4.4 Decode Tokens
 
@@ -1014,7 +1023,7 @@ Measure these shapes and add them to the package to improve coverage.
 
 - Tables measure batches padded to common sequence lengths.
   For batches with different request lengths, the simulator groups requests by `(query_len, kv_len)` and adds the group latencies.
-- **Prefix-cache attention**: prefill attention with cached context (`kv_len > query_len`) scales the measured padded-batch value by the analytical FLOPs ratio.
+- **Prefix-cache attention**: prefill attention with cached context (`kv_len > query_len`) scales measured rows by analytical latency growth; matching measured cached-context kernels remain unavailable.
 - **EP lockstep assumption**: when an expert-parallel group spans data-parallel replicas (`expert_parallel_scope = global`), those replicas are assumed to advance in lockstep, so the group's token count is `tokens * replicas_per_group`.
   `per_dp` groups never cross replicas.
 - **No MoE tensor parallelism inside an EP group**: experts are split `expert_parallel_size` ways with `moe_tp = 1`; a `per_dp` group must equal the replica's TP size.

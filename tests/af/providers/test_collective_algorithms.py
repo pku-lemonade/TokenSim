@@ -11,12 +11,12 @@ from TokenSim.af.serving.service import AFService
 from TokenSim.config.cluster_config import ClusterConfig
 from TokenSim.config.af.domains import DomainCollectiveConfig
 from TokenSim.errors import ConfigurationError
-from scripts.lpx.config import Layout
-from scripts.lpx.native_config import configuration
+from scripts.lpx_runtime import Layout
+from scripts.lpx_runtime import configuration
 from tests.af.support.config import _cluster_dict
 from tests.af.support.execution import af_test_hardware
 from tests.af.support.model import _transfer_query
-from tests import test_lpx_native
+from tests.support.lpx import tiny_moe
 from tests.af.support.pipeline import cluster_document
 
 
@@ -74,12 +74,18 @@ class CollectivePolicyTest(unittest.TestCase):
             )
 
     def test_layer_and_model_boundary_collectives_use_compiled_policy(self):
-        test_lpx_native.NativeLPXTest.setUpClass()
-        fixture = test_lpx_native.NativeLPXTest()
-        layout = replace(fixture.base, a_collective_algorithm="direct")
-        runtime = configuration(
-            fixture.hardware, fixture.model, layout, namespace="policy"
+        from TokenSim.hardware import HardwareContext
+        from pathlib import Path
+
+        hardware = HardwareContext.load(Path(__file__).resolve().parents[3] / "data")
+        model = tiny_moe(hardware)
+        layout = Layout(
+            a_tp=2,
+            f_ep=2,
+            a_collective_algorithm="direct",
+            f_collective_algorithm="direct",
         )
+        runtime = configuration(hardware, model, layout, namespace="policy")
         self.assertTrue(
             all(
                 p.algorithm == "direct"
@@ -113,4 +119,4 @@ class CollectivePolicyTest(unittest.TestCase):
         doc["af"]["communication_resource_scope"] = "fabric"
         doc["af"]["endpoint_transfer_occupancy"] = "service"
         with self.assertRaisesRegex(ConfigurationError, "wire schedule"):
-            build_model_runtime(doc, hardware=fixture.hardware, model=fixture.model)
+            build_model_runtime(doc, hardware=hardware, model=model)

@@ -1,13 +1,18 @@
 """LP30 catalog identity, directional budgets and installed data coverage."""
 
 from pathlib import Path
+from contextlib import redirect_stdout, redirect_stderr
+from io import StringIO
+import json
+from tempfile import TemporaryDirectory
 import tomllib
 import unittest
+from unittest.mock import patch
 
 from TokenSim.hardware import HardwareContext
 from TokenSim.config.cluster_config import ClusterConfig
 from TokenSim.hardware.placement import build_topology_placement
-from scripts.lpx.architecture import describe_model
+from scripts.run_lpx import main
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -40,29 +45,6 @@ class LPXHardwareTest(unittest.TestCase):
         self.assertEqual(topology.levels[0].size * topology.levels[1].size, 256)
         self.assertTrue(all(level.links_per_endpoint == 1 for level in topology.levels))
 
-    def test_scaled_model_has_explicit_proxy_identity(self):
-        model = self.hardware.model("gpt-oss-2t-expert-proxy")
-        self.assertGreater(model.total_params(), 2e12)
-        self.assertLess(model.total_params(), 2.02e12)
-        self.assertEqual(model.sources["assumption-scaled-gpt-oss"]["grade"], "D")
-
-    def test_scaling_candidates_preserve_attention_and_separate_active_work(self):
-        expert = describe_model(self.hardware.model("gpt-oss-2t-expert-proxy"))
-        wide = describe_model(self.hardware.model("gpt-oss-2t-wide-proxy"))
-        for row in (expert, wide):
-            self.assertGreater(row["total_parameters"], 2e12)
-            self.assertLess(row["total_parameters"], 2.1e12)
-            self.assertEqual(row["expert_storage_dtype"], "mxfp4")
-            self.assertEqual(row["nonexpert_weight_dtype"], "bf16")
-            self.assertEqual(
-                row["full_attention_layers"], row["bounded_attention_layers"]
-            )
-            self.assertEqual(row["architecture_assumption"]["grade"], "D")
-        self.assertGreater(
-            wide["activated_routed_ffn_parameters_per_token"],
-            17 * expert["activated_routed_ffn_parameters_per_token"],
-        )
-
     def test_automatic_lp30_topology_uses_one_injection_budget(self):
         cluster = ClusterConfig(
             num_workers=2,
@@ -89,11 +71,75 @@ class LPXHardwareTest(unittest.TestCase):
         for path in (
             "data/devices/groq_lp30.yaml",
             "data/devices/rubin.yaml",
-            "data/models/gpt-oss-2t-wide-proxy.yaml",
             "data/models/gemma-4-31b-text.yaml",
-            "data/models/gpt-oss-2t-expert-proxy.yaml",
-            "data/models/gpt-oss-draft-proxy.yaml",
             "data/topologies/groq_lpx256.yaml",
             "data/topologies/rubin_nvl72.yaml",
         ):
             self.assertIn(path, shipped)
+
+
+class NativeCLITest(unittest.TestCase):
+    def test_decode_outputs_and_restart_reuse_native_points(self):
+        with TemporaryDirectory() as directory:
+            output = Path(directory)
+            arguments = [
+                "--model",
+                "moe-toy",
+                "--tp",
+                "2",
+                "--pp",
+                "1",
+                "--batches",
+                "1",
+                "2",
+                "--context",
+                "8",
+                "--steps",
+                "2",
+                "--trace",
+                "off",
+                "--output",
+                str(output),
+            ]
+            with redirect_stdout(StringIO()):
+                self.assertEqual(main(arguments), 0)
+            summary = json.loads((output / "summary.json").read_text())
+            self.assertEqual(len(summary["results"]), 2)
+            self.assertEqual(len({r["checkpoint_key"] for r in summary["results"]}), 2)
+            for row in summary["results"]:
+                checkpoint = output / row["checkpoint_directory"]
+                point = json.loads((checkpoint / "result.json").read_text())
+                self.assertEqual(len(point["iterations"]), 2)
+                self.assertGreater(row["tokens_per_s"], 0)
+                self.assertIsNone(row["profile"])
+            with (
+                redirect_stdout(StringIO()),
+                patch(
+                    "TokenSim.af.factory.simulate_decode",
+                    side_effect=AssertionError("reran"),
+                ),
+            ):
+                self.assertEqual(main(arguments), 0)
+            self.assertEqual(json.loads((output / "summary.json").read_text()), summary)
+
+    def test_invalid_partition_does_not_create_output(self):
+        with TemporaryDirectory() as directory:
+            output = Path(directory) / "absent"
+            with redirect_stderr(StringIO()), self.assertRaises(SystemExit) as error:
+                main(
+                    [
+                        "--model",
+                        "moe-toy",
+                        "--tp",
+                        "2",
+                        "--pp",
+                        "2",
+                        "--pipeline-layer-counts",
+                        "1",
+                        "2",
+                        "--output",
+                        str(output),
+                    ]
+                )
+            self.assertEqual(error.exception.code, 2)
+            self.assertFalse(output.exists())

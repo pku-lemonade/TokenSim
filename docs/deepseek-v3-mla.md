@@ -1,7 +1,7 @@
 # DeepSeek-V3 multi-head latent attention (MLA)
 
 Multi-head latent attention (MLA) compresses the key/value (KV) state retained for each token and changes the attention projections used during decode.
-TokenSim represents DeepSeek-V3 with the [catalog model](../data/models/deepseek-v3-671b-mla-model.yaml), whose architecture metadata references the [official configuration](https://huggingface.co/deepseek-ai/DeepSeek-V3/blob/main/config.json) and a [checked-in snapshot](../data/models/deepseek-v3-hf-config.json).
+TokenSim represents DeepSeek-V3 with the [catalog model](../data/models/deepseek-v3-671b-mla.yaml), whose architecture metadata references the [official configuration](https://huggingface.co/deepseek-ai/DeepSeek-V3/blob/main/config.json) and a [checked-in snapshot](../data/models/deepseek-v3-hf-config.json).
 The model supplies attention geometry, KV storage and operator shapes for latency estimation without loading checkpoint weights.
 
 ## Model geometry

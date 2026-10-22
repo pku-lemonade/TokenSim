@@ -58,6 +58,17 @@ This captures uneven expert load, TP reductions and EP movement.
 Shared experts contribute their own computation and transfers.
 Model embedding, final normalization, output projection and token selection contribute to whole-model decode latency.
 
+An execution domain can set `parallel.pipeline_layer_counts` to assign positive contiguous layer counts to its PP stages.
+The array must contain one count per stage and sum to the model's layer count.
+Prefill, decode, KV admission and KV handoff use these same boundaries.
+A/F return routes connect only pipeline stages sharing a model layer.
+
+An AF link can enable `colocated_dense_reuse` when A and F execute on the same physical ranks.
+Eligible dense layers consume complete local activation replicas and retain replicated residuals without A/F endpoint copies.
+The runtime still charges tensor-parallel reductions and reserves residual storage.
+Directional casts, sharded collective outputs and remote F replicas retain the ordinary transfer protocol.
+The planner and trace validator check local replica ownership, tensor coverage and producer dependencies.
+
 The default `partial_return` protocol supports router placement on either A or F.
 F returns the selected experts' outputs, and A performs weighted combination and residual addition.
 When routing runs on F, the required expert IDs and weights also reach the A-side consumers.
@@ -146,12 +157,19 @@ Additional KV limits can reduce the available cache budget.
 A replicas own their attention and KV shards; F replicas store their assigned dense, routed and shared-expert weights without request KV caches.
 Moving FFN weights off A can increase its resident request capacity, while the F weight and workspace budgets can constrain the useful A:F ratio.
 Admission uses the limiting A-rank capacity and shared physical memory reservations.
-The fixed-cohort serving helper reserves the declared peak resident context and does not model paging or preemption.
+The native `AFService` reserves the declared peak resident context and does not model paging or preemption.
 
 Weights, activations, KV caches and the two transfer directions can use different supported dtypes.
 Weight and KV precision affect storage and compute estimates; wire precision affects transferred bytes.
 Required encode/decode conversions consume compute time at the sender and receiver.
 Precision changes therefore alter the memory, compute and communication models together.
+
+Ordinary attention models can supply one `attention_windows` entry and one `attention_geometries` entry per layer.
+Geometry entries define `head_dim`, `num_key_value_heads` and optional `k_eq_v` projection sharing.
+Shared K/V projections retain two distinct transformed cache tensors.
+Complete-model prefill groups stages' owned layers by their actual geometry and uses the declared operator weight formats.
+Analytical GPU prefill also honors the selected graph-kernel overhead without changing the device catalog or LPU startup costs.
+The [LP30 and Rubin guide](lpx.md) describes the Gemma catalog and optional SRAM workspace accounting.
 
 ## Configure and run
 

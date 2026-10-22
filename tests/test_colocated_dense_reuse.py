@@ -2,7 +2,6 @@
 
 from dataclasses import replace
 from pathlib import Path
-import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -17,9 +16,8 @@ from TokenSim.af.serving.service import AFService
 from TokenSim.config.af.links import AFLinkConfig
 from TokenSim.errors import ConfigurationError, SimulationStateError
 from TokenSim.hardware import HardwareContext
-from scripts.lpx.config import Layout
-from scripts.lpx.native_config import configuration
-from scripts.lpx.replay_profiles import cached_profile
+from scripts.lpx_runtime import Layout
+from scripts.lpx_runtime import configuration
 
 
 def tensor_oracle(dag, seed=123):
@@ -120,7 +118,7 @@ class ColocatedDenseReuseTest(unittest.TestCase):
             f_pp=pp,
             f_ep=1 if dp == 1 else tp,
         )
-        with patch("scripts.lpx.native_config.build_model_runtime", build):
+        with patch("scripts.lpx_runtime.build_model_runtime", build):
             return configuration(
                 self.hardware,
                 model or self.model,
@@ -290,7 +288,7 @@ class ColocatedDenseReuseTest(unittest.TestCase):
         for state in local.runtime.plan.physical_states:
             self.assertIn("colocated_dense_residual", dict(state.protocol_buffers))
 
-    def test_pipeline_stages_template_rebinding_and_profile_cache(self):
+    def test_pipeline_stages_and_template_rebinding(self):
         runtime = self.runtime(pp=2, cache=True)
         planner = ParallelExecutionPlanner(runtime.cluster, runtime_plan=runtime.plan)
         self.dag(runtime, layer=1, planner=planner)
@@ -306,25 +304,6 @@ class ColocatedDenseReuseTest(unittest.TestCase):
                 for event in service.trace.events
             )
         )
-        settings = dict(
-            batch=1,
-            queries=1,
-            phase="decode",
-            emit_logits=True,
-            context=17,
-            dp_rank=0,
-            seed=42,
-            sample=0,
-        )
-        with tempfile.TemporaryDirectory() as directory:
-            profile = cached_profile(runtime, "reuse", Path(directory), **settings)
-            again = cached_profile(runtime, "reuse", Path(directory), **settings)
-            self.assertEqual(profile.nodes, again.nodes)
-            profile.verify()
-            baseline = cached_profile(
-                self.runtime(False, pp=2), "reuse", Path(directory), **settings
-            )
-            self.assertNotEqual(profile.nodes, baseline.nodes)
 
     def test_overlapping_iterations_keep_causal_dependencies_and_resource_capacity(
         self,
@@ -344,7 +323,7 @@ class ColocatedDenseReuseTest(unittest.TestCase):
         )
 
     def test_pure_moe_layers_preserve_every_native_trace_event(self):
-        model = self.hardware.model("gpt-oss-2t-expert-proxy")
+        model = self.hardware.model("moe-toy")
         model = replace(
             model,
             hidden_size=32,

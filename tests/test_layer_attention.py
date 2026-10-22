@@ -12,8 +12,8 @@ from TokenSim.errors import ConfigurationError
 from TokenSim.hardware import HardwareContext
 from TokenSim.latency.operator_table import OperatorTableLatencyBackend
 from TokenSim.llm.llm_request import Request
-from scripts.lpx.config import Layout
-from scripts.lpx.native_config import configuration
+from scripts.lpx_runtime import Layout
+from scripts.lpx_runtime import configuration
 
 
 class LayerAttentionTest(unittest.TestCase):
@@ -123,13 +123,18 @@ class LayerAttentionTest(unittest.TestCase):
         self.assertLess(actual, 100)
 
     def test_mxfp4_experts_reach_prefill_backend(self):
-        model = self.hardware.model("gpt-oss-2t-wide-proxy")
+        model = replace(
+            self.hardware.model("moe-toy"),
+            attention_windows=(4, 0, 4, 0),
+            operator_dtypes={"routed_experts": "mxfp4"},
+        )
         backend = OperatorTableLatencyBackend(
             device=self.hardware.device("rubin"),
             model=model,
             fallback="analytical_only",
         )
         self.assertEqual(backend.moe_dtype, "mxfp4")
+        self.assertTrue(backend._layer_backends)
         self.assertTrue(
             all(child.moe_dtype == "mxfp4" for child in backend._layer_backends)
         )
