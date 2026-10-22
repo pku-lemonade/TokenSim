@@ -45,7 +45,9 @@ def layer_backends(backend):
         child.is_last_stage = False
         child.include_pp_transfer = False
         child.include_step_overhead = False
+        child.include_embedding_scale = False
         children.append(child)
+    children[0].include_embedding_scale = backend.include_embedding_scale
     children[-1].is_last_stage = backend.is_last_stage
     children[-1].include_pp_transfer = True
     children[-1].include_step_overhead = True

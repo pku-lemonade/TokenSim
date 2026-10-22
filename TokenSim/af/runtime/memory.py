@@ -34,6 +34,7 @@ def _components_for_binding(
     ffn_projection_count: int,
     embedding_role: str = "both",
     qk_norm: bool = False,
+    block_norm_elements: int = 0,
 ) -> tuple[AFModelComponent, ...]:
     _ = dp_rank
     components: list[AFModelComponent] = []
@@ -71,6 +72,9 @@ def _components_for_binding(
             norm_elements = 2 * layer.head_dim if qk_norm else 0
             norm_shape = (("qk_norm_elements", norm_elements),) if norm_elements else ()
             attention_elements += norm_elements
+            attention_elements += block_norm_elements
+            if block_norm_elements:
+                norm_shape += (("block_norm_elements", block_norm_elements),)
             mla = layer.mla
             if mla:
                 attention_elements = mla.weight_elements(q_heads, hidden)
@@ -315,7 +319,7 @@ def _compile_physical_states(
             cluster_config.af_link.colocated_dense_reuse
             and cluster_config.af.execution_protocol == "partial_return"
             and "af_attention" in roles
-            and (not model.is_moe or moe_config.first_k_dense_replace > 0)
+            and len(model.moe_layer_indices()) < model.num_layers
         ):
             # Reserve the retained full residual independently of staging buffers.
             buffers += (

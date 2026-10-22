@@ -171,6 +171,23 @@ Complete-model prefill groups stages' owned layers by their actual geometry and 
 Analytical GPU prefill also honors the selected graph-kernel overhead without changing the device catalog or LPU startup costs.
 The [LP30 and Rubin guide](lpx.md) describes the Gemma catalog and optional SRAM workspace accounting.
 
+Ordinary transformers declare additional block operations under the model's `block_layout` mapping.
+These settings drive both AF decode and complete-model prefill, independently of model names and device families.
+
+| Field inside `block_layout` | Default | Modeled operation |
+| --- | --- | --- |
+| `attention_output_norm` | `false` | Normalize attention output before the residual addition and FFN input normalization. |
+| `ffn_output_norm` | `false` | Normalize FFN output before its residual addition. |
+| `value_norm` | `false` | Normalize each local value head. |
+| `embedding_scale` | `false` | Multiply embedding outputs once at the input pipeline stage. |
+| `layer_scale` | `false` | Multiply each layer's residual output by its scalar. |
+| `logit_softcap` | `0` | Apply final logit softcapping when the configured bound is positive. |
+
+Scaling and softcapping use generic elementwise estimates and retain the selected backend's provenance.
+Additional output-normalization weights and learned layer scalars are reserved on each tensor-parallel rank that owns the layer.
+An empty mapping preserves the existing ordinary-transformer composition.
+The mapping is rejected for MLA and compressed-module models, whose operator boundaries have separate estimators.
+
 ## Configure and run
 
 Worker groups select the A/F devices, and execution domains select their parallel layouts.

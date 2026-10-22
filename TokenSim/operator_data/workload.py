@@ -206,6 +206,8 @@ _ELEMENTWISE_FLOPS_PER_ELEMENT = {
     "swiglu": 4.0,
     "gelu": 6.0,
     "geglu": 7.0,
+    "scale": 1.0,
+    "logit_softcap": 4.0,
     "data_reorder": 0.0,
     "other_residual": 1.0,
     "embedding_lookup": 0.0,
@@ -223,6 +225,8 @@ _ELEMENTWISE_BYTES_PER_ELEMENT = {
     "swiglu": 3.0,  # read gate and up, write one
     "gelu": 2.0,
     "geglu": 3.0,
+    "scale": 2.0,
+    "logit_softcap": 2.0,
     "data_reorder": 2.0,
     "other_residual": 2.0,
     "embedding_lookup": 2.0,

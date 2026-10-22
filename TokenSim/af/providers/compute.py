@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from collections import Counter
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 import math
 from typing import Any, Iterable, Mapping
 
@@ -88,63 +87,60 @@ class OperatorComponent:
         }
 
 
-def prefill_components(provider, resolver, query, tokens, common):
-    lengths = tuple(query.context_lengths) or (tokens,)
-    queries = tuple(query.query_lengths)
-    if not queries:
-        if sum(lengths) == tokens:
-            queries = lengths
-        elif tokens % len(lengths) == 0:
-            queries = (tokens // len(lengths),) * len(lengths)
-        else:
-            raise ValueError("uneven prefill requires per-request query_lengths")
-    if (
-        len(queries) != len(lengths)
-        or sum(queries) != tokens
-        or any(
-            type(q) is not int or q < 1 or type(k) is not int or k < q
-            for q, k in zip(queries, lengths)
-        )
-    ):
-        raise ValueError("prefill query lengths must fit their per-request KV contexts")
-    components = []
-    for (q, k), count in sorted(Counter(zip(queries, lengths)).items()):
-        key = {**common, "batch_size": count, "input_seq_len": q}
-        if k > q:
-            key["context_len"] = k
-        component = provider._component(
-            resolver, "attention_core", "context_attention", key
-        )
-        if k > q and component.match_type != "analytical":
-            base = resolver.analytical_reference_us(
-                "context_attention",
-                {name: value for name, value in key.items() if name != "context_len"},
-            )
-            full = resolver.analytical_reference_us("context_attention", key)
-            if base is None or full is None or base <= 0:
-                raise ConfigurationError(
-                    "cached prefill requires an analytical growth reference"
-                )
-            previous = component.match_type
-            for counter in (
-                resolver.stats.match_type_counts,
-                resolver.stats.table_match_counts["context_attention"],
-            ):
-                counter[previous] -= 1
-                if counter[previous] == 0:
-                    del counter[previous]
-            resolver.stats.record("context_attention", "extrapolated")
-            component = replace(
-                component,
-                latency_us=component.latency_us * max(1.0, full / base),
-                match_type="extrapolated",
-                source_id=f"prefix_scaled:{component.source_id}",
-            )
-        components.append(component)
-    return components
-
-
 class ComputeEstimateMixin:
+    def _block_components(self, resolver, query, components, tokens, tp_size, dtype):
+        layout = self.model.block_layout
+        hidden = self.model.hidden_size
+        if (
+            layout.attention_output_norm
+            and query.stage == "layout"
+            and query.operation == "post_attention_norm"
+        ):
+            components = [
+                self._elementwise(resolver, name, op, tokens, hidden, dtype)
+                for name, op in (
+                    ("post_attn_norm", "rmsnorm"),
+                    ("attn_residual", "residual_add"),
+                    ("pre_ffn_norm", "rmsnorm"),
+                )
+            ]
+        if layout.ffn_output_norm and query.stage == "residual":
+            components.insert(
+                0,
+                self._elementwise(
+                    resolver, "post_ffn_norm", "rmsnorm", tokens, hidden, dtype
+                ),
+            )
+        for enabled, name, operation, width in (
+            (
+                layout.embedding_scale
+                and query.stage == "layout"
+                and query.operation == "embedding_lookup",
+                "embedding_scale",
+                "scale",
+                hidden,
+            ),
+            (
+                layout.layer_scale and query.stage == "residual",
+                "layer_scalar",
+                "scale",
+                hidden,
+            ),
+            (
+                layout.logit_softcap
+                and query.stage == "layout"
+                and query.operation == "lm_head",
+                "logit_softcap",
+                "logit_softcap",
+                self.model.vocab_size // tp_size,
+            ),
+        ):
+            if enabled:
+                components.append(
+                    self._elementwise(resolver, name, operation, tokens, width, dtype)
+                )
+        return components
+
     @cached_estimate
     def estimate(self, query: AFComputeQuery) -> AFServiceEstimate:
         tokens, tp_size = self._validate_local_work(query)
@@ -326,10 +322,8 @@ class ComputeEstimateMixin:
             ]
         else:
             raise ValueError(f"unsupported AF compute stage={query.stage!r}")
-        from TokenSim.af.providers.gemma4 import components_for
-
-        components = components_for(
-            self, resolver, query, components, tokens, tp_size, dtype
+        components = self._block_components(
+            resolver, query, components, tokens, tp_size, dtype
         )
         latency_us = sum(component.latency_us for component in components)
         match_type = _worst_match(component.match_type for component in components)

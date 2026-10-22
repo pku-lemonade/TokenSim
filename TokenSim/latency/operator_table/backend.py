@@ -196,6 +196,7 @@ class OperatorTableLatencyBackend(StepComposition, OperatorQueries, LatencyBacke
 
             self.native_mtp = SpeculativeEstimator(self, max_num_seqs=max_num_seqs)
         self.include_pp_transfer = self.include_step_overhead = True
+        self.include_embedding_scale = self.rank_info.pp_rank == 0
         from .layers import layer_backends
 
         self._layer_backends = layer_backends(self)

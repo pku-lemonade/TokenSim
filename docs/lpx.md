@@ -166,6 +166,8 @@ Vision processing is excluded.
 | Global | 10 | Full context | 512 | 4 | Yes |
 
 Projection sharing reduces weight and projection work but retains separate transformed K and V cache tensors.
+The model's `block_layout` declares its value and output normalization, embedding/layer scaling and final logit softcap.
+Both LP30 and Rubin price these operations through the generic providers described in the [AF guide](afd.md#memory-and-precision).
 TokenSim's runtime compiler assigns layer-specific geometry, weights and KV heads to physical ranks.
 Complete-model prefill prices the same stage ownership, including an explicit `pipeline_layer_counts` partition when configured.
 Cached prefill includes the retained context in its attention workload without scaling fixed overhead by a floating-point operation ratio.

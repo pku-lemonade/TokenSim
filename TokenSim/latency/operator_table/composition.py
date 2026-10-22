@@ -122,10 +122,11 @@ class StepComposition:
                 ) + self.elementwise(
                     "rmsnorm", T * (self.kv_dim_local // model.head_dim), model.head_dim
                 )
-            if model.architecture == "gemma4_text":
+            if model.block_layout.value_norm:
                 attn_elem_us += self.elementwise(
                     "rmsnorm", T * self.kv_heads_local, model.head_dim
                 )
+            if model.block_layout.attention_output_norm:
                 attn_elem_us += self.elementwise("rmsnorm", T, h)
         dense_ffn_gemm_us = 0.0
         dense_ffn_elem_us = 0.0
@@ -145,7 +146,7 @@ class StepComposition:
                 dense_ffn_elem_us += self.elementwise(
                     model.activation, T, self.inter_local
                 )
-            if model.architecture == "gemma4_text":
+            if model.block_layout.ffn_output_norm:
                 dense_ffn_elem_us += self.elementwise("rmsnorm", T, h)
 
         moe_us = 0.0
@@ -181,6 +182,10 @@ class StepComposition:
             + self.moe_layers_local * moe_elem_us
             + self.layers_local * mhc_us
         )
+        if model.block_layout.layer_scale:
+            layer_elem_us += self.layers_local * self.elementwise("scale", T, h)
+        if model.block_layout.embedding_scale and self.include_embedding_scale:
+            layer_elem_us += self.elementwise("scale", T, h)
         layer_attention_us = (
             attention_us if self.native_attention else self.layers_local * attention_us
         )
@@ -205,6 +210,10 @@ class StepComposition:
                 self.target_logits_counts["final_norm_rows"] += output_rows
             else:
                 lm_head_us += self.elementwise("rmsnorm", max(1, requests), h)
+            if model.block_layout.logit_softcap:
+                lm_head_us += self.elementwise(
+                    "logit_softcap", max(1, requests), self.vocab_local
+                )
 
         overhead_us = (
             self.device.step_overhead_us.value if self.include_step_overhead else 0.0

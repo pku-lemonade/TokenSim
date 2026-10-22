@@ -11,7 +11,6 @@ from TokenSim.af.providers.attention import attention_core
 from TokenSim.af.providers.compute import (
     OperatorComponent,
     _estimate_dataset_version,
-    prefill_components,
 )
 from TokenSim.af.providers.queries import AFComputeQuery
 from TokenSim.config.cache_config import local_kv_heads
@@ -78,13 +77,13 @@ class ComputeComponentsMixin:
         components.append(
             self._gemm(resolver, "output_projection", tokens, h, q_local, weight_dtype)
         )
-        if model.architecture != "gemma4_text":
+        if not model.block_layout.attention_output_norm:
             components.append(
                 self._elementwise(
                     resolver, "a_residual_add", "residual_add", tokens, h, dtype
                 )
             )
-        else:
+        if model.block_layout.value_norm:
             components.append(
                 self._elementwise(
                     resolver,

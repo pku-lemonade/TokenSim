@@ -109,7 +109,7 @@ def estimate_lp30(table, key, device, calibration=None):
         vector_ops = work.flops
         if key["op_name"] in {"swiglu", "gelu", "geglu"}:
             exps = int(key["num_tokens"]) * int(key["hidden_size"])
-        if key.get("lpx_vector_operation") == "logit_softcap":
+        if key["op_name"] == "logit_softcap":
             elements = int(key["num_tokens"]) * int(key["hidden_size"])
             vector_ops, exps = 4 * elements, elements
             work = replace(work, flops=vector_ops)

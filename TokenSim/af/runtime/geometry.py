@@ -109,7 +109,7 @@ class RuntimeGeometryMixin:
                     // domain_plan.tensor_parallel_size,
                     "num_kv_heads": partition.local_head_count,
                     "head_dim": layer.head_dim,
-                    "kv_projections": 1 if layer.k_eq_v else 2,
+                    **({"kv_projections": 1} if layer.k_eq_v else {}),
                     "query_width": (
                         layer.num_attention_heads
                         // domain_plan.tensor_parallel_size

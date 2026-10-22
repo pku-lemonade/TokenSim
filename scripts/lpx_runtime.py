@@ -1,4 +1,8 @@
-"""Build native AF runtimes for LP30, Rubin and mixed-device layouts."""
+"""Shared configuration builder for the LPX CLI and native AF checks.
+
+Layout declares the devices and parallel domains; configuration compiles
+their physical rank mappings through the production AF runtime factory.
+"""
 
 from dataclasses import dataclass
 
@@ -36,20 +40,6 @@ class Layout:
             or self.a_tp != self.f_tp * self.f_ep
         ):
             raise ConfigurationError("colocated A/F requires matching rank inventories")
-
-    @property
-    def a_ranks(self):
-        return self.a_tp * self.a_cp * self.a_pp
-
-    @property
-    def f_ranks(self):
-        return self.f_tp * self.f_ep * self.f_pp
-
-    def inventory(self):
-        result = {self.a_device: self.a_ranks}
-        if not self.colocated:
-            result[self.f_device] = result.get(self.f_device, 0) + self.f_ranks
-        return result
 
 
 def configuration(

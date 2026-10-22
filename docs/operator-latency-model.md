@@ -433,6 +433,9 @@ The operator modules in section 2.3 replace the individual operations included i
 Models with per-layer attention windows or head geometries use separate backend groups for the layers owned by each pipeline stage.
 Each group prices its actual dimensions and multiplicity, while the stage charges output processing, pipeline transfer and fixed step overhead once.
 Shared K/V projections reduce projection work while retaining separate transformed K and V cache tensors.
+The model's `block_layout` mapping selects optional value/output normalization, embedding and layer scaling, and final logit softcapping.
+The `scale` and `logit_softcap` elementwise operations use the same lookup and analytical-fallback policy as other operators.
+Embedding scaling is charged once for the input stage, including stages containing several attention-geometry groups.
 An explicit `pipeline_layer_counts` partition is supported for dense ordinary attention and must assign every model layer to one nonempty stage.
 
 #### Prefix-Cache Scaling

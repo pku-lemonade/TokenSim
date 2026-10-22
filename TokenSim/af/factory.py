@@ -92,6 +92,13 @@ def simulate_decode(
     peak_context = context + steps
     if peak_context > config.model.max_position_embeddings:
         raise ConfigurationError("fixed-batch decode exceeds the model context limit")
+    from TokenSim.af.runtime.lpx_memory import memory_policies, validate_queries
+
+    validate_queries(
+        memory_policies(config.hardware, config.workers),
+        min(batch, config.cluster.af.af_block_size),
+        peak_context,
+    )
     # This helper submits every request to one decode A replica. It has no
     # scheduler admission loop, so check the resident KV budget explicitly.
     owner = next(iter(config.plan.request_owners))

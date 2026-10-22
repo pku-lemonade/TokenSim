@@ -37,11 +37,18 @@ def workspace_components(components, model, raw):
     for component in components:
         shape = dict(component.shape)
         if component.category == "attention":
-            if model.architecture == "gemma4_text":
-                auxiliary += 4 * model.hidden_size * activation_bytes + 2
+            layout = model.block_layout
+            if layout.to_dict():
+                auxiliary += 2 * model.hidden_size * activation_bytes
+                auxiliary += layout.parameter_elements(model.hidden_size) * max(
+                    0,
+                    activation_bytes
+                    - dtype_size_bytes(model.dtype, role="activation_dtype"),
+                )
                 auxiliary += (
                     2
                     * shape["head_dim"]
+                    * int(model.qk_norm)
                     * max(
                         0,
                         activation_bytes
@@ -64,7 +71,7 @@ def workspace_components(components, model, raw):
             # Gate/up and activation outputs coexist with down-projection inputs.
             ffn = max(ffn, tokens * (3 * width + 2 * hidden) * activation_bytes)
         elif component.category == "embedding_lm_head":
-            if model.architecture == "gemma4_text":
+            if model.block_layout.embedding_scale:
                 auxiliary += model.hidden_size * activation_bytes
             logits = (model.vocab_size + shape["tp_size"] - 1) // shape["tp_size"]
             boundary = max(boundary, tokens * logits * (activation_bytes + 4))

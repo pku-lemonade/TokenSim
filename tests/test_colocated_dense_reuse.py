@@ -347,6 +347,29 @@ class ColocatedDenseReuseTest(unittest.TestCase):
         local = self.execute(self.runtime(True, model=model))
         self.assertEqual(reference.trace.events, local.trace.events)
 
+    def test_interleaved_moe_reserves_dense_residual_storage(self):
+        from tests.support.lpx import tiny_moe
+
+        model = tiny_moe(self.hardware)
+        model = replace(
+            model,
+            moe=replace(
+                model.moe, num_moe_layers=2, first_k_dense_replace=0, moe_layer_freq=2
+            ),
+        )
+        runtime = self.runtime(model=model)
+        self.assertEqual(model.moe_layer_indices(), [0, 2])
+        self.assertTrue(
+            any(
+                node.metadata.get("colocated_dense_reuse")
+                for node in self.dag(runtime, layer=1).nodes
+            )
+        )
+        for state in runtime.plan.physical_states:
+            self.assertGreater(
+                dict(state.protocol_buffers)["colocated_dense_residual"], 0
+            )
+
     def test_configuration_requires_colocation_and_strict_boolean(self):
         for value in (1, "true", None):
             with (

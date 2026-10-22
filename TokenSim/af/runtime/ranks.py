@@ -129,6 +129,9 @@ def compile_rank_components(
                     ffn_projection_count=model.ffn_projection_count,
                     embedding_role=role,
                     qk_norm=model.qk_norm,
+                    block_norm_elements=model.block_layout.parameter_elements(
+                        model.hidden_size
+                    ),
                 )
                 components = stored_components(
                     components,

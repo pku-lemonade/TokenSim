@@ -81,9 +81,10 @@ def run(args):
         colocated_dense_reuse=args.colocated_dense_reuse,
         pipeline_layer_counts=args.pipeline_layer_counts,
     )
+    output = args.output.expanduser().resolve()
     runner = AFExperimentRunner(
         runtime,
-        args.output / "points",
+        output / "points",
         fallback="analytical_only",
         seed=args.seed,
         resume=args.resume,
@@ -98,7 +99,7 @@ def run(args):
             dict(
                 **receipt.result["summary"],
                 checkpoint_key=receipt.key,
-                checkpoint_directory=str(receipt.directory.relative_to(args.output)),
+                checkpoint_directory=str(receipt.directory.relative_to(output)),
             )
         )
     summary = dict(
@@ -113,7 +114,7 @@ def run(args):
             "Simulated native tokens; no text generation or model-quality evaluation.",
         ],
     )
-    (args.output / "summary.json").write_text(
+    (output / "summary.json").write_text(
         json.dumps(summary, indent=2, allow_nan=False) + "\n", encoding="utf-8"
     )
     return summary

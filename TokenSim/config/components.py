@@ -1,5 +1,4 @@
-"""Architecture metadata of compressed-attention transformers (for example
-DeepSeek-V4), independent of serving frameworks."""
+"""Transformer block and compressed-attention metadata independent of runtimes."""
 
 from __future__ import annotations
 
@@ -8,6 +7,47 @@ from typing import Any, Mapping
 
 from TokenSim.errors import ConfigurationError
 from TokenSim.config.validation import integer, number, boolean
+
+
+@dataclass(frozen=True)
+class TransformerBlockLayout:
+    attention_output_norm: bool = False
+    ffn_output_norm: bool = False
+    value_norm: bool = False
+    embedding_scale: bool = False
+    layer_scale: bool = False
+    logit_softcap: float = 0.0
+
+    def __post_init__(self):
+        for name in (
+            "attention_output_norm",
+            "ffn_output_norm",
+            "value_norm",
+            "embedding_scale",
+            "layer_scale",
+        ):
+            boolean(getattr(self, name), f"block_layout.{name}")
+        number(self.logit_softcap, "block_layout.logit_softcap", minimum=0)
+
+    @classmethod
+    def from_value(cls, value):
+        if isinstance(value, cls):
+            return value
+        if not isinstance(value, Mapping):
+            raise ConfigurationError("block_layout must be an object")
+        try:
+            return cls(**value)
+        except TypeError as exc:
+            raise ConfigurationError(f"invalid block_layout: {exc}") from exc
+
+    def to_dict(self):
+        return {name: value for name, value in asdict(self).items() if value}
+
+    def parameter_elements(self, hidden_size):
+        """Additional replicated normalization weights and one learned layer scalar."""
+        return hidden_size * (
+            int(self.attention_output_norm) + int(self.ffn_output_norm)
+        ) + int(self.layer_scale)
 
 
 @dataclass(frozen=True)

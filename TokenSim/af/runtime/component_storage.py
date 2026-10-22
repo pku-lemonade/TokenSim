@@ -37,6 +37,8 @@ def stored_components(
             tensors = ((q + shape.get("kv_projections", 2) * kv, h), (h, q))
             if shape.get("qk_norm_elements"):
                 tensors += ((shape["qk_norm_elements"],),)
+            if shape.get("block_norm_elements"):
+                tensors += ((shape["block_norm_elements"],),)
         elif component.category == "router":
             tensors = ((shape["num_experts"], h),)
         elif component.category == "embedding_lm_head":

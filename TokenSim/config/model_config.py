@@ -5,7 +5,11 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 from TokenSim.errors import ConfigurationError
-from TokenSim.config.components import TransformerComponents, ModelLayerSpec
+from TokenSim.config.components import (
+    TransformerComponents,
+    ModelLayerSpec,
+    TransformerBlockLayout,
+)
 from TokenSim.hardware._yaml import load_yaml_mapping, require
 from TokenSim.hardware.device import normalize_dtype
 from TokenSim.moe.config import MoEModelConfig
@@ -60,6 +64,7 @@ class ModelSpec(AttentionModelMixin):
     qk_norm: bool = False
     k_eq_v: bool = False
     attention_geometries: tuple = ()
+    block_layout: TransformerBlockLayout = field(default_factory=TransformerBlockLayout)
 
     def __post_init__(self) -> None:
         if self.attention_type not in {"mha", "gqa", "mqa", "mla"}:
@@ -99,6 +104,13 @@ class ModelSpec(AttentionModelMixin):
         boolean(self.tie_word_embeddings, "tie_word_embeddings")
         boolean(self.qk_norm, "qk_norm")
         self.validate_attention_geometries()
+        object.__setattr__(
+            self, "block_layout", TransformerBlockLayout.from_value(self.block_layout)
+        )
+        if self.block_layout.to_dict() and (
+            self.attention_type == "mla" or self.components
+        ):
+            raise ConfigurationError("block_layout requires ordinary attention")
         if self.qk_norm and (
             self.attention_type == "mla" or self.components is not None
         ):
@@ -258,6 +270,9 @@ class ModelSpec(AttentionModelMixin):
         moe_layers = len(self.moe_layer_indices())
         dense_layers = self.num_layers - moe_layers
         params = sum(self.attention_params_per_layer(i) for i in range(self.num_layers))
+        params += self.num_layers * self.block_layout.parameter_elements(
+            self.hidden_size
+        )
         params += dense_layers * self.dense_ffn_params_per_layer()
         if moe_layers:
             per_layer = (
@@ -407,6 +422,7 @@ class ModelSpec(AttentionModelMixin):
             qk_norm=raw.get("qk_norm", False),
             k_eq_v=raw.get("k_eq_v", False),
             attention_geometries=raw.get("attention_geometries", ()),
+            block_layout=raw.get("block_layout", {}),
             attention_type=attention_type,
             **{name: raw.get(name, 0) for name in MLADimensions.__dataclass_fields__},
         )
@@ -432,6 +448,11 @@ class ModelSpec(AttentionModelMixin):
                 else {}
             ),
             "tie_word_embeddings": self.tie_word_embeddings,
+            **(
+                {"block_layout": self.block_layout.to_dict()}
+                if self.block_layout.to_dict()
+                else {}
+            ),
             **({"qk_norm": True} if self.qk_norm else {}),
             **({"k_eq_v": True} if self.k_eq_v else {}),
             **(
