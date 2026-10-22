@@ -58,6 +58,17 @@ This captures uneven expert load, TP reductions and EP movement.
 Shared experts contribute their own computation and transfers.
 Model embedding, final normalization, output projection and token selection contribute to whole-model decode latency.
 
+An execution domain can set `parallel.pipeline_layer_counts` to assign positive contiguous layer counts to its PP stages.
+The array must contain one count per stage and sum to the model's layer count.
+Prefill, decode, KV admission and KV handoff use these same boundaries.
+A/F return routes connect only pipeline stages sharing a model layer.
+
+An AF link can enable `colocated_dense_reuse` when A and F execute on the same physical ranks.
+Eligible dense layers consume complete local activation replicas and retain replicated residuals without A/F endpoint copies.
+The runtime still charges tensor-parallel reductions and reserves residual storage.
+Directional casts, sharded collective outputs and remote F replicas retain the ordinary transfer protocol.
+The planner and trace validator check local replica ownership, tensor coverage and producer dependencies.
+
 The default `partial_return` protocol supports router placement on either A or F.
 F returns the selected experts' outputs, and A performs weighted combination and residual addition.
 When routing runs on F, the required expert IDs and weights also reach the A-side consumers.
@@ -116,6 +127,14 @@ Setting `node_size` to four can represent a four-accelerator compute node, but t
 The alternative `flat_link` model uses catalog link classes and configured resource lanes.
 Its fabric mode supports separate full-duplex directions or a shared half-duplex lane.
 Its endpoint mode models shared transmit/receive injection budgets per worker.
+Each execution domain's `communication_plan` entry can set `algorithm` to `ring`, `tree`, `direct` or `auto`.
+The default is `ring` and preserves existing service times.
+`auto` compares the analytical ring and tree costs for the current participant count and tensor size.
+`direct` assumes a nonblocking fabric and requires an explicit selection; it does not establish NVLS support or reproduce a compiler-specific LPU algorithm.
+The input payload is per rank, so AllGather returns a buffer whose size is the input size multiplied by the participant count.
+Algorithm selection reaches layer collectives, embedding reduction and output gathering, and is retained in runtime plans and transport traces.
+The `physical` wire scheduler supports ring only and rejects other policies before execution.
+Complete-model prefill continues to use its ordinary hierarchical collective backend; the domain policy applies to the AF operator DAG.
 Physical node budgets determine contention in `physical` mode; flat-link duplex settings describe the `flat_link` model.
 
 Optional host submission, control and completion costs are accounted for separately from device computation and transport service.
@@ -138,12 +157,36 @@ Additional KV limits can reduce the available cache budget.
 A replicas own their attention and KV shards; F replicas store their assigned dense, routed and shared-expert weights without request KV caches.
 Moving FFN weights off A can increase its resident request capacity, while the F weight and workspace budgets can constrain the useful A:F ratio.
 Admission uses the limiting A-rank capacity and shared physical memory reservations.
-The fixed-cohort serving helper reserves the declared peak resident context and does not model paging or preemption.
+The native `AFService` reserves the declared peak resident context and does not model paging or preemption.
 
 Weights, activations, KV caches and the two transfer directions can use different supported dtypes.
 Weight and KV precision affect storage and compute estimates; wire precision affects transferred bytes.
 Required encode/decode conversions consume compute time at the sender and receiver.
 Precision changes therefore alter the memory, compute and communication models together.
+
+Ordinary attention models can supply one `attention_windows` entry and one `attention_geometries` entry per layer.
+Geometry entries define `head_dim`, `num_key_value_heads` and optional `k_eq_v` projection sharing.
+Shared K/V projections retain two distinct transformed cache tensors.
+Complete-model prefill groups stages' owned layers by their actual geometry and uses the declared operator weight formats.
+Analytical GPU prefill also honors the selected graph-kernel overhead without changing the device catalog or LPU startup costs.
+The [LP30 and Rubin guide](lpx.md) describes the Gemma catalog and optional SRAM workspace accounting.
+
+Ordinary transformers declare additional block operations under the model's `block_layout` mapping.
+These settings drive both AF decode and complete-model prefill, independently of model names and device families.
+
+| Field inside `block_layout` | Default | Modeled operation |
+| --- | --- | --- |
+| `attention_output_norm` | `false` | Normalize attention output before the residual addition and FFN input normalization. |
+| `ffn_output_norm` | `false` | Normalize FFN output before its residual addition. |
+| `value_norm` | `false` | Normalize each local value head. |
+| `embedding_scale` | `false` | Multiply embedding outputs once at the input pipeline stage. |
+| `layer_scale` | `false` | Multiply each layer's residual output by its scalar. |
+| `logit_softcap` | `0` | Apply final logit softcapping when the configured bound is positive. |
+
+Scaling and softcapping use generic elementwise estimates and retain the selected backend's provenance.
+Additional output-normalization weights and learned layer scalars are reserved on each tensor-parallel rank that owns the layer.
+An empty mapping preserves the existing ordinary-transformer composition.
+The mapping is rejected for MLA and compressed-module models, whose operator boundaries have separate estimators.
 
 ## Configure and run
 

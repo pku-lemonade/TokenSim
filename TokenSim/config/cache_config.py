@@ -55,6 +55,13 @@ class CacheConfig:
             self.parallel_config.pipeline_parallel_size,
             self.rank_info.pp_rank,
         )
+        first_layer = sum(
+            stage_layer_count(
+                model.num_layers, self.parallel_config.pipeline_parallel_size, stage
+            )
+            for stage in range(self.rank_info.pp_rank)
+        )
+        self._layer_ids = range(first_layer, first_layer + self.num_layers_per_rank)
         self.num_kv_heads = model.num_key_value_heads
         self.local_kv_heads = local_kv_heads(
             self.num_kv_heads,
@@ -65,7 +72,26 @@ class CacheConfig:
         self.size_per_token_unsharded = int(
             model.kv_elements_per_token() * kv_bytes * model.num_layers
         )
-        if model.attention_type == "mla":
+        if model.attention_geometries:
+            self.size_per_token_unsharded = int(
+                sum(
+                    2 * geometry.num_key_value_heads * geometry.head_dim * kv_bytes
+                    for geometry in model.attention_geometries
+                )
+            )
+            self.size_per_token = int(
+                sum(
+                    2
+                    * local_kv_heads(
+                        model.attention_geometry(layer).num_key_value_heads,
+                        self.parallel_config.tensor_parallel_size,
+                    )
+                    * model.attention_geometry(layer).head_dim
+                    * kv_bytes
+                    for layer in self._layer_ids
+                )
+            )
+        elif model.attention_type == "mla":
             model.validate_mla_tp(self.parallel_config.tensor_parallel_size)
             self.local_kv_heads = 1
             self.size_per_token = int(
@@ -134,6 +160,13 @@ class CacheConfig:
             weight_bytes = dtype_bytes(model.dtype)
             self.model_param_size_unsharded = model.total_params() * weight_bytes
             self.model_param_size = self._rank_params() * weight_bytes
+            # Block output norms and the layer scalar are replicated across TP.
+            self.model_param_size += (
+                self.num_layers_per_rank
+                * model.block_layout.parameter_elements(model.hidden_size)
+                * (1 - 1 / self.parallel_config.tensor_parallel_size)
+                * weight_bytes
+            )
             if model.attention_type == "mla":
                 tp = self.parallel_config.tensor_parallel_size
                 replicated = model.mla_dimensions.weight_elements(0, model.hidden_size)
@@ -190,12 +223,20 @@ class CacheConfig:
         tp = self.parallel_config.tensor_parallel_size
         pp = self.parallel_config.pipeline_parallel_size
         if not model.is_moe or self.expert_placement is None:
-            return model.total_params() / (tp * pp)
+            block_elements = model.block_layout.parameter_elements(model.hidden_size)
+            return (model.total_params() - model.num_layers * block_elements) / (
+                tp * pp
+            ) + self.num_layers_per_rank * block_elements / tp
         owned_moe_layers = len(
             self.expert_placement.moe_layers_for_pp_rank(self.rank_info.pp_rank)
         )
         dense_layers = max(0, self.num_layers_per_rank - owned_moe_layers)
-        sharded = self.num_layers_per_rank * model.attention_params_per_layer()
+        sharded = sum(
+            model.attention_params_per_layer(layer) for layer in self._layer_ids
+        )
+        sharded += self.num_layers_per_rank * model.block_layout.parameter_elements(
+            model.hidden_size
+        )
         sharded += dense_layers * model.dense_ffn_params_per_layer()
         sharded += model.embedding_params() / pp
         # The router is replicated. Shared experts are too when MoE layers
@@ -250,9 +291,22 @@ def stage_layer_count(total_layers: int, pp_size: int, pp_rank: int) -> int:
     return base + (1 if pp_rank < remainder else 0)
 
 
-def stage_layer_range(total_layers: int, pp_size: int, pp_rank: int) -> range:
+def stage_layer_range(
+    total_layers: int, pp_size: int, pp_rank: int, layer_counts=None
+) -> range:
     if not 1 <= pp_size <= total_layers or not 0 <= pp_rank < pp_size:
         raise ConfigurationError("pipeline stage must own at least one model layer")
+    if layer_counts is not None:
+        if (
+            len(layer_counts) != pp_size
+            or any(type(count) is not int or count < 1 for count in layer_counts)
+            or sum(layer_counts) != total_layers
+        ):
+            raise ConfigurationError(
+                "pipeline_layer_counts must assign every model layer once to nonempty stages"
+            )
+        start = sum(layer_counts[:pp_rank])
+        return range(start, start + layer_counts[pp_rank])
     start = pp_rank * (total_layers // pp_size) + min(pp_rank, total_layers % pp_size)
     return range(start, start + stage_layer_count(total_layers, pp_size, pp_rank))
 

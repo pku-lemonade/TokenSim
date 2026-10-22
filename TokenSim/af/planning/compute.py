@@ -279,6 +279,11 @@ class ComputeNodePlannerMixin:
             source_layout=source_layout,
             target_layout=target_layout,
             metadata={
+                **(
+                    {"collective_algorithm": plan.algorithm}
+                    if plan.algorithm != "ring"
+                    else {}
+                ),
                 "after_stage": after_stage,
                 "collective_input_binding_required": True,
                 "original_token_count": (

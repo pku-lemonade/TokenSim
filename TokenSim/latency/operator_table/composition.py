@@ -122,17 +122,32 @@ class StepComposition:
                 ) + self.elementwise(
                     "rmsnorm", T * (self.kv_dim_local // model.head_dim), model.head_dim
                 )
+            if model.block_layout.value_norm:
+                attn_elem_us += self.elementwise(
+                    "rmsnorm", T * self.kv_heads_local, model.head_dim
+                )
+            if model.block_layout.attention_output_norm:
+                attn_elem_us += self.elementwise("rmsnorm", T, h)
         dense_ffn_gemm_us = 0.0
         dense_ffn_elem_us = 0.0
         if self.dense_layers_local:
             dense_ffn_gemm_us = self.gemm(
-                T, model.ffn_projection_count * self.inter_local, h
-            ) + self.gemm(T, h, self.inter_local)
+                T,
+                model.ffn_projection_count * self.inter_local,
+                h,
+                dtype=model.operator_dtype("dense_ffn"),
+            ) + self.gemm(
+                T, h, self.inter_local, dtype=model.operator_dtype("dense_ffn")
+            )
             dense_ffn_elem_us = self.elementwise("rmsnorm", T, h) + self.elementwise(
                 "residual_add", T, h
             )
             if model.gated:
-                dense_ffn_elem_us += self.elementwise("swiglu", T, self.inter_local)
+                dense_ffn_elem_us += self.elementwise(
+                    model.activation, T, self.inter_local
+                )
+            if model.block_layout.ffn_output_norm:
+                dense_ffn_elem_us += self.elementwise("rmsnorm", T, h)
 
         moe_us = 0.0
         router_us = 0.0
@@ -167,6 +182,10 @@ class StepComposition:
             + self.moe_layers_local * moe_elem_us
             + self.layers_local * mhc_us
         )
+        if model.block_layout.layer_scale:
+            layer_elem_us += self.layers_local * self.elementwise("scale", T, h)
+        if model.block_layout.embedding_scale and self.include_embedding_scale:
+            layer_elem_us += self.elementwise("scale", T, h)
         layer_attention_us = (
             attention_us if self.native_attention else self.layers_local * attention_us
         )
@@ -191,8 +210,14 @@ class StepComposition:
                 self.target_logits_counts["final_norm_rows"] += output_rows
             else:
                 lm_head_us += self.elementwise("rmsnorm", max(1, requests), h)
+            if model.block_layout.logit_softcap:
+                lm_head_us += self.elementwise(
+                    "logit_softcap", max(1, requests), self.vocab_local
+                )
 
-        overhead_us = self.device.step_overhead_us.value
+        overhead_us = (
+            self.device.step_overhead_us.value if self.include_step_overhead else 0.0
+        )
 
         draft = self.native_mtp.estimate(requests_list) if self.native_mtp else {}
         layer_gemm_us += draft.get("gemm", 0)
@@ -253,7 +278,7 @@ class StepComposition:
                 num_experts=self.model.moe.num_experts,
                 activation_bytes=self.activation_bytes,
             )
-        if self.parallel_config.pipeline_parallel_size > 1:
+        if self.parallel_config.pipeline_parallel_size > 1 and self.include_pp_transfer:
             latency += self.communicator.estimate_pp_stage_transfer(hidden_bytes)
         return latency
 

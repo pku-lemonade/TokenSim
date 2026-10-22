@@ -378,6 +378,11 @@ class AFRuntimePlan(RuntimeGeometryMixin, RuntimeValidationMixin):
                     "capability": domain.capability,
                     "tensor_parallel_size": domain.tensor_parallel_size,
                     **(
+                        {"pipeline_layer_counts": list(domain.pipeline_layer_counts)}
+                        if domain.pipeline_layer_counts is not None
+                        else {}
+                    ),
+                    **(
                         {"pipeline_parallel_size": domain.pipeline_parallel_size}
                         if domain.pipeline_parallel_size > 1
                         else {}

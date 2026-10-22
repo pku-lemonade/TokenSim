@@ -34,8 +34,20 @@ def attention_projections(model, tp):
             else local_kv_heads(model.num_key_value_heads, tp) * model.head_dim
         )
         return (
-            Projection("qkv", "gemm", model.dtype, q + 2 * kv, model.hidden_size),
-            Projection("output", "gemm", model.dtype, model.hidden_size, q),
+            Projection(
+                "qkv",
+                "gemm",
+                model.operator_dtype("attention"),
+                q + (1 if model.k_eq_v else 2) * kv,
+                model.hidden_size,
+            ),
+            Projection(
+                "output",
+                "gemm",
+                model.operator_dtype("attention"),
+                model.hidden_size,
+                q,
+            ),
         )
     if model.num_attention_heads % tp or spec.o_groups % tp:
         raise ConfigurationError(

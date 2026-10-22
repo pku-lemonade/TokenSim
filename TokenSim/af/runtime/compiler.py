@@ -23,7 +23,6 @@ from TokenSim.af.runtime.records import (
 from TokenSim.af.runtime.topology import (
     _compile_collective_plans,
     _compile_dtypes,
-    _compile_partial_destinations,
     _compile_request_owners,
     _tensor_interval,
     _validate_parallel_shapes,
@@ -34,6 +33,8 @@ from TokenSim.config.constants import _GB
 from TokenSim.dtypes import dtype_size_bytes
 from TokenSim.errors import ConfigurationError
 
+DEFAULT_KV_WATERMARK = 0.01
+
 
 def compile_af_runtime_plan(
     *,
@@ -43,7 +44,7 @@ def compile_af_runtime_plan(
     hardware: Any,
     block_size: int,
     dtype: str = "bf16",
-    watermark: float = 0.01,
+    watermark: float = DEFAULT_KV_WATERMARK,
     usable_memory_fraction: float = 1.0,
     kv_cache_capacity_tokens_per_dp_rank: int | None = None,
     kv_cache_capacity_tokens_total: int | None = None,
@@ -162,8 +163,13 @@ def compile_af_runtime_plan(
             layer_type="moe" if layer_id in moe_layer_ids else "dense",
             hidden_size=hidden,
             num_attention_heads=attention_heads,
-            num_kv_heads=kv_heads,
-            head_dim=head_dim,
+            num_kv_heads=(
+                kv_heads
+                if mla
+                else model.attention_geometry(layer_id).num_key_value_heads
+            ),
+            head_dim=model.attention_geometry(layer_id).head_dim,
+            k_eq_v=model.attention_geometry(layer_id).k_eq_v,
             dense_intermediate_size=intermediate,
             routed_intermediate_size=moe_intermediate,
             shared_intermediate_size=(
@@ -206,6 +212,7 @@ def compile_af_runtime_plan(
             name=domain.name,
             capability=domain.capability,
             pipeline_parallel_size=domain.parallel.pipeline_parallel_size,
+            pipeline_layer_counts=domain.parallel.pipeline_layer_counts,
             tensor_parallel_size=domain.parallel.tensor_parallel_size,
             data_parallel_size=domain.parallel.data_parallel_size,
             expert_parallel_size=(
@@ -235,8 +242,6 @@ def compile_af_runtime_plan(
         weight_bytes=weight_bytes,
         weight_dtype=effective_dtypes.weight_dtype,
         kv_bytes=kv_bytes,
-        kv_heads=kv_heads,
-        head_dim=head_dim,
         mla=mla,
         router_location=cluster_config.af.router_location,
     )
@@ -392,8 +397,10 @@ def compile_af_runtime_plan(
         for binding in bindings
     )
     request_owners = _compile_request_owners(cluster_config, bindings)
-    partial_destinations = _compile_partial_destinations(
-        cluster_config, tensor_ownerships
+    from TokenSim.af.runtime.destinations import compile_partial_destinations
+
+    partial_destinations = compile_partial_destinations(
+        cluster_config, tensor_ownerships, total_layers
     )
     collective_plans = _compile_collective_plans(cluster_config, binding_by_key)
 

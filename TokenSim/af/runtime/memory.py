@@ -34,6 +34,7 @@ def _components_for_binding(
     ffn_projection_count: int,
     embedding_role: str = "both",
     qk_norm: bool = False,
+    block_norm_elements: int = 0,
 ) -> tuple[AFModelComponent, ...]:
     _ = dp_rank
     components: list[AFModelComponent] = []
@@ -59,17 +60,24 @@ def _components_for_binding(
     if capability == "af_attention":
         if kv_partition is None:
             raise ConfigurationError("A binding requires a KV-head partition")
-        q_heads = layers[0].num_attention_heads // tp_size
-        q_width = q_heads * layers[0].head_dim
-        kv_width = kv_partition.local_head_count * layers[0].head_dim
-        attention_elements = 2 * hidden * q_width + 2 * hidden * kv_width
-        norm_elements = 2 * layers[0].head_dim if qk_norm else 0
-        norm_shape = (("qk_norm_elements", norm_elements),) if norm_elements else ()
-        attention_elements += norm_elements
-        mla = layers[0].mla
-        if mla:
-            attention_elements = mla.weight_elements(q_heads, hidden)
         for layer in layers:
+            partition = kv_partition.for_layer(layer.layer_id)
+            q_heads = layer.num_attention_heads // tp_size
+            q_width = q_heads * layer.head_dim
+            kv_width = partition.local_head_count * layer.head_dim
+            kv_projections = 1 if layer.k_eq_v else 2
+            attention_elements = (
+                2 * hidden * q_width + kv_projections * hidden * kv_width
+            )
+            norm_elements = 2 * layer.head_dim if qk_norm else 0
+            norm_shape = (("qk_norm_elements", norm_elements),) if norm_elements else ()
+            attention_elements += norm_elements
+            attention_elements += block_norm_elements
+            if block_norm_elements:
+                norm_shape += (("block_norm_elements", block_norm_elements),)
+            mla = layer.mla
+            if mla:
+                attention_elements = mla.weight_elements(q_heads, hidden)
             components.append(
                 AFModelComponent(
                     component_id=f"layer.{layer.layer_id}.attention.tp{tp_rank}-of-{tp_size}",
@@ -78,14 +86,18 @@ def _components_for_binding(
                     formula=(
                         "MLA replicated Q/KV down + head-sharded Q/KV up and O + latent norms"
                         if mla
-                        else "H*(Q_local+2*KV_local)+Q_local*H, using exact Q/K/V/O "
-                        "dimensions"
+                        else "Q/K/V/O: H*(2*Q_local+KV_projections*KV_local), plus Q/K norms"
                     ),
                     layer_id=layer.layer_id,
                     shape=(
                         ("hidden_size", hidden),
                         ("q_heads_local", q_heads),
-                        ("kv_heads_local", kv_partition.local_head_count),
+                        ("kv_heads_local", partition.local_head_count),
+                        *(
+                            ((("kv_projections", kv_projections),))
+                            if layer.k_eq_v
+                            else ()
+                        ),
                         ("head_dim", layer.head_dim),
                         *norm_shape,
                     ),
@@ -239,6 +251,7 @@ def _compile_physical_states(
 ):
     physical_components: dict[str, dict[str, AFModelComponent]] = {}
     physical_bindings: dict[str, list[RankKey]] = {}
+    physical_roles: dict[str, set[str]] = {}
     physical_kv_bytes: dict[str, list[int]] = {}
     for item in preliminary:
         domain = item["domain"]
@@ -246,6 +259,7 @@ def _compile_physical_states(
         rank_key = (domain.name, mapping.domain_rank)
         physical = mapping.physical_worker.identity
         physical_bindings.setdefault(physical, []).append(rank_key)
+        physical_roles.setdefault(physical, set()).add(domain.capability)
         ledger = physical_components.setdefault(physical, {})
         for component in item["components"]:
             ledger.setdefault(component.component_id, component)
@@ -271,41 +285,53 @@ def _compile_physical_states(
             for component_id in sorted(physical_components[physical])
         )
         model_bytes = sum(component.bytes for component in components)
-        roles = {
-            item["domain"].capability
-            for item in preliminary
-            if item["mapping"].physical_worker.identity == physical
-        }
+        roles = physical_roles[physical]
         buffers = ()
-        if cluster_config.af.transfer_topology_mode == "physical":
-            # Explicit conservative workspace assumption: one input and one
-            # output buffer for the largest activation/logit boundary in a
-            # configured AF block. Reused across layers, not silently zero.
-            routing_expansion = (
-                max(1, moe_config.num_experts_per_tok) if moe_config is not None else 1
+        # Explicit conservative workspace assumption: one input and one
+        # output buffer for the largest activation/logit boundary in a
+        # configured AF block. Reused across layers, not silently zero.
+        routing_expansion = (
+            max(1, moe_config.num_experts_per_tok) if moe_config is not None else 1
+        )
+        workspace_tokens = cluster_config.af.af_block_size
+        if (
+            cluster_config.af.ffn_batching
+            or cluster_config.af.execution_protocol == "vllm_afd"
+        ) and "af_ffn" in roles:
+            workspace_tokens = max(
+                workspace_tokens,
+                cluster_config.af.ffn_batch_max_tokens
+                or (
+                    workspace_tokens
+                    * cluster_config.af_domains[0].parallel.data_parallel_size
+                ),
             )
-            workspace_tokens = cluster_config.af.af_block_size
-            if (
-                cluster_config.af.ffn_batching
-                or cluster_config.af.execution_protocol == "vllm_afd"
-            ) and "af_ffn" in roles:
-                workspace_tokens = max(
-                    workspace_tokens,
-                    cluster_config.af.ffn_batch_max_tokens
-                    or (
-                        workspace_tokens
-                        * cluster_config.af_domains[0].parallel.data_parallel_size
+        workspace = (
+            2
+            * workspace_tokens
+            * max(hidden * routing_expansion, model.vocab_size)
+            * dtype_size_bytes(
+                effective_dtypes.activation_dtype, role="activation_dtype"
+            )
+        )
+        buffers += (("communication_workspace", workspace),)
+        if (
+            cluster_config.af_link.colocated_dense_reuse
+            and cluster_config.af.execution_protocol == "partial_return"
+            and "af_attention" in roles
+            and len(model.moe_layer_indices()) < model.num_layers
+        ):
+            # Reserve the retained full residual independently of staging buffers.
+            buffers += (
+                (
+                    "colocated_dense_residual",
+                    workspace_tokens
+                    * hidden
+                    * dtype_size_bytes(
+                        effective_dtypes.activation_dtype, role="activation_dtype"
                     ),
-                )
-            workspace = (
-                2
-                * workspace_tokens
-                * max(hidden * routing_expansion, model.vocab_size)
-                * dtype_size_bytes(
-                    effective_dtypes.activation_dtype, role="activation_dtype"
-                )
+                ),
             )
-            buffers += (("communication_workspace", workspace),)
         if (
             cluster_config.af.execution_protocol == "vllm_afd"
             and cluster_config.af.communication_timing.native_control_enabled
@@ -336,6 +362,11 @@ def _compile_physical_states(
                     ("f_topk_ids_weights", tokens * moe_config.num_experts_per_tok * 8),
                 )
             buffers += (("control_staging", 8 + len(encode_eager_control(tokens))),)
+        policy = hardware_conf.analytical.get("lpx_memory")
+        if hardware_conf.device_id == "groq_lp30" and policy is not None:
+            from TokenSim.af.runtime.lpx_memory import workspace_components
+
+            buffers += workspace_components(components, model, policy)
         required_bytes = model_bytes + sum(size for _, size in buffers)
         if required_bytes >= capacity_bytes:
             domains_and_ranks = ",".join(

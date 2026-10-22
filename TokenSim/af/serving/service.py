@@ -46,6 +46,9 @@ class AFService:
         if metric_sink is not None and not callable(metric_sink):
             raise ConfigurationError("metric sink must be callable")
         self.env, self.runtime = env, runtime
+        from TokenSim.af.runtime.lpx_memory import memory_policies
+
+        self._lpx_memory = memory_policies(runtime.hardware, runtime.workers)
         self.execution_driver = execution_driver
         compute, transfer = providers or build_operator_table_af_providers(
             hardware=runtime.hardware,
@@ -107,6 +110,9 @@ class AFService:
     def admit(self, request_id, dp_rank, *, maximum_context, current_context):
         integer(dp_rank, "serving DP rank")
         integer(maximum_context, "serving maximum context", minimum=1)
+        from TokenSim.af.runtime.lpx_memory import validate_queries
+
+        validate_queries(self._lpx_memory, 1, maximum_context)
         if maximum_context > self.runtime.model.max_position_embeddings:
             raise ConfigurationError(
                 "serving KV reservation exceeds the model context limit"
@@ -164,6 +170,10 @@ class AFService:
                 else session.cached_context + query_tokens
             )
             integer(length, "forward KV context", minimum=query_tokens)
+            if self._lpx_memory:
+                from TokenSim.af.runtime.lpx_memory import validate_queries
+
+                validate_queries(self._lpx_memory, query_tokens * len(sessions), length)
             if length > self.memory.leases[session.request_id].maximum_context:
                 raise ConfigurationError("forward exceeds admitted KV reservation")
             requests.append(

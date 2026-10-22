@@ -5,7 +5,11 @@ from __future__ import annotations
 import math
 from collections import Counter
 from typing import Any
-from TokenSim.config.cache_config import local_kv_heads, stage_layer_count
+from TokenSim.config.cache_config import (
+    local_kv_heads,
+    stage_layer_count,
+    stage_layer_range,
+)
 from TokenSim.config.model_config import ModelSpec
 from TokenSim.config.moe_execution import MoEExecutionConfig
 from TokenSim.config.parallel_config import ParallelConfig, ParallelRankInfo
@@ -63,6 +67,7 @@ class OperatorTableLatencyBackend(StepComposition, OperatorQueries, LatencyBacke
         mhc_backend: str = "generic",
         expected_decode_query_len: int = 1,
         max_num_seqs: int = 64,
+        pipeline_layer_counts: tuple[int, ...] | None = None,
     ) -> None:
         if fallback not in FALLBACK_POLICIES:
             raise ConfigurationError(
@@ -80,6 +85,23 @@ class OperatorTableLatencyBackend(StepComposition, OperatorQueries, LatencyBacke
         self.model = model
         self.parallel_config = parallel_config or ParallelConfig.default()
         self.rank_info = rank_info or ParallelRankInfo()
+        self.pipeline_layer_counts = pipeline_layer_counts
+        if pipeline_layer_counts is not None:
+            owned = stage_layer_range(
+                model.num_layers,
+                self.parallel_config.pipeline_parallel_size,
+                self.rank_info.pp_rank,
+                pipeline_layer_counts,
+            )
+            balanced = stage_layer_range(
+                model.num_layers,
+                self.parallel_config.pipeline_parallel_size,
+                self.rank_info.pp_rank,
+            )
+            if owned != balanced and (model.is_moe or model.components):
+                raise ConfigurationError(
+                    "nonuniform operator-backend pipelines require a dense ordinary model"
+                )
         self.communicator = communicator
         if expert_placement is None and model.is_moe:
             from TokenSim.moe.placement import build_expert_placement
@@ -173,6 +195,11 @@ class OperatorTableLatencyBackend(StepComposition, OperatorQueries, LatencyBacke
             from TokenSim.latency.speculative import SpeculativeEstimator
 
             self.native_mtp = SpeculativeEstimator(self, max_num_seqs=max_num_seqs)
+        self.include_pp_transfer = self.include_step_overhead = True
+        self.include_embedding_scale = self.rank_info.pp_rank == 0
+        from .layers import layer_backends
+
+        self._layer_backends = layer_backends(self)
 
     def _init_dimensions(self) -> None:
         model = self.model
@@ -189,8 +216,17 @@ class OperatorTableLatencyBackend(StepComposition, OperatorQueries, LatencyBacke
         )
         self.inter_local = math.ceil(model.intermediate_size / tp)
         self.vocab_local = math.ceil(model.vocab_size / tp)
-        self.layers_local = stage_layer_count(
-            model.num_layers, pp, self.rank_info.pp_rank
+        self.layers_local = (
+            stage_layer_count(model.num_layers, pp, self.rank_info.pp_rank)
+            if self.pipeline_layer_counts is None
+            else len(
+                stage_layer_range(
+                    model.num_layers,
+                    pp,
+                    self.rank_info.pp_rank,
+                    self.pipeline_layer_counts,
+                )
+            )
         )
         self.is_last_stage = self.rank_info.pp_rank == pp - 1
         self.moe_layers_local = (
@@ -226,12 +262,23 @@ class OperatorTableLatencyBackend(StepComposition, OperatorQueries, LatencyBacke
             if distribution
             else _MOE_DISTRIBUTION_CANDIDATES.get(routing, ("uniform", "balanced"))
         )
-        self.moe_dtype = model.operator_dtype("routed_expert")
+        self.moe_dtype = model.operator_dtype(
+            "routed_experts", model.operator_dtype("routed_expert")
+        )
 
     def estimate_step_latency(self, requests: list[Request]) -> float:
         """Latency of one step: decode tokens and prefill/recompute chunks may mix."""
         if not requests:
             return 0.0
+        if self._layer_backends:
+            steps = self.stats.step_count
+            for child in self._layer_backends:
+                child.moe_token_multiplier = self.moe_token_multiplier
+            latency = sum(
+                child.estimate_step_latency(requests) for child in self._layer_backends
+            )
+            self.stats.step_count = steps + 1
+            return latency
         self.stats.step_count += 1
         tokens = 0
         sampling = 0

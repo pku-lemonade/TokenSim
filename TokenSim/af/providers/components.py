@@ -11,7 +11,6 @@ from TokenSim.af.providers.attention import attention_core
 from TokenSim.af.providers.compute import (
     OperatorComponent,
     _estimate_dataset_version,
-    prefill_components,
 )
 from TokenSim.af.providers.queries import AFComputeQuery
 from TokenSim.config.cache_config import local_kv_heads
@@ -32,17 +31,18 @@ class ComputeComponentsMixin:
         model = self.model
         weight_dtype = model.operator_dtype("attention", query.weight_dtype or dtype)
         h = model.hidden_size
+        geometry = model.attention_geometry(query.layer_id)
         heads_local = math.ceil(model.num_attention_heads / tp_size)
-        kv_heads_local = local_kv_heads(model.num_key_value_heads, tp_size)
-        q_local = heads_local * model.head_dim
-        kv_local = kv_heads_local * model.head_dim
+        kv_heads_local = local_kv_heads(geometry.num_key_value_heads, tp_size)
+        q_local = heads_local * geometry.head_dim
+        kv_local = kv_heads_local * geometry.head_dim
         components = [
             self._elementwise(resolver, "a_rmsnorm", "rmsnorm", tokens, h, dtype),
             self._gemm(
                 resolver,
                 "qkv_projection",
                 tokens,
-                q_local + 2 * kv_local,
+                q_local + geometry.kv_projections * kv_local,
                 h,
                 weight_dtype,
             ),
@@ -57,7 +57,7 @@ class ComputeComponentsMixin:
                     "q_norm",
                     "rmsnorm",
                     tokens * heads_local,
-                    model.head_dim,
+                    geometry.head_dim,
                     dtype,
                 ),
                 self._elementwise(
@@ -65,7 +65,7 @@ class ComputeComponentsMixin:
                     "k_norm",
                     "rmsnorm",
                     tokens * kv_heads_local,
-                    model.head_dim,
+                    geometry.head_dim,
                     dtype,
                 ),
             ]
@@ -77,11 +77,23 @@ class ComputeComponentsMixin:
         components.append(
             self._gemm(resolver, "output_projection", tokens, h, q_local, weight_dtype)
         )
-        components.append(
-            self._elementwise(
-                resolver, "a_residual_add", "residual_add", tokens, h, dtype
+        if not model.block_layout.attention_output_norm:
+            components.append(
+                self._elementwise(
+                    resolver, "a_residual_add", "residual_add", tokens, h, dtype
+                )
             )
-        )
+        if model.block_layout.value_norm:
+            components.append(
+                self._elementwise(
+                    resolver,
+                    "v_norm",
+                    "rmsnorm",
+                    tokens * kv_heads_local,
+                    geometry.head_dim,
+                    dtype,
+                )
+            )
         return [component for component in components if component is not None]
 
     def _router_components(

@@ -7,21 +7,34 @@ from TokenSim.config.validation import integer
 from TokenSim.errors import ConfigurationError, SimulationStateError
 
 
-def rank_kv_bytes(plan, binding, context):
+def rank_layer_kv_bytes(plan, binding, context):
+    """Return bounded-window KV residence per layer on one physical rank."""
     integer(context, "KV context")
     if binding.kv_partition is None:
-        return 0
+        return {}
     domain = plan.domain_runtime(binding.domain)
     layers = tuple(
         stage_layer_range(
-            plan.total_layers, domain.pipeline_parallel_size, binding.pp_rank
+            plan.total_layers,
+            domain.pipeline_parallel_size,
+            binding.pp_rank,
+            domain.pipeline_layer_counts,
         )
     )
     per_layer = binding.kv_partition.bytes_per_token // len(layers)
-    return sum(
-        per_layer * min(context, plan.layer_plan(layer).attention_window or context)
+    return {
+        layer: (
+            binding.kv_partition.for_layer(layer).bytes_per_token
+            if binding.kv_partition.layer_partitions
+            else per_layer
+        )
+        * min(context, plan.layer_plan(layer).attention_window or context)
         for layer in layers
-    )
+    }
+
+
+def rank_kv_bytes(plan, binding, context):
+    return sum(rank_layer_kv_bytes(plan, binding, context).values())
 
 
 @dataclass(frozen=True)

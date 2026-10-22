@@ -12,6 +12,7 @@ from TokenSim.af.planning.nodes import ExecutionNode
 from TokenSim.af.providers.queries import AFTransferQuery
 from TokenSim.af.trace.metrics import AFTraceEvent
 from TokenSim.config.af.links import AFLinkConfig
+from TokenSim.config.af.common import _COLLECTIVE_OPERATIONS
 from TokenSim.errors import ConfigurationError, SimulationStateError
 
 
@@ -112,10 +113,7 @@ class ExecutorCommunicationMixin:
         )
         if is_control:
             transfer_dtype = step.metadata["wire_dtype"]
-        is_collective = step.operation in {
-            "all_reduce",
-            "all_gather",
-            "reduce_scatter",
+        is_collective = step.operation in _COLLECTIVE_OPERATIONS or step.operation in {
             "all_to_all",
             "tp_collective",
         }
@@ -134,6 +132,7 @@ class ExecutorCommunicationMixin:
             target_device=target_device,
             network=step.network or link.network,
             operation=step.operation,
+            collective_algorithm=step.metadata.get("collective_algorithm", "ring"),
             transport_backend=(
                 step.metadata["transport_backend"]
                 if is_control

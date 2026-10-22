@@ -1,0 +1,167 @@
+schema_version: 1
+model_id: gemma-4-31b-text
+display_name: Gemma 4 31B text architecture
+architecture: gemma4_text
+hidden_size: 5376
+intermediate_size: 21504
+num_layers: 60
+num_attention_heads: 32
+num_key_value_heads: 16
+head_dim: 256
+vocab_size: 262144
+activation: geglu
+attention_type: gqa
+qk_norm: true
+block_layout:
+  attention_output_norm: true
+  ffn_output_norm: true
+  value_norm: true
+  embedding_scale: true
+  layer_scale: true
+  logit_softcap: 30.0
+attention_windows:
+- 1024
+- 1024
+- 1024
+- 1024
+- 1024
+- 0
+- 1024
+- 1024
+- 1024
+- 1024
+- 1024
+- 0
+- 1024
+- 1024
+- 1024
+- 1024
+- 1024
+- 0
+- 1024
+- 1024
+- 1024
+- 1024
+- 1024
+- 0
+- 1024
+- 1024
+- 1024
+- 1024
+- 1024
+- 0
+- 1024
+- 1024
+- 1024
+- 1024
+- 1024
+- 0
+- 1024
+- 1024
+- 1024
+- 1024
+- 1024
+- 0
+- 1024
+- 1024
+- 1024
+- 1024
+- 1024
+- 0
+- 1024
+- 1024
+- 1024
+- 1024
+- 1024
+- 0
+- 1024
+- 1024
+- 1024
+- 1024
+- 1024
+- 0
+attention_geometries:
+- &sliding_geometry
+  head_dim: 256
+  num_key_value_heads: 16
+  k_eq_v: false
+- *sliding_geometry
+- *sliding_geometry
+- *sliding_geometry
+- *sliding_geometry
+- &global_geometry
+  head_dim: 512
+  num_key_value_heads: 4
+  k_eq_v: true
+- *sliding_geometry
+- *sliding_geometry
+- *sliding_geometry
+- *sliding_geometry
+- *sliding_geometry
+- *global_geometry
+- *sliding_geometry
+- *sliding_geometry
+- *sliding_geometry
+- *sliding_geometry
+- *sliding_geometry
+- *global_geometry
+- *sliding_geometry
+- *sliding_geometry
+- *sliding_geometry
+- *sliding_geometry
+- *sliding_geometry
+- *global_geometry
+- *sliding_geometry
+- *sliding_geometry
+- *sliding_geometry
+- *sliding_geometry
+- *sliding_geometry
+- *global_geometry
+- *sliding_geometry
+- *sliding_geometry
+- *sliding_geometry
+- *sliding_geometry
+- *sliding_geometry
+- *global_geometry
+- *sliding_geometry
+- *sliding_geometry
+- *sliding_geometry
+- *sliding_geometry
+- *sliding_geometry
+- *global_geometry
+- *sliding_geometry
+- *sliding_geometry
+- *sliding_geometry
+- *sliding_geometry
+- *sliding_geometry
+- *global_geometry
+- *sliding_geometry
+- *sliding_geometry
+- *sliding_geometry
+- *sliding_geometry
+- *sliding_geometry
+- *global_geometry
+- *sliding_geometry
+- *sliding_geometry
+- *sliding_geometry
+- *sliding_geometry
+- *sliding_geometry
+- *global_geometry
+max_position_embeddings: 262144
+dtype: bf16
+activation_dtype: bf16
+kv_cache_dtype: bf16
+tie_word_embeddings: true
+sources:
+  google-config:
+    grade: A
+    reference: https://huggingface.co/google/gemma-4-31B-it/blob/842da3794eaa0b77d5f08bae87a17459d91ff475/config.json
+    notes: >-
+      Text model only; vision encoder excluded.
+      BF16 is checkpoint precision; AA serving precision is undisclosed.
+  transformers-implementation:
+    grade: A
+    reference: https://github.com/huggingface/transformers/blob/e0eb2810ac1b2caf6d082f247d8d37162ecf67a0/src/transformers/models/gemma4/modeling_gemma4.py
+    notes: >-
+      Global K/V projections share weights; transformed K and V caches remain separate.
+      Normalization, embedding and layer scaling, and the final logit softcap are declared by block_layout.

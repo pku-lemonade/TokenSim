@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import ConfigDict
+from pydantic import ConfigDict, StrictInt
 from pydantic.dataclasses import Field, dataclass
 
 from TokenSim.config.af.common import _COLLECTIVE_OPERATIONS
+from TokenSim.comm.collective_types import ALGORITHMS
 from TokenSim.errors import ConfigurationError
 
 
@@ -65,6 +66,7 @@ class DomainParallelConfig:
     data_parallel_size: int = 1
     expert_parallel_size: int = 1
     expert_placement_strategy: str = "linear"
+    pipeline_layer_counts: tuple[StrictInt, ...] | None = None
 
     def __post_init__(self) -> None:
         for field_name in (
@@ -82,6 +84,13 @@ class DomainParallelConfig:
             raise ConfigurationError(
                 "execution domain expert_placement_strategy must be 'linear' or "
                 "'round_robin'"
+            )
+        if self.pipeline_layer_counts is not None and (
+            len(self.pipeline_layer_counts) != self.pipeline_parallel_size
+            or any(count < 1 for count in self.pipeline_layer_counts)
+        ):
+            raise ConfigurationError(
+                "pipeline_layer_counts needs one positive layer count per PP stage"
             )
 
     @property
@@ -191,8 +200,13 @@ class DomainCollectiveConfig:
     resource_lane: str | None = None
     network: str | None = None
     payload_bytes: int | None = None
+    algorithm: str = "ring"
 
     def __post_init__(self) -> None:
+        if self.algorithm not in ALGORITHMS:
+            raise ConfigurationError(
+                f"domain collective algorithm must be one of {ALGORITHMS}"
+            )
         if self.operation not in _COLLECTIVE_OPERATIONS:
             raise ConfigurationError(
                 "domain collective operation must be one of "

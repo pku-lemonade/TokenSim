@@ -33,4 +33,6 @@ sources:
     reference: https://huggingface.co/deepseek-ai/DeepSeek-V3/blob/main/config.json
     snapshot: deepseek-v3-hf-config.json
   simulation:
-    note: BF16 架构模拟；官方 checkpoint 为 FP8。合成均匀路由不等同于 noaux_tc；不包含 MTP。
+    note: >-
+      BF16 architecture simulation; the official checkpoint uses FP8.
+      Synthetic uniform routing does not reproduce noaux_tc; multi-token prediction (MTP) is excluded.

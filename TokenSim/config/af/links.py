@@ -72,6 +72,7 @@ class AFLinkConfig:
     colocated: bool = False
     a_to_f_dtype: str | None = None
     f_to_a_dtype: str | None = None
+    colocated_dense_reuse: bool = False
     dtype_presence_input: InitVar[tuple[str, ...]] = ()
 
     @model_validator(mode="before")
@@ -95,9 +96,17 @@ class AFLinkConfig:
                 "colocated",
                 "a_to_f_dtype",
                 "f_to_a_dtype",
+                "colocated_dense_reuse",
             ),
             init_var_name="dtype_presence_input",
         )
+
+    @field_validator("colocated_dense_reuse", mode="before")
+    @classmethod
+    def _validate_reuse_type(cls, value: Any) -> bool:
+        if type(value) is not bool:
+            raise ConfigurationError("AF colocated_dense_reuse must be a boolean")
+        return value
 
     @field_validator(
         "a_to_f_capacity",
@@ -114,6 +123,10 @@ class AFLinkConfig:
     def __post_init__(self, dtype_presence_input: tuple[str, ...]) -> None:
         if type(self.colocated) is not bool:
             raise ConfigurationError("AF colocated flag must be a boolean")
+        if type(self.colocated_dense_reuse) is not bool:
+            raise ConfigurationError("AF colocated_dense_reuse must be a boolean")
+        if self.colocated_dense_reuse and not self.colocated:
+            raise ConfigurationError("AF colocated_dense_reuse requires colocated=True")
         self._explicit_dtype_fields = frozenset(dtype_presence_input)
         self.dtype_presence_input = tuple(sorted(self._explicit_dtype_fields))
         for field_name in (

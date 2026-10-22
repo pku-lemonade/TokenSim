@@ -3,6 +3,7 @@
 from types import SimpleNamespace
 
 from TokenSim.af.trace.metrics import AFTraceEvent
+from TokenSim.af.providers.operator_table import analytical_execution_device
 from TokenSim.config.parallel_config import ParallelConfig, ParallelRankInfo
 from TokenSim.errors import ConfigurationError
 from TokenSim.latency.operator_table import OperatorTableLatencyBackend
@@ -82,7 +83,14 @@ class CompletePrefill:
             for item in runtime.plan.rank_bindings
             if item.domain == a_domain.name
         ]
-        device = runtime.hardware.device(binding.hardware)
+        device = analytical_execution_device(
+            runtime.hardware.device(binding.hardware),
+            (
+                runtime.cluster.af.graph_device_kernel_us
+                if runtime.cluster.af.compute_execution_mode == "cuda_graph"
+                else None
+            ),
+        )
         communicator = _PrefillCommunicator(
             placement=runtime.placement,
             collective_model=collective_model_for(
@@ -106,6 +114,7 @@ class CompletePrefill:
             communicator=communicator,
             fallback="analytical_only",
             random_seed=self.seed,
+            pipeline_layer_counts=a_domain.parallel.pipeline_layer_counts,
         )
         # One admitted cohort supplies the expert tokens in this forward.
         backend.moe_token_multiplier = 1

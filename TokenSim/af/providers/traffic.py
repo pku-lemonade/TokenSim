@@ -12,11 +12,12 @@ from TokenSim.af.caching.estimates import (
     snapshot,
 )
 from TokenSim.af.providers.queries import AFServiceEstimate, AFTransferQuery
+from TokenSim.comm.collective_types import ALGORITHMS
+from TokenSim.comm.flat_collectives import flat_collective
 from TokenSim.comm.traffic import (
     all_to_all_plan,
     collective_plan,
     point_to_point_plan,
-    ring_volume,
     validate_all_to_all_parameters,
     validated_bytes,
 )
@@ -32,6 +33,19 @@ from TokenSim.hardware.placement import validate_domain_placement
 
 class TransferPlanMixin:
     def validate_query(self, query):
+        if query.operation in {
+            "tp_collective",
+            "all_reduce",
+            "all_gather",
+            "reduce_scatter",
+        }:
+            if query.collective_algorithm not in ALGORITHMS:
+                raise ConfigurationError("unsupported flat collective algorithm")
+            if (
+                self.cluster_config.af.transfer_topology_mode == "physical"
+                and query.collective_algorithm != "ring"
+            ):
+                raise ConfigurationError("physical collective plans support ring only")
         if query.operation != "all_to_all":
             return
         if type(query.payload_bytes) is not int:
@@ -397,42 +411,26 @@ class TransferPlanMixin:
             raise ConfigurationError(
                 "collective needs actual unique participants matching group_size"
             )
-        volume = ring_volume(operation, group_size, payload, query.dtype)
+        estimate = flat_collective(
+            operation,
+            group_size,
+            payload,
+            self.link_class(query.network),
+            algorithm=query.collective_algorithm,
+            dtype=query.dtype,
+        )
         if payload == 0:
             return self._collective_estimate(
                 0.0, "collective:empty", "collective", "exact", query, {}
             )
-        # No placement: a ring all-reduce over the AF link class.
         link = self.link_class(query.network)
-        ring_bytes = volume.send_bytes_per_rank
-        service_us = (
-            (
-                volume.rounds * link.latency_us
-                + volume.send_bytes_per_rank
-                / link.bandwidth_per_direction_bytes_per_s
-                * 1e6
-            )
-            if payload
-            else 0.0
-        )
         return self._collective_estimate(
-            service_us,
+            estimate.latency_us,
             f"link:{link.link_id}:{link.source_id}",
             f"links:{link.link_id}",
             "analytical",
             query,
-            {
-                "algorithm": "ring",
-                "operation": operation,
-                "logical_bytes": payload,
-                "input_bytes_per_rank": volume.input_bytes,
-                "output_bytes_per_rank": volume.output_bytes,
-                "rounds": volume.rounds,
-                "wire_bytes": ring_bytes,
-                "wire_bytes_scope": "per_rank",
-                "group_size": group_size,
-                "link": link.link_id,
-            },
+            estimate.detail,
         )
 
     def _collective_estimate(

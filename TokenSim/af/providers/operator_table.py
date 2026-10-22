@@ -29,6 +29,16 @@ from TokenSim.latency.operator_table import (
 from TokenSim.operator_data.lookup import LookupPolicy
 
 
+def analytical_execution_device(device, graph_device_kernel_us):
+    """Apply the same graph kernel assumption to complete and AF execution."""
+    if graph_device_kernel_us is None or device.family != "nvidia_gpu":
+        return device
+    return replace(
+        device,
+        analytical={**device.analytical, "kernel_launch_us": graph_device_kernel_us},
+    )
+
+
 class OperatorTableAFComputeProvider(
     ComputeEstimateMixin, ComputeComponentsMixin, ConfigurationOwner
 ):
@@ -101,15 +111,9 @@ class OperatorTableAFComputeProvider(
         resolver = self._resolvers.get(device_type)
         if resolver is not None:
             return resolver
-        device = self.hardware.device(device_type)
-        if self.graph_device_kernel_us is not None and device.family == "nvidia_gpu":
-            device = replace(
-                device,
-                analytical={
-                    **device.analytical,
-                    "kernel_launch_us": self.graph_device_kernel_us,
-                },
-            )
+        device = analytical_execution_device(
+            self.hardware.device(device_type), self.graph_device_kernel_us
+        )
         backend = self.backend_by_device.get(device_type, self.operator_backend)
         package = None
         if self.fallback != "analytical_only":
@@ -125,8 +129,13 @@ class OperatorTableAFComputeProvider(
         return resolver
 
     def estimate_signature(self, query):
-        if self.model.attention_windows and query.stage in {"a", "attention"}:
-            return (self.model.attention_window(query.layer_id),)
+        if (
+            self.model.attention_windows or self.model.attention_geometries
+        ) and query.stage in {"a", "attention"}:
+            return (
+                self.model.attention_window(query.layer_id),
+                self.model.attention_geometry(query.layer_id),
+            )
         return ()
 
     @property

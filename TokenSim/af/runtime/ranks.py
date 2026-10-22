@@ -1,7 +1,7 @@
 """Compile physical rank components and per-stage KV partitions."""
 
 from TokenSim.af.runtime.memory import _components_for_binding, _experts_by_ep
-from TokenSim.af.runtime.topology import kv_head_partitions
+from TokenSim.af.runtime.layer_kv import layer_kv_partitions
 from TokenSim.af.runtime.component_storage import stored_components
 from TokenSim.config.cache_config import stage_layer_range
 from TokenSim.errors import ConfigurationError
@@ -19,8 +19,6 @@ def compile_rank_components(
     weight_bytes,
     weight_dtype,
     kv_bytes,
-    kv_heads,
-    head_dim,
     mla,
     router_location,
 ):
@@ -41,19 +39,18 @@ def compile_rank_components(
             )
         )
         local_layers = {
-            stage: tuple(layers[i] for i in stage_layer_range(len(layers), pp, stage))
+            stage: tuple(
+                layers[i]
+                for i in stage_layer_range(
+                    len(layers), pp, stage, domain.parallel.pipeline_layer_counts
+                )
+            )
             for stage in range(pp)
         }
         partitions = (
             {
-                stage: kv_head_partitions(
-                    num_kv_heads=kv_heads,
-                    tensor_parallel_size=tp,
-                    head_dim=head_dim,
-                    num_layers=len(local_layers[stage]),
-                    block_size=block_size,
-                    dtype_size_bytes=kv_bytes,
-                    mla_cache_width=mla.cache_width if mla else 0,
+                stage: layer_kv_partitions(
+                    local_layers[stage], tp, block_size, kv_bytes
                 )
                 for stage in range(pp)
             }
@@ -132,6 +129,9 @@ def compile_rank_components(
                     ffn_projection_count=model.ffn_projection_count,
                     embedding_role=role,
                     qk_norm=model.qk_norm,
+                    block_norm_elements=model.block_layout.parameter_elements(
+                        model.hidden_size
+                    ),
                 )
                 components = stored_components(
                     components,
@@ -181,7 +181,10 @@ def validate_expert_components(plan):
             moe_layers = [
                 i
                 for i in stage_layer_range(
-                    plan.total_layers, domain.pipeline_parallel_size, stage
+                    plan.total_layers,
+                    domain.pipeline_parallel_size,
+                    stage,
+                    domain.pipeline_layer_counts,
                 )
                 if plan.layer_plan(i).layer_type == "moe"
             ]

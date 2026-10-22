@@ -2,6 +2,8 @@
 /.vscode/
 /.codex/
 /.claude/
+/.venv/
+/outputs/
 __pycache__/
 *.py[cod]
 .pytest_cache/

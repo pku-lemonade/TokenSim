@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from TokenSim.af.runtime.topology import kv_head_partitions
 from TokenSim.errors import ConfigurationError
-from TokenSim.config.cache_config import stage_layer_count, stage_layer_range
+from TokenSim.config.cache_config import stage_layer_range
 
 
 class RuntimeValidationMixin:
@@ -27,7 +27,11 @@ class RuntimeValidationMixin:
             state.physical_identity: state for state in self.physical_states
         }
         layer_by_id = {layer.layer_id: layer for layer in self.layers}
+        keys_by_physical = {}
         for binding in self.rank_bindings:
+            keys_by_physical.setdefault(binding.physical_identity, []).append(
+                binding.rank_key
+            )
             state = state_by_physical.get(binding.physical_identity)
             if state is None or binding.rank_key not in state.bindings:
                 raise ConfigurationError(
@@ -71,11 +75,7 @@ class RuntimeValidationMixin:
                     )
         for state in self.physical_states:
             expected_bindings = tuple(
-                sorted(
-                    binding.rank_key
-                    for binding in self.rank_bindings
-                    if binding.physical_identity == state.physical_identity
-                )
+                sorted(keys_by_physical.get(state.physical_identity, ()))
             )
             if tuple(sorted(state.bindings)) != expected_bindings:
                 raise ConfigurationError(
@@ -153,21 +153,17 @@ class RuntimeValidationMixin:
                     f"Expert TP={domain.expert_tensor_parallel_size}; expected "
                     f"EP={expected_ep_size}, Expert TP={expected_expert_tp}"
                 )
-            world_group = tuple(
-                binding.domain_rank
-                for binding in sorted(
-                    domain_bindings, key=lambda binding: binding.domain_rank
-                )
-            )
+            stage_groups = {}
+            for binding in sorted(domain_bindings, key=lambda b: b.domain_rank):
+                stage_groups.setdefault(binding.pp_rank, []).append(binding.domain_rank)
+            stage_groups = {
+                stage: tuple(ranks) for stage, ranks in stage_groups.items()
+            }
             for binding in domain_bindings:
                 expected_ep_group = (
                     binding.tp_group
                     if domain.expert_parallel_mode == "expert_tp"
-                    else tuple(
-                        rank
-                        for rank in world_group
-                        if self.binding(domain.name, rank).pp_rank == binding.pp_rank
-                    )
+                    else stage_groups[binding.pp_rank]
                 )
                 if binding.ep_group != expected_ep_group:
                     raise ConfigurationError(
@@ -232,18 +228,22 @@ class RuntimeValidationMixin:
                         "must have exactly one scheduler leader"
                     )
                 for binding in bindings:
-                    expected_partitions = kv_head_partitions(
-                        num_kv_heads=self.num_kv_heads,
-                        tensor_parallel_size=domain.tensor_parallel_size,
-                        head_dim=self.head_dim,
-                        num_layers=stage_layer_count(
-                            self.total_layers,
-                            domain.pipeline_parallel_size,
-                            binding.pp_rank,
+                    from TokenSim.af.runtime.layer_kv import layer_kv_partitions
+                    from TokenSim.config.cache_config import stage_layer_range
+
+                    expected_partitions = layer_kv_partitions(
+                        tuple(
+                            self.layer_plan(i)
+                            for i in stage_layer_range(
+                                self.total_layers,
+                                domain.pipeline_parallel_size,
+                                binding.pp_rank,
+                                domain.pipeline_layer_counts,
+                            )
                         ),
-                        block_size=self.block_size,
-                        dtype_size_bytes=self.kv_dtype_size_bytes,
-                        mla_cache_width=self.mla.cache_width if self.mla else 0,
+                        domain.tensor_parallel_size,
+                        self.block_size,
+                        self.kv_dtype_size_bytes,
                     )
                     if binding.kv_partition != expected_partitions[binding.tp_rank]:
                         raise ConfigurationError(
@@ -323,6 +323,16 @@ class RuntimeValidationMixin:
         ]
         if len(destination_keys) != len(set(destination_keys)):
             raise ConfigurationError("AF runtime has duplicate partial destinations")
+        layer_ranges = {
+            (domain.name, stage): stage_layer_range(
+                self.total_layers,
+                domain.pipeline_parallel_size,
+                stage,
+                domain.pipeline_layer_counts,
+            )
+            for domain in self.domains
+            for stage in range(domain.pipeline_parallel_size)
+        }
         for destination in self.partial_destinations:
             source = ownership_by_rank.get(
                 (destination.source_domain, destination.source_rank)
@@ -339,6 +349,19 @@ class RuntimeValidationMixin:
             ):
                 raise ConfigurationError(
                     "AF partial destination DP owner does not match its rank"
+                )
+            source_binding = self.binding(source.domain, source.domain_rank)
+            target_binding = self.binding(target.domain, target.domain_rank)
+            source_range = layer_ranges[(source.domain, source_binding.pp_rank)]
+            target_range = layer_ranges[(target.domain, target_binding.pp_rank)]
+            if (
+                source_binding.capability != "af_ffn"
+                or target_binding.capability != "af_attention"
+                or max(source_range.start, target_range.start)
+                >= min(source_range.stop, target_range.stop)
+            ):
+                raise ConfigurationError(
+                    "AF partial destination stages must share a model layer"
                 )
             expected_interval = source.interval.intersection(target.interval)
             if expected_interval != destination.interval:

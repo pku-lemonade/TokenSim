@@ -7,7 +7,6 @@ from typing import Mapping, TYPE_CHECKING
 
 from TokenSim.af.runtime.records import (
     AFKVHeadPartition,
-    AFPartialDestination,
     AFRankBinding,
     AFReplicaRuntime,
     AFRequestOwner,
@@ -18,7 +17,7 @@ from TokenSim.af.runtime.records import (
 )
 from TokenSim.config.af.links import AFEffectiveDTypes
 from TokenSim.config.cluster_config import ClusterConfig
-from TokenSim.config.cache_config import local_kv_heads, stage_layer_count
+from TokenSim.config.cache_config import local_kv_heads, stage_layer_range
 from TokenSim.config.parallel_config import ParallelRankInfo
 from TokenSim.dtypes import canonicalize_dtype
 from TokenSim.errors import ConfigurationError
@@ -83,10 +82,13 @@ class AFCacheConfig:
             model_param_size_unsharded=sum(
                 state.model_bytes for state in plan.physical_states
             ),
-            num_layers_per_rank=stage_layer_count(
-                plan.total_layers,
-                plan.domain_runtime(replica.domain).pipeline_parallel_size,
-                leader.pp_rank,
+            num_layers_per_rank=len(
+                stage_layer_range(
+                    plan.total_layers,
+                    plan.domain_runtime(replica.domain).pipeline_parallel_size,
+                    leader.pp_rank,
+                    plan.domain_runtime(replica.domain).pipeline_layer_counts,
+                )
             ),
             total_num_layers=plan.total_layers,
             num_kv_heads=plan.num_kv_heads,
@@ -272,44 +274,6 @@ def _compile_request_owners(
     return tuple(owners)
 
 
-def _compile_partial_destinations(
-    cluster_config: ClusterConfig,
-    ownerships: tuple[AFTensorOwnership, ...],
-) -> tuple[AFPartialDestination, ...]:
-    destinations: list[AFPartialDestination] = []
-    a_domain, f_domain = cluster_config.af_domains
-    a_owners = tuple(item for item in ownerships if item.domain == a_domain.name)
-    f_owners = tuple(item for item in ownerships if item.domain == f_domain.name)
-    for source in f_owners:
-        for target in a_owners:
-            interval = source.interval.intersection(target.interval)
-            if interval is None:
-                continue
-            destinations.append(
-                AFPartialDestination(
-                    source_domain=source.domain,
-                    source_rank=source.domain_rank,
-                    source_dp_rank=source.dp_rank,
-                    target_domain=target.domain,
-                    target_rank=target.domain_rank,
-                    target_dp_rank=target.dp_rank,
-                    interval=interval,
-                )
-            )
-    return tuple(
-        sorted(
-            destinations,
-            key=lambda item: (
-                item.source_domain,
-                item.source_rank,
-                item.target_domain,
-                item.target_rank,
-                item.interval.start,
-            ),
-        )
-    )
-
-
 def _compile_collective_plans(
     cluster_config: ClusterConfig,
     binding_by_key: Mapping[RankKey, AFRankBinding],
@@ -327,6 +291,14 @@ def _compile_collective_plans(
                 )
             dp_rank = next(iter(dp_ranks))
             for collective in domain.communication_plan:
+                if (
+                    cluster_config.af.transfer_topology_mode == "physical"
+                    and collective.algorithm != "ring"
+                ):
+                    raise ConfigurationError(
+                        "physical collective plans support ring only; "
+                        "other algorithms require an explicit wire schedule"
+                    )
                 resource_group = collective.resource_group
                 resource_lane = collective.resource_lane
                 network = collective.network
@@ -400,6 +372,7 @@ def _compile_collective_plans(
                             resource_lane=resource_lane,
                             payload_bytes=collective.payload_bytes,
                             pp_rank=pp_rank,
+                            algorithm=collective.algorithm,
                         )
                     )
     return tuple(
