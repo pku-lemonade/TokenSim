@@ -1,0 +1,48 @@
+{
+  "description": "Illustrative public-mechanism accounting; unknown LP30 unit rates, routes and scratch policy remain sensitivity assumptions.",
+  "compute": {
+    "gemm_mfu": 0.3,
+    "attention_mfu": 0.1,
+    "memory_efficiency": 0.9
+  },
+  "operator": {
+    "activation_dtype": "bf16",
+    "vector_ops_per_s": 20000000000000.0,
+    "exp_ops_per_s": 1000000000000.0,
+    "shuffle_bytes_per_s": 10000000000000.0,
+    "vector_efficiency": 0.5,
+    "shuffle_efficiency": 0.8,
+    "vector_bytes": 320,
+    "attention_tile_keys": 256,
+    "fill_drain_us": 0.05,
+    "schedule": "tiled"
+  },
+  "fabric": {
+    "local_chips": 16,
+    "middle_chips": 128,
+    "local_us": 0.35,
+    "middle_us": 0.75,
+    "rack_us": 1.15,
+    "ports_per_chip": 96,
+    "lanes_per_peer": 6,
+    "p2p_lanes": 6,
+    "lane_bytes_per_s": 14000000000.0,
+    "injection_bytes_per_s": 1250000000000.0,
+    "efficiency": 1.0,
+    "reduction_ops_per_s": 10000000000000.0,
+    "routes": []
+  },
+  "memory": {
+    "prefill_chunk": 16,
+    "maximum_context": 102000,
+    "attention_tile_keys": 256,
+    "tile_buffers": 2,
+    "reserve_bytes": 5000000
+  },
+  "token_units": {
+    "native_per_aa_input": 1.0,
+    "native_per_aa_output": 1.0,
+    "source": "Unmeasured identity assumption; no representative AA text corpus or downloaded Gemma tokenizer is bundled.",
+    "measured": false
+  }
+}

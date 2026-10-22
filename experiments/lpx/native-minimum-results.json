@@ -1,0 +1,3087 @@
+{
+  "schema_version": 1,
+  "source_sha256": "681de0d3a22e94e7256181cd216a1e34bdebddc322a4060c0bf6f74649fbcaff",
+  "workloads": [
+    {
+      "input_tokens": 1000,
+      "output_tokens": 1000
+    },
+    {
+      "input_tokens": 10000,
+      "output_tokens": 1500
+    },
+    {
+      "input_tokens": 100000,
+      "output_tokens": 2000
+    }
+  ],
+  "scope": "Conditional pure-LPX balanced-contiguous-PP decode search; sampled native DAGs; TTFT excluded; startup hypotheses are not confidence intervals.",
+  "audit": {
+    "status": "passed",
+    "source_sha256": "681de0d3a22e94e7256181cd216a1e34bdebddc322a4060c0bf6f74649fbcaff",
+    "full_search_layouts": 236,
+    "full_search_scenarios": 3,
+    "single_factor_scenarios": 4,
+    "serial_configuration_scenarios": 5,
+    "serial_workloads": 15,
+    "serial_requests_including_warmup": 825,
+    "measured_requests": 750,
+    "executed_decode_steps": 1236675,
+    "withheld_native_probes": 40,
+    "max_withheld_error_s": 4.87890977618477e-19,
+    "prior_256_chip_tps_match": true
+  },
+  "scenarios": {
+    "baseline": {
+      "settings": {
+        "kernel_launch_us": 0.2,
+        "collective_launch_us": 0.5,
+        "colocated_dense_reuse": true
+      },
+      "search_space": {
+        "tp": [
+          1,
+          2,
+          4,
+          8,
+          16,
+          32
+        ],
+        "pp": "all nonempty balanced layer stages",
+        "max_chips": 256,
+        "max_pp": 60
+      },
+      "points": 236,
+      "feasible": 29,
+      "common_3400": {
+        "lp30": 144,
+        "tp": 16,
+        "pp": 9,
+        "generation_tps": [
+          3543.0356614075154,
+          3530.197088821223,
+          3409.6587550048293
+        ],
+        "minimum_headroom_bytes": 66873600,
+        "acceptance": {
+          "common_3400": true,
+          "published_targets": false,
+          "common_margin": 0.0028408102955379544,
+          "published_margin": -0.006220123869184135
+        },
+        "overlap_scope": "single-tray"
+      },
+      "published_targets": null,
+      "fastest": {
+        "lp30": 144,
+        "tp": 16,
+        "pp": 9,
+        "generation_tps": [
+          3543.0356614075154,
+          3530.197088821223,
+          3409.6587550048293
+        ],
+        "minimum_headroom_bytes": 66873600,
+        "acceptance": {
+          "common_3400": true,
+          "published_targets": false,
+          "common_margin": 0.0028408102955379544,
+          "published_margin": -0.006220123869184135
+        },
+        "overlap_scope": "single-tray"
+      },
+      "feasible_rows": [
+        {
+          "lp30": 128,
+          "tp": 8,
+          "pp": 16,
+          "generation_tps": [
+            3416.7113349171154,
+            3392.9126353835377,
+            3177.0199491983167
+          ],
+          "minimum_headroom_bytes": 28373760,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.06558236788284799,
+            "published_margin": -0.07402508038521816
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 136,
+          "tp": 8,
+          "pp": 17,
+          "generation_tps": [
+            3416.0273616893346,
+            3392.2381563008485,
+            3176.42856664408
+          ],
+          "minimum_headroom_bytes": 28373760,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.06575630392821175,
+            "published_margin": -0.07419744487202562
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 144,
+          "tp": 8,
+          "pp": 18,
+          "generation_tps": [
+            3415.343662248654,
+            3391.563945325043,
+            3175.837404213257
+          ],
+          "minimum_headroom_bytes": 28373760,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.065930175231395,
+            "published_margin": -0.07436974520161566
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 152,
+          "tp": 8,
+          "pp": 19,
+          "generation_tps": [
+            3414.660236430715,
+            3390.8900022962935,
+            3175.246461782968
+          ],
+          "minimum_headroom_bytes": 28373760,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.06610398182853894,
+            "published_margin": -0.0745419814098024
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 160,
+          "tp": 8,
+          "pp": 20,
+          "generation_tps": [
+            3413.9770840712918,
+            3390.216327054899,
+            3174.6557392304276
+          ],
+          "minimum_headroom_bytes": 28373760,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.06627772375575658,
+            "published_margin": -0.0747141535323732
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 168,
+          "tp": 8,
+          "pp": 21,
+          "generation_tps": [
+            3413.2942050062907,
+            3389.5429194412864,
+            3174.0652364329403
+          ],
+          "minimum_headroom_bytes": 89289984,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.06645140104913516,
+            "published_margin": -0.07488626160508882
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 176,
+          "tp": 8,
+          "pp": 22,
+          "generation_tps": [
+            3412.6115990717453,
+            3388.8697792960074,
+            3173.474953267902
+          ],
+          "minimum_headroom_bytes": 89289984,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.06662501374473473,
+            "published_margin": -0.07505830566368343
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 184,
+          "tp": 8,
+          "pp": 23,
+          "generation_tps": [
+            3411.929266103823,
+            3388.196906459742,
+            3172.8848896127993
+          ],
+          "minimum_headroom_bytes": 89289984,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.06679856187858846,
+            "published_margin": -0.07523028574386492
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 192,
+          "tp": 8,
+          "pp": 24,
+          "generation_tps": [
+            3411.247205938823,
+            3387.524300773296,
+            3172.2950453452104
+          ],
+          "minimum_headroom_bytes": 89289984,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.06697204548670288,
+            "published_margin": -0.07540220188131441
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 200,
+          "tp": 8,
+          "pp": 25,
+          "generation_tps": [
+            3410.5654184131745,
+            3386.8519620776015,
+            3171.705420342805
+          ],
+          "minimum_headroom_bytes": 89289984,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.06714546460505733,
+            "published_margin": -0.07557405411168605
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 208,
+          "tp": 8,
+          "pp": 26,
+          "generation_tps": [
+            3409.883903363436,
+            3386.1798902137175,
+            3171.1160144833434
+          ],
+          "minimum_headroom_bytes": 89289984,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.06731881926960492,
+            "published_margin": -0.07574584247060812
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 216,
+          "tp": 8,
+          "pp": 27,
+          "generation_tps": [
+            3409.202660626299,
+            3385.5080850228264,
+            3170.5268276446773
+          ],
+          "minimum_headroom_bytes": 89289984,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.06749210951627138,
+            "published_margin": -0.0759175669936819
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 224,
+          "tp": 8,
+          "pp": 28,
+          "generation_tps": [
+            3408.521690038585,
+            3384.8365463462433,
+            3169.937859704747
+          ],
+          "minimum_headroom_bytes": 89289984,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.06766533538095676,
+            "published_margin": -0.07608922771648297
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 232,
+          "tp": 8,
+          "pp": 29,
+          "generation_tps": [
+            3407.840991437243,
+            3384.1652740254035,
+            3169.349110541587
+          ],
+          "minimum_headroom_bytes": 89289984,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.06783849689953325,
+            "published_margin": -0.0762608246745593
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 240,
+          "tp": 8,
+          "pp": 30,
+          "generation_tps": [
+            3407.1605646593566,
+            3383.494267901863,
+            3168.760580033318
+          ],
+          "minimum_headroom_bytes": 89289984,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.06801159410784763,
+            "published_margin": -0.07643235790343395
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 248,
+          "tp": 8,
+          "pp": 31,
+          "generation_tps": [
+            3406.4804095421373,
+            3382.823527817322,
+            3168.1722680581565
+          ],
+          "minimum_headroom_bytes": 150206208,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.06818462704171868,
+            "published_margin": -0.07660382743860206
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 256,
+          "tp": 8,
+          "pp": 32,
+          "generation_tps": [
+            3405.8005259229258,
+            3382.153053613587,
+            3167.584174494404
+          ],
+          "minimum_headroom_bytes": 150206208,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.06835759573694,
+            "published_margin": -0.0767752333155336
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 144,
+          "tp": 16,
+          "pp": 9,
+          "generation_tps": [
+            3543.0356614075154,
+            3530.197088821223,
+            3409.6587550048293
+          ],
+          "minimum_headroom_bytes": 66873600,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": false,
+            "common_margin": 0.0028408102955379544,
+            "published_margin": -0.006220123869184135
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 160,
+          "tp": 16,
+          "pp": 10,
+          "generation_tps": [
+            3542.300182268787,
+            3529.466929652308,
+            3408.977602218146
+          ],
+          "minimum_headroom_bytes": 118680832,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": false,
+            "common_margin": 0.0026404712406311592,
+            "published_margin": -0.00641865280730225
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 176,
+          "tp": 16,
+          "pp": 11,
+          "generation_tps": [
+            3541.5650084147646,
+            3528.7370724620914,
+            3408.29672152699
+          ],
+          "minimum_headroom_bytes": 118680832,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": false,
+            "common_margin": 0.002440212213820514,
+            "published_margin": -0.0066171024403992584
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 192,
+          "tp": 16,
+          "pp": 12,
+          "generation_tps": [
+            3540.830139655409,
+            3528.0075170632763,
+            3407.6161127683563
+          ],
+          "minimum_headroom_bytes": 149139200,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": false,
+            "common_margin": 0.002240033167163702,
+            "published_margin": -0.006815472815984713
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 208,
+          "tp": 16,
+          "pp": 13,
+          "generation_tps": [
+            3540.0955758008395,
+            3527.2782632687176,
+            3406.93577577937
+          ],
+          "minimum_headroom_bytes": 179597568,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": false,
+            "common_margin": 0.0020399340527559318,
+            "published_margin": -0.007013763981530197
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 224,
+          "tp": 16,
+          "pp": 14,
+          "generation_tps": [
+            3539.3613166613322,
+            3526.549310891425,
+            3406.2557103972845
+          ],
+          "minimum_headroom_bytes": 179597568,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": false,
+            "common_margin": 0.001839914822730826,
+            "published_margin": -0.007211975984469654
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 240,
+          "tp": 16,
+          "pp": 15,
+          "generation_tps": [
+            3538.627362047324,
+            3525.8206597445646,
+            3405.5759164594847
+          ],
+          "minimum_headroom_bytes": 179597568,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": false,
+            "common_margin": 0.0016399754292601987,
+            "published_margin": -0.007410108872199173
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 256,
+          "tp": 16,
+          "pp": 16,
+          "generation_tps": [
+            3537.893711769405,
+            3525.0923096414554,
+            3404.896393803485
+          ],
+          "minimum_headroom_bytes": 210055936,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": false,
+            "common_margin": 0.0014401158245542778,
+            "published_margin": -0.007608162692076648
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 160,
+          "tp": 32,
+          "pp": 5,
+          "generation_tps": [
+            3413.362524788631,
+            3405.206730796794,
+            3327.6369053614794
+          ],
+          "minimum_headroom_bytes": 39132928,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.02128326312897666,
+            "published_margin": -0.030126229856753284
+          },
+          "overlap_scope": "catalog-only; multi-tray overlap unmodeled"
+        },
+        {
+          "lp30": 192,
+          "tp": 32,
+          "pp": 6,
+          "generation_tps": [
+            3412.679891530749,
+            3404.527355447098,
+            3326.9881265513127
+          ],
+          "minimum_headroom_bytes": 72868608,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.021474080426084452,
+            "published_margin": -0.030315323068693445
+          },
+          "overlap_scope": "catalog-only; multi-tray overlap unmodeled"
+        },
+        {
+          "lp30": 224,
+          "tp": 32,
+          "pp": 7,
+          "generation_tps": [
+            3411.9975312558795,
+            3403.8482511287,
+            3326.3396006725256
+          ],
+          "minimum_headroom_bytes": 106604288,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.021664823331610128,
+            "published_margin": -0.03050434256119916
+          },
+          "overlap_scope": "catalog-only; multi-tray overlap unmodeled"
+        },
+        {
+          "lp30": 256,
+          "tp": 32,
+          "pp": 8,
+          "generation_tps": [
+            3411.315443800306,
+            3403.1694176794435,
+            3325.691327577235
+          ],
+          "minimum_headroom_bytes": 123472128,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.02185549188904856,
+            "published_margin": -0.030693288377372507
+          },
+          "overlap_scope": "catalog-only; multi-tray overlap unmodeled"
+        }
+      ],
+      "verified": [
+        {
+          "lp30": 144,
+          "tp": 16,
+          "pp": 9,
+          "generation_tps": [
+            3543.0356614075154,
+            3530.197088821223,
+            3409.6587550048293
+          ],
+          "minimum_headroom_bytes": 66873600,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": false,
+            "common_margin": 0.0028408102955379544,
+            "published_margin": -0.006220123869184135
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 128,
+          "tp": 8,
+          "pp": 16,
+          "generation_tps": [
+            3416.7113349171154,
+            3392.9126353835377,
+            3177.0199491983167
+          ],
+          "minimum_headroom_bytes": 28373760,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.06558236788284799,
+            "published_margin": -0.07402508038521816
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 256,
+          "tp": 16,
+          "pp": 16,
+          "generation_tps": [
+            3537.893711769405,
+            3525.0923096414554,
+            3404.896393803485
+          ],
+          "minimum_headroom_bytes": 210055936,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": false,
+            "common_margin": 0.0014401158245542778,
+            "published_margin": -0.007608162692076648
+          },
+          "overlap_scope": "single-tray"
+        }
+      ],
+      "host_seconds": 375.1809021672234
+    },
+    "lower-startup": {
+      "settings": {
+        "kernel_launch_us": 0.1,
+        "collective_launch_us": 0.1,
+        "colocated_dense_reuse": true
+      },
+      "search_space": {
+        "tp": [
+          1,
+          2,
+          4,
+          8,
+          16,
+          32
+        ],
+        "pp": "all nonempty balanced layer stages",
+        "max_chips": 256,
+        "max_pp": 60
+      },
+      "points": 236,
+      "feasible": 29,
+      "common_3400": {
+        "lp30": 128,
+        "tp": 8,
+        "pp": 16,
+        "generation_tps": [
+          6780.621775902791,
+          6687.530801587478,
+          5897.604216409801
+        ],
+        "minimum_headroom_bytes": 28373760,
+        "acceptance": {
+          "common_3400": true,
+          "published_targets": true,
+          "common_margin": 0.7345894754146474,
+          "published_margin": 0.7189169969133782
+        },
+        "overlap_scope": "single-tray"
+      },
+      "published_targets": {
+        "lp30": 128,
+        "tp": 8,
+        "pp": 16,
+        "generation_tps": [
+          6780.621775902791,
+          6687.530801587478,
+          5897.604216409801
+        ],
+        "minimum_headroom_bytes": 28373760,
+        "acceptance": {
+          "common_3400": true,
+          "published_targets": true,
+          "common_margin": 0.7345894754146474,
+          "published_margin": 0.7189169969133782
+        },
+        "overlap_scope": "single-tray"
+      },
+      "fastest": {
+        "lp30": 144,
+        "tp": 16,
+        "pp": 9,
+        "generation_tps": [
+          7296.9349084918085,
+          7242.687067533345,
+          6752.9020595313905
+        ],
+        "minimum_headroom_bytes": 66873600,
+        "acceptance": {
+          "common_3400": true,
+          "published_targets": true,
+          "common_margin": 0.986147664568056,
+          "published_margin": 0.9682022907407142
+        },
+        "overlap_scope": "single-tray"
+      },
+      "feasible_rows": [
+        {
+          "lp30": 128,
+          "tp": 8,
+          "pp": 16,
+          "generation_tps": [
+            6780.621775902791,
+            6687.530801587478,
+            5897.604216409801
+          ],
+          "minimum_headroom_bytes": 28373760,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": true,
+            "common_margin": 0.7345894754146474,
+            "published_margin": 0.7189169969133782
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 136,
+          "tp": 8,
+          "pp": 17,
+          "generation_tps": [
+            6777.928530179547,
+            6684.910984938906,
+            5895.56665525867
+          ],
+          "minimum_headroom_bytes": 28373760,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": true,
+            "common_margin": 0.7339901927231383,
+            "published_margin": 0.7183231289008074
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 144,
+          "tp": 8,
+          "pp": 18,
+          "generation_tps": [
+            6775.237423107537,
+            6682.293220094446,
+            5893.53050153382
+          ],
+          "minimum_headroom_bytes": 28373760,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": true,
+            "common_margin": 0.7333913239805352,
+            "published_margin": 0.7177296710970038
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 152,
+          "tp": 8,
+          "pp": 19,
+          "generation_tps": [
+            6772.548452140386,
+            6679.677504644625,
+            5891.495753777506
+          ],
+          "minimum_headroom_bytes": 28373760,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": true,
+            "common_margin": 0.73279286875809,
+            "published_margin": 0.717136623077093
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 160,
+          "tp": 8,
+          "pp": 20,
+          "generation_tps": [
+            6769.861614735754,
+            6677.063836183739,
+            5889.462410533993
+          ],
+          "minimum_headroom_bytes": 28373760,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": true,
+            "common_margin": 0.7321948266276448,
+            "published_margin": 0.716543984416786
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 168,
+          "tp": 8,
+          "pp": 21,
+          "generation_tps": [
+            6767.176908355342,
+            6674.4522123098495,
+            5887.430470349556
+          ],
+          "minimum_headroom_bytes": 89289984,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": true,
+            "common_margin": 0.7315971971616342,
+            "published_margin": 0.7159517546923801
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 176,
+          "tp": 8,
+          "pp": 22,
+          "generation_tps": [
+            6764.494330464865,
+            6671.842630624777,
+            5885.3999317724765
+          ],
+          "minimum_headroom_bytes": 89289984,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": true,
+            "common_margin": 0.7309999799330813,
+            "published_margin": 0.7153599334807568
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 184,
+          "tp": 8,
+          "pp": 23,
+          "generation_tps": [
+            6761.813878534065,
+            6669.235088734088,
+            5883.370793353037
+          ],
+          "minimum_headroom_bytes": 89289984,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": true,
+            "common_margin": 0.730403174515599,
+            "published_margin": 0.7147685203593812
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 192,
+          "tp": 8,
+          "pp": 24,
+          "generation_tps": [
+            6759.135550036687,
+            6666.62958424709,
+            5881.343053643518
+          ],
+          "minimum_headroom_bytes": 89289984,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": true,
+            "common_margin": 0.7298067804833877,
+            "published_margin": 0.7141775149063008
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 200,
+          "tp": 8,
+          "pp": 25,
+          "generation_tps": [
+            6756.459342450479,
+            6664.026114776827,
+            5879.3167111981975
+          ],
+          "minimum_headroom_bytes": 89289984,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": true,
+            "common_margin": 0.7292107974112345,
+            "published_margin": 0.713586916700145
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 208,
+          "tp": 8,
+          "pp": 26,
+          "generation_tps": [
+            6753.785253257182,
+            6661.424677940071,
+            5877.291764573343
+          ],
+          "minimum_headroom_bytes": 89289984,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": true,
+            "common_margin": 0.7286152248745128,
+            "published_margin": 0.7129967253201233
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 216,
+          "tp": 8,
+          "pp": 27,
+          "generation_tps": [
+            6751.113279942521,
+            6658.825271357312,
+            5875.268212327211
+          ],
+          "minimum_headroom_bytes": 89289984,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": true,
+            "common_margin": 0.7280200624491797,
+            "published_margin": 0.7124069403460247
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 224,
+          "tp": 8,
+          "pp": 28,
+          "generation_tps": [
+            6748.4434199962,
+            6656.227892652752,
+            5873.246053020042
+          ],
+          "minimum_headroom_bytes": 89289984,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": true,
+            "common_margin": 0.7274253097117771,
+            "published_margin": 0.7118175613582169
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 232,
+          "tp": 8,
+          "pp": 29,
+          "generation_tps": [
+            6745.775670911889,
+            6653.632539454301,
+            5871.225285214061
+          ],
+          "minimum_headroom_bytes": 89289984,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": true,
+            "common_margin": 0.7268309662394297,
+            "published_margin": 0.7112285879376452
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 240,
+          "tp": 8,
+          "pp": 30,
+          "generation_tps": [
+            6743.110030187224,
+            6651.039209393566,
+            5869.205907473467
+          ],
+          "minimum_headroom_bytes": 89289984,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": true,
+            "common_margin": 0.7262370316098432,
+            "published_margin": 0.7106400196658313
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 248,
+          "tp": 8,
+          "pp": 31,
+          "generation_tps": [
+            6740.446495323794,
+            6648.4479001058435,
+            5867.187918364436
+          ],
+          "minimum_headroom_bytes": 150206208,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": true,
+            "common_margin": 0.7256435054013046,
+            "published_margin": 0.7100518561248721
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 256,
+          "tp": 8,
+          "pp": 32,
+          "generation_tps": [
+            6737.785063827131,
+            6645.858609230117,
+            5865.171316455116
+          ],
+          "minimum_headroom_bytes": 150206208,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": true,
+            "common_margin": 0.725050387192681,
+            "published_margin": 0.7094640968974397
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 144,
+          "tp": 16,
+          "pp": 9,
+          "generation_tps": [
+            7296.9349084918085,
+            7242.687067533345,
+            6752.9020595313905
+          ],
+          "minimum_headroom_bytes": 66873600,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": true,
+            "common_margin": 0.986147664568056,
+            "published_margin": 0.9682022907407142
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 160,
+          "tp": 16,
+          "pp": 10,
+          "generation_tps": [
+            7293.81598480794,
+            7239.614335936618,
+            6750.230784861707
+          ],
+          "minimum_headroom_bytes": 118680832,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": true,
+            "common_margin": 0.985361995547561,
+            "published_margin": 0.9674237204493463
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 176,
+          "tp": 16,
+          "pp": 11,
+          "generation_tps": [
+            7290.699726223577,
+            7236.544210465327,
+            6747.561622731702
+          ],
+          "minimum_headroom_bytes": 118680832,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": true,
+            "common_margin": 0.9845769478622655,
+            "published_margin": 0.9666457658792487
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 192,
+          "tp": 16,
+          "pp": 12,
+          "generation_tps": [
+            7287.586129324218,
+            7233.476687805309,
+            6744.894570636359
+          ],
+          "minimum_headroom_bytes": 149139200,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": true,
+            "common_margin": 0.9837925207753997,
+            "published_margin": 0.9658684263003088
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 208,
+          "tp": 16,
+          "pp": 13,
+          "generation_tps": [
+            7284.475190701187,
+            7230.4117646480345,
+            6742.229626074622
+          ],
+          "minimum_headroom_bytes": 179597568,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": true,
+            "common_margin": 0.9830087135513592,
+            "published_margin": 0.965091700983568
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 224,
+          "tp": 16,
+          "pp": 14,
+          "generation_tps": [
+            7281.366906951625,
+            7227.349437690566,
+            6739.566786549377
+          ],
+          "minimum_headroom_bytes": 179597568,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": true,
+            "common_margin": 0.9822255254556991,
+            "published_margin": 0.9643155892012174
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 240,
+          "tp": 16,
+          "pp": 15,
+          "generation_tps": [
+            7278.261274678486,
+            7224.289703635563,
+            6736.906049567464
+          ],
+          "minimum_headroom_bytes": 179597568,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": true,
+            "common_margin": 0.9814429557551365,
+            "published_margin": 0.9635400902265998
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 256,
+          "tp": 16,
+          "pp": 16,
+          "generation_tps": [
+            7275.158290490507,
+            7221.232559191262,
+            6734.2474126396555
+          ],
+          "minimum_headroom_bytes": 210055936,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": true,
+            "common_margin": 0.9806610037175458,
+            "published_margin": 0.9627652033342045
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 160,
+          "tp": 32,
+          "pp": 5,
+          "generation_tps": [
+            6767.445456791399,
+            6735.461479454729,
+            6438.588007386381
+          ],
+          "minimum_headroom_bytes": 39132928,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": true,
+            "common_margin": 0.8937023551136414,
+            "published_margin": 0.8765922493110991
+          },
+          "overlap_scope": "catalog-only; multi-tray overlap unmodeled"
+        },
+        {
+          "lp30": 192,
+          "tp": 32,
+          "pp": 6,
+          "generation_tps": [
+            6764.762666028231,
+            6732.803982343378,
+            6436.159569985229
+          ],
+          "minimum_headroom_bytes": 72868608,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": true,
+            "common_margin": 0.8929881088191849,
+            "published_margin": 0.8758844564223924
+          },
+          "overlap_scope": "catalog-only; multi-tray overlap unmodeled"
+        },
+        {
+          "lp30": 224,
+          "tp": 32,
+          "pp": 7,
+          "generation_tps": [
+            6762.0820014777455,
+            6730.148581452325,
+            6433.732963757231
+          ],
+          "minimum_headroom_bytes": 106604288,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": true,
+            "common_margin": 0.8922744011050681,
+            "published_margin": 0.8751771972478086
+          },
+          "overlap_scope": "catalog-only; multi-tray overlap unmodeled"
+        },
+        {
+          "lp30": 256,
+          "tp": 32,
+          "pp": 8,
+          "generation_tps": [
+            6759.403460613293,
+            6727.495274302323,
+            6431.30818663197
+          ],
+          "minimum_headroom_bytes": 123472128,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": true,
+            "common_margin": 0.891561231362344,
+            "published_margin": 0.8744704711839026
+          },
+          "overlap_scope": "catalog-only; multi-tray overlap unmodeled"
+        }
+      ],
+      "verified": [
+        {
+          "lp30": 128,
+          "tp": 8,
+          "pp": 16,
+          "generation_tps": [
+            6780.621775902791,
+            6687.530801587478,
+            5897.604216409801
+          ],
+          "minimum_headroom_bytes": 28373760,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": true,
+            "common_margin": 0.7345894754146474,
+            "published_margin": 0.7189169969133782
+          },
+          "overlap_scope": "single-tray"
+        }
+      ],
+      "host_seconds": 326.18745295796543
+    },
+    "higher-startup": {
+      "settings": {
+        "kernel_launch_us": 0.3,
+        "collective_launch_us": 1.0,
+        "colocated_dense_reuse": true
+      },
+      "search_space": {
+        "tp": [
+          1,
+          2,
+          4,
+          8,
+          16,
+          32
+        ],
+        "pp": "all nonempty balanced layer stages",
+        "max_chips": 256,
+        "max_pp": 60
+      },
+      "points": 236,
+      "feasible": 29,
+      "common_3400": null,
+      "published_targets": null,
+      "fastest": {
+        "lp30": 144,
+        "tp": 16,
+        "pp": 9,
+        "generation_tps": [
+          2274.568418367088,
+          2269.270228897617,
+          2218.8472003884103
+        ],
+        "minimum_headroom_bytes": 66873600,
+        "acceptance": {
+          "common_3400": false,
+          "published_targets": false,
+          "common_margin": -0.3473978822387028,
+          "published_margin": -0.353294316412588
+        },
+        "overlap_scope": "single-tray"
+      },
+      "feasible_rows": [
+        {
+          "lp30": 128,
+          "tp": 8,
+          "pp": 16,
+          "generation_tps": [
+            2221.8316713676845,
+            2211.7433676818578,
+            2117.9244313508875
+          ],
+          "minimum_headroom_bytes": 28373760,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.3770810496026802,
+            "published_margin": -0.38270928844334373
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 136,
+          "tp": 8,
+          "pp": 17,
+          "generation_tps": [
+            2221.542420122388,
+            2211.4567370143977,
+            2117.661600406499
+          ],
+          "minimum_headroom_bytes": 28373760,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.3771583528216179,
+            "published_margin": -0.3827858932070828
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 144,
+          "tp": 8,
+          "pp": 18,
+          "generation_tps": [
+            2221.253244180179,
+            2211.1701806290575,
+            2117.3988346877936
+          ],
+          "minimum_headroom_bytes": 28373760,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.3772356368565313,
+            "published_margin": -0.38286247896013015
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 152,
+          "tp": 8,
+          "pp": 19,
+          "generation_tps": [
+            2220.964143511653,
+            2210.8836984969657,
+            2117.1361341704937
+          ],
+          "minimum_headroom_bytes": 28373760,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.37731290171456067,
+            "published_margin": -0.3829390457095617
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 160,
+          "tp": 8,
+          "pp": 20,
+          "generation_tps": [
+            2220.675118087426,
+            2210.597290589265,
+            2116.8734988303345
+          ],
+          "minimum_headroom_bytes": 28373760,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.3773901474028428,
+            "published_margin": -0.38301559346244984
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 168,
+          "tp": 8,
+          "pp": 21,
+          "generation_tps": [
+            2220.3861678781245,
+            2210.3109568771133,
+            2116.610928643063
+          ],
+          "minimum_headroom_bytes": 89289984,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.37746737392851093,
+            "published_margin": -0.3830921222258633
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 176,
+          "tp": 8,
+          "pp": 22,
+          "generation_tps": [
+            2220.0972928543924,
+            2210.0246973316825,
+            2116.3484235844376
+          ],
+          "minimum_headroom_bytes": 89289984,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.37754458129869484,
+            "published_margin": -0.38316863200686746
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 184,
+          "tp": 8,
+          "pp": 23,
+          "generation_tps": [
+            2219.8084929868874,
+            2209.738511924161,
+            2116.0859836302297
+          ],
+          "minimum_headroom_bytes": 89289984,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.3776217695205206,
+            "published_margin": -0.3832451228125241
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 192,
+          "tp": 8,
+          "pp": 24,
+          "generation_tps": [
+            2219.519768246284,
+            2209.45240062575,
+            2115.8236087562223
+          ],
+          "minimum_headroom_bytes": 89289984,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.37769893860111114,
+            "published_margin": -0.38332159464989146
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 200,
+          "tp": 8,
+          "pp": 25,
+          "generation_tps": [
+            2219.2311186032707,
+            2209.1663634076676,
+            2115.5612989382107
+          ],
+          "minimum_headroom_bytes": 89289984,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.37777608854758504,
+            "published_margin": -0.38339804752602424
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 208,
+          "tp": 8,
+          "pp": 26,
+          "generation_tps": [
+            2218.942544028552,
+            2208.8804002411457,
+            2115.2990541520003
+          ],
+          "minimum_headroom_bytes": 89289984,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.37785321936705873,
+            "published_margin": -0.38347448144797425
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 216,
+          "tp": 8,
+          "pp": 27,
+          "generation_tps": [
+            2218.6540444928482,
+            2208.594511097432,
+            2115.036874373412
+          ],
+          "minimum_headroom_bytes": 89289984,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.37793033106664353,
+            "published_margin": -0.3835508964227887
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 224,
+          "tp": 8,
+          "pp": 28,
+          "generation_tps": [
+            2218.3656199668935,
+            2208.3086959477882,
+            2114.7747595782757
+          ],
+          "minimum_headroom_bytes": 89289984,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.3780074236534483,
+            "published_margin": -0.38362729245751215
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 232,
+          "tp": 8,
+          "pp": 29,
+          "generation_tps": [
+            2218.0772704214382,
+            2208.0229547634913,
+            2114.5127097424343
+          ],
+          "minimum_headroom_bytes": 89289984,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.37808449713457815,
+            "published_margin": -0.38370366955918556
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 240,
+          "tp": 8,
+          "pp": 30,
+          "generation_tps": [
+            2217.788995827247,
+            2207.737287515833,
+            2114.2507248417432
+          ],
+          "minimum_headroom_bytes": 89289984,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.3781615515171344,
+            "published_margin": -0.383780027734846
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 248,
+          "tp": 8,
+          "pp": 31,
+          "generation_tps": [
+            2217.500796155102,
+            2207.451694176121,
+            2113.98880485207
+          ],
+          "minimum_headroom_bytes": 150206208,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.37823858680821465,
+            "published_margin": -0.38385636699152714
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 256,
+          "tp": 8,
+          "pp": 32,
+          "generation_tps": [
+            2217.212671375797,
+            2207.1661747156745,
+            2113.7269497492925
+          ],
+          "minimum_headroom_bytes": 150206208,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.37831560301491396,
+            "published_margin": -0.38393268733625985
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 144,
+          "tp": 16,
+          "pp": 9,
+          "generation_tps": [
+            2274.568418367088,
+            2269.270228897617,
+            2218.8472003884103
+          ],
+          "minimum_headroom_bytes": 66873600,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.3473978822387028,
+            "published_margin": -0.353294316412588
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 160,
+          "tp": 16,
+          "pp": 10,
+          "generation_tps": [
+            2274.2652739330624,
+            2268.968494963735,
+            2218.558725643089
+          ],
+          "minimum_headroom_bytes": 118680832,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.3474827277520326,
+            "published_margin": -0.3533783953240778
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 176,
+          "tp": 16,
+          "pp": 11,
+          "generation_tps": [
+            2273.9622102917724,
+            2268.6668412594026,
+            2218.2703258978495
+          ],
+          "minimum_headroom_bytes": 118680832,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.34756755120651484,
+            "published_margin": -0.3534624523760276
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 192,
+          "tp": 16,
+          "pp": 12,
+          "generation_tps": [
+            2273.6592274109216,
+            2268.365267752624,
+            2217.9820011234465
+          ],
+          "minimum_headroom_bytes": 149139200,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.347652352610751,
+            "published_margin": -0.35354648757696105
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 208,
+          "tp": 16,
+          "pp": 13,
+          "generation_tps": [
+            2273.3563252582358,
+            2268.0637744114197,
+            2217.693751290651
+          ],
+          "minimum_headroom_bytes": 179597568,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.3477371319733379,
+            "published_margin": -0.3536305009353975
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 224,
+          "tp": 16,
+          "pp": 14,
+          "generation_tps": [
+            2273.0535038014523,
+            2267.7623612038324,
+            2217.4055763702486
+          ],
+          "minimum_headroom_bytes": 179597568,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.34782188930286806,
+            "published_margin": -0.35371449245985176
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 240,
+          "tp": 16,
+          "pp": 15,
+          "generation_tps": [
+            2272.7507630083296,
+            2267.461028097915,
+            2217.1174763330387
+          ],
+          "minimum_headroom_bytes": 179597568,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.34790662460792976,
+            "published_margin": -0.3537984621588346
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 256,
+          "tp": 16,
+          "pp": 16,
+          "generation_tps": [
+            2272.448102846642,
+            2267.159775061744,
+            2216.8294511498384
+          ],
+          "minimum_headroom_bytes": 210055936,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.34799133789710635,
+            "published_margin": -0.3538824100408515
+          },
+          "overlap_scope": "single-tray"
+        },
+        {
+          "lp30": 160,
+          "tp": 32,
+          "pp": 5,
+          "generation_tps": [
+            2220.415078206069,
+            2216.96099680221,
+            2183.8182918447433
+          ],
+          "minimum_headroom_bytes": 39132928,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.35770050239860496,
+            "published_margin": -0.36350384965177984
+          },
+          "overlap_scope": "catalog-only; multi-tray overlap unmodeled"
+        },
+        {
+          "lp30": 192,
+          "tp": 32,
+          "pp": 6,
+          "generation_tps": [
+            2220.126195660237,
+            2216.673012271369,
+            2183.538852922865
+          ],
+          "minimum_headroom_bytes": 72868608,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.35778269031680443,
+            "published_margin": -0.3635852949802201
+          },
+          "overlap_scope": "catalog-only; multi-tray overlap unmodeled"
+        },
+        {
+          "lp30": 224,
+          "tp": 32,
+          "pp": 7,
+          "generation_tps": [
+            2219.8373882735677,
+            2216.3851025495283,
+            2183.259485505215
+          ],
+          "minimum_headroom_bytes": 106604288,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.3578648572043486,
+            "published_margin": -0.36366671946802254
+          },
+          "overlap_scope": "catalog-only; multi-tray overlap unmodeled"
+        },
+        {
+          "lp30": 256,
+          "tp": 32,
+          "pp": 8,
+          "generation_tps": [
+            2219.5486560167337,
+            2216.097267607542,
+            2182.9801895643513
+          ],
+          "minimum_headroom_bytes": 123472128,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.3579470030693084,
+            "published_margin": -0.3637481231231853
+          },
+          "overlap_scope": "catalog-only; multi-tray overlap unmodeled"
+        }
+      ],
+      "verified": [
+        {
+          "lp30": 144,
+          "tp": 16,
+          "pp": 9,
+          "generation_tps": [
+            2274.568418367088,
+            2269.270228897617,
+            2218.8472003884103
+          ],
+          "minimum_headroom_bytes": 66873600,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.3473978822387028,
+            "published_margin": -0.353294316412588
+          },
+          "overlap_scope": "single-tray"
+        }
+      ],
+      "host_seconds": 335.5678692921065
+    },
+    "operator-low": {
+      "settings": {
+        "kernel_launch_us": 0.1,
+        "collective_launch_us": 0.5,
+        "colocated_dense_reuse": true
+      },
+      "search_space": {
+        "tp": [
+          16
+        ],
+        "pp": [
+          9
+        ],
+        "max_chips": 256,
+        "max_pp": 60
+      },
+      "points": 1,
+      "feasible": 1,
+      "common_3400": {
+        "lp30": 144,
+        "tp": 16,
+        "pp": 9,
+        "generation_tps": [
+          5380.861616494702,
+          5351.305062550832,
+          5079.1204693284635
+        ],
+        "minimum_headroom_bytes": 66873600,
+        "acceptance": {
+          "common_3400": true,
+          "published_targets": true,
+          "common_margin": 0.4938589615671951,
+          "published_margin": 0.4803615474580192
+        },
+        "overlap_scope": "single-tray"
+      },
+      "published_targets": {
+        "lp30": 144,
+        "tp": 16,
+        "pp": 9,
+        "generation_tps": [
+          5380.861616494702,
+          5351.305062550832,
+          5079.1204693284635
+        ],
+        "minimum_headroom_bytes": 66873600,
+        "acceptance": {
+          "common_3400": true,
+          "published_targets": true,
+          "common_margin": 0.4938589615671951,
+          "published_margin": 0.4803615474580192
+        },
+        "overlap_scope": "single-tray"
+      },
+      "fastest": {
+        "lp30": 144,
+        "tp": 16,
+        "pp": 9,
+        "generation_tps": [
+          5380.861616494702,
+          5351.305062550832,
+          5079.1204693284635
+        ],
+        "minimum_headroom_bytes": 66873600,
+        "acceptance": {
+          "common_3400": true,
+          "published_targets": true,
+          "common_margin": 0.4938589615671951,
+          "published_margin": 0.4803615474580192
+        },
+        "overlap_scope": "single-tray"
+      },
+      "feasible_rows": [
+        {
+          "lp30": 144,
+          "tp": 16,
+          "pp": 9,
+          "generation_tps": [
+            5380.861616494702,
+            5351.305062550832,
+            5079.1204693284635
+          ],
+          "minimum_headroom_bytes": 66873600,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": true,
+            "common_margin": 0.4938589615671951,
+            "published_margin": 0.4803615474580192
+          },
+          "overlap_scope": "single-tray"
+        }
+      ],
+      "verified": [],
+      "host_seconds": 15.013761083129793
+    },
+    "operator-high": {
+      "settings": {
+        "kernel_launch_us": 0.3,
+        "collective_launch_us": 0.5,
+        "colocated_dense_reuse": true
+      },
+      "search_space": {
+        "tp": [
+          16
+        ],
+        "pp": [
+          9
+        ],
+        "max_chips": 256,
+        "max_pp": 60
+      },
+      "points": 1,
+      "feasible": 1,
+      "common_3400": null,
+      "published_targets": null,
+      "fastest": {
+        "lp30": 144,
+        "tp": 16,
+        "pp": 9,
+        "generation_tps": [
+          2641.0042555922714,
+          2633.864148321168,
+          2566.1786586701496
+        ],
+        "minimum_headroom_bytes": 66873600,
+        "acceptance": {
+          "common_3400": false,
+          "published_targets": false,
+          "common_margin": -0.24524157097936772,
+          "published_margin": -0.2520610146691491
+        },
+        "overlap_scope": "single-tray"
+      },
+      "feasible_rows": [
+        {
+          "lp30": 144,
+          "tp": 16,
+          "pp": 9,
+          "generation_tps": [
+            2641.0042555922714,
+            2633.864148321168,
+            2566.1786586701496
+          ],
+          "minimum_headroom_bytes": 66873600,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.24524157097936772,
+            "published_margin": -0.2520610146691491
+          },
+          "overlap_scope": "single-tray"
+        }
+      ],
+      "verified": [],
+      "host_seconds": 14.98459754185751
+    },
+    "collective-low": {
+      "settings": {
+        "kernel_launch_us": 0.2,
+        "collective_launch_us": 0.1,
+        "colocated_dense_reuse": true
+      },
+      "search_space": {
+        "tp": [
+          16
+        ],
+        "pp": [
+          9
+        ],
+        "max_chips": 256,
+        "max_pp": 60
+      },
+      "points": 1,
+      "feasible": 1,
+      "common_3400": {
+        "lp30": 144,
+        "tp": 16,
+        "pp": 9,
+        "generation_tps": [
+          4283.685482177337,
+          4264.932428530372,
+          4090.2391592665117
+        ],
+        "minimum_headroom_bytes": 66873600,
+        "acceptance": {
+          "common_3400": true,
+          "published_targets": true,
+          "common_margin": 0.20301151743132695,
+          "published_margin": 0.1921419875448882
+        },
+        "overlap_scope": "single-tray"
+      },
+      "published_targets": {
+        "lp30": 144,
+        "tp": 16,
+        "pp": 9,
+        "generation_tps": [
+          4283.685482177337,
+          4264.932428530372,
+          4090.2391592665117
+        ],
+        "minimum_headroom_bytes": 66873600,
+        "acceptance": {
+          "common_3400": true,
+          "published_targets": true,
+          "common_margin": 0.20301151743132695,
+          "published_margin": 0.1921419875448882
+        },
+        "overlap_scope": "single-tray"
+      },
+      "fastest": {
+        "lp30": 144,
+        "tp": 16,
+        "pp": 9,
+        "generation_tps": [
+          4283.685482177337,
+          4264.932428530372,
+          4090.2391592665117
+        ],
+        "minimum_headroom_bytes": 66873600,
+        "acceptance": {
+          "common_3400": true,
+          "published_targets": true,
+          "common_margin": 0.20301151743132695,
+          "published_margin": 0.1921419875448882
+        },
+        "overlap_scope": "single-tray"
+      },
+      "feasible_rows": [
+        {
+          "lp30": 144,
+          "tp": 16,
+          "pp": 9,
+          "generation_tps": [
+            4283.685482177337,
+            4264.932428530372,
+            4090.2391592665117
+          ],
+          "minimum_headroom_bytes": 66873600,
+          "acceptance": {
+            "common_3400": true,
+            "published_targets": true,
+            "common_margin": 0.20301151743132695,
+            "published_margin": 0.1921419875448882
+          },
+          "overlap_scope": "single-tray"
+        }
+      ],
+      "verified": [],
+      "host_seconds": 14.97991241607815
+    },
+    "collective-high": {
+      "settings": {
+        "kernel_launch_us": 0.2,
+        "collective_launch_us": 1.0,
+        "colocated_dense_reuse": true
+      },
+      "search_space": {
+        "tp": [
+          16
+        ],
+        "pp": [
+          9
+        ],
+        "max_chips": 256,
+        "max_pp": 60
+      },
+      "points": 1,
+      "feasible": 1,
+      "common_3400": null,
+      "published_targets": null,
+      "fastest": {
+        "lp30": 144,
+        "tp": 16,
+        "pp": 9,
+        "generation_tps": [
+          2913.3807384587426,
+          2904.694336000387,
+          2822.590466876763
+        ],
+        "minimum_headroom_bytes": 66873600,
+        "acceptance": {
+          "common_3400": false,
+          "published_targets": false,
+          "common_margin": -0.1698263332715403,
+          "published_margin": -0.1773271737462072
+        },
+        "overlap_scope": "single-tray"
+      },
+      "feasible_rows": [
+        {
+          "lp30": 144,
+          "tp": 16,
+          "pp": 9,
+          "generation_tps": [
+            2913.3807384587426,
+            2904.694336000387,
+            2822.590466876763
+          ],
+          "minimum_headroom_bytes": 66873600,
+          "acceptance": {
+            "common_3400": false,
+            "published_targets": false,
+            "common_margin": -0.1698263332715403,
+            "published_margin": -0.1773271737462072
+          },
+          "overlap_scope": "single-tray"
+        }
+      ],
+      "verified": [],
+      "host_seconds": 14.807926290668547
+    }
+  },
+  "model": {
+    "model_id": "gemma-4-31b-text",
+    "display_name": "Gemma 4 31B text architecture",
+    "aliases": [],
+    "hidden_size": 5376,
+    "intermediate_size": 21504,
+    "num_layers": 60,
+    "num_attention_heads": 32,
+    "num_key_value_heads": 16,
+    "head_dim": 256,
+    "kv_cache_dim": null,
+    "vocab_size": 262144,
+    "max_position_embeddings": 262144,
+    "sliding_window": 0,
+    "attention_windows": [
+      1024,
+      1024,
+      1024,
+      1024,
+      1024,
+      0,
+      1024,
+      1024,
+      1024,
+      1024,
+      1024,
+      0,
+      1024,
+      1024,
+      1024,
+      1024,
+      1024,
+      0,
+      1024,
+      1024,
+      1024,
+      1024,
+      1024,
+      0,
+      1024,
+      1024,
+      1024,
+      1024,
+      1024,
+      0,
+      1024,
+      1024,
+      1024,
+      1024,
+      1024,
+      0,
+      1024,
+      1024,
+      1024,
+      1024,
+      1024,
+      0,
+      1024,
+      1024,
+      1024,
+      1024,
+      1024,
+      0,
+      1024,
+      1024,
+      1024,
+      1024,
+      1024,
+      0,
+      1024,
+      1024,
+      1024,
+      1024,
+      1024,
+      0
+    ],
+    "tie_word_embeddings": true,
+    "qk_norm": true,
+    "attention_geometries": [
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 512,
+        "num_key_value_heads": 4,
+        "k_eq_v": true
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 512,
+        "num_key_value_heads": 4,
+        "k_eq_v": true
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 512,
+        "num_key_value_heads": 4,
+        "k_eq_v": true
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 512,
+        "num_key_value_heads": 4,
+        "k_eq_v": true
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 512,
+        "num_key_value_heads": 4,
+        "k_eq_v": true
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 512,
+        "num_key_value_heads": 4,
+        "k_eq_v": true
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 512,
+        "num_key_value_heads": 4,
+        "k_eq_v": true
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 512,
+        "num_key_value_heads": 4,
+        "k_eq_v": true
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 512,
+        "num_key_value_heads": 4,
+        "k_eq_v": true
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 256,
+        "num_key_value_heads": 16,
+        "k_eq_v": false
+      },
+      {
+        "head_dim": 512,
+        "num_key_value_heads": 4,
+        "k_eq_v": true
+      }
+    ],
+    "activation": "geglu",
+    "dtype": "fp8",
+    "activation_dtype": "bf16",
+    "kv_cache_dtype": "fp8",
+    "is_moe": false,
+    "moe": {
+      "is_moe_model": false,
+      "num_experts": 0,
+      "num_experts_per_tok": 1,
+      "moe_intermediate_size": null,
+      "num_shared_experts": 0,
+      "num_moe_layers": 0,
+      "first_k_dense_replace": 0,
+      "moe_layer_freq": 1,
+      "interleave_moe_layer_step": 1,
+      "routing": {
+        "distribution": "uniform",
+        "hot_experts": null,
+        "hot_expert_fraction": 0.5,
+        "uniform_selection": "cyclic"
+      },
+      "hidden_size": null,
+      "intermediate_size": null,
+      "num_attention_heads": null,
+      "num_key_value_heads": null
+    },
+    "sources": {
+      "google-config": {
+        "grade": "A",
+        "reference": "https://huggingface.co/google/gemma-4-31B-it/blob/842da3794eaa0b77d5f08bae87a17459d91ff475/config.json",
+        "notes": "Text model only; vision encoder excluded. BF16 is checkpoint precision; AA serving precision is undisclosed."
+      },
+      "transformers-implementation": {
+        "grade": "A",
+        "reference": "https://github.com/huggingface/transformers/blob/e0eb2810ac1b2caf6d082f247d8d37162ecf67a0/src/transformers/models/gemma4/modeling_gemma4.py",
+        "notes": "Global K/V projections share weights; transformed K and V caches remain separate. Per-layer scalar and logit softcap costs are excluded analytical approximations."
+      }
+    },
+    "total_params": 30696049664,
+    "attention_type": "gqa",
+    "mla_dimensions": null,
+    "architecture": "gemma4_text",
+    "operator_dtypes": {},
+    "components": null,
+    "operator_modules": {},
+    "layers": [
+      {
+        "layer_id": 0,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 1,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 2,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 3,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 4,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 5,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 6,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 7,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 8,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 9,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 10,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 11,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 12,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 13,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 14,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 15,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 16,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 17,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 18,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 19,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 20,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 21,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 22,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 23,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 24,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 25,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 26,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 27,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 28,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 29,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 30,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 31,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 32,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 33,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 34,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 35,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 36,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 37,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 38,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 39,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 40,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 41,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 42,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 43,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 44,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 45,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 46,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 47,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 48,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 49,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 50,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 51,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 52,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 53,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 54,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 55,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 56,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 57,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 58,
+        "attention_kind": "sliding",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      },
+      {
+        "layer_id": 59,
+        "attention_kind": "gqa",
+        "compress_ratio": 1,
+        "moe_routing": "none",
+        "is_mtp": false
+      }
+    ]
+  },
+  "hardware_catalog_baseline": {
+    "device_id": "groq_lp30",
+    "family": "groq_tsp",
+    "display_name": "NVIDIA Groq 3 LP30 LPU",
+    "peak_compute": {
+      "fp8": 1230468750000000.0,
+      "fp16": 615234375000000.0,
+      "bf16": 615234375000000.0,
+      "fp32": 153808593750000.0
+    },
+    "memory_capacity_bytes": 500000000.0,
+    "memory_bandwidth_bytes_per_s": 150000000000000.0,
+    "scale_up_link": "groq_lp30_injection",
+    "host_link": "pcie6_x16",
+    "step_overhead_us": 0.0,
+    "memory_reserved_bytes": 0.0,
+    "analytical": {
+      "gemm_mfu": 0.8,
+      "attention_mfu": 0.6,
+      "moe_mfu": 0.7,
+      "memory_efficiency": 0.9,
+      "elementwise_memory_efficiency": 0.9,
+      "kernel_launch_us": 0.2,
+      "collective_launch_us": 0.5,
+      "gemm_small_m_knee": 1.0,
+      "packed_dequant_ops_per_element": 2.0,
+      "dequant_efficiency": 0.8
+    },
+    "analytical_source_id": "assumption-lp30-analytical",
+    "analytical_grade": "D"
+  },
+  "clients": 1,
+  "token_ratios": {
+    "input": 1,
+    "output": 1
+  },
+  "serial_protocol": {
+    "warmup_requests": 5,
+    "measured_requests": 50,
+    "initial_state": "resident prompt KV and first output available",
+    "ttft_included": false
+  },
+  "target_source": "https://developer.nvidia.com/blog/how-nvidia-groq-3-lpx-unlocks-ultrafast-interactivity-at-long-context-on-nvidia-vera-rubin/"
+}

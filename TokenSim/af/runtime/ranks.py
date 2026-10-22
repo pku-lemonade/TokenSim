@@ -39,7 +39,12 @@ def compile_rank_components(
             )
         )
         local_layers = {
-            stage: tuple(layers[i] for i in stage_layer_range(len(layers), pp, stage))
+            stage: tuple(
+                layers[i]
+                for i in stage_layer_range(
+                    len(layers), pp, stage, domain.parallel.pipeline_layer_counts
+                )
+            )
             for stage in range(pp)
         }
         partitions = (
@@ -173,7 +178,10 @@ def validate_expert_components(plan):
             moe_layers = [
                 i
                 for i in stage_layer_range(
-                    plan.total_layers, domain.pipeline_parallel_size, stage
+                    plan.total_layers,
+                    domain.pipeline_parallel_size,
+                    stage,
+                    domain.pipeline_layer_counts,
                 )
                 if plan.layer_plan(i).layer_type == "moe"
             ]

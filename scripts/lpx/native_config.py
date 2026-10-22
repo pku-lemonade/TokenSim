@@ -1,6 +1,7 @@
 """Map declared LPX layouts to validated production AF physical ranks."""
 
 from TokenSim.af.factory import build_model_runtime
+from TokenSim.config.validation import boolean
 from TokenSim.errors import ConfigurationError
 
 
@@ -55,7 +56,13 @@ def configuration(
     graph_kernel_us=0.2,
     endpoint_transfer_occupancy="wire",
     dag_template_cache=False,
+    colocated_dense_reuse=False,
+    pipeline_layer_counts=None,
 ):
+    boolean(colocated_dense_reuse, "colocated dense reuse")
+    policy = hardware.device(layout.a_device).analytical.get("lpx_pipeline")
+    if policy and policy.get("activation_dtype", "bf16") != model.activation_dtype:
+        raise ConfigurationError("LP30 pipeline activation dtype must match the model")
     if layout.a_cp != 1:
         raise ConfigurationError(
             "context parallelism needs a native distributed-attention plan"
@@ -160,6 +167,11 @@ def configuration(
                     pipeline_parallel_size=pp,
                     data_parallel_size=dp,
                     expert_parallel_size=expert_size,
+                    **(
+                        {"pipeline_layer_counts": pipeline_layer_counts}
+                        if pipeline_layer_counts is not None
+                        else {}
+                    ),
                 ),
                 logical_instances=instances,
                 communication_plan=plans,
@@ -223,6 +235,7 @@ def configuration(
                     a_to_f_capacity=1,
                     f_to_a_capacity=1,
                     colocated=layout.colocated,
+                    colocated_dense_reuse=colocated_dense_reuse and layout.colocated,
                 )
             ],
         ),

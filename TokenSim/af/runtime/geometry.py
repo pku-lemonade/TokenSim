@@ -65,6 +65,7 @@ class RuntimeGeometryMixin:
                 self.total_layers,
                 self.domain_runtime(domain).pipeline_parallel_size,
                 stage,
+                self.domain_runtime(domain).pipeline_layer_counts,
             ):
                 return stage
         raise ConfigurationError("layer has no pipeline owner")

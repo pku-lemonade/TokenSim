@@ -14,7 +14,10 @@ def compile_partial_destinations(cluster, ownerships, total_layers):
     }
     ranges = {
         (domain.name, stage): stage_layer_range(
-            total_layers, domain.parallel.pipeline_parallel_size, stage
+            total_layers,
+            domain.parallel.pipeline_parallel_size,
+            stage,
+            domain.parallel.pipeline_layer_counts,
         )
         for domain in (attention, ffn)
         for stage in range(domain.parallel.pipeline_parallel_size)

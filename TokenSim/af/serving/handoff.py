@@ -29,7 +29,10 @@ def _owners(service, session):
         if binding.kv_partition is None:
             continue
         stages = plan.domain_runtime(binding.domain).pipeline_parallel_size
-        for layer in stage_layer_range(plan.total_layers, stages, binding.pp_rank):
+        counts = plan.domain_runtime(binding.domain).pipeline_layer_counts
+        for layer in stage_layer_range(
+            plan.total_layers, stages, binding.pp_rank, counts
+        ):
             for head in binding.kv_partition.for_layer(layer).global_head_ids:
                 result[(layer, head)].append(binding)
     return result

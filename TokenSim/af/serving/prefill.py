@@ -106,6 +106,7 @@ class CompletePrefill:
             communicator=communicator,
             fallback="analytical_only",
             random_seed=self.seed,
+            pipeline_layer_counts=a_domain.parallel.pipeline_layer_counts,
         )
         # One admitted cohort supplies the expert tokens in this forward.
         backend.moe_token_multiplier = 1

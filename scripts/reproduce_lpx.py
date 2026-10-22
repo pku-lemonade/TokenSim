@@ -69,6 +69,20 @@ def parser():
     result.add_argument("--replay-samples", type=int, default=4)
     result.add_argument("--replay-prefill-samples", type=int, default=1)
     result.add_argument(
+        "--lpx-streaming",
+        choices=("off", "catalog", "phase-only", "overlap"),
+        default="off",
+        help="experimental LPX decode model; requires sampled-replay and micro-batch 1",
+    )
+    result.add_argument("--lpx-vector-bytes", type=int, default=320)
+    result.add_argument("--lpx-collective-launch-us", type=float)
+    result.add_argument(
+        "--colocated-dense-reuse",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="reuse local dense A/F replicas when physical ranks and dtypes match",
+    )
+    result.add_argument(
         "--replay-cache", type=Path, default=ROOT / "outputs/lpx-replay-profile-cache"
     )
     result.add_argument("--seed", type=int)
@@ -143,6 +157,22 @@ def parser():
 def main(argv=None):
     args = parser().parse_args(argv)
     try:
+        streaming = None
+        if args.lpx_streaming != "off":
+            from TokenSim.comm.streaming import StreamingConfig
+
+            if args.execution_backend != "sampled-replay" or args.micro_batch != 1:
+                raise ConfigurationError(
+                    "LPX streaming requires sampled-replay and micro-batch 1"
+                )
+            streaming = asdict(
+                StreamingConfig(
+                    vector_bytes=args.lpx_vector_bytes,
+                    overlap=args.lpx_streaming != "catalog",
+                    early_output=args.lpx_streaming == "overlap",
+                    collective_launch_us=args.lpx_collective_launch_us,
+                )
+            )
         raw, workload, cases = load_cases(args.config)
         updates = {
             name: value
@@ -258,10 +288,12 @@ def main(argv=None):
                             replay_samples=args.replay_samples,
                             replay_prefill_samples=args.replay_prefill_samples,
                             replay_cache=str(args.replay_cache),
+                            replay_streaming=streaming,
                             handoff_mode=args.handoff_mode,
                             qps=args.qps,
                             arrival_pattern=args.arrival_pattern,
                             dag_template_cache=args.dag_template_cache,
+                            colocated_dense_reuse=args.colocated_dense_reuse,
                             draft_spec=draft,
                         ),
                     )
@@ -335,6 +367,7 @@ def main(argv=None):
                 "stream_metrics": not args.retain_timing_history,
                 "event_accounting_required": True,
                 "execution_backend": args.execution_backend,
+                "lpx_streaming": streaming,
                 "replay_samples": (
                     args.replay_samples
                     if args.execution_backend == "sampled-replay"
@@ -356,6 +389,7 @@ def main(argv=None):
                 "target_qps": args.qps,
                 "arrival_pattern": args.arrival_pattern,
                 "dag_template_cache": args.dag_template_cache,
+                "colocated_dense_reuse": args.colocated_dense_reuse,
                 "execution_mode": args.execution_mode,
                 "graph_device_kernel_us": args.graph_kernel_us,
                 "endpoint_transfer_occupancy": args.endpoint_transfer_occupancy,

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from TokenSim.af.runtime.topology import kv_head_partitions
 from TokenSim.errors import ConfigurationError
-from TokenSim.config.cache_config import stage_layer_count, stage_layer_range
+from TokenSim.config.cache_config import stage_layer_range
 
 
 class RuntimeValidationMixin:
@@ -238,6 +238,7 @@ class RuntimeValidationMixin:
                                 self.total_layers,
                                 domain.pipeline_parallel_size,
                                 binding.pp_rank,
+                                domain.pipeline_layer_counts,
                             )
                         ),
                         domain.tensor_parallel_size,
@@ -324,7 +325,10 @@ class RuntimeValidationMixin:
             raise ConfigurationError("AF runtime has duplicate partial destinations")
         layer_ranges = {
             (domain.name, stage): stage_layer_range(
-                self.total_layers, domain.pipeline_parallel_size, stage
+                self.total_layers,
+                domain.pipeline_parallel_size,
+                stage,
+                domain.pipeline_layer_counts,
             )
             for domain in self.domains
             for stage in range(domain.pipeline_parallel_size)

@@ -21,6 +21,7 @@ def layer_backends(backend):
         model.num_layers,
         backend.parallel_config.pipeline_parallel_size,
         backend.rank_info.pp_rank,
+        backend.pipeline_layer_counts,
     ):
         groups[(model.attention_window(i), model.attention_geometry(i))].append(i)
     children = []

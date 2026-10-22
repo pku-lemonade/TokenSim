@@ -1,0 +1,3177 @@
+{
+  "schema_version": 1,
+  "scope": "conventional AF: all attention on Rubin, all FFNs on LPX",
+  "result_class": "analytical sensitivity, not physical hardware measurements",
+  "metric": "single-client generation TPS excluding TTFT",
+  "workloads": [
+    {
+      "name": "1k",
+      "input_tokens": 1000,
+      "output_tokens": 1000,
+      "target_tps": 3400,
+      "published_tps": null,
+      "target_source": "user-requested generation-only 3400 TPS threshold"
+    },
+    {
+      "name": "10k",
+      "input_tokens": 10000,
+      "output_tokens": 1500,
+      "target_tps": 3400,
+      "published_tps": 3382,
+      "target_source": "user-requested generation-only 3400 TPS threshold"
+    },
+    {
+      "name": "100k",
+      "input_tokens": 100000,
+      "output_tokens": 2000,
+      "target_tps": 3400,
+      "published_tps": 3431,
+      "target_source": "user-requested generation-only 3400 TPS threshold"
+    }
+  ],
+  "checked": 6000,
+  "reversals": 0,
+  "wall_seconds": 13.495797207579017,
+  "source_sha256": {
+    "scripts/explore_regular_af.py": "70397d9678d080646f3725773a78389721d69024812a155e51d5ff73b2116fca",
+    "scripts/explore_lpx_context.py": "aed86970836153342ada868775539699868e12349f8743af4ccbea5a80ddccf5",
+    "scripts/lpx/aa_cost.py": "51edbcc105f50f72abe37776d89fe126fd6382e425ac4d1ce7ab6fc81de762ca",
+    "scripts/lpx/aa_model.py": "2781b72b86fe5ba02660287d73f6c48736f4ddfcae23ca7385a9041b4e9af072",
+    "scripts/lpx/aa_search.py": "ccc491375b3a4ebba8fa60385c64b6b0ff68683bcb456f86acec748dabe3ec4a",
+    "scripts/lpx/architecture.py": "3d522ef058827d3014e95788451cef7e4179b4623f36d1abc235a68ec8495afa",
+    "scripts/lpx/audit.py": "358bed594404e6ca746d503ae3535fb46a60d45dec4bef596bb0ab6d43c62467",
+    "scripts/lpx/config.py": "f78e19d38a463ac920fd9e1a283618e614642642e177099013bc828653fe3137",
+    "scripts/lpx/context_sensitivity.py": "5319b286b3cc6b75b782f33469443c96e1556d070191aa539c346a1769ca2d99",
+    "scripts/lpx/event_validation.py": "191b8e99397b7fff231de492ae88186da4d3a4a9cd17517b75101e7b26a574fe",
+    "scripts/lpx/export.py": "6da02f8f17c171bca74e5fa834c9aae0411ae4980e19b1d16cb573e2e756df7c",
+    "scripts/lpx/frontier.py": "b4ee54435daa738d832e66d1ca7102da1f7aed3267457cd7292e2b7fc7f171ce",
+    "scripts/lpx/hardware_overrides.py": "e1083ea46ed0b49583542f639f23ac05a980ab1a1b1f581055cb4e9d07ed4662",
+    "scripts/lpx/native_config.py": "d7c8b724b01c8ea8ea196b4d086de3dd1d7af522a5cafe0e8eb4d3d897cf1164",
+    "scripts/lpx/native_metrics.py": "7415c173e5d32be27811ac91176edf32e7b4ade6a8143a8310bbf331aa640d10",
+    "scripts/lpx/native_setup.py": "582d4a81428d99550d4d5d8daa5359fecb0bf300d372e14b237870cfdd4b25f2",
+    "scripts/lpx/native_simulation.py": "f9675a1be673170c91536fe3f4645cdb153ef671f3ff94e6a207fac0366b9f7a",
+    "scripts/lpx/plotting.py": "c62b5f13abca838e5a5785877fbfeb63407d90117e71b3065c78484adc3cbe22",
+    "scripts/lpx/runner.py": "fc277b3491f12b9c465e9d5e3e1f87726ed8c95c108c5c7f41f95ff6b6d8877c",
+    "scripts/lpx/validation.py": "718a91c2e1545a8c4c4129d0ceb46ec7274cf8eeb5b9a8c2bea83b1d60a28166",
+    "scripts/lpx/validation_checks.py": "c18f3b0696487c5ffb695d248c870b466143c3c2455dffc72da55c1600008e32",
+    "experiments/lpx/aa-gemma4.json": "b631fd403e10b7e5f0f74eff98c826ef232f032dad375feaa6a13153bf4ac3a4",
+    "data/devices/rubin.yaml": "521a49ec0a13b0cc6bd0adc202cf36960a8f2bf4aecc2020fdedb8ef0eff8767",
+    "data/devices/groq_lp30.yaml": "3ee064944e0400fc32e6cabb2f6e4e900a17f3832c330d61487791d28458aac9",
+    "data/topologies/links.yaml": "535706315628dc7210e8ecd39ae34a61d1a9f9b1407c348e2e10b52bdcc2cadf"
+  },
+  "limitations": [
+    "No cross-request concurrency, generated text, statistical samples, or quality tests",
+    "Baseline prefill and all decode attention share Rubin; there is no KV migration to LPX",
+    "Every output token pays AF activation-transfer and broadcast costs at every layer",
+    "TTFT and prefill are excluded; hypothetical stream gaps must occur after first output",
+    "Reduced startup profiles are assumptions, including zero-latency stress controls",
+    "The startup fit changes the effective communication model with context length",
+    "Different selected layouts across constant profiles do not establish a fixed-inventory speedup",
+    "Scheduled direct collectives and serial compute/communication composition are uncalibrated"
+  ],
+  "profiles": [
+    {
+      "name": "baseline",
+      "settings": {},
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 1060.3942882615588,
+          "10k": 1047.4988144869276,
+          "100k": 936.4085686911178
+        },
+        "ratio_100k_over_10k": 0.8939471393576492,
+        "reversal": false
+      },
+      "minimum_cards": null,
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 1060.3942882615588,
+          "10k": 1047.4988144869276,
+          "100k": 936.4085686911178
+        },
+        "ratio_100k_over_10k": 0.8939471393576492,
+        "reversal": false
+      }
+    },
+    {
+      "name": "kernel-0-latency-0",
+      "settings": {
+        "kernel_us": 0,
+        "link_latency_scale": 0
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a32-f256-pp1",
+        "mode": "af",
+        "inventory": {
+          "rubin": 32,
+          "groq_lp30": 256
+        },
+        "tps": {
+          "1k": 14297.470862822378,
+          "10k": 12262.242772254223,
+          "100k": 5133.310745692417
+        },
+        "ratio_100k_over_10k": 0.4186273947623643,
+        "reversal": false
+      },
+      "minimum_cards": {
+        "name": "af-a16-f96-pp1",
+        "mode": "af",
+        "inventory": {
+          "rubin": 16,
+          "groq_lp30": 96
+        },
+        "tps": {
+          "1k": 9906.139922514,
+          "10k": 8884.450308580568,
+          "100k": 4428.480151245482
+        },
+        "ratio_100k_over_10k": 0.4984529146354134,
+        "reversal": false
+      },
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 4976.475163130362,
+          "10k": 4704.664268142385,
+          "100k": 3069.2742533603164
+        },
+        "ratio_100k_over_10k": 0.6523896453449175,
+        "reversal": false
+      }
+    },
+    {
+      "name": "kernel-0-latency-0.025",
+      "settings": {
+        "kernel_us": 0,
+        "link_latency_scale": 0.025
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a32-f256-pp1",
+        "mode": "af",
+        "inventory": {
+          "rubin": 32,
+          "groq_lp30": 256
+        },
+        "tps": {
+          "1k": 9684.766642914245,
+          "10k": 8705.97442930061,
+          "100k": 4383.6855498237455
+        },
+        "ratio_100k_over_10k": 0.5035261228278046,
+        "reversal": false
+      },
+      "minimum_cards": {
+        "name": "af-a16-f96-pp1",
+        "mode": "af",
+        "inventory": {
+          "rubin": 16,
+          "groq_lp30": 96
+        },
+        "tps": {
+          "1k": 8229.775736183079,
+          "10k": 7512.09237396355,
+          "100k": 4058.876342381817
+        },
+        "ratio_100k_over_10k": 0.5403123577726004,
+        "reversal": false
+      },
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 4658.031941712452,
+          "10k": 4419.059044224772,
+          "100k": 2945.096737851969
+        },
+        "ratio_100k_over_10k": 0.666453357689549,
+        "reversal": false
+      }
+    },
+    {
+      "name": "kernel-0-latency-0.05",
+      "settings": {
+        "kernel_us": 0,
+        "link_latency_scale": 0.05
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a32-f192-pp1",
+        "mode": "af",
+        "inventory": {
+          "rubin": 32,
+          "groq_lp30": 192
+        },
+        "tps": {
+          "1k": 7333.118646766142,
+          "10k": 6757.8371672315725,
+          "100k": 3828.026075064935
+        },
+        "ratio_100k_over_10k": 0.5664572821651948,
+        "reversal": false
+      },
+      "minimum_cards": {
+        "name": "af-a16-f96-pp1",
+        "mode": "af",
+        "inventory": {
+          "rubin": 16,
+          "groq_lp30": 96
+        },
+        "tps": {
+          "1k": 7038.660138379217,
+          "10k": 6506.976617624624,
+          "100k": 3746.214836596741
+        },
+        "ratio_100k_over_10k": 0.5757228059572003,
+        "reversal": false
+      },
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 4377.8918924691825,
+          "10k": 4166.145579362982,
+          "100k": 2830.576518882838
+        },
+        "ratio_100k_over_10k": 0.6794233338614257,
+        "reversal": false
+      }
+    },
+    {
+      "name": "kernel-0-latency-0.1",
+      "settings": {
+        "kernel_us": 0,
+        "link_latency_scale": 0.1
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a16-f128-pp1",
+        "mode": "af",
+        "inventory": {
+          "rubin": 16,
+          "groq_lp30": 128
+        },
+        "tps": {
+          "1k": 5464.566961503518,
+          "10k": 5138.592279746625,
+          "100k": 3248.222024004436
+        },
+        "ratio_100k_over_10k": 0.6321229331245173,
+        "reversal": false
+      },
+      "minimum_cards": null,
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 3907.846084211515,
+          "10k": 3738.2476263264894,
+          "100k": 2626.3268442161216
+        },
+        "ratio_100k_over_10k": 0.7025556107413267,
+        "reversal": false
+      }
+    },
+    {
+      "name": "kernel-0-latency-0.25",
+      "settings": {
+        "kernel_us": 0,
+        "link_latency_scale": 0.25
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a16-f96-pp1",
+        "mode": "af",
+        "inventory": {
+          "rubin": 16,
+          "groq_lp30": 96
+        },
+        "tps": {
+          "1k": 3261.87123665698,
+          "10k": 3142.8632109936325,
+          "100k": 2317.840316419464
+        },
+        "ratio_100k_over_10k": 0.73749322220316,
+        "reversal": false
+      },
+      "minimum_cards": null,
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 2955.777649246348,
+          "10k": 2857.714249898991,
+          "100k": 2158.9649318854567
+        },
+        "ratio_100k_over_10k": 0.7554866383025411,
+        "reversal": false
+      }
+    },
+    {
+      "name": "kernel-0-latency-0.5",
+      "settings": {
+        "kernel_us": 0,
+        "link_latency_scale": 0.5
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a8-f64-pp2",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 128
+        },
+        "tps": {
+          "1k": 2132.6429774143994,
+          "10k": 2081.1164445410463,
+          "100k": 1684.1645263365385
+        },
+        "ratio_100k_over_10k": 0.8092601116839243,
+        "reversal": false
+      },
+      "minimum_cards": null,
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 2102.1853737482193,
+          "10k": 2052.1028150266543,
+          "100k": 1665.1127824645046
+        },
+        "ratio_100k_over_10k": 0.8114178150683335,
+        "reversal": false
+      }
+    },
+    {
+      "name": "kernel-0-latency-1",
+      "settings": {
+        "kernel_us": 0,
+        "link_latency_scale": 1
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 1332.5419069393886,
+          "10k": 1312.2412107752145,
+          "100k": 1142.4524922640526
+        },
+        "ratio_100k_over_10k": 0.870611654993781,
+        "reversal": false
+      },
+      "minimum_cards": null,
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 1332.5419069393886,
+          "10k": 1312.2412107752145,
+          "100k": 1142.4524922640526
+        },
+        "ratio_100k_over_10k": 0.870611654993781,
+        "reversal": false
+      }
+    },
+    {
+      "name": "kernel-0.02-latency-0",
+      "settings": {
+        "kernel_us": 0.02,
+        "link_latency_scale": 0
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a32-f256-pp1",
+        "mode": "af",
+        "inventory": {
+          "rubin": 32,
+          "groq_lp30": 256
+        },
+        "tps": {
+          "1k": 11210.45566031592,
+          "10k": 9919.537667432043,
+          "100k": 4671.455332171685
+        },
+        "ratio_100k_over_10k": 0.4709347843407126,
+        "reversal": false
+      },
+      "minimum_cards": {
+        "name": "af-a16-f96-pp1",
+        "mode": "af",
+        "inventory": {
+          "rubin": 16,
+          "groq_lp30": 96
+        },
+        "tps": {
+          "1k": 8318.948902873499,
+          "10k": 7586.320731567096,
+          "100k": 4080.4483935566363
+        },
+        "ratio_100k_over_10k": 0.5378692172317032,
+        "reversal": false
+      },
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 4541.21384133317,
+          "10k": 4313.784356924614,
+          "100k": 2897.963401168806
+        },
+        "ratio_100k_over_10k": 0.6717914391146858,
+        "reversal": false
+      }
+    },
+    {
+      "name": "kernel-0.02-latency-0.025",
+      "settings": {
+        "kernel_us": 0.02,
+        "link_latency_scale": 0.025
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a32-f256-pp1",
+        "mode": "af",
+        "inventory": {
+          "rubin": 32,
+          "groq_lp30": 256
+        },
+        "tps": {
+          "1k": 8162.26983291817,
+          "10k": 7455.8066365712075,
+          "100k": 4042.387636116864
+        },
+        "ratio_100k_over_10k": 0.5421797845840978,
+        "reversal": false
+      },
+      "minimum_cards": {
+        "name": "af-a16-f96-pp1",
+        "mode": "af",
+        "inventory": {
+          "rubin": 16,
+          "groq_lp30": 96
+        },
+        "tps": {
+          "1k": 7103.786622882802,
+          "10k": 6562.596837711108,
+          "100k": 3764.583916103197
+        },
+        "ratio_100k_over_10k": 0.5736424176585869,
+        "reversal": false
+      },
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 4274.546573326063,
+          "10k": 4072.448560437837,
+          "100k": 2787.0103662916763
+        },
+        "ratio_100k_over_10k": 0.6843574142019462,
+        "reversal": false
+      }
+    },
+    {
+      "name": "kernel-0.02-latency-0.05",
+      "settings": {
+        "kernel_us": 0.02,
+        "link_latency_scale": 0.05
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a32-f192-pp1",
+        "mode": "af",
+        "inventory": {
+          "rubin": 32,
+          "groq_lp30": 192
+        },
+        "tps": {
+          "1k": 6425.594279660727,
+          "10k": 5979.561673820689,
+          "100k": 3565.1737232700184
+        },
+        "ratio_100k_over_10k": 0.5962265994978896,
+        "reversal": false
+      },
+      "minimum_cards": {
+        "name": "af-a16-f96-pp1",
+        "mode": "af",
+        "inventory": {
+          "rubin": 16,
+          "groq_lp30": 96
+        },
+        "tps": {
+          "1k": 6198.379355895547,
+          "10k": 5782.312009840254,
+          "100k": 3494.1076405563304
+        },
+        "ratio_100k_over_10k": 0.6042751817283656,
+        "reversal": false
+      },
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 4037.4604992832687,
+          "10k": 3856.6852909994577,
+          "100k": 2684.2400617828416
+        },
+        "ratio_100k_over_10k": 0.6959966549635743,
+        "reversal": false
+      }
+    },
+    {
+      "name": "kernel-0.02-latency-0.1",
+      "settings": {
+        "kernel_us": 0.02,
+        "link_latency_scale": 0.1
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a16-f128-pp1",
+        "mode": "af",
+        "inventory": {
+          "rubin": 16,
+          "groq_lp30": 128
+        },
+        "tps": {
+          "1k": 4944.201788685959,
+          "10k": 4675.828832609443,
+          "100k": 3056.9753353916185
+        },
+        "ratio_100k_over_10k": 0.6537825580936867,
+        "reversal": false
+      },
+      "minimum_cards": null,
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 3634.3093694587687,
+          "10k": 3487.1756870464587,
+          "100k": 2499.875504052479
+        },
+        "ratio_100k_over_10k": 0.71687684487437,
+        "reversal": false
+      }
+    },
+    {
+      "name": "kernel-0.02-latency-0.25",
+      "settings": {
+        "kernel_us": 0.02,
+        "link_latency_scale": 0.25
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a16-f96-pp1",
+        "mode": "af",
+        "inventory": {
+          "rubin": 16,
+          "groq_lp30": 96
+        },
+        "tps": {
+          "1k": 3069.061614588941,
+          "10k": 2963.479233122317,
+          "100k": 2218.789972032219
+        },
+        "ratio_100k_over_10k": 0.7487111592459196,
+        "reversal": false
+      },
+      "minimum_cards": null,
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 2796.573534932104,
+          "10k": 2708.632276626401,
+          "100k": 2072.775477225018
+        },
+        "ratio_100k_over_10k": 0.7652480165401625,
+        "reversal": false
+      }
+    },
+    {
+      "name": "kernel-0.02-latency-0.5",
+      "settings": {
+        "kernel_us": 0.02,
+        "link_latency_scale": 0.5
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a8-f64-pp2",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 128
+        },
+        "tps": {
+          "1k": 2048.5013897108042,
+          "10k": 2000.9151574782436,
+          "100k": 1631.2516037478788
+        },
+        "ratio_100k_over_10k": 0.8152527595441617,
+        "reversal": false
+      },
+      "minimum_cards": null,
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 2020.3838884358163,
+          "10k": 1974.0802536907177,
+          "100k": 1613.3718313629524
+        },
+        "ratio_100k_over_10k": 0.8172777314126977,
+        "reversal": false
+      }
+    },
+    {
+      "name": "kernel-0.02-latency-1",
+      "settings": {
+        "kernel_us": 0.02,
+        "link_latency_scale": 1
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 1299.1982981565413,
+          "10k": 1279.8934827463297,
+          "100k": 1117.85560553601
+        },
+        "ratio_100k_over_10k": 0.8733973729887059,
+        "reversal": false
+      },
+      "minimum_cards": null,
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 1299.1982981565413,
+          "10k": 1279.8934827463297,
+          "100k": 1117.85560553601
+        },
+        "ratio_100k_over_10k": 0.8733973729887059,
+        "reversal": false
+      }
+    },
+    {
+      "name": "kernel-0.05-latency-0",
+      "settings": {
+        "kernel_us": 0.05,
+        "link_latency_scale": 0
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a32-f256-pp1",
+        "mode": "af",
+        "inventory": {
+          "rubin": 32,
+          "groq_lp30": 256
+        },
+        "tps": {
+          "1k": 8467.942560933452,
+          "10k": 7710.031867751616,
+          "100k": 4115.970735506177
+        },
+        "ratio_100k_over_10k": 0.5338461378767905,
+        "reversal": false
+      },
+      "minimum_cards": {
+        "name": "af-a16-f96-pp1",
+        "mode": "af",
+        "inventory": {
+          "rubin": 16,
+          "groq_lp30": 96
+        },
+        "tps": {
+          "1k": 6707.020845466561,
+          "10k": 6222.535135935658,
+          "100k": 3650.1531743052733
+        },
+        "ratio_100k_over_10k": 0.5866022601022106,
+        "reversal": false
+      },
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 4014.5254886447356,
+          "10k": 3835.7527837519333,
+          "100k": 2674.0833592037716
+        },
+        "ratio_100k_over_10k": 0.6971469513184118,
+        "reversal": false
+      }
+    },
+    {
+      "name": "kernel-0.05-latency-0.025",
+      "settings": {
+        "kernel_us": 0.05,
+        "link_latency_scale": 0.025
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a32-f256-pp1",
+        "mode": "af",
+        "inventory": {
+          "rubin": 32,
+          "groq_lp30": 256
+        },
+        "tps": {
+          "1k": 6604.804302055146,
+          "10k": 6134.4556104851745,
+          "100k": 3619.666418060339
+        },
+        "ratio_100k_over_10k": 0.590055034691833,
+        "reversal": false
+      },
+      "minimum_cards": {
+        "name": "af-a32-f96-pp1",
+        "mode": "af",
+        "inventory": {
+          "rubin": 32,
+          "groq_lp30": 96
+        },
+        "tps": {
+          "1k": 6550.681077695789,
+          "10k": 6087.73921574434,
+          "100k": 3603.3504703623767
+        },
+        "ratio_100k_over_10k": 0.5919028957487628,
+        "reversal": false
+      },
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 3804.6981225101367,
+          "10k": 3643.750268335244,
+          "100k": 2579.331064709512
+        },
+        "ratio_100k_over_10k": 0.7078781131419185,
+        "reversal": false
+      }
+    },
+    {
+      "name": "kernel-0.05-latency-0.05",
+      "settings": {
+        "kernel_us": 0.05,
+        "link_latency_scale": 0.05
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a32-f192-pp1",
+        "mode": "af",
+        "inventory": {
+          "rubin": 32,
+          "groq_lp30": 192
+        },
+        "tps": {
+          "1k": 5419.5363752650055,
+          "10k": 5098.754240703076,
+          "100k": 3232.2580341317926
+        },
+        "ratio_100k_over_10k": 0.633930933232446,
+        "reversal": false
+      },
+      "minimum_cards": null,
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 3615.715380436321,
+          "10k": 3470.05321747046,
+          "100k": 2491.063804673644
+        },
+        "ratio_100k_over_10k": 0.7178748130236277,
+        "reversal": false
+      }
+    },
+    {
+      "name": "kernel-0.05-latency-0.1",
+      "settings": {
+        "kernel_us": 0.05,
+        "link_latency_scale": 0.1
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a16-f128-pp1",
+        "mode": "af",
+        "inventory": {
+          "rubin": 16,
+          "groq_lp30": 128
+        },
+        "tps": {
+          "1k": 4326.249068856554,
+          "10k": 4119.365588588252,
+          "100k": 2808.9041109437303
+        },
+        "ratio_100k_over_10k": 0.6818778402978236,
+        "reversal": false
+      },
+      "minimum_cards": null,
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 3288.9820490416223,
+          "10k": 3168.0155288620213,
+          "100k": 2331.491888084308
+        },
+        "ratio_100k_over_10k": 0.7359471147926475,
+        "reversal": false
+      }
+    },
+    {
+      "name": "kernel-0.05-latency-0.25",
+      "settings": {
+        "kernel_us": 0.05,
+        "link_latency_scale": 0.25
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a16-f96-pp1",
+        "mode": "af",
+        "inventory": {
+          "rubin": 16,
+          "groq_lp30": 96
+        },
+        "tps": {
+          "1k": 2819.1051230918324,
+          "10k": 2729.7701901965306,
+          "100k": 2085.131299448157
+        },
+        "ratio_100k_over_10k": 0.7638486591056359,
+        "reversal": false
+      },
+      "minimum_cards": null,
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 2587.5200066495877,
+          "10k": 2512.0577618099246,
+          "100k": 1955.6653774555923
+        },
+        "ratio_100k_over_10k": 0.7785113094081665,
+        "reversal": false
+      }
+    },
+    {
+      "name": "kernel-0.05-latency-0.5",
+      "settings": {
+        "kernel_us": 0.05,
+        "link_latency_scale": 0.5
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a8-f64-pp2",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 128
+        },
+        "tps": {
+          "1k": 1934.042428012235,
+          "10k": 1891.5702191790674,
+          "100k": 1557.8357006017404
+        },
+        "ratio_100k_over_10k": 0.8235674704573398,
+        "reversal": false
+      },
+      "minimum_cards": null,
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 1908.960010541197,
+          "10k": 1867.5705067069835,
+          "100k": 1541.5210537713479
+        },
+        "ratio_100k_over_10k": 0.8254151841846409,
+        "reversal": false
+      }
+    },
+    {
+      "name": "kernel-0.05-latency-1",
+      "settings": {
+        "kernel_us": 0.05,
+        "link_latency_scale": 1
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 1252.1984821400401,
+          "10k": 1234.2554999178028,
+          "100k": 1082.8840299077804
+        },
+        "ratio_100k_over_10k": 0.8773580753578953,
+        "reversal": false
+      },
+      "minimum_cards": null,
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 1252.1984821400401,
+          "10k": 1234.2554999178028,
+          "100k": 1082.8840299077804
+        },
+        "ratio_100k_over_10k": 0.8773580753578953,
+        "reversal": false
+      }
+    },
+    {
+      "name": "kernel-0.1-latency-0",
+      "settings": {
+        "kernel_us": 0.1,
+        "link_latency_scale": 0
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a32-f256-pp1",
+        "mode": "af",
+        "inventory": {
+          "rubin": 32,
+          "groq_lp30": 256
+        },
+        "tps": {
+          "1k": 6015.311127218209,
+          "10k": 5622.679413894721,
+          "100k": 3435.1742025565622
+        },
+        "ratio_100k_over_10k": 0.6109496824712408,
+        "reversal": false
+      },
+      "minimum_cards": {
+        "name": "af-a32-f96-pp1",
+        "mode": "af",
+        "inventory": {
+          "rubin": 32,
+          "groq_lp30": 96
+        },
+        "tps": {
+          "1k": 5943.770185487602,
+          "10k": 5560.124363794839,
+          "100k": 3411.72343120569
+        },
+        "ratio_100k_over_10k": 0.6136055972814888,
+        "reversal": false
+      },
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 3364.223162250994,
+          "10k": 3237.765101684439,
+          "100k": 2369.0511684396893
+        },
+        "ratio_100k_over_10k": 0.7316933421782811,
+        "reversal": false
+      }
+    },
+    {
+      "name": "kernel-0.1-latency-0.025",
+      "settings": {
+        "kernel_us": 0.1,
+        "link_latency_scale": 0.025
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a32-f256-pp1",
+        "mode": "af",
+        "inventory": {
+          "rubin": 32,
+          "groq_lp30": 256
+        },
+        "tps": {
+          "1k": 5011.151311464147,
+          "10k": 4735.663547525099,
+          "100k": 3082.43777635299
+        },
+        "ratio_100k_over_10k": 0.650898811838924,
+        "reversal": false
+      },
+      "minimum_cards": null,
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 3215.6104588282824,
+          "10k": 3099.8859025406855,
+          "100k": 2294.3809079141524
+        },
+        "ratio_100k_over_10k": 0.740150115213487,
+        "reversal": false
+      }
+    },
+    {
+      "name": "kernel-0.1-latency-0.05",
+      "settings": {
+        "kernel_us": 0.1,
+        "link_latency_scale": 0.05
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a32-f192-pp1",
+        "mode": "af",
+        "inventory": {
+          "rubin": 32,
+          "groq_lp30": 192
+        },
+        "tps": {
+          "1k": 4297.976500112691,
+          "10k": 4093.7243707407165,
+          "100k": 2796.958382680757
+        },
+        "ratio_100k_over_10k": 0.6832307525810969,
+        "reversal": false
+      },
+      "minimum_cards": null,
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 3079.5720608745055,
+          "10k": 2973.270137492673,
+          "100k": 2224.273890760682
+        },
+        "ratio_100k_over_10k": 0.7480900785679665,
+        "reversal": false
+      }
+    },
+    {
+      "name": "kernel-0.1-latency-0.1",
+      "settings": {
+        "kernel_us": 0.1,
+        "link_latency_scale": 0.1
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a16-f128-pp1",
+        "mode": "af",
+        "inventory": {
+          "rubin": 16,
+          "groq_lp30": 128
+        },
+        "tps": {
+          "1k": 3580.4164772082054,
+          "10k": 3437.5385686050026,
+          "100k": 2474.26315435261
+        },
+        "ratio_100k_over_10k": 0.7197775690286139,
+        "reversal": false
+      },
+      "minimum_cards": null,
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 2839.332601917451,
+          "10k": 2748.725139760809,
+          "100k": 2096.1727392226667
+        },
+        "ratio_100k_over_10k": 0.762598161926468,
+        "reversal": false
+      }
+    },
+    {
+      "name": "kernel-0.1-latency-0.25",
+      "settings": {
+        "kernel_us": 0.1,
+        "link_latency_scale": 0.25
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a16-f96-pp1",
+        "mode": "af",
+        "inventory": {
+          "rubin": 16,
+          "groq_lp30": 96
+        },
+        "tps": {
+          "1k": 2482.1749188417125,
+          "10k": 2412.6546408349195,
+          "100k": 1894.8864574455877
+        },
+        "ratio_100k_over_10k": 0.7853948200351818,
+        "reversal": false
+      },
+      "minimum_cards": null,
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 2300.8581832450645,
+          "10k": 2240.9967030548405,
+          "100k": 1787.3582712217803
+        },
+        "ratio_100k_over_10k": 0.79757291422398,
+        "reversal": false
+      }
+    },
+    {
+      "name": "kernel-0.1-latency-0.5",
+      "settings": {
+        "kernel_us": 0.1,
+        "link_latency_scale": 0.5
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a8-f64-pp2",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 128
+        },
+        "tps": {
+          "1k": 1769.2797662173784,
+          "10k": 1733.6691800661833,
+          "100k": 1449.136293050969
+        },
+        "ratio_100k_over_10k": 0.8358782112026978,
+        "reversal": false
+      },
+      "minimum_cards": null,
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 1748.2656801340042,
+          "10k": 1713.4876646040816,
+          "100k": 1435.0086305823486
+        },
+        "ratio_100k_over_10k": 0.8374782382305166,
+        "reversal": false
+      }
+    },
+    {
+      "name": "kernel-0.1-latency-1",
+      "settings": {
+        "kernel_us": 0.1,
+        "link_latency_scale": 1
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 1180.9924809708807,
+          "10k": 1165.019110488858,
+          "100k": 1029.219627200138
+        },
+        "ratio_100k_over_10k": 0.8834358320253333,
+        "reversal": false
+      },
+      "minimum_cards": null,
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 1180.9924809708807,
+          "10k": 1165.019110488858,
+          "100k": 1029.219627200138
+        },
+        "ratio_100k_over_10k": 0.8834358320253333,
+        "reversal": false
+      }
+    },
+    {
+      "name": "kernel-0.2-latency-0",
+      "settings": {
+        "kernel_us": 0.2,
+        "link_latency_scale": 0
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a32-f256-pp1",
+        "mode": "af",
+        "inventory": {
+          "rubin": 32,
+          "groq_lp30": 256
+        },
+        "tps": {
+          "1k": 3808.907997733441,
+          "10k": 3647.6228529328646,
+          "100k": 2581.27098135504
+        },
+        "ratio_100k_over_10k": 0.7076584080724173,
+        "reversal": false
+      },
+      "minimum_cards": null,
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 2541.002623635917,
+          "10k": 2468.191074101734,
+          "100k": 1928.975431907622
+        },
+        "ratio_100k_over_10k": 0.7815340765745404,
+        "reversal": false
+      }
+    },
+    {
+      "name": "kernel-0.2-latency-0.025",
+      "settings": {
+        "kernel_us": 0.2,
+        "link_latency_scale": 0.025
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a32-f256-pp1",
+        "mode": "af",
+        "inventory": {
+          "rubin": 32,
+          "groq_lp30": 256
+        },
+        "tps": {
+          "1k": 3380.034822204434,
+          "10k": 3252.4169927368516,
+          "100k": 2376.885914046005
+        },
+        "ratio_100k_over_10k": 0.7308060188327504,
+        "reversal": false
+      },
+      "minimum_cards": null,
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 2455.2955635944695,
+          "10k": 2387.2472200282036,
+          "100k": 1879.1785166492136
+        },
+        "ratio_100k_over_10k": 0.787173821330081,
+        "reversal": false
+      }
+    },
+    {
+      "name": "kernel-0.2-latency-0.05",
+      "settings": {
+        "kernel_us": 0.2,
+        "link_latency_scale": 0.05
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a32-f192-pp1",
+        "mode": "af",
+        "inventory": {
+          "rubin": 32,
+          "groq_lp30": 192
+        },
+        "tps": {
+          "1k": 3039.8127751900547,
+          "10k": 2936.1992805641594,
+          "100k": 2203.4622364149545
+        },
+        "ratio_100k_over_10k": 0.7504471004405338,
+        "reversal": false
+      },
+      "minimum_cards": null,
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 2375.1815846510935,
+          "10k": 2311.44386082598,
+          "100k": 1831.8879359601203
+        },
+        "ratio_100k_over_10k": 0.7925297114096929,
+        "reversal": false
+      }
+    },
+    {
+      "name": "kernel-0.2-latency-0.1",
+      "settings": {
+        "kernel_us": 0.2,
+        "link_latency_scale": 0.1
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a16-f128-pp1",
+        "mode": "af",
+        "inventory": {
+          "rubin": 16,
+          "groq_lp30": 128
+        },
+        "tps": {
+          "1k": 2662.4272512967673,
+          "10k": 2582.6057625638805,
+          "100k": 1998.1587809306723
+        },
+        "ratio_100k_over_10k": 0.7736987231636164,
+        "reversal": false
+      },
+      "minimum_cards": null,
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 2229.6770645069423,
+          "10k": 2173.4168506025135,
+          "100k": 1744.1051676592917
+        },
+        "ratio_100k_over_10k": 0.8024715402274496,
+        "reversal": false
+      }
+    },
+    {
+      "name": "kernel-0.2-latency-0.25",
+      "settings": {
+        "kernel_us": 0.2,
+        "link_latency_scale": 0.25
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a16-f96-pp1",
+        "mode": "af",
+        "inventory": {
+          "rubin": 16,
+          "groq_lp30": 96
+        },
+        "tps": {
+          "1k": 2003.3155113693035,
+          "10k": 1957.7854323312013,
+          "100k": 1602.4713805714073
+        },
+        "ratio_100k_over_10k": 0.8185122608984226,
+        "reversal": false
+      },
+      "minimum_cards": null,
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 1883.5213741418745,
+          "10k": 1843.2159808978172,
+          "100k": 1524.8902025317095
+        },
+        "ratio_100k_over_10k": 0.8272987096113101,
+        "reversal": false
+      }
+    },
+    {
+      "name": "kernel-0.2-latency-0.5",
+      "settings": {
+        "kernel_us": 0.2,
+        "link_latency_scale": 0.5
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a8-f64-pp2",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 128
+        },
+        "tps": {
+          "1k": 1511.7118241617884,
+          "10k": 1485.6383740872623,
+          "100k": 1271.672126912269
+        },
+        "ratio_100k_over_10k": 0.8559768979402888,
+        "reversal": false
+      },
+      "minimum_cards": null,
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 1496.3441878121253,
+          "10k": 1470.7936740613245,
+          "100k": 1260.779792764605
+        },
+        "ratio_100k_over_10k": 0.8572105081763065,
+        "reversal": false
+      }
+    },
+    {
+      "name": "cross-startup-0",
+      "settings": {
+        "cross_latency_us": 0
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 1422.3831641872016,
+          "10k": 1399.2765380181365,
+          "100k": 1207.8608740247657
+        },
+        "ratio_100k_over_10k": 0.8632038351300579,
+        "reversal": false
+      },
+      "minimum_cards": null,
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 1422.3831641872016,
+          "10k": 1399.2765380181365,
+          "100k": 1207.8608740247657
+        },
+        "ratio_100k_over_10k": 0.8632038351300579,
+        "reversal": false
+      }
+    },
+    {
+      "name": "cross-startup-0.25",
+      "settings": {
+        "cross_latency_us": 0.25
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 1364.171909474397,
+          "10k": 1342.90372765058,
+          "100k": 1165.6235419209124
+        },
+        "ratio_100k_over_10k": 0.8679874200365646,
+        "reversal": false
+      },
+      "minimum_cards": null,
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 1364.171909474397,
+          "10k": 1342.90372765058,
+          "100k": 1165.6235419209124
+        },
+        "ratio_100k_over_10k": 0.8679874200365646,
+        "reversal": false
+      }
+    },
+    {
+      "name": "cross-startup-0.5",
+      "settings": {
+        "cross_latency_us": 0.5
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 1310.5379382255628,
+          "10k": 1290.8972074919404,
+          "100k": 1126.2403731371971
+        },
+        "ratio_100k_over_10k": 0.8724477569560694,
+        "reversal": false
+      },
+      "minimum_cards": null,
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 1310.5379382255628,
+          "10k": 1290.8972074919404,
+          "100k": 1126.2403731371971
+        },
+        "ratio_100k_over_10k": 0.8724477569560694,
+        "reversal": false
+      }
+    },
+    {
+      "name": "cross-startup-1",
+      "settings": {
+        "cross_latency_us": 1
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 1214.9997427565568,
+          "10k": 1198.0997873079864,
+          "100k": 1054.952563042608
+        },
+        "ratio_100k_over_10k": 0.880521450899331,
+        "reversal": false
+      },
+      "minimum_cards": null,
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 1214.9997427565568,
+          "10k": 1198.0997873079864,
+          "100k": 1054.952563042608
+        },
+        "ratio_100k_over_10k": 0.880521450899331,
+        "reversal": false
+      }
+    },
+    {
+      "name": "cross-and-kernel-zero",
+      "settings": {
+        "kernel_us": 0,
+        "cross_latency_us": 0
+      },
+      "checked": 150,
+      "reversals": 0,
+      "best": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 1959.073229406834,
+          "10k": 1915.5069193621005,
+          "100k": 1574.0349205615348
+        },
+        "ratio_100k_over_10k": 0.8217328293889524,
+        "reversal": false
+      },
+      "minimum_cards": null,
+      "baseline_inventory": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 1959.073229406834,
+          "10k": 1915.5069193621005,
+          "100k": 1574.0349205615348
+        },
+        "ratio_100k_over_10k": 0.8217328293889524,
+        "reversal": false
+      }
+    }
+  ],
+  "baseline": {
+    "name": "af-a8-f12-pp9",
+    "mode": "af",
+    "inventory": {
+      "rubin": 8,
+      "groq_lp30": 108
+    },
+    "total_cards": 116,
+    "racks": {
+      "rubin": 1,
+      "lpx": 1
+    },
+    "decode": [
+      {
+        "device": "rubin",
+        "tp": 8,
+        "part": "attention",
+        "stages": [
+          [
+            0,
+            60
+          ]
+        ],
+        "peak_rank_bytes": 19126028288,
+        "head_on_first_stage": true
+      },
+      {
+        "device": "groq_lp30",
+        "tp": 12,
+        "part": "ffn",
+        "stages": [
+          [
+            0,
+            4
+          ],
+          [
+            4,
+            11
+          ],
+          [
+            11,
+            18
+          ],
+          [
+            18,
+            25
+          ],
+          [
+            25,
+            32
+          ],
+          [
+            32,
+            39
+          ],
+          [
+            39,
+            46
+          ],
+          [
+            46,
+            53
+          ],
+          [
+            53,
+            60
+          ]
+        ],
+        "peak_rank_bytes": 457144384,
+        "head_on_first_stage": false
+      }
+    ],
+    "prefill": {
+      "device": "rubin",
+      "tp": 8,
+      "part": "full",
+      "stages": [
+        [
+          0,
+          60
+        ]
+      ],
+      "peak_rank_bytes": 24328275968,
+      "head_on_first_stage": true
+    },
+    "benchmarks": [
+      {
+        "workload": "1k",
+        "target_tps": 3400,
+        "predicted_tps": 1060.3942882615588,
+        "predicted_full_tps": 1060.3942882615588,
+        "predicted_tail80_tps": 1060.2519579889195,
+        "timing_window": "full",
+        "ttft_s": 0.006290369817124931,
+        "request_latency_s": 0.9483927661227384,
+        "decode_component_mean_us": {
+          "linear_us": 228.06214521008405,
+          "pointwise_us": 132.55628901587303,
+          "collective_us": 67.698816,
+          "attention_us": 20.33081552140376,
+          "host_us": 4.0,
+          "pipeline_us": 0.0,
+          "cross_us": 490.397376
+        },
+        "native_input_tokens": 1000,
+        "native_output_tokens": 1000,
+        "handoff_us": 0.0,
+        "handoff_bytes": 0
+      },
+      {
+        "workload": "10k",
+        "target_tps": 3400,
+        "predicted_tps": 1047.4988144869276,
+        "predicted_full_tps": 1047.4988144869276,
+        "predicted_tail80_tps": 1047.293001520605,
+        "timing_window": "full",
+        "ttft_s": 0.06567827109061738,
+        "request_latency_s": 1.4967061436464644,
+        "decode_component_mean_us": {
+          "linear_us": 228.06214521008405,
+          "pointwise_us": 132.55628901587303,
+          "collective_us": 67.698816,
+          "attention_us": 31.940392156862764,
+          "host_us": 4.0,
+          "pipeline_us": 0.0,
+          "cross_us": 490.397376
+        },
+        "native_input_tokens": 10000,
+        "native_output_tokens": 1500,
+        "handoff_us": 0.0,
+        "handoff_bytes": 0
+      },
+      {
+        "workload": "100k",
+        "target_tps": 3400,
+        "predicted_tps": 936.4085686911178,
+        "predicted_full_tps": 936.4085686911178,
+        "predicted_tail80_tps": 936.189095410583,
+        "timing_window": "full",
+        "ttft_s": 0.8548850503678455,
+        "request_latency_s": 2.98963698113471,
+        "decode_component_mean_us": {
+          "linear_us": 228.06214521008405,
+          "pointwise_us": 132.55628901587303,
+          "collective_us": 67.698816,
+          "attention_us": 145.1952941176472,
+          "host_us": 4.0,
+          "pipeline_us": 0.0,
+          "cross_us": 490.397376
+        },
+        "native_input_tokens": 100000,
+        "native_output_tokens": 2000,
+        "handoff_us": 0.0,
+        "handoff_bytes": 0
+      }
+    ],
+    "score": 0.2754142849091523,
+    "meets_all_targets": false
+  },
+  "baseline_replay": [
+    {
+      "workload": "1k",
+      "median_tps": 1060.3942882617177,
+      "concurrency": 1,
+      "warmup": 5,
+      "independent_text_samples": false,
+      "measured_requests": 50
+    },
+    {
+      "workload": "10k",
+      "median_tps": 1047.4988144868826,
+      "concurrency": 1,
+      "warmup": 5,
+      "independent_text_samples": false,
+      "measured_requests": 50
+    },
+    {
+      "workload": "100k",
+      "median_tps": 936.4085686912537,
+      "concurrency": 1,
+      "warmup": 5,
+      "independent_text_samples": false,
+      "measured_requests": 50
+    }
+  ],
+  "baseline_hypotheses": {
+    "layout": {
+      "name": "af-a8-f12-pp9",
+      "mode": "af",
+      "inventory": {
+        "rubin": 8,
+        "groq_lp30": 108
+      },
+      "tps": {
+        "1k": 1060.3942882615588,
+        "10k": 1047.4988144869276,
+        "100k": 936.4085686911178
+      },
+      "ratio_100k_over_10k": 0.8939471393576492,
+      "reversal": false
+    },
+    "probes": [
+      {
+        "parameter": "kernel_us",
+        "solution": 0.06823587135914372,
+        "short_value": 0.2,
+        "long_value": 0.06823587135914372,
+        "short": {
+          "tps": 1047.4988144869276,
+          "mean_native_step_us": 954.6550183828199,
+          "output_intervals": 1499,
+          "native_tokens_per_aa_token": 1.0,
+          "post_first_gap_us": 0,
+          "ttft_excluded": true
+        },
+        "long": {
+          "tps": 1062.6754679197654,
+          "mean_native_step_us": 941.0210644624597,
+          "output_intervals": 1999,
+          "native_tokens_per_aa_token": 1.0,
+          "post_first_gap_us": 0,
+          "ttft_excluded": true
+        },
+        "ratio": 1.0144884683619155,
+        "curve": [
+          {
+            "context": 10000,
+            "value": 0.2,
+            "tps": 1047.4988144869276,
+            "mean_native_step_us": 954.6550183828199,
+            "output_intervals": 1499,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 20000,
+            "value": 0.1853595412621271,
+            "tps": 1049.1633613014787,
+            "mean_native_step_us": 953.1404134809932,
+            "output_intervals": 1555,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 30000,
+            "value": 0.17071908252425416,
+            "tps": 1050.8338995553518,
+            "mean_native_step_us": 951.6251811281863,
+            "output_intervals": 1610,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 40000,
+            "value": 0.15607862378638127,
+            "tps": 1052.5090710723275,
+            "mean_native_step_us": 950.1105762263601,
+            "output_intervals": 1666,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 50000,
+            "value": 0.1414381650485083,
+            "tps": 1054.1902893140273,
+            "mean_native_step_us": 948.5953438735531,
+            "output_intervals": 1721,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 60000,
+            "value": 0.12679770631063542,
+            "tps": 1055.8761875843124,
+            "mean_native_step_us": 947.0807389717265,
+            "output_intervals": 1777,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 70000,
+            "value": 0.11215724757276249,
+            "tps": 1057.5681885602226,
+            "mean_native_step_us": 945.5655066189196,
+            "output_intervals": 1832,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 80000,
+            "value": 0.09751678883488955,
+            "tps": 1059.264916945838,
+            "mean_native_step_us": 944.0509017170931,
+            "output_intervals": 1888,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 90000,
+            "value": 0.08287633009701664,
+            "tps": 1060.9678047245384,
+            "mean_native_step_us": 942.535669364286,
+            "output_intervals": 1943,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 100000,
+            "value": 0.06823587135914372,
+            "tps": 1062.6754679197654,
+            "mean_native_step_us": 941.0210644624597,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          }
+        ],
+        "curve_monotone": true,
+        "equal_output_curve": [
+          {
+            "context": 10000,
+            "value": 0.2,
+            "tps": 1047.1546910994734,
+            "mean_native_step_us": 954.9687438730158,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 20000,
+            "value": 0.1853595412621271,
+            "tps": 1048.8567966443507,
+            "mean_native_step_us": 953.4190017162875,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 30000,
+            "value": 0.17071908252425416,
+            "tps": 1050.564444598948,
+            "mean_native_step_us": 951.8692595595589,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 40000,
+            "value": 0.15607862378638127,
+            "tps": 1052.2776620782695,
+            "mean_native_step_us": 950.3195174028306,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 50000,
+            "value": 0.1414381650485083,
+            "tps": 1053.996476374481,
+            "mean_native_step_us": 948.7697752461021,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 60000,
+            "value": 0.12679770631063542,
+            "tps": 1055.7209149583584,
+            "mean_native_step_us": 947.2200330893736,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 70000,
+            "value": 0.11215724757276249,
+            "tps": 1057.451005480751,
+            "mean_native_step_us": 945.6702909326451,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 80000,
+            "value": 0.09751678883488955,
+            "tps": 1059.1867757740608,
+            "mean_native_step_us": 944.1205487759166,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 90000,
+            "value": 0.08287633009701664,
+            "tps": 1060.9282538537332,
+            "mean_native_step_us": 942.5708066191881,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 100000,
+            "value": 0.06823587135914372,
+            "tps": 1062.6754679197654,
+            "mean_native_step_us": 941.0210644624597,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          }
+        ],
+        "equal_output_curve_monotone": true,
+        "interpretation": "length-dependent assumption fitted to the published ratio"
+      },
+      {
+        "parameter": "rho_out",
+        "solution": 0.8813029090378235,
+        "short_value": 1,
+        "long_value": 0.8813029090378235,
+        "short": {
+          "tps": 1047.4988144869276,
+          "mean_native_step_us": 954.6550183828199,
+          "output_intervals": 1499,
+          "native_tokens_per_aa_token": 1,
+          "post_first_gap_us": 0,
+          "ttft_excluded": true
+        },
+        "long": {
+          "tps": 1062.675467919765,
+          "mean_native_step_us": 1067.7612144612513,
+          "output_intervals": 1762,
+          "native_tokens_per_aa_token": 0.8813029090378235,
+          "post_first_gap_us": 0,
+          "ttft_excluded": true
+        },
+        "ratio": 1.014488468361915,
+        "curve": [
+          {
+            "context": 10000,
+            "value": 1.0,
+            "tps": 1047.4988144869276,
+            "mean_native_step_us": 954.6550183828199,
+            "output_intervals": 1499,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 20000,
+            "value": 0.9868114343375359,
+            "tps": 1047.7015428492214,
+            "mean_native_step_us": 967.2266262259571,
+            "output_intervals": 1535,
+            "native_tokens_per_aa_token": 0.9868114343375359,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 30000,
+            "value": 0.9736228686750719,
+            "tps": 1048.2706245428394,
+            "mean_native_step_us": 979.7963517161533,
+            "output_intervals": 1568,
+            "native_tokens_per_aa_token": 0.9736228686750719,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 40000,
+            "value": 0.9604343030126078,
+            "tps": 1049.2051821897164,
+            "mean_native_step_us": 992.3660772063492,
+            "output_intervals": 1601,
+            "native_tokens_per_aa_token": 0.9604343030126078,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 50000,
+            "value": 0.9472457373501437,
+            "tps": 1050.5091387273128,
+            "mean_native_step_us": 1004.9339203436042,
+            "output_intervals": 1631,
+            "native_tokens_per_aa_token": 0.9472457373501437,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 60000,
+            "value": 0.9340571716876798,
+            "tps": 1052.1838655097845,
+            "mean_native_step_us": 1017.5011360298787,
+            "output_intervals": 1660,
+            "native_tokens_per_aa_token": 0.9340571716876798,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 70000,
+            "value": 0.9208686060252157,
+            "tps": 1054.2335127866152,
+            "mean_native_step_us": 1030.0670968141924,
+            "output_intervals": 1687,
+            "native_tokens_per_aa_token": 0.9208686060252157,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 80000,
+            "value": 0.9076800403627516,
+            "tps": 1056.661110707174,
+            "mean_native_step_us": 1042.6330575985062,
+            "output_intervals": 1714,
+            "native_tokens_per_aa_token": 0.9076800403627516,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 90000,
+            "value": 0.8944914747002876,
+            "tps": 1059.4737246022585,
+            "mean_native_step_us": 1055.1971360298787,
+            "output_intervals": 1738,
+            "native_tokens_per_aa_token": 0.8944914747002876,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 100000,
+            "value": 0.8813029090378235,
+            "tps": 1062.675467919765,
+            "mean_native_step_us": 1067.7612144612513,
+            "output_intervals": 1762,
+            "native_tokens_per_aa_token": 0.8813029090378235,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          }
+        ],
+        "curve_monotone": true,
+        "equal_output_curve": [
+          {
+            "context": 10000,
+            "value": 1.0,
+            "tps": 1047.1546910994734,
+            "mean_native_step_us": 954.9687438730158,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 20000,
+            "value": 0.9868114343375359,
+            "tps": 1047.4039380902323,
+            "mean_native_step_us": 967.5014497553689,
+            "output_intervals": 1973,
+            "native_tokens_per_aa_token": 0.9868114343375359,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 30000,
+            "value": 0.9736228686750719,
+            "tps": 1048.0162631372216,
+            "mean_native_step_us": 980.0341556377218,
+            "output_intervals": 1947,
+            "native_tokens_per_aa_token": 0.9736228686750719,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 40000,
+            "value": 0.9604343030126078,
+            "tps": 1048.9936037474577,
+            "mean_native_step_us": 992.5662340690944,
+            "output_intervals": 1920,
+            "native_tokens_per_aa_token": 0.9604343030126078,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 50000,
+            "value": 0.9472457373501437,
+            "tps": 1050.3366635617167,
+            "mean_native_step_us": 1005.0989399514473,
+            "output_intervals": 1894,
+            "native_tokens_per_aa_token": 0.9472457373501437,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 60000,
+            "value": 0.9340571716876798,
+            "tps": 1052.0489244330804,
+            "mean_native_step_us": 1017.6316458338002,
+            "output_intervals": 1868,
+            "native_tokens_per_aa_token": 0.9340571716876798,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 70000,
+            "value": 0.9208686060252157,
+            "tps": 1054.1346276340134,
+            "mean_native_step_us": 1030.163724265173,
+            "output_intervals": 1841,
+            "native_tokens_per_aa_token": 0.9208686060252157,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 80000,
+            "value": 0.9076800403627516,
+            "tps": 1056.5968894188877,
+            "mean_native_step_us": 1042.696430147526,
+            "output_intervals": 1815,
+            "native_tokens_per_aa_token": 0.9076800403627516,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 90000,
+            "value": 0.8944914747002876,
+            "tps": 1059.4422258405307,
+            "mean_native_step_us": 1055.2285085788983,
+            "output_intervals": 1788,
+            "native_tokens_per_aa_token": 0.8944914747002876,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 100000,
+            "value": 0.8813029090378235,
+            "tps": 1062.675467919765,
+            "mean_native_step_us": 1067.7612144612513,
+            "output_intervals": 1762,
+            "native_tokens_per_aa_token": 0.8813029090378235,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          }
+        ],
+        "equal_output_curve_monotone": true,
+        "interpretation": "length-dependent assumption fitted to the published ratio"
+      },
+      {
+        "parameter": "global_attention_efficiency",
+        "solution": 0.08066163258562227,
+        "short_value": 0.08066163258562227,
+        "long_value": 0.85,
+        "short": {
+          "tps": 923.0352023647239,
+          "mean_native_step_us": 1083.3822994378763,
+          "output_intervals": 1499,
+          "native_tokens_per_aa_token": 1.0,
+          "post_first_gap_us": 0,
+          "ttft_excluded": true
+        },
+        "long": {
+          "tps": 936.4085686911178,
+          "mean_native_step_us": 1067.9099203436042,
+          "output_intervals": 1999,
+          "native_tokens_per_aa_token": 1.0,
+          "post_first_gap_us": 0,
+          "ttft_excluded": true
+        },
+        "ratio": 1.0144884683619138,
+        "curve": [
+          {
+            "context": 10000,
+            "value": 0.08066163258562227,
+            "tps": 923.0352023647239,
+            "mean_native_step_us": 1083.3822994378763,
+            "output_intervals": 1499,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 20000,
+            "value": 0.166143673409442,
+            "tps": 930.5888261376454,
+            "mean_native_step_us": 1074.5884454151912,
+            "output_intervals": 1555,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 30000,
+            "value": 0.25162571423326174,
+            "tps": 933.0383121704912,
+            "mean_native_step_us": 1071.7673507679856,
+            "output_intervals": 1610,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 40000,
+            "value": 0.33710775505708146,
+            "tps": 934.2489112573536,
+            "mean_native_step_us": 1070.3785553832283,
+            "output_intervals": 1666,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 50000,
+            "value": 0.4225897958809012,
+            "tps": 934.972343648426,
+            "mean_native_step_us": 1069.5503527920673,
+            "output_intervals": 1721,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 60000,
+            "value": 0.508071836704721,
+            "tps": 935.452044057636,
+            "mean_native_step_us": 1069.0018866839816,
+            "output_intervals": 1777,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 70000,
+            "value": 0.5935538775285407,
+            "tps": 935.7946610838129,
+            "mean_native_step_us": 1068.610499275371,
+            "output_intervals": 1832,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 80000,
+            "value": 0.6790359183523605,
+            "tps": 936.0504918073955,
+            "mean_native_step_us": 1068.3184387512324,
+            "output_intervals": 1888,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 90000,
+            "value": 0.7645179591761802,
+            "tps": 936.2498207767385,
+            "mean_native_step_us": 1068.0909921781054,
+            "output_intervals": 1943,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 100000,
+            "value": 0.85,
+            "tps": 936.4085686911178,
+            "mean_native_step_us": 1067.9099203436042,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          }
+        ],
+        "curve_monotone": true,
+        "equal_output_curve": [
+          {
+            "context": 10000,
+            "value": 0.08066163258562227,
+            "tps": 920.2270866417557,
+            "mean_native_step_us": 1086.6882908754237,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 20000,
+            "value": 0.166143673409442,
+            "tps": 929.3561814309651,
+            "mean_native_step_us": 1076.013717862469,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 30000,
+            "value": 0.25162571423326174,
+            "tps": 932.3210824284029,
+            "mean_native_step_us": 1072.591855796412,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 40000,
+            "value": 0.33710775505708146,
+            "tps": 933.7893052315306,
+            "mean_native_step_us": 1070.905389896335,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 50000,
+            "value": 0.4225897958809012,
+            "tps": 934.6657383852279,
+            "mean_native_step_us": 1069.9012052454675,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 60000,
+            "value": 0.508071836704721,
+            "tps": 935.2481638942025,
+            "mean_native_step_us": 1069.2349245960374,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 70000,
+            "value": 0.5935538775285407,
+            "tps": 935.6632732360599,
+            "mean_native_step_us": 1068.7605558583343,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 80000,
+            "value": 0.6790359183523605,
+            "tps": 935.9741096236025,
+            "mean_native_step_us": 1068.4056211791426,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 90000,
+            "value": 0.7645179591761802,
+            "tps": 936.2155781813682,
+            "mean_native_step_us": 1068.1300581886655,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 100000,
+            "value": 0.85,
+            "tps": 936.4085686911178,
+            "mean_native_step_us": 1067.9099203436042,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          }
+        ],
+        "equal_output_curve_monotone": true,
+        "interpretation": "length-dependent assumption fitted to the published ratio"
+      },
+      {
+        "parameter": "cross_latency_us",
+        "solution": 0.9425928676571225,
+        "short_value": 2,
+        "long_value": 0.9425928676571225,
+        "short": {
+          "tps": 1047.4988144869276,
+          "mean_native_step_us": 954.6550183828199,
+          "output_intervals": 1499,
+          "native_tokens_per_aa_token": 1.0,
+          "post_first_gap_us": 0,
+          "ttft_excluded": true
+        },
+        "long": {
+          "tps": 1062.675467919766,
+          "mean_native_step_us": 941.021064462459,
+          "output_intervals": 1999,
+          "native_tokens_per_aa_token": 1.0,
+          "post_first_gap_us": 0,
+          "ttft_excluded": true
+        },
+        "ratio": 1.0144884683619162,
+        "curve": [
+          {
+            "context": 10000,
+            "value": 2.0,
+            "tps": 1047.4988144869276,
+            "mean_native_step_us": 954.6550183828199,
+            "output_intervals": 1499,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 20000,
+            "value": 1.8825103186285692,
+            "tps": 1049.1633613014787,
+            "mean_native_step_us": 953.1404134809932,
+            "output_intervals": 1555,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 30000,
+            "value": 1.7650206372571384,
+            "tps": 1050.8338995553518,
+            "mean_native_step_us": 951.6251811281863,
+            "output_intervals": 1610,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 40000,
+            "value": 1.6475309558857076,
+            "tps": 1052.5090710723277,
+            "mean_native_step_us": 950.1105762263597,
+            "output_intervals": 1666,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 50000,
+            "value": 1.5300412745142766,
+            "tps": 1054.1902893140275,
+            "mean_native_step_us": 948.5953438735528,
+            "output_intervals": 1721,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 60000,
+            "value": 1.4125515931428458,
+            "tps": 1055.8761875843131,
+            "mean_native_step_us": 947.0807389717261,
+            "output_intervals": 1777,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 70000,
+            "value": 1.295061911771415,
+            "tps": 1057.568188560223,
+            "mean_native_step_us": 945.5655066189192,
+            "output_intervals": 1832,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 80000,
+            "value": 1.177572230399984,
+            "tps": 1059.2649169458386,
+            "mean_native_step_us": 944.0509017170925,
+            "output_intervals": 1888,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 90000,
+            "value": 1.0600825490285533,
+            "tps": 1060.967804724539,
+            "mean_native_step_us": 942.5356693642856,
+            "output_intervals": 1943,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 100000,
+            "value": 0.9425928676571225,
+            "tps": 1062.675467919766,
+            "mean_native_step_us": 941.021064462459,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          }
+        ],
+        "curve_monotone": true,
+        "equal_output_curve": [
+          {
+            "context": 10000,
+            "value": 2.0,
+            "tps": 1047.1546910994734,
+            "mean_native_step_us": 954.9687438730158,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 20000,
+            "value": 1.8825103186285692,
+            "tps": 1048.8567966443507,
+            "mean_native_step_us": 953.4190017162875,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 30000,
+            "value": 1.7650206372571384,
+            "tps": 1050.5644445989483,
+            "mean_native_step_us": 951.8692595595588,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 40000,
+            "value": 1.6475309558857076,
+            "tps": 1052.2776620782697,
+            "mean_native_step_us": 950.3195174028303,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 50000,
+            "value": 1.5300412745142766,
+            "tps": 1053.9964763744815,
+            "mean_native_step_us": 948.7697752461019,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 60000,
+            "value": 1.4125515931428458,
+            "tps": 1055.720914958359,
+            "mean_native_step_us": 947.2200330893731,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 70000,
+            "value": 1.295061911771415,
+            "tps": 1057.4510054807515,
+            "mean_native_step_us": 945.6702909326447,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 80000,
+            "value": 1.177572230399984,
+            "tps": 1059.1867757740613,
+            "mean_native_step_us": 944.1205487759161,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 90000,
+            "value": 1.0600825490285533,
+            "tps": 1060.9282538537338,
+            "mean_native_step_us": 942.5708066191876,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          {
+            "context": 100000,
+            "value": 0.9425928676571225,
+            "tps": 1062.675467919766,
+            "mean_native_step_us": 941.021064462459,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          }
+        ],
+        "equal_output_curve_monotone": true,
+        "interpretation": "length-dependent assumption fitted to the published ratio"
+      },
+      {
+        "parameter": "post_first_gap_us",
+        "solution": 806494.0747479327,
+        "short_value": 806494.0747479327,
+        "long_value": 806494.0747479327,
+        "short": {
+          "tps": 669.9375627605795,
+          "mean_native_step_us": 954.6550183828199,
+          "output_intervals": 1499,
+          "native_tokens_per_aa_token": 1.0,
+          "post_first_gap_us": 806494.0747479327,
+          "ttft_excluded": true
+        },
+        "long": {
+          "tps": 679.6439319430954,
+          "mean_native_step_us": 1067.9099203436042,
+          "output_intervals": 1999,
+          "native_tokens_per_aa_token": 1.0,
+          "post_first_gap_us": 806494.0747479327,
+          "ttft_excluded": true
+        },
+        "ratio": 1.0144884683619162,
+        "controlled_equal_output_ratio": 0.9232402147452503,
+        "interpretation": "same post-first-token gap amortized over different answer lengths"
+      }
+    ],
+    "absolute_kernel_fits": [
+      {
+        "common_settings": {},
+        "fits": [
+          {
+            "workload": "10k",
+            "target_tps": 3382,
+            "kernel_us": null,
+            "achieved_tps": null,
+            "zero_kernel_tps": 1312.2412107752148
+          },
+          {
+            "workload": "100k",
+            "target_tps": 3431,
+            "kernel_us": null,
+            "achieved_tps": null,
+            "zero_kernel_tps": 1142.4524922640526
+          }
+        ],
+        "curve": []
+      },
+      {
+        "common_settings": {
+          "cross_latency_us": 0.25
+        },
+        "fits": [
+          {
+            "workload": "10k",
+            "target_tps": 3382,
+            "kernel_us": null,
+            "achieved_tps": null,
+            "zero_kernel_tps": 1811.4136575180175
+          },
+          {
+            "workload": "100k",
+            "target_tps": 3431,
+            "kernel_us": null,
+            "achieved_tps": null,
+            "zero_kernel_tps": 1503.0589044629646
+          }
+        ],
+        "curve": []
+      }
+    ],
+    "absolute_constant_gap_fit": {
+      "required_kernel_us": -0.972012348347024,
+      "post_first_gap_us": 704044.1754034836,
+      "feasible": false,
+      "shared_parameters_at_both_lengths": true,
+      "explanation": "different answer lengths amortize an identical post-first-token stall"
+    },
+    "fitted_results_are_not_independent_validation": true
+  },
+  "length_dependent_startup": {
+    "layout": {
+      "name": "af-a32-f256-pp1",
+      "mode": "af",
+      "inventory": {
+        "rubin": 32,
+        "groq_lp30": 256
+      },
+      "tps": {
+        "1k": 11210.45566031592,
+        "10k": 9919.537667432043,
+        "100k": 4671.455332171685
+      },
+      "ratio_100k_over_10k": 0.4709347843407126,
+      "reversal": false
+    },
+    "shared_settings": {
+      "kernel_us": 0.02
+    },
+    "fits": [
+      {
+        "workload": "10k",
+        "target_tps": 3382,
+        "link_latency_scale": 0.14624531164442267,
+        "achieved_tps": 3382.0000000000023,
+        "zero_startup_tps": 9919.537667432045
+      },
+      {
+        "workload": "100k",
+        "target_tps": 3431,
+        "link_latency_scale": 0.05808192397130618,
+        "achieved_tps": 3430.999999999983,
+        "zero_startup_tps": 4671.455332171685
+      }
+    ],
+    "curves": [
+      {
+        "context": 10000,
+        "link_latency_scale": 0.14624531164442267,
+        "tps": 3382.0000000000023,
+        "mean_native_step_us": 295.6830277942044,
+        "output_intervals": 1499,
+        "native_tokens_per_aa_token": 1.0,
+        "post_first_gap_us": 0,
+        "ttft_excluded": true,
+        "equal_output_tps": 3378.4154349800488
+      },
+      {
+        "context": 20000,
+        "link_latency_scale": 0.13644937968074305,
+        "tps": 3387.372019137786,
+        "mean_native_step_us": 295.2141053153464,
+        "output_intervals": 1555,
+        "native_tokens_per_aa_token": 1.0,
+        "post_first_gap_us": 0,
+        "ttft_excluded": true,
+        "equal_output_tps": 3384.178430891129
+      },
+      {
+        "context": 30000,
+        "link_latency_scale": 0.12665344771706344,
+        "tps": 3392.7683539126297,
+        "mean_native_step_us": 294.744555385508,
+        "output_intervals": 1610,
+        "native_tokens_per_aa_token": 1.0,
+        "post_first_gap_us": 0,
+        "ttft_excluded": true,
+        "equal_output_tps": 3389.9611217589068
+      },
+      {
+        "context": 40000,
+        "link_latency_scale": 0.11685751575338385,
+        "tps": 3398.17466408175,
+        "mean_native_step_us": 294.27563290665006,
+        "output_intervals": 1666,
+        "native_tokens_per_aa_token": 1.0,
+        "post_first_gap_us": 0,
+        "ttft_excluded": true,
+        "equal_output_tps": 3395.7636087170454
+      },
+      {
+        "context": 50000,
+        "link_latency_scale": 0.10706158378970423,
+        "tps": 3403.605500158837,
+        "mean_native_step_us": 293.8060829768117,
+        "output_intervals": 1721,
+        "native_tokens_per_aa_token": 1.0,
+        "post_first_gap_us": 0,
+        "ttft_excluded": true,
+        "equal_output_tps": 3401.5859935928256
+      },
+      {
+        "context": 60000,
+        "link_latency_scale": 0.09726565182602462,
+        "tps": 3409.04643074356,
+        "mean_native_step_us": 293.33716049795373,
+        "output_intervals": 1777,
+        "native_tokens_per_aa_token": 1.0,
+        "post_first_gap_us": 0,
+        "ttft_excluded": true,
+        "equal_output_tps": 3407.4283789130973
+      },
+      {
+        "context": 70000,
+        "link_latency_scale": 0.08746971986234502,
+        "tps": 3414.5121000583276,
+        "mean_native_step_us": 292.86761056811537,
+        "output_intervals": 1832,
+        "native_tokens_per_aa_token": 1.0,
+        "post_first_gap_us": 0,
+        "ttft_excluded": true,
+        "equal_output_tps": 3413.290867910308
+      },
+      {
+        "context": 80000,
+        "link_latency_scale": 0.0776737878986654,
+        "tps": 3419.9879846750227,
+        "mean_native_step_us": 292.3986880892574,
+        "output_intervals": 1888,
+        "native_tokens_per_aa_token": 1.0,
+        "post_first_gap_us": 0,
+        "ttft_excluded": true,
+        "equal_output_tps": 3419.1735645285694
+      },
+      {
+        "context": 90000,
+        "link_latency_scale": 0.0678778559349858,
+        "tps": 3425.4888234346504,
+        "mean_native_step_us": 291.9291381594191,
+        "output_intervals": 1943,
+        "native_tokens_per_aa_token": 1.0,
+        "post_first_gap_us": 0,
+        "ttft_excluded": true,
+        "equal_output_tps": 3425.0765734298107
+      },
+      {
+        "context": 100000,
+        "link_latency_scale": 0.05808192397130618,
+        "tps": 3430.999999999983,
+        "mean_native_step_us": 291.460215680561,
+        "output_intervals": 1999,
+        "native_tokens_per_aa_token": 1.0,
+        "post_first_gap_us": 0,
+        "ttft_excluded": true,
+        "equal_output_tps": 3430.999999999983
+      }
+    ],
+    "curve_monotone": true,
+    "equal_output_curve_monotone": true,
+    "replays": {
+      "10k": [
+        {
+          "workload": "10k",
+          "median_tps": 3381.999999999939,
+          "concurrency": 1,
+          "warmup": 5,
+          "independent_text_samples": false,
+          "measured_requests": 50
+        }
+      ],
+      "100k": [
+        {
+          "workload": "100k",
+          "median_tps": 3431.000000000749,
+          "concurrency": 1,
+          "warmup": 5,
+          "independent_text_samples": false,
+          "measured_requests": 50
+        }
+      ]
+    },
+    "interpretation": "length-dependent effective startup fit without hardware calibration"
+  },
+  "detailed_result": {
+    "path": "outputs/lpx-regular-af-20261019/summary.json",
+    "sha256": "59e3e038a2f5b84fa5f856d7bd549896fd95528663ada9499a359b5526c9193b"
+  },
+  "validation": {
+    "unit_tests": 514,
+    "conventional_af_tests": 1,
+    "black_check_passed": true,
+    "analytical_replay_tps_tolerance": 1e-05
+  }
+}

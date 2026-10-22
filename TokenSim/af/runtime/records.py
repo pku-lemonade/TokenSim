@@ -411,6 +411,7 @@ class AFDomainRuntime:
     )
     expert_tensor_parallel_size: int = 1
     pipeline_parallel_size: int = 1
+    pipeline_layer_counts: tuple[int, ...] | None = None
 
     def parallel_config(self) -> ParallelConfig:
         return ParallelConfig(

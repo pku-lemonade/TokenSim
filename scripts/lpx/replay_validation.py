@@ -7,14 +7,30 @@ def validate_replay_profiles(row):
     description = row.get("replay_profiles")
     require(isinstance(description, dict), "missing replay provenance")
     require(
-        description.get("method") == "sampled_native_operator_dags", "replay method"
+        description.get("method")
+        in {"sampled_native_operator_dags", "modeled_native_operator_dags"},
+        "replay method",
     )
     profiles = description.get("profiles")
     require(bool(profiles), "empty replay source profiles")
     fingerprints = set()
+    modeled = description["method"] == "modeled_native_operator_dags"
+    if modeled:
+        require(
+            isinstance(description.get("streaming"), dict),
+            "missing streaming configuration",
+        )
     for profile in profiles:
         require(profile.get("native_events", 0) > 0, "empty native profile")
         require(profile.get("native_duration_s", 0) > 0, "native profile duration")
+        if modeled and profile.get("phase") == "decode":
+            require(
+                profile.get("modeled_duration_s", 0) > 0, "modeled profile duration"
+            )
+            require(
+                isinstance(profile.get("streaming"), dict),
+                "missing streaming model provenance",
+            )
         for key in ("input_sha256", "source_sha256", "node_body_sha256"):
             value = profile.get(key, "")
             require(

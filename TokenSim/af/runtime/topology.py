@@ -17,7 +17,7 @@ from TokenSim.af.runtime.records import (
 )
 from TokenSim.config.af.links import AFEffectiveDTypes
 from TokenSim.config.cluster_config import ClusterConfig
-from TokenSim.config.cache_config import local_kv_heads, stage_layer_count
+from TokenSim.config.cache_config import local_kv_heads, stage_layer_range
 from TokenSim.config.parallel_config import ParallelRankInfo
 from TokenSim.dtypes import canonicalize_dtype
 from TokenSim.errors import ConfigurationError
@@ -82,10 +82,13 @@ class AFCacheConfig:
             model_param_size_unsharded=sum(
                 state.model_bytes for state in plan.physical_states
             ),
-            num_layers_per_rank=stage_layer_count(
-                plan.total_layers,
-                plan.domain_runtime(replica.domain).pipeline_parallel_size,
-                leader.pp_rank,
+            num_layers_per_rank=len(
+                stage_layer_range(
+                    plan.total_layers,
+                    plan.domain_runtime(replica.domain).pipeline_parallel_size,
+                    leader.pp_rank,
+                    plan.domain_runtime(replica.domain).pipeline_layer_counts,
+                )
             ),
             total_num_layers=plan.total_layers,
             num_kv_heads=plan.num_kv_heads,

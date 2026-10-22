@@ -40,6 +40,7 @@ def point(
     qps=None,
     arrival_pattern="uniform",
     dag_template_cache=True,
+    colocated_dense_reuse=False,
     execution_factory=None,
 ):
     boolean(stream_metrics, "stream metrics")
@@ -84,6 +85,7 @@ def point(
         graph_kernel_us=graph_kernel_us,
         endpoint_transfer_occupancy=endpoint_transfer_occupancy,
         dag_template_cache=dag_template_cache,
+        colocated_dense_reuse=colocated_dense_reuse,
     )
     measurement = {}
     env, communication, services, windows, driver = create_serving(
@@ -486,6 +488,7 @@ def point(
         execution_mode=execution_mode,
         endpoint_transfer_occupancy=endpoint_transfer_occupancy,
         graph_device_kernel_us_assumption=graph_kernel_us,
+        colocated_dense_reuse=colocated_dense_reuse,
         warmup_mode=warmup_mode,
         handoff_mode=handoff_mode,
         native_executor="SampledNativeReplay" if driver else "ModelAFExecutor",

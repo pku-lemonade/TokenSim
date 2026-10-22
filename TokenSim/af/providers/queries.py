@@ -199,6 +199,8 @@ class AFComputeQuery:
     source_dtype: str | None = None
     target_dtype: str | None = None
     query_lengths: tuple[int, ...] = ()
+    source_layout: AFTensorLayout | None = None
+    target_layout: AFTensorLayout | None = None
 
 
 @dataclass(frozen=True)

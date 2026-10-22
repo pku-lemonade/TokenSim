@@ -433,7 +433,13 @@ def validate_summary(
         power_model=powers,
         original_workload=original_workload,
         execution_fidelity=(
-            "sampled_native_operator_dags" if replay else "native_per_pass_dags"
+            "modeled_native_operator_dags"
+            if any(
+                (row.get("replay_profiles") or {}).get("method")
+                == "modeled_native_operator_dags"
+                for row in feasible
+            )
+            else "sampled_native_operator_dags" if replay else "native_per_pass_dags"
         ),
         numerical_accuracy=(
             "requires_separate_native_control"

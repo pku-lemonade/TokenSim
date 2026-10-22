@@ -33,6 +33,8 @@ from TokenSim.config.constants import _GB
 from TokenSim.dtypes import dtype_size_bytes
 from TokenSim.errors import ConfigurationError
 
+DEFAULT_KV_WATERMARK = 0.01
+
 
 def compile_af_runtime_plan(
     *,
@@ -42,7 +44,7 @@ def compile_af_runtime_plan(
     hardware: Any,
     block_size: int,
     dtype: str = "bf16",
-    watermark: float = 0.01,
+    watermark: float = DEFAULT_KV_WATERMARK,
     usable_memory_fraction: float = 1.0,
     kv_cache_capacity_tokens_per_dp_rank: int | None = None,
     kv_cache_capacity_tokens_total: int | None = None,
@@ -210,6 +212,7 @@ def compile_af_runtime_plan(
             name=domain.name,
             capability=domain.capability,
             pipeline_parallel_size=domain.parallel.pipeline_parallel_size,
+            pipeline_layer_counts=domain.parallel.pipeline_layer_counts,
             tensor_parallel_size=domain.parallel.tensor_parallel_size,
             data_parallel_size=domain.parallel.data_parallel_size,
             expert_parallel_size=(

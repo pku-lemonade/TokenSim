@@ -153,6 +153,8 @@ class ExecutorComputeMixin:
             routing_edges=local_work.routing_edges,
             source_dtype=local_work.source_dtype,
             target_dtype=local_work.target_dtype,
+            source_layout=local_work.source_layout,
+            target_layout=local_work.target_layout,
             assignment_count=local_work.assignment_count,
         )
         stage_name = step.stage
@@ -240,6 +242,11 @@ class ExecutorComputeMixin:
                     match_type=estimate.match_type,
                     details={
                         **estimate.details,
+                        **(
+                            {"colocated_dense_reuse": True}
+                            if step.metadata.get("colocated_dense_reuse")
+                            else {}
+                        ),
                         "execution_protocol": self.cluster_config.af.execution_protocol,
                         **(
                             {"routing_replay": self.routing_replay.describe()}

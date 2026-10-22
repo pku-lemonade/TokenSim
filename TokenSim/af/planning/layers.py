@@ -6,6 +6,7 @@ from typing import Any, Mapping
 
 from TokenSim.af.planning.batching import AFBlock
 from TokenSim.af.planning.conversions import batch_conversions
+from TokenSim.af.planning.colocated import build_dense_reuse, dense_reuse_pairs
 from TokenSim.af.planning.dag import AFExecutionDAG
 from TokenSim.af.planning.nodes import ExecutionNode
 from TokenSim.config.af.domains import ExecutionDomainConfig
@@ -186,6 +187,19 @@ class RuntimeLayerPlannerMixin:
         attention_ids: Mapping[int, str],
         a_collective: ExecutionNode | None,
     ) -> AFExecutionDAG:
+        pairs = dense_reuse_pairs(self, link, a_bindings, f_bindings, a_collective)
+        if pairs:
+            return build_dense_reuse(
+                self,
+                block=block,
+                layer_id=layer_id,
+                link=link,
+                prefix=prefix,
+                nodes=nodes,
+                f_domain=f_domain,
+                pairs=pairs,
+                attention_ids=attention_ids,
+            )
         tokens = self._block_tokens(block)
         dense_ids = {
             binding.domain_rank: f"{prefix}:dense:r{binding.domain_rank}"

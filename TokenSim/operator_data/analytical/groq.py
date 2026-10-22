@@ -35,6 +35,10 @@ class GroqTSPModel:
     ) -> AnalyticalEstimate:
         calibration = calibration or Calibration()
         params = device.analytical
+        if device.device_id == "groq_lp30" and params.get("lpx_pipeline") is not None:
+            from TokenSim.operator_data.analytical.lp30 import estimate_lp30
+
+            return estimate_lp30(table, key, device, calibration)
         sram = device.on_chip_memory_bytes or device.memory_capacity_bytes
         bandwidth = (
             device.on_chip_bandwidth_bytes_per_s or device.memory_bandwidth_bytes_per_s

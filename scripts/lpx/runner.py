@@ -43,11 +43,16 @@ def evaluate(job):
             cache = options.pop(
                 "replay_cache", str(ROOT / "outputs/lpx-replay-profile-cache")
             )
+            streaming = options.pop("replay_streaming", None)
             if backend == "sampled-replay":
                 from scripts.lpx.replay_driver import ReplayConfig
 
                 options["execution_factory"] = ReplayConfig(
-                    workload, samples, prefill_samples, cache
+                    workload, samples, prefill_samples, cache, streaming=streaming
+                )
+            elif streaming is not None:
+                raise ConfigurationError(
+                    "LPX streaming requires sampled-replay execution"
                 )
             elif backend != "native":
                 raise ConfigurationError("unknown LPX execution backend")

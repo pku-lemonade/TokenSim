@@ -1,0 +1,4997 @@
+{
+  "scope": [
+    "lpx",
+    "af",
+    "af-global"
+  ],
+  "metric": "single-client generation TPS excluding TTFT",
+  "target_ratio": 1.014488468361916,
+  "published_tps": {
+    "10k": 3382,
+    "100k": 3431
+  },
+  "dynamic": [
+    {
+      "layout": {
+        "name": "lpx-tp8-pp31",
+        "mode": "lpx",
+        "inventory": {
+          "rubin": 0,
+          "groq_lp30": 248
+        },
+        "tps": {
+          "1k": 3751.47073734856,
+          "10k": 3722.7989142515285,
+          "100k": 3464.481803654132
+        },
+        "ratio_100k_over_10k": 0.930612123687768,
+        "reversal": false
+      },
+      "probes": [
+        {
+          "parameter": "kernel_us",
+          "solution": 0.1752184875118456,
+          "short_value": 0.2,
+          "long_value": 0.1752184875118456,
+          "short": {
+            "tps": 3722.7989142515285,
+            "mean_native_step_us": 268.6150992931217,
+            "output_intervals": 1499,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          "long": {
+            "tps": 3776.7365685384357,
+            "mean_native_step_us": 264.77885916914545,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          "ratio": 1.0144884683619158,
+          "curve": [
+            {
+              "context": 10000,
+              "value": 0.2,
+              "tps": 3722.7989142515285,
+              "mean_native_step_us": 268.6150992931217,
+              "output_intervals": 1499,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 20000,
+              "value": 0.1972464986124273,
+              "tps": 3728.7151000488516,
+              "mean_native_step_us": 268.18889970620137,
+              "output_intervals": 1555,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 30000,
+              "value": 0.19449299722485458,
+              "tps": 3734.651667140556,
+              "mean_native_step_us": 267.7625891588578,
+              "output_intervals": 1610,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 40000,
+              "value": 0.19173949583728186,
+              "tps": 3740.6056152744995,
+              "mean_native_step_us": 267.33638957193733,
+              "output_intervals": 1666,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 50000,
+              "value": 0.18898599444970915,
+              "tps": 3746.5801353565885,
+              "mean_native_step_us": 266.9100790245937,
+              "output_intervals": 1721,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 60000,
+              "value": 0.18623249306213646,
+              "tps": 3752.5722085334814,
+              "mean_native_step_us": 266.4838794376734,
+              "output_intervals": 1777,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 70000,
+              "value": 0.18347899167456375,
+              "tps": 3758.585046728007,
+              "mean_native_step_us": 266.0575688903298,
+              "output_intervals": 1832,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 80000,
+              "value": 0.18072549028699103,
+              "tps": 3764.6156123141477,
+              "mean_native_step_us": 265.6313693034094,
+              "output_intervals": 1888,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 90000,
+              "value": 0.17797198889941832,
+              "tps": 3770.6671384417095,
+              "mean_native_step_us": 265.2050587560658,
+              "output_intervals": 1943,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 100000,
+              "value": 0.1752184875118456,
+              "tps": 3776.7365685384357,
+              "mean_native_step_us": 264.77885916914545,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            }
+          ],
+          "curve_monotone": true,
+          "equal_output_curve": [
+            {
+              "context": 10000,
+              "value": 0.2,
+              "tps": 3722.0301599203417,
+              "mean_native_step_us": 268.6705795047619,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 20000,
+              "value": 0.1972464986124273,
+              "tps": 3728.030259124013,
+              "mean_native_step_us": 268.2381661341378,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 30000,
+              "value": 0.19449299722485458,
+              "tps": 3734.049734484424,
+              "mean_native_step_us": 267.8057527635138,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 40000,
+              "value": 0.19173949583728186,
+              "tps": 3740.088680010678,
+              "mean_native_step_us": 267.3733393928897,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 50000,
+              "value": 0.18898599444970915,
+              "tps": 3746.1471903210127,
+              "mean_native_step_us": 266.94092602226567,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 60000,
+              "value": 0.18623249306213646,
+              "tps": 3752.225360647744,
+              "mean_native_step_us": 266.5085126516417,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 70000,
+              "value": 0.18347899167456375,
+              "tps": 3758.3232868422547,
+              "mean_native_step_us": 266.0760992810176,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 80000,
+              "value": 0.18072549028699103,
+              "tps": 3764.441065380031,
+              "mean_native_step_us": 265.6436859103935,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 90000,
+              "value": 0.17797198889941832,
+              "tps": 3770.578793365753,
+              "mean_native_step_us": 265.21127253976954,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 100000,
+              "value": 0.1752184875118456,
+              "tps": 3776.7365685384357,
+              "mean_native_step_us": 264.77885916914545,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            }
+          ],
+          "equal_output_curve_monotone": true,
+          "interpretation": "length-dependent assumption fitted to the published ratio"
+        },
+        {
+          "parameter": "rho_out",
+          "solution": 0.9173797283934197,
+          "short_value": 1,
+          "long_value": 0.9173797283934197,
+          "short": {
+            "tps": 3722.7989142515285,
+            "mean_native_step_us": 268.6150992931217,
+            "output_intervals": 1499,
+            "native_tokens_per_aa_token": 1,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          "long": {
+            "tps": 3776.7365685384375,
+            "mean_native_step_us": 288.6251472253968,
+            "output_intervals": 1834,
+            "native_tokens_per_aa_token": 0.9173797283934197,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          "ratio": 1.0144884683619162,
+          "curve": [
+            {
+              "context": 10000,
+              "value": 1.0,
+              "tps": 3722.7989142515285,
+              "mean_native_step_us": 268.6150992931217,
+              "output_intervals": 1499,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 20000,
+              "value": 0.9908199698214911,
+              "tps": 3726.439703347816,
+              "mean_native_step_us": 270.8389680965079,
+              "output_intervals": 1541,
+              "native_tokens_per_aa_token": 0.9908199698214911,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 30000,
+              "value": 0.9816399396429821,
+              "tps": 3730.6588345452333,
+              "mean_native_step_us": 273.0626149790476,
+              "output_intervals": 1581,
+              "native_tokens_per_aa_token": 0.9816399396429821,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 40000,
+              "value": 0.9724599094644732,
+              "tps": 3735.4571189971034,
+              "mean_native_step_us": 275.2862618615873,
+              "output_intervals": 1621,
+              "native_tokens_per_aa_token": 0.9724599094644732,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 50000,
+              "value": 0.9632798792859644,
+              "tps": 3740.84348030173,
+              "mean_native_step_us": 277.50957586285716,
+              "output_intervals": 1658,
+              "native_tokens_per_aa_token": 0.9632798792859644,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 60000,
+              "value": 0.9540998491074554,
+              "tps": 3746.8168840761987,
+              "mean_native_step_us": 279.7330008245503,
+              "output_intervals": 1696,
+              "native_tokens_per_aa_token": 0.9540998491074554,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 70000,
+              "value": 0.9449198189289465,
+              "tps": 3753.3873602755616,
+              "mean_native_step_us": 281.95620386539684,
+              "output_intervals": 1732,
+              "native_tokens_per_aa_token": 0.9449198189289465,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 80000,
+              "value": 0.9357397887504376,
+              "tps": 3760.559542766137,
+              "mean_native_step_us": 284.1792959458201,
+              "output_intervals": 1767,
+              "native_tokens_per_aa_token": 0.9357397887504376,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 90000,
+              "value": 0.9265597585719286,
+              "tps": 3768.340162634214,
+              "mean_native_step_us": 286.4022770658201,
+              "output_intervals": 1801,
+              "native_tokens_per_aa_token": 0.9265597585719286,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 100000,
+              "value": 0.9173797283934197,
+              "tps": 3776.7365685384375,
+              "mean_native_step_us": 288.6251472253968,
+              "output_intervals": 1834,
+              "native_tokens_per_aa_token": 0.9173797283934197,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            }
+          ],
+          "curve_monotone": true,
+          "equal_output_curve": [
+            {
+              "context": 10000,
+              "value": 1.0,
+              "tps": 3722.0301599203417,
+              "mean_native_step_us": 268.6705795047619,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 20000,
+              "value": 0.9908199698214911,
+              "tps": 3725.768080520744,
+              "mean_native_step_us": 270.88779068275136,
+              "output_intervals": 1981,
+              "native_tokens_per_aa_token": 0.9908199698214911,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 30000,
+              "value": 0.9816399396429821,
+              "tps": 3730.0798228333288,
+              "mean_native_step_us": 273.10500186074074,
+              "output_intervals": 1963,
+              "native_tokens_per_aa_token": 0.9816399396429821,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 40000,
+              "value": 0.9724599094644732,
+              "tps": 3734.9708536675817,
+              "mean_native_step_us": 275.32210207830695,
+              "output_intervals": 1944,
+              "native_tokens_per_aa_token": 0.9724599094644732,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 50000,
+              "value": 0.9632798792859644,
+              "tps": 3740.4426616463015,
+              "mean_native_step_us": 277.5393132562963,
+              "output_intervals": 1926,
+              "native_tokens_per_aa_token": 0.9632798792859644,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 60000,
+              "value": 0.9540998491074554,
+              "tps": 3746.5018291965694,
+              "mean_native_step_us": 279.7565244342857,
+              "output_intervals": 1908,
+              "native_tokens_per_aa_token": 0.9540998491074554,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 70000,
+              "value": 0.9449198189289465,
+              "tps": 3753.1554699355797,
+              "mean_native_step_us": 281.9736246518519,
+              "output_intervals": 1889,
+              "native_tokens_per_aa_token": 0.9449198189289465,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 80000,
+              "value": 0.9357397887504376,
+              "tps": 3760.4068410759114,
+              "mean_native_step_us": 284.19083582984126,
+              "output_intervals": 1871,
+              "native_tokens_per_aa_token": 0.9357397887504376,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 90000,
+              "value": 0.9265597585719286,
+              "tps": 3768.2642461072805,
+              "mean_native_step_us": 286.4080470078307,
+              "output_intervals": 1853,
+              "native_tokens_per_aa_token": 0.9265597585719286,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 100000,
+              "value": 0.9173797283934197,
+              "tps": 3776.7365685384375,
+              "mean_native_step_us": 288.6251472253968,
+              "output_intervals": 1834,
+              "native_tokens_per_aa_token": 0.9173797283934197,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            }
+          ],
+          "equal_output_curve_monotone": true,
+          "interpretation": "length-dependent assumption fitted to the published ratio"
+        },
+        {
+          "parameter": "global_attention_efficiency",
+          "solution": 0.05521189687134734,
+          "short_value": 0.05521189687134734,
+          "long_value": 0.9,
+          "short": {
+            "tps": 3415.0036315821344,
+            "mean_native_step_us": 292.8254572709519,
+            "output_intervals": 1499,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          "long": {
+            "tps": 3464.4818036541315,
+            "mean_native_step_us": 288.6434556952381,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          "ratio": 1.0144884683619133,
+          "curve": [
+            {
+              "context": 10000,
+              "value": 0.05521189687134734,
+              "tps": 3415.0036315821344,
+              "mean_native_step_us": 292.8254572709519,
+              "output_intervals": 1499,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 20000,
+              "value": 0.14907724166341985,
+              "tps": 3505.5284917916833,
+              "mean_native_step_us": 285.26369200579444,
+              "output_intervals": 1555,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 30000,
+              "value": 0.24294258645549238,
+              "tps": 3526.778293238253,
+              "mean_native_step_us": 283.5449004314388,
+              "output_intervals": 1610,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 40000,
+              "value": 0.3368079312475649,
+              "tps": 3536.2637739190104,
+              "mean_native_step_us": 282.78433508701903,
+              "output_intervals": 1666,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 50000,
+              "value": 0.43067327603963745,
+              "tps": 3541.639060651377,
+              "mean_native_step_us": 282.3551420330451,
+              "output_intervals": 1721,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 60000,
+              "value": 0.52453862083171,
+              "tps": 3545.097537454763,
+              "mean_native_step_us": 282.0796859422829,
+              "output_intervals": 1777,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 70000,
+              "value": 0.6184039656237824,
+              "tps": 3546.5105362474824,
+              "mean_native_step_us": 281.96729990772485,
+              "output_intervals": 1832,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 80000,
+              "value": 0.712269310415855,
+              "tps": 3518.7389473240187,
+              "mean_native_step_us": 284.19272215703705,
+              "output_intervals": 1888,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 90000,
+              "value": 0.8061346552079275,
+              "tps": 3491.40027242312,
+              "mean_native_step_us": 286.4180334459259,
+              "output_intervals": 1943,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 100000,
+              "value": 0.9,
+              "tps": 3464.4818036541315,
+              "mean_native_step_us": 288.6434556952381,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            }
+          ],
+          "curve_monotone": false,
+          "equal_output_curve": [
+            {
+              "context": 10000,
+              "value": 0.05521189687134734,
+              "tps": 3407.8089357020554,
+              "mean_native_step_us": 293.4436815173109,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 20000,
+              "value": 0.14907724166341985,
+              "tps": 3503.0317255078958,
+              "mean_native_step_us": 285.46701210792276,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 30000,
+              "value": 0.24294258645549238,
+              "tps": 3525.4192177655905,
+              "mean_native_step_us": 283.65420911099466,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 40000,
+              "value": 0.3368079312475649,
+              "tps": 3535.4199413560245,
+              "mean_native_step_us": 282.8518299346487,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 50000,
+              "value": 0.43067327603963745,
+              "tps": 3541.0864154624,
+              "mean_native_step_us": 282.3992082298332,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 60000,
+              "value": 0.52453862083171,
+              "tps": 3544.734462661985,
+              "mean_native_step_us": 282.10857838108166,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 70000,
+              "value": 0.6184039656237824,
+              "tps": 3546.2774811831705,
+              "mean_native_step_us": 281.98583029841274,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 80000,
+              "value": 0.712269310415855,
+              "tps": 3518.586455570592,
+              "mean_native_step_us": 284.2050387640212,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 90000,
+              "value": 0.8061346552079275,
+              "tps": 3491.3245288143794,
+              "mean_native_step_us": 286.4242472296296,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 100000,
+              "value": 0.9,
+              "tps": 3464.4818036541315,
+              "mean_native_step_us": 288.6434556952381,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            }
+          ],
+          "equal_output_curve_monotone": false,
+          "interpretation": "length-dependent assumption fitted to the published ratio"
+        },
+        {
+          "parameter": "post_first_gap_us",
+          "solution": 151681.2139323877,
+          "short_value": 151681.2139323877,
+          "long_value": 151681.2139323877,
+          "short": {
+            "tps": 2704.139789094635,
+            "mean_native_step_us": 268.6150992931217,
+            "output_intervals": 1499,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 151681.2139323877,
+            "ttft_excluded": true
+          },
+          "long": {
+            "tps": 2743.318632875131,
+            "mean_native_step_us": 288.6434556952381,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 151681.2139323877,
+            "ttft_excluded": true
+          },
+          "ratio": 1.014488468361916,
+          "controlled_equal_output_ratio": 0.9452080365945585,
+          "interpretation": "same post-first-token gap amortized over different answer lengths"
+        }
+      ],
+      "absolute_kernel_fits": [
+        {
+          "common_settings": {},
+          "fits": [
+            {
+              "workload": "10k",
+              "target_tps": 3382,
+              "kernel_us": 0.22810792160029258,
+              "achieved_tps": 3382.000000000013,
+              "zero_kernel_tps": 13155.281112557672
+            },
+            {
+              "workload": "100k",
+              "target_tps": 3431,
+              "kernel_us": 0.2029249844084351,
+              "achieved_tps": 3430.999999999983,
+              "zero_kernel_tps": 10411.953555411072
+            }
+          ],
+          "curve": [
+            {
+              "context": 10000,
+              "kernel_us": 0.22810792160029258,
+              "tps": 3382.000000000013,
+              "mean_native_step_us": 295.68302779420344,
+              "output_intervals": 1499,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 20000,
+              "kernel_us": 0.22530981746786397,
+              "tps": 3387.3746530785193,
+              "mean_native_step_us": 295.21387576398683,
+              "output_intervals": 1555,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 50000,
+              "kernel_us": 0.21691550507057814,
+              "tps": 3403.6041705370158,
+              "mean_native_step_us": 293.80619775249056,
+              "output_intervals": 1721,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 100000,
+              "kernel_us": 0.2029249844084351,
+              "tps": 3430.999999999983,
+              "mean_native_step_us": 291.460215680561,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            }
+          ]
+        }
+      ],
+      "absolute_constant_gap_fit": {
+        "required_kernel_us": 0.12742653870723653,
+        "post_first_gap_us": 145337.30141729524,
+        "feasible": true,
+        "shared_parameters_at_both_lengths": true,
+        "explanation": "different answer lengths amortize an identical post-first-token stall",
+        "short": {
+          "tps": 3381.9999999999995,
+          "mean_native_step_us": 198.7268560681905,
+          "output_intervals": 1499,
+          "native_tokens_per_aa_token": 1.0,
+          "post_first_gap_us": 145337.30141729524,
+          "ttft_excluded": true
+        },
+        "long": {
+          "tps": 3430.9999999999995,
+          "mean_native_step_us": 218.7552124703069,
+          "output_intervals": 1999,
+          "native_tokens_per_aa_token": 1.0,
+          "post_first_gap_us": 145337.30141729524,
+          "ttft_excluded": true
+        },
+        "ratio": 1.014488468361916,
+        "equal_output_ratio": 0.9314730617904763
+      },
+      "fitted_results_are_not_independent_validation": true
+    },
+    {
+      "layout": {
+        "name": "lpx-tp32-pp11",
+        "mode": "lpx",
+        "inventory": {
+          "rubin": 0,
+          "groq_lp30": 352
+        },
+        "tps": {
+          "1k": 4173.584792748307,
+          "10k": 4149.28220284891,
+          "100k": 3926.2370038832973
+        },
+        "ratio_100k_over_10k": 0.9462448712665364,
+        "reversal": false
+      },
+      "probes": [
+        {
+          "parameter": "kernel_us",
+          "solution": 0.18220852328845857,
+          "short_value": 0.2,
+          "long_value": 0.18220852328845857,
+          "short": {
+            "tps": 4149.28220284891,
+            "mean_native_step_us": 241.00554050370374,
+            "output_intervals": 1499,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          "long": {
+            "tps": 4209.398946769541,
+            "mean_native_step_us": 237.56360768974858,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          "ratio": 1.0144884683619144,
+          "curve": [
+            {
+              "context": 10000,
+              "value": 0.2,
+              "tps": 4149.28220284891,
+              "mean_native_step_us": 241.00554050370374,
+              "output_intervals": 1499,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 20000,
+              "value": 0.19802316925427318,
+              "tps": 4155.876327960626,
+              "mean_native_step_us": 240.62313723630953,
+              "output_intervals": 1555,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 30000,
+              "value": 0.19604633850854636,
+              "tps": 4162.492759708992,
+              "mean_native_step_us": 240.2406581170635,
+              "output_intervals": 1610,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 40000,
+              "value": 0.19406950776281953,
+              "tps": 4169.128974221664,
+              "mean_native_step_us": 239.85825484966924,
+              "output_intervals": 1666,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 50000,
+              "value": 0.1920926770170927,
+              "tps": 4175.787705248715,
+              "mean_native_step_us": 239.47577573042324,
+              "output_intervals": 1721,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 60000,
+              "value": 0.19011584627136588,
+              "tps": 4182.466413428628,
+              "mean_native_step_us": 239.093372463029,
+              "output_intervals": 1777,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 70000,
+              "value": 0.18813901552563905,
+              "tps": 4189.167850667943,
+              "mean_native_step_us": 238.710893343783,
+              "output_intervals": 1832,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 80000,
+              "value": 0.18616218477991223,
+              "tps": 4195.889461975281,
+              "mean_native_step_us": 238.3284900763888,
+              "output_intervals": 1888,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 90000,
+              "value": 0.1841853540341854,
+              "tps": 4202.634017597014,
+              "mean_native_step_us": 237.94601095714276,
+              "output_intervals": 1943,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 100000,
+              "value": 0.18220852328845857,
+              "tps": 4209.398946769541,
+              "mean_native_step_us": 237.56360768974858,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            }
+          ],
+          "curve_monotone": true,
+          "equal_output_curve": [
+            {
+              "context": 10000,
+              "value": 0.2,
+              "tps": 4148.629352258093,
+              "mean_native_step_us": 241.0434664296297,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 20000,
+              "value": 0.19802316925427318,
+              "tps": 4155.294742410122,
+              "mean_native_step_us": 240.65681545853178,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 30000,
+              "value": 0.19604633850854636,
+              "tps": 4161.981584910015,
+              "mean_native_step_us": 240.27016448743387,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 40000,
+              "value": 0.19406950776281953,
+              "tps": 4168.689983490261,
+              "mean_native_step_us": 239.8835135163359,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 50000,
+              "value": 0.1920926770170927,
+              "tps": 4175.420042553218,
+              "mean_native_step_us": 239.49686254523803,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 60000,
+              "value": 0.19011584627136588,
+              "tps": 4182.171867176544,
+              "mean_native_step_us": 239.11021157414012,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 70000,
+              "value": 0.18813901552563905,
+              "tps": 4188.945563118649,
+              "mean_native_step_us": 238.72356060304227,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 80000,
+              "value": 0.18616218477991223,
+              "tps": 4195.741236824234,
+              "mean_native_step_us": 238.33690963194437,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 90000,
+              "value": 0.1841853540341854,
+              "tps": 4202.55899542985,
+              "mean_native_step_us": 237.95025866084646,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 100000,
+              "value": 0.18220852328845857,
+              "tps": 4209.398946769541,
+              "mean_native_step_us": 237.56360768974858,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            }
+          ],
+          "equal_output_curve_monotone": true,
+          "interpretation": "length-dependent assumption fitted to the published ratio"
+        },
+        {
+          "parameter": "rho_out",
+          "solution": 0.9327682511344522,
+          "short_value": 1,
+          "long_value": 0.9327682511344522,
+          "short": {
+            "tps": 4149.28220284891,
+            "mean_native_step_us": 241.00554050370374,
+            "output_intervals": 1499,
+            "native_tokens_per_aa_token": 1,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          "long": {
+            "tps": 4209.398946769545,
+            "mean_native_step_us": 254.68663561481486,
+            "output_intervals": 1865,
+            "native_tokens_per_aa_token": 0.9327682511344522,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          "ratio": 1.0144884683619153,
+          "curve": [
+            {
+              "context": 10000,
+              "value": 1.0,
+              "tps": 4149.28220284891,
+              "mean_native_step_us": 241.00554050370374,
+              "output_intervals": 1499,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 20000,
+              "value": 0.9925298056816058,
+              "tps": 4154.302862522634,
+              "mean_native_step_us": 242.52599087407413,
+              "output_intervals": 1544,
+              "native_tokens_per_aa_token": 0.9925298056816058,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 30000,
+              "value": 0.9850596113632116,
+              "tps": 4159.732593296033,
+              "mean_native_step_us": 244.0462136888889,
+              "output_intervals": 1586,
+              "native_tokens_per_aa_token": 0.9850596113632116,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 40000,
+              "value": 0.9775894170448174,
+              "tps": 4165.569322766436,
+              "mean_native_step_us": 245.56651235555563,
+              "output_intervals": 1629,
+              "native_tokens_per_aa_token": 0.9775894170448174,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 50000,
+              "value": 0.9701192227264231,
+              "tps": 4171.820292113136,
+              "mean_native_step_us": 247.08665931851854,
+              "output_intervals": 1670,
+              "native_tokens_per_aa_token": 0.9701192227264231,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 60000,
+              "value": 0.962649028408029,
+              "tps": 4178.486551402184,
+              "mean_native_step_us": 248.6068062814815,
+              "output_intervals": 1711,
+              "native_tokens_per_aa_token": 0.962649028408029,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 70000,
+              "value": 0.9551788340896348,
+              "tps": 4185.574534499867,
+              "mean_native_step_us": 250.12680154074076,
+              "output_intervals": 1750,
+              "native_tokens_per_aa_token": 0.9551788340896348,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 80000,
+              "value": 0.9477086397712405,
+              "tps": 4193.084577856473,
+              "mean_native_step_us": 251.6468726518519,
+              "output_intervals": 1790,
+              "native_tokens_per_aa_token": 0.9477086397712405,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 90000,
+              "value": 0.9402384454528464,
+              "tps": 4201.026164973336,
+              "mean_native_step_us": 253.16671620740746,
+              "output_intervals": 1827,
+              "native_tokens_per_aa_token": 0.9402384454528464,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 100000,
+              "value": 0.9327682511344522,
+              "tps": 4209.398946769545,
+              "mean_native_step_us": 254.68663561481486,
+              "output_intervals": 1865,
+              "native_tokens_per_aa_token": 0.9327682511344522,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            }
+          ],
+          "curve_monotone": true,
+          "equal_output_curve": [
+            {
+              "context": 10000,
+              "value": 1.0,
+              "tps": 4148.629352258093,
+              "mean_native_step_us": 241.0434664296297,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 20000,
+              "value": 0.9925298056816058,
+              "tps": 4153.729954705053,
+              "mean_native_step_us": 242.55944154074078,
+              "output_intervals": 1985,
+              "native_tokens_per_aa_token": 0.9925298056816058,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 30000,
+              "value": 0.9850596113632116,
+              "tps": 4159.236185125342,
+              "mean_native_step_us": 244.07534080000002,
+              "output_intervals": 1970,
+              "native_tokens_per_aa_token": 0.9850596113632116,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 40000,
+              "value": 0.9775894170448174,
+              "tps": 4165.149906487803,
+              "mean_native_step_us": 245.59124005925932,
+              "output_intervals": 1955,
+              "native_tokens_per_aa_token": 0.9775894170448174,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 50000,
+              "value": 0.9701192227264231,
+              "tps": 4171.4745356942085,
+              "mean_native_step_us": 247.10713931851853,
+              "output_intervals": 1940,
+              "native_tokens_per_aa_token": 0.9701192227264231,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 60000,
+              "value": 0.962649028408029,
+              "tps": 4178.213743089003,
+              "mean_native_step_us": 248.6230385777778,
+              "output_intervals": 1925,
+              "native_tokens_per_aa_token": 0.962649028408029,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 70000,
+              "value": 0.9551788340896348,
+              "tps": 4185.371457869093,
+              "mean_native_step_us": 250.1389378370371,
+              "output_intervals": 1910,
+              "native_tokens_per_aa_token": 0.9551788340896348,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 80000,
+              "value": 0.9477086397712405,
+              "tps": 4192.951873913419,
+              "mean_native_step_us": 251.65483709629635,
+              "output_intervals": 1895,
+              "native_tokens_per_aa_token": 0.9477086397712405,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 90000,
+              "value": 0.9402384454528464,
+              "tps": 4200.959456048756,
+              "mean_native_step_us": 253.1707363555556,
+              "output_intervals": 1880,
+              "native_tokens_per_aa_token": 0.9402384454528464,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 100000,
+              "value": 0.9327682511344522,
+              "tps": 4209.398946769545,
+              "mean_native_step_us": 254.68663561481486,
+              "output_intervals": 1865,
+              "native_tokens_per_aa_token": 0.9327682511344522,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            }
+          ],
+          "equal_output_curve_monotone": true,
+          "interpretation": "length-dependent assumption fitted to the published ratio"
+        },
+        {
+          "parameter": "global_attention_efficiency",
+          "solution": 0.07721251819222676,
+          "short_value": 0.07721251819222676,
+          "long_value": 0.9,
+          "short": {
+            "tps": 3870.164251569027,
+            "mean_native_step_us": 258.3869662882096,
+            "output_intervals": 1499,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          "long": {
+            "tps": 3926.2370038832973,
+            "mean_native_step_us": 254.696799762963,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          "ratio": 1.0144884683619146,
+          "curve": [
+            {
+              "context": 10000,
+              "value": 0.07721251819222676,
+              "tps": 3870.164251569027,
+              "mean_native_step_us": 258.3869662882096,
+              "output_intervals": 1499,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 20000,
+              "value": 0.16863334950420156,
+              "tps": 3903.217867725127,
+              "mean_native_step_us": 256.1988681873964,
+              "output_intervals": 1555,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 30000,
+              "value": 0.2600541808161764,
+              "tps": 3913.144794670181,
+              "mean_native_step_us": 255.54893888977213,
+              "output_intervals": 1610,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 40000,
+              "value": 0.35147501212815113,
+              "tps": 3917.922576335345,
+              "mean_native_step_us": 255.23730510656407,
+              "output_intervals": 1666,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 50000,
+              "value": 0.44289584344012595,
+              "tps": 3920.735745638976,
+              "mean_native_step_us": 255.0541696446381,
+              "output_intervals": 1721,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 60000,
+              "value": 0.5343166747521009,
+              "tps": 3922.5864942378857,
+              "mean_native_step_us": 254.9338303869036,
+              "output_intervals": 1777,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 70000,
+              "value": 0.6257375060640755,
+              "tps": 3923.899186809407,
+              "mean_native_step_us": 254.8485453860801,
+              "output_intervals": 1832,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 80000,
+              "value": 0.7171583373760504,
+              "tps": 3924.8763093918415,
+              "mean_native_step_us": 254.78509924175157,
+              "output_intervals": 1888,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 90000,
+              "value": 0.8085791686880252,
+              "tps": 3925.6341132475027,
+              "mean_native_step_us": 254.7359155621216,
+              "output_intervals": 1943,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 100000,
+              "value": 0.9,
+              "tps": 3926.2370038832973,
+              "mean_native_step_us": 254.696799762963,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            }
+          ],
+          "curve_monotone": true,
+          "equal_output_curve": [
+            {
+              "context": 10000,
+              "value": 0.07721251819222676,
+              "tps": 3863.554161349408,
+              "mean_native_step_us": 258.82903622884226,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 20000,
+              "value": 0.16863334950420156,
+              "tps": 3900.4814070804377,
+              "mean_native_step_us": 256.3786096210399,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 30000,
+              "value": 0.2600541808161764,
+              "tps": 3911.5817449703345,
+              "mean_native_step_us": 255.65105504591315,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 40000,
+              "value": 0.35147501212815113,
+              "tps": 3916.9300086379226,
+              "mean_native_step_us": 255.30198338870525,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 50000,
+              "value": 0.44289584344012595,
+              "tps": 3920.07715723997,
+              "mean_native_step_us": 255.09701974949783,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 60000,
+              "value": 0.5343166747521009,
+              "tps": 3922.150119415346,
+              "mean_native_step_us": 254.96219409089437,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 70000,
+              "value": 0.6257375060640755,
+              "tps": 3923.6186837408054,
+              "mean_native_step_us": 254.86676474039854,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 80000,
+              "value": 0.7171583373760504,
+              "tps": 3924.713548311477,
+              "mean_native_step_us": 254.79566538817292,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 90000,
+              "value": 0.8085791686880252,
+              "tps": 3925.561253820159,
+              "mean_native_step_us": 254.74064352628565,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 100000,
+              "value": 0.9,
+              "tps": 3926.2370038832973,
+              "mean_native_step_us": 254.696799762963,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            }
+          ],
+          "equal_output_curve_monotone": true,
+          "interpretation": "length-dependent assumption fitted to the published ratio"
+        },
+        {
+          "parameter": "post_first_gap_us",
+          "solution": 108897.01694141598,
+          "short_value": 108897.01694141598,
+          "long_value": 108897.01694141598,
+          "short": {
+            "tps": 3188.2470220722994,
+            "mean_native_step_us": 241.00554050370374,
+            "output_intervals": 1499,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 108897.01694141598,
+            "ttft_excluded": true
+          },
+          "long": {
+            "tps": 3234.4398381815668,
+            "mean_native_step_us": 254.696799762963,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 108897.01694141598,
+            "ttft_excluded": true
+          },
+          "ratio": 1.014488468361916,
+          "controlled_equal_output_ratio": 0.9558391147426943,
+          "interpretation": "same post-first-token gap amortized over different answer lengths"
+        }
+      ],
+      "absolute_kernel_fits": [
+        {
+          "common_settings": {},
+          "fits": [
+            {
+              "workload": "10k",
+              "target_tps": 3382,
+              "kernel_us": 0.2567782837907604,
+              "achieved_tps": 3381.9999999999836,
+              "zero_kernel_tps": 20658.792146396674
+            },
+            {
+              "workload": "100k",
+              "target_tps": 3431,
+              "kernel_us": 0.2381759251480755,
+              "achieved_tps": 3430.9999999999995,
+              "zero_kernel_tps": 16103.889472842695
+            }
+          ],
+          "curve": [
+            {
+              "context": 10000,
+              "kernel_us": 0.2567782837907604,
+              "tps": 3381.9999999999836,
+              "mean_native_step_us": 295.68302779420605,
+              "output_intervals": 1499,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 20000,
+              "kernel_us": 0.2547113550526843,
+              "tps": 3387.374832121406,
+              "mean_native_step_us": 295.2138601601794,
+              "output_intervals": 1555,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 50000,
+              "kernel_us": 0.24851056883845601,
+              "tps": 3403.6040801556755,
+              "mean_native_step_us": 293.8062055543962,
+              "output_intervals": 1721,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 100000,
+              "kernel_us": 0.2381759251480755,
+              "tps": 3430.9999999999995,
+              "mean_native_step_us": 291.46021568055966,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            }
+          ]
+        }
+      ],
+      "absolute_constant_gap_fit": {
+        "required_kernel_us": 0.18240605393731002,
+        "post_first_gap_us": 107359.0655659582,
+        "feasible": true,
+        "shared_parameters_at_both_lengths": true,
+        "explanation": "different answer lengths amortize an identical post-first-token stall",
+        "short": {
+          "tps": 3381.9999999999995,
+          "mean_native_step_us": 224.06257044533328,
+          "output_intervals": 1499,
+          "native_tokens_per_aa_token": 1.0,
+          "post_first_gap_us": 107359.0655659582,
+          "ttft_excluded": true
+        },
+        "long": {
+          "tps": 3431.0,
+          "mean_native_step_us": 237.75382970459253,
+          "output_intervals": 1999,
+          "native_tokens_per_aa_token": 1.0,
+          "post_first_gap_us": 107359.0655659582,
+          "ttft_excluded": true
+        },
+        "ratio": 1.0144884683619162,
+        "equal_output_ratio": 0.9531554133333333
+      },
+      "fitted_results_are_not_independent_validation": true
+    },
+    {
+      "layout": {
+        "name": "af-a8-f12-pp9",
+        "mode": "af",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 108
+        },
+        "tps": {
+          "1k": 1060.3942882615588,
+          "10k": 1047.4988144869276,
+          "100k": 936.4085686911178
+        },
+        "ratio_100k_over_10k": 0.8939471393576492,
+        "reversal": false
+      },
+      "probes": [
+        {
+          "parameter": "kernel_us",
+          "solution": 0.06823587135914372,
+          "short_value": 0.2,
+          "long_value": 0.06823587135914372,
+          "short": {
+            "tps": 1047.4988144869276,
+            "mean_native_step_us": 954.6550183828199,
+            "output_intervals": 1499,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          "long": {
+            "tps": 1062.6754679197654,
+            "mean_native_step_us": 941.0210644624597,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          "ratio": 1.0144884683619155,
+          "curve": [
+            {
+              "context": 10000,
+              "value": 0.2,
+              "tps": 1047.4988144869276,
+              "mean_native_step_us": 954.6550183828199,
+              "output_intervals": 1499,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 20000,
+              "value": 0.1853595412621271,
+              "tps": 1049.1633613014787,
+              "mean_native_step_us": 953.1404134809932,
+              "output_intervals": 1555,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 30000,
+              "value": 0.17071908252425416,
+              "tps": 1050.8338995553518,
+              "mean_native_step_us": 951.6251811281863,
+              "output_intervals": 1610,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 40000,
+              "value": 0.15607862378638127,
+              "tps": 1052.5090710723275,
+              "mean_native_step_us": 950.1105762263601,
+              "output_intervals": 1666,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 50000,
+              "value": 0.1414381650485083,
+              "tps": 1054.1902893140273,
+              "mean_native_step_us": 948.5953438735531,
+              "output_intervals": 1721,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 60000,
+              "value": 0.12679770631063542,
+              "tps": 1055.8761875843124,
+              "mean_native_step_us": 947.0807389717265,
+              "output_intervals": 1777,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 70000,
+              "value": 0.11215724757276249,
+              "tps": 1057.5681885602226,
+              "mean_native_step_us": 945.5655066189196,
+              "output_intervals": 1832,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 80000,
+              "value": 0.09751678883488955,
+              "tps": 1059.264916945838,
+              "mean_native_step_us": 944.0509017170931,
+              "output_intervals": 1888,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 90000,
+              "value": 0.08287633009701664,
+              "tps": 1060.9678047245384,
+              "mean_native_step_us": 942.535669364286,
+              "output_intervals": 1943,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 100000,
+              "value": 0.06823587135914372,
+              "tps": 1062.6754679197654,
+              "mean_native_step_us": 941.0210644624597,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            }
+          ],
+          "curve_monotone": true,
+          "equal_output_curve": [
+            {
+              "context": 10000,
+              "value": 0.2,
+              "tps": 1047.1546910994734,
+              "mean_native_step_us": 954.9687438730158,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 20000,
+              "value": 0.1853595412621271,
+              "tps": 1048.8567966443507,
+              "mean_native_step_us": 953.4190017162875,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 30000,
+              "value": 0.17071908252425416,
+              "tps": 1050.564444598948,
+              "mean_native_step_us": 951.8692595595589,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 40000,
+              "value": 0.15607862378638127,
+              "tps": 1052.2776620782695,
+              "mean_native_step_us": 950.3195174028306,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 50000,
+              "value": 0.1414381650485083,
+              "tps": 1053.996476374481,
+              "mean_native_step_us": 948.7697752461021,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 60000,
+              "value": 0.12679770631063542,
+              "tps": 1055.7209149583584,
+              "mean_native_step_us": 947.2200330893736,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 70000,
+              "value": 0.11215724757276249,
+              "tps": 1057.451005480751,
+              "mean_native_step_us": 945.6702909326451,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 80000,
+              "value": 0.09751678883488955,
+              "tps": 1059.1867757740608,
+              "mean_native_step_us": 944.1205487759166,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 90000,
+              "value": 0.08287633009701664,
+              "tps": 1060.9282538537332,
+              "mean_native_step_us": 942.5708066191881,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 100000,
+              "value": 0.06823587135914372,
+              "tps": 1062.6754679197654,
+              "mean_native_step_us": 941.0210644624597,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            }
+          ],
+          "equal_output_curve_monotone": true,
+          "interpretation": "length-dependent assumption fitted to the published ratio"
+        },
+        {
+          "parameter": "rho_out",
+          "solution": 0.8813029090378235,
+          "short_value": 1,
+          "long_value": 0.8813029090378235,
+          "short": {
+            "tps": 1047.4988144869276,
+            "mean_native_step_us": 954.6550183828199,
+            "output_intervals": 1499,
+            "native_tokens_per_aa_token": 1,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          "long": {
+            "tps": 1062.675467919765,
+            "mean_native_step_us": 1067.7612144612513,
+            "output_intervals": 1762,
+            "native_tokens_per_aa_token": 0.8813029090378235,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          "ratio": 1.014488468361915,
+          "curve": [
+            {
+              "context": 10000,
+              "value": 1.0,
+              "tps": 1047.4988144869276,
+              "mean_native_step_us": 954.6550183828199,
+              "output_intervals": 1499,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 20000,
+              "value": 0.9868114343375359,
+              "tps": 1047.7015428492214,
+              "mean_native_step_us": 967.2266262259571,
+              "output_intervals": 1535,
+              "native_tokens_per_aa_token": 0.9868114343375359,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 30000,
+              "value": 0.9736228686750719,
+              "tps": 1048.2706245428394,
+              "mean_native_step_us": 979.7963517161533,
+              "output_intervals": 1568,
+              "native_tokens_per_aa_token": 0.9736228686750719,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 40000,
+              "value": 0.9604343030126078,
+              "tps": 1049.2051821897164,
+              "mean_native_step_us": 992.3660772063492,
+              "output_intervals": 1601,
+              "native_tokens_per_aa_token": 0.9604343030126078,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 50000,
+              "value": 0.9472457373501437,
+              "tps": 1050.5091387273128,
+              "mean_native_step_us": 1004.9339203436042,
+              "output_intervals": 1631,
+              "native_tokens_per_aa_token": 0.9472457373501437,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 60000,
+              "value": 0.9340571716876798,
+              "tps": 1052.1838655097845,
+              "mean_native_step_us": 1017.5011360298787,
+              "output_intervals": 1660,
+              "native_tokens_per_aa_token": 0.9340571716876798,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 70000,
+              "value": 0.9208686060252157,
+              "tps": 1054.2335127866152,
+              "mean_native_step_us": 1030.0670968141924,
+              "output_intervals": 1687,
+              "native_tokens_per_aa_token": 0.9208686060252157,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 80000,
+              "value": 0.9076800403627516,
+              "tps": 1056.661110707174,
+              "mean_native_step_us": 1042.6330575985062,
+              "output_intervals": 1714,
+              "native_tokens_per_aa_token": 0.9076800403627516,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 90000,
+              "value": 0.8944914747002876,
+              "tps": 1059.4737246022585,
+              "mean_native_step_us": 1055.1971360298787,
+              "output_intervals": 1738,
+              "native_tokens_per_aa_token": 0.8944914747002876,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 100000,
+              "value": 0.8813029090378235,
+              "tps": 1062.675467919765,
+              "mean_native_step_us": 1067.7612144612513,
+              "output_intervals": 1762,
+              "native_tokens_per_aa_token": 0.8813029090378235,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            }
+          ],
+          "curve_monotone": true,
+          "equal_output_curve": [
+            {
+              "context": 10000,
+              "value": 1.0,
+              "tps": 1047.1546910994734,
+              "mean_native_step_us": 954.9687438730158,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 20000,
+              "value": 0.9868114343375359,
+              "tps": 1047.4039380902323,
+              "mean_native_step_us": 967.5014497553689,
+              "output_intervals": 1973,
+              "native_tokens_per_aa_token": 0.9868114343375359,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 30000,
+              "value": 0.9736228686750719,
+              "tps": 1048.0162631372216,
+              "mean_native_step_us": 980.0341556377218,
+              "output_intervals": 1947,
+              "native_tokens_per_aa_token": 0.9736228686750719,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 40000,
+              "value": 0.9604343030126078,
+              "tps": 1048.9936037474577,
+              "mean_native_step_us": 992.5662340690944,
+              "output_intervals": 1920,
+              "native_tokens_per_aa_token": 0.9604343030126078,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 50000,
+              "value": 0.9472457373501437,
+              "tps": 1050.3366635617167,
+              "mean_native_step_us": 1005.0989399514473,
+              "output_intervals": 1894,
+              "native_tokens_per_aa_token": 0.9472457373501437,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 60000,
+              "value": 0.9340571716876798,
+              "tps": 1052.0489244330804,
+              "mean_native_step_us": 1017.6316458338002,
+              "output_intervals": 1868,
+              "native_tokens_per_aa_token": 0.9340571716876798,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 70000,
+              "value": 0.9208686060252157,
+              "tps": 1054.1346276340134,
+              "mean_native_step_us": 1030.163724265173,
+              "output_intervals": 1841,
+              "native_tokens_per_aa_token": 0.9208686060252157,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 80000,
+              "value": 0.9076800403627516,
+              "tps": 1056.5968894188877,
+              "mean_native_step_us": 1042.696430147526,
+              "output_intervals": 1815,
+              "native_tokens_per_aa_token": 0.9076800403627516,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 90000,
+              "value": 0.8944914747002876,
+              "tps": 1059.4422258405307,
+              "mean_native_step_us": 1055.2285085788983,
+              "output_intervals": 1788,
+              "native_tokens_per_aa_token": 0.8944914747002876,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 100000,
+              "value": 0.8813029090378235,
+              "tps": 1062.675467919765,
+              "mean_native_step_us": 1067.7612144612513,
+              "output_intervals": 1762,
+              "native_tokens_per_aa_token": 0.8813029090378235,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            }
+          ],
+          "equal_output_curve_monotone": true,
+          "interpretation": "length-dependent assumption fitted to the published ratio"
+        },
+        {
+          "parameter": "global_attention_efficiency",
+          "solution": 0.08066163258562227,
+          "short_value": 0.08066163258562227,
+          "long_value": 0.85,
+          "short": {
+            "tps": 923.0352023647239,
+            "mean_native_step_us": 1083.3822994378763,
+            "output_intervals": 1499,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          "long": {
+            "tps": 936.4085686911178,
+            "mean_native_step_us": 1067.9099203436042,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          "ratio": 1.0144884683619138,
+          "curve": [
+            {
+              "context": 10000,
+              "value": 0.08066163258562227,
+              "tps": 923.0352023647239,
+              "mean_native_step_us": 1083.3822994378763,
+              "output_intervals": 1499,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 20000,
+              "value": 0.166143673409442,
+              "tps": 930.5888261376454,
+              "mean_native_step_us": 1074.5884454151912,
+              "output_intervals": 1555,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 30000,
+              "value": 0.25162571423326174,
+              "tps": 933.0383121704912,
+              "mean_native_step_us": 1071.7673507679856,
+              "output_intervals": 1610,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 40000,
+              "value": 0.33710775505708146,
+              "tps": 934.2489112573536,
+              "mean_native_step_us": 1070.3785553832283,
+              "output_intervals": 1666,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 50000,
+              "value": 0.4225897958809012,
+              "tps": 934.972343648426,
+              "mean_native_step_us": 1069.5503527920673,
+              "output_intervals": 1721,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 60000,
+              "value": 0.508071836704721,
+              "tps": 935.452044057636,
+              "mean_native_step_us": 1069.0018866839816,
+              "output_intervals": 1777,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 70000,
+              "value": 0.5935538775285407,
+              "tps": 935.7946610838129,
+              "mean_native_step_us": 1068.610499275371,
+              "output_intervals": 1832,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 80000,
+              "value": 0.6790359183523605,
+              "tps": 936.0504918073955,
+              "mean_native_step_us": 1068.3184387512324,
+              "output_intervals": 1888,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 90000,
+              "value": 0.7645179591761802,
+              "tps": 936.2498207767385,
+              "mean_native_step_us": 1068.0909921781054,
+              "output_intervals": 1943,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 100000,
+              "value": 0.85,
+              "tps": 936.4085686911178,
+              "mean_native_step_us": 1067.9099203436042,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            }
+          ],
+          "curve_monotone": true,
+          "equal_output_curve": [
+            {
+              "context": 10000,
+              "value": 0.08066163258562227,
+              "tps": 920.2270866417557,
+              "mean_native_step_us": 1086.6882908754237,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 20000,
+              "value": 0.166143673409442,
+              "tps": 929.3561814309651,
+              "mean_native_step_us": 1076.013717862469,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 30000,
+              "value": 0.25162571423326174,
+              "tps": 932.3210824284029,
+              "mean_native_step_us": 1072.591855796412,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 40000,
+              "value": 0.33710775505708146,
+              "tps": 933.7893052315306,
+              "mean_native_step_us": 1070.905389896335,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 50000,
+              "value": 0.4225897958809012,
+              "tps": 934.6657383852279,
+              "mean_native_step_us": 1069.9012052454675,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 60000,
+              "value": 0.508071836704721,
+              "tps": 935.2481638942025,
+              "mean_native_step_us": 1069.2349245960374,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 70000,
+              "value": 0.5935538775285407,
+              "tps": 935.6632732360599,
+              "mean_native_step_us": 1068.7605558583343,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 80000,
+              "value": 0.6790359183523605,
+              "tps": 935.9741096236025,
+              "mean_native_step_us": 1068.4056211791426,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 90000,
+              "value": 0.7645179591761802,
+              "tps": 936.2155781813682,
+              "mean_native_step_us": 1068.1300581886655,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 100000,
+              "value": 0.85,
+              "tps": 936.4085686911178,
+              "mean_native_step_us": 1067.9099203436042,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            }
+          ],
+          "equal_output_curve_monotone": true,
+          "interpretation": "length-dependent assumption fitted to the published ratio"
+        },
+        {
+          "parameter": "cross_latency_us",
+          "solution": 0.9425928676571225,
+          "short_value": 2,
+          "long_value": 0.9425928676571225,
+          "short": {
+            "tps": 1047.4988144869276,
+            "mean_native_step_us": 954.6550183828199,
+            "output_intervals": 1499,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          "long": {
+            "tps": 1062.675467919766,
+            "mean_native_step_us": 941.021064462459,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          "ratio": 1.0144884683619162,
+          "curve": [
+            {
+              "context": 10000,
+              "value": 2.0,
+              "tps": 1047.4988144869276,
+              "mean_native_step_us": 954.6550183828199,
+              "output_intervals": 1499,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 20000,
+              "value": 1.8825103186285692,
+              "tps": 1049.1633613014787,
+              "mean_native_step_us": 953.1404134809932,
+              "output_intervals": 1555,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 30000,
+              "value": 1.7650206372571384,
+              "tps": 1050.8338995553518,
+              "mean_native_step_us": 951.6251811281863,
+              "output_intervals": 1610,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 40000,
+              "value": 1.6475309558857076,
+              "tps": 1052.5090710723277,
+              "mean_native_step_us": 950.1105762263597,
+              "output_intervals": 1666,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 50000,
+              "value": 1.5300412745142766,
+              "tps": 1054.1902893140275,
+              "mean_native_step_us": 948.5953438735528,
+              "output_intervals": 1721,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 60000,
+              "value": 1.4125515931428458,
+              "tps": 1055.8761875843131,
+              "mean_native_step_us": 947.0807389717261,
+              "output_intervals": 1777,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 70000,
+              "value": 1.295061911771415,
+              "tps": 1057.568188560223,
+              "mean_native_step_us": 945.5655066189192,
+              "output_intervals": 1832,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 80000,
+              "value": 1.177572230399984,
+              "tps": 1059.2649169458386,
+              "mean_native_step_us": 944.0509017170925,
+              "output_intervals": 1888,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 90000,
+              "value": 1.0600825490285533,
+              "tps": 1060.967804724539,
+              "mean_native_step_us": 942.5356693642856,
+              "output_intervals": 1943,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 100000,
+              "value": 0.9425928676571225,
+              "tps": 1062.675467919766,
+              "mean_native_step_us": 941.021064462459,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            }
+          ],
+          "curve_monotone": true,
+          "equal_output_curve": [
+            {
+              "context": 10000,
+              "value": 2.0,
+              "tps": 1047.1546910994734,
+              "mean_native_step_us": 954.9687438730158,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 20000,
+              "value": 1.8825103186285692,
+              "tps": 1048.8567966443507,
+              "mean_native_step_us": 953.4190017162875,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 30000,
+              "value": 1.7650206372571384,
+              "tps": 1050.5644445989483,
+              "mean_native_step_us": 951.8692595595588,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 40000,
+              "value": 1.6475309558857076,
+              "tps": 1052.2776620782697,
+              "mean_native_step_us": 950.3195174028303,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 50000,
+              "value": 1.5300412745142766,
+              "tps": 1053.9964763744815,
+              "mean_native_step_us": 948.7697752461019,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 60000,
+              "value": 1.4125515931428458,
+              "tps": 1055.720914958359,
+              "mean_native_step_us": 947.2200330893731,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 70000,
+              "value": 1.295061911771415,
+              "tps": 1057.4510054807515,
+              "mean_native_step_us": 945.6702909326447,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 80000,
+              "value": 1.177572230399984,
+              "tps": 1059.1867757740613,
+              "mean_native_step_us": 944.1205487759161,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 90000,
+              "value": 1.0600825490285533,
+              "tps": 1060.9282538537338,
+              "mean_native_step_us": 942.5708066191876,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 100000,
+              "value": 0.9425928676571225,
+              "tps": 1062.675467919766,
+              "mean_native_step_us": 941.021064462459,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            }
+          ],
+          "equal_output_curve_monotone": true,
+          "interpretation": "length-dependent assumption fitted to the published ratio"
+        },
+        {
+          "parameter": "post_first_gap_us",
+          "solution": 806494.0747479327,
+          "short_value": 806494.0747479327,
+          "long_value": 806494.0747479327,
+          "short": {
+            "tps": 669.9375627605795,
+            "mean_native_step_us": 954.6550183828199,
+            "output_intervals": 1499,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 806494.0747479327,
+            "ttft_excluded": true
+          },
+          "long": {
+            "tps": 679.6439319430954,
+            "mean_native_step_us": 1067.9099203436042,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 806494.0747479327,
+            "ttft_excluded": true
+          },
+          "ratio": 1.0144884683619162,
+          "controlled_equal_output_ratio": 0.9232402147452503,
+          "interpretation": "same post-first-token gap amortized over different answer lengths"
+        }
+      ],
+      "absolute_kernel_fits": [
+        {
+          "common_settings": {},
+          "fits": [
+            {
+              "workload": "10k",
+              "target_tps": 3382,
+              "kernel_us": null,
+              "achieved_tps": null,
+              "zero_kernel_tps": 1312.2412107752148
+            },
+            {
+              "workload": "100k",
+              "target_tps": 3431,
+              "kernel_us": null,
+              "achieved_tps": null,
+              "zero_kernel_tps": 1142.4524922640526
+            }
+          ],
+          "curve": []
+        },
+        {
+          "common_settings": {
+            "cross_latency_us": 0.25
+          },
+          "fits": [
+            {
+              "workload": "10k",
+              "target_tps": 3382,
+              "kernel_us": null,
+              "achieved_tps": null,
+              "zero_kernel_tps": 1811.4136575180175
+            },
+            {
+              "workload": "100k",
+              "target_tps": 3431,
+              "kernel_us": null,
+              "achieved_tps": null,
+              "zero_kernel_tps": 1503.0589044629646
+            }
+          ],
+          "curve": []
+        }
+      ],
+      "absolute_constant_gap_fit": {
+        "required_kernel_us": -0.972012348347024,
+        "post_first_gap_us": 704044.1754034836,
+        "feasible": false,
+        "shared_parameters_at_both_lengths": true,
+        "explanation": "different answer lengths amortize an identical post-first-token stall"
+      },
+      "fitted_results_are_not_independent_validation": true
+    },
+    {
+      "layout": {
+        "name": "af-global-a8-l32-pp5",
+        "mode": "af-global",
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 160
+        },
+        "tps": {
+          "1k": 2549.365765702947,
+          "10k": 2476.091038744843,
+          "100k": 1933.7973231744493
+        },
+        "ratio_100k_over_10k": 0.7809879737518504,
+        "reversal": false
+      },
+      "probes": [
+        {
+          "parameter": "kernel_us",
+          "solution": 0.07640427533953481,
+          "short_value": 0.2,
+          "long_value": 0.07640427533953481,
+          "short": {
+            "tps": 2476.091038744843,
+            "mean_native_step_us": 403.8623719210707,
+            "output_intervals": 1499,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          "long": {
+            "tps": 2511.9658054209217,
+            "mean_native_step_us": 398.09459103382716,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          "ratio": 1.0144884683619162,
+          "curve": [
+            {
+              "context": 10000,
+              "value": 0.2,
+              "tps": 2476.091038744843,
+              "mean_native_step_us": 403.8623719210707,
+              "output_intervals": 1499,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 20000,
+              "value": 0.18626714170439276,
+              "tps": 2480.0247261243767,
+              "mean_native_step_us": 403.22178624514595,
+              "output_intervals": 1555,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 30000,
+              "value": 0.17253428340878552,
+              "tps": 2483.974803489319,
+              "mean_native_step_us": 402.580573118241,
+              "output_intervals": 1610,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 40000,
+              "value": 0.1588014251131783,
+              "tps": 2487.933600146,
+              "mean_native_step_us": 401.9399874423163,
+              "output_intervals": 1666,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 50000,
+              "value": 0.14506856681757102,
+              "tps": 2491.908931707885,
+              "mean_native_step_us": 401.2987743154112,
+              "output_intervals": 1721,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 60000,
+              "value": 0.1313357085219638,
+              "tps": 2495.89307882536,
+              "mean_native_step_us": 400.6581886394866,
+              "output_intervals": 1777,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 70000,
+              "value": 0.11760285022635655,
+              "tps": 2499.8939075488,
+              "mean_native_step_us": 400.0169755125815,
+              "output_intervals": 1832,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 80000,
+              "value": 0.10386999193074929,
+              "tps": 2503.90364940951,
+              "mean_native_step_us": 399.3763898366568,
+              "output_intervals": 1888,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 90000,
+              "value": 0.09013713363514206,
+              "tps": 2507.930221385815,
+              "mean_native_step_us": 398.73517670975184,
+              "output_intervals": 1943,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 100000,
+              "value": 0.07640427533953481,
+              "tps": 2511.9658054209217,
+              "mean_native_step_us": 398.09459103382716,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            }
+          ],
+          "curve_monotone": true,
+          "equal_output_curve": [
+            {
+              "context": 10000,
+              "value": 0.2,
+              "tps": 2474.169072354757,
+              "mean_native_step_us": 404.1760974112668,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 20000,
+              "value": 0.18626714170439276,
+              "tps": 2478.3124458995408,
+              "mean_native_step_us": 403.5003744804401,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 30000,
+              "value": 0.17253428340878552,
+              "tps": 2482.4697201453077,
+              "mean_native_step_us": 402.82465154961346,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 40000,
+              "value": 0.1588014251131783,
+              "tps": 2486.640965163282,
+              "mean_native_step_us": 402.1489286187869,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 50000,
+              "value": 0.14506856681757102,
+              "tps": 2490.8262514964367,
+              "mean_native_step_us": 401.4732056879603,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 60000,
+              "value": 0.1313357085219638,
+              "tps": 2495.0256501634713,
+              "mean_native_step_us": 400.79748275713365,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 70000,
+              "value": 0.11760285022635655,
+              "tps": 2499.2392326628283,
+              "mean_native_step_us": 400.121759826307,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 80000,
+              "value": 0.10386999193074929,
+              "tps": 2503.4670709767524,
+              "mean_native_step_us": 399.44603689548035,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 90000,
+              "value": 0.09013713363514206,
+              "tps": 2507.709237575388,
+              "mean_native_step_us": 398.7703139646537,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 100000,
+              "value": 0.07640427533953481,
+              "tps": 2511.9658054209217,
+              "mean_native_step_us": 398.09459103382716,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            }
+          ],
+          "equal_output_curve_monotone": true,
+          "interpretation": "length-dependent assumption fitted to the published ratio"
+        },
+        {
+          "parameter": "rho_out",
+          "solution": 0.7702632400130449,
+          "short_value": 1,
+          "long_value": 0.7702632400130449,
+          "short": {
+            "tps": 2476.091038744843,
+            "mean_native_step_us": 403.8623719210707,
+            "output_intervals": 1499,
+            "native_tokens_per_aa_token": 1,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          "long": {
+            "tps": 2511.965805420922,
+            "mean_native_step_us": 516.8292738818551,
+            "output_intervals": 1540,
+            "native_tokens_per_aa_token": 0.7702632400130449,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          "ratio": 1.0144884683619164,
+          "curve": [
+            {
+              "context": 10000,
+              "value": 1.0,
+              "tps": 2476.091038744843,
+              "mean_native_step_us": 403.8623719210707,
+              "output_intervals": 1499,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 20000,
+              "value": 0.9744736933347827,
+              "tps": 2464.3146232064637,
+              "mean_native_step_us": 416.4220581955805,
+              "output_intervals": 1516,
+              "native_tokens_per_aa_token": 0.9744736933347827,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 30000,
+              "value": 0.9489473866695656,
+              "tps": 2456.530898108172,
+              "mean_native_step_us": 428.9786072151884,
+              "output_intervals": 1528,
+              "native_tokens_per_aa_token": 0.9489473866695656,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 40000,
+              "value": 0.9234210800043483,
+              "tps": 2452.649808514876,
+              "mean_native_step_us": 441.5345287838158,
+              "output_intervals": 1539,
+              "native_tokens_per_aa_token": 0.9234210800043483,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 50000,
+              "value": 0.897894773339131,
+              "tps": 2452.6444124743284,
+              "mean_native_step_us": 454.0879405485218,
+              "output_intervals": 1546,
+              "native_tokens_per_aa_token": 0.897894773339131,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 60000,
+              "value": 0.8723684666739138,
+              "tps": 2456.506892846676,
+              "mean_native_step_us": 466.6400974112669,
+              "output_intervals": 1551,
+              "native_tokens_per_aa_token": 0.8723684666739138,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 70000,
+              "value": 0.8468421600086966,
+              "tps": 2464.279782411041,
+              "mean_native_step_us": 479.1897444700904,
+              "output_intervals": 1552,
+              "native_tokens_per_aa_token": 0.8468421600086966,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 80000,
+              "value": 0.8213158533434793,
+              "tps": 2476.030003521563,
+              "mean_native_step_us": 491.7381366269532,
+              "output_intervals": 1551,
+              "native_tokens_per_aa_token": 0.8213158533434793,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 90000,
+              "value": 0.7957895466782622,
+              "tps": 2491.873687299952,
+              "mean_native_step_us": 504.2846464308747,
+              "output_intervals": 1547,
+              "native_tokens_per_aa_token": 0.7957895466782622,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 100000,
+              "value": 0.7702632400130449,
+              "tps": 2511.965805420922,
+              "mean_native_step_us": 516.8292738818551,
+              "output_intervals": 1540,
+              "native_tokens_per_aa_token": 0.7702632400130449,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            }
+          ],
+          "curve_monotone": false,
+          "equal_output_curve": [
+            {
+              "context": 10000,
+              "value": 1.0,
+              "tps": 2474.169072354757,
+              "mean_native_step_us": 404.1760974112668,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 20000,
+              "value": 0.9744736933347827,
+              "tps": 2462.711586834394,
+              "mean_native_step_us": 416.69311701911,
+              "output_intervals": 1948,
+              "native_tokens_per_aa_token": 0.9744736933347827,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 30000,
+              "value": 0.9489473866695656,
+              "tps": 2455.2057682818117,
+              "mean_native_step_us": 429.21013662695304,
+              "output_intervals": 1897,
+              "native_tokens_per_aa_token": 0.9489473866695656,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 40000,
+              "value": 0.9234210800043483,
+              "tps": 2451.5802621351854,
+              "mean_native_step_us": 441.72715623479627,
+              "output_intervals": 1846,
+              "native_tokens_per_aa_token": 0.9234210800043483,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 50000,
+              "value": 0.897894773339131,
+              "tps": 2451.8008361743396,
+              "mean_native_step_us": 454.2441758426394,
+              "output_intervals": 1795,
+              "native_tokens_per_aa_token": 0.897894773339131,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 60000,
+              "value": 0.8723684666739138,
+              "tps": 2455.869568726884,
+              "mean_native_step_us": 466.7611954504825,
+              "output_intervals": 1744,
+              "native_tokens_per_aa_token": 0.8723684666739138,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 70000,
+              "value": 0.8468421600086966,
+              "tps": 2463.8248978052384,
+              "mean_native_step_us": 479.2782150583257,
+              "output_intervals": 1693,
+              "native_tokens_per_aa_token": 0.8468421600086966,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 80000,
+              "value": 0.8213158533434793,
+              "tps": 2475.742533354561,
+              "mean_native_step_us": 491.79523466616877,
+              "output_intervals": 1642,
+              "native_tokens_per_aa_token": 0.8213158533434793,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 90000,
+              "value": 0.7957895466782622,
+              "tps": 2491.7372732880103,
+              "mean_native_step_us": 504.312254274012,
+              "output_intervals": 1591,
+              "native_tokens_per_aa_token": 0.7957895466782622,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 100000,
+              "value": 0.7702632400130449,
+              "tps": 2511.965805420922,
+              "mean_native_step_us": 516.8292738818551,
+              "output_intervals": 1540,
+              "native_tokens_per_aa_token": 0.7702632400130449,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            }
+          ],
+          "equal_output_curve_monotone": false,
+          "interpretation": "length-dependent assumption fitted to the published ratio"
+        },
+        {
+          "parameter": "global_attention_efficiency",
+          "solution": 0.08545658162907277,
+          "short_value": 0.08545658162907277,
+          "long_value": 0.85,
+          "short": {
+            "tps": 1906.179698914598,
+            "mean_native_step_us": 524.6095111438927,
+            "output_intervals": 1499,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          "long": {
+            "tps": 1933.7973231744493,
+            "mean_native_step_us": 517.1172738818551,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 0,
+            "ttft_excluded": true
+          },
+          "ratio": 1.0144884683619162,
+          "curve": [
+            {
+              "context": 10000,
+              "value": 0.08545658162907277,
+              "tps": 1906.179698914598,
+              "mean_native_step_us": 524.6095111438927,
+              "output_intervals": 1499,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 20000,
+              "value": 0.17040585033695355,
+              "tps": 1921.3829229872729,
+              "mean_native_step_us": 520.4584614738059,
+              "output_intervals": 1555,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 30000,
+              "value": 0.2553551190448343,
+              "tps": 1926.5328572326328,
+              "mean_native_step_us": 519.0671917407366,
+              "output_intervals": 1610,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 40000,
+              "value": 0.34030438775271515,
+              "tps": 1929.1162177494145,
+              "mean_native_step_us": 518.3720870724112,
+              "output_intervals": 1666,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 50000,
+              "value": 0.42525365646059593,
+              "tps": 1930.6754735395498,
+              "mean_native_step_us": 517.9534384236404,
+              "output_intervals": 1721,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 60000,
+              "value": 0.5102029251684768,
+              "tps": 1931.7129955854305,
+              "mean_native_step_us": 517.6752459010802,
+              "output_intervals": 1777,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 70000,
+              "value": 0.5951521938763575,
+              "tps": 1932.458365249033,
+              "mean_native_step_us": 517.4755730745751,
+              "output_intervals": 1832,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 80000,
+              "value": 0.6801014625842384,
+              "tps": 1933.0149790330186,
+              "mean_native_step_us": 517.3265654155692,
+              "output_intervals": 1888,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 90000,
+              "value": 0.7650507312921191,
+              "tps": 1933.4508106771586,
+              "mean_native_step_us": 517.2099514907063,
+              "output_intervals": 1943,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 100000,
+              "value": 0.85,
+              "tps": 1933.7973231744493,
+              "mean_native_step_us": 517.1172738818551,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            }
+          ],
+          "curve_monotone": true,
+          "equal_output_curve": [
+            {
+              "context": 10000,
+              "value": 0.08545658162907277,
+              "tps": 1894.9083662210064,
+              "mean_native_step_us": 527.7300041660001,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 20000,
+              "value": 0.17040585033695355,
+              "tps": 1916.26649307275,
+              "mean_native_step_us": 521.8480851254103,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 30000,
+              "value": 0.2553551190448343,
+              "tps": 1923.522088764361,
+              "mean_native_step_us": 519.8796550563054,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 40000,
+              "value": 0.34030438775271515,
+              "tps": 1927.1759789787482,
+              "mean_native_step_us": 518.8939727911726,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 50000,
+              "value": 0.42525365646059593,
+              "tps": 1929.3767348326032,
+              "mean_native_step_us": 518.302093078137,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 60000,
+              "value": 0.5102029251684768,
+              "tps": 1930.8474313199922,
+              "mean_native_step_us": 517.9073104270939,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 70000,
+              "value": 0.5951521938763575,
+              "tps": 1931.899661131063,
+              "mean_native_step_us": 517.6252266717274,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 80000,
+              "value": 0.6801014625842384,
+              "tps": 1932.6897829034144,
+              "mean_native_step_us": 517.4136112510171,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 90000,
+              "value": 0.7650507312921191,
+              "tps": 1933.304885578256,
+              "mean_native_step_us": 517.2489902961672,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 100000,
+              "value": 0.85,
+              "tps": 1933.7973231744493,
+              "mean_native_step_us": 517.1172738818551,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            }
+          ],
+          "equal_output_curve_monotone": true,
+          "interpretation": "length-dependent assumption fitted to the published ratio"
+        },
+        {
+          "parameter": "cross_latency_us",
+          "solution": null,
+          "bounds": [
+            0,
+            2
+          ]
+        },
+        {
+          "parameter": "post_first_gap_us",
+          "solution": 756497.3914450788,
+          "short_value": 756497.3914450788,
+          "long_value": 756497.3914450788,
+          "short": {
+            "tps": 1100.6786203926983,
+            "mean_native_step_us": 403.8623719210707,
+            "output_intervals": 1499,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 756497.3914450788,
+            "ttft_excluded": true
+          },
+          "long": {
+            "tps": 1116.625767760895,
+            "mean_native_step_us": 517.1172738818551,
+            "output_intervals": 1999,
+            "native_tokens_per_aa_token": 1.0,
+            "post_first_gap_us": 756497.3914450788,
+            "ttft_excluded": true
+          },
+          "ratio": 1.0144884683619158,
+          "controlled_equal_output_ratio": 0.8738869721117106,
+          "interpretation": "same post-first-token gap amortized over different answer lengths"
+        }
+      ],
+      "absolute_kernel_fits": [
+        {
+          "common_settings": {},
+          "fits": [
+            {
+              "workload": "10k",
+              "target_tps": 3382,
+              "kernel_us": 0.08766423247469923,
+              "achieved_tps": 3381.9999999999836,
+              "zero_kernel_tps": 4733.450594664384
+            },
+            {
+              "workload": "100k",
+              "target_tps": 3431,
+              "kernel_us": null,
+              "achieved_tps": null,
+              "zero_kernel_tps": 3081.500063272636
+            }
+          ],
+          "curve": []
+        },
+        {
+          "common_settings": {
+            "cross_latency_us": 0.25
+          },
+          "fits": [
+            {
+              "workload": "10k",
+              "target_tps": 3382,
+              "kernel_us": 0.12764346404271443,
+              "achieved_tps": 3382.0,
+              "zero_kernel_tps": 5788.297468252325
+            },
+            {
+              "workload": "100k",
+              "target_tps": 3431,
+              "kernel_us": 0.005652068326794435,
+              "achieved_tps": 3431.0000000000173,
+              "zero_kernel_tps": 3496.2923267811752
+            }
+          ],
+          "curve": [
+            {
+              "context": 10000,
+              "kernel_us": 0.12764346404271443,
+              "tps": 3382.0,
+              "mean_native_step_us": 295.68302779420463,
+              "output_intervals": 1499,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 20000,
+              "kernel_us": 0.11408886451872331,
+              "tps": 3387.3720191377874,
+              "mean_native_step_us": 295.2141053153463,
+              "output_intervals": 1555,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 50000,
+              "kernel_us": 0.07342506594675,
+              "tps": 3403.60550015885,
+              "mean_native_step_us": 293.8060829768106,
+              "output_intervals": 1721,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            },
+            {
+              "context": 100000,
+              "kernel_us": 0.005652068326794435,
+              "tps": 3431.0000000000173,
+              "mean_native_step_us": 291.4602156805581,
+              "output_intervals": 1999,
+              "native_tokens_per_aa_token": 1.0,
+              "post_first_gap_us": 0,
+              "ttft_excluded": true
+            }
+          ]
+        }
+      ],
+      "absolute_constant_gap_fit": {
+        "required_kernel_us": -0.4000573675975446,
+        "post_first_gap_us": 704044.1754034845,
+        "feasible": false,
+        "shared_parameters_at_both_lengths": true,
+        "explanation": "different answer lengths amortize an identical post-first-token stall"
+      },
+      "fitted_results_are_not_independent_validation": true
+    }
+  ],
+  "adaptive": {
+    "lpx": null,
+    "af": null,
+    "af-global": null
+  },
+  "checked": 9761,
+  "reversals": 0,
+  "wall_seconds": 22.010928416159004,
+  "limitations": [
+    "Analytical sensitivity tests without real hardware calibration or new quality tests",
+    "Above-catalog bandwidth/compute and zero link latency are idealized stress controls",
+    "Length-dependent values are constructed fits, not evidence of actual compiler behavior",
+    "Output token ratio changes the AA counting rate and native answer length",
+    "Post-first gaps are hypothetical stalls inside the generation window; TTFT remains excluded",
+    "Equal inventory with changed TP/PP does not hold the execution schedule constant"
+  ],
+  "fixed_profiles": [
+    {
+      "name": "baseline",
+      "settings": {},
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9465823175071868,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.9465823175071868
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9363329377624349
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.834829159391146
+        }
+      }
+    },
+    {
+      "name": "kernel_us-0",
+      "settings": {
+        "kernel_us": 0
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9286026396818852,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.7914656833499442
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9286026396818852
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.7703128837881764
+        }
+      }
+    },
+    {
+      "name": "kernel_us-0.01",
+      "settings": {
+        "kernel_us": 0.01
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9290334687643919,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.8133071665140597
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9290334687643919
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.774712780373337
+        }
+      }
+    },
+    {
+      "name": "kernel_us-0.05",
+      "settings": {
+        "kernel_us": 0.05
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9307060159530909,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.8775989695189479
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9307060159530909
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.7907466464580757
+        }
+      }
+    },
+    {
+      "name": "kernel_us-0.1",
+      "settings": {
+        "kernel_us": 0.1
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9326890072610003,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.914432705552024
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9326890072610003
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.8078417141840223
+        }
+      }
+    },
+    {
+      "name": "kernel_us-0.4",
+      "settings": {
+        "kernel_us": 0.4
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9695008156814375,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.9695008156814375
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9425528282402955
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.8710497053493764
+        }
+      }
+    },
+    {
+      "name": "kernel_us-1",
+      "settings": {
+        "kernel_us": 1
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.986664865529271,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.986664865529271
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9555734510929711
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.9222194946262272
+        }
+      }
+    },
+    {
+      "name": "cross_latency_us-0",
+      "settings": {
+        "cross_latency_us": 0
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9457354452950839,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.9457354452950839
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9264034591045706
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.8235034540711998
+        }
+      }
+    },
+    {
+      "name": "cross_latency_us-0.1",
+      "settings": {
+        "cross_latency_us": 0.1
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9457784261415512,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.9457784261415512
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9269729221717031
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.8241065017766028
+        }
+      }
+    },
+    {
+      "name": "cross_latency_us-0.5",
+      "settings": {
+        "cross_latency_us": 0.5
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9459496708085803,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.9459496708085803
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9291652941691413
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.8264780387384199
+        }
+      }
+    },
+    {
+      "name": "cross_latency_us-1",
+      "settings": {
+        "cross_latency_us": 1
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9461622115350659,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.9461622115350659
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9317273415135569
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.829354020873711
+        }
+      }
+    },
+    {
+      "name": "cross_latency_us-5",
+      "settings": {
+        "cross_latency_us": 5
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9478041972906838,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.9478041972906838
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9470489844493808
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.849331642246877
+        }
+      }
+    },
+    {
+      "name": "link_latency_scale-0",
+      "settings": {
+        "link_latency_scale": 0
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9427995393108962,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.9427995393108962
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.8589038572972427
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.7865372687778006
+        }
+      }
+    },
+    {
+      "name": "link_latency_scale-0.1",
+      "settings": {
+        "link_latency_scale": 0.1
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.943201756604269,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.943201756604269
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.8655933865167009
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.7899479973677158
+        }
+      }
+    },
+    {
+      "name": "link_latency_scale-0.5",
+      "settings": {
+        "link_latency_scale": 0.5
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9447556077214523,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.9447556077214523
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9022916456189972
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.8025664484663019
+        }
+      }
+    },
+    {
+      "name": "link_latency_scale-2",
+      "settings": {
+        "link_latency_scale": 2
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9628965150665347,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.9516546116668021
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9628965150665347
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.8776724806512209
+        }
+      }
+    },
+    {
+      "name": "link_latency_scale-5",
+      "settings": {
+        "link_latency_scale": 5
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9839352608211235,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.9628658039124249
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9839352608211235
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.9312057069695073
+        }
+      }
+    },
+    {
+      "name": "link_bw_scale-0.25",
+      "settings": {
+        "link_bw_scale": 0.25
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9479219600924564,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.9479219600924564
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9372584483469438
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.8372051269446577
+        }
+      }
+    },
+    {
+      "name": "link_bw_scale-0.5",
+      "settings": {
+        "link_bw_scale": 0.5
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9470364578489904,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.9470364578489904
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9366444603022965
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.8356288172461015
+        }
+      }
+    },
+    {
+      "name": "link_bw_scale-2",
+      "settings": {
+        "link_bw_scale": 2
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.946352314212742,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.946352314212742
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9361760248315101
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.8344264056264784
+        }
+      }
+    },
+    {
+      "name": "link_bw_scale-4",
+      "settings": {
+        "link_bw_scale": 4
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.946236568210152,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.946236568210152
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9360972779641636
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.8342242912867786
+        }
+      }
+    },
+    {
+      "name": "link_bw_scale-16",
+      "settings": {
+        "link_bw_scale": 16
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9461494304136842,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.9461494304136842
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9360380901744464
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.8340723814161484
+        }
+      }
+    },
+    {
+      "name": "memory_scale-0.25",
+      "settings": {
+        "memory_scale": 0.25
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.8907736091833226,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.8907736091833226
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.8487282321741606
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.7183902650581894
+        }
+      }
+    },
+    {
+      "name": "memory_scale-0.5",
+      "settings": {
+        "memory_scale": 0.5
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9228295322116029,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.9228295322116029
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.8927955433295195
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.7609058644454776
+        }
+      }
+    },
+    {
+      "name": "memory_scale-2",
+      "settings": {
+        "memory_scale": 2
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9713560963446983,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.9713560963446983
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9652462368514619
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.8994615687297957
+        }
+      }
+    },
+    {
+      "name": "memory_scale-4",
+      "settings": {
+        "memory_scale": 4
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.982194823275027,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.9785406192844119
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.982194823275027
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.9441097547386614
+        }
+      }
+    },
+    {
+      "name": "memory_scale-16",
+      "settings": {
+        "memory_scale": 16
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9954792345755713,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.978539748891332
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9954792345755713
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.9853390915139733
+        }
+      }
+    },
+    {
+      "name": "compute_scale-0.25",
+      "settings": {
+        "compute_scale": 0.25
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9377020830717893,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.9239796051393749
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9377020830717893
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.839610241764061
+        }
+      }
+    },
+    {
+      "name": "compute_scale-0.5",
+      "settings": {
+        "compute_scale": 0.5
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9462448712665364,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.9462448712665364
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9363329377624349
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.8350010859348573
+        }
+      }
+    },
+    {
+      "name": "compute_scale-2",
+      "settings": {
+        "compute_scale": 2
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9513722313887072,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.9513722313887072
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9363329377624349
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.834829159391146
+        }
+      }
+    },
+    {
+      "name": "compute_scale-4",
+      "settings": {
+        "compute_scale": 4
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9513722313887072,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.9513722313887072
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9363329377624349
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.834829159391146
+        }
+      }
+    },
+    {
+      "name": "compute_scale-16",
+      "settings": {
+        "compute_scale": 16
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9513722313887072,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.9513722313887072
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9363329377624349
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.834829159391146
+        }
+      }
+    },
+    {
+      "name": "memory_efficiency-0.1",
+      "settings": {
+        "memory_efficiency": 0.1
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.8580050302160555,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.8580050302160555
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.8327627612815399
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.6941372597566426
+        }
+      }
+    },
+    {
+      "name": "memory_efficiency-0.3",
+      "settings": {
+        "memory_efficiency": 0.3
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9040580812178008,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.9040580812178008
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.8671854469053557
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.7411992269860518
+        }
+      }
+    },
+    {
+      "name": "memory_efficiency-0.6",
+      "settings": {
+        "memory_efficiency": 0.6
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9354575428531466,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.9354575428531466
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9168979654659332
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.7985840635722761
+        }
+      }
+    },
+    {
+      "name": "memory_efficiency-1",
+      "settings": {
+        "memory_efficiency": 1
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9510735124871148,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.9510735124871148
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9445641618601734
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.8528073442577424
+        }
+      }
+    },
+    {
+      "name": "attention_mfu-0.1",
+      "settings": {
+        "attention_mfu": 0.1
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9363329377624349,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.8901385911323698
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9363329377624349
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.8360864290159666
+        }
+      }
+    },
+    {
+      "name": "attention_mfu-0.3",
+      "settings": {
+        "attention_mfu": 0.3
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9462448712665364,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.9462448712665364
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9363329377624349
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.8350010859348573
+        }
+      }
+    },
+    {
+      "name": "attention_mfu-1",
+      "settings": {
+        "attention_mfu": 1
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9513722313887072,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.9513722313887072
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9363329377624349
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.834829159391146
+        }
+      }
+    },
+    {
+      "name": "global_attention_efficiency-0.01",
+      "settings": {
+        "global_attention_efficiency": 0.01
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.2510636181371641,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.2510636181371641
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.22525917838857065
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.1505244583506831
+        }
+      }
+    },
+    {
+      "name": "global_attention_efficiency-0.05",
+      "settings": {
+        "global_attention_efficiency": 0.05
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.5453426535949466,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.5453426535949466
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.494241499757165
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.290499217396369
+        }
+      }
+    },
+    {
+      "name": "global_attention_efficiency-0.1",
+      "settings": {
+        "global_attention_efficiency": 0.1
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.6950985424366588,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.6950985424366588
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.6473062222279411
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.4116773906455257
+        }
+      }
+    },
+    {
+      "name": "global_attention_efficiency-0.3",
+      "settings": {
+        "global_attention_efficiency": 0.3
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.8684367464783083,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.8684367464783083
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.8404516086544207
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.6504683959033366
+        }
+      }
+    },
+    {
+      "name": "global_attention_efficiency-1",
+      "settings": {
+        "global_attention_efficiency": 1
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9516349486982748,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.9516349486982748
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9452983561764148
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.8556009925446849
+        }
+      }
+    },
+    {
+      "name": "rho_in-0.8",
+      "settings": {
+        "rho_in": 0.8
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9564472944390568,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.9564472944390568
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9483016634810112
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.8627479908185626
+        }
+      }
+    },
+    {
+      "name": "rho_in-1.2",
+      "settings": {
+        "rho_in": 1.2
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9366779634243207,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.9366779634243207
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9246972477896541
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.8088819830941635
+        }
+      }
+    },
+    {
+      "name": "rho_out-0.8",
+      "settings": {
+        "rho_out": 0.8
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9466055911139291,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.9466055911139291
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9363592312688631
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.8348602207407171
+        }
+      }
+    },
+    {
+      "name": "rho_out-1.2",
+      "settings": {
+        "rho_out": 1.2
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9465590494099181,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.9465590494099181
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9363066516744848
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.8347981207719996
+        }
+      }
+    },
+    {
+      "name": "timing_window-tail80",
+      "settings": {
+        "timing_window": "tail80"
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9465590335963189,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.9465590335963189
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9363066292113396
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.8347979696552449
+        }
+      }
+    },
+    {
+      "name": "collective-native-ring",
+      "settings": {
+        "collective": "native-ring"
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9801738146671781,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.977283338380685
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9801738146671781
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.9086530587001833
+        }
+      }
+    },
+    {
+      "name": "fp8-weights",
+      "settings": {
+        "weight_dtype": "fp8"
+      },
+      "checked": 190,
+      "reversals": 0,
+      "maximum_ratio": 0.9445324025040764,
+      "by_mode": {
+        "lpx": {
+          "checked": 4,
+          "reversals": 0,
+          "maximum_ratio": 0.9445324025040764
+        },
+        "af": {
+          "checked": 156,
+          "reversals": 0,
+          "maximum_ratio": 0.9350667883456739
+        },
+        "af-global": {
+          "checked": 30,
+          "reversals": 0,
+          "maximum_ratio": 0.8330802385528283
+        }
+      }
+    },
+    {
+      "name": "fp8-kv",
+      "settings": {
+        "kv_dtype": "fp8"
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.9722604979351943,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.9722604979351943
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9669595148212733
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.9089427519597683
+        }
+      }
+    },
+    {
+      "name": "fp8-both",
+      "settings": {
+        "weight_dtype": "fp8",
+        "kv_dtype": "fp8"
+      },
+      "checked": 190,
+      "reversals": 0,
+      "maximum_ratio": 0.9708390431477223,
+      "by_mode": {
+        "lpx": {
+          "checked": 4,
+          "reversals": 0,
+          "maximum_ratio": 0.9708390431477223
+        },
+        "af": {
+          "checked": 156,
+          "reversals": 0,
+          "maximum_ratio": 0.9662770099578935
+        },
+        "af-global": {
+          "checked": 30,
+          "reversals": 0,
+          "maximum_ratio": 0.907727247793832
+        }
+      }
+    },
+    {
+      "name": "idealized-fast",
+      "settings": {
+        "kernel_us": 0,
+        "link_latency_scale": 0,
+        "memory_scale": 16,
+        "compute_scale": 16
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.8581579538954598,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.8282613502596918
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.8581579538954598
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.7469319085682627
+        }
+      }
+    },
+    {
+      "name": "slow-constant",
+      "settings": {
+        "kernel_us": 1,
+        "link_latency_scale": 5,
+        "memory_scale": 0.5,
+        "compute_scale": 0.5
+      },
+      "checked": 177,
+      "reversals": 0,
+      "maximum_ratio": 0.976606311008471,
+      "by_mode": {
+        "lpx": {
+          "checked": 3,
+          "reversals": 0,
+          "maximum_ratio": 0.976606311008471
+        },
+        "af": {
+          "checked": 150,
+          "reversals": 0,
+          "maximum_ratio": 0.9716910063108382
+        },
+        "af-global": {
+          "checked": 24,
+          "reversals": 0,
+          "maximum_ratio": 0.914918895869515
+        }
+      }
+    }
+  ],
+  "schema_version": 1,
+  "detailed_result": {
+    "path": "outputs/lpx-context-sensitivity-20261019/summary.json",
+    "sha256": "d226655427f53283a3493e05c9d1fe705c84af82b1f6fd8518ba3d910755dd42"
+  },
+  "source_sha256": {
+    "scripts/explore_lpx_context.py": "aed86970836153342ada868775539699868e12349f8743af4ccbea5a80ddccf5",
+    "scripts/lpx/context_sensitivity.py": "5319b286b3cc6b75b782f33469443c96e1556d070191aa539c346a1769ca2d99",
+    "scripts/lpx/aa_cost.py": "51edbcc105f50f72abe37776d89fe126fd6382e425ac4d1ce7ab6fc81de762ca",
+    "scripts/lpx/aa_model.py": "2781b72b86fe5ba02660287d73f6c48736f4ddfcae23ca7385a9041b4e9af072",
+    "scripts/lpx/aa_search.py": "ccc491375b3a4ebba8fa60385c64b6b0ff68683bcb456f86acec748dabe3ec4a",
+    "tests/test_lpx_context.py": "450b90f6ac4e562470215df1dde302b9b33b6937bb0baf0eb23339e263e2fef7",
+    "experiments/lpx/aa-gemma4.json": "b631fd403e10b7e5f0f74eff98c826ef232f032dad375feaa6a13153bf4ac3a4",
+    "data/devices/groq_lp30.yaml": "3ee064944e0400fc32e6cabb2f6e4e900a17f3832c330d61487791d28458aac9",
+    "data/devices/rubin.yaml": "521a49ec0a13b0cc6bd0adc202cf36960a8f2bf4aecc2020fdedb8ef0eff8767",
+    "data/topologies/links.yaml": "535706315628dc7210e8ecd39ae34a61d1a9f9b1407c348e2e10b52bdcc2cadf",
+    "data/topologies/groq_lpx256.yaml": "803a82967d05304ec07769918ca91013a1498cd3429afbf88280b7e89490677d",
+    "data/topologies/rubin_nvl72.yaml": "589c2d4fe9c4846abd5c463a5168a30d63c465574b73284da812dc6f08ae5d6a",
+    "TokenSim/operator_data/analytical/groq.py": "60da0a3adada2dc21666a23764a401eb1ba5aaaa0009557826738bec58b1a707",
+    "TokenSim/operator_data/analytical/gpu.py": "d299d1fe15a2ad9d5574c7a6eaf9fe3ca9f0b644a7d0f127ebbbdd742947fa4c",
+    "TokenSim/operator_data/analytical/base.py": "d428ed53fe76a74316299519075f2c412cbab904e5709579fd1bc9d90f6c2f87",
+    "TokenSim/operator_data/workload.py": "15efe927a298b9bb8eb81676248552820981e3846b2ddbee7fbf5e510e7e91bd",
+    "TokenSim/comm/collectives.py": "61a2997477aec4f15a3142113821ff86df30a26eef2d39680f746bf04d13462b",
+    "TokenSim/comm/collective_types.py": "fddb3535c5e29a8426be2d6407fdf97851cb25cc7253211425aa002513401ae4"
+  },
+  "validation": {
+    "unit_tests": 513,
+    "context_sensitivity_tests": 8,
+    "fixed_combinations": 9761,
+    "fixed_reversals": 0,
+    "black_check_passed": true
+  }
+}

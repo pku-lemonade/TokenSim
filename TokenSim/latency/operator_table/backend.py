@@ -5,7 +5,11 @@ from __future__ import annotations
 import math
 from collections import Counter
 from typing import Any
-from TokenSim.config.cache_config import local_kv_heads, stage_layer_count
+from TokenSim.config.cache_config import (
+    local_kv_heads,
+    stage_layer_count,
+    stage_layer_range,
+)
 from TokenSim.config.model_config import ModelSpec
 from TokenSim.config.moe_execution import MoEExecutionConfig
 from TokenSim.config.parallel_config import ParallelConfig, ParallelRankInfo
@@ -63,6 +67,7 @@ class OperatorTableLatencyBackend(StepComposition, OperatorQueries, LatencyBacke
         mhc_backend: str = "generic",
         expected_decode_query_len: int = 1,
         max_num_seqs: int = 64,
+        pipeline_layer_counts: tuple[int, ...] | None = None,
     ) -> None:
         if fallback not in FALLBACK_POLICIES:
             raise ConfigurationError(
@@ -80,6 +85,23 @@ class OperatorTableLatencyBackend(StepComposition, OperatorQueries, LatencyBacke
         self.model = model
         self.parallel_config = parallel_config or ParallelConfig.default()
         self.rank_info = rank_info or ParallelRankInfo()
+        self.pipeline_layer_counts = pipeline_layer_counts
+        if pipeline_layer_counts is not None:
+            owned = stage_layer_range(
+                model.num_layers,
+                self.parallel_config.pipeline_parallel_size,
+                self.rank_info.pp_rank,
+                pipeline_layer_counts,
+            )
+            balanced = stage_layer_range(
+                model.num_layers,
+                self.parallel_config.pipeline_parallel_size,
+                self.rank_info.pp_rank,
+            )
+            if owned != balanced and (model.is_moe or model.components):
+                raise ConfigurationError(
+                    "nonuniform operator-backend pipelines require a dense ordinary model"
+                )
         self.communicator = communicator
         if expert_placement is None and model.is_moe:
             from TokenSim.moe.placement import build_expert_placement
@@ -193,8 +215,17 @@ class OperatorTableLatencyBackend(StepComposition, OperatorQueries, LatencyBacke
         )
         self.inter_local = math.ceil(model.intermediate_size / tp)
         self.vocab_local = math.ceil(model.vocab_size / tp)
-        self.layers_local = stage_layer_count(
-            model.num_layers, pp, self.rank_info.pp_rank
+        self.layers_local = (
+            stage_layer_count(model.num_layers, pp, self.rank_info.pp_rank)
+            if self.pipeline_layer_counts is None
+            else len(
+                stage_layer_range(
+                    model.num_layers,
+                    pp,
+                    self.rank_info.pp_rank,
+                    self.pipeline_layer_counts,
+                )
+            )
         )
         self.is_last_stage = self.rank_info.pp_rank == pp - 1
         self.moe_layers_local = (

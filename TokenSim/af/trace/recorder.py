@@ -7,6 +7,7 @@ from typing import Any, Mapping
 
 from TokenSim.af.planning.batching import AFIteration
 from TokenSim.af.providers.queries import AFRoutingEdge
+from TokenSim.af.trace.stages import validate_transfer_stages
 from TokenSim.af.trace.metrics import (
     AFTraceEvent,
     _ResourceBusyTime,
@@ -255,20 +256,7 @@ class AFTraceRecorder:
                         "Model boundary cannot have a transformer layer type"
                     )
                 continue
-            for operation in ("af_a_to_f", "af_f_to_a"):
-                operation_events = [
-                    event for event in layer_events if event.operation == operation
-                ]
-                stage_ids = {
-                    event.logical_stage_id or event.node_id
-                    for event in operation_events
-                }
-                if len(stage_ids) != 1:
-                    raise SimulationStateError(
-                        f"AF trace invariant failed: block={block_id}, layer={layer_id} "
-                        f"requires exactly one {operation} logical stage; "
-                        f"got {len(stage_ids)}"
-                    )
+            validate_transfer_stages(layer_events, by_node)
             typed_events = [
                 event for event in layer_events if event.layer_type is not None
             ]

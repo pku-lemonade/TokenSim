@@ -98,10 +98,15 @@ class ReplayConfig:
     samples: int = 4
     prefill_samples: int = 1
     cache: str = str(ROOT / "outputs/lpx-replay-profile-cache")
+    streaming: dict | None = None
 
     def __call__(self, runtimes, measurement):
         integer(self.samples, "decode profile samples", minimum=1)
         integer(self.prefill_samples, "prefill profile samples", minimum=1)
+        if self.streaming is not None:
+            from TokenSim.comm.streaming import StreamingConfig
+
+            StreamingConfig(**self.streaming)
         return ReplayDriver(self, runtimes, measurement)
 
 
@@ -196,6 +201,11 @@ class ReplayDriver:
                 dp_rank=dp,
                 seed=(workload.seed + selected * 104729),
                 sample=selected,
+                **(
+                    {"streaming": self.config.streaming}
+                    if self.config.streaming is not None
+                    else {}
+                ),
             )
             capacities = resource_capacities(self.services)
             for node in profile.nodes:
@@ -232,7 +242,11 @@ class ReplayDriver:
 
     def describe(self):
         result = dict(
-            method="sampled_native_operator_dags",
+            method=(
+                "modeled_native_operator_dags"
+                if self.config.streaming is not None
+                else "sampled_native_operator_dags"
+            ),
             decode_profile_samples=self.config.samples,
             prefill_profile_samples=self.config.prefill_samples,
             profiles=self.metadata,
@@ -243,6 +257,11 @@ class ReplayDriver:
                 "Resource tie ordering uses native sample start order and replay submission order.",
                 "All requested tokens and serving protocol actions are executed; model quality is unmeasured.",
             ],
+            **(
+                {"streaming": self.config.streaming}
+                if self.config.streaming is not None
+                else {}
+            ),
         )
         self.kernel.close()
         return result

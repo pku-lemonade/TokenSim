@@ -250,9 +250,22 @@ def stage_layer_count(total_layers: int, pp_size: int, pp_rank: int) -> int:
     return base + (1 if pp_rank < remainder else 0)
 
 
-def stage_layer_range(total_layers: int, pp_size: int, pp_rank: int) -> range:
+def stage_layer_range(
+    total_layers: int, pp_size: int, pp_rank: int, layer_counts=None
+) -> range:
     if not 1 <= pp_size <= total_layers or not 0 <= pp_rank < pp_size:
         raise ConfigurationError("pipeline stage must own at least one model layer")
+    if layer_counts is not None:
+        if (
+            len(layer_counts) != pp_size
+            or any(type(count) is not int or count < 1 for count in layer_counts)
+            or sum(layer_counts) != total_layers
+        ):
+            raise ConfigurationError(
+                "pipeline_layer_counts must assign every model layer once to nonempty stages"
+            )
+        start = sum(layer_counts[:pp_rank])
+        return range(start, start + layer_counts[pp_rank])
     start = pp_rank * (total_layers // pp_size) + min(pp_rank, total_layers % pp_size)
     return range(start, start + stage_layer_count(total_layers, pp_size, pp_rank))
 

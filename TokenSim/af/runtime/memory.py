@@ -312,6 +312,23 @@ def _compile_physical_states(
         )
         buffers += (("communication_workspace", workspace),)
         if (
+            cluster_config.af_link.colocated_dense_reuse
+            and cluster_config.af.execution_protocol == "partial_return"
+            and "af_attention" in roles
+            and (not model.is_moe or moe_config.first_k_dense_replace > 0)
+        ):
+            # Reserve the retained full residual independently of staging buffers.
+            buffers += (
+                (
+                    "colocated_dense_residual",
+                    workspace_tokens
+                    * hidden
+                    * dtype_size_bytes(
+                        effective_dtypes.activation_dtype, role="activation_dtype"
+                    ),
+                ),
+            )
+        if (
             cluster_config.af.execution_protocol == "vllm_afd"
             and cluster_config.af.communication_timing.native_control_enabled
         ):
@@ -341,6 +358,11 @@ def _compile_physical_states(
                     ("f_topk_ids_weights", tokens * moe_config.num_experts_per_tok * 8),
                 )
             buffers += (("control_staging", 8 + len(encode_eager_control(tokens))),)
+        policy = hardware_conf.analytical.get("lpx_memory")
+        if hardware_conf.device_id == "groq_lp30" and policy is not None:
+            from TokenSim.af.runtime.lpx_memory import workspace_components
+
+            buffers += workspace_components(components, model, policy)
         required_bytes = model_bytes + sum(size for _, size in buffers)
         if required_bytes >= capacity_bytes:
             domains_and_ranks = ",".join(

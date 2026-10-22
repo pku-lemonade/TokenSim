@@ -20,6 +20,7 @@ import numpy as np
 from TokenSim.af.serving.service import AFService
 from TokenSim.af.serving.timing import namespace_resource
 from TokenSim.af.trace.occupancy import occupied_until
+from TokenSim.config.validation import number
 from TokenSim.errors import ConfigurationError, SimulationStateError
 from scripts.lpx.replay_engine import ReplayKernel, ReplayNode
 
@@ -53,18 +54,21 @@ class NativeProfile:
     def verify(self):
         kernel = ReplayKernel()
         try:
+            expected = self.metadata.get(
+                "modeled_duration_s", self.metadata["native_duration_s"]
+            )
             profile = kernel.add(self.nodes)
             kernel.submit(profile, 0)
             result = kernel.advance()
             if result is None or not math.isclose(
                 result.end,
-                self.metadata["native_duration_s"],
+                expected,
                 rel_tol=1e-7,
                 abs_tol=1e-10,
             ):
                 actual = None if result is None else result.end
                 raise SimulationStateError(
-                    f"native profile reconstruction differs: {actual} versus {self.metadata['native_duration_s']}"
+                    f"profile reconstruction differs: {actual} versus {expected}"
                 )
         finally:
             kernel.close()
@@ -128,7 +132,15 @@ def capture_profile(
     dp_rank,
     seed,
     sample,
+    streaming=None,
+    invocation_us=0.0,
 ):
+    number(invocation_us, "LPX invocation_us", minimum=0)
+    if invocation_us:
+        if phase != "decode" or any(
+            worker.hardware != "groq_lp30" for worker in runtime.workers
+        ):
+            raise ConfigurationError("LPX invocation requires pure LP30 decode")
     started = perf_counter()
     env = simpy.Environment()
     service = AFService(env, runtime, seed=seed, retain_trace=True)
@@ -166,6 +178,16 @@ def capture_profile(
             host_capture_s=perf_counter() - started,
         ),
     )
+    if streaming is not None:
+        from scripts.lpx.streaming import transform
+
+        result = transform(runtime, service.trace.events, result, streaming)
+        result.verify()
+    if invocation_us:
+        from scripts.lpx.execution import add_invocation
+
+        result = add_invocation(result, invocation_us)
+        result.verify()
     service.trace.clear()
     del service, env, sessions
     gc.collect()

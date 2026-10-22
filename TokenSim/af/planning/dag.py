@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from TokenSim.af.planning.nodes import ExecutionNode
+from TokenSim.af.planning.reuse_validation import validate_dense_reuse
 from TokenSim.af.providers.queries import AFRoutingEdge
 from TokenSim.errors import ConfigurationError
 
@@ -173,7 +174,12 @@ class AFExecutionDAG:
                         f"{copy_key!r}"
                     )
                 transfer_copies.add(copy_key)
-        for operation in ("af_a_to_f", "af_f_to_a"):
+        local_reuse = any(
+            node.metadata.get("colocated_dense_reuse") for node in runtime_nodes
+        )
+        if local_reuse:
+            validate_dense_reuse(runtime_nodes)
+        for operation in () if local_reuse else ("af_a_to_f", "af_f_to_a"):
             stage_ids = {
                 node.logical_stage_id
                 for node in runtime_nodes
