@@ -291,6 +291,14 @@ def _compile_collective_plans(
                 )
             dp_rank = next(iter(dp_ranks))
             for collective in domain.communication_plan:
+                if (
+                    cluster_config.af.transfer_topology_mode == "physical"
+                    and collective.algorithm != "ring"
+                ):
+                    raise ConfigurationError(
+                        "physical collective plans support ring only; "
+                        "other algorithms require an explicit wire schedule"
+                    )
                 resource_group = collective.resource_group
                 resource_lane = collective.resource_lane
                 network = collective.network
@@ -364,6 +372,7 @@ def _compile_collective_plans(
                             resource_lane=resource_lane,
                             payload_bytes=collective.payload_bytes,
                             pp_rank=pp_rank,
+                            algorithm=collective.algorithm,
                         )
                     )
     return tuple(

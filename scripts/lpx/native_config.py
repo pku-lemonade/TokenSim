@@ -58,6 +58,8 @@ def configuration(
     dag_template_cache=False,
     colocated_dense_reuse=False,
     pipeline_layer_counts=None,
+    ffn_batching=False,
+    ffn_batch_wait_us=5.0,
 ):
     boolean(colocated_dense_reuse, "colocated dense reuse")
     policy = hardware.device(layout.a_device).analytical.get("lpx_pipeline")
@@ -66,6 +68,11 @@ def configuration(
     if layout.a_cp != 1:
         raise ConfigurationError(
             "context parallelism needs a native distributed-attention plan"
+        )
+    if layout.colocated and layout.f_tp != 1 and (layout.f_ep != 1 or a_dp != 1):
+        raise ConfigurationError(
+            "colocated expert TP with EP or multiple attention replicas needs "
+            "a complete-model prefill backend supporting hybrid expert TP/EP"
         )
     a_tp, a_pp = layout.a_tp, layout.a_pp
     f_tp, f_pp, ep = layout.f_tp, layout.f_pp, layout.f_ep
@@ -115,10 +122,10 @@ def configuration(
         ("a", a_name, "af_attention", a_tp, a_pp, a_dp, 1),
         ("f", f_name, "af_ffn", f_tp, f_pp, f_dp, ep),
     ):
-        # Colocated F uses the A base coordinates; experts are spread over
-        # those ranks while the model's attention tensors retain A TP.
+        # F reuses A's base coordinates while retaining its declared expert
+        # tensor partition and spreading its EP groups over A replicas.
         if name == "f" and layout.colocated:
-            tp, dp, expert_size = a_tp, a_dp, a_tp * a_dp
+            tp, dp, expert_size = a_tp, a_dp, ep * a_dp
         instances = []
         for replica in range(dp):
             mappings = []
@@ -155,6 +162,7 @@ def configuration(
                     network=f"{namespace}-{name}-up",
                     resource_group=f"{name}-up",
                     resource_lane="collective",
+                    algorithm=getattr(layout, f"{name}_collective_algorithm"),
                 )
             )
         domains.append(
@@ -216,6 +224,8 @@ def configuration(
             compute_execution_mode=execution_mode,
             graph_device_kernel_us=graph_kernel_us,
             coalesce_ready_transfers=True,
+            ffn_batching=ffn_batching,
+            ffn_batch_wait_us=ffn_batch_wait_us,
             dag_template_cache_max_tokens=32,
             dag_template_cache=dag_template_cache,
             activation_dtype=model.activation_dtype,

@@ -15,8 +15,11 @@ import hashlib
 
 from TokenSim.config.validation import integer, number
 from TokenSim.hardware import HardwareContext
-from scripts.lpx.config import load_cases
+from scripts.lpx.config import load_cases, with_collective_algorithms
+from scripts.lpx.hardware_overrides import communication_hypothesis
+from TokenSim.comm.collective_types import ALGORITHMS
 from scripts.lpx.frontier import pareto
+from scripts.lpx_power import POWER_SCOPES, processor_power_rows
 from scripts.lpx.runner import evaluate_jobs
 from scripts.lpx.replay_profiles import source_identity
 from scripts.reproduce_lpx import repository_state, write_json
@@ -120,6 +123,18 @@ def extension_candidates(rows, limit):
     return candidates
 
 
+def formal_candidates(rows):
+    identities = set()
+    for scope in POWER_SCOPES:
+        scoped = processor_power_rows(rows, scope)
+        for mode in ("rubin", "af", "pd", "draft"):
+            identities.update(
+                (row["case"], row["batch"])
+                for row in pareto([row for row in scoped if row["mode"] == mode])
+            )
+    return identities
+
+
 def run_grid(args, workload, cases, selected, *, phase, prior=()):
     hardware = HardwareContext.load(ROOT / "data")
     target, draft = hardware.models.resolve(args.model), hardware.models.resolve(
@@ -133,17 +148,19 @@ def run_grid(args, workload, cases, selected, *, phase, prior=()):
     for case, clients in selected:
         formal = phase == "formal"
         settings = dict(
+            communication_overrides=getattr(args, "communication_overrides", {}),
             checkpoint_output=str(args.output / ".experiments"),
             result_format="reference",
             resume=not args.no_resume,
             draft_spec=draft,
             stream_metrics=True,
             execution_backend="sampled-replay",
+            ffn_batching=False,
             replay_samples=args.samples,
             replay_prefill_samples=1,
             replay_cache=str(args.profile_cache),
-            micro_batch=1,
-            a_dp=1,
+            micro_batch=args.micro_batch,
+            a_dp=args.a_replicas,
             warmup_steps=args.formal_warmup_steps if formal else 2,
             warmup_seconds=max(1, 10 * iso.get(case.name, 0)) if formal else 0,
             measurement_turns=(
@@ -162,6 +179,8 @@ def run_grid(args, workload, cases, selected, *, phase, prior=()):
         schema="tokensim.lpx_study_index",
         version=1,
         phase=phase,
+        variant=study_variant(args),
+        communication_overrides=getattr(args, "communication_overrides", {}),
         git_revision=revision,
         git_worktree_dirty=dirty,
         source_sha256=source_identity(),
@@ -172,6 +191,8 @@ def run_grid(args, workload, cases, selected, *, phase, prior=()):
         cases=[asdict(case) for case in cases],
         execution_backend="sampled-replay",
         replay_samples=args.samples,
+        ffn_batching=False,
+        selection_power_scopes=list(POWER_SCOPES),
         state="running",
     )
     completed = {}
@@ -190,6 +211,17 @@ def run_grid(args, workload, cases, selected, *, phase, prior=()):
     return rows
 
 
+def study_variant(args):
+    value = f"mb{args.micro_batch}-adp{args.a_replicas}-pf{int(args.prefill_tp8_pp4)}"
+    for option in ("gpu_collective_algorithm", "lpu_collective_algorithm"):
+        policy = getattr(args, option, None)
+        if policy is not None:
+            value += f"-{option.split('_')[0]}{policy}"
+    for name, amount in sorted(getattr(args, "communication_overrides", {}).items()):
+        value += f"-{name}{amount:g}"
+    return value
+
+
 def main(argv=None):
     cli = argparse.ArgumentParser(description=__doc__)
     cli.add_argument(
@@ -203,6 +235,14 @@ def main(argv=None):
     )
     cli.add_argument("--users", nargs="+", type=int, default=[1, 2, 4, 8, 16, 32, 64])
     cli.add_argument("--maximum-users", type=int, default=512)
+    cli.add_argument("--micro-batch", type=int, default=1)
+    cli.add_argument("--a-replicas", type=int, default=1)
+    cli.add_argument("--gpu-collective-algorithm", choices=ALGORITHMS)
+    cli.add_argument("--lpu-collective-algorithm", choices=ALGORITHMS)
+    cli.add_argument("--c2c-latency-us", type=float)
+    cli.add_argument("--collective-launch-us", type=float)
+    cli.add_argument("--cases", nargs="+")
+    cli.add_argument("--prefill-tp8-pp4", action="store_true")
     cli.add_argument("--jobs", type=int, default=4)
     cli.add_argument("--formal-jobs", type=int, default=2)
     cli.add_argument("--samples", type=int, default=16)
@@ -215,8 +255,21 @@ def main(argv=None):
     cli.add_argument("--phase", choices=("coarse", "formal", "all"), default="all")
     cli.add_argument("--no-resume", action="store_true")
     args = cli.parse_args(argv)
+    args.communication_overrides = {
+        name: value
+        for name, value in (
+            ("latency_us", args.c2c_latency_us),
+            ("launch_us", args.collective_launch_us),
+        )
+        if value is not None
+    }
+    communication_hypothesis(
+        HardwareContext.load(ROOT / "data"), **args.communication_overrides
+    )
     for name in (
         "jobs",
+        "micro_batch",
+        "a_replicas",
         "formal_jobs",
         "samples",
         "coarse_turns",
@@ -235,6 +288,23 @@ def main(argv=None):
     args.profile_cache = args.profile_cache.resolve()
     args.output.mkdir(parents=True, exist_ok=True)
     workload, cases = study_cases(args.model)
+    cases = with_collective_algorithms(
+        cases, gpu=args.gpu_collective_algorithm, lpu=args.lpu_collective_algorithm
+    )
+    if args.cases:
+        unknown = set(args.cases) - {c.name for c in cases}
+        if unknown:
+            cli.error(f"unknown study cases: {sorted(unknown)}")
+        cases = [c for c in cases if c.name in args.cases]
+    if args.prefill_tp8_pp4:
+        cases = [
+            (
+                replace(c, prefill=replace(c.prefill, a_tp=8, f_ep=8, a_pp=4, f_pp=4))
+                if c.prefill
+                else c
+            )
+            for c in cases
+        ]
     workload = replace(workload, seed=args.seed)
     write_json(
         args.output / "configuration.json",
@@ -261,6 +331,10 @@ def main(argv=None):
             or previous["workload"] != asdict(workload)
             or previous["cases"] != [asdict(c) for c in cases]
             or previous["source_sha256"] != source_identity()
+            or previous.get("communication_overrides", {})
+            != args.communication_overrides
+            or previous["variant"] != study_variant(args)
+            or previous["replay_samples"] != args.samples
         ):
             cli.error(
                 "formal phase requires matching coarse model, workload, configurations and code"
@@ -290,10 +364,7 @@ def main(argv=None):
             args.isolated_latencies[row["case"]] = row["request_statistics"][
                 "latency_s"
             ]["mean"]
-    frontier = []
-    for mode in ("rubin", "af", "pd", "draft"):
-        frontier.extend(pareto([r for r in rows if r["mode"] == mode]))
-    identities = {(r["case"], r["batch"]) for r in frontier}
+    identities = formal_candidates(rows)
     write_json(
         args.output / "formal-selection.json",
         [dict(case=c, users=n) for c, n in sorted(identities)],

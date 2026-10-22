@@ -164,6 +164,11 @@ class ModelAFExecutor(AFExecutor):
                     resource_group=plan.resource_group,
                     resource_lane=plan.resource_lane,
                     payload_bytes=payload,
+                    metadata=(
+                        {"collective_algorithm": plan.algorithm}
+                        if plan.algorithm != "ring"
+                        else {}
+                    ),
                     participant_endpoints=endpoints,
                     logical_input_bytes_per_rank=tuple(
                         (rank, payload) for rank in ranks

@@ -116,6 +116,14 @@ Setting `node_size` to four can represent a four-accelerator compute node, but t
 The alternative `flat_link` model uses catalog link classes and configured resource lanes.
 Its fabric mode supports separate full-duplex directions or a shared half-duplex lane.
 Its endpoint mode models shared transmit/receive injection budgets per worker.
+Each execution domain's `communication_plan` entry can set `algorithm` to `ring`, `tree`, `direct` or `auto`.
+The default is `ring` and preserves existing service times.
+`auto` compares the analytical ring and tree costs for the current participant count and tensor size.
+`direct` assumes a nonblocking fabric and requires an explicit selection; it does not establish NVLS support or reproduce a compiler-specific LPU algorithm.
+The input payload is per rank, so AllGather returns a buffer whose size is the input size multiplied by the participant count.
+Algorithm selection reaches layer collectives, embedding reduction and output gathering, and is retained in runtime plans and transport traces.
+The `physical` wire scheduler supports ring only and rejects other policies before execution.
+Complete-model prefill continues to use its ordinary hierarchical collective backend; the domain policy applies to the AF operator DAG.
 Physical node budgets determine contention in `physical` mode; flat-link duplex settings describe the `flat_link` model.
 
 Optional host submission, control and completion costs are accounted for separately from device computation and transport service.

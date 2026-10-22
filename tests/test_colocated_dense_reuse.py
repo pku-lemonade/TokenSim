@@ -115,10 +115,10 @@ class ColocatedDenseReuseTest(unittest.TestCase):
             a_device="groq_lp30",
             f_device="groq_lp30",
             a_tp=tp,
-            f_tp=tp,
+            f_tp=tp if dp == 1 else 1,
             a_pp=pp,
             f_pp=pp,
-            f_ep=1,
+            f_ep=1 if dp == 1 else tp,
         )
         with patch("scripts.lpx.native_config.build_model_runtime", build):
             return configuration(

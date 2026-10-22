@@ -334,3 +334,6 @@ The 14 ablation point wall times sum to 4,704.51 seconds while independent group
 That sum includes contention and does not represent elapsed study time.
 The 0.45-second ablation aggregation reuses all completed checkpoints and is not a fresh simulation benchmark.
 The [verification helper](../outputs/lpx-fidelity-final-20261021/package_results.py) checks the complete artifacts and regenerates the portable result file.
+
+The [integration verification](lpx-integration-20261021.md) records validation after incorporating the 24 remote commits through `7ce890b`.
+The historical source fingerprint and experiment results above remain unchanged.

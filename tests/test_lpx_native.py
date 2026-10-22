@@ -13,9 +13,50 @@ from scripts.lpx.native_config import configuration
 from TokenSim.af.serving.service import AFService
 from TokenSim.af.communication.endpoints import EndpointResources
 from TokenSim.af.factory import build_model_runtime
+from TokenSim.errors import ConfigurationError
 
 
 class NativeLPXTest(unittest.TestCase):
+    def test_unsupported_colocated_hybrids_are_rejected_before_remapping(self):
+        for layout, replicas in (
+            (Layout(a_tp=4, f_tp=2, f_ep=2), 1),
+            (Layout(a_tp=4, f_tp=2, f_ep=2), 2),
+            (Layout(a_tp=2, f_tp=2, f_ep=1), 2),
+        ):
+            with (
+                self.subTest(replicas=replicas),
+                patch("scripts.lpx.native_config.build_model_runtime") as build,
+                self.assertRaisesRegex(ConfigurationError, "hybrid expert TP/EP"),
+            ):
+                configuration(
+                    self.hardware,
+                    self.model,
+                    layout,
+                    namespace="mixed",
+                    a_dp=replicas,
+                )
+            build.assert_not_called()
+
+    def test_colocated_pure_expert_tp_is_preserved_through_prefill_and_decode(self):
+        layout = Layout(a_tp=2, f_tp=2, f_ep=1)
+        runtime = configuration(self.hardware, self.model, layout, namespace="pure")
+        f_name = runtime.cluster.af_domains[1].name
+        self.assertEqual(
+            runtime.plan.domain_runtime(f_name).expert_tensor_parallel_size, 2
+        )
+        self.assertEqual(len(runtime.plan.expert_execution(f_name, 0, 0)), 2)
+        result = point(
+            self.hardware,
+            self.model,
+            self.workload,
+            Case("pure", "rubin", layout),
+            2,
+            warmup_steps=1,
+            measurement_seconds=1e-9,
+        )
+        self.assertEqual(result["status"], "ok")
+        self.assertGreaterEqual(result["request_statistics"]["completed_requests"], 2)
+
     def test_external_draft_replicas_distribute_clients_and_charge_inventory(self):
         draft_layout = replace(self.base, a_device="groq_lp30", f_device="groq_lp30")
         case = Case(

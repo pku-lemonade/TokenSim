@@ -1,0 +1,225 @@
+{
+  "schema": "tokensim.lpx_multiuser_control_evidence",
+  "version": 1,
+  "scope": "Four-user full-workload controls and result-preserving f_tp=1 validation; no hardware measurements.",
+  "wide": {
+    "native_source": {
+      "path": "outputs/lpx-study/native-full-users4/summary.json",
+      "sha256": "76392af8ac20bd717912ac74422a5b61e33e2cafe8ae1e6593a9331f4eb52adc"
+    },
+    "replay_source": {
+      "path": "outputs/lpx-study/replay-full-users4/summary.json",
+      "sha256": "5dcb2b7c2f934d6f9813671dbd86608a6d7f24505533a894f0cd0c0cad6e4160"
+    },
+    "native_validation": {
+      "status": "passed",
+      "points": 3,
+      "feasible": 3,
+      "rejected": 0,
+      "power_model": {
+        "groq_lp30": {
+          "watts": 450.0,
+          "source_id": "assumption-lp30-analytical",
+          "grade": "D"
+        },
+        "rubin": {
+          "watts": 1800.0,
+          "source_id": "assumption-rubin-analytical",
+          "grade": "D"
+        }
+      },
+      "original_workload": false,
+      "execution_fidelity": "native_per_pass_dags",
+      "numerical_accuracy": "unvalidated_hardware_hypotheses",
+      "grid_coverage": "declared",
+      "event_accounting": "token_events_and_intervals"
+    },
+    "replay_validation": {
+      "status": "passed",
+      "points": 3,
+      "feasible": 3,
+      "rejected": 0,
+      "power_model": {
+        "groq_lp30": {
+          "watts": 450.0,
+          "source_id": "assumption-lp30-analytical",
+          "grade": "D"
+        },
+        "rubin": {
+          "watts": 1800.0,
+          "source_id": "assumption-rubin-analytical",
+          "grade": "D"
+        }
+      },
+      "original_workload": false,
+      "execution_fidelity": "sampled_native_operator_dags",
+      "numerical_accuracy": "requires_separate_native_control",
+      "grid_coverage": "declared",
+      "event_accounting": "token_events_and_intervals"
+    },
+    "workload": {
+      "cached_tokens": 400000,
+      "new_tokens": 4000,
+      "output_tokens": 400,
+      "prefill_chunk": 4000,
+      "seed": 42,
+      "draft_tokens": 4,
+      "acceptance_probability": 0.8
+    },
+    "rows": [
+      {
+        "case": "rubin-tp8",
+        "users": 4,
+        "inventory": {
+          "rubin": 8
+        },
+        "power_watts": 14400.0,
+        "native_generation_tps": 125.28044505738632,
+        "replay_generation_tps": 121.03929511360425,
+        "generation_relative_error": 0.033853247742210324,
+        "native_output_tps": 419.64294304883,
+        "replay_output_tps": 417.48277506966315,
+        "throughput_relative_error": 0.005147633279550923,
+        "native_completed_requests": 4,
+        "replay_completed_requests": 4
+      },
+      {
+        "case": "af-f4-ep128-pp5",
+        "users": 4,
+        "inventory": {
+          "rubin": 24,
+          "groq_lp30": 2560
+        },
+        "power_watts": 1195200.0,
+        "native_generation_tps": 223.760429057606,
+        "replay_generation_tps": 223.14010394364232,
+        "generation_relative_error": 0.0027722735274340327,
+        "native_output_tps": 769.7594610538505,
+        "replay_output_tps": 768.3840589281333,
+        "throughput_relative_error": 0.0017867947005603124,
+        "native_completed_requests": 4,
+        "replay_completed_requests": 4
+      },
+      {
+        "case": "draft-lpx256",
+        "users": 4,
+        "inventory": {
+          "rubin": 8,
+          "groq_lp30": 256
+        },
+        "power_watts": 129600.0,
+        "native_generation_tps": 196.1743235281181,
+        "replay_generation_tps": 196.6818116756266,
+        "generation_relative_error": 0.002586924416924319,
+        "native_output_tps": 583.3266224121214,
+        "replay_output_tps": 585.4574809732379,
+        "throughput_relative_error": 0.003652942415528937,
+        "native_completed_requests": 4,
+        "replay_completed_requests": 4
+      }
+    ]
+  },
+  "expert": {
+    "native_source": {
+      "path": "outputs/lpx-study/expert-full-users4-native/summary.json",
+      "sha256": "113e1a16cb813684ff7de148026dd05655355d02c8899b206944ee19c972285f"
+    },
+    "replay_source": {
+      "path": "outputs/lpx-study/expert-full-users4-sampled-replay/summary.json",
+      "sha256": "9d267b394f610d776d7c3405204776eb7b34864e3f572598a2a9f0dfa4cad7cf"
+    },
+    "native_validation": {
+      "status": "passed",
+      "points": 1,
+      "feasible": 1,
+      "rejected": 0,
+      "power_model": {
+        "rubin": {
+          "watts": 1800.0,
+          "source_id": "assumption-rubin-analytical",
+          "grade": "D"
+        }
+      },
+      "original_workload": false,
+      "execution_fidelity": "native_per_pass_dags",
+      "numerical_accuracy": "unvalidated_hardware_hypotheses",
+      "grid_coverage": "declared",
+      "event_accounting": "token_events_and_intervals"
+    },
+    "replay_validation": {
+      "status": "passed",
+      "points": 1,
+      "feasible": 1,
+      "rejected": 0,
+      "power_model": {
+        "rubin": {
+          "watts": 1800.0,
+          "source_id": "assumption-rubin-analytical",
+          "grade": "D"
+        }
+      },
+      "original_workload": false,
+      "execution_fidelity": "sampled_native_operator_dags",
+      "numerical_accuracy": "requires_separate_native_control",
+      "grid_coverage": "declared",
+      "event_accounting": "token_events_and_intervals"
+    },
+    "workload": {
+      "cached_tokens": 400000,
+      "new_tokens": 4000,
+      "output_tokens": 400,
+      "prefill_chunk": 4000,
+      "seed": 42,
+      "draft_tokens": 4,
+      "acceptance_probability": 0.8
+    },
+    "rows": [
+      {
+        "case": "rubin-tp8",
+        "users": 4,
+        "inventory": {
+          "rubin": 8
+        },
+        "power_watts": 14400.0,
+        "native_generation_tps": 478.4398305261874,
+        "replay_generation_tps": 476.6813584606447,
+        "generation_relative_error": 0.0036754299147894187,
+        "native_output_tps": 1613.209091718498,
+        "replay_output_tps": 1608.219987758111,
+        "throughput_relative_error": 0.0030926579734759096,
+        "native_completed_requests": 4,
+        "replay_completed_requests": 4
+      }
+    ]
+  },
+  "colocated_layout_fix": {
+    "before_revision": "0c9af01",
+    "after_revision": "3a78302",
+    "supported_layout": "f_tp=1",
+    "full_point_results_and_traces_equal": true,
+    "before_source": {
+      "path": "outputs/lpx-study/colocated-layout-validation/before.json",
+      "sha256": "4a7c1cf0dd4ef1b49e25a5e5cd53043bf408fa77700f9e808da8ced63b10baaa"
+    },
+    "after_source": {
+      "path": "outputs/lpx-study/colocated-layout-validation/after.json",
+      "sha256": "4a7c1cf0dd4ef1b49e25a5e5cd53043bf408fa77700f9e808da8ced63b10baaa"
+    },
+    "applied_revision": "b372e05",
+    "integrated_tests_passed": 539,
+    "validation_fixture": {
+      "layers": 4,
+      "hidden_size": 32,
+      "cached_tokens": 16,
+      "new_tokens": 2,
+      "output_tokens": 8,
+      "users": 2,
+      "modes": [
+        "rubin",
+        "af",
+        "pd",
+        "draft"
+      ]
+    }
+  }
+}

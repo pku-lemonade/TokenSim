@@ -1,0 +1,1305 @@
+{
+  "date": "2026-10-21",
+  "local_checkpoint": "533a487",
+  "merged_remote_tip": "7ce890be3fe2abe0e16fa6f862fa2c0e830cd053",
+  "merged_remote_commits": 24,
+  "source_sha256": "0b74d51dbed7c566573e6fd936ddd293297b5a858722d6475f828bbf788170e4",
+  "historical_source_sha256": "2686611479adfc9af8ce401de376b995ee9d9fb2b21d57bd9c2824b412236119",
+  "parameters": {
+    "config": {
+      "operator": {
+        "activation_dtype": "bf16",
+        "vector_ops_per_s": 20000000000000.0,
+        "exp_ops_per_s": 1000000000000.0,
+        "shuffle_bytes_per_s": 10000000000000.0,
+        "vector_efficiency": 0.5,
+        "shuffle_efficiency": 0.8,
+        "vector_bytes": 320,
+        "attention_tile_keys": 256,
+        "fill_drain_us": 0.05,
+        "schedule": "tiled"
+      },
+      "memory": {
+        "prefill_chunk": 16,
+        "maximum_context": 102000,
+        "attention_tile_keys": 256,
+        "tile_buffers": 2,
+        "reserve_bytes": 5000000
+      },
+      "fabric": {
+        "local_chips": 16,
+        "middle_chips": 128,
+        "local_us": 0.35,
+        "middle_us": 0.75,
+        "rack_us": 1.15,
+        "ports_per_chip": 96,
+        "lanes_per_peer": 6,
+        "p2p_lanes": 6,
+        "lane_bytes_per_s": 14000000000.0,
+        "injection_bytes_per_s": 1250000000000.0,
+        "efficiency": 1.0,
+        "reduction_ops_per_s": 10000000000000.0,
+        "routes": []
+      },
+      "token_units": {
+        "native_per_aa_input": 1.0,
+        "native_per_aa_output": 1.0,
+        "source": "Unmeasured identity assumption; no representative AA text corpus or downloaded Gemma tokenizer is bundled.",
+        "measured": false,
+        "corpus_sha256": null,
+        "tokenizer": null,
+        "revision": null
+      },
+      "compute": {
+        "gemm_mfu": 0.3,
+        "attention_mfu": 0.1,
+        "memory_efficiency": 0.9
+      },
+      "description": "Illustrative public-mechanism accounting; unknown LP30 unit rates, routes and scratch policy remain sensitivity assumptions."
+    },
+    "execution": {
+      "mode": "compiled",
+      "kernel_launch_us": 0.2,
+      "instruction_floor_us": 0,
+      "invocation_us": 0.0,
+      "c2c_hop_us": 0.35,
+      "effective_operator_startup_us": 0,
+      "invocation_scope": "One whole captured decode DAG, independent of TP and PP.",
+      "status": "Uncalibrated execution-boundary sensitivity assumptions.",
+      "retained_costs": [
+        "Native per-operator compute and SRAM roofline service.",
+        "All data dependencies, resource occupancy and required collectives.",
+        "C2C serialization, propagation and separately specified collective startup."
+      ]
+    },
+    "model": {
+      "model_id": "gemma-4-31b-text",
+      "display_name": "Gemma 4 31B text architecture",
+      "aliases": [],
+      "hidden_size": 5376,
+      "intermediate_size": 21504,
+      "num_layers": 60,
+      "num_attention_heads": 32,
+      "num_key_value_heads": 16,
+      "head_dim": 256,
+      "kv_cache_dim": null,
+      "vocab_size": 262144,
+      "max_position_embeddings": 262144,
+      "sliding_window": 0,
+      "attention_windows": [
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        0,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        0,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        0,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        0,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        0,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        0,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        0,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        0,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        0,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        0
+      ],
+      "tie_word_embeddings": true,
+      "qk_norm": true,
+      "attention_geometries": [
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 512,
+          "num_key_value_heads": 4,
+          "k_eq_v": true
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 512,
+          "num_key_value_heads": 4,
+          "k_eq_v": true
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 512,
+          "num_key_value_heads": 4,
+          "k_eq_v": true
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 512,
+          "num_key_value_heads": 4,
+          "k_eq_v": true
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 512,
+          "num_key_value_heads": 4,
+          "k_eq_v": true
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 512,
+          "num_key_value_heads": 4,
+          "k_eq_v": true
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 512,
+          "num_key_value_heads": 4,
+          "k_eq_v": true
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 512,
+          "num_key_value_heads": 4,
+          "k_eq_v": true
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 512,
+          "num_key_value_heads": 4,
+          "k_eq_v": true
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 256,
+          "num_key_value_heads": 16,
+          "k_eq_v": false
+        },
+        {
+          "head_dim": 512,
+          "num_key_value_heads": 4,
+          "k_eq_v": true
+        }
+      ],
+      "activation": "geglu",
+      "dtype": "fp8",
+      "activation_dtype": "bf16",
+      "kv_cache_dtype": "fp8",
+      "is_moe": false,
+      "moe": {
+        "is_moe_model": false,
+        "num_experts": 0,
+        "num_experts_per_tok": 1,
+        "moe_intermediate_size": null,
+        "num_shared_experts": 0,
+        "num_moe_layers": 0,
+        "first_k_dense_replace": 0,
+        "moe_layer_freq": 1,
+        "interleave_moe_layer_step": 1,
+        "routing": {
+          "distribution": "uniform",
+          "hot_experts": null,
+          "hot_expert_fraction": 0.5,
+          "uniform_selection": "cyclic"
+        },
+        "hidden_size": null,
+        "intermediate_size": null,
+        "num_attention_heads": null,
+        "num_key_value_heads": null
+      },
+      "sources": {
+        "google-config": {
+          "grade": "A",
+          "reference": "https://huggingface.co/google/gemma-4-31B-it/blob/842da3794eaa0b77d5f08bae87a17459d91ff475/config.json",
+          "notes": "Text model only; vision encoder excluded. BF16 is checkpoint precision; AA serving precision is undisclosed."
+        },
+        "transformers-implementation": {
+          "grade": "A",
+          "reference": "https://github.com/huggingface/transformers/blob/e0eb2810ac1b2caf6d082f247d8d37162ecf67a0/src/transformers/models/gemma4/modeling_gemma4.py",
+          "notes": "Global K/V projections share weights; transformed K and V caches remain separate. Per-layer scalar and logit softcap costs are excluded analytical approximations."
+        }
+      },
+      "total_params": 30696049664,
+      "attention_type": "gqa",
+      "mla_dimensions": null,
+      "architecture": "gemma4_text",
+      "operator_dtypes": {},
+      "components": null,
+      "operator_modules": {},
+      "layers": [
+        {
+          "layer_id": 0,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 1,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 2,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 3,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 4,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 5,
+          "attention_kind": "gqa",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 6,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 7,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 8,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 9,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 10,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 11,
+          "attention_kind": "gqa",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 12,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 13,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 14,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 15,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 16,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 17,
+          "attention_kind": "gqa",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 18,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 19,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 20,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 21,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 22,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 23,
+          "attention_kind": "gqa",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 24,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 25,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 26,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 27,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 28,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 29,
+          "attention_kind": "gqa",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 30,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 31,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 32,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 33,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 34,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 35,
+          "attention_kind": "gqa",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 36,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 37,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 38,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 39,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 40,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 41,
+          "attention_kind": "gqa",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 42,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 43,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 44,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 45,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 46,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 47,
+          "attention_kind": "gqa",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 48,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 49,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 50,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 51,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 52,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 53,
+          "attention_kind": "gqa",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 54,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 55,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 56,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 57,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 58,
+          "attention_kind": "sliding",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        },
+        {
+          "layer_id": 59,
+          "attention_kind": "gqa",
+          "compress_ratio": 1,
+          "moe_routing": "none",
+          "is_mtp": false
+        }
+      ]
+    },
+    "layout": {
+      "a_device": "groq_lp30",
+      "f_device": "groq_lp30",
+      "a_tp": 16,
+      "a_cp": 1,
+      "a_pp": 8,
+      "f_tp": 16,
+      "f_ep": 1,
+      "f_pp": 8,
+      "colocated": true,
+      "a_collective_algorithm": "ring",
+      "f_collective_algorithm": "ring"
+    },
+    "partition": {
+      "layer_counts": [
+        6,
+        8,
+        9,
+        7,
+        7,
+        10,
+        7,
+        6
+      ],
+      "kv_watermark": 0.01,
+      "peak_capacity_fraction": 0.884483228,
+      "stage_rank_bytes": [
+        [
+          389409868,
+          389409868,
+          389409868,
+          389409868,
+          389409868,
+          389409868,
+          389409868,
+          389409868,
+          389409868,
+          389409868,
+          389409868,
+          389409868,
+          389409868,
+          389409868,
+          389409868,
+          389409868
+        ],
+        [
+          362314320,
+          362314320,
+          362314320,
+          362314320,
+          362314320,
+          362314320,
+          362314320,
+          362314320,
+          362314320,
+          362314320,
+          362314320,
+          362314320,
+          362314320,
+          362314320,
+          362314320,
+          362314320
+        ],
+        [
+          392873554,
+          392873554,
+          392873554,
+          392873554,
+          392873554,
+          392873554,
+          392873554,
+          392873554,
+          392873554,
+          392873554,
+          392873554,
+          392873554,
+          392873554,
+          392873554,
+          392873554,
+          392873554
+        ],
+        [
+          442241614,
+          442241614,
+          442241614,
+          442241614,
+          442241614,
+          442241614,
+          442241614,
+          442241614,
+          442241614,
+          442241614,
+          442241614,
+          442241614,
+          442241614,
+          442241614,
+          442241614,
+          442241614
+        ],
+        [
+          331804238,
+          331804238,
+          331804238,
+          331804238,
+          331804238,
+          331804238,
+          331804238,
+          331804238,
+          331804238,
+          331804238,
+          331804238,
+          331804238,
+          331804238,
+          331804238,
+          331804238,
+          331804238
+        ],
+        [
+          423375444,
+          423375444,
+          423375444,
+          423375444,
+          423375444,
+          423375444,
+          423375444,
+          423375444,
+          423375444,
+          423375444,
+          423375444,
+          423375444,
+          423375444,
+          423375444,
+          423375444,
+          423375444
+        ],
+        [
+          442241614,
+          442241614,
+          442241614,
+          442241614,
+          442241614,
+          442241614,
+          442241614,
+          442241614,
+          442241614,
+          442241614,
+          442241614,
+          442241614,
+          442241614,
+          442241614,
+          442241614,
+          442241614
+        ],
+        [
+          389409868,
+          389409868,
+          389409868,
+          389409868,
+          389409868,
+          389409868,
+          389409868,
+          389409868,
+          389409868,
+          389409868,
+          389409868,
+          389409868,
+          389409868,
+          389409868,
+          389409868,
+          389409868
+        ]
+      ]
+    }
+  },
+  "prefill": {
+    "input_tokens": 100000,
+    "reserved_output_tokens": 2000,
+    "prefill_chunk": 16,
+    "executed_chunks": 6250,
+    "final_context": 100000,
+    "simulated_prefill_seconds": 6.3975110678706395,
+    "host_seconds": 113.68955824989825,
+    "memory": {
+      "maximum_context": 102000,
+      "peak_rank": {
+        "physical": "search-a:100",
+        "capacity_bytes": 500000000,
+        "weights_bytes": 220549632,
+        "buffers_bytes": 8101966,
+        "buffer_breakdown": {
+          "communication_workspace": 1048576,
+          "colocated_dense_residual": 10752,
+          "lp30_live_scratch": 1736960,
+          "lp30_unallocated_reserve": 5000000,
+          "lp30_auxiliary_weights": 305678
+        },
+        "kv_bytes": 211517440,
+        "total_bytes": 440169038
+      },
+      "minimum_headroom_bytes": 59830962,
+      "ranks": 128,
+      "scope": "Weights, protocol buffers, LP30 live scratch/reserve and one resident KV lease."
+    },
+    "scope": "Complete aggregate native prefill with workspace bounds; no real model numerics or endpoint TTFT calibration."
+  },
+  "decode": {
+    "status": "ok",
+    "lp30": 128,
+    "layout": {
+      "a_device": "groq_lp30",
+      "f_device": "groq_lp30",
+      "a_tp": 16,
+      "a_cp": 1,
+      "a_pp": 8,
+      "f_tp": 16,
+      "f_ep": 1,
+      "f_pp": 8,
+      "colocated": true,
+      "a_collective_algorithm": "ring",
+      "f_collective_algorithm": "ring"
+    },
+    "pipeline_layer_counts": [
+      6,
+      8,
+      9,
+      7,
+      7,
+      10,
+      7,
+      6
+    ],
+    "memory": {
+      "maximum_context": 102000,
+      "peak_rank": {
+        "physical": "search-a:100",
+        "capacity_bytes": 500000000,
+        "weights_bytes": 220549632,
+        "buffers_bytes": 8101966,
+        "buffer_breakdown": {
+          "communication_workspace": 1048576,
+          "colocated_dense_residual": 10752,
+          "lp30_live_scratch": 1736960,
+          "lp30_unallocated_reserve": 5000000,
+          "lp30_auxiliary_weights": 305678
+        },
+        "kv_bytes": 211517440,
+        "total_bytes": 440169038
+      },
+      "minimum_headroom_bytes": 59830962,
+      "ranks": 128,
+      "scope": "Weights, protocol buffers, LP30 live scratch/reserve and one resident KV lease."
+    },
+    "acceptance": {
+      "common_3400": true,
+      "published_targets": true,
+      "common_margin": 0.062108209010454773,
+      "published_margin": 0.05251177809255192
+    },
+    "workloads": [
+      {
+        "input_tokens": 1000,
+        "output_tokens": 1000,
+        "native_input_tokens": 1000,
+        "native_output_tokens": 1000,
+        "generation_seconds": 0.1690703029245237,
+        "generation_tps": 5908.784586764318,
+        "native_generation_tps": 5908.784586764318,
+        "token_units": {
+          "native_per_aa_input": 1.0,
+          "native_per_aa_output": 1.0,
+          "source": "Unmeasured identity assumption; no representative AA text corpus or downloaded Gemma tokenizer is bundled.",
+          "measured": false,
+          "corpus_sha256": null,
+          "tokenizer": null,
+          "revision": null,
+          "comparison_status": "AA comparison is conditional on unmeasured token ratios."
+        }
+      },
+      {
+        "input_tokens": 10000,
+        "output_tokens": 1500,
+        "native_input_tokens": 10000,
+        "native_output_tokens": 1500,
+        "generation_seconds": 0.2687147313988297,
+        "generation_tps": 5578.406484068661,
+        "native_generation_tps": 5578.406484068661,
+        "token_units": {
+          "native_per_aa_input": 1.0,
+          "native_per_aa_output": 1.0,
+          "source": "Unmeasured identity assumption; no representative AA text corpus or downloaded Gemma tokenizer is bundled.",
+          "measured": false,
+          "corpus_sha256": null,
+          "tokenizer": null,
+          "revision": null,
+          "comparison_status": "AA comparison is conditional on unmeasured token ratios."
+        }
+      },
+      {
+        "input_tokens": 100000,
+        "output_tokens": 2000,
+        "native_input_tokens": 100000,
+        "native_output_tokens": 2000,
+        "generation_seconds": 0.5535605237609089,
+        "generation_tps": 3611.167910635546,
+        "native_generation_tps": 3611.167910635546,
+        "token_units": {
+          "native_per_aa_input": 1.0,
+          "native_per_aa_output": 1.0,
+          "source": "Unmeasured identity assumption; no representative AA text corpus or downloaded Gemma tokenizer is bundled.",
+          "measured": false,
+          "corpus_sha256": null,
+          "tokenizer": null,
+          "revision": null,
+          "comparison_status": "AA comparison is conditional on unmeasured token ratios."
+        }
+      }
+    ]
+  },
+  "comparison": {
+    "workloads": [
+      {
+        "input_tokens": 1000,
+        "output_tokens": 1000,
+        "historical_tps": 5908.784586764318,
+        "integrated_tps": 5908.784586764318,
+        "relative_tps_change": 0.0,
+        "throughput_matches": true
+      },
+      {
+        "input_tokens": 10000,
+        "output_tokens": 1500,
+        "historical_tps": 5578.406484068661,
+        "integrated_tps": 5578.406484068661,
+        "relative_tps_change": 0.0,
+        "throughput_matches": true
+      },
+      {
+        "input_tokens": 100000,
+        "output_tokens": 2000,
+        "historical_tps": 3611.167910635546,
+        "integrated_tps": 3611.167910635546,
+        "relative_tps_change": 0.0,
+        "throughput_matches": true
+      }
+    ],
+    "pipeline_partition_matches": true,
+    "memory_matches": true,
+    "simulated_prefill_seconds_historical": 6.3975110678706395,
+    "simulated_prefill_seconds_integrated": 6.3975110678706395
+  },
+  "independent_checks": {
+    "curves": 3,
+    "interpolation_fit_probes": 67,
+    "guard_refinements": 0,
+    "withheld_probes": 43,
+    "serial_replays": 3,
+    "serial_decode_steps": 247335,
+    "artifact_hashes": 1
+  },
+  "tests": {
+    "passed": 626,
+    "host_seconds": 76.322,
+    "log_sha256": "f2e73603f12345c108caca0698b59fafcc05d4f50c457ef0a7a80ae4d190dec5",
+    "black_files": 466,
+    "cli_help_entry_points": [
+      "reproduce_lpx",
+      "calibrate_lpx_aa",
+      "search_lpx_native",
+      "report_lpx_study",
+      "search_lpx_capacity",
+      "audit_lpx_fidelity",
+      "validate_lpx_fidelity"
+    ]
+  },
+  "raw_validation_sha256": "eeb9159c1faaefbe997b573948e36e1a81518988cfad79e39e670cb4307a9c1a",
+  "host_seconds": 416.55392870819196,
+  "limitations": [
+    "The 180-layout search and 14-ablation suite retain historical provenance and were not rerun after integration.",
+    "The integrated rerun covers the representative 128-chip TP16 PP8 point with the bundled assumptions.",
+    "Native DAG interpolation and serial clocks check simulation consistency; hardware timings and endpoint allocation remain uncalibrated.",
+    "Full raw outputs remain on the original machine under ignored paths; this file contains a portable checked summary."
+  ]
+}

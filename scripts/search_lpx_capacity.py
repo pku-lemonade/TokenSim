@@ -13,7 +13,8 @@ from multiprocessing import get_context
 
 from TokenSim.hardware import HardwareContext
 from TokenSim.config.validation import integer, number
-from scripts.lpx.config import load_cases
+from scripts.lpx.config import load_cases, with_collective_algorithms
+from scripts.lpx.hardware_overrides import communication_hypothesis
 from scripts.lpx.capacity import search
 from scripts.lpx.runner import evaluate
 from scripts.reproduce_lpx import parser, write_json, repository_state
@@ -22,6 +23,14 @@ from scripts.reproduce_lpx import parser, write_json, repository_state
 def run_search(job):
     target, draft, workload, case, users, options = job
     settings = dict(
+        communication_overrides={
+            key: value
+            for key, value in (
+                ("latency_us", options.get("c2c_latency_us")),
+                ("launch_us", options.get("collective_launch_us")),
+            )
+            if value is not None
+        },
         result_format="reference",
         execution_backend=options["execution_backend"],
         replay_samples=options["replay_samples"],
@@ -30,6 +39,8 @@ def run_search(job):
         draft_spec=draft,
         stream_metrics=not options["retain_timing_history"],
         micro_batch=options["micro_batch"],
+        ffn_batching=options["ffn_batching"],
+        ffn_batch_wait_us=options["ffn_batch_wait_us"],
         a_dp=options["a_replicas"],
         warmup_steps=options["warmup_steps"],
         warmup_seconds=options["warmup_seconds"],
@@ -122,6 +133,9 @@ def main(argv=None):
     integer(args.jobs, "jobs", minimum=1)
     number(args.duration_multiple, "duration multiple", positive=True)
     raw, workload, cases = load_cases(args.config)
+    cases = with_collective_algorithms(
+        cases, gpu=args.gpu_collective_algorithm, lpu=args.lpu_collective_algorithm
+    )
     overrides = {
         name: value
         for name, value in (
@@ -141,6 +155,7 @@ def main(argv=None):
             cli.error(f"unknown cases: {sorted(unknown)}")
         cases = [c for c in cases if c.name in args.cases]
     hardware = HardwareContext.load(ROOT / "data")
+    communication_hypothesis(hardware, args.c2c_latency_us, args.collective_launch_us)
     target, draft = hardware.models.resolve(args.model), hardware.models.resolve(
         args.draft_model
     )

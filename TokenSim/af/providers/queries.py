@@ -257,6 +257,7 @@ class AFTransferQuery:
     remote_fraction: float | None = None
     load_imbalance: float = 1.0
     destination_redistribution: bool = False
+    collective_algorithm: str = "ring"
 
 
 @dataclass(frozen=True)

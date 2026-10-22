@@ -1,10 +1,11 @@
 """Validated inputs for the LPX analytical serving experiment."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import json
 from pathlib import Path
 
 from TokenSim.config.validation import integer, number, boolean
+from TokenSim.comm.collective_types import ALGORITHMS
 from TokenSim.errors import ConfigurationError
 
 
@@ -19,11 +20,16 @@ class Layout:
     f_ep: int = 8
     f_pp: int = 1
     colocated: bool = True
+    a_collective_algorithm: str = "ring"
+    f_collective_algorithm: str = "ring"
 
     def __post_init__(self):
         for name in ("a_tp", "a_cp", "a_pp", "f_tp", "f_ep", "f_pp"):
             integer(getattr(self, name), name, minimum=1)
         boolean(self.colocated, "colocated")
+        for name in ("a_collective_algorithm", "f_collective_algorithm"):
+            if getattr(self, name) not in ALGORITHMS:
+                raise ConfigurationError(f"{name} must be one of {ALGORITHMS}")
         if self.colocated and (
             self.a_device != self.f_device
             or self.a_cp != 1
@@ -71,6 +77,14 @@ class Workload:
             self.acceptance_probability, "acceptance_probability", minimum=0, maximum=1
         )
 
+    def maximum_context(self, speculative=False):
+        return (
+            self.cached_tokens
+            + self.new_tokens
+            + self.output_tokens
+            + (self.draft_tokens if speculative else 0)
+        )
+
 
 @dataclass(frozen=True)
 class Case:
@@ -114,6 +128,33 @@ class Case:
                 for device, count in layout.inventory().items():
                     result[device] = result.get(device, 0) + count * replicas
         return result
+
+
+def with_collective_algorithms(cases, *, gpu=None, lpu=None):
+    policies = {"rubin": gpu, "groq_lp30": lpu}
+
+    def updated(layout):
+        if layout is None:
+            return None
+        changes = {
+            f"{domain}_collective_algorithm": policies[
+                getattr(layout, f"{domain}_device")
+            ]
+            for domain in ("a", "f")
+            if policies.get(getattr(layout, f"{domain}_device")) is not None
+        }
+        return replace(layout, **changes) if changes else layout
+
+    return [
+        replace(
+            case,
+            **{
+                role: updated(getattr(case, role))
+                for role in ("decode", "prefill", "draft")
+            },
+        )
+        for case in cases
+    ]
 
 
 def load_cases(path):

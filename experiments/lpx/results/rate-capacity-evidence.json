@@ -1,0 +1,1227 @@
+{
+  "schema": "tokensim.lpx_rate_capacity_evidence",
+  "version": 1,
+  "source": {
+    "path": "outputs/lpx-study/rate-fractions/rates.json",
+    "sha256": "99b87d7f03c1b3ab57544970b749f941948363040051ad2d51d06bbe93989fb7"
+  },
+  "source_sha256": "e75255e67a1b086c09eb946eed40371b9ac1c79338e9ada6b6aeaf4eec440e44",
+  "workload": {
+    "cached_tokens": 400000,
+    "new_tokens": 4000,
+    "output_tokens": 400
+  },
+  "scope": "Finite-window uniform-arrival checks; QPS fraction points do not meet the 500-request formal frontier criterion.",
+  "fractions": [
+    {
+      "case": "rubin-tp8",
+      "users": 4,
+      "fraction": 0.1,
+      "qps": 0.10841527015303992,
+      "window_s": 129.13310071761552,
+      "completed_requests": 13,
+      "generation_tps_p50": 364.7739238257712,
+      "output_tps": 40.26852891398626,
+      "admission_wait_p95_s": 0.0,
+      "pending_at_end": 0,
+      "verdict": {
+        "passed": true,
+        "checks": {
+          "requests_completed": true,
+          "boundary_balanced": true,
+          "wait_budget": true,
+          "no_pending_arrivals": true,
+          "no_backlog_growth": true,
+          "no_total_unfinished_growth": true
+        },
+        "admission_wait_budget_s": 0.012913310071761552,
+        "incomplete_at_boundary": 0,
+        "total_unfinished_growth": -1,
+        "unfinished_boundary_tolerance": 1
+      },
+      "result": {
+        "path": "outputs/lpx-study/rate-fractions/.experiments/4a53f65784aca4538c2fcaa45f033d8abdda471a47f65193bcc8025fe6a44669/result.json",
+        "sha256": "98f2a394748471e05c4375f3c901ad986fad1b78026c1841d324cb4b45cbafb5",
+        "checkpoint_key": "4a53f65784aca4538c2fcaa45f033d8abdda471a47f65193bcc8025fe6a44669"
+      }
+    },
+    {
+      "case": "rubin-tp8",
+      "users": 4,
+      "fraction": 0.25,
+      "qps": 0.2710381753825998,
+      "window_s": 129.13310071761552,
+      "completed_requests": 34,
+      "generation_tps_p50": 364.7739238257712,
+      "output_tps": 105.3176910058102,
+      "admission_wait_p95_s": 0.0,
+      "pending_at_end": 0,
+      "verdict": {
+        "passed": true,
+        "checks": {
+          "requests_completed": true,
+          "boundary_balanced": true,
+          "wait_budget": true,
+          "no_pending_arrivals": true,
+          "no_backlog_growth": true,
+          "no_total_unfinished_growth": true
+        },
+        "admission_wait_budget_s": 0.012913310071761552,
+        "incomplete_at_boundary": 0,
+        "total_unfinished_growth": 0,
+        "unfinished_boundary_tolerance": 1
+      },
+      "result": {
+        "path": "outputs/lpx-study/rate-fractions/.experiments/83fd69499279da6dabed13de805d4c8dea6d8bab7a5f209135b4be5131aca657/result.json",
+        "sha256": "0efae8713302080192db0c8a7fc980625dd07f16c7eec70a886e63caf16c555a",
+        "checkpoint_key": "83fd69499279da6dabed13de805d4c8dea6d8bab7a5f209135b4be5131aca657"
+      }
+    },
+    {
+      "case": "rubin-tp8",
+      "users": 4,
+      "fraction": 0.5,
+      "qps": 0.5420763507651996,
+      "window_s": 129.13310071761552,
+      "completed_requests": 69,
+      "generation_tps_p50": 364.7739238257712,
+      "output_tps": 213.73296115885015,
+      "admission_wait_p95_s": 0.0,
+      "pending_at_end": 0,
+      "verdict": {
+        "passed": true,
+        "checks": {
+          "requests_completed": true,
+          "boundary_balanced": true,
+          "wait_budget": true,
+          "no_pending_arrivals": true,
+          "no_backlog_growth": true,
+          "no_total_unfinished_growth": true
+        },
+        "admission_wait_budget_s": 0.012913310071761552,
+        "incomplete_at_boundary": 0,
+        "total_unfinished_growth": 0,
+        "unfinished_boundary_tolerance": 1
+      },
+      "result": {
+        "path": "outputs/lpx-study/rate-fractions/.experiments/913a6b03c61a822e7fa6be7459a36417caf90bf5c0c58a9e5cbac51be7df519a/result.json",
+        "sha256": "b5683058971a609157deb5c27d83772ce8d75baba631783aca08ff2222c22348",
+        "checkpoint_key": "913a6b03c61a822e7fa6be7459a36417caf90bf5c0c58a9e5cbac51be7df519a"
+      }
+    },
+    {
+      "case": "rubin-tp8",
+      "users": 4,
+      "fraction": 0.75,
+      "qps": 0.8131145261477993,
+      "window_s": 129.13310071761552,
+      "completed_requests": 103,
+      "generation_tps_p50": 270.7156981467538,
+      "output_tps": 321.7145702312779,
+      "admission_wait_p95_s": 0.0,
+      "pending_at_end": 0,
+      "verdict": {
+        "passed": true,
+        "checks": {
+          "requests_completed": true,
+          "boundary_balanced": true,
+          "wait_budget": true,
+          "no_pending_arrivals": true,
+          "no_backlog_growth": true,
+          "no_total_unfinished_growth": true
+        },
+        "admission_wait_budget_s": 0.012913310071761552,
+        "incomplete_at_boundary": 2,
+        "total_unfinished_growth": 1,
+        "unfinished_boundary_tolerance": 1.05
+      },
+      "result": {
+        "path": "outputs/lpx-study/rate-fractions/.experiments/fc314186fd43c16181934e35dec6c3c71a489699e528d7b10456d380cf8cf43e/result.json",
+        "sha256": "a89fc81dfaf71e6049f4ee5803a277c89458c2e965b9d31d5fdb41de4faccd3f",
+        "checkpoint_key": "fc314186fd43c16181934e35dec6c3c71a489699e528d7b10456d380cf8cf43e"
+      }
+    },
+    {
+      "case": "rubin-tp8",
+      "users": 4,
+      "fraction": 0.9,
+      "qps": 0.9757374313773592,
+      "window_s": 129.13310071761552,
+      "completed_requests": 123,
+      "generation_tps_p50": 167.1802487457081,
+      "output_tps": 384.95164852197246,
+      "admission_wait_p95_s": 0.0,
+      "pending_at_end": 0,
+      "verdict": {
+        "passed": true,
+        "checks": {
+          "requests_completed": true,
+          "boundary_balanced": true,
+          "wait_budget": true,
+          "no_pending_arrivals": true,
+          "no_backlog_growth": true,
+          "no_total_unfinished_growth": true
+        },
+        "admission_wait_budget_s": 0.012913310071761552,
+        "incomplete_at_boundary": 2,
+        "total_unfinished_growth": 0,
+        "unfinished_boundary_tolerance": 1.25
+      },
+      "result": {
+        "path": "outputs/lpx-study/rate-fractions/.experiments/128ccc58eacea3da13d21355650975457b80dc40893376f2e0dca24c6374d8da/result.json",
+        "sha256": "9d2988baf2b5355138a6729811c4a8bdd42812032c653dfe70a1666df843b912",
+        "checkpoint_key": "128ccc58eacea3da13d21355650975457b80dc40893376f2e0dca24c6374d8da"
+      }
+    },
+    {
+      "case": "rubin-tp8",
+      "users": 4,
+      "fraction": 0.95,
+      "qps": 1.0299450664538792,
+      "window_s": 129.13310071761552,
+      "completed_requests": 130,
+      "generation_tps_p50": 148.97145677138963,
+      "output_tps": 405.8448198700369,
+      "admission_wait_p95_s": 0.0,
+      "pending_at_end": 0,
+      "verdict": {
+        "passed": true,
+        "checks": {
+          "requests_completed": true,
+          "boundary_balanced": true,
+          "wait_budget": true,
+          "no_pending_arrivals": true,
+          "no_backlog_growth": true,
+          "no_total_unfinished_growth": true
+        },
+        "admission_wait_budget_s": 0.012913310071761552,
+        "incomplete_at_boundary": 2,
+        "total_unfinished_growth": -1,
+        "unfinished_boundary_tolerance": 1.32
+      },
+      "result": {
+        "path": "outputs/lpx-study/rate-fractions/.experiments/2089fa8ecf3232973342b5e03d3b830026a77bad356d3a5b6bfa599b2e133ab5/result.json",
+        "sha256": "eaa9120bde7247d7cab2bc68577c70524d927e2f434d1ca9211d0dc47a062ce1",
+        "checkpoint_key": "2089fa8ecf3232973342b5e03d3b830026a77bad356d3a5b6bfa599b2e133ab5"
+      }
+    },
+    {
+      "case": "rubin-tp8",
+      "users": 4,
+      "fraction": 1.0,
+      "qps": 1.084152701530399,
+      "window_s": 258.26620143523104,
+      "completed_requests": 276,
+      "generation_tps_p50": 120.33576219282156,
+      "output_tps": 429.9710894530223,
+      "admission_wait_p95_s": 0.0,
+      "pending_at_end": 0,
+      "verdict": {
+        "passed": true,
+        "checks": {
+          "requests_completed": true,
+          "boundary_balanced": true,
+          "wait_budget": true,
+          "no_pending_arrivals": true,
+          "no_backlog_growth": true,
+          "no_total_unfinished_growth": true
+        },
+        "admission_wait_budget_s": 0.012913310071761552,
+        "incomplete_at_boundary": 4,
+        "total_unfinished_growth": 0,
+        "unfinished_boundary_tolerance": 2.8000000000000003
+      },
+      "result": {
+        "path": "outputs/lpx-study/rate-fractions/.experiments/ccb83eecac06a680b8be01fc87732af623b7264723b4ec973150ed57c8843414/result.json",
+        "sha256": "5e4ebebd4e4231de1f7df25697355f08c3426ebb76c4b05ce15db1274f100302",
+        "checkpoint_key": "ccb83eecac06a680b8be01fc87732af623b7264723b4ec973150ed57c8843414"
+      }
+    },
+    {
+      "case": "af-f4-ep128-pp5",
+      "users": 4,
+      "fraction": 0.1,
+      "qps": 0.20443041539465448,
+      "window_s": 103.94735029509535,
+      "completed_requests": 21,
+      "generation_tps_p50": 434.47177424043736,
+      "output_tps": 80.81014067365165,
+      "admission_wait_p95_s": 0.0,
+      "pending_at_end": 0,
+      "verdict": {
+        "passed": true,
+        "checks": {
+          "requests_completed": true,
+          "boundary_balanced": true,
+          "wait_budget": true,
+          "no_pending_arrivals": true,
+          "no_backlog_growth": true,
+          "no_total_unfinished_growth": true
+        },
+        "admission_wait_budget_s": 0.010394735029509534,
+        "incomplete_at_boundary": 0,
+        "total_unfinished_growth": 0,
+        "unfinished_boundary_tolerance": 1
+      },
+      "result": {
+        "path": "outputs/lpx-study/rate-fractions/.experiments/5cbc930b45b684509a830b5558444eee14c8675e5f7865793979325784933bf2/result.json",
+        "sha256": "59341a9e9dec92441467a8350dec24e7948f750a98372de34404fad20e3b589b",
+        "checkpoint_key": "5cbc930b45b684509a830b5558444eee14c8675e5f7865793979325784933bf2"
+      }
+    },
+    {
+      "case": "af-f4-ep128-pp5",
+      "users": 4,
+      "fraction": 0.25,
+      "qps": 0.5110760384866362,
+      "window_s": 103.94735029509535,
+      "completed_requests": 52,
+      "generation_tps_p50": 434.4717752988454,
+      "output_tps": 200.6207944771823,
+      "admission_wait_p95_s": 0.0,
+      "pending_at_end": 0,
+      "verdict": {
+        "passed": true,
+        "checks": {
+          "requests_completed": true,
+          "boundary_balanced": true,
+          "wait_budget": true,
+          "no_pending_arrivals": true,
+          "no_backlog_growth": true,
+          "no_total_unfinished_growth": true
+        },
+        "admission_wait_budget_s": 0.010394735029509534,
+        "incomplete_at_boundary": 1,
+        "total_unfinished_growth": 1,
+        "unfinished_boundary_tolerance": 1
+      },
+      "result": {
+        "path": "outputs/lpx-study/rate-fractions/.experiments/e8a944c4dda150c74d36ed5e72e6b636844bd52727096e02248a1967bbe76905/result.json",
+        "sha256": "2aeecbf27339c547c880d9eb8ca282b343f333b2f018a1787cac9c80bb19cd22",
+        "checkpoint_key": "e8a944c4dda150c74d36ed5e72e6b636844bd52727096e02248a1967bbe76905"
+      }
+    },
+    {
+      "case": "af-f4-ep128-pp5",
+      "users": 4,
+      "fraction": 0.5,
+      "qps": 1.0221520769732724,
+      "window_s": 103.94735029509535,
+      "completed_requests": 105,
+      "generation_tps_p50": 434.47177547708014,
+      "output_tps": 404.5701971297317,
+      "admission_wait_p95_s": 0.0,
+      "pending_at_end": 0,
+      "verdict": {
+        "passed": true,
+        "checks": {
+          "requests_completed": true,
+          "boundary_balanced": true,
+          "wait_budget": true,
+          "no_pending_arrivals": true,
+          "no_backlog_growth": true,
+          "no_total_unfinished_growth": true
+        },
+        "admission_wait_budget_s": 0.010394735029509534,
+        "incomplete_at_boundary": 1,
+        "total_unfinished_growth": 0,
+        "unfinished_boundary_tolerance": 1.06
+      },
+      "result": {
+        "path": "outputs/lpx-study/rate-fractions/.experiments/cdcbf8562e2ab0c8922279a4731777836a05e1538c6283cdac66f011f2774423/result.json",
+        "sha256": "c35559291cd57a3109ee177f137899919916461488ebc32644d0ff35dc002844",
+        "checkpoint_key": "cdcbf8562e2ab0c8922279a4731777836a05e1538c6283cdac66f011f2774423"
+      }
+    },
+    {
+      "case": "af-f4-ep128-pp5",
+      "users": 4,
+      "fraction": 0.75,
+      "qps": 1.5332281154599086,
+      "window_s": 103.94735029509535,
+      "completed_requests": 157,
+      "generation_tps_p50": 294.9497239580592,
+      "output_tps": 606.6917513622818,
+      "admission_wait_p95_s": 0.0,
+      "pending_at_end": 0,
+      "verdict": {
+        "passed": true,
+        "checks": {
+          "requests_completed": true,
+          "boundary_balanced": true,
+          "wait_budget": true,
+          "no_pending_arrivals": true,
+          "no_backlog_growth": true,
+          "no_total_unfinished_growth": true
+        },
+        "admission_wait_budget_s": 0.010394735029509534,
+        "incomplete_at_boundary": 2,
+        "total_unfinished_growth": 0,
+        "unfinished_boundary_tolerance": 1.59
+      },
+      "result": {
+        "path": "outputs/lpx-study/rate-fractions/.experiments/2baa077c2b6148692f5509686a42ad9d6cd658b0817e8251d2fc0e12404fb550/result.json",
+        "sha256": "bbb9d30fc018607a82244e8428b4c847815fb1e789e52091156c4a5c4c93979c",
+        "checkpoint_key": "2baa077c2b6148692f5509686a42ad9d6cd658b0817e8251d2fc0e12404fb550"
+      }
+    },
+    {
+      "case": "af-f4-ep128-pp5",
+      "users": 4,
+      "fraction": 0.9,
+      "qps": 1.8398737385518904,
+      "window_s": 103.94735029509535,
+      "completed_requests": 188,
+      "generation_tps_p50": 262.0781035056256,
+      "output_tps": 727.7626585501278,
+      "admission_wait_p95_s": 0.0,
+      "pending_at_end": 0,
+      "verdict": {
+        "passed": true,
+        "checks": {
+          "requests_completed": true,
+          "boundary_balanced": true,
+          "wait_budget": true,
+          "no_pending_arrivals": true,
+          "no_backlog_growth": true,
+          "no_total_unfinished_growth": true
+        },
+        "admission_wait_budget_s": 0.010394735029509534,
+        "incomplete_at_boundary": 3,
+        "total_unfinished_growth": 0,
+        "unfinished_boundary_tolerance": 1.9100000000000001
+      },
+      "result": {
+        "path": "outputs/lpx-study/rate-fractions/.experiments/971dfdbb48c1a41b6b4aaf1d511eed97f1bd6deb2560dfa668ba3f0bd3493bf2/result.json",
+        "sha256": "abc89185353606a3a54bf2038054c65486768fbae62aeb08e4f78fa8d60cf68c",
+        "checkpoint_key": "971dfdbb48c1a41b6b4aaf1d511eed97f1bd6deb2560dfa668ba3f0bd3493bf2"
+      }
+    },
+    {
+      "case": "af-f4-ep128-pp5",
+      "users": 4,
+      "fraction": 0.95,
+      "qps": 1.9420889462492175,
+      "window_s": 103.94735029509535,
+      "completed_requests": 198,
+      "generation_tps_p50": 253.27139670075616,
+      "output_tps": 768.1965896514799,
+      "admission_wait_p95_s": 0.0,
+      "pending_at_end": 0,
+      "verdict": {
+        "passed": true,
+        "checks": {
+          "requests_completed": true,
+          "boundary_balanced": true,
+          "wait_budget": true,
+          "no_pending_arrivals": true,
+          "no_backlog_growth": true,
+          "no_total_unfinished_growth": true
+        },
+        "admission_wait_budget_s": 0.010394735029509534,
+        "incomplete_at_boundary": 3,
+        "total_unfinished_growth": 0,
+        "unfinished_boundary_tolerance": 2.0100000000000002
+      },
+      "result": {
+        "path": "outputs/lpx-study/rate-fractions/.experiments/83b0de1f11961bee2a78d08ccfab4f0894d683421259f615a772d6a872443f0c/result.json",
+        "sha256": "6a33909f2d0f4abb220ced71883db3de0b3bfcb343135c9ac899ca9a36d52da1",
+        "checkpoint_key": "83b0de1f11961bee2a78d08ccfab4f0894d683421259f615a772d6a872443f0c"
+      }
+    },
+    {
+      "case": "af-f4-ep128-pp5",
+      "users": 4,
+      "fraction": 1.0,
+      "qps": 2.0443041539465447,
+      "window_s": 207.8947005901907,
+      "completed_requests": 421,
+      "generation_tps_p50": 226.18885044863922,
+      "output_tps": 812.8153316091461,
+      "admission_wait_p95_s": 0.0,
+      "pending_at_end": 0,
+      "verdict": {
+        "passed": true,
+        "checks": {
+          "requests_completed": true,
+          "boundary_balanced": true,
+          "wait_budget": true,
+          "no_pending_arrivals": true,
+          "no_backlog_growth": true,
+          "no_total_unfinished_growth": true
+        },
+        "admission_wait_budget_s": 0.010394735029509534,
+        "incomplete_at_boundary": 4,
+        "total_unfinished_growth": 0,
+        "unfinished_boundary_tolerance": 4.25
+      },
+      "result": {
+        "path": "outputs/lpx-study/rate-fractions/.experiments/967c801fd3c25f5db02cdeabd4a4b6b19b9a7ceaf936ea7595be50882a52b1d2/result.json",
+        "sha256": "e769064cc8100ddca077624cb1dbdb274bfb12de8283a03aec54d50a303b172a",
+        "checkpoint_key": "967c801fd3c25f5db02cdeabd4a4b6b19b9a7ceaf936ea7595be50882a52b1d2"
+      }
+    },
+    {
+      "case": "pd-compact",
+      "users": 1,
+      "fraction": 0.1,
+      "qps": 0.275339685377619,
+      "window_s": 36.318774702910495,
+      "completed_requests": 9,
+      "generation_tps_p50": 1648.289659803198,
+      "output_tps": 99.12228673594281,
+      "admission_wait_p95_s": 0.0,
+      "pending_at_end": 0,
+      "verdict": {
+        "passed": true,
+        "checks": {
+          "requests_completed": true,
+          "boundary_balanced": true,
+          "wait_budget": true,
+          "no_pending_arrivals": true,
+          "no_backlog_growth": true,
+          "no_total_unfinished_growth": true
+        },
+        "admission_wait_budget_s": 0.0036318774702910495,
+        "incomplete_at_boundary": 1,
+        "total_unfinished_growth": 0,
+        "unfinished_boundary_tolerance": 1
+      },
+      "result": {
+        "path": "outputs/lpx-study/rate-fractions/.experiments/e0a7365f07c8b874dedac97a92b657f4efde4a2a9b716ad8611fc7bd0327ccbb/result.json",
+        "sha256": "1750a85eaa9d6fa628198cf3157886e16f05301e73b15012c1c64c7d795ff8dd",
+        "checkpoint_key": "e0a7365f07c8b874dedac97a92b657f4efde4a2a9b716ad8611fc7bd0327ccbb"
+      }
+    },
+    {
+      "case": "pd-compact",
+      "users": 1,
+      "fraction": 0.25,
+      "qps": 0.6883492134440474,
+      "window_s": 36.318774702910495,
+      "completed_requests": 24,
+      "generation_tps_p50": 1648.289659803198,
+      "output_tps": 264.32609796251415,
+      "admission_wait_p95_s": 0.0,
+      "pending_at_end": 0,
+      "verdict": {
+        "passed": true,
+        "checks": {
+          "requests_completed": true,
+          "boundary_balanced": true,
+          "wait_budget": true,
+          "no_pending_arrivals": true,
+          "no_backlog_growth": true,
+          "no_total_unfinished_growth": true
+        },
+        "admission_wait_budget_s": 0.0036318774702910495,
+        "incomplete_at_boundary": 0,
+        "total_unfinished_growth": 0,
+        "unfinished_boundary_tolerance": 1
+      },
+      "result": {
+        "path": "outputs/lpx-study/rate-fractions/.experiments/e12e4c8ee9ef1767016db36d3e8e88ea0264752286cedbd34800f167857af992/result.json",
+        "sha256": "be248220b293e4164a8a1be7ed91d26bef997e344b9c5251e8edd2f80e4ad532",
+        "checkpoint_key": "e12e4c8ee9ef1767016db36d3e8e88ea0264752286cedbd34800f167857af992"
+      }
+    },
+    {
+      "case": "pd-compact",
+      "users": 1,
+      "fraction": 0.5,
+      "qps": 1.3766984268880949,
+      "window_s": 36.318774702910495,
+      "completed_requests": 49,
+      "generation_tps_p50": 1648.289659803198,
+      "output_tps": 539.6657833401331,
+      "admission_wait_p95_s": 0.0,
+      "pending_at_end": 0,
+      "verdict": {
+        "passed": true,
+        "checks": {
+          "requests_completed": true,
+          "boundary_balanced": true,
+          "wait_budget": true,
+          "no_pending_arrivals": true,
+          "no_backlog_growth": true,
+          "no_total_unfinished_growth": true
+        },
+        "admission_wait_budget_s": 0.0036318774702910495,
+        "incomplete_at_boundary": 0,
+        "total_unfinished_growth": 0,
+        "unfinished_boundary_tolerance": 1
+      },
+      "result": {
+        "path": "outputs/lpx-study/rate-fractions/.experiments/82b18a01c1f88fb16954855491eec297dae5d742f8c7e47db68935dd3aefa0f0/result.json",
+        "sha256": "918a63f7545cbf5e5d100f44b90495ed274972c9b5b1e339b146106b165547cc",
+        "checkpoint_key": "82b18a01c1f88fb16954855491eec297dae5d742f8c7e47db68935dd3aefa0f0"
+      }
+    },
+    {
+      "case": "pd-compact",
+      "users": 1,
+      "fraction": 0.75,
+      "qps": 2.0650476403321423,
+      "window_s": 36.318774702910495,
+      "completed_requests": 74,
+      "generation_tps_p50": 1648.289659803198,
+      "output_tps": 815.0054687177519,
+      "admission_wait_p95_s": 0.0,
+      "pending_at_end": 0,
+      "verdict": {
+        "passed": true,
+        "checks": {
+          "requests_completed": true,
+          "boundary_balanced": true,
+          "wait_budget": true,
+          "no_pending_arrivals": true,
+          "no_backlog_growth": true,
+          "no_total_unfinished_growth": true
+        },
+        "admission_wait_budget_s": 0.0036318774702910495,
+        "incomplete_at_boundary": 0,
+        "total_unfinished_growth": -1,
+        "unfinished_boundary_tolerance": 1
+      },
+      "result": {
+        "path": "outputs/lpx-study/rate-fractions/.experiments/6d9d3acdc4f31a763f0178093db50f4b64d80c42d4a5168e7cc42f1d8cf5c742/result.json",
+        "sha256": "975c4e9304c171b258cdf265d51a7a76df914b5066f61dab6a96e15daa132c63",
+        "checkpoint_key": "6d9d3acdc4f31a763f0178093db50f4b64d80c42d4a5168e7cc42f1d8cf5c742"
+      }
+    },
+    {
+      "case": "pd-compact",
+      "users": 1,
+      "fraction": 0.9,
+      "qps": 2.478057168398571,
+      "window_s": 36.318774702910495,
+      "completed_requests": 89,
+      "generation_tps_p50": 1648.289659803198,
+      "output_tps": 980.2092799443233,
+      "admission_wait_p95_s": 0.0,
+      "pending_at_end": 0,
+      "verdict": {
+        "passed": true,
+        "checks": {
+          "requests_completed": true,
+          "boundary_balanced": true,
+          "wait_budget": true,
+          "no_pending_arrivals": true,
+          "no_backlog_growth": true,
+          "no_total_unfinished_growth": true
+        },
+        "admission_wait_budget_s": 0.0036318774702910495,
+        "incomplete_at_boundary": 1,
+        "total_unfinished_growth": 0,
+        "unfinished_boundary_tolerance": 1
+      },
+      "result": {
+        "path": "outputs/lpx-study/rate-fractions/.experiments/5e32cfc4bf1425ee87a1f2db2ef50ce9b0c134b3efc32d2835b8c21c206cb6e2/result.json",
+        "sha256": "9b84f40b9f80efcf44b01402496bf2fb6b73104c28479a05b2ba8f4ed1915cb4",
+        "checkpoint_key": "5e32cfc4bf1425ee87a1f2db2ef50ce9b0c134b3efc32d2835b8c21c206cb6e2"
+      }
+    },
+    {
+      "case": "pd-compact",
+      "users": 1,
+      "fraction": 0.95,
+      "qps": 2.61572701108738,
+      "window_s": 36.318774702910495,
+      "completed_requests": 94,
+      "generation_tps_p50": 1648.289659803198,
+      "output_tps": 1035.277217019847,
+      "admission_wait_p95_s": 0.0,
+      "pending_at_end": 0,
+      "verdict": {
+        "passed": true,
+        "checks": {
+          "requests_completed": true,
+          "boundary_balanced": true,
+          "wait_budget": true,
+          "no_pending_arrivals": true,
+          "no_backlog_growth": true,
+          "no_total_unfinished_growth": true
+        },
+        "admission_wait_budget_s": 0.0036318774702910495,
+        "incomplete_at_boundary": 1,
+        "total_unfinished_growth": 0,
+        "unfinished_boundary_tolerance": 1
+      },
+      "result": {
+        "path": "outputs/lpx-study/rate-fractions/.experiments/5e82d828d7997d6cc0fee2d87ef1d6227b7a223af2beedc4d33960d9eba2312a/result.json",
+        "sha256": "8473567a082b73a4870abe3483eaed46a822a47c667812665c5bf982ddbc1069",
+        "checkpoint_key": "5e82d828d7997d6cc0fee2d87ef1d6227b7a223af2beedc4d33960d9eba2312a"
+      }
+    },
+    {
+      "case": "pd-compact",
+      "users": 1,
+      "fraction": 1.0,
+      "qps": 2.7533968537761897,
+      "window_s": 72.63754940582099,
+      "completed_requests": 199,
+      "generation_tps_p50": 1648.2896690982873,
+      "output_tps": 1095.8519478029232,
+      "admission_wait_p95_s": 1.1594815507720566e-08,
+      "pending_at_end": 0,
+      "verdict": {
+        "passed": true,
+        "checks": {
+          "requests_completed": true,
+          "boundary_balanced": true,
+          "wait_budget": true,
+          "no_pending_arrivals": true,
+          "no_backlog_growth": true,
+          "no_total_unfinished_growth": true
+        },
+        "admission_wait_budget_s": 0.0036318774702910495,
+        "incomplete_at_boundary": 1,
+        "total_unfinished_growth": 0,
+        "unfinished_boundary_tolerance": 2.0
+      },
+      "result": {
+        "path": "outputs/lpx-study/rate-fractions/.experiments/008417029d8e141db76b694dcc9981b3c0d565fbf44f2f2ea862e3d8b4e4bc76/result.json",
+        "sha256": "525357c4986ca6028efd6016f7af8ced654a0a9d54f4fcde2d974fd7df00e165",
+        "checkpoint_key": "008417029d8e141db76b694dcc9981b3c0d565fbf44f2f2ea862e3d8b4e4bc76"
+      }
+    },
+    {
+      "case": "draft-lpx256",
+      "users": 4,
+      "fraction": 0.1,
+      "qps": 0.17262276927810302,
+      "window_s": 71.68810957993219,
+      "completed_requests": 12,
+      "generation_tps_p50": 767.860184552435,
+      "output_tps": 66.95671050787026,
+      "admission_wait_p95_s": 0.0,
+      "pending_at_end": 0,
+      "verdict": {
+        "passed": true,
+        "checks": {
+          "requests_completed": true,
+          "boundary_balanced": true,
+          "wait_budget": true,
+          "no_pending_arrivals": true,
+          "no_backlog_growth": true,
+          "no_total_unfinished_growth": true
+        },
+        "admission_wait_budget_s": 0.007168810957993219,
+        "incomplete_at_boundary": 0,
+        "total_unfinished_growth": 0,
+        "unfinished_boundary_tolerance": 1
+      },
+      "result": {
+        "path": "outputs/lpx-study/rate-fractions/.experiments/3274f84af797597cb66534126b14105ccda4bb6628871c135409bf51e691efb7/result.json",
+        "sha256": "1d62190f3858daecc92bf298d59be0cffba0f5efda20203895f7b1a9da3acb93",
+        "checkpoint_key": "3274f84af797597cb66534126b14105ccda4bb6628871c135409bf51e691efb7"
+      }
+    },
+    {
+      "case": "draft-lpx256",
+      "users": 4,
+      "fraction": 0.25,
+      "qps": 0.4315569231952575,
+      "window_s": 71.68810957993219,
+      "completed_requests": 30,
+      "generation_tps_p50": 764.1996632844364,
+      "output_tps": 167.39177626967563,
+      "admission_wait_p95_s": 0.0,
+      "pending_at_end": 0,
+      "verdict": {
+        "passed": true,
+        "checks": {
+          "requests_completed": true,
+          "boundary_balanced": true,
+          "wait_budget": true,
+          "no_pending_arrivals": true,
+          "no_backlog_growth": true,
+          "no_total_unfinished_growth": true
+        },
+        "admission_wait_budget_s": 0.007168810957993219,
+        "incomplete_at_boundary": 0,
+        "total_unfinished_growth": 0,
+        "unfinished_boundary_tolerance": 1
+      },
+      "result": {
+        "path": "outputs/lpx-study/rate-fractions/.experiments/2aec91c3d95b680b7e4ed5e89e5a3fdc35bfeaed64a251a959b82322de3d68dd/result.json",
+        "sha256": "e0554ce3781e37a79aa22b01dd8a1ecb7e1f411ba14e536846d03632161dd547",
+        "checkpoint_key": "2aec91c3d95b680b7e4ed5e89e5a3fdc35bfeaed64a251a959b82322de3d68dd"
+      }
+    },
+    {
+      "case": "draft-lpx256",
+      "users": 4,
+      "fraction": 0.5,
+      "qps": 0.863113846390515,
+      "window_s": 71.68810957993219,
+      "completed_requests": 61,
+      "generation_tps_p50": 755.3053081415827,
+      "output_tps": 340.36327841500713,
+      "admission_wait_p95_s": 0.0,
+      "pending_at_end": 0,
+      "verdict": {
+        "passed": true,
+        "checks": {
+          "requests_completed": true,
+          "boundary_balanced": true,
+          "wait_budget": true,
+          "no_pending_arrivals": true,
+          "no_backlog_growth": true,
+          "no_total_unfinished_growth": true
+        },
+        "admission_wait_budget_s": 0.007168810957993219,
+        "incomplete_at_boundary": 0,
+        "total_unfinished_growth": 0,
+        "unfinished_boundary_tolerance": 1
+      },
+      "result": {
+        "path": "outputs/lpx-study/rate-fractions/.experiments/fa1db2263814de4276bf8d511adadf23aefc8bad19fe5e2e8c727ee0659788f5/result.json",
+        "sha256": "5859a4ef263e4b27c0a792d3516dff4234415803f1257fe35e3aa71cc62f0f50",
+        "checkpoint_key": "fa1db2263814de4276bf8d511adadf23aefc8bad19fe5e2e8c727ee0659788f5"
+      }
+    },
+    {
+      "case": "draft-lpx256",
+      "users": 4,
+      "fraction": 0.75,
+      "qps": 1.2946707695857724,
+      "window_s": 71.68810957993219,
+      "completed_requests": 91,
+      "generation_tps_p50": 754.6790878543677,
+      "output_tps": 512.2467340145857,
+      "admission_wait_p95_s": 0.0,
+      "pending_at_end": 0,
+      "verdict": {
+        "passed": true,
+        "checks": {
+          "requests_completed": true,
+          "boundary_balanced": true,
+          "wait_budget": true,
+          "no_pending_arrivals": true,
+          "no_backlog_growth": true,
+          "no_total_unfinished_growth": true
+        },
+        "admission_wait_budget_s": 0.007168810957993219,
+        "incomplete_at_boundary": 1,
+        "total_unfinished_growth": 0,
+        "unfinished_boundary_tolerance": 1
+      },
+      "result": {
+        "path": "outputs/lpx-study/rate-fractions/.experiments/c2e6f956a2b65e8316ee515c493ab0c4e4521c6132013cb7f155759ce062435f/result.json",
+        "sha256": "82ae1da9ee22c6d583a35deea039e4c458d1c668bb55059341a0457f725692ba",
+        "checkpoint_key": "c2e6f956a2b65e8316ee515c493ab0c4e4521c6132013cb7f155759ce062435f"
+      }
+    },
+    {
+      "case": "draft-lpx256",
+      "users": 4,
+      "fraction": 0.9,
+      "qps": 1.553604923502927,
+      "window_s": 71.68810957993219,
+      "completed_requests": 109,
+      "generation_tps_p50": 406.21223644742224,
+      "output_tps": 612.3888641679192,
+      "admission_wait_p95_s": 0.0,
+      "pending_at_end": 0,
+      "verdict": {
+        "passed": true,
+        "checks": {
+          "requests_completed": true,
+          "boundary_balanced": true,
+          "wait_budget": true,
+          "no_pending_arrivals": true,
+          "no_backlog_growth": true,
+          "no_total_unfinished_growth": true
+        },
+        "admission_wait_budget_s": 0.007168810957993219,
+        "incomplete_at_boundary": 2,
+        "total_unfinished_growth": 0,
+        "unfinished_boundary_tolerance": 1.11
+      },
+      "result": {
+        "path": "outputs/lpx-study/rate-fractions/.experiments/9c2dc9bab26b7493c7b9d742f6330e881095d75a9de806b2bba1f109291fc8f5/result.json",
+        "sha256": "e83fc4e1c40e13a83e5663ca71fcf2385eb69854b0df1f78c6690a28a7f35fdc",
+        "checkpoint_key": "9c2dc9bab26b7493c7b9d742f6330e881095d75a9de806b2bba1f109291fc8f5"
+      }
+    },
+    {
+      "case": "draft-lpx256",
+      "users": 4,
+      "fraction": 0.95,
+      "qps": 1.6399163081419785,
+      "window_s": 71.68810957993219,
+      "completed_requests": 115,
+      "generation_tps_p50": 293.2148275627968,
+      "output_tps": 645.8114221630977,
+      "admission_wait_p95_s": 0.0,
+      "pending_at_end": 0,
+      "verdict": {
+        "passed": true,
+        "checks": {
+          "requests_completed": true,
+          "boundary_balanced": true,
+          "wait_budget": true,
+          "no_pending_arrivals": true,
+          "no_backlog_growth": true,
+          "no_total_unfinished_growth": true
+        },
+        "admission_wait_budget_s": 0.007168810957993219,
+        "incomplete_at_boundary": 2,
+        "total_unfinished_growth": -1,
+        "unfinished_boundary_tolerance": 1.17
+      },
+      "result": {
+        "path": "outputs/lpx-study/rate-fractions/.experiments/8fce9854b0b7cea76e2830649993ff72aa13088952fa988c837f05024b0b375a/result.json",
+        "sha256": "21adebbcba62d8de5efd66aab18b674de98442cfc030613d0713bf49f3c66079",
+        "checkpoint_key": "8fce9854b0b7cea76e2830649993ff72aa13088952fa988c837f05024b0b375a"
+      }
+    },
+    {
+      "case": "draft-lpx256",
+      "users": 4,
+      "fraction": 1.0,
+      "qps": 1.72622769278103,
+      "window_s": 143.37621915986438,
+      "completed_requests": 243,
+      "generation_tps_p50": 212.99771877320148,
+      "output_tps": 683.3211293621943,
+      "admission_wait_p95_s": 0.0,
+      "pending_at_end": 0,
+      "verdict": {
+        "passed": true,
+        "checks": {
+          "requests_completed": true,
+          "boundary_balanced": true,
+          "wait_budget": true,
+          "no_pending_arrivals": true,
+          "no_backlog_growth": true,
+          "no_total_unfinished_growth": true
+        },
+        "admission_wait_budget_s": 0.007168810957993219,
+        "incomplete_at_boundary": 4,
+        "total_unfinished_growth": 1,
+        "unfinished_boundary_tolerance": 2.47
+      },
+      "result": {
+        "path": "outputs/lpx-study/rate-fractions/.experiments/e597c3dae6b1c3121a5f30083db38ed2c32d2bb550c7c3f0b4ca899fce495af4/result.json",
+        "sha256": "1bafbbc85fe7c1280d56ac52a8159a38f21dca7d094c6a33c97dce8c5779eb64",
+        "checkpoint_key": "e597c3dae6b1c3121a5f30083db38ed2c32d2bb550c7c3f0b4ca899fce495af4"
+      }
+    }
+  ],
+  "capacity_searches": [
+    {
+      "source": {
+        "path": "outputs/lpx-study/wide-fixed-capacity16/capacity.json",
+        "sha256": "de0ab068bafdffbca79266bbf9a25cda2c892e196dd183422a8937f17ed1193c"
+      },
+      "case": "rubin-tp8",
+      "users": 1,
+      "duration_multiple": 25.0,
+      "maximum_passing_qps": 0.7647148519723352,
+      "recommended_qps": 0.7264791093737184,
+      "doubled_window_passed": true,
+      "relative_bracket": 0.012658227848101111
+    },
+    {
+      "source": {
+        "path": "outputs/lpx-study/wide-fixed-capacity16/capacity.json",
+        "sha256": "de0ab068bafdffbca79266bbf9a25cda2c892e196dd183422a8937f17ed1193c"
+      },
+      "case": "rubin-tp8",
+      "users": 4,
+      "duration_multiple": 25.0,
+      "maximum_passing_qps": 1.084152701530399,
+      "recommended_qps": 1.0299450664538792,
+      "doubled_window_passed": true,
+      "relative_bracket": 0.017857142857143016
+    },
+    {
+      "source": {
+        "path": "outputs/lpx-study/wide-fixed-capacity16/capacity.json",
+        "sha256": "de0ab068bafdffbca79266bbf9a25cda2c892e196dd183422a8937f17ed1193c"
+      },
+      "case": "af-f4-ep128-pp5",
+      "users": 1,
+      "duration_multiple": 25.0,
+      "maximum_passing_qps": 0.9620254842101388,
+      "recommended_qps": 0.9139242099996318,
+      "doubled_window_passed": true,
+      "relative_bracket": 0.012499999999999956
+    },
+    {
+      "source": {
+        "path": "outputs/lpx-study/wide-fixed-capacity16/capacity.json",
+        "sha256": "de0ab068bafdffbca79266bbf9a25cda2c892e196dd183422a8937f17ed1193c"
+      },
+      "case": "af-f4-ep128-pp5",
+      "users": 4,
+      "duration_multiple": 25.0,
+      "maximum_passing_qps": 2.0443041539465447,
+      "recommended_qps": 1.9420889462492175,
+      "doubled_window_passed": true,
+      "relative_bracket": 0.011764705882353121
+    },
+    {
+      "source": {
+        "path": "outputs/lpx-study/wide-fixed-capacity16/capacity.json",
+        "sha256": "de0ab068bafdffbca79266bbf9a25cda2c892e196dd183422a8937f17ed1193c"
+      },
+      "case": "pd-compact",
+      "users": 1,
+      "duration_multiple": 25.0,
+      "maximum_passing_qps": 2.7533968537761897,
+      "recommended_qps": 2.61572701108738,
+      "doubled_window_passed": true,
+      "relative_bracket": 0.012499999999999956
+    },
+    {
+      "source": {
+        "path": "outputs/lpx-study/wide-fixed-capacity16/capacity.json",
+        "sha256": "de0ab068bafdffbca79266bbf9a25cda2c892e196dd183422a8937f17ed1193c"
+      },
+      "case": "pd-compact",
+      "users": 4,
+      "duration_multiple": 25.0,
+      "maximum_passing_qps": null,
+      "recommended_qps": null,
+      "doubled_window_passed": false,
+      "relative_bracket": null
+    },
+    {
+      "source": {
+        "path": "outputs/lpx-study/wide-fixed-capacity16/capacity.json",
+        "sha256": "de0ab068bafdffbca79266bbf9a25cda2c892e196dd183422a8937f17ed1193c"
+      },
+      "case": "draft-lpx256",
+      "users": 1,
+      "duration_multiple": 25.0,
+      "maximum_passing_qps": 1.34262153882969,
+      "recommended_qps": null,
+      "doubled_window_passed": false,
+      "relative_bracket": 0.012987012987013102
+    },
+    {
+      "source": {
+        "path": "outputs/lpx-study/wide-fixed-capacity16/capacity.json",
+        "sha256": "de0ab068bafdffbca79266bbf9a25cda2c892e196dd183422a8937f17ed1193c"
+      },
+      "case": "draft-lpx256",
+      "users": 4,
+      "duration_multiple": 25.0,
+      "maximum_passing_qps": 1.7611009795038788,
+      "recommended_qps": null,
+      "doubled_window_passed": false,
+      "relative_bracket": 0.00990099009900991
+    },
+    {
+      "source": {
+        "path": "outputs/lpx-study/wide-draft-capacity-long16/capacity.json",
+        "sha256": "55a53d96e0d6836b237ce4e8c7e5ae1638fa75cb31331d14f1dee3a8da55b40c"
+      },
+      "case": "draft-lpx256",
+      "users": 1,
+      "duration_multiple": 100.0,
+      "maximum_passing_qps": 1.3251848954682655,
+      "recommended_qps": 1.258925650694852,
+      "doubled_window_passed": true,
+      "relative_bracket": 0.013157894736842035
+    },
+    {
+      "source": {
+        "path": "outputs/lpx-study/wide-draft-capacity-long16/capacity.json",
+        "sha256": "55a53d96e0d6836b237ce4e8c7e5ae1638fa75cb31331d14f1dee3a8da55b40c"
+      },
+      "case": "draft-lpx256",
+      "users": 4,
+      "duration_multiple": 100.0,
+      "maximum_passing_qps": 1.72622769278103,
+      "recommended_qps": 1.6399163081419785,
+      "doubled_window_passed": true,
+      "relative_bracket": 0.010101010101009944
+    }
+  ],
+  "poisson": [
+    {
+      "source": {
+        "path": "outputs/lpx-study/rubin-poisson-half-seed0/summary.json",
+        "sha256": "72de17da2285fc566460d1801ae92d9de20406249bae5416ecf067cb31c01a3c"
+      },
+      "seed": 0,
+      "qps": 0.5149725332269396,
+      "window_s": 130.0,
+      "completed_requests": 61,
+      "admission_wait_p95_s": 0.0,
+      "pending_at_end": 1
+    },
+    {
+      "source": {
+        "path": "outputs/lpx-study/rubin-poisson-half-seed1/summary.json",
+        "sha256": "7e30dac5ae81200382fe3a4b4ab493667d59f87d03fea507398a592e603db1a4"
+      },
+      "seed": 1,
+      "qps": 0.5149725332269396,
+      "window_s": 130.0,
+      "completed_requests": 57,
+      "admission_wait_p95_s": 0.022093330504107365,
+      "pending_at_end": 0
+    },
+    {
+      "source": {
+        "path": "outputs/lpx-study/rubin-poisson-half-seed2/summary.json",
+        "sha256": "1fe157da056b4e0867d89917d756609914ff74e4fa881628ca86eb4dff089a7b"
+      },
+      "seed": 2,
+      "qps": 0.5149725332269396,
+      "window_s": 130.0,
+      "completed_requests": 72,
+      "admission_wait_p95_s": 0.10633159096488565,
+      "pending_at_end": 0
+    },
+    {
+      "source": {
+        "path": "outputs/lpx-study/rubin-poisson-half-seed3/summary.json",
+        "sha256": "1c65e4bdf10291e52f1e2189c0f4a6273c0e4d0f616d82650ce28b947542eb16"
+      },
+      "seed": 3,
+      "qps": 0.5149725332269396,
+      "window_s": 130.0,
+      "completed_requests": 59,
+      "admission_wait_p95_s": 0.0,
+      "pending_at_end": 0
+    },
+    {
+      "source": {
+        "path": "outputs/lpx-study/rubin-poisson-half-seed4/summary.json",
+        "sha256": "2573d9728b3e85e9919a920f7ba482353052165111014739e7d1ea560eaa6b61"
+      },
+      "seed": 4,
+      "qps": 0.5149725332269396,
+      "window_s": 130.0,
+      "completed_requests": 54,
+      "admission_wait_p95_s": 0.0,
+      "pending_at_end": 0
+    },
+    {
+      "source": {
+        "path": "outputs/lpx-study/rubin-poisson-quarter-seed0/summary.json",
+        "sha256": "4345772b8b3dae3353c9c351048fe48f04947d43aaf84d4311615820517af622"
+      },
+      "seed": 0,
+      "qps": 0.2574862666134698,
+      "window_s": 260.0,
+      "completed_requests": 65,
+      "admission_wait_p95_s": 0.0,
+      "pending_at_end": 0
+    },
+    {
+      "source": {
+        "path": "outputs/lpx-study/rubin-poisson-quarter-seed1/summary.json",
+        "sha256": "b26f6d0112a7e7b9315aecec20b876007b7a6cce82abb802c2d57f159c7e8a6d"
+      },
+      "seed": 1,
+      "qps": 0.2574862666134698,
+      "window_s": 260.0,
+      "completed_requests": 57,
+      "admission_wait_p95_s": 0.0,
+      "pending_at_end": 0
+    },
+    {
+      "source": {
+        "path": "outputs/lpx-study/rubin-poisson-quarter-seed2/summary.json",
+        "sha256": "85640711dc18b300b87fa5a21e625319d1c6b20446739f282a72e2c272875acb"
+      },
+      "seed": 2,
+      "qps": 0.2574862666134698,
+      "window_s": 260.0,
+      "completed_requests": 72,
+      "admission_wait_p95_s": 0.0,
+      "pending_at_end": 0
+    },
+    {
+      "source": {
+        "path": "outputs/lpx-study/rubin-poisson-quarter-seed3/summary.json",
+        "sha256": "4687a8783b99e58654fa0deb10938a70cae867ca36fdf64f6921f9c5acaa2180"
+      },
+      "seed": 3,
+      "qps": 0.2574862666134698,
+      "window_s": 260.0,
+      "completed_requests": 61,
+      "admission_wait_p95_s": 0.0,
+      "pending_at_end": 0
+    },
+    {
+      "source": {
+        "path": "outputs/lpx-study/rubin-poisson-quarter-seed4/summary.json",
+        "sha256": "f64dbf11fee8f110e5c5e4d5090aa264b4c8212deee1ecc15467371f8eab20f0"
+      },
+      "seed": 4,
+      "qps": 0.2574862666134698,
+      "window_s": 260.0,
+      "completed_requests": 55,
+      "admission_wait_p95_s": 0.0,
+      "pending_at_end": 0
+    },
+    {
+      "source": {
+        "path": "outputs/lpx-study/rubin-poisson-seed0/summary.json",
+        "sha256": "913f3073cb41a6a0c9db17aa33c0a06efe8220d1b306127fec9b342d6375e769"
+      },
+      "seed": 0,
+      "qps": 1.0299450664538792,
+      "window_s": 130.0,
+      "completed_requests": 111,
+      "admission_wait_p95_s": 4.080522727053227,
+      "pending_at_end": 2
+    },
+    {
+      "source": {
+        "path": "outputs/lpx-study/rubin-poisson-seed1/summary.json",
+        "sha256": "be6acc8555e04b2e15779ca22139556c93844e18b66d752a0a9604a2c561ca64"
+      },
+      "seed": 1,
+      "qps": 1.0299450664538792,
+      "window_s": 130.0,
+      "completed_requests": 123,
+      "admission_wait_p95_s": 4.353060458826848,
+      "pending_at_end": 1
+    },
+    {
+      "source": {
+        "path": "outputs/lpx-study/rubin-poisson-seed2/summary.json",
+        "sha256": "cc9cc082f075da91bcaad104e5b1f52daa7ab461aa37ebc0e477aba80611e1c0"
+      },
+      "seed": 2,
+      "qps": 1.0299450664538792,
+      "window_s": 130.0,
+      "completed_requests": 132,
+      "admission_wait_p95_s": 4.280432499188832,
+      "pending_at_end": 0
+    },
+    {
+      "source": {
+        "path": "outputs/lpx-study/rubin-poisson-seed3/summary.json",
+        "sha256": "9d0daa1715eea3a7ec15aab282e7dfe85d55207d38478ed998dde16e5748d042"
+      },
+      "seed": 3,
+      "qps": 1.0299450664538792,
+      "window_s": 130.0,
+      "completed_requests": 116,
+      "admission_wait_p95_s": 3.5195923830131917,
+      "pending_at_end": 0
+    },
+    {
+      "source": {
+        "path": "outputs/lpx-study/rubin-poisson-seed4/summary.json",
+        "sha256": "beb23df45770e0ae665cacd5d35e7d7c908421af2cce3617e67ff71c86c2883d"
+      },
+      "seed": 4,
+      "qps": 1.0299450664538792,
+      "window_s": 130.0,
+      "completed_requests": 118,
+      "admission_wait_p95_s": 6.846700209975374,
+      "pending_at_end": 0
+    }
+  ]
+}
