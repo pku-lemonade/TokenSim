@@ -3,7 +3,8 @@
 Integration date: 2026-10-21.
 The branch is `lpx-experiment`.
 Local code, research reports and portable results were saved in commit `533a487` before integration.
-The integration incorporates all 24 remote commits through `7ce890be3fe2abe0e16fa6f862fa2c0e830cd053` without rewriting their history.
+The integration incorporated all 24 remote commits through original revision `7ce890be3fe2abe0e16fa6f862fa2c0e830cd053`.
+Those original revision identifiers describe the integration before the subsequent branch-scoped language cleanup rewrote history.
 Raw experiment outputs and the local virtual environment remain on the original machine under ignored paths.
 
 ## Preserved capabilities
@@ -70,20 +71,22 @@ The fresh validation takes 416.55 host seconds on the current machine.
 Host elapsed time depends on machine load and is recorded separately from simulated latency.
 These checks establish consistency of the integrated simulator under the selected assumptions; hardware accuracy and endpoint allocation remain uncalibrated.
 
-## Chinese content inspection
+## English documentation and branch history
 
-The inspection finds Han ideographs in four tracked UTF-8 files, covering 748 matching lines.
-Python and C/C++ source files and tracked filenames have no matches.
-Existing text is preserved because this task requests inspection.
+The language cleanup translates and renames the research documents and model provenance note.
+The current tracked UTF-8 text and filenames contain no Han ideographs.
 
-| File | Matching lines | Content |
-| --- | ---: | --- |
-| `data/models/deepseek-v3-671b-mla.yaml` | 1 | Model simulation provenance note. |
-| `docs/groq-literature.md` | 119 | Groq literature review. |
-| `docs/lpx-literature-repair.md` | 70 | Literature-constrained repair report. |
-| `docs/lpx-reproduction.md` | 558 | Calibration, methodology and reproduction guide. |
+| File | Content |
+| --- | --- |
+| [DeepSeek model catalog](../data/models/deepseek-v3-671b-mla-model.yaml) | English simulation provenance note with unchanged model ID and numerical parameters. |
+| [Groq hardware evidence](groq-hardware-evidence.md) | Literature inventory, hardware generations and limits on published evidence. |
+| [LPX model corrections](lpx-model-corrections.md) | Literature-constrained implementation corrections and retest results. |
+| [LPX study guide](lpx-study-guide.md) | Calibration, methodology, commands and experiment records. |
 
-The [portable inspection record](../experiments/lpx/integration-chinese-scan.json) lists every matching line number and the Unicode ranges used.
-The scan covers tracked UTF-8 working-tree files and filenames.
-Ignored outputs, virtual environments, Git metadata, binary files and non-UTF-8 files are excluded.
+Model loading, package data and document references use the renamed paths.
+The [language validation record](../experiments/lpx/integration-language-validation.json) records scan scope and content-preservation checks.
+The cleanup removes retired file paths from reachable history on `lpx-experiment` only.
+Other branches, external clones and hosting-service caches can retain historical copies.
+Original experiment fingerprints and numerical results retain their generation-time provenance.
+The scan covers tracked UTF-8 text and filenames, excluding ignored outputs, virtual environments, Git metadata, binaries and non-UTF-8 files.
 Image text is outside this text scan's scope.

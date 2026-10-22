@@ -1,0 +1,59 @@
+{
+  "date": "2026-10-21",
+  "branch": "lpx-experiment",
+  "scope": "Current Git-tracked UTF-8 text and filenames; excludes ignored outputs, virtual environments, Git metadata, binaries and non-UTF-8 files. Images are not OCR-scanned.",
+  "method": "Han ideographs in Unicode ranges U+3400-U+4DBF, U+4E00-U+9FFF, U+F900-U+FAFF and U+20000-U+2FFFF.",
+  "history_scope": "Remove retired document, model and superseded audit paths only from reachable history of refs/heads/lpx-experiment; other remote branches are preserved. External copies and hosting caches are outside this operation.",
+  "documents": [
+    {
+      "path": "docs/groq-hardware-evidence.md",
+      "sha256": "4e43b4db3ae6d72d82e49485946e496153be8257605fd0339c2bec50b7ccd113",
+      "code_blocks_preserved": 0,
+      "link_targets_preserved_with_renames": true,
+      "numeric_table_cells_preserved": true,
+      "table_rows": 69,
+      "shell_syntax_and_relative_links_valid": true
+    },
+    {
+      "path": "docs/lpx-model-corrections.md",
+      "sha256": "64e4294f201fd05d7b754197876636ba502d114b8e94e9c690d92434f1aa4c78",
+      "code_blocks_preserved": 1,
+      "link_targets_preserved_with_renames": true,
+      "numeric_table_cells_preserved": true,
+      "table_rows": 17,
+      "shell_syntax_and_relative_links_valid": true
+    },
+    {
+      "path": "docs/lpx-study-guide.md",
+      "sha256": "1b1a04324d72f917770ed7fa5d626c13490246c26659e1195f293dea91da8f51",
+      "code_blocks_preserved": 8,
+      "link_targets_preserved_with_renames": true,
+      "numeric_table_cells_preserved": true,
+      "table_rows": 103,
+      "shell_syntax_and_relative_links_valid": true
+    }
+  ],
+  "configuration_checks": {
+    "model_path": "data/models/deepseek-v3-671b-mla-model.yaml",
+    "model_id_and_aliases_preserved": true,
+    "model_parameters_preserved_except_translated_provenance_note": true,
+    "other_catalog_changes_are_document_reference_updates_only": true,
+    "simulation_code_and_experiment_results_unchanged": true,
+    "built_wheel_contains_renamed_catalog": true,
+    "built_wheel_excludes_retired_catalog": true
+  },
+  "summary": {
+    "utf8_files_scanned": 703,
+    "matching_files": 0,
+    "matching_lines": 0,
+    "matching_filenames": 0
+  },
+  "validation": {
+    "unit_tests": {
+      "passed": 626
+    },
+    "black_formatted_files": 466,
+    "black_check_passed": true,
+    "diff_check_passed": true
+  }
+}
