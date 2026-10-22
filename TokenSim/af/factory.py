@@ -14,6 +14,7 @@ from TokenSim.af.runtime.compiler import compile_af_runtime_plan
 from TokenSim.af.runtime.host import host_collection, run_environment
 from TokenSim.af.trace.archive import ArchivedTraceRecorder
 from TokenSim.af.trace.config import AFTraceConfig
+from TokenSim.trace.config import TraceConfig
 from TokenSim.af.trace.formats import make_trace_recorder, validate_trace_format
 from TokenSim.af.trace.pipeline import PipelinedTraceRecorder
 from TokenSim.af.trace.transient import ValidationTraceRecorder
@@ -62,9 +63,9 @@ def simulate_decode(
     trace=True,
     fallback="table_first",
     seed=42,
-    trace_config: AFTraceConfig | None = None,
+    trace_config: TraceConfig | None = None,
     trace_output: str | Path | None = None,
-    trace_format="json",
+    trace_format=None,
 ):
     """Exact fixed-batch decode; every token advances its own SimPy iteration.
 
@@ -73,11 +74,13 @@ def simulate_decode(
     """
     if any(type(value) is not int or value < 1 for value in (batch, context, steps)):
         raise ValueError("batch, context and steps must be positive")
-    if trace_config is not None and not isinstance(trace_config, AFTraceConfig):
-        raise ConfigurationError("trace_config must be an AFTraceConfig")
+    if trace_config is not None and not isinstance(trace_config, TraceConfig):
+        raise ConfigurationError("trace_config must be a TraceConfig")
     if trace_output is not None and not isinstance(trace_output, (str, Path)):
         raise ConfigurationError("trace_output must be a path")
     options = trace_config or AFTraceConfig(mode="full" if trace else "off")
+    trace_format = trace_format or options.format
+    trace_output = trace_output or options.output
     validate_trace_format(trace_format, require_dependency=options.mode == "full")
     if trace is False and options.enabled:
         raise ConfigurationError("trace=False conflicts with an enabled trace_config")

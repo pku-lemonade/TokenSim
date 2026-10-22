@@ -231,6 +231,15 @@ class LayerAttentionTest(unittest.TestCase):
                     "logit_softcap",
                 }.issubset(names)
             )
+            for event in service.trace.events:
+                ordered = [
+                    component["name"]
+                    for component in event.details.get("components", [])
+                ]
+                if "v_norm" in ordered:
+                    self.assertLess(
+                        ordered.index("v_norm"), ordered.index("attention_core")
+                    )
         self.assertEqual(traces[0], traces[1])
 
     def test_mixed_layer_prefill_charges_embedding_scale_once(self):

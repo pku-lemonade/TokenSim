@@ -1,7 +1,6 @@
 """Private temporary trace chunks and disk indexes with bounded read caching."""
 
 from collections import OrderedDict
-from io import BytesIO
 from pathlib import Path
 import pickle
 import sqlite3

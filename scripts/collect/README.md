@@ -6,6 +6,40 @@ NVIDIA AIConfigurator measures the inference framework's kernels for matrix mult
 TokenSim's additional scripts measure elementwise kernels and communication between nodes.
 A collective is a communication operation involving a group of GPU workers.
 
+## Operator timeline collection
+
+`collect_operator_trace.py` records a short vLLM prefill/decode workload with PyTorch Profiler and writes Chrome Trace JSON files plus a collection manifest.
+It installs CPU observation ranges through a vLLM worker extension and uses method-name remote procedure calls to initialize them.
+The extension preserves model return values and adds no kernel replacements.
+The target vLLM installation must support `profiler_config`, `worker_extension_cls` and `collective_rpc`.
+
+```bash
+CUDA_VISIBLE_DEVICES=0 \
+  python scripts/collect/collect_operator_trace.py \
+    --model /path/to/local/Qwen3-8B \
+    --output outputs/profiler/qwen3-8b \
+    --tensor-parallel-size 1 \
+    --batch-size 1 \
+    --input-tokens 32 \
+    --output-tokens 3
+```
+
+Use the authorized inference environment's Python executable for collection.
+For the agreed `PKUa100` campaign, the source installation is `/home/youwei/bzh/project/TokenCake/RFC/vllm-rfc` and the independent working copy is `/home/youwei/bzh/project/TokenSim/vllm-rfc`.
+Keep the source installation unchanged, including editable-install mappings and generated caches.
+Store remote data under `/home/youwei/bzh/project/TokenSim/profiler`.
+The [development specification](../../docs/operator-tracing-design.md#10-remote-environment-and-collection) describes the copy and verification procedure.
+
+The collector warms up the same fixed workload before starting capture.
+It uses explicit token identifiers, deterministic sampling and fixed output lengths.
+Eager execution is the default; `--cuda-graph` selects graph capture when supported by the target installation.
+Manifests record software versions, loaded model configuration, device selection, annotation coverage, capture policy, generated token counts and completion status.
+Inspect the run log and manifest before using a trace as validation evidence.
+Profiler and annotation overhead is part of the observed workload and must be considered when interpreting timing differences.
+Local `outputs/` data is already ignored by Git; preserve raw traces and logs there and commit only small relevant fixtures.
+
+Use the [offline comparison tool](../../docs/operator-latency-model.md#pytorch-profiler-comparison) to generate a combined timeline and difference report.
+
 | Script | Tables produced | Requirements |
 | --- | --- | --- |
 | `run_aiconfigurator.sh` | `gemm`, `context_attention`, `generation_attention`, `moe`, single-node `collective` (NCCL plus the framework's custom all-reduce), and any other table of the requested collector ops | target framework, AIConfigurator source (cloned by the script), nccl-tests, mpirun |

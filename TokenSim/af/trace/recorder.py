@@ -18,7 +18,6 @@ from TokenSim.errors import SimulationStateError
 from TokenSim.trace.recorder import TraceRecorder
 from TokenSim.af.trace.occupancy import (
     occupied_until,
-    validate_resource_capacity,
     unique_executions,
 )
 

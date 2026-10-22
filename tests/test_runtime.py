@@ -100,6 +100,8 @@ class RuntimeTest(unittest.TestCase):
                     "1",
                     "--batching",
                     "paged-attn",
+                    "--trace_mode",
+                    "full" if run else "off",
                     "--request_count",
                     "3",
                     "--max_num_batched_tokens",
@@ -119,6 +121,14 @@ class RuntimeTest(unittest.TestCase):
                 store = engine.workers[0].connector
                 self.assertGreater(store.mooncake_stats.mooncake_memory_hit_tokens, 0)
                 self.assertEqual(store.mooncake_stats.store_hit_count, 1)
+                if run:
+                    trace = json.loads(Path(result["trace"]["path"]).read_text())
+                    self.assertTrue(
+                        any(
+                            row.get("args", {}).get("operation") == "kv_transfer"
+                            for row in trace["traceEvents"]
+                        )
+                    )
                 services.append(store.service)
             self.assertIsNot(services[0], services[1])
 

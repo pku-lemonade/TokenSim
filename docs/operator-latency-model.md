@@ -7,6 +7,117 @@ If measurements cannot answer a query, the configured fallback policy can use a 
 `--latency_backend analytical` skips the tables entirely.
 Every estimate records its source, so results separate time estimated from measurements and time estimated from formulas.
 
+## Global operator tracing
+
+The main simulation CLI supports the same operator tracing configuration for colocated serving, prefill/decode disaggregation and attention/feed-forward disaggregation.
+Tracing defaults to `off`.
+`SimulationConfig(trace=TraceConfig(...))` provides the corresponding Python interface through `TokenSim.trace.config`.
+
+| Argument | Default | Meaning |
+| --- | --- | --- |
+| `--trace_mode` | `off` | `off` skips recording, `validate` checks and releases completed events, and `full` exports an operator timeline. |
+| `--trace_output` | `<results_path>/<result_stem>.trace.json` | Destination for a full trace; distinct result names receive distinct trace files, and binary formats use the corresponding suffix. |
+| `--trace_config` | unset | JSON file containing global trace settings; explicitly supplied CLI values override its corresponding fields. |
+
+```bash
+python benchmark.py \
+  --model llama-3-8b \
+  --latency_backend analytical \
+  --request_count 2 \
+  --prefill_mean_len 32 \
+  --decode_mean_len 3 \
+  --trace_mode full \
+  --results_path outputs/operator-trace
+```
+
+The result JSON contains a `trace` descriptor with the output path, schema version and completeness.
+Chrome Trace JSON uses microseconds for timeline timestamps and durations, while event arguments retain simulation seconds.
+Open the exported JSON in [Perfetto](https://ui.perfetto.dev/) to inspect per-layer operations, rank tracks and dependency arrows.
+An interrupted run exports completed work and observed transfer intervals, with incomplete capture identified in metadata.
+Synchronous connector records describe consumed blocking invocations, and queued storage transfers expose actual resource admission and service intervals.
+Shared asynchronous links identify resource-only ownership when request correlation is unavailable.
+
+`TraceConfig` also accepts `validate`, `format`, `workers`, `phases`, `iterations`, `layers`, `event_types`, `detail` and `fields`.
+`format` selects `json`, `msgpack` or `archive`; MessagePack requires the optional `tokensim[trace]` dependencies.
+Worker, phase, iteration, layer and event-type selectors filter exported events without changing execution or removing records required for validation.
+Layer indices are global model indices, and `-1` represents model-boundary work.
+`detail="timing"` exports common timing arguments, while `fields` selects named event payload fields.
+Dependency arrows connect selected endpoints only.
+Direct JSON exports index dependency endpoints on disk and stream event records.
+Existing standalone AF experiment arguments remain compatibility adapters to the same storage and export implementation, with their legacy defaults.
+Pass a global `TraceConfig` explicitly to standalone factories to select the same collection behavior as the main CLI.
+
+Operator costs are evaluated once and expanded into their model execution positions when recording is enabled.
+Fused module estimates retain their measured boundaries, and shared AF executions contribute physical service once.
+Ordinary tensor-parallel tracks that reuse a representative estimate identify the symmetric-rank assumption in their event details.
+Tracing does not introduce additional simulated synchronization or modify request batching.
+The [development specification](operator-tracing-design.md) describes the event contract, validation and migration.
+
+## PyTorch Profiler comparison
+
+Use `python -m TokenSim.profiler.compare` to compare a simulated trace with one or more PyTorch Profiler JSON or gzip-compressed JSON files.
+The offline tool requires no GPU, PyTorch or vLLM installation.
+
+```bash
+python -m TokenSim.profiler.compare \
+  --simulated outputs/operator-trace/result_inf.trace.json \
+  --profile outputs/profiler/raw/*.json.gz \
+  --output outputs/operator-trace/comparison
+```
+
+CPU ranges, GPU activity and launch correlation establish operator ownership.
+The collector in [scripts/collect](../scripts/collect/README.md#operator-timeline-collection) adds layer and operator annotations to the loaded vLLM model through a worker extension.
+The importer distinguishes CPU annotations from their GPU counterparts so each forward is counted once.
+Unattributed kernels remain in the report.
+Lossy simulated exports must retain `node_id`, `worker_id`, `layer_id` and `iteration_id` for comparison.
+Full detail retains shape and provenance evidence; timing detail also retains the warmup/profiling distinction.
+
+Matching uses rank, forward occurrence, layer, compatible shapes and operation order.
+Forward token counts and an operator's flattened tensor rows are different shape fields.
+Matching never uses duration similarity to choose a correspondence.
+Observed fused residual/normalization kernels and projection or MoE modules containing a reduction can group their corresponding simulated operations, with source member identifiers retained.
+Ambiguous and unmatched operations remain visible.
+Incomplete simulated service is excluded from duration comparisons.
+
+`--mapping` accepts an optional JSON file with version 1 of this schema:
+
+```json
+{
+  "schema_version": 1,
+  "aliases": {
+    "custom_attention": "attention"
+  },
+  "rank_map": {
+    "0": "2"
+  },
+  "groups": [
+    {
+      "simulated": ["attention_residual", "ffn_norm"],
+      "profiled": "ffn_norm"
+    }
+  ]
+}
+```
+
+Alias keys use lowercase operation names.
+`rank_map` maps profiled rank identifiers to simulated worker identifiers, independently of `CUDA_VISIBLE_DEVICES` numbering.
+Explicit groups combine contiguous simulated operations within a layer and forward.
+The known residual/normalization adapter can also group a previous layer's residual with the following layer's input normalization when observed kernel evidence establishes that fusion.
+
+| Artifact | Contents |
+| --- | --- |
+| `comparison.json` | Input hashes, available identity checks, matching evidence, coverage, timing errors and per-rank/per-clock accounting. |
+| `operators.csv` | Matched, unmatched, ambiguous and excluded comparison units. |
+| `comparison.trace.json` | Simulated and observed tracks with translated time origins and original timestamps in event arguments. |
+
+Service error is simulated duration minus observed duration, and relative error divides by observed duration.
+Zero observed duration produces a null relative error with a reason.
+Module invocation span, kernel-duration sum and device busy-time union are reported separately.
+The report keeps cumulative device time separate from elapsed forward time.
+Each observed clock is translated at its earliest unambiguous match, and cross-rank overlap is unavailable when the files do not establish a common clock domain.
+The CLI returns status 2 when no operators match and reports invalid inputs as argument errors.
+Small collection samples validate ownership, order and accounting; they do not establish a general prediction-accuracy target.
+
 An operator's shape is its set of dimensions, such as matrix sizes, batch size and context length.
 Its data type is recorded as `dtype`.
 Prompt processing is called prefill, and output token generation is called decode.

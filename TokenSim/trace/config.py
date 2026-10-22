@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from dataclasses import asdict, dataclass, fields
 from typing import ClassVar, get_args, get_type_hints
 
-from TokenSim.trace.events import TraceEvent
+from TokenSim.trace.events import TraceEvent, RECORD_TYPES
 from TokenSim.errors import ConfigurationError
 
 EVENT_TYPES = get_args(get_type_hints(TraceEvent)["event_type"])
@@ -30,6 +30,8 @@ TIMING_FIELDS = (
     "resource_ids",
     "node_id",
     "predecessor_ids",
+    "run_phase",
+    "incomplete",
 )
 
 
@@ -43,10 +45,6 @@ class TraceConfig:
     """
 
     mode: str = "off"
-    output: str | None = None
-    format: str = "json"
-    workers: tuple[int, ...] | None = None
-    phases: tuple[str, ...] | None = None
     event_fields: ClassVar[tuple[str, ...]] = EVENT_FIELDS
     validate: bool = True
     event_types: tuple[str, ...] | None = None
@@ -54,6 +52,10 @@ class TraceConfig:
     layers: tuple[int, ...] | None = None
     detail: str = "full"
     fields: tuple[str, ...] | None = None
+    output: str | None = None
+    format: str = "json"
+    workers: tuple[int, ...] | None = None
+    phases: tuple[str, ...] | None = None
 
     def __post_init__(self):
         if self.output is not None and (
@@ -102,8 +104,12 @@ class TraceConfig:
                 self, "event_types", tuple(dict.fromkeys(self.event_types))
             )
         if self.fields is not None:
+            known_fields = set(self.event_fields)
+            for record_type in RECORD_TYPES.values():
+                if issubclass(record_type, TraceEvent):
+                    known_fields.update(field.name for field in fields(record_type))
             if not isinstance(self.fields, (list, tuple)) or any(
-                value not in self.event_fields for value in self.fields
+                value not in known_fields for value in self.fields
             ):
                 raise ConfigurationError("trace fields must name TraceEvent fields")
             if self.detail != "full":
@@ -125,6 +131,8 @@ class TraceConfig:
                 "trace configuration must be an object with keys: "
                 + ", ".join(sorted(names))
             )
+        if cls is TraceConfig and not value:
+            return DEFAULT_TRACE_CONFIG
         return cls(**value)
 
     @property
@@ -167,3 +175,6 @@ class TraceConfig:
                 else "may_reference_omitted_events" if self.filtered else "complete"
             ),
         )
+
+
+DEFAULT_TRACE_CONFIG = TraceConfig()

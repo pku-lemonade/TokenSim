@@ -70,17 +70,21 @@ class DecodeAttention:
     def _decode_us(
         self, batch_size, context_tokens, *, indexer_kv_fraction=1.0, byte_weight=1.0
     ):
-        total = sum(
-            self.layer_counts[kind]
-            * self._decode_layer(
+        parts = []
+        for kind in ("csa", "hca"):
+            latency = self._decode_layer(
                 kind,
                 batch_size,
                 context_tokens,
                 indexer_kv_fraction=indexer_kv_fraction,
                 byte_weight=byte_weight,
             )[0]
-            for kind in ("csa", "hca")
-        )
+            parts.append(self.layer_counts[kind] * latency)
+            if self.trace_layer_costs is not None:
+                self.trace_layer_costs[kind] = (
+                    self.trace_layer_costs.get(kind, 0.0) + byte_weight * latency
+                )
+        total = sum(parts)
         return total
 
     def estimate_decode_batch(self, buckets, *, projection_rows=None):
@@ -156,6 +160,10 @@ class DecodeAttention:
                 increment += (
                     layers * weight * max(0.0, new_common - common) * efficiency
                 )
+                if self.trace_layer_costs is not None:
+                    self.trace_layer_costs[kind] = self.trace_layer_costs.get(
+                        kind, 0.0
+                    ) + weight * (latency + max(0.0, new_common - common) * efficiency)
                 source_floor_rows += layers * weight * key["batch_size"]
                 projection_rows += layers * weight * projected
         stats = self.composition_stats

@@ -210,6 +210,10 @@ class CollectiveModel:
             detail={
                 "mode": query.mode,
                 "mode_scale": scale,
+                "phase_latency_us": {
+                    "dispatch": base.latency_us * scale,
+                    "combine": base.latency_us * scale,
+                },
                 "phases": ("dispatch", "combine"),
             },
         )
@@ -267,6 +271,7 @@ class CollectiveModel:
             sources: list[str] = []
             match_types: list[str] = []
             phases_ok = True
+            phase_latency_us = {}
             for phase in ("dispatch", "combine"):
                 key = self._ep_all2all_key(query, mode, phase)
 
@@ -296,6 +301,7 @@ class CollectiveModel:
                     phases_ok = False
                     break
                 total += result.latency_us
+                phase_latency_us[phase] = result.latency_us
                 sources.append(result.source_id)
                 match_types.append(result.match_type)
             if not phases_ok:
@@ -317,6 +323,7 @@ class CollectiveModel:
                     "mode": mode,
                     "requested_mode": query.mode,
                     "nodes": nodes,
+                    "phase_latency_us": phase_latency_us,
                     "phases": ("dispatch", "combine"),
                 },
             )

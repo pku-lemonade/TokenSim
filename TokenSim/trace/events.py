@@ -37,7 +37,7 @@ class TraceEvent:
     request_count: int
     token_count: int
     source_id: str
-    dataset_version: str = "test-stub"
+    dataset_version: str = "unspecified"
     match_type: str = "exact"
     stage: str | None = None
     direction: str | None = None
@@ -51,6 +51,9 @@ class TraceEvent:
     dp_rank: int | None = None
     tp_rank: int | None = None
     ep_rank: int | None = None
+    pp_rank: int | None = None
+    run_phase: str = "profiling"
+    incomplete: bool = False
     execution_group_id: str | None = None
     input_ready_at: float | None = None
     resource_queue_intervals: tuple[tuple[float, float], ...] | None = None

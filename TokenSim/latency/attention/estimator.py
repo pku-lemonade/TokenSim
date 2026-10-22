@@ -20,6 +20,7 @@ class CompressedAttentionEstimator(AttentionLookup, DecodeAttention):
     """
 
     def __init__(self, backend):
+        self.trace_layer_costs = None
         self.backend = backend
         self.model = backend.model
         self.parallel = backend.parallel_config
@@ -121,12 +122,12 @@ class CompressedAttentionEstimator(AttentionLookup, DecodeAttention):
     def estimate_prefill(self, batch_size, query_tokens, prefix_tokens):
         total = 0.0
         for kind in ("csa", "hca"):
-            total += (
-                self.layer_counts[kind]
-                * self._query(
-                    kind, "context", batch_size, query_tokens, prefix_tokens
-                ).latency_us
-            )
+            latency = self._query(
+                kind, "context", batch_size, query_tokens, prefix_tokens
+            ).latency_us
+            total += self.layer_counts[kind] * latency
+            if self.trace_layer_costs is not None:
+                self.trace_layer_costs[kind] = latency
         self.seconds += total * 1e-6
         return total
 
@@ -211,6 +212,8 @@ class CompressedAttentionEstimator(AttentionLookup, DecodeAttention):
             phase_total += layers * phase
             standalone_total += layers * standalone
             total += layers * (shared + phase)
+            if self.trace_layer_costs is not None:
+                self.trace_layer_costs[kind] = shared + phase
             self.composition_stats["source_floor_projection_rows"] += (
                 layers * common_rows
             )

@@ -69,6 +69,17 @@ class ComputeComponentsMixin:
                     dtype,
                 ),
             ]
+        if model.block_layout.value_norm:
+            components.append(
+                self._elementwise(
+                    resolver,
+                    "v_norm",
+                    "rmsnorm",
+                    tokens * kv_heads_local,
+                    geometry.head_dim,
+                    dtype,
+                )
+            )
         components.extend(
             attention_core(
                 self, resolver, query, tokens, heads_local, kv_heads_local, dtype
@@ -81,17 +92,6 @@ class ComputeComponentsMixin:
             components.append(
                 self._elementwise(
                     resolver, "a_residual_add", "residual_add", tokens, h, dtype
-                )
-            )
-        if model.block_layout.value_norm:
-            components.append(
-                self._elementwise(
-                    resolver,
-                    "v_norm",
-                    "rmsnorm",
-                    tokens * kv_heads_local,
-                    geometry.head_dim,
-                    dtype,
                 )
             )
         return [component for component in components if component is not None]

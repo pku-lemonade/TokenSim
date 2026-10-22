@@ -20,12 +20,11 @@ from TokenSim.trace.archive import ArchivedTraceRecorder
 from TokenSim.trace.archive_store import TraceArchiveStore, _encode
 from TokenSim.trace.config import TraceConfig
 from TokenSim.trace.export import write_chrome_trace
-from TokenSim.trace.events import TraceEvent
+from TokenSim.trace.events import TraceEvent, RECORD_TYPES
 from TokenSim.trace.pipeline import PipelinedTraceRecorder
 
 FORMAT = "tokensim-indexed-trace-v1"
 LEGACY_FORMAT = "tokensim-indexed-trace-probe-v1"
-from TokenSim.trace.events import RECORD_TYPES
 
 
 class _RecordReader(pickle.Unpickler):

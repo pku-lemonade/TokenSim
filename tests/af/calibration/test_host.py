@@ -188,6 +188,7 @@ class HostProfileTest(HostProfileFixture, unittest.TestCase):
                 cluster_config=_with_prefill_pool(ClusterConfig(**doc)),
                 hardware=runtime.hardware,
                 config=SimulationConfig(
+                    trace={"mode": "full"},
                     block_size=16,
                     batching="paged-attn",
                     prefill_worker_pool_type="round_robin",

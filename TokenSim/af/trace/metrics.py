@@ -4,17 +4,15 @@ from __future__ import annotations
 
 from bisect import bisect_right
 from collections import defaultdict
-from dataclasses import asdict, dataclass, field, replace
+from dataclasses import dataclass, field, replace
 from math import isfinite
 import math
 import sys
-from typing import Any, Literal, Mapping
+from typing import Mapping
 from TokenSim.trace.occupancy import occupied_until, unique_executions
 
-from TokenSim.af.planning.batching import ForwardPhase
 from TokenSim.trace.events import TraceEvent, register_records
 from TokenSim.af.providers.queries import (
-    AFComputeStage,
     AFEndpoint,
     AFLayerType,
     AFRoutingEdge,
@@ -53,6 +51,7 @@ class _ResourceBusyTime:
 
 @dataclass(frozen=True)
 class AFTraceEvent(TraceEvent):
+    dataset_version: str = "test-stub"
     source_domain: str | None = None
     target_domain: str | None = None
     logical_participants: tuple[str, ...] = ()

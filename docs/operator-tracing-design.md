@@ -1,6 +1,6 @@
 # Global Operator Tracing and Profiler Comparison
 
-Status: development specification; the proposed global interfaces are not implemented.
+Status: implemented.
 This document records the agreed scope, architecture, migration, experiments and acceptance criteria.
 
 ## 1. Scope and requirements
@@ -84,7 +84,7 @@ flowchart LR
     M --> D[Combined timeline and difference report]
 ```
 
-The engine owns the recording session and gives execution components a shared run identity.
+The engine owns the recording session and gives execution components scope-qualified identities within the exported run.
 Standalone AF experiment entry points construct the same session through the common factory.
 Local iteration counters are qualified by execution scope so that different workers cannot produce colliding event identifiers.
 Offline comparison imports neither vLLM nor GPU runtime libraries.
@@ -99,7 +99,7 @@ Deployment metadata must have a stable serialized representation that remains re
 
 Add an immutable `TraceConfig` to `SimulationConfig` and use it in standalone execution factories.
 The command-line interface (CLI) will expose `--trace_mode`, `--trace_output` and `--trace_config`.
-These options are proposed additions and must not be documented as currently available until implemented.
+These options are implemented by the main simulation CLI.
 `--trace_config` names a JSON file; explicitly supplied CLI options override its corresponding fields.
 Defaults are applied only after merging explicit settings.
 Unknown keys, invalid selections and conflicting legacy settings raise the existing `ConfigurationError`.
@@ -142,7 +142,8 @@ This is a proposed configuration example:
 Repository scripts and examples will migrate to the global configuration.
 Legacy AF configuration keys may be accepted by a small boundary translator during migration, with explicit deprecation and conflict handling.
 An omitted legacy field must not inherit the old AF default of recording enabled.
-The global default remains `off`, including AF serving and standalone experiments.
+The global default remains `off`, including AF serving.
+Compatibility-only standalone AF entry points preserve their legacy defaults and accept an explicit global `TraceConfig` to select the new collection behavior.
 Compatibility imports must be thin re-exports or adapters to the common implementation.
 
 Add an offline entry point through `python -m TokenSim.profiler.compare` with `--simulated`, `--profile`, `--mapping` and `--output` options.
@@ -157,7 +158,7 @@ The recording clock describes simulated execution and is independent of the host
 
 | Field group | Required semantics |
 | --- | --- |
-| Identity | Schema version, run identity, event identifier, execution scope, iteration and physical execution identifier. |
+| Identity | Artifact schema version, scope-qualified event identifier, execution scope, iteration and physical execution identifier. |
 | Operator | Canonical operator name, category, global layer index, phase, module boundary and occurrence within that boundary. |
 | Placement | Worker, device, modeled resource lane and applicable tensor, pipeline, data and expert parallel ranks. |
 | Timing | Dependency readiness, service start, service end and resource reservation intervals when they differ from service. |
@@ -172,7 +173,7 @@ A CUDA stream is a GPU command sequence whose ordering is observed in a real pro
 Simulated resource lanes must be labeled as modeled resources; exported lane identifiers do not claim to be observed CUDA stream identifiers.
 Kernel-level measurements and logical operator-level estimates retain distinct granularity labels.
 
-For complete events, timestamps must be finite and satisfy `ready_at <= start_at <= end_at` within a documented floating-point tolerance.
+For complete events, timestamps must be finite and satisfy `ready_at <= start_at <= end_at` within the larger of one picosecond and four units in the last place of the clock values.
 Service duration is `end_at - start_at`.
 The interval from readiness to service start is scheduling delay; resource queueing is reported separately when explicit queue intervals exist.
 Dependency waiting before readiness must not be added again to service time.
@@ -487,6 +488,13 @@ git diff --check
 
 Documentation-only updates require checks of sentence layout, terminology, links, configuration examples and the diff.
 The implementation is complete when all three serving modes use the global facility, automatic comparison works on the agreed real samples, execution checks pass, the remote source is preserved and disabled-mode performance meets the stated acceptance condition.
+
+The implemented main CLI, configuration fields and comparison artifacts are documented in the [operator latency guide](operator-latency-model.md#global-operator-tracing).
+The [collector guide](../scripts/collect/README.md#operator-timeline-collection) documents real vLLM collection.
+Related corrections normalize every forwarded row on the final pipeline stage, including unfinished prefill chunks that emit no logits, and place value normalization before the attention core.
+These corrections affect estimated results independently of the recording switch.
+The validation-only GPU experiment injects observed service durations into the production latency backend and leaves start times to the simulator's scheduling logic.
+Raw evidence, review inventories and performance measurements are kept in the ignored artifact directories specified above.
 
 ## 13. Mandatory development workflow
 

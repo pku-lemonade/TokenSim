@@ -159,6 +159,12 @@ class DPStepCoordinator:
                     batches[worker.id] = running
                 load_duration = max(load_latencies, default=0.0)
                 if load_duration:
+                    if self.engine.trace_session is not None:
+                        for worker, latency in zip(self.workers, load_latencies):
+                            if latency:
+                                self.engine.trace_session.record_connector_load(
+                                    worker, latency
+                                )
                     yield self.env.timeout(load_duration)
                 # Kept visible for native MegaMoE estimators added later:
                 # every rank's routes belong to this same global iteration.
@@ -206,7 +212,17 @@ class DPStepCoordinator:
                     raise SimulationStateError(
                         "DP passes need positive modeled duration to advance the busy wave"
                     )
+                if self.engine.trace_session is not None:
+                    for worker in self.workers:
+                        self.engine.trace_session.mark_started(
+                            worker.id, self.env.now, duration
+                        )
                 yield self.env.timeout(duration)
+                if self.engine.trace_session is not None:
+                    for worker in self.workers:
+                        self.engine.trace_session.finish(
+                            worker.id, self.env.now - duration, duration
+                        )
                 for worker in self.workers:
                     self.stats.local_compute_seconds[worker.dp_rank] += estimates[
                         worker.id

@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import simpy
 
 from TokenSim.errors import ConfigurationError, SimulationStateError
 from TokenSim.trace.config import TraceConfig
@@ -18,6 +19,7 @@ from TokenSim.trace.formats import (
     convert_trace_to_json,
 )
 from TokenSim.trace.recorder import TraceRecorder
+from TokenSim.trace.execution import observe_service
 
 
 def event(**changes):
@@ -45,6 +47,35 @@ def event(**changes):
 
 
 class SharedRecordingTest(unittest.TestCase):
+    def test_service_observation_starts_after_admission_and_releases_on_cancel(self):
+        env = simpy.Environment()
+        resource = simpy.Resource(env, capacity=1)
+        starts = []
+
+        def holder():
+            with resource.request() as request:
+                yield request
+                yield env.timeout(2)
+
+        def service():
+            with resource.request() as request:
+                yield request
+                yield env.timeout(10)
+
+        def observed():
+            try:
+                yield from observe_service(service(), lambda: starts.append(env.now))
+            except simpy.Interrupt:
+                pass
+
+        env.process(holder())
+        process = env.process(observed())
+        env.run(until=3)
+        self.assertEqual(starts, [2])
+        process.interrupt("cancel")
+        env.run()
+        self.assertEqual(resource.count, 0)
+
     def test_shared_export_imports_no_af_modules(self):
         script = "import sys; import TokenSim.trace.formats; assert not any(n.startswith('TokenSim.af') for n in sys.modules)"
         subprocess.run([sys.executable, "-c", script], check=True)
@@ -101,6 +132,11 @@ class SharedRecordingTest(unittest.TestCase):
             self.assertEqual(traces[0]["traceEvents"][0]["dur"], 1)
 
     def test_global_defaults_and_boundary_validation(self):
+        from TokenSim.af.trace.config import AFTraceConfig
+        from TokenSim.config.simulation import SimulationConfig
+
+        self.assertFalse(AFTraceConfig("full", False).validate)
+        self.assertEqual(SimulationConfig(4).block_size, 4)
         self.assertFalse(TraceConfig().enabled)
         for settings in (
             {"mode": "bad"},
@@ -111,6 +147,56 @@ class SharedRecordingTest(unittest.TestCase):
         ):
             with self.subTest(settings=settings), self.assertRaises(ConfigurationError):
                 TraceConfig.from_mapping(settings)
+
+    def test_zero_duration_dependency_cycle_is_rejected(self):
+        recorder = TraceRecorder()
+        recorder.record(event(end_at=0, service_duration=0, predecessor_ids=("node1",)))
+        recorder.record(
+            event(
+                end_at=0,
+                service_duration=0,
+                node_id="node1",
+                predecessor_ids=("node0",),
+            )
+        )
+        with self.assertRaisesRegex(SimulationStateError, "cycle"):
+            recorder.validate_invariants(0)
+
+    def test_late_clock_preserves_small_service_without_false_failure(self):
+        recorder = TraceRecorder()
+        recorder.record(
+            event(ready_at=1e8, start_at=1e8, end_at=1e8 + 1e-6, service_duration=1e-6)
+        )
+        recorder.validate_invariants(0)
+
+    def test_flow_export_connects_only_visible_endpoints(self):
+        with tempfile.TemporaryDirectory() as directory:
+            rows = [
+                event(),
+                event(
+                    iteration_id=1,
+                    node_id="node1",
+                    ready_at=1e-6,
+                    start_at=1e-6,
+                    end_at=2e-6,
+                    predecessor_ids=("node0",),
+                ),
+            ]
+            path = Path(directory) / "trace.json"
+            write_trace(path, rows, {"schema_version": 2})
+            data = json.loads(path.read_text())["traceEvents"]
+            self.assertEqual(
+                [row["ph"] for row in data if row["ph"] in ("s", "f")], ["s", "f"]
+            )
+            self.assertTrue(all(isinstance(row["tid"], int) for row in data))
+            write_trace(
+                path,
+                rows,
+                {"schema_version": 2},
+                trace_config=TraceConfig(mode="full", iterations=(1,)),
+            )
+            data = json.loads(path.read_text())["traceEvents"]
+            self.assertEqual([row["ph"] for row in data], ["M", "X"])
 
     def test_af_adapter_reuses_finite_timestamp_validation(self):
         from TokenSim.af.trace.metrics import AFTraceEvent

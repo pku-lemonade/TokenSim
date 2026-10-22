@@ -5,10 +5,16 @@ from TokenSim.trace.formats import (
     TRACE_SUFFIXES,
     validate_trace_format,
     write_trace,
-    convert_trace_to_json,
 )
 
 from TokenSim.trace import formats as _shared
+
+
+def convert_trace_to_json(source, output, *, trace_format=None):
+    # Loading the extension registers the trusted legacy AF record constructors.
+    from TokenSim.af.trace import metrics
+
+    return _shared.convert_trace_to_json(source, output, trace_format=trace_format)
 
 
 def make_trace_recorder(directory, options, trace_format):

@@ -266,6 +266,7 @@ class ModelExecutorTest(unittest.TestCase):
             cluster_config=cluster,
             hardware=hardware,
             config=SimulationConfig(
+                trace={"mode": "full"},
                 block_size=16,
                 batching="paged-attn",
                 prefill_worker_pool_type="round_robin",

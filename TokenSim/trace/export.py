@@ -1,6 +1,7 @@
 """Incremental Chrome trace export without copying the full event history."""
 
 from collections.abc import Iterable, Mapping
+from contextlib import nullcontext
 from dataclasses import fields, is_dataclass
 from functools import lru_cache
 from inspect import getattr_static
@@ -57,15 +58,16 @@ def _event_encoder():
         separators=(",", ":"),
         default=_record_dict,
         check_circular=False,
+        allow_nan=False,
     )
 
 
-def _encode_event(event, options, encoder):
+def _encode_event(event, options, encoder, *, track=None):
     selected = options.fields
     if selected is None and options.detail == "timing":
         selected = TIMING_FIELDS
     row = (
-        {name: getattr(event, name) for name in selected}
+        {name: getattr(event, name, None) for name in selected}
         if selected is not None
         else _record_dict(event)
     )
@@ -74,7 +76,7 @@ def _encode_event(event, options, encoder):
         cat=event.event_type,
         ph="X",
         pid=1,
-        tid=event.resource_id,
+        tid=event.resource_id if track is None else track,
         ts=event.start_at * 1e6,
         dur=event.service_duration * 1e6,
         args=row,
@@ -84,7 +86,11 @@ def _encode_event(event, options, encoder):
     except RecursionError:
         # Retry with cycle checks to preserve the standard failure type.
         return json.dumps(
-            item, ensure_ascii=False, separators=(",", ":"), default=_record_dict
+            item,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            default=_record_dict,
+            allow_nan=False,
         )
 
 
@@ -129,10 +135,14 @@ def write_chrome_trace(
     if options.filtered:
         events = (event for event in events if options.includes(event))
     encoder = _event_encoder()
+    modern = metadata is not None and metadata.get("schema_version") == 2
+    if modern:
+        from TokenSim.trace.flows import FlowIndex
     temporary = None
     try:
         with (
             host_collection(),
+            FlowIndex() if modern else nullcontext(None) as flows,
             NamedTemporaryFile(
                 mode="w",
                 encoding="utf-8",
@@ -145,10 +155,25 @@ def write_chrome_trace(
         ):
             temporary = Path(stream.name)
             stream.write('{"displayTimeUnit":"us","traceEvents":[')
-            for index, event in enumerate(events):
-                if index:
+            count = 0
+
+            def append(encoded):
+                nonlocal count
+                if count:
                     stream.write(",")
-                stream.write(_encode_event(event, options, encoder))
+                stream.write(encoded)
+                count += 1
+
+            for event in events:
+                track = None
+                if flows is not None:
+                    track, item = flows.add(event)
+                    if item is not None:
+                        append(encoder.encode(item))
+                append(_encode_event(event, options, encoder, track=track))
+            if flows is not None:
+                for item in flows.flows():
+                    append(encoder.encode(item))
             stream.write('],"metadata":')
             stream.write(
                 json.dumps(

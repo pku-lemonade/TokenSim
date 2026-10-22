@@ -382,7 +382,9 @@ class PrecisionConversionTest(unittest.TestCase):
                     cluster_config=_with_prefill_pool(cluster),
                     hardware=hardware,
                     config=SimulationConfig(
-                        block_size=4, latency_fallback="analytical_only"
+                        trace={"mode": "full"},
+                        block_size=4,
+                        latency_fallback="analytical_only",
                     ),
                 )
                 req = Request(1, 8, 4, 4)
