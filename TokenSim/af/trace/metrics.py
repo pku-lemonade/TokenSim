@@ -9,9 +9,10 @@ from math import isfinite
 import math
 import sys
 from typing import Any, Literal, Mapping
-from TokenSim.af.trace.occupancy import occupied_until, unique_executions
+from TokenSim.trace.occupancy import occupied_until, unique_executions
 
 from TokenSim.af.planning.batching import ForwardPhase
+from TokenSim.trace.events import TraceEvent, register_records
 from TokenSim.af.providers.queries import (
     AFComputeStage,
     AFEndpoint,
@@ -51,50 +52,12 @@ class _ResourceBusyTime:
 
 
 @dataclass(frozen=True)
-class AFTraceEvent:
-    iteration_id: int
-    block_id: int
-    layer_id: int
-    phase: ForwardPhase
-    event_type: Literal[
-        "compute",
-        "transfer",
-        "control_transfer",
-        "control_device",
-        "operation_service",
-        "collective",
-        "host_submit",
-        "host_prepare",
-        "synchronize",
-    ]
-    resource_id: str
-    ready_at: float
-    start_at: float
-    end_at: float
-    queue_duration: float
-    service_duration: float
-    request_count: int
-    token_count: int
-    source_id: str
-    dataset_version: str = "test-stub"
-    match_type: Literal["exact", "interpolated"] = "exact"
-    stage: AFComputeStage | Literal["cast"] | None = None
-    direction: str | None = None
-    worker_id: int | None = None
-    payload_bytes: int | None = None
-    details: Mapping[str, object] = field(default_factory=dict)
-    operation: str | None = None
+class AFTraceEvent(TraceEvent):
     source_domain: str | None = None
     target_domain: str | None = None
     logical_participants: tuple[str, ...] = ()
     participant_ranks: tuple[int, ...] = ()
     physical_endpoints: tuple[str, ...] = ()
-    resource_ids: tuple[str, ...] = ()
-    node_id: str | None = None
-    predecessor_ids: tuple[str, ...] = ()
-    dp_rank: int | None = None
-    tp_rank: int | None = None
-    ep_rank: int | None = None
     tp_group: tuple[int, ...] = ()
     ep_group: tuple[int, ...] = ()
     local_work: Mapping[str, object] = field(default_factory=dict)
@@ -122,12 +85,6 @@ class AFTraceEvent:
     routing_edges: tuple[AFRoutingEdge, ...] = ()
     source_dtype: str | None = None
     target_dtype: str | None = None
-    execution_group_id: str | None = None
-    input_ready_at: float | None = None
-    resource_queue_intervals: tuple[tuple[float, float], ...] | None = None
-
-    def as_dict(self) -> dict[str, Any]:
-        return asdict(self)
 
 
 def _endpoint_identity(endpoint: AFEndpoint | None) -> tuple[object, ...] | None:
@@ -383,3 +340,23 @@ def summarize_timeline(events, start, end, capacities=None):
         unexplained_duration=totals.get("unexplained", 0.0),
         interpretation="one timestamp-supported chain; busy unions across categories may overlap; external blockers remain queue/gaps",
     )
+
+
+from TokenSim.af.caching.estimates import FrozenDict
+from TokenSim.af.providers import queries as _queries
+
+register_records(
+    AFTraceEvent,
+    FrozenDict,
+    *[
+        getattr(_queries, name)
+        for name in (
+            "AFEndpoint",
+            "AFTensorSlice",
+            "AFRoutingEdge",
+            "AFComputeQuery",
+            "AFTransferQuery",
+            "AFServiceEstimate",
+        )
+    ],
+)

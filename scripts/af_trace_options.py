@@ -78,6 +78,9 @@ def trace_configuration(args):
         AFTraceConfig.from_mapping(values)
     names = {"mode": "trace", "validate": "trace_validation"}
     for field in fields(AFTraceConfig):
+        if field.name in ("format", "output"):
+            # Standalone experiments own their output paths and representation.
+            continue
         value = getattr(args, names.get(field.name, "trace_" + field.name), None)
         if value is not None:
             values[field.name] = value
