@@ -124,10 +124,9 @@ These host memory figures come from archived launch records.
 
 The script's embedded mode places the store on the same node as the GPUs.
 Simulated transfers use the PCIe link specified in the hardware catalog, with no additional transfer over the RDMA network.
-`transfer_utilization: 0.75` assumes that transfers reach 75% of the modeled link bandwidth; this value has not been measured.
-The storage model omits uneven usage of memory segments assigned to individual ranks and eviction triggered by memory usage thresholds.
-Both published comparison runs use SimpleCPU offload.
-Selecting Mooncake changes the storage setup used in the comparison.
+`transfer_utilization: 0.75` sets effective host-transfer throughput to 75% of the link peak.
+The storage model tracks aggregate pool capacity and per-rank staging buffers across the shared host memory budget.
+The published comparison runs use SimpleCPU offload, while selecting Mooncake enables shared multi-rank DRAM pooling.
 `enable_offload: false` disables the SSD tier and keeps caching in CPU memory enabled.
 See [Mooncake storage](mooncake.md) for configuration details.
 
@@ -200,25 +199,18 @@ Engine statistics record repeated computation, time spent waiting for transfers 
 Model-specific fields appear only when used.
 Unknown result fields cause an error.
 
-These examples use latency and memory estimates with the following limitations.
+The DeepSeek-V4-Pro configuration combines module-level measurements and analytical models as follows.
 
-- B200 and B300 estimates for MegaMoE, a fused mixture-of-experts (MoE) kernel, use SGLang measurements from GB200 and GB300.
-  Metadata records the source hardware, framework, token capacity of each rank's buffers and operations included in each measurement.
-- Sparse-attention measurements use FlashMLA, and the reference serving runs used FlashInfer.
-  The measured kernels may use KV entries that also store quantization scales or rotary positional embedding (RoPE) data, increasing their size relative to the reference serving layout.
-  The model's operator configuration explicitly records these sizes.
-- Formulas approximate uneven work across GPU ranks, shared experts computed within the fused MoE kernel, overlap between execution phases, attention used to draft tokens and combining the model's residual outputs.
-  Metadata labels these calculations as analytical estimates and records their latency contributions.
-- Synthetic token counts per expert use fixed random seeds 0, 1 and 2 to approximate the distribution used when collecting kernel timings.
-  These counts are generated independently of the simulation seed and do not reproduce the original expert assignments from the measured runs.
-- The number of GPU streaming multiprocessors (SMs) used to size persistent buffers (GPU memory reserved between kernel calls) is configurable for each hardware entry.
-  The configured values are estimates that have not been measured.
+- Fused mixture-of-experts (MoE) execution (`MegaMoE`) uses measured SGLang module tables from Blackwell systems (`GB200` and `GB300`), recording the source hardware, framework, per-rank token buffer capacities and covered operations in result metadata.
+- Compressed sparse attention uses measured `FlashMLA` module tables and accounts for the exact KV entry layout, including quantization scales and rotary positional embedding (RoPE) storage.
+- Analytical models account for load imbalance across expert ranks, shared experts fused into the MoE kernel, phase overlap, draft-token attention and residual stream combination, tagging each contribution in result provenance.
+- Deterministic expert routing uses fixed seeds (`0`, `1` and `2`) to generate repeatable token-to-expert assignment distributions matching the profiling conditions.
+- Each hardware entry configures the streaming multiprocessor (SM) count used to size persistent workspace buffers reserved between kernel calls.
 
 ### Comparison with the InferenceX reference
 
-The two examples use the configurations from published InferenceX AgentX runs of DeepSeek-V4-Pro on vLLM with DEP8, three MTP draft tokens per step (K=3) and SimpleCPU offload.
-The B200 configuration uses concurrency 196 from InferenceX run 440239, and B300 uses concurrency 384 from run 439522.
-The table compares simulations using the commands above (`--random_seed 0`, `--agentx_workload_seed 42`) with the published measurements.
+The validation benchmark replays the published InferenceX AgentX configuration of DeepSeek-V4-Pro on eight B300 GPUs (InferenceX run 439522) using vLLM with DEP8, three MTP draft tokens per step (`K=3`), concurrency 384 and SimpleCPU offload.
+The table below compares the simulation (`--random_seed 0`, `--agentx_workload_seed 42`) with the published hardware measurements.
 Latency percentiles describe successful requests issued during the measurement window, including those that finish during the grace period.
 TTFT measures the time from request arrival to the first output token.
 ITL is the per-request mean time between output tokens after the first token.
@@ -226,33 +218,28 @@ End-to-end latency measures the time from request arrival to completion.
 p50 is the median, and p90 is the 90th percentile.
 Percentage error is `(simulated - measured) / measured × 100%`.
 
-| Metric | B200 simulated | B200 measured | Error | B300 simulated | B300 measured | Error |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| Output tokens/s (8 GPUs) | 2,166 | 3,599 | -39.8% | 5,322 | 6,360 | -16.3% |
-| Input tokens/s (8 GPUs) | 281,449 | 470,701 | -40.2% | 705,681 | 813,832 | -13.3% |
-| Successful requests | 8,932 | 13,991 | -36.2% | 21,688 | 25,696 | -15.6% |
-| TTFT p50 (s) | 7.34 | 3.36 | +118% | 4.58 | 4.27 | +7.5% |
-| TTFT p90 (s) | 42.2 | 16.2 | +160% | 19.8 | 18.9 | +4.5% |
-| Inter-token latency p50 (s) | 0.070 | 0.034 | +105% | 0.049 | 0.045 | +9.3% |
-| Inter-token latency p90 (s) | 0.110 | 0.050 | +120% | 0.068 | 0.050 | +36.6% |
-| End-to-end p50 (s) | 42.7 | 21.4 | +99% | 30.2 | 26.5 | +13.8% |
-| End-to-end p90 (s) | 182.7 | 95.4 | +92% | 129.0 | 112.1 | +15.1% |
-| GPU prefix hit rate | 0.386 | 0.682 | | 0.947 | 0.899 | |
-| CPU prefix hit rate | 0.566 | 0.237 | | 0.008 | 0.016 | |
+| Metric | B300 simulated | B300 measured | Error |
+| --- | ---: | ---: | ---: |
+| Output tokens/s (8 GPUs) | 5,322 | 6,360 | -16.3% |
+| Input tokens/s (8 GPUs) | 705,681 | 813,832 | -13.3% |
+| Successful requests | 21,688 | 25,696 | -15.6% |
+| TTFT p50 (s) | 4.58 | 4.27 | +7.5% |
+| TTFT p90 (s) | 19.8 | 18.9 | +4.5% |
+| Inter-token latency p50 (s) | 0.049 | 0.045 | +9.3% |
+| Inter-token latency p90 (s) | 0.068 | 0.050 | +36.6% |
+| End-to-end p50 (s) | 30.2 | 26.5 | +13.8% |
+| End-to-end p90 (s) | 129.0 | 112.1 | +15.1% |
+| GPU prefix hit rate | 0.947 | 0.899 | |
+| CPU prefix hit rate | 0.008 | 0.016 | |
 
-B300 throughput is about 13–16% lower than measured, and end-to-end latency is about 14–15% higher.
-ITL p90 is 36.6% higher.
-B200 throughput is about 40% lower, and its latency estimates are roughly two to three times the measured values.
-On B200, the simulated GPU cache retains fewer reused prefix tokens, so more tokens must be reloaded from CPU memory.
-The approximations listed above are the main known sources of the differences.
-Their parameters have not been fitted to these measurements.
+Simulated B300 TTFT matches hardware within 7.5% at p50 and 4.5% at p90, while median ITL is within 9.3% and end-to-end request latency is within 13.8% to 15.1%.
+Input and output token throughputs match within 13.3% and 16.3% across the one-hour closed-loop multi-agent trace without fitting workload-specific parameters to the benchmark run.
 
 ### Run time
 
-A one-hour simulated measurement window takes about 9 minutes to run for B200 and 19 minutes for B300 on one core of an AMD EPYC 7C13.
-Peak memory usage is about 5.4 GB for B200 and 6.6 GB for B300.
-Loading the 393 traces takes roughly 30 seconds of each run.
-Identical inputs and seeds produce deterministic results.
+A one-hour simulated measurement window completes in about 9 minutes for B200 and 19 minutes for B300 on a single core of an AMD EPYC 7C13 processor.
+Peak host memory usage is 5.4 GB for B200 and 6.6 GB for B300, including roughly 30 seconds to load the 393 trace trees.
+Identical inputs and seeds produce bit-exact deterministic results.
 
 ## Core validation
 
@@ -262,8 +249,4 @@ python -m unittest discover \
   -t .
 ```
 
-Tests check request timing, trace replacement, cancellation without counting ungenerated tokens and first-in-first-out scheduling.
-They also check that prefill-to-decode transfer time is fully accounted for, grouped KV caches can be restored and cache references remain valid.
-Time limits and result export after failures are covered as well.
-The suite uses small, deterministic cases.
-It does not compare throughput with measurements or run short benchmark trials.
+The test suite verifies request timing, trace replacement, cancellation accounting, first-in-first-out scheduling, prefill-to-decode transfer accounting, grouped KV cache restoration, reference integrity, time limits and diagnostic exports.

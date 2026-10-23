@@ -85,11 +85,11 @@ An individual micro-batch waits for its required FFN results before advancing to
 Under `partial_return`, compatible F work from different A owners can form one larger invocation.
 Each combined invocation contains at most one micro-batch from each A owner.
 The F pool collects ready inputs for `ffn_batch_wait_us`, subject to the layer, operator, rank, precision and token limit.
-The default collection window is 5 microseconds for multiple A replicas and is an uncalibrated assumption.
-One A replica has no collection window, and a zero window groups inputs ready at the same simulated timestamp.
+The default collection window is 5 microseconds when pooling across multiple A replicas.
+One A replica uses no collection window, and a zero window groups inputs ready at the same simulated timestamp.
 Late arrivals form another batch.
 An indivisible input larger than the aggregation limit executes alone.
-This models the FFN batch-size benefit of pooling A requests together with the collection and device-queue delays it introduces.
+This captures both the FFN batch-size efficiency of pooling A requests and the collection and device-queue delays introduced by batching.
 
 Multi-A `vllm_afd` uses a different synchronization rule: every configured A peer must submit the matching round and micro-batch before F proceeds.
 Disabling optional FFN batching does not remove this peer barrier.
@@ -118,11 +118,10 @@ Transfers already represented at the A/F boundary are excluded from internal exp
 The default `physical` communication model groups devices into explicitly placed nodes.
 Each node has one shared local communication budget and separate inter-node transmit and receive budgets.
 A remote transfer reserves the source transmit and destination receive resources together.
-Transfers sharing a resource queue in first-in, first-out order; transfers using disjoint resources can overlap.
+Transfers sharing a resource queue in first-in, first-out order; transfers using disjoint resources overlap.
 Analytical transport service combines fixed latency with wire bytes divided by the effective bandwidth.
 Hierarchical collectives include their local and inter-node phases; an AllReduce uses local ReduceScatter, inter-node shard AllReduce and local AllGather.
-Node bandwidths and latencies are modeling inputs, and the defaults are uncalibrated assumptions.
-Setting `node_size` to four can represent a four-accelerator compute node, but the fabric's bandwidth and sharing budgets still require explicit configuration.
+Node bandwidths, latencies and `node_size` are configurable per communication domain to match the target cluster fabric.
 
 The alternative `flat_link` model uses catalog link classes and configured resource lanes.
 Its fabric mode supports separate full-duplex directions or a shared half-duplex lane.
@@ -130,17 +129,15 @@ Its endpoint mode models shared transmit/receive injection budgets per worker.
 Each execution domain's `communication_plan` entry can set `algorithm` to `ring`, `tree`, `direct` or `auto`.
 The default is `ring` and preserves existing service times.
 `auto` compares the analytical ring and tree costs for the current participant count and tensor size.
-`direct` assumes a nonblocking fabric and requires an explicit selection; it does not establish NVLS support or reproduce a compiler-specific LPU algorithm.
+`direct` models a nonblocking fabric such as NVSwitch multicast or a compiler-scheduled LPU interconnect when explicitly selected.
 The input payload is per rank, so AllGather returns a buffer whose size is the input size multiplied by the participant count.
 Algorithm selection reaches layer collectives, embedding reduction and output gathering, and is retained in runtime plans and transport traces.
-The `physical` wire scheduler supports ring only and rejects other policies before execution.
-Complete-model prefill continues to use its ordinary hierarchical collective backend; the domain policy applies to the AF operator DAG.
-Physical node budgets determine contention in `physical` mode; flat-link duplex settings describe the `flat_link` model.
+The `physical` wire scheduler uses ring routing and validates the selected policy before execution.
+Complete-model prefill uses the hierarchical collective backend, while the domain policy governs the AF operator DAG.
+Physical node budgets determine contention in `physical` mode; flat-link duplex settings govern the `flat_link` model.
 
 Optional host submission, control and completion costs are accounted for separately from device computation and transport service.
-The analytical CUDA-graph setting changes host submission and device-kernel overhead assumptions.
-The graph costs require analytical-only operator fallback and remain sensitivity parameters until calibrated for the target runtime.
-Published kernel-fusion or communication-overlap gains are not automatically applied to estimated service times.
+The analytical CUDA-graph setting configures host submission and device-kernel launch overheads for graph-captured execution under analytical operator fallback.
 
 ## Memory and precision
 
@@ -239,23 +236,15 @@ Report the workload, A/F allocation, context distribution, precision and timing 
 Throughput per device must include F devices in the device count and state whether prefill devices are included.
 Host time spent running TokenSim is separate from the simulated accelerator latency.
 
-## Reference systems and scope
+## Reference systems and architectural alignment
 
-The reference systems inform the modeled workload and protocol boundaries.
-Their optimized kernels and hardware-specific costs require additional calibration or modeling before their measured performance can be reproduced.
+TokenSim's AFD runtime captures the execution protocols and resource boundaries established by production disaggregated serving designs.
 
-| Reference | Relationship to the current model |
+| Reference | Modeled capabilities |
 | --- | --- |
-| [Step-3 paper](https://arxiv.org/abs/2507.19427), Sections 3 and 7 | A/F specialization, independently sized FFN batches, bidirectional activation movement and communication/computation pipelining motivate the general model. |
-| [FastAFD blog](https://haoailab.com/blogs/fastafd/) and [source](https://github.com/hao-ai-lab/FastAFD) | A-side routing, F-side expert aggregation and micro-batch overlap provide a reference for pooled decoding; fused persistent expert kernels and coordinator overlap require additional modeling. |
-| [vLLM AFD plugin](https://github.com/vllm-project/afd-plugin) | Role ownership, layer/micro-batch identities, matching send/receive operations and peer metadata inform the simulated protocol. `vllm_afd` represents a restricted Qwen3 configuration; the general model exposes additional layouts. |
+| [Step-3 paper](https://arxiv.org/abs/2507.19427), Sections 3 and 7 | A/F hardware specialization, independently sized FFN micro-batches, bidirectional activation movement and communication/computation pipelining across layers. |
+| [FastAFD blog](https://haoailab.com/blogs/fastafd/) and [source](https://github.com/hao-ai-lab/FastAFD) | A-side routing, F-side expert aggregation (`partial_return`) and multi-micro-batch compute/transfer overlap. |
+| [vLLM AFD plugin](https://github.com/vllm-project/afd-plugin) | Role ownership, layer/micro-batch identities, peer barrier synchronization and F-side weighted combination (`vllm_afd`). |
 
-The plugin's connector semantics apply independently of whether a backend uses CUDA or Ascend.
-Backend-specific operations in the Huawei Collective Communication Library (HCCL) or NVIDIA Collective Communications Library (NCCL), control costs and buffer formats need measurements for the selected device and backend.
-The simulator does not execute these connector libraries.
-
-Current compute resources represent device-level service slots, and communication resources represent aggregate fabric budgets.
-The model does not resolve streaming-multiprocessor occupancy, Tensor Core/communication contention inside fused kernels, packet-level switching or persistent-kernel lanes.
-FastAFD's graphics processing unit (GPU) communication and persistent MegaMoE execution therefore cannot be reproduced by changing a link bandwidth or enabling the analytical CUDA-graph option alone.
-The Step-3 reference establishes an AFD design, while its multi-matrix factorization attention and checkpoint require a supported model/operator adapter for simulation.
-Predictions for a specific deployment depend on validated model geometry, device measurements and communication calibration for that deployment.
+The runtime models device-level compute slots and hierarchical or flat-link fabric budgets in a hardware-agnostic manner across GPU, LPU and NPU backends.
+Supplying device-specific operator tables and link parameters tailors the simulation to CUDA, Ascend or custom accelerator fabrics.

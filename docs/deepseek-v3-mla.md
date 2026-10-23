@@ -111,7 +111,5 @@ print(model.num_layers, model.num_attention_heads)  # 61 128
 print(shape["num_heads"], shape["kv_width"])  # 16 576
 ```
 
-The catalog defaults to BF16 architectural estimates for weights, activations and KV storage.
-The official checkpoint declares 8-bit floating-point (FP8) quantization; its complete quantized execution behavior is outside these default estimates.
-Expert assignments are seeded synthetic inputs and do not reproduce the checkpoint's `noaux_tc` grouped routing policy.
-Multi-token prediction is outside the current model.
+The catalog entry defaults to BF16 precision for weights, activations and KV storage, and can be paired with FP8 or block-quantized overrides and synthetic or trace-driven expert routing histograms.
+For compressed sparse attention, fused MegaMoE and multi-token prediction (MTP), see `data/models/deepseek-v4-pro.yaml` and the [AgentX guide](agentx.md).

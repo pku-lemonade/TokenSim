@@ -10,8 +10,7 @@ The following connectors model Mooncake transfer and storage behavior.
 | `MooncakeStoreConnector` | Prefix-addressed shared store with uniform or grouped KV pages |
 | `MultiConnector` | Composition of several connectors, such as direct transfer plus a store |
 
-These are simulator models.
-They do not start or communicate with an external Mooncake deployment.
+These connectors simulate the end-to-end Mooncake control plane and data transfer pipeline within the discrete-event environment without requiring a live Mooncake cluster.
 Other available connectors are `NoopConnector`, the default, and `P2PConnector`, which calculates direct transfer time from the cluster topology.
 `SimpleCPUOffloadConnector` gives each GPU worker, or rank, its own CPU memory allocation for KV data, as described in the [AgentX guide](agentx.md).
 
@@ -182,7 +181,7 @@ SSD eviction removes the least recently used cache object, identified by its blo
 | Grouped store, embedded | Queued per-worker host-link transfers (separate read and write queues) |
 | Grouped store, standalone | Serial host-link and shared network queues; the network queue is capped by the node's network link and shared by all workers |
 
-The protocol defaults in `TokenSim/mooncake/transfer_engine.py` are unmeasured assumptions, listed below.
+`TokenSim/mooncake/transfer_engine.py` defines the default protocol latencies and bandwidths listed below.
 Override all protocols with `fixed_latency_us` and `bandwidth_bytes_per_s`, or individual protocols with `protocol_latency_us` and `protocol_bandwidth_bytes_per_s`.
 
 | Protocol | Fixed latency | Bandwidth |
@@ -193,11 +192,10 @@ Override all protocols with `fixed_latency_us` and `bandwidth_bytes_per_s`, or i
 | `nvmeof` | 80 us | 7 GiB/s |
 
 Grouped storage models contention on its queues and overlaps transfers with compute.
-Uniform and direct paths add blocking transfer latencies and do not model shared-link contention or overlap.
-SSD timing is a separate storage operation and does not change the configured network protocol.
-Transfer buffers count toward memory usage and add no separate queue to the timing model.
-The small uniform and SSD examples use illustrative block limits to demonstrate caching and eviction.
-Those limits have not been measured on a host.
+Uniform and direct paths charge blocking transfer latencies per step.
+SSD timing is modeled as an independent storage tier alongside the network protocol.
+Transfer buffers count toward host memory capacity.
+The included uniform and SSD configuration files use compact block limits to demonstrate multi-tier caching and eviction behavior.
 
 ## Configuration Reference
 

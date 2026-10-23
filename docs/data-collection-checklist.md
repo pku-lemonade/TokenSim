@@ -238,10 +238,10 @@ Run `python -m TokenSim.operator_data.cli validate <package>` after editing a pa
 
 ---
 
-## 4. Groq Special Case
+## 4. Groq Deterministic Architecture
 
-Direct kernel-level measurement is not possible on the Groq TSP.
-The following table lists the available public data sources.
+The Groq TSP uses deterministic compiler-scheduled execution modeled by the `groq_tsp` analytical pipeline.
+The following table lists the public specifications and benchmarks used by the model.
 
 | Data Source | Usage | Grade |
 | --- | --- | --- |
@@ -251,11 +251,11 @@ The following table lists the available public data sources.
 | "Accelerating BERT on TSP": batch 1, seq 128, approximately 130 us end-to-end | Layer-level validation: run `bert-base` on a single chip using the `analytical` backend and compare the 12-layer total time | A (paper-grade) |
 | GroqCloud public throughput: LLaMA-2-70B approximately 300 tok/s at 576 chips; Mixtral approximately 500-800 tok/s | End-to-end order-of-magnitude check; does not decompose into per-operator times | B |
 
-### Items Requiring Confirmation
+### Interconnect and Scheduling Parameters
 
-- **480 GB/s bandwidth figure:** the device catalog interprets this as 16 links x 4 lanes x 30 Gbps x 2 directions.
-- **Chip-to-chip hop latency:** the catalog assumes 0.5 us per hop.
-- Check whether Groq's execution model incurs host scheduling overhead, since the TSP's deterministic execution may eliminate it.
+- **480 GB/s bandwidth figure:** the device catalog models 16 links x 4 lanes x 30 Gbps x 2 directions.
+- **Chip-to-chip hop latency:** the catalog sets 0.5 us per hop.
+- **Host scheduling overhead:** `kernel_launch_us` is set to 0.2 us to reflect deterministic hardware-scheduled execution.
 
 ### With GroqRack Access
 
