@@ -207,6 +207,15 @@ def compile_af_runtime_plan(
         for domain in cluster_config.af.execution_domains
         if domain.capability in {"af_attention", "af_ffn"}
     )
+    for domain in domain_configs:
+        if domain.parallel.kv_parallel_size != 1:
+            # Phases 2-3 of docs/lpx-context-parallel-plan.md add KV ownership
+            # and the combine graph; until then the setting must not be ignored.
+            raise ConfigurationError(
+                f"execution domain {domain.name!r} declares kv_parallel_size="
+                f"{domain.parallel.kv_parallel_size}, but KV-parallel memory and "
+                "execution are not implemented by the AF runtime"
+            )
     domains = tuple(
         AFDomainRuntime(
             name=domain.name,

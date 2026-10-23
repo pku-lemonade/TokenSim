@@ -11,6 +11,8 @@ from TokenSim.config.af.common import _COLLECTIVE_OPERATIONS
 from TokenSim.comm.collective_types import ALGORITHMS
 from TokenSim.errors import ConfigurationError
 
+KV_PARALLEL_LAYERS = ("full_attention", "all")
+
 
 @dataclass(frozen=True)
 class DomainExpertParallelView:
@@ -67,6 +69,9 @@ class DomainParallelConfig:
     expert_parallel_size: int = 1
     expert_placement_strategy: str = "linear"
     pipeline_layer_counts: tuple[StrictInt, ...] | None = None
+    kv_parallel_size: int = 1
+    kv_parallel_layers: str = "full_attention"
+    kv_append_block: int = 16
 
     def __post_init__(self) -> None:
         for field_name in (
@@ -74,6 +79,8 @@ class DomainParallelConfig:
             "pipeline_parallel_size",
             "data_parallel_size",
             "expert_parallel_size",
+            "kv_parallel_size",
+            "kv_append_block",
         ):
             value = getattr(self, field_name)
             if type(value) is not int or value < 1:
@@ -91,6 +98,15 @@ class DomainParallelConfig:
         ):
             raise ConfigurationError(
                 "pipeline_layer_counts needs one positive layer count per PP stage"
+            )
+        if self.tensor_parallel_size % self.kv_parallel_size:
+            raise ConfigurationError(
+                "execution domain kv_parallel_size must divide tensor_parallel_size"
+            )
+        if self.kv_parallel_layers not in KV_PARALLEL_LAYERS:
+            raise ConfigurationError(
+                f"execution domain kv_parallel_layers must be one of "
+                f"{KV_PARALLEL_LAYERS}"
             )
 
     @property
@@ -307,6 +323,11 @@ class ExecutionDomainConfig:
             raise ConfigurationError(
                 f"execution domain {self.name!r} has unsupported capability "
                 f"{self.capability!r}"
+            )
+        if self.capability != "af_attention" and self.parallel.kv_parallel_size != 1:
+            raise ConfigurationError(
+                f"execution domain {self.name!r} declares kv_parallel_size for "
+                "a non-attention capability"
             )
         instance_names = [instance.name for instance in self.logical_instances]
         if len(instance_names) != len(set(instance_names)):
