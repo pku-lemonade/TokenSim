@@ -61,6 +61,11 @@ class StepComposition:
         T = tokens
         stats = self.stats
         forward_rows = self._target_forward_rows(T, requests_list)
+        embedding_lookup_us = (
+            self.elementwise("embedding_lookup", forward_rows, h)
+            if self.include_embedding_scale
+            else 0.0
+        )
 
         # Attention block shared by dense and MoE layers.
         if self.native_attention:
@@ -68,14 +73,15 @@ class StepComposition:
             # four projections, compressor/indexer and output projection.
             attn_gemm_us = 0.0
         elif self.native_attention_projections:
-            attn_gemm_us = sum(
+            projection_us = [
                 self.query(p.table, p.key(forward_rows)).latency_us
                 for p in self.native_attention_projections
-            )
+            ]
+            attn_gemm_us = sum(projection_us)
         else:
-            attn_gemm_us = self.gemm(
-                T, self.q_dim_local + 2 * self.kv_dim_local, h
-            ) + self.gemm(T, h, self.q_dim_local)
+            qkv_us = self.gemm(T, self.q_dim_local + 2 * self.kv_dim_local, h)
+            attn_output_us = self.gemm(T, h, self.q_dim_local)
+            attn_gemm_us = qkv_us + attn_output_us
         # mHC runs on SP shards before the attention all-gather. Match the
         # serving predicate; TP1 DEP8 keeps its full row count.
         mhc_sp = bool(
@@ -108,46 +114,56 @@ class StepComposition:
                 self.layers_local + self.moe_layers_local
             )
             counts["router_layer_rows"] += router_rows * self.moe_layers_local
-        attn_elem_us = self.elementwise("rmsnorm", norm_rows, h)
+        attn_norm_us = self.elementwise("rmsnorm", norm_rows, h)
+        attn_elem_us = attn_norm_us
+        attn_residual_us = 0.0
         if not self.native_mhc:
-            attn_elem_us += self.elementwise("residual_add", forward_rows, h)
+            attn_residual_us = self.elementwise("residual_add", forward_rows, h)
+            attn_elem_us += attn_residual_us
         mhc_us = self.native_mhc.estimate(norm_rows) if self.native_mhc else 0.0
         if not self.native_attention:
-            attn_elem_us += self.elementwise(
-                "rope", T, self.q_dim_local + self.kv_dim_local
-            )
+            rope_us = self.elementwise("rope", T, self.q_dim_local + self.kv_dim_local)
+            attn_elem_us += rope_us
             if model.qk_norm:
-                attn_elem_us += self.elementwise(
+                q_norm_us = self.elementwise(
                     "rmsnorm", T * (self.q_dim_local // model.head_dim), model.head_dim
-                ) + self.elementwise(
+                )
+                k_norm_us = self.elementwise(
                     "rmsnorm", T * (self.kv_dim_local // model.head_dim), model.head_dim
                 )
+                attn_elem_us += q_norm_us + k_norm_us
             if model.block_layout.value_norm:
-                attn_elem_us += self.elementwise(
+                value_norm_us = self.elementwise(
                     "rmsnorm", T * self.kv_heads_local, model.head_dim
                 )
+                attn_elem_us += value_norm_us
             if model.block_layout.attention_output_norm:
-                attn_elem_us += self.elementwise("rmsnorm", T, h)
+                attn_output_norm_us = self.elementwise("rmsnorm", T, h)
+                attn_elem_us += attn_output_norm_us
         dense_ffn_gemm_us = 0.0
         dense_ffn_elem_us = 0.0
         if self.dense_layers_local:
-            dense_ffn_gemm_us = self.gemm(
+            ffn_up_us = self.gemm(
                 T,
                 model.ffn_projection_count * self.inter_local,
                 h,
                 dtype=model.operator_dtype("dense_ffn"),
-            ) + self.gemm(
+            )
+            ffn_down_us = self.gemm(
                 T, h, self.inter_local, dtype=model.operator_dtype("dense_ffn")
             )
-            dense_ffn_elem_us = self.elementwise("rmsnorm", T, h) + self.elementwise(
-                "residual_add", T, h
-            )
+            dense_ffn_gemm_us = ffn_up_us + ffn_down_us
+            ffn_norm_us = self.elementwise("rmsnorm", T, h)
+            ffn_residual_us = self.elementwise("residual_add", T, h)
+            dense_ffn_elem_us = ffn_norm_us + ffn_residual_us
             if model.gated:
-                dense_ffn_elem_us += self.elementwise(
+                ffn_activation_us = self.elementwise(
                     model.activation, T, self.inter_local
                 )
+                dense_ffn_elem_us += ffn_activation_us
             if model.block_layout.ffn_output_norm:
-                dense_ffn_elem_us += self.elementwise("rmsnorm", T, h)
+                ffn_output_norm_us = self.elementwise("rmsnorm", T, h)
+                dense_ffn_elem_us += ffn_output_norm_us
 
         moe_us = 0.0
         router_us = 0.0
@@ -160,11 +176,13 @@ class StepComposition:
                 h,
                 dtype=model.operator_dtype("router"),
             )
-            moe_elem_us = self.elementwise("rmsnorm", norm_rows, h)
+            moe_norm_us = self.elementwise("rmsnorm", norm_rows, h)
+            moe_elem_us = moe_norm_us
             if not self.native_mhc:
                 # Native post already reconstructs the weighted residual.
                 # The unfused collector pre does not own the output RMSNorm.
-                moe_elem_us += self.elementwise("residual_add", forward_rows, h)
+                moe_residual_us = self.elementwise("residual_add", forward_rows, h)
+                moe_elem_us += moe_residual_us
             moe_us = self._moe_layers(T, requests_list)
             if self.ep_enabled and not self.native_moe:
                 moe_comm_bytes = int(
@@ -181,39 +199,54 @@ class StepComposition:
             + self.dense_layers_local * dense_ffn_elem_us
             + self.moe_layers_local * moe_elem_us
             + self.layers_local * mhc_us
+            + embedding_lookup_us
         )
         if model.block_layout.layer_scale:
-            layer_elem_us += self.layers_local * self.elementwise("scale", T, h)
+            layer_scale_us = self.elementwise("scale", T, h)
+            layer_elem_us += self.layers_local * layer_scale_us
         if model.block_layout.embedding_scale and self.include_embedding_scale:
-            layer_elem_us += self.elementwise("scale", T, h)
+            embedding_scale_us = self.elementwise("scale", T, h)
+            layer_elem_us += embedding_scale_us
         layer_attention_us = (
             attention_us if self.native_attention else self.layers_local * attention_us
         )
 
         lm_head_us = 0.0
-        if self.is_last_stage and requests:
-            lm_head_us = self.gemm(
-                max(1, requests),
-                self.vocab_local,
-                h,
-                dtype=model.operator_dtype("lm_head"),
-            )
+        if self.is_last_stage:
+            if requests:
+                logits_gemm_us = self.gemm(
+                    requests,
+                    self.vocab_local,
+                    h,
+                    dtype=model.operator_dtype("lm_head"),
+                )
+                lm_head_us = logits_gemm_us
             if self.residual_output:
                 output_rows = forward_rows
                 # The target reduces the hyper-residual and normalizes every
                 # forward row before logits selection. SP has already gathered.
-                lm_head_us += self.residual_output.estimate(output_rows)
-                lm_head_us += self.elementwise("rmsnorm", output_rows, h)
+                residual_output_us = self.residual_output.estimate(output_rows)
+                final_norm_us = self.elementwise("rmsnorm", output_rows, h)
+                lm_head_us += residual_output_us
+                lm_head_us += final_norm_us
                 self.target_logits_counts["forward_rows"] += T
                 self.target_logits_counts["output_forward_rows"] += output_rows
                 self.target_logits_counts["hc_head_rows"] += output_rows
                 self.target_logits_counts["final_norm_rows"] += output_rows
             else:
-                lm_head_us += self.elementwise("rmsnorm", max(1, requests), h)
-            if model.block_layout.logit_softcap:
-                lm_head_us += self.elementwise(
+                # Model output normalization precedes selection of logits rows.
+                final_norm_us = self.elementwise("rmsnorm", forward_rows, h)
+                lm_head_us += final_norm_us
+            if requests and model.block_layout.logit_softcap:
+                logit_softcap_us = self.elementwise(
                     "logit_softcap", max(1, requests), self.vocab_local
                 )
+                lm_head_us += logit_softcap_us
+            if requests:
+                token_selection_us = self.elementwise(
+                    "argmax", requests, model.vocab_size
+                )
+                lm_head_us += token_selection_us
 
         overhead_us = (
             self.device.step_overhead_us.value if self.include_step_overhead else 0.0
@@ -242,19 +275,27 @@ class StepComposition:
             + overhead_us
         ) * 1e-6
         comm_s = (
-            self._communication(forward_rows, moe_comm_bytes)
+            self._communication(forward_rows, moe_comm_bytes, logits_rows=requests)
             + draft.get("comm", 0) * 1e-6
         )
         stats.record_component("comm", comm_s)
+        if self.trace_composition is not None:
+            self.trace_composition(self, locals())
         return compute_s + comm_s
 
-    def _communication(self, tokens: int, moe_comm_bytes: int) -> float:
+    def _communication(
+        self, tokens: int, moe_comm_bytes: int, *, logits_rows: int = 0
+    ) -> float:
         if self.communicator is None:
             return 0.0
         hidden_bytes = int(tokens * self.model.hidden_size * self.activation_bytes)
         latency = 0.0
         if self.tp > 1:
             self.communicator.record_tp_shard()
+            if self.include_embedding_scale:
+                latency += self.communicator.estimate_tp_collective(
+                    hidden_bytes, scope="tp_embedding"
+                )
             # Row-parallel output projection and FFN down projection each
             # synchronize the hidden state: one all-reduce after attention in
             # every layer, one after the FFN in dense layers and in MoE layers
@@ -266,6 +307,14 @@ class StepComposition:
             latency += self.communicator.estimate_tp_collective(
                 hidden_bytes, count=allreduce_count
             )
+            if self.is_last_stage and logits_rows:
+                latency += self.communicator.estimate_tp_collective(
+                    int(
+                        logits_rows * self.vocab_local * self.tp * self.activation_bytes
+                    ),
+                    operation="all_gather",
+                    scope="tp_logits",
+                )
         if self.ep_enabled and moe_comm_bytes > 0 and self.moe_layers_local:
             # One dispatch + one combine per MoE layer; measured DeepEP rows are
             # keyed by this rank's token count and the expert configuration.

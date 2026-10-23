@@ -21,6 +21,11 @@ from .af_worker import AFComputeWorker
 
 
 class AFEngineMixin:
+    def attach_trace(self, session):
+        from TokenSim.af.trace.session import attach_af_session
+
+        attach_af_session(self, session)
+
     def _initialize_workers(
         self,
         kv_transfer_config,
@@ -158,6 +163,24 @@ class AFEngineMixin:
             self.af_compute_provider = af_compute_provider
             self.af_transfer_provider = af_transfer_provider
             executor_type = ModelAFExecutor
+            from TokenSim.af.trace.archive import ArchivedTraceRecorder
+            from TokenSim.af.trace.recorder import AFTraceRecorder
+            from TokenSim.af.trace.transient import ValidationTraceRecorder
+
+            options = config.trace
+            capacities = (
+                self.af_resources.resource_capacities() if options.enabled else None
+            )
+            recorder = (
+                ValidationTraceRecorder(capacities)
+                if options.mode == "validate"
+                else (
+                    ArchivedTraceRecorder(resource_capacities=capacities)
+                    if options.mode == "full"
+                    else AFTraceRecorder(False)
+                )
+            )
+            recorder.validate_on_completion = options.validate
             self.af_executor = executor_type(
                 env=env,
                 cluster_config=cluster_config,
@@ -173,6 +196,7 @@ class AFEngineMixin:
                 random_seed=random_seed,
                 runtime_plan=self.af_runtime_plan,
                 model=self.model_spec,
+                trace_recorder=recorder,
             )
 
     def _resolve_af_providers(

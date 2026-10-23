@@ -11,6 +11,7 @@ from TokenSim.comm.collectives import (
 )
 from TokenSim.config.parallel_config import ParallelConfig, ParallelRankInfo
 from TokenSim.hardware.topology import TopologyPlacement
+from TokenSim.errors import ConfigurationError
 
 
 @dataclass
@@ -65,7 +66,7 @@ class ParallelStats:
         self.match_type_counts[event.match_type] = (
             self.match_type_counts.get(event.match_type, 0) + 1
         )
-        if event.kind == "tp_collective":
+        if event.kind in {"tp_collective", "tp_embedding", "tp_logits"}:
             self.tp_collective_latency += event.latency
         elif event.kind == "pp_stage_transfer":
             self.pp_transfer_latency += event.latency
@@ -186,9 +187,18 @@ class ParallelCommunicator:
     # -- estimates ------------------------------------------------------------
 
     def estimate_tp_collective(
-        self, bytes_: int, operation: str = "all_reduce", count: int = 1
+        self,
+        bytes_: int,
+        operation: str = "all_reduce",
+        count: int = 1,
+        *,
+        scope: str = "tp_collective",
     ) -> float:
         """Latency (seconds) of ``count`` identical collectives over the TP group."""
+        if scope not in {"tp_collective", "tp_embedding", "tp_logits"}:
+            raise ConfigurationError(
+                f"unsupported tensor-parallel collective scope {scope!r}"
+            )
         if self.parallel_config.tensor_parallel_size <= 1 or bytes_ <= 0 or count <= 0:
             return 0.0
         group = self.tp_group()
@@ -200,7 +210,7 @@ class ParallelCommunicator:
             * count
             * self.parallel_config.tensor_parallel_collective_latency_scale
         )
-        self._record("tp_collective", None, bytes_ * count, latency, group, estimate)
+        self._record(scope, None, bytes_ * count, latency, group, estimate)
         return latency
 
     def estimate_pp_stage_transfer(self, bytes_: int, count: int = 1) -> float:

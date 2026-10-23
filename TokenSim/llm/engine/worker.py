@@ -322,6 +322,9 @@ class LLMWorker(Worker):
                             self.status = WorkerStatus.WAITING
                             continue
                         if load_latency:
+                            trace = getattr(self.engine, "trace_session", None)
+                            if trace is not None:
+                                trace.record_connector_load(self, load_latency)
                             yield self.env.timeout(load_latency)
                         running = [req for req in running if not req.cancel_requested]
                         if running:

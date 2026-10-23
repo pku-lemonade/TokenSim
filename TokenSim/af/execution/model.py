@@ -76,7 +76,7 @@ class ModelAFExecutor(AFExecutor):
         tp = len(bindings)
         tokens = (
             self._logits_rows(block)
-            if operation in {"final_norm", "lm_head", "token_selection"}
+            if operation in {"lm_head", "token_selection"}
             else block.token_count
         )
         if tokens == 0:

@@ -31,6 +31,9 @@ class FrozenDict(dict):
     def __deepcopy__(self, memo):
         return self
 
+    def __reduce__(self):
+        return type(self), (dict(self),)
+
 
 def freeze(value):
     if isinstance(value, Mapping):

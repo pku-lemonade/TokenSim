@@ -11,7 +11,7 @@ def get_af_stats(engine) -> dict[str, Any]:
         "af_enabled": executor is not None,
         "af_iteration_count": len(summaries),
         "af_trace": (
-            [executor.trace.export_summary(summary) for summary in summaries]
+            [dict(summary) for summary in summaries]
             if executor is not None and executor.trace.enabled
             else None
         ),

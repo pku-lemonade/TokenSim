@@ -149,6 +149,10 @@ def main(args, preloaded_agentx_traces=None):
             )
         if not graphs:
             raise ConfigurationError("AgentX selection contains no trace graphs")
+        if engine.trace_session is not None:
+            engine.trace_session.run_phase = (
+                "warmup" if args.agentx_warmup else "profiling"
+            )
         logs = ReplayLogs(run.results_path / "replay", engine)
         replay = AgentXReplay(
             env,

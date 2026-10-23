@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 
 from TokenSim.config.moe_execution import MoEExecutionConfig
+from TokenSim.trace.config import TraceConfig, DEFAULT_TRACE_CONFIG
 from TokenSim.config.router_config import validate_router_mapping
 from TokenSim.config.speculative_execution import validate_mtp_token_budget
 from TokenSim.errors import ConfigurationError
@@ -40,8 +41,11 @@ class SimulationConfig:
     long_prefill_token_threshold: int = 0
     prefill_schedule_interval: int = 1
     adaptive_long_prefill_threshold: bool = False
+    trace: TraceConfig = DEFAULT_TRACE_CONFIG
 
     def __post_init__(self):
+        if not isinstance(self.trace, TraceConfig):
+            object.__setattr__(self, "trace", TraceConfig.from_mapping(self.trace))
         if self.router_mapping is not None:
             object.__setattr__(
                 self, "router_mapping", validate_router_mapping(self.router_mapping)

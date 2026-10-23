@@ -15,56 +15,19 @@ from TokenSim.af.trace.metrics import (
     _is_f_domain,
 )
 from TokenSim.errors import SimulationStateError
+from TokenSim.trace.recorder import TraceRecorder
 from TokenSim.af.trace.occupancy import (
     occupied_until,
-    validate_resource_capacity,
     unique_executions,
 )
 
 
-class AFTraceRecorder:
+class AFTraceRecorder(TraceRecorder):
     """Own the full event history and index it by iteration.
 
     Append through record() and reset through clear().
     Replacements keep position and iteration identity.
     """
-
-    def __init__(
-        self,
-        enabled: bool = True,
-        resource_capacities: Mapping[str, int] | None = None,
-    ) -> None:
-        self.enabled = enabled
-        self.validate_on_completion = True
-        self.events: list[AFTraceEvent] = []
-        self.iteration_event_indices: dict[int, list[int]] = {}
-        self.resource_capacities = dict(resource_capacities or {})
-
-    def record(self, event: AFTraceEvent) -> None:
-        if self.enabled:
-            index = len(self.events)
-            self.events.append(event)
-            self.iteration_event_indices.setdefault(event.iteration_id, []).append(
-                index
-            )
-
-    def clear(self) -> None:
-        """Explicitly discard a drained batch, including its position indexes."""
-        self.events.clear()
-        self.iteration_event_indices.clear()
-
-    def complete_iteration(self, iteration_id: int) -> None:
-        """Finalize validated events; memory recorders keep their live objects."""
-
-    def close(self) -> None:
-        """Release history when its owner no longer needs trace readback."""
-        self.clear()
-
-    def events_for(self, iteration_id: int) -> tuple[AFTraceEvent, ...]:
-        return tuple(
-            self.events[index]
-            for index in self.iteration_event_indices.get(iteration_id, ())
-        )
 
     def summarize(self, iteration: AFIteration) -> dict[str, Any]:
         """Return aggregate metadata without materializing full event dictionaries."""
@@ -122,39 +85,9 @@ class AFTraceRecorder:
 
     def validate_invariants(self, iteration_id: int) -> None:
         events = self.events_for(iteration_id)
-        by_node: dict[str, AFTraceEvent] = {}
+        by_node = super().validate_invariants(iteration_id)
         tolerance = 1e-12
         for event in events:
-            if not event.node_id:
-                raise SimulationStateError(
-                    f"AF trace invariant failed: iteration={iteration_id} event has no node_id"
-                )
-            if event.node_id in by_node:
-                raise SimulationStateError(
-                    f"AF trace invariant failed: duplicate node_id={event.node_id!r}"
-                )
-            by_node[event.node_id] = event
-            if not (
-                event.ready_at <= event.start_at + tolerance
-                and event.start_at <= event.end_at + tolerance
-            ):
-                raise SimulationStateError(
-                    f"AF trace invariant failed: invalid timestamps for node={event.node_id}"
-                )
-            if (
-                abs(event.queue_duration - (event.start_at - event.ready_at))
-                > tolerance
-            ):
-                raise SimulationStateError(
-                    f"AF trace invariant failed: queue duration mismatch for node={event.node_id}"
-                )
-            if (
-                abs(event.service_duration - (event.end_at - event.start_at))
-                > tolerance
-            ):
-                raise SimulationStateError(
-                    f"AF trace invariant failed: service duration mismatch for node={event.node_id}"
-                )
             returned_payload = event.details.get("payload_bytes")
             if (
                 returned_payload is not None
@@ -195,31 +128,15 @@ class AFTraceRecorder:
                         f"original token count for node={event.node_id}"
                     )
 
-        node_ids = set(by_node)
         for event in events:
-            missing = set(event.predecessor_ids) - node_ids
-            if missing:
-                raise SimulationStateError(
-                    f"AF trace invariant failed: node={event.node_id} has missing "
-                    f"predecessors={sorted(missing)}"
-                )
-            if event.predecessor_ids:
-                latest = max(
-                    by_node[node_id].end_at for node_id in event.predecessor_ids
-                )
-                if event.ready_at + tolerance < latest:
+            if (
+                len(event.predecessor_ids) > 1
+                and event.details.get("readiness_mode") != "invocation_events"
+            ):
+                latest = max(by_node[key].end_at for key in event.predecessor_ids)
+                if abs(event.ready_at - latest) > tolerance:
                     raise SimulationStateError(
-                        f"AF trace invariant failed: dependency time for node={event.node_id}; "
-                        f"ready_at={event.ready_at}, predecessor_end={latest}"
-                    )
-                if (
-                    len(event.predecessor_ids) > 1
-                    and event.details.get("readiness_mode") != "invocation_events"
-                    and abs(event.ready_at - latest) > tolerance
-                ):
-                    raise SimulationStateError(
-                        f"AF trace invariant failed: join ready time for node={event.node_id}; "
-                        f"ready_at={event.ready_at}, latest_predecessor={latest}"
+                        f"AF trace invariant failed: join ready time for node={event.node_id}"
                     )
 
         transfer_copies: set[tuple[object, ...]] = set()
@@ -267,8 +184,6 @@ class AFTraceRecorder:
                     layer_id,
                     typed_events,
                 )
-
-        validate_resource_capacity(events, self.resource_capacities)
 
     @staticmethod
     def _validate_runtime_layer_semantics(

@@ -13,6 +13,7 @@ from TokenSim.af.serving.metrics import steady_metrics
 from TokenSim.af.serving.service import AFService
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.placement import build_topology_placement
+from TokenSim.latency.operator_table import OperatorTableLatencyBackend
 
 from tests.af.support.config import _cluster
 from tests.af.support.execution import (
@@ -156,10 +157,21 @@ class CompletePrefillTest(unittest.TestCase):
 
     def test_chunks_skip_output_head_and_use_no_af_providers(self):
         env, service, session = self.service()
-        with patch.object(
-            service.executor.compute_provider,
-            "estimate",
-            side_effect=AssertionError("AF compute used for prefill"),
+        logits_queries = []
+        original = OperatorTableLatencyBackend.query
+
+        def query(backend, table, key):
+            if table == "gemm" and key["n"] == backend.vocab_local:
+                logits_queries.append(dict(key))
+            return original(backend, table, key)
+
+        with (
+            patch.object(
+                service.executor.compute_provider,
+                "estimate",
+                side_effect=AssertionError("AF compute used for prefill"),
+            ),
+            patch.object(OperatorTableLatencyBackend, "query", query),
         ):
             env.run(
                 until=env.process(
@@ -171,16 +183,18 @@ class CompletePrefillTest(unittest.TestCase):
             self.assertTrue(service.prefill.backends)
             self.assertTrue(
                 all(
-                    backend.stats.component_seconds["lm_head"] == 0
+                    backend.stats.component_seconds["lm_head"] > 0
                     for backend in service.prefill.backends.values()
                 )
             )
+            self.assertFalse(logits_queries)
             env.run(
                 until=env.process(
                     service.forward([session], phase="prefill", query_tokens=2)
                 )
             )
         self.assertEqual(session.cached_context, 20)
+        self.assertTrue(logits_queries)
         self.assertGreater(
             sum(
                 backend.stats.component_seconds["lm_head"]

@@ -6,6 +6,7 @@ from pathlib import Path
 
 from TokenSim.af import factory
 from TokenSim.af.trace.config import AFTraceConfig
+from TokenSim.trace.config import TraceConfig
 from TokenSim.af.trace.formats import (
     TRACE_SUFFIXES,
     convert_trace_to_json,
@@ -19,7 +20,7 @@ from TokenSim.experiments.fingerprints import identity
 
 
 def _trace_config(value):
-    if isinstance(value, AFTraceConfig):
+    if isinstance(value, TraceConfig):
         return value
     return AFTraceConfig.from_mapping(value)
 

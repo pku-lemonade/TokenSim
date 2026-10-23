@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import json
+from pathlib import Path
 from dataclasses import fields
 from TokenSim.config.config import ClusterConfig, ParallelConfig
 from TokenSim.config.model_config import ModelSpec
@@ -19,6 +21,21 @@ def simulation_config(args):
         )
         for field in fields(defaults)
     }
+    trace = {}
+    if getattr(args, "trace_config", None):
+        try:
+            trace = json.loads(Path(args.trace_config).read_text())
+        except (OSError, ValueError) as error:
+            raise ConfigurationError(
+                f"cannot read trace configuration: {error}"
+            ) from error
+        if not isinstance(trace, dict):
+            raise ConfigurationError("trace configuration must be an object")
+    for name in ("mode", "output"):
+        value = getattr(args, "trace_" + name, None)
+        if value is not None:
+            trace[name] = value
+    values["trace"] = trace
     values["max_num_batched_tokens"] = max_num_batched_tokens(args)
     values["moe_execution"] = {
         "backend": args.moe_backend,
