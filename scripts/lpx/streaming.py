@@ -319,11 +319,8 @@ def transform(runtime, events, profile, settings):
         return replace(
             profile, metadata={**profile.metadata, "streaming_skipped": "prefill"}
         )
-    # A batch of single-token decodes produces one output row per request.
-    if profile.metadata["queries"] != 1:
-        raise ConfigurationError(
-            "LPX output streaming requires one query token per decode request"
-        )
+    # Decode produces one output row per query token of every request, and
+    # producer_work requires the final GEMM to produce the full payload.
     builder = StreamingBuilder(runtime, events, profile, config)
     nodes, metadata = builder.build()
     return replace(

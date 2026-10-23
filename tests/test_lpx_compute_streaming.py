@@ -277,17 +277,30 @@ class NativeStreamingTest(unittest.TestCase):
         self.assertIn("modeled_duration_s", profiles[1].metadata)
         profiles[2].verify()
 
-    def test_prefill_is_explicitly_skipped_and_multitoken_decode_fails(self):
+    def test_prefill_is_explicitly_skipped(self):
         profile = NativeProfile((), dict(phase="prefill", batch=1, queries=32))
         skipped = transform(self.runtime, (), profile, {})
         self.assertEqual(skipped.metadata["streaming_skipped"], "prefill")
-        with self.assertRaises(ConfigurationError):
-            transform(
-                self.runtime,
-                (),
-                replace(profile, metadata=dict(phase="decode", batch=1, queries=2)),
-                {},
-            )
+
+    def test_verification_decode_streams_every_query_row(self):
+        hardware = HardwareContext.load(Path(__file__).resolve().parents[1] / "data")
+        runtime = build(hardware, micro_batch=2)
+        settings = {**self.settings, "context": 2000}
+        one = capture_profile(runtime, "ledger", streaming={}, **settings)
+        two = capture_profile(
+            runtime, "ledger", streaming={}, **{**settings, "queries": 2}
+        )
+        self.assertEqual(
+            two.metadata["streaming"]["streaming_collectives"],
+            2 * runtime.model.num_layers,
+        )
+        self.assertGreater(
+            two.metadata["streaming"]["output_vectors"],
+            one.metadata["streaming"]["output_vectors"],
+        )
+        self.assertGreater(
+            two.metadata["modeled_duration_s"], one.metadata["modeled_duration_s"]
+        )
 
     def test_batched_decode_streams_every_request_row(self):
         hardware = HardwareContext.load(Path(__file__).resolve().parents[1] / "data")

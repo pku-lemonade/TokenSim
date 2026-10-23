@@ -137,6 +137,11 @@ The metrics also differ: AA excludes the initial token and counts `o200k_base` t
 The simulated deployment contains no draft model.
 A draft model would require SRAM and compute, so it would also change the memory-feasible layout.
 
+The [speculative-decoding control](lpx-speculative-decoding.md) tested this on 2026-10-23 with chain drafting and a parameterized draft cost.
+The 10,996 TPS example needs at least two draft tokens and an acceptance of at least 0.67 without draft cost.
+Speculation at batch size one cannot match the AA pair, but one-token drafting shared with seven background requests under `KVP = 4` matches both AA values within 5% at an acceptance of 0.51 to 0.74.
+Within the tested 16-row forward limit, no single draft length covers both the AA match and the coding example.
+
 ### Reason 4: the endpoint probably shares forward passes with other traffic
 
 Strength: moderate; inferred from the benchmark method.

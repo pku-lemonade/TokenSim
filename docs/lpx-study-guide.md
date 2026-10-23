@@ -858,3 +858,11 @@ The [batched-serving control](lpx-batched-serving.md) adds background decode req
 The LPX streaming refinement now accepts batches of single-token decode requests.
 About seven background requests bring the 10K speed to the published 3,382 TPS, but the 100K speed then reaches at most 3,041 TPS against the published 3,431 TPS.
 No point matches both published values within 5%, as recorded before the sweep.
+
+## October 23, 2026 speculative-decoding record
+
+The [speculative-decoding control](lpx-speculative-decoding.md) prices native verification forwards with `K` draft tokens at batch size one and alongside background requests.
+The LPX streaming refinement now accepts decode forwards with several query tokens per request.
+Batch-one speculation cannot match the AA pair, because shared acceptance cancels from the 100K-to-10K step-time ratio, which stays at or above 1.154.
+One-token drafting with seven background requests under `KVP = 4` matches both AA values within 5% at an acceptance of 0.51 to 0.74 on 128 or 256 chips.
+The 10,996 TPS coding example needs at least two draft tokens, so the AA match and the coding example need different draft lengths within the tested 16-row forward limit.
