@@ -61,6 +61,11 @@ class StepComposition:
         T = tokens
         stats = self.stats
         forward_rows = self._target_forward_rows(T, requests_list)
+        embedding_lookup_us = (
+            self.elementwise("embedding_lookup", forward_rows, h)
+            if self.include_embedding_scale
+            else 0.0
+        )
 
         # Attention block shared by dense and MoE layers.
         if self.native_attention:
@@ -194,6 +199,7 @@ class StepComposition:
             + self.dense_layers_local * dense_ffn_elem_us
             + self.moe_layers_local * moe_elem_us
             + self.layers_local * mhc_us
+            + embedding_lookup_us
         )
         if model.block_layout.layer_scale:
             layer_scale_us = self.elementwise("scale", T, h)
@@ -236,6 +242,11 @@ class StepComposition:
                     "logit_softcap", max(1, requests), self.vocab_local
                 )
                 lm_head_us += logit_softcap_us
+            if requests:
+                token_selection_us = self.elementwise(
+                    "argmax", requests, model.vocab_size
+                )
+                lm_head_us += token_selection_us
 
         overhead_us = (
             self.device.step_overhead_us.value if self.include_step_overhead else 0.0
@@ -264,7 +275,7 @@ class StepComposition:
             + overhead_us
         ) * 1e-6
         comm_s = (
-            self._communication(forward_rows, moe_comm_bytes)
+            self._communication(forward_rows, moe_comm_bytes, logits_rows=requests)
             + draft.get("comm", 0) * 1e-6
         )
         stats.record_component("comm", comm_s)
@@ -272,13 +283,19 @@ class StepComposition:
             self.trace_composition(self, locals())
         return compute_s + comm_s
 
-    def _communication(self, tokens: int, moe_comm_bytes: int) -> float:
+    def _communication(
+        self, tokens: int, moe_comm_bytes: int, *, logits_rows: int = 0
+    ) -> float:
         if self.communicator is None:
             return 0.0
         hidden_bytes = int(tokens * self.model.hidden_size * self.activation_bytes)
         latency = 0.0
         if self.tp > 1:
             self.communicator.record_tp_shard()
+            if self.include_embedding_scale:
+                latency += self.communicator.estimate_tp_collective(
+                    hidden_bytes, scope="tp_embedding"
+                )
             # Row-parallel output projection and FFN down projection each
             # synchronize the hidden state: one all-reduce after attention in
             # every layer, one after the FFN in dense layers and in MoE layers
@@ -290,6 +307,14 @@ class StepComposition:
             latency += self.communicator.estimate_tp_collective(
                 hidden_bytes, count=allreduce_count
             )
+            if self.is_last_stage and logits_rows:
+                latency += self.communicator.estimate_tp_collective(
+                    int(
+                        logits_rows * self.vocab_local * self.tp * self.activation_bytes
+                    ),
+                    operation="all_gather",
+                    scope="tp_logits",
+                )
         if self.ep_enabled and moe_comm_bytes > 0 and self.moe_layers_local:
             # One dispatch + one combine per MoE layer; measured DeepEP rows are
             # keyed by this rank's token count and the expert configuration.

@@ -185,10 +185,11 @@ class ServingTraceTest(unittest.TestCase):
             self.assertLess(names.index("ffn_up"), names.index("ffn_down"))
             for left, right in zip(rows, rows[1:]):
                 self.assertAlmostEqual(left.end_at, right.start_at)
-            self.assertIn(rows[-1].operation, ("lm_head", "logit_softcap"))
+            self.assertEqual(rows[-1].operation, "token_selection")
             final_norm = next(row for row in rows if row.operation == "final_norm")
             self.assertEqual(final_norm.details["shape"]["num_tokens"], 32)
-            self.assertEqual(rows[-1].details["shape"]["m"], 2)
+            lm_head = next(row for row in rows if row.operation == "lm_head")
+            self.assertEqual(lm_head.details["shape"]["m"], 2)
 
     def test_pd_transfer_has_producer_and_decode_dependencies(self):
         with tempfile.TemporaryDirectory() as directory:

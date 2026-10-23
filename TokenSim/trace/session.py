@@ -128,13 +128,17 @@ class TraceSession:
             self.iteration += 1
             duration = original_batch(requests)
             # Cost grouping must not reorder mixed geometries on the timeline.
-            leading = {"step_overhead", "embedding_scale"}
+            leading = {"step_overhead", "embedding_lookup", "embedding_scale"}
             info["segments"] = sorted(
                 captured,
                 key=lambda s: (
                     (
                         0
-                        if s.layer < 0 and s.operation in leading
+                        if s.layer < 0
+                        and (
+                            s.operation in leading
+                            or s.details.get("collective_scope") == "tp_embedding"
+                        )
                         else 2 if s.layer < 0 else 1
                     ),
                     s.layer,
@@ -347,16 +351,23 @@ class TraceSession:
         if af is not None:
             histories.append(expand_af_events(af.trace.events))
         cutoff = self.engine.env.now
+        tolerance = max(1e-12, 4 * math.ulp(cutoff))
         for event in chain.from_iterable(histories):
             if event.start_at >= cutoff and event.end_at > cutoff:
                 continue
-            if event.end_at > cutoff:
+            if event.end_at > cutoff + tolerance:
                 yield replace(
                     event,
                     end_at=cutoff,
                     service_duration=cutoff - event.start_at,
                     incomplete=True,
                     details=dict(event.details, incomplete=True),
+                )
+            elif event.end_at > cutoff:
+                yield replace(
+                    event,
+                    end_at=cutoff,
+                    service_duration=max(0, cutoff - event.start_at),
                 )
             else:
                 yield event

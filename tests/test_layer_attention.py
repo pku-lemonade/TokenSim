@@ -383,7 +383,12 @@ class NonuniformPrefillTest(unittest.TestCase):
             self.assertEqual(backend.layers_local, counts[0])
             self.assertFalse(backend._layer_backends)
             latencies.append(backend.estimate_step_latency([Request(0, 16, 1, 16)]))
-        self.assertAlmostEqual(latencies[1], 4 * latencies[0], places=14)
+        input_cost = (
+            backend.elementwise("embedding_lookup", 16, model.hidden_size) * 1e-6
+        )
+        self.assertAlmostEqual(
+            latencies[1] - input_cost, 4 * (latencies[0] - input_cost), places=14
+        )
 
     def test_invalid_or_unsupported_backend_partitions_fail_before_estimation(self):
         settings = dict(

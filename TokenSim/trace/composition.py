@@ -67,12 +67,16 @@ def _primitive_keys(backend, values):
         ),
         "layer_scale_us": elementwise("scale"),
         "embedding_scale_us": elementwise("scale"),
+        "embedding_lookup_us": elementwise("embedding_lookup", values["forward_rows"]),
         "final_norm_us": elementwise("rmsnorm", values["forward_rows"]),
         "logits_gemm_us": gemm(
             max(1, values["requests"]), backend.vocab_local, hidden, "lm_head"
         ),
         "logit_softcap_us": elementwise(
             "logit_softcap", max(1, values["requests"]), backend.vocab_local
+        ),
+        "token_selection_us": elementwise(
+            "argmax", max(1, values["requests"]), model.vocab_size
         ),
     }
 
@@ -165,10 +169,13 @@ def expand_composition(backend, values, communications):
                 "payload_bytes": row["bytes"] // count,
                 "latency_source": estimate.source_id,
                 "match_type": estimate.match_type,
+                "collective_scope": kind,
             },
         )
 
     scalar("step_overhead", "overhead_us", -1)
+    scalar("embedding_lookup", "embedding_lookup_us", -1)
+    collective("tp_embedding", "all_reduce", -1, 1)
     scalar("embedding_scale", "embedding_scale_us", -1)
     projections = list(
         zip(backend.native_attention_projections, values.get("projection_us", ()))
@@ -261,7 +268,9 @@ def expand_composition(backend, values, communications):
     scalar("residual_output_module", "residual_output_us", -1)
     scalar("final_norm", "final_norm_us", -1)
     scalar("lm_head", "logits_gemm_us", -1)
+    collective("tp_logits", "all_gather", -1, 1)
     scalar("logit_softcap", "logit_softcap_us", -1)
+    scalar("token_selection", "token_selection_us", -1)
     add("mtp_module", sum(values["draft"].values()), -1)
     collective("pp_stage_transfer", "send_recv", -1, 1)
     expected = values["compute_s"] + values["comm_s"]

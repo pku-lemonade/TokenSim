@@ -3,11 +3,13 @@
 from dataclasses import replace
 import importlib.util
 import json
+import math
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
+from types import SimpleNamespace
 import simpy
 
 from TokenSim.errors import ConfigurationError, SimulationStateError
@@ -20,6 +22,7 @@ from TokenSim.trace.formats import (
 )
 from TokenSim.trace.recorder import TraceRecorder
 from TokenSim.trace.execution import observe_service
+from TokenSim.trace.session import TraceSession
 
 
 def event(**changes):
@@ -47,6 +50,28 @@ def event(**changes):
 
 
 class SharedRecordingTest(unittest.TestCase):
+    def test_eof_roundoff_does_not_mark_a_completed_operator_as_partial(self):
+        for excess in (math.ulp(1.0), 0.1):
+            with self.subTest(excess=excess):
+                session = object.__new__(TraceSession)
+                session.engine = SimpleNamespace(
+                    af_executor=None, env=SimpleNamespace(now=1.0)
+                )
+                session.recorder = SimpleNamespace(
+                    events=[
+                        event(
+                            start_at=0.5,
+                            end_at=1.0 + excess,
+                            service_duration=0.5 + excess,
+                        )
+                    ]
+                )
+                session.transfers = SimpleNamespace(partial_events=lambda: ())
+                session.pending = {}
+                observed = list(session.events())[0]
+                self.assertEqual(observed.end_at, 1.0)
+                self.assertEqual(observed.incomplete, excess == 0.1)
+
     def test_service_observation_starts_after_admission_and_releases_on_cancel(self):
         env = simpy.Environment()
         resource = simpy.Resource(env, capacity=1)
