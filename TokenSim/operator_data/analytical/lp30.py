@@ -113,6 +113,18 @@ def estimate_lp30(table, key, device, calibration=None):
             elements = int(key["num_tokens"]) * int(key["hidden_size"])
             vector_ops, exps = 4 * elements, elements
             work = replace(work, flops=vector_ops)
+        elif key.get("lpx_vector_operation") == "lse_merge":
+            # One row per fragment holds d partial outputs and one FP32 LSE:
+            # rescale and accumulate 2 ops per element, one exponential per row.
+            fragments, width = int(key["num_tokens"]), int(key["hidden_size"])
+            vector_ops, exps = fragments * (2 * width + 1), fragments
+            output = fragments // int(key["kv_parallel_size"]) * (width - 1)
+            work = replace(
+                work,
+                flops=vector_ops,
+                activation_bytes=fragments * width * 4
+                + output * dtype_size_bytes(dtype, role="activation_dtype"),
+            )
         shuffle = work.activation_bytes
         tiles = max(1, math.ceil(work.activation_bytes / policy.vector_bytes))
     else:

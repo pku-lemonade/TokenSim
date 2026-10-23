@@ -77,6 +77,17 @@ def main(argv=None):
     parser.add_argument("--model", default="gemma-4-31b-text")
     parser.add_argument("--tp", nargs="+", type=int, default=[1, 2, 4, 8, 16, 32])
     parser.add_argument("--pp", nargs="+", type=int)
+    parser.add_argument(
+        "--kvp",
+        nargs="+",
+        type=int,
+        default=[1],
+        help="KV-parallel sizes that factor each stage TP (Helix-style)",
+    )
+    parser.add_argument(
+        "--kv-parallel-layers", choices=["full_attention", "all"], default=None
+    )
+    parser.add_argument("--kv-append-block", type=int, default=None)
     parser.add_argument("--max-chips", type=int, default=256)
     parser.add_argument("--weight-dtype", choices=["fp8", "bf16"], default="fp8")
     parser.add_argument("--kv-dtype", choices=["fp8", "bf16"], default="fp8")
@@ -129,7 +140,15 @@ def main(argv=None):
             dtype=args.weight_dtype,
             kv_cache_dtype=args.kv_dtype,
         )
-        candidates = list(layouts(model, args.tp, args.max_chips, args.pp))
+        candidates = list(layouts(model, args.tp, args.max_chips, args.pp, args.kvp))
+        kv_settings = {
+            name: value
+            for name, value in (
+                ("kv_parallel_layers", args.kv_parallel_layers),
+                ("kv_append_block", args.kv_append_block),
+            )
+            if value is not None
+        }
         if not candidates:
             raise ConfigurationError("search contains no candidate layouts")
         runner = ExperimentRunner(
@@ -151,6 +170,8 @@ def main(argv=None):
             pipeline_partition=args.pipeline_partition,
             fidelity=fidelity,
         )
+        if args.kvp != [1] or kv_settings:
+            settings["kv_parallel"] = dict(sizes=sorted(set(args.kvp)), **kv_settings)
         started, rows, receipts = perf_counter(), [], []
         partition_cache = {}
 
@@ -177,6 +198,7 @@ def main(argv=None):
                             ),
                             partition_cache,
                             reuse=args.colocated_dense_reuse,
+                            kv_settings=kv_settings,
                         )
                     except ConfigurationError as exc:
                         return dict(
@@ -197,6 +219,7 @@ def main(argv=None):
                     invocation_us=args.invocation_us,
                     layer_counts=partition["layer_counts"] if partition else None,
                     token_units=fidelity.get("token_units"),
+                    kv_settings=kv_settings,
                 )
                 if partition is not None:
                     result["partition_evidence"] = partition
@@ -215,7 +238,8 @@ def main(argv=None):
             print(
                 json.dumps(
                     dict(
-                        tp=layout.a_tp,
+                        tp=layout.a_stage_ranks,
+                        **({"kvp": layout.a_cp} if layout.a_cp > 1 else {}),
                         pp=layout.a_pp,
                         lp30=layout.a_ranks,
                         status=result["status"],
@@ -250,6 +274,7 @@ def main(argv=None):
             settings=settings,
             search_space=dict(
                 tp=sorted(set(args.tp)),
+                **({"kvp": sorted(set(args.kvp))} if args.kvp != [1] else {}),
                 pp=args.pp or "all nonempty stage counts",
                 pipeline_partition=args.pipeline_partition,
                 max_chips=args.max_chips,
@@ -292,7 +317,8 @@ def main(argv=None):
                         key: (
                             dict(
                                 lp30=value["lp30"],
-                                tp=value["layout"]["a_tp"],
+                                tp=value["layout"]["a_tp"] * value["layout"]["a_cp"],
+                                kvp=value["layout"]["a_cp"],
                                 pp=value["layout"]["a_pp"],
                             )
                             if isinstance(value, dict)

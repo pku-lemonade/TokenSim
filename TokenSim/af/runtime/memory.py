@@ -61,12 +61,21 @@ def _components_for_binding(
             raise ConfigurationError("A binding requires a KV-head partition")
         for layer in layers:
             partition = kv_partition.for_layer(layer.layer_id)
-            q_heads = layer.num_attention_heads // tp_size
+            kvp = partition.kv_parallel_size
+            # KV-parallel ranks replicate Q/K/V for tp/kvp heads; O keeps tp shards.
+            q_heads = layer.num_attention_heads // (tp_size // kvp)
+            o_heads = layer.num_attention_heads // tp_size
             q_width = q_heads * layer.head_dim
             kv_width = partition.local_head_count * layer.head_dim
             kv_projections = 1 if layer.k_eq_v else 2
             attention_elements = (
-                2 * hidden * q_width + kv_projections * hidden * kv_width
+                hidden * (q_width + o_heads * layer.head_dim)
+                + kv_projections * hidden * kv_width
+            )
+            parallel_shape = (
+                (("o_heads_local", o_heads), ("kv_parallel_size", kvp))
+                if kvp > 1
+                else ()
             )
             norm_elements = 2 * layer.head_dim if qk_norm else 0
             norm_shape = (("qk_norm_elements", norm_elements),) if norm_elements else ()
@@ -82,7 +91,12 @@ def _components_for_binding(
                     formula=(
                         "MLA replicated Q/KV down + head-sharded Q/KV up and O + latent norms"
                         if mla
-                        else "Q/K/V/O: H*(2*Q_local+KV_projections*KV_local), plus Q/K norms"
+                        else (
+                            "Q/K/V/O: H*(Q_local+O_local+KV_projections*KV_local), "
+                            "Q/K/V replicated across KV-parallel ranks, plus Q/K norms"
+                            if kvp > 1
+                            else "Q/K/V/O: H*(2*Q_local+KV_projections*KV_local), plus Q/K norms"
+                        )
                     ),
                     layer_id=layer.layer_id,
                     shape=(
@@ -96,6 +110,7 @@ def _components_for_binding(
                         ),
                         ("head_dim", layer.head_dim),
                         *norm_shape,
+                        *parallel_shape,
                     ),
                 )
             )

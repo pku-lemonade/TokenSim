@@ -183,6 +183,12 @@ def curve_for(runtime, inputs, outputs, streaming, invocation_us=0.0):
         tile = LP30Pipeline(**policy).attention_tile_keys
         for boundary in range((inputs // tile) * tile, inputs + outputs, tile):
             knots.update((boundary, boundary + 1))
+    domain = runtime.plan.domain_runtime(runtime.cluster.af_domains[0].name)
+    if domain.kv_parallel_size > 1:
+        # The busiest KVP rank changes slope at every append-block boundary.
+        block = domain.kv_append_block
+        for boundary in range((inputs // block) * block, inputs + outputs, block):
+            knots.update((boundary, boundary + 1))
     curve = DecodeCurve(
         native_probe(runtime, streaming, invocation_us),
         inputs + 1,

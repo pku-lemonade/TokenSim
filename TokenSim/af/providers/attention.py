@@ -6,7 +6,9 @@ import json
 from TokenSim.af.providers.compute import prefill_components
 
 
-def attention_core(provider, resolver, query, tokens, heads, kv_heads, dtype):
+def attention_core(
+    provider, resolver, query, tokens, heads, kv_heads, dtype, lengths=None
+):
     model = provider.model
     common = {
         "attn_dtype": dtype,
@@ -16,11 +18,12 @@ def attention_core(provider, resolver, query, tokens, heads, kv_heads, dtype):
         "head_dim": model.attention_geometry(query.layer_id).head_dim,
         "window_size": model.attention_window(query.layer_id),
     }
-    lengths = tuple(query.context_lengths) or (1,) * tokens
+    lengths = tuple(query.context_lengths if lengths is None else lengths)
+    lengths = lengths or (1,) * tokens
     if any(type(length) is not int or length < 1 for length in lengths):
         raise ValueError("attention contexts must be positive integers")
     if query.phase == "prefill" or any(length > 1 for length in query.query_lengths):
-        return prefill_components(provider, resolver, query, tokens, common)
+        return prefill_components(provider, resolver, query, tokens, common, lengths)
     if len(lengths) == 1:
         lengths = lengths * tokens
     if len(lengths) != tokens:

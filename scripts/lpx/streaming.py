@@ -50,7 +50,12 @@ class StreamingBuilder:
         )
         if self.fabric:
             for i, event in enumerate(events):
-                if event.operation in {"attention", "dense_ffn", "lm_head"}:
+                if event.operation in {
+                    "attention",
+                    "attention_output",
+                    "dense_ffn",
+                    "lm_head",
+                }:
                     resources = self.fabric.vxm_resources(event.physical_endpoints)
                     self.nodes[i] = replace(
                         self.nodes[i],
@@ -112,9 +117,11 @@ class StreamingBuilder:
 
     def producer_work(self, index, payload, element_bytes):
         event = self.events[index]
-        name = {"attention": "output_projection", "dense_ffn": "down"}.get(
-            event.operation
-        )
+        name = {
+            "attention": "output_projection",
+            "attention_output": "output_projection",
+            "dense_ffn": "down",
+        }.get(event.operation)
         if name is None or event.layer_type != "dense":
             return None
         components = event.details.get("components", ())
@@ -256,7 +263,12 @@ class StreamingBuilder:
         for i, event in enumerate(self.events):
             if self.fabric:
                 self.fabric.point_to_point(i, event)
-            if event.operation not in {"all_reduce", "all_gather", "reduce_scatter"}:
+            if event.operation not in {
+                "all_reduce",
+                "all_gather",
+                "reduce_scatter",
+                "all_to_all",
+            }:
                 continue
             endpoints = tuple(event.physical_endpoints)
             if not endpoints or any(

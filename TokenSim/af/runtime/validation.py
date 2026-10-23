@@ -244,6 +244,9 @@ class RuntimeValidationMixin:
                         domain.tensor_parallel_size,
                         self.block_size,
                         self.kv_dtype_size_bytes,
+                        domain.kv_parallel_size,
+                        domain.kv_parallel_layers,
+                        domain.kv_append_block,
                     )
                     if binding.kv_partition != expected_partitions[binding.tp_rank]:
                         raise ConfigurationError(

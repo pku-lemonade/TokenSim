@@ -88,8 +88,9 @@ class OperatorComponent:
         }
 
 
-def prefill_components(provider, resolver, query, tokens, common):
-    lengths = tuple(query.context_lengths) or (tokens,)
+def prefill_components(provider, resolver, query, tokens, common, lengths=None):
+    lengths = tuple(query.context_lengths if lengths is None else lengths)
+    lengths = lengths or (tokens,)
     queries = tuple(query.query_lengths)
     if not queries:
         if sum(lengths) == tokens:
@@ -238,6 +239,14 @@ class ComputeEstimateMixin:
             components = self._mla_stage(resolver, query, tokens, tp_size, dtype)
         elif self.model.attention_type == "mla":
             components = self._mla_stage(resolver, query, tokens, tp_size, dtype)
+        elif query.operation == "attention_output":
+            from TokenSim.af.providers.context_parallel import (
+                attention_output_components,
+            )
+
+            components = attention_output_components(
+                self, resolver, query, tokens, dtype
+            )
         elif query.stage in {"a", "attention"}:
             components = self._attention_components(
                 resolver, query, tokens, tp_size, dtype

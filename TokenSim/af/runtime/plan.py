@@ -387,6 +387,15 @@ class AFRuntimePlan(RuntimeGeometryMixin, RuntimeValidationMixin):
                         if domain.pipeline_parallel_size > 1
                         else {}
                     ),
+                    **(
+                        {
+                            "kv_parallel_size": domain.kv_parallel_size,
+                            "kv_parallel_layers": domain.kv_parallel_layers,
+                            "kv_append_block": domain.kv_append_block,
+                        }
+                        if domain.kv_parallel_size > 1
+                        else {}
+                    ),
                     "data_parallel_size": domain.data_parallel_size,
                     "expert_parallel_size": domain.expert_parallel_size,
                     "expert_parallel_mode": domain.expert_parallel_mode,

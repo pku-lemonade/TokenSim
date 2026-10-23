@@ -232,9 +232,27 @@ class AFKVHeadPartition:
     bytes_per_token: int
     bytes_per_block: int
     layer_partitions: tuple = ()
+    # Sequence ownership on KV-parallel layers; bytes_per_token is per owned token.
+    kv_parallel_size: int = 1
+    kv_parallel_rank: int = 0
+    kv_append_block: int = 16
 
     def for_layer(self, layer_id):
         return dict(self.layer_partitions)[layer_id] if self.layer_partitions else self
+
+    def resident_tokens(self, context: int, window: int) -> int:
+        """Peak KV positions stored here for contexts up to ``context``."""
+        if self.kv_parallel_size == 1:
+            return min(context, window or context)
+        from TokenSim.af.runtime.kv_sequence import peak_resident_tokens
+
+        return peak_resident_tokens(
+            context,
+            window,
+            self.kv_parallel_size,
+            self.kv_parallel_rank,
+            self.kv_append_block,
+        )
 
     @property
     def local_head_count(self) -> int:
@@ -248,6 +266,15 @@ class AFKVHeadPartition:
             "local_head_count": self.local_head_count,
             "bytes_per_token": self.bytes_per_token,
             "bytes_per_block": self.bytes_per_block,
+            **(
+                {
+                    "kv_parallel_size": self.kv_parallel_size,
+                    "kv_parallel_rank": self.kv_parallel_rank,
+                    "kv_append_block": self.kv_append_block,
+                }
+                if self.kv_parallel_size > 1
+                else {}
+            ),
             **(
                 {
                     "layer_partitions": {
@@ -414,6 +441,9 @@ class AFDomainRuntime:
     expert_tensor_parallel_size: int = 1
     pipeline_parallel_size: int = 1
     pipeline_layer_counts: tuple[int, ...] | None = None
+    kv_parallel_size: int = 1
+    kv_parallel_layers: str = "full_attention"
+    kv_append_block: int = 16
 
     def parallel_config(self) -> ParallelConfig:
         return ParallelConfig(

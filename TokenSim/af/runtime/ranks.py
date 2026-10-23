@@ -50,7 +50,13 @@ def compile_rank_components(
         partitions = (
             {
                 stage: layer_kv_partitions(
-                    local_layers[stage], tp, block_size, kv_bytes
+                    local_layers[stage],
+                    tp,
+                    block_size,
+                    kv_bytes,
+                    domain.parallel.kv_parallel_size,
+                    domain.parallel.kv_parallel_layers,
+                    domain.parallel.kv_append_block,
                 )
                 for stage in range(pp)
             }

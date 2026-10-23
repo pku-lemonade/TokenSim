@@ -32,15 +32,19 @@ class Layout:
                 raise ConfigurationError(f"{name} must be one of {ALGORITHMS}")
         if self.colocated and (
             self.a_device != self.f_device
-            or self.a_cp != 1
             or self.a_pp != self.f_pp
-            or self.a_tp != self.f_tp * self.f_ep
+            or self.a_stage_ranks != self.f_tp * self.f_ep
         ):
             raise ConfigurationError("colocated A/F requires matching rank inventories")
 
     @property
+    def a_stage_ranks(self):
+        """Attention ranks per stage: KV-parallel groups factor this TP group."""
+        return self.a_tp * self.a_cp
+
+    @property
     def a_ranks(self):
-        return self.a_tp * self.a_cp * self.a_pp
+        return self.a_stage_ranks * self.a_pp
 
     @property
     def f_ranks(self):

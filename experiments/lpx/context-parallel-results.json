@@ -1,0 +1,3134 @@
+{
+  "source_sha256": "498a71f7dbf355578f69d85b3f544f085f266e856a4fd80a16f3f71a08d607ec",
+  "cases": {
+    "kvp1": {
+      "parameters": {
+        "case": "kvp1",
+        "config": {
+          "operator": {
+            "activation_dtype": "bf16",
+            "vector_ops_per_s": 20000000000000.0,
+            "exp_ops_per_s": 1000000000000.0,
+            "shuffle_bytes_per_s": 10000000000000.0,
+            "vector_efficiency": 0.5,
+            "shuffle_efficiency": 0.8,
+            "vector_bytes": 320,
+            "attention_tile_keys": 256,
+            "fill_drain_us": 0.05,
+            "schedule": "tiled"
+          },
+          "memory": {
+            "prefill_chunk": 16,
+            "maximum_context": 102000,
+            "attention_tile_keys": 256,
+            "tile_buffers": 2,
+            "reserve_bytes": 5000000
+          },
+          "fabric": {
+            "local_chips": 16,
+            "middle_chips": 128,
+            "local_us": 0.35,
+            "middle_us": 0.75,
+            "rack_us": 1.15,
+            "ports_per_chip": 96,
+            "lanes_per_peer": 6,
+            "p2p_lanes": 6,
+            "lane_bytes_per_s": 14000000000.0,
+            "injection_bytes_per_s": 1250000000000.0,
+            "efficiency": 1.0,
+            "reduction_ops_per_s": 10000000000000.0,
+            "routes": []
+          },
+          "token_units": {
+            "native_per_aa_input": 1.0,
+            "native_per_aa_output": 1.0,
+            "source": "Unmeasured identity assumption; no representative AA text corpus or downloaded Gemma tokenizer is bundled.",
+            "measured": false,
+            "corpus_sha256": null,
+            "tokenizer": null,
+            "revision": null
+          },
+          "compute": {
+            "gemm_mfu": 0.3,
+            "attention_mfu": 0.1,
+            "memory_efficiency": 0.9
+          },
+          "description": "Illustrative public-mechanism accounting; unknown LP30 unit rates, routes and scratch policy remain sensitivity assumptions."
+        },
+        "execution": {
+          "mode": "compiled",
+          "kernel_launch_us": 0.2,
+          "instruction_floor_us": 0,
+          "invocation_us": 0.0,
+          "c2c_hop_us": 0.35,
+          "effective_operator_startup_us": 0,
+          "invocation_scope": "One whole captured decode DAG, independent of TP and PP.",
+          "status": "Uncalibrated execution-boundary sensitivity assumptions.",
+          "retained_costs": [
+            "Native per-operator compute and SRAM roofline service.",
+            "All data dependencies, resource occupancy and required collectives.",
+            "C2C serialization, propagation and separately specified collective startup."
+          ]
+        },
+        "layout": {
+          "a_device": "groq_lp30",
+          "f_device": "groq_lp30",
+          "a_tp": 16,
+          "a_cp": 1,
+          "a_pp": 8,
+          "f_tp": 16,
+          "f_ep": 1,
+          "f_pp": 8,
+          "colocated": true,
+          "a_collective_algorithm": "ring",
+          "f_collective_algorithm": "ring"
+        },
+        "layer_counts": [
+          6,
+          8,
+          9,
+          7,
+          7,
+          10,
+          7,
+          6
+        ],
+        "launch_us": 0,
+        "kv_settings": null
+      },
+      "tps": [
+        5908.784586764318,
+        5578.406484068661,
+        3611.167910635546
+      ],
+      "memory": {
+        "maximum_context": 102000,
+        "peak_rank": {
+          "physical": "search-a:100",
+          "capacity_bytes": 500000000,
+          "weights_bytes": 220549632,
+          "buffers_bytes": 8101966,
+          "buffer_breakdown": {
+            "communication_workspace": 1048576,
+            "colocated_dense_residual": 10752,
+            "lp30_live_scratch": 1736960,
+            "lp30_unallocated_reserve": 5000000,
+            "lp30_auxiliary_weights": 305678
+          },
+          "kv_bytes": 211517440,
+          "total_bytes": 440169038
+        },
+        "minimum_headroom_bytes": 59830962,
+        "ranks": 128,
+        "scope": "Weights, protocol buffers, LP30 live scratch/reserve and one resident KV lease."
+      }
+    },
+    "kvp1-launch0.5": {
+      "parameters": {
+        "case": "kvp1-launch0.5",
+        "config": {
+          "operator": {
+            "activation_dtype": "bf16",
+            "vector_ops_per_s": 20000000000000.0,
+            "exp_ops_per_s": 1000000000000.0,
+            "shuffle_bytes_per_s": 10000000000000.0,
+            "vector_efficiency": 0.5,
+            "shuffle_efficiency": 0.8,
+            "vector_bytes": 320,
+            "attention_tile_keys": 256,
+            "fill_drain_us": 0.05,
+            "schedule": "tiled"
+          },
+          "memory": {
+            "prefill_chunk": 16,
+            "maximum_context": 102000,
+            "attention_tile_keys": 256,
+            "tile_buffers": 2,
+            "reserve_bytes": 5000000
+          },
+          "fabric": {
+            "local_chips": 16,
+            "middle_chips": 128,
+            "local_us": 0.35,
+            "middle_us": 0.75,
+            "rack_us": 1.15,
+            "ports_per_chip": 96,
+            "lanes_per_peer": 6,
+            "p2p_lanes": 6,
+            "lane_bytes_per_s": 14000000000.0,
+            "injection_bytes_per_s": 1250000000000.0,
+            "efficiency": 1.0,
+            "reduction_ops_per_s": 10000000000000.0,
+            "routes": []
+          },
+          "token_units": {
+            "native_per_aa_input": 1.0,
+            "native_per_aa_output": 1.0,
+            "source": "Unmeasured identity assumption; no representative AA text corpus or downloaded Gemma tokenizer is bundled.",
+            "measured": false,
+            "corpus_sha256": null,
+            "tokenizer": null,
+            "revision": null
+          },
+          "compute": {
+            "gemm_mfu": 0.3,
+            "attention_mfu": 0.1,
+            "memory_efficiency": 0.9
+          },
+          "description": "Illustrative public-mechanism accounting; unknown LP30 unit rates, routes and scratch policy remain sensitivity assumptions."
+        },
+        "execution": {
+          "mode": "compiled",
+          "kernel_launch_us": 0.2,
+          "instruction_floor_us": 0,
+          "invocation_us": 0.0,
+          "c2c_hop_us": 0.35,
+          "effective_operator_startup_us": 0,
+          "invocation_scope": "One whole captured decode DAG, independent of TP and PP.",
+          "status": "Uncalibrated execution-boundary sensitivity assumptions.",
+          "retained_costs": [
+            "Native per-operator compute and SRAM roofline service.",
+            "All data dependencies, resource occupancy and required collectives.",
+            "C2C serialization, propagation and separately specified collective startup."
+          ]
+        },
+        "layout": {
+          "a_device": "groq_lp30",
+          "f_device": "groq_lp30",
+          "a_tp": 16,
+          "a_cp": 1,
+          "a_pp": 8,
+          "f_tp": 16,
+          "f_ep": 1,
+          "f_pp": 8,
+          "colocated": true,
+          "a_collective_algorithm": "ring",
+          "f_collective_algorithm": "ring"
+        },
+        "layer_counts": [
+          6,
+          8,
+          9,
+          7,
+          7,
+          10,
+          7,
+          6
+        ],
+        "launch_us": 0.5,
+        "kv_settings": null
+      },
+      "tps": [
+        4413.328343214493,
+        4226.373362361861,
+        2991.6335584679823
+      ],
+      "memory": {
+        "maximum_context": 102000,
+        "peak_rank": {
+          "physical": "search-a:100",
+          "capacity_bytes": 500000000,
+          "weights_bytes": 220549632,
+          "buffers_bytes": 8101966,
+          "buffer_breakdown": {
+            "communication_workspace": 1048576,
+            "colocated_dense_residual": 10752,
+            "lp30_live_scratch": 1736960,
+            "lp30_unallocated_reserve": 5000000,
+            "lp30_auxiliary_weights": 305678
+          },
+          "kv_bytes": 211517440,
+          "total_bytes": 440169038
+        },
+        "minimum_headroom_bytes": 59830962,
+        "ranks": 128,
+        "scope": "Weights, protocol buffers, LP30 live scratch/reserve and one resident KV lease."
+      }
+    },
+    "kvp1-local0.7": {
+      "parameters": {
+        "case": "kvp1-local0.7",
+        "config": {
+          "operator": {
+            "activation_dtype": "bf16",
+            "vector_ops_per_s": 20000000000000.0,
+            "exp_ops_per_s": 1000000000000.0,
+            "shuffle_bytes_per_s": 10000000000000.0,
+            "vector_efficiency": 0.5,
+            "shuffle_efficiency": 0.8,
+            "vector_bytes": 320,
+            "attention_tile_keys": 256,
+            "fill_drain_us": 0.05,
+            "schedule": "tiled"
+          },
+          "memory": {
+            "prefill_chunk": 16,
+            "maximum_context": 102000,
+            "attention_tile_keys": 256,
+            "tile_buffers": 2,
+            "reserve_bytes": 5000000
+          },
+          "fabric": {
+            "local_chips": 16,
+            "middle_chips": 128,
+            "local_us": 0.7,
+            "middle_us": 0.75,
+            "rack_us": 1.15,
+            "ports_per_chip": 96,
+            "lanes_per_peer": 6,
+            "p2p_lanes": 6,
+            "lane_bytes_per_s": 14000000000.0,
+            "injection_bytes_per_s": 1250000000000.0,
+            "efficiency": 1.0,
+            "reduction_ops_per_s": 10000000000000.0,
+            "routes": []
+          },
+          "token_units": {
+            "native_per_aa_input": 1.0,
+            "native_per_aa_output": 1.0,
+            "source": "Unmeasured identity assumption; no representative AA text corpus or downloaded Gemma tokenizer is bundled.",
+            "measured": false,
+            "corpus_sha256": null,
+            "tokenizer": null,
+            "revision": null
+          },
+          "compute": {
+            "gemm_mfu": 0.3,
+            "attention_mfu": 0.1,
+            "memory_efficiency": 0.9
+          },
+          "description": "Illustrative public-mechanism accounting; unknown LP30 unit rates, routes and scratch policy remain sensitivity assumptions."
+        },
+        "execution": {
+          "mode": "compiled",
+          "kernel_launch_us": 0.2,
+          "instruction_floor_us": 0,
+          "invocation_us": 0.0,
+          "c2c_hop_us": 0.35,
+          "effective_operator_startup_us": 0,
+          "invocation_scope": "One whole captured decode DAG, independent of TP and PP.",
+          "status": "Uncalibrated execution-boundary sensitivity assumptions.",
+          "retained_costs": [
+            "Native per-operator compute and SRAM roofline service.",
+            "All data dependencies, resource occupancy and required collectives.",
+            "C2C serialization, propagation and separately specified collective startup."
+          ]
+        },
+        "layout": {
+          "a_device": "groq_lp30",
+          "f_device": "groq_lp30",
+          "a_tp": 16,
+          "a_cp": 1,
+          "a_pp": 8,
+          "f_tp": 16,
+          "f_ep": 1,
+          "f_pp": 8,
+          "colocated": true,
+          "a_collective_algorithm": "ring",
+          "f_collective_algorithm": "ring"
+        },
+        "layer_counts": [
+          6,
+          8,
+          9,
+          7,
+          7,
+          10,
+          7,
+          6
+        ],
+        "launch_us": 0,
+        "kv_settings": null
+      },
+      "tps": [
+        3932.52506689221,
+        3783.39800203184,
+        2762.669648834094
+      ],
+      "memory": {
+        "maximum_context": 102000,
+        "peak_rank": {
+          "physical": "search-a:100",
+          "capacity_bytes": 500000000,
+          "weights_bytes": 220549632,
+          "buffers_bytes": 8101966,
+          "buffer_breakdown": {
+            "communication_workspace": 1048576,
+            "colocated_dense_residual": 10752,
+            "lp30_live_scratch": 1736960,
+            "lp30_unallocated_reserve": 5000000,
+            "lp30_auxiliary_weights": 305678
+          },
+          "kv_bytes": 211517440,
+          "total_bytes": 440169038
+        },
+        "minimum_headroom_bytes": 59830962,
+        "ranks": 128,
+        "scope": "Weights, protocol buffers, LP30 live scratch/reserve and one resident KV lease."
+      }
+    },
+    "kvp2": {
+      "parameters": {
+        "case": "kvp2",
+        "config": {
+          "operator": {
+            "activation_dtype": "bf16",
+            "vector_ops_per_s": 20000000000000.0,
+            "exp_ops_per_s": 1000000000000.0,
+            "shuffle_bytes_per_s": 10000000000000.0,
+            "vector_efficiency": 0.5,
+            "shuffle_efficiency": 0.8,
+            "vector_bytes": 320,
+            "attention_tile_keys": 256,
+            "fill_drain_us": 0.05,
+            "schedule": "tiled"
+          },
+          "memory": {
+            "prefill_chunk": 16,
+            "maximum_context": 102000,
+            "attention_tile_keys": 256,
+            "tile_buffers": 2,
+            "reserve_bytes": 5000000
+          },
+          "fabric": {
+            "local_chips": 16,
+            "middle_chips": 128,
+            "local_us": 0.35,
+            "middle_us": 0.75,
+            "rack_us": 1.15,
+            "ports_per_chip": 96,
+            "lanes_per_peer": 6,
+            "p2p_lanes": 6,
+            "lane_bytes_per_s": 14000000000.0,
+            "injection_bytes_per_s": 1250000000000.0,
+            "efficiency": 1.0,
+            "reduction_ops_per_s": 10000000000000.0,
+            "routes": []
+          },
+          "token_units": {
+            "native_per_aa_input": 1.0,
+            "native_per_aa_output": 1.0,
+            "source": "Unmeasured identity assumption; no representative AA text corpus or downloaded Gemma tokenizer is bundled.",
+            "measured": false,
+            "corpus_sha256": null,
+            "tokenizer": null,
+            "revision": null
+          },
+          "compute": {
+            "gemm_mfu": 0.3,
+            "attention_mfu": 0.1,
+            "memory_efficiency": 0.9
+          },
+          "description": "Illustrative public-mechanism accounting; unknown LP30 unit rates, routes and scratch policy remain sensitivity assumptions."
+        },
+        "execution": {
+          "mode": "compiled",
+          "kernel_launch_us": 0.2,
+          "instruction_floor_us": 0,
+          "invocation_us": 0.0,
+          "c2c_hop_us": 0.35,
+          "effective_operator_startup_us": 0,
+          "invocation_scope": "One whole captured decode DAG, independent of TP and PP.",
+          "status": "Uncalibrated execution-boundary sensitivity assumptions.",
+          "retained_costs": [
+            "Native per-operator compute and SRAM roofline service.",
+            "All data dependencies, resource occupancy and required collectives.",
+            "C2C serialization, propagation and separately specified collective startup."
+          ]
+        },
+        "layout": {
+          "a_device": "groq_lp30",
+          "f_device": "groq_lp30",
+          "a_tp": 8,
+          "a_cp": 2,
+          "a_pp": 8,
+          "f_tp": 16,
+          "f_ep": 1,
+          "f_pp": 8,
+          "colocated": true,
+          "a_collective_algorithm": "ring",
+          "f_collective_algorithm": "ring"
+        },
+        "layer_counts": [
+          6,
+          8,
+          9,
+          7,
+          7,
+          10,
+          7,
+          6
+        ],
+        "launch_us": 0,
+        "kv_settings": {
+          "kv_parallel_layers": "full_attention",
+          "kv_append_block": 16
+        }
+      },
+      "tps": [
+        5759.054433789983,
+        5560.630852979317,
+        4167.933592430943
+      ],
+      "memory": {
+        "maximum_context": 102000,
+        "peak_rank": {
+          "physical": "search-a:80",
+          "capacity_bytes": 500000000,
+          "weights_bytes": 310351360,
+          "buffers_bytes": 8626004,
+          "buffer_breakdown": {
+            "communication_workspace": 1048576,
+            "colocated_dense_residual": 10752,
+            "lp30_live_scratch": 2130944,
+            "lp30_unallocated_reserve": 5000000,
+            "lp30_auxiliary_weights": 435732
+          },
+          "kv_bytes": 56950784,
+          "total_bytes": 375928148
+        },
+        "minimum_headroom_bytes": 124071852,
+        "ranks": 128,
+        "scope": "Weights, protocol buffers, LP30 live scratch/reserve and one resident KV lease."
+      }
+    },
+    "kvp4": {
+      "parameters": {
+        "case": "kvp4",
+        "config": {
+          "operator": {
+            "activation_dtype": "bf16",
+            "vector_ops_per_s": 20000000000000.0,
+            "exp_ops_per_s": 1000000000000.0,
+            "shuffle_bytes_per_s": 10000000000000.0,
+            "vector_efficiency": 0.5,
+            "shuffle_efficiency": 0.8,
+            "vector_bytes": 320,
+            "attention_tile_keys": 256,
+            "fill_drain_us": 0.05,
+            "schedule": "tiled"
+          },
+          "memory": {
+            "prefill_chunk": 16,
+            "maximum_context": 102000,
+            "attention_tile_keys": 256,
+            "tile_buffers": 2,
+            "reserve_bytes": 5000000
+          },
+          "fabric": {
+            "local_chips": 16,
+            "middle_chips": 128,
+            "local_us": 0.35,
+            "middle_us": 0.75,
+            "rack_us": 1.15,
+            "ports_per_chip": 96,
+            "lanes_per_peer": 6,
+            "p2p_lanes": 6,
+            "lane_bytes_per_s": 14000000000.0,
+            "injection_bytes_per_s": 1250000000000.0,
+            "efficiency": 1.0,
+            "reduction_ops_per_s": 10000000000000.0,
+            "routes": []
+          },
+          "token_units": {
+            "native_per_aa_input": 1.0,
+            "native_per_aa_output": 1.0,
+            "source": "Unmeasured identity assumption; no representative AA text corpus or downloaded Gemma tokenizer is bundled.",
+            "measured": false,
+            "corpus_sha256": null,
+            "tokenizer": null,
+            "revision": null
+          },
+          "compute": {
+            "gemm_mfu": 0.3,
+            "attention_mfu": 0.1,
+            "memory_efficiency": 0.9
+          },
+          "description": "Illustrative public-mechanism accounting; unknown LP30 unit rates, routes and scratch policy remain sensitivity assumptions."
+        },
+        "execution": {
+          "mode": "compiled",
+          "kernel_launch_us": 0.2,
+          "instruction_floor_us": 0,
+          "invocation_us": 0.0,
+          "c2c_hop_us": 0.35,
+          "effective_operator_startup_us": 0,
+          "invocation_scope": "One whole captured decode DAG, independent of TP and PP.",
+          "status": "Uncalibrated execution-boundary sensitivity assumptions.",
+          "retained_costs": [
+            "Native per-operator compute and SRAM roofline service.",
+            "All data dependencies, resource occupancy and required collectives.",
+            "C2C serialization, propagation and separately specified collective startup."
+          ]
+        },
+        "layout": {
+          "a_device": "groq_lp30",
+          "f_device": "groq_lp30",
+          "a_tp": 4,
+          "a_cp": 4,
+          "a_pp": 8,
+          "f_tp": 16,
+          "f_ep": 1,
+          "f_pp": 8,
+          "colocated": true,
+          "a_collective_algorithm": "ring",
+          "f_collective_algorithm": "ring"
+        },
+        "layer_counts": [
+          6,
+          8,
+          9,
+          7,
+          7,
+          10,
+          7,
+          6
+        ],
+        "launch_us": 0,
+        "kv_settings": {
+          "kv_parallel_layers": "full_attention",
+          "kv_append_block": 16
+        }
+      },
+      "tps": [
+        5730.765004307411,
+        5533.299305755595,
+        4152.436766535025
+      ],
+      "memory": {
+        "maximum_context": 102000,
+        "peak_rank": {
+          "physical": "search-a:80",
+          "capacity_bytes": 500000000,
+          "weights_bytes": 321361408,
+          "buffers_bytes": 9151316,
+          "buffer_breakdown": {
+            "communication_workspace": 1048576,
+            "colocated_dense_residual": 10752,
+            "lp30_live_scratch": 2656256,
+            "lp30_unallocated_reserve": 5000000,
+            "lp30_auxiliary_weights": 435732
+          },
+          "kv_bytes": 30834688,
+          "total_bytes": 361347412
+        },
+        "minimum_headroom_bytes": 138652588,
+        "ranks": 128,
+        "scope": "Weights, protocol buffers, LP30 live scratch/reserve and one resident KV lease."
+      }
+    },
+    "kvp4-all-layers": {
+      "parameters": {
+        "case": "kvp4-all-layers",
+        "config": {
+          "operator": {
+            "activation_dtype": "bf16",
+            "vector_ops_per_s": 20000000000000.0,
+            "exp_ops_per_s": 1000000000000.0,
+            "shuffle_bytes_per_s": 10000000000000.0,
+            "vector_efficiency": 0.5,
+            "shuffle_efficiency": 0.8,
+            "vector_bytes": 320,
+            "attention_tile_keys": 256,
+            "fill_drain_us": 0.05,
+            "schedule": "tiled"
+          },
+          "memory": {
+            "prefill_chunk": 16,
+            "maximum_context": 102000,
+            "attention_tile_keys": 256,
+            "tile_buffers": 2,
+            "reserve_bytes": 5000000
+          },
+          "fabric": {
+            "local_chips": 16,
+            "middle_chips": 128,
+            "local_us": 0.35,
+            "middle_us": 0.75,
+            "rack_us": 1.15,
+            "ports_per_chip": 96,
+            "lanes_per_peer": 6,
+            "p2p_lanes": 6,
+            "lane_bytes_per_s": 14000000000.0,
+            "injection_bytes_per_s": 1250000000000.0,
+            "efficiency": 1.0,
+            "reduction_ops_per_s": 10000000000000.0,
+            "routes": []
+          },
+          "token_units": {
+            "native_per_aa_input": 1.0,
+            "native_per_aa_output": 1.0,
+            "source": "Unmeasured identity assumption; no representative AA text corpus or downloaded Gemma tokenizer is bundled.",
+            "measured": false,
+            "corpus_sha256": null,
+            "tokenizer": null,
+            "revision": null
+          },
+          "compute": {
+            "gemm_mfu": 0.3,
+            "attention_mfu": 0.1,
+            "memory_efficiency": 0.9
+          },
+          "description": "Illustrative public-mechanism accounting; unknown LP30 unit rates, routes and scratch policy remain sensitivity assumptions."
+        },
+        "execution": {
+          "mode": "compiled",
+          "kernel_launch_us": 0.2,
+          "instruction_floor_us": 0,
+          "invocation_us": 0.0,
+          "c2c_hop_us": 0.35,
+          "effective_operator_startup_us": 0,
+          "invocation_scope": "One whole captured decode DAG, independent of TP and PP.",
+          "status": "Uncalibrated execution-boundary sensitivity assumptions.",
+          "retained_costs": [
+            "Native per-operator compute and SRAM roofline service.",
+            "All data dependencies, resource occupancy and required collectives.",
+            "C2C serialization, propagation and separately specified collective startup."
+          ]
+        },
+        "layout": {
+          "a_device": "groq_lp30",
+          "f_device": "groq_lp30",
+          "a_tp": 4,
+          "a_cp": 4,
+          "a_pp": 8,
+          "f_tp": 16,
+          "f_ep": 1,
+          "f_pp": 8,
+          "colocated": true,
+          "a_collective_algorithm": "ring",
+          "f_collective_algorithm": "ring"
+        },
+        "layer_counts": [
+          6,
+          8,
+          8,
+          8,
+          8,
+          8,
+          8,
+          6
+        ],
+        "launch_us": 0,
+        "kv_settings": {
+          "kv_parallel_layers": "all",
+          "kv_append_block": 16
+        }
+      },
+      "tps": [
+        4913.066558157405,
+        4767.235391488078,
+        3705.575290678592
+      ],
+      "memory": {
+        "maximum_context": 102000,
+        "peak_rank": {
+          "physical": "search-a:100",
+          "capacity_bytes": 500000000,
+          "weights_bytes": 382604288,
+          "buffers_bytes": 10211664,
+          "buffer_breakdown": {
+            "communication_workspace": 1048576,
+            "colocated_dense_residual": 10752,
+            "lp30_live_scratch": 3803136,
+            "lp30_unallocated_reserve": 5000000,
+            "lp30_auxiliary_weights": 349200
+          },
+          "kv_bytes": 55377920,
+          "total_bytes": 448193872
+        },
+        "minimum_headroom_bytes": 51806128,
+        "ranks": 128,
+        "scope": "Weights, protocol buffers, LP30 live scratch/reserve and one resident KV lease."
+      }
+    },
+    "kvp4-block64": {
+      "parameters": {
+        "case": "kvp4-block64",
+        "config": {
+          "operator": {
+            "activation_dtype": "bf16",
+            "vector_ops_per_s": 20000000000000.0,
+            "exp_ops_per_s": 1000000000000.0,
+            "shuffle_bytes_per_s": 10000000000000.0,
+            "vector_efficiency": 0.5,
+            "shuffle_efficiency": 0.8,
+            "vector_bytes": 320,
+            "attention_tile_keys": 256,
+            "fill_drain_us": 0.05,
+            "schedule": "tiled"
+          },
+          "memory": {
+            "prefill_chunk": 16,
+            "maximum_context": 102000,
+            "attention_tile_keys": 256,
+            "tile_buffers": 2,
+            "reserve_bytes": 5000000
+          },
+          "fabric": {
+            "local_chips": 16,
+            "middle_chips": 128,
+            "local_us": 0.35,
+            "middle_us": 0.75,
+            "rack_us": 1.15,
+            "ports_per_chip": 96,
+            "lanes_per_peer": 6,
+            "p2p_lanes": 6,
+            "lane_bytes_per_s": 14000000000.0,
+            "injection_bytes_per_s": 1250000000000.0,
+            "efficiency": 1.0,
+            "reduction_ops_per_s": 10000000000000.0,
+            "routes": []
+          },
+          "token_units": {
+            "native_per_aa_input": 1.0,
+            "native_per_aa_output": 1.0,
+            "source": "Unmeasured identity assumption; no representative AA text corpus or downloaded Gemma tokenizer is bundled.",
+            "measured": false,
+            "corpus_sha256": null,
+            "tokenizer": null,
+            "revision": null
+          },
+          "compute": {
+            "gemm_mfu": 0.3,
+            "attention_mfu": 0.1,
+            "memory_efficiency": 0.9
+          },
+          "description": "Illustrative public-mechanism accounting; unknown LP30 unit rates, routes and scratch policy remain sensitivity assumptions."
+        },
+        "execution": {
+          "mode": "compiled",
+          "kernel_launch_us": 0.2,
+          "instruction_floor_us": 0,
+          "invocation_us": 0.0,
+          "c2c_hop_us": 0.35,
+          "effective_operator_startup_us": 0,
+          "invocation_scope": "One whole captured decode DAG, independent of TP and PP.",
+          "status": "Uncalibrated execution-boundary sensitivity assumptions.",
+          "retained_costs": [
+            "Native per-operator compute and SRAM roofline service.",
+            "All data dependencies, resource occupancy and required collectives.",
+            "C2C serialization, propagation and separately specified collective startup."
+          ]
+        },
+        "layout": {
+          "a_device": "groq_lp30",
+          "f_device": "groq_lp30",
+          "a_tp": 4,
+          "a_cp": 4,
+          "a_pp": 8,
+          "f_tp": 16,
+          "f_ep": 1,
+          "f_pp": 8,
+          "colocated": true,
+          "a_collective_algorithm": "ring",
+          "f_collective_algorithm": "ring"
+        },
+        "layer_counts": [
+          6,
+          8,
+          9,
+          7,
+          7,
+          10,
+          7,
+          6
+        ],
+        "launch_us": 0,
+        "kv_settings": {
+          "kv_parallel_layers": "full_attention",
+          "kv_append_block": 64
+        }
+      },
+      "tps": [
+        5728.7921052261945,
+        5531.724895091538,
+        4151.61287038899
+      ],
+      "memory": {
+        "maximum_context": 102000,
+        "peak_rank": {
+          "physical": "search-a:80",
+          "capacity_bytes": 500000000,
+          "weights_bytes": 321361408,
+          "buffers_bytes": 9151316,
+          "buffer_breakdown": {
+            "communication_workspace": 1048576,
+            "colocated_dense_residual": 10752,
+            "lp30_live_scratch": 2656256,
+            "lp30_unallocated_reserve": 5000000,
+            "lp30_auxiliary_weights": 435732
+          },
+          "kv_bytes": 30867456,
+          "total_bytes": 361380180
+        },
+        "minimum_headroom_bytes": 138619820,
+        "ranks": 128,
+        "scope": "Weights, protocol buffers, LP30 live scratch/reserve and one resident KV lease."
+      }
+    },
+    "kvp4-contiguous": {
+      "parameters": {
+        "case": "kvp4-contiguous",
+        "config": {
+          "operator": {
+            "activation_dtype": "bf16",
+            "vector_ops_per_s": 20000000000000.0,
+            "exp_ops_per_s": 1000000000000.0,
+            "shuffle_bytes_per_s": 10000000000000.0,
+            "vector_efficiency": 0.5,
+            "shuffle_efficiency": 0.8,
+            "vector_bytes": 320,
+            "attention_tile_keys": 256,
+            "fill_drain_us": 0.05,
+            "schedule": "tiled"
+          },
+          "memory": {
+            "prefill_chunk": 16,
+            "maximum_context": 102000,
+            "attention_tile_keys": 256,
+            "tile_buffers": 2,
+            "reserve_bytes": 5000000
+          },
+          "fabric": {
+            "local_chips": 16,
+            "middle_chips": 128,
+            "local_us": 0.35,
+            "middle_us": 0.75,
+            "rack_us": 1.15,
+            "ports_per_chip": 96,
+            "lanes_per_peer": 6,
+            "p2p_lanes": 6,
+            "lane_bytes_per_s": 14000000000.0,
+            "injection_bytes_per_s": 1250000000000.0,
+            "efficiency": 1.0,
+            "reduction_ops_per_s": 10000000000000.0,
+            "routes": []
+          },
+          "token_units": {
+            "native_per_aa_input": 1.0,
+            "native_per_aa_output": 1.0,
+            "source": "Unmeasured identity assumption; no representative AA text corpus or downloaded Gemma tokenizer is bundled.",
+            "measured": false,
+            "corpus_sha256": null,
+            "tokenizer": null,
+            "revision": null
+          },
+          "compute": {
+            "gemm_mfu": 0.3,
+            "attention_mfu": 0.1,
+            "memory_efficiency": 0.9
+          },
+          "description": "Illustrative public-mechanism accounting; unknown LP30 unit rates, routes and scratch policy remain sensitivity assumptions."
+        },
+        "execution": {
+          "mode": "compiled",
+          "kernel_launch_us": 0.2,
+          "instruction_floor_us": 0,
+          "invocation_us": 0.0,
+          "c2c_hop_us": 0.35,
+          "effective_operator_startup_us": 0,
+          "invocation_scope": "One whole captured decode DAG, independent of TP and PP.",
+          "status": "Uncalibrated execution-boundary sensitivity assumptions.",
+          "retained_costs": [
+            "Native per-operator compute and SRAM roofline service.",
+            "All data dependencies, resource occupancy and required collectives.",
+            "C2C serialization, propagation and separately specified collective startup."
+          ]
+        },
+        "layout": {
+          "a_device": "groq_lp30",
+          "f_device": "groq_lp30",
+          "a_tp": 4,
+          "a_cp": 4,
+          "a_pp": 8,
+          "f_tp": 16,
+          "f_ep": 1,
+          "f_pp": 8,
+          "colocated": true,
+          "a_collective_algorithm": "ring",
+          "f_collective_algorithm": "ring"
+        },
+        "layer_counts": [
+          6,
+          8,
+          9,
+          7,
+          7,
+          10,
+          7,
+          6
+        ],
+        "launch_us": 0,
+        "kv_settings": {
+          "kv_parallel_layers": "full_attention",
+          "kv_append_block": 25500
+        }
+      },
+      "tps": [
+        5632.836607637402,
+        4945.849934179394,
+        4141.257339812708
+      ],
+      "memory": {
+        "maximum_context": 102000,
+        "peak_rank": {
+          "physical": "search-a:80",
+          "capacity_bytes": 500000000,
+          "weights_bytes": 321361408,
+          "buffers_bytes": 9151316,
+          "buffer_breakdown": {
+            "communication_workspace": 1048576,
+            "colocated_dense_residual": 10752,
+            "lp30_live_scratch": 2656256,
+            "lp30_unallocated_reserve": 5000000,
+            "lp30_auxiliary_weights": 435732
+          },
+          "kv_bytes": 30830592,
+          "total_bytes": 361343316
+        },
+        "minimum_headroom_bytes": 138656684,
+        "ranks": 128,
+        "scope": "Weights, protocol buffers, LP30 live scratch/reserve and one resident KV lease."
+      }
+    },
+    "kvp4-launch0.5": {
+      "parameters": {
+        "case": "kvp4-launch0.5",
+        "config": {
+          "operator": {
+            "activation_dtype": "bf16",
+            "vector_ops_per_s": 20000000000000.0,
+            "exp_ops_per_s": 1000000000000.0,
+            "shuffle_bytes_per_s": 10000000000000.0,
+            "vector_efficiency": 0.5,
+            "shuffle_efficiency": 0.8,
+            "vector_bytes": 320,
+            "attention_tile_keys": 256,
+            "fill_drain_us": 0.05,
+            "schedule": "tiled"
+          },
+          "memory": {
+            "prefill_chunk": 16,
+            "maximum_context": 102000,
+            "attention_tile_keys": 256,
+            "tile_buffers": 2,
+            "reserve_bytes": 5000000
+          },
+          "fabric": {
+            "local_chips": 16,
+            "middle_chips": 128,
+            "local_us": 0.35,
+            "middle_us": 0.75,
+            "rack_us": 1.15,
+            "ports_per_chip": 96,
+            "lanes_per_peer": 6,
+            "p2p_lanes": 6,
+            "lane_bytes_per_s": 14000000000.0,
+            "injection_bytes_per_s": 1250000000000.0,
+            "efficiency": 1.0,
+            "reduction_ops_per_s": 10000000000000.0,
+            "routes": []
+          },
+          "token_units": {
+            "native_per_aa_input": 1.0,
+            "native_per_aa_output": 1.0,
+            "source": "Unmeasured identity assumption; no representative AA text corpus or downloaded Gemma tokenizer is bundled.",
+            "measured": false,
+            "corpus_sha256": null,
+            "tokenizer": null,
+            "revision": null
+          },
+          "compute": {
+            "gemm_mfu": 0.3,
+            "attention_mfu": 0.1,
+            "memory_efficiency": 0.9
+          },
+          "description": "Illustrative public-mechanism accounting; unknown LP30 unit rates, routes and scratch policy remain sensitivity assumptions."
+        },
+        "execution": {
+          "mode": "compiled",
+          "kernel_launch_us": 0.2,
+          "instruction_floor_us": 0,
+          "invocation_us": 0.0,
+          "c2c_hop_us": 0.35,
+          "effective_operator_startup_us": 0,
+          "invocation_scope": "One whole captured decode DAG, independent of TP and PP.",
+          "status": "Uncalibrated execution-boundary sensitivity assumptions.",
+          "retained_costs": [
+            "Native per-operator compute and SRAM roofline service.",
+            "All data dependencies, resource occupancy and required collectives.",
+            "C2C serialization, propagation and separately specified collective startup."
+          ]
+        },
+        "layout": {
+          "a_device": "groq_lp30",
+          "f_device": "groq_lp30",
+          "a_tp": 4,
+          "a_cp": 4,
+          "a_pp": 8,
+          "f_tp": 16,
+          "f_ep": 1,
+          "f_pp": 8,
+          "colocated": true,
+          "a_collective_algorithm": "ring",
+          "f_collective_algorithm": "ring"
+        },
+        "layer_counts": [
+          6,
+          8,
+          9,
+          7,
+          7,
+          10,
+          7,
+          6
+        ],
+        "launch_us": 0.5,
+        "kv_settings": {
+          "kv_parallel_layers": "full_attention",
+          "kv_append_block": 16
+        }
+      },
+      "tps": [
+        4222.1957637543055,
+        4114.02735427081,
+        3298.4873704375686
+      ],
+      "memory": {
+        "maximum_context": 102000,
+        "peak_rank": {
+          "physical": "search-a:80",
+          "capacity_bytes": 500000000,
+          "weights_bytes": 321361408,
+          "buffers_bytes": 9151316,
+          "buffer_breakdown": {
+            "communication_workspace": 1048576,
+            "colocated_dense_residual": 10752,
+            "lp30_live_scratch": 2656256,
+            "lp30_unallocated_reserve": 5000000,
+            "lp30_auxiliary_weights": 435732
+          },
+          "kv_bytes": 30834688,
+          "total_bytes": 361347412
+        },
+        "minimum_headroom_bytes": 138652588,
+        "ranks": 128,
+        "scope": "Weights, protocol buffers, LP30 live scratch/reserve and one resident KV lease."
+      }
+    },
+    "kvp4-local0.7": {
+      "parameters": {
+        "case": "kvp4-local0.7",
+        "config": {
+          "operator": {
+            "activation_dtype": "bf16",
+            "vector_ops_per_s": 20000000000000.0,
+            "exp_ops_per_s": 1000000000000.0,
+            "shuffle_bytes_per_s": 10000000000000.0,
+            "vector_efficiency": 0.5,
+            "shuffle_efficiency": 0.8,
+            "vector_bytes": 320,
+            "attention_tile_keys": 256,
+            "fill_drain_us": 0.05,
+            "schedule": "tiled"
+          },
+          "memory": {
+            "prefill_chunk": 16,
+            "maximum_context": 102000,
+            "attention_tile_keys": 256,
+            "tile_buffers": 2,
+            "reserve_bytes": 5000000
+          },
+          "fabric": {
+            "local_chips": 16,
+            "middle_chips": 128,
+            "local_us": 0.7,
+            "middle_us": 0.75,
+            "rack_us": 1.15,
+            "ports_per_chip": 96,
+            "lanes_per_peer": 6,
+            "p2p_lanes": 6,
+            "lane_bytes_per_s": 14000000000.0,
+            "injection_bytes_per_s": 1250000000000.0,
+            "efficiency": 1.0,
+            "reduction_ops_per_s": 10000000000000.0,
+            "routes": []
+          },
+          "token_units": {
+            "native_per_aa_input": 1.0,
+            "native_per_aa_output": 1.0,
+            "source": "Unmeasured identity assumption; no representative AA text corpus or downloaded Gemma tokenizer is bundled.",
+            "measured": false,
+            "corpus_sha256": null,
+            "tokenizer": null,
+            "revision": null
+          },
+          "compute": {
+            "gemm_mfu": 0.3,
+            "attention_mfu": 0.1,
+            "memory_efficiency": 0.9
+          },
+          "description": "Illustrative public-mechanism accounting; unknown LP30 unit rates, routes and scratch policy remain sensitivity assumptions."
+        },
+        "execution": {
+          "mode": "compiled",
+          "kernel_launch_us": 0.2,
+          "instruction_floor_us": 0,
+          "invocation_us": 0.0,
+          "c2c_hop_us": 0.35,
+          "effective_operator_startup_us": 0,
+          "invocation_scope": "One whole captured decode DAG, independent of TP and PP.",
+          "status": "Uncalibrated execution-boundary sensitivity assumptions.",
+          "retained_costs": [
+            "Native per-operator compute and SRAM roofline service.",
+            "All data dependencies, resource occupancy and required collectives.",
+            "C2C serialization, propagation and separately specified collective startup."
+          ]
+        },
+        "layout": {
+          "a_device": "groq_lp30",
+          "f_device": "groq_lp30",
+          "a_tp": 4,
+          "a_cp": 4,
+          "a_pp": 8,
+          "f_tp": 16,
+          "f_ep": 1,
+          "f_pp": 8,
+          "colocated": true,
+          "a_collective_algorithm": "ring",
+          "f_collective_algorithm": "ring"
+        },
+        "layer_counts": [
+          6,
+          8,
+          9,
+          7,
+          7,
+          10,
+          7,
+          6
+        ],
+        "launch_us": 0,
+        "kv_settings": {
+          "kv_parallel_layers": "full_attention",
+          "kv_append_block": 16
+        }
+      },
+      "tps": [
+        3801.6052759119284,
+        3713.6893613293714,
+        3036.076626243194
+      ],
+      "memory": {
+        "maximum_context": 102000,
+        "peak_rank": {
+          "physical": "search-a:80",
+          "capacity_bytes": 500000000,
+          "weights_bytes": 321361408,
+          "buffers_bytes": 9151316,
+          "buffer_breakdown": {
+            "communication_workspace": 1048576,
+            "colocated_dense_residual": 10752,
+            "lp30_live_scratch": 2656256,
+            "lp30_unallocated_reserve": 5000000,
+            "lp30_auxiliary_weights": 435732
+          },
+          "kv_bytes": 30834688,
+          "total_bytes": 361347412
+        },
+        "minimum_headroom_bytes": 138652588,
+        "ranks": 128,
+        "scope": "Weights, protocol buffers, LP30 live scratch/reserve and one resident KV lease."
+      }
+    },
+    "kvp8-pp6": {
+      "parameters": {
+        "case": "kvp8-pp6",
+        "config": {
+          "operator": {
+            "activation_dtype": "bf16",
+            "vector_ops_per_s": 20000000000000.0,
+            "exp_ops_per_s": 1000000000000.0,
+            "shuffle_bytes_per_s": 10000000000000.0,
+            "vector_efficiency": 0.5,
+            "shuffle_efficiency": 0.8,
+            "vector_bytes": 320,
+            "attention_tile_keys": 256,
+            "fill_drain_us": 0.05,
+            "schedule": "tiled"
+          },
+          "memory": {
+            "prefill_chunk": 16,
+            "maximum_context": 102000,
+            "attention_tile_keys": 256,
+            "tile_buffers": 2,
+            "reserve_bytes": 5000000
+          },
+          "fabric": {
+            "local_chips": 16,
+            "middle_chips": 128,
+            "local_us": 0.35,
+            "middle_us": 0.75,
+            "rack_us": 1.15,
+            "ports_per_chip": 96,
+            "lanes_per_peer": 6,
+            "p2p_lanes": 6,
+            "lane_bytes_per_s": 14000000000.0,
+            "injection_bytes_per_s": 1250000000000.0,
+            "efficiency": 1.0,
+            "reduction_ops_per_s": 10000000000000.0,
+            "routes": []
+          },
+          "token_units": {
+            "native_per_aa_input": 1.0,
+            "native_per_aa_output": 1.0,
+            "source": "Unmeasured identity assumption; no representative AA text corpus or downloaded Gemma tokenizer is bundled.",
+            "measured": false,
+            "corpus_sha256": null,
+            "tokenizer": null,
+            "revision": null
+          },
+          "compute": {
+            "gemm_mfu": 0.3,
+            "attention_mfu": 0.1,
+            "memory_efficiency": 0.9
+          },
+          "description": "Illustrative public-mechanism accounting; unknown LP30 unit rates, routes and scratch policy remain sensitivity assumptions."
+        },
+        "execution": {
+          "mode": "compiled",
+          "kernel_launch_us": 0.2,
+          "instruction_floor_us": 0,
+          "invocation_us": 0.0,
+          "c2c_hop_us": 0.35,
+          "effective_operator_startup_us": 0,
+          "invocation_scope": "One whole captured decode DAG, independent of TP and PP.",
+          "status": "Uncalibrated execution-boundary sensitivity assumptions.",
+          "retained_costs": [
+            "Native per-operator compute and SRAM roofline service.",
+            "All data dependencies, resource occupancy and required collectives.",
+            "C2C serialization, propagation and separately specified collective startup."
+          ]
+        },
+        "layout": {
+          "a_device": "groq_lp30",
+          "f_device": "groq_lp30",
+          "a_tp": 2,
+          "a_cp": 8,
+          "a_pp": 6,
+          "f_tp": 16,
+          "f_ep": 1,
+          "f_pp": 6,
+          "colocated": true,
+          "a_collective_algorithm": "ring",
+          "f_collective_algorithm": "ring"
+        },
+        "layer_counts": [
+          10,
+          10,
+          10,
+          11,
+          11,
+          8
+        ],
+        "launch_us": 0,
+        "kv_settings": {
+          "kv_parallel_layers": "full_attention",
+          "kv_append_block": 16
+        }
+      },
+      "tps": [
+        5716.557653101993,
+        5518.6164369349635,
+        4143.383901834648
+      ],
+      "memory": {
+        "maximum_context": 102000,
+        "peak_rank": {
+          "physical": "search-a:64",
+          "capacity_bytes": 500000000,
+          "weights_bytes": 422861312,
+          "buffers_bytes": 11851606,
+          "buffer_breakdown": {
+            "communication_workspace": 1048576,
+            "colocated_dense_residual": 10752,
+            "lp30_live_scratch": 5312512,
+            "lp30_unallocated_reserve": 5000000,
+            "lp30_auxiliary_weights": 479766
+          },
+          "kv_bytes": 56950784,
+          "total_bytes": 491663702
+        },
+        "minimum_headroom_bytes": 8336298,
+        "ranks": 96,
+        "scope": "Weights, protocol buffers, LP30 live scratch/reserve and one resident KV lease."
+      }
+    }
+  },
+  "minimum_stages": [
+    {
+      "tp": 8,
+      "kvp": 1,
+      "minimum_pp": 11,
+      "minimum_lp30": 88,
+      "partition": {
+        "layer_counts": [
+          4,
+          5,
+          6,
+          6,
+          6,
+          6,
+          6,
+          6,
+          6,
+          6,
+          3
+        ],
+        "kv_watermark": 0.01,
+        "peak_capacity_fraction": 0.975438488,
+        "stage_rank_bytes": [
+          [
+            429215560,
+            429215560,
+            429215560,
+            429215560,
+            429215560,
+            429215560,
+            429215560,
+            429215560
+          ],
+          [
+            426792266,
+            426792266,
+            426792266,
+            426792266,
+            426792266,
+            426792266,
+            426792266,
+            426792266
+          ],
+          [
+            487719244,
+            487719244,
+            487719244,
+            487719244,
+            487719244,
+            487719244,
+            487719244,
+            487719244
+          ],
+          [
+            487719244,
+            487719244,
+            487719244,
+            487719244,
+            487719244,
+            487719244,
+            487719244,
+            487719244
+          ],
+          [
+            487719244,
+            487719244,
+            487719244,
+            487719244,
+            487719244,
+            487719244,
+            487719244,
+            487719244
+          ],
+          [
+            487719244,
+            487719244,
+            487719244,
+            487719244,
+            487719244,
+            487719244,
+            487719244,
+            487719244
+          ],
+          [
+            487719244,
+            487719244,
+            487719244,
+            487719244,
+            487719244,
+            487719244,
+            487719244,
+            487719244
+          ],
+          [
+            487719244,
+            487719244,
+            487719244,
+            487719244,
+            487719244,
+            487719244,
+            487719244,
+            487719244
+          ],
+          [
+            487719244,
+            487719244,
+            487719244,
+            487719244,
+            487719244,
+            487719244,
+            487719244,
+            487719244
+          ],
+          [
+            487719244,
+            487719244,
+            487719244,
+            487719244,
+            487719244,
+            487719244,
+            487719244,
+            487719244
+          ],
+          [
+            480962374,
+            480962374,
+            480962374,
+            480962374,
+            480962374,
+            480962374,
+            480962374,
+            480962374
+          ]
+        ]
+      }
+    },
+    {
+      "tp": 8,
+      "kvp": 2,
+      "minimum_pp": 11,
+      "minimum_lp30": 88,
+      "partition": {
+        "layer_counts": [
+          4,
+          5,
+          6,
+          6,
+          6,
+          6,
+          6,
+          6,
+          6,
+          6,
+          3
+        ],
+        "kv_watermark": 0.01,
+        "peak_capacity_fraction": 0.891945624,
+        "stage_rank_bytes": [
+          [
+            429215560,
+            429215560,
+            429215560,
+            429215560,
+            429215560,
+            429215560,
+            429215560,
+            429215560
+          ],
+          [
+            385021258,
+            385021258,
+            385021258,
+            385021258,
+            385021258,
+            385021258,
+            385021258,
+            385021258
+          ],
+          [
+            445972812,
+            445972812,
+            445972812,
+            445972812,
+            445972812,
+            445972812,
+            445972812,
+            445972812
+          ],
+          [
+            445972812,
+            445972812,
+            445972812,
+            445972812,
+            445972812,
+            445972812,
+            445972812,
+            445972812
+          ],
+          [
+            445972812,
+            445972812,
+            445972812,
+            445972812,
+            445972812,
+            445972812,
+            445972812,
+            445972812
+          ],
+          [
+            445972812,
+            445972812,
+            445972812,
+            445972812,
+            445972812,
+            445972812,
+            445972812,
+            445972812
+          ],
+          [
+            445972812,
+            445972812,
+            445972812,
+            445972812,
+            445972812,
+            445972812,
+            445972812,
+            445972812
+          ],
+          [
+            445972812,
+            445972812,
+            445972812,
+            445972812,
+            445972812,
+            445972812,
+            445972812,
+            445972812
+          ],
+          [
+            445972812,
+            445972812,
+            445972812,
+            445972812,
+            445972812,
+            445972812,
+            445972812,
+            445972812
+          ],
+          [
+            445972812,
+            445972812,
+            445972812,
+            445972812,
+            445972812,
+            445972812,
+            445972812,
+            445972812
+          ],
+          [
+            439265094,
+            439224134,
+            439265094,
+            439224134,
+            439265094,
+            439224134,
+            439265094,
+            439224134
+          ]
+        ]
+      }
+    },
+    {
+      "tp": 8,
+      "kvp": 4,
+      "minimum_pp": 11,
+      "minimum_lp30": 88,
+      "partition": {
+        "layer_counts": [
+          4,
+          5,
+          6,
+          6,
+          6,
+          6,
+          6,
+          6,
+          6,
+          6,
+          3
+        ],
+        "kv_watermark": 0.01,
+        "peak_capacity_fraction": 0.945824408,
+        "stage_rank_bytes": [
+          [
+            431382344,
+            431382344,
+            431382344,
+            431382344,
+            431382344,
+            431382344,
+            431382344,
+            431382344
+          ],
+          [
+            411960650,
+            411960650,
+            411960650,
+            411886922,
+            411960650,
+            411960650,
+            411960650,
+            411886922
+          ],
+          [
+            472912204,
+            472912204,
+            472912204,
+            472912204,
+            472912204,
+            472912204,
+            472912204,
+            472912204
+          ],
+          [
+            472912204,
+            472912204,
+            472912204,
+            472912204,
+            472912204,
+            472912204,
+            472912204,
+            472912204
+          ],
+          [
+            472912204,
+            472912204,
+            472912204,
+            472912204,
+            472912204,
+            472912204,
+            472912204,
+            472912204
+          ],
+          [
+            472912204,
+            472912204,
+            472912204,
+            472912204,
+            472912204,
+            472912204,
+            472912204,
+            472912204
+          ],
+          [
+            472912204,
+            472912204,
+            472912204,
+            472912204,
+            472912204,
+            472912204,
+            472912204,
+            472912204
+          ],
+          [
+            472912204,
+            472912204,
+            472912204,
+            472912204,
+            472912204,
+            472912204,
+            472912204,
+            472912204
+          ],
+          [
+            472912204,
+            472912204,
+            472912204,
+            472912204,
+            472912204,
+            472912204,
+            472912204,
+            472912204
+          ],
+          [
+            472912204,
+            472912204,
+            472912204,
+            472912204,
+            472912204,
+            472912204,
+            472912204,
+            472912204
+          ],
+          [
+            466204486,
+            466204486,
+            466204486,
+            466163526,
+            466204486,
+            466204486,
+            466204486,
+            466163526
+          ]
+        ]
+      }
+    },
+    {
+      "tp": 8,
+      "kvp": 8,
+      "minimum_pp": 13,
+      "minimum_lp30": 104,
+      "partition": {
+        "layer_counts": [
+          4,
+          4,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          5,
+          2
+        ],
+        "kv_watermark": 0.01,
+        "peak_capacity_fraction": 0.933636756,
+        "stage_rank_bytes": [
+          [
+            436694856,
+            436694856,
+            436694856,
+            436694856,
+            436694856,
+            436694856,
+            436694856,
+            436694856
+          ],
+          [
+            405825864,
+            405825864,
+            405825864,
+            405825864,
+            405825864,
+            405825864,
+            405825864,
+            405768520
+          ],
+          [
+            466818378,
+            466818378,
+            466818378,
+            466818378,
+            466818378,
+            466818378,
+            466818378,
+            466744650
+          ],
+          [
+            466818378,
+            466818378,
+            466818378,
+            466818378,
+            466818378,
+            466818378,
+            466818378,
+            466744650
+          ],
+          [
+            321483082,
+            321483082,
+            321483082,
+            321483082,
+            321483082,
+            321483082,
+            321483082,
+            321483082
+          ],
+          [
+            466818378,
+            466818378,
+            466818378,
+            466818378,
+            466818378,
+            466818378,
+            466818378,
+            466744650
+          ],
+          [
+            466818378,
+            466818378,
+            466818378,
+            466818378,
+            466818378,
+            466818378,
+            466818378,
+            466744650
+          ],
+          [
+            466818378,
+            466818378,
+            466818378,
+            466818378,
+            466818378,
+            466818378,
+            466818378,
+            466744650
+          ],
+          [
+            466818378,
+            466818378,
+            466818378,
+            466818378,
+            466818378,
+            466818378,
+            466818378,
+            466744650
+          ],
+          [
+            466818378,
+            466818378,
+            466818378,
+            466818378,
+            466818378,
+            466818378,
+            466818378,
+            466744650
+          ],
+          [
+            321483082,
+            321483082,
+            321483082,
+            321483082,
+            321483082,
+            321483082,
+            321483082,
+            321483082
+          ],
+          [
+            466818378,
+            466818378,
+            466818378,
+            466818378,
+            466818378,
+            466818378,
+            466818378,
+            466744650
+          ],
+          [
+            460061508,
+            460061508,
+            460061508,
+            460061508,
+            460061508,
+            460061508,
+            460061508,
+            460012356
+          ]
+        ]
+      }
+    },
+    {
+      "tp": 16,
+      "kvp": 1,
+      "minimum_pp": 8,
+      "minimum_lp30": 128,
+      "partition": {
+        "layer_counts": [
+          6,
+          8,
+          9,
+          7,
+          7,
+          10,
+          7,
+          6
+        ],
+        "kv_watermark": 0.01,
+        "peak_capacity_fraction": 0.884483228,
+        "stage_rank_bytes": [
+          [
+            389409868,
+            389409868,
+            389409868,
+            389409868,
+            389409868,
+            389409868,
+            389409868,
+            389409868,
+            389409868,
+            389409868,
+            389409868,
+            389409868,
+            389409868,
+            389409868,
+            389409868,
+            389409868
+          ],
+          [
+            362314320,
+            362314320,
+            362314320,
+            362314320,
+            362314320,
+            362314320,
+            362314320,
+            362314320,
+            362314320,
+            362314320,
+            362314320,
+            362314320,
+            362314320,
+            362314320,
+            362314320,
+            362314320
+          ],
+          [
+            392873554,
+            392873554,
+            392873554,
+            392873554,
+            392873554,
+            392873554,
+            392873554,
+            392873554,
+            392873554,
+            392873554,
+            392873554,
+            392873554,
+            392873554,
+            392873554,
+            392873554,
+            392873554
+          ],
+          [
+            442241614,
+            442241614,
+            442241614,
+            442241614,
+            442241614,
+            442241614,
+            442241614,
+            442241614,
+            442241614,
+            442241614,
+            442241614,
+            442241614,
+            442241614,
+            442241614,
+            442241614,
+            442241614
+          ],
+          [
+            331804238,
+            331804238,
+            331804238,
+            331804238,
+            331804238,
+            331804238,
+            331804238,
+            331804238,
+            331804238,
+            331804238,
+            331804238,
+            331804238,
+            331804238,
+            331804238,
+            331804238,
+            331804238
+          ],
+          [
+            423375444,
+            423375444,
+            423375444,
+            423375444,
+            423375444,
+            423375444,
+            423375444,
+            423375444,
+            423375444,
+            423375444,
+            423375444,
+            423375444,
+            423375444,
+            423375444,
+            423375444,
+            423375444
+          ],
+          [
+            442241614,
+            442241614,
+            442241614,
+            442241614,
+            442241614,
+            442241614,
+            442241614,
+            442241614,
+            442241614,
+            442241614,
+            442241614,
+            442241614,
+            442241614,
+            442241614,
+            442241614,
+            442241614
+          ],
+          [
+            389409868,
+            389409868,
+            389409868,
+            389409868,
+            389409868,
+            389409868,
+            389409868,
+            389409868,
+            389409868,
+            389409868,
+            389409868,
+            389409868,
+            389409868,
+            389409868,
+            389409868,
+            389409868
+          ]
+        ]
+      }
+    },
+    {
+      "tp": 16,
+      "kvp": 2,
+      "minimum_pp": 6,
+      "minimum_lp30": 96,
+      "partition": {
+        "layer_counts": [
+          10,
+          10,
+          10,
+          11,
+          11,
+          8
+        ],
+        "kv_watermark": 0.01,
+        "peak_capacity_fraction": 0.940526252,
+        "stage_rank_bytes": [
+          [
+            464658260,
+            464576340,
+            464658260,
+            464576340,
+            464658260,
+            464576340,
+            464658260,
+            464576340,
+            464658260,
+            464576340,
+            464658260,
+            464576340,
+            464658260,
+            464576340,
+            464658260,
+            464576340
+          ],
+          [
+            439761236,
+            439679316,
+            439761236,
+            439679316,
+            439761236,
+            439679316,
+            439761236,
+            439679316,
+            439761236,
+            439679316,
+            439761236,
+            439679316,
+            439761236,
+            439679316,
+            439761236,
+            439679316
+          ],
+          [
+            439761236,
+            439679316,
+            439761236,
+            439679316,
+            439761236,
+            439679316,
+            439761236,
+            439679316,
+            439761236,
+            439679316,
+            439761236,
+            439679316,
+            439761236,
+            439679316,
+            439761236,
+            439679316
+          ],
+          [
+            406987094,
+            406987094,
+            406987094,
+            406987094,
+            406987094,
+            406987094,
+            406987094,
+            406987094,
+            406987094,
+            406987094,
+            406987094,
+            406987094,
+            406987094,
+            406987094,
+            406987094,
+            406987094
+          ],
+          [
+            470263126,
+            470263126,
+            470263126,
+            470263126,
+            470263126,
+            470263126,
+            470263126,
+            470263126,
+            470263126,
+            470263126,
+            470263126,
+            470263126,
+            470263126,
+            470263126,
+            470263126,
+            470263126
+          ],
+          [
+            466783056,
+            466783056,
+            466783056,
+            466783056,
+            466783056,
+            466783056,
+            466783056,
+            466783056,
+            466783056,
+            466783056,
+            466783056,
+            466783056,
+            466783056,
+            466783056,
+            466783056,
+            466783056
+          ]
+        ]
+      }
+    },
+    {
+      "tp": 16,
+      "kvp": 4,
+      "minimum_pp": 6,
+      "minimum_lp30": 96,
+      "partition": {
+        "layer_counts": [
+          9,
+          10,
+          11,
+          11,
+          11,
+          8
+        ],
+        "kv_watermark": 0.01,
+        "peak_capacity_fraction": 0.880202412,
+        "stage_rank_bytes": [
+          [
+            419264338,
+            419264338,
+            419264338,
+            419264338,
+            419264338,
+            419264338,
+            419264338,
+            419264338,
+            419264338,
+            419264338,
+            419264338,
+            419264338,
+            419264338,
+            419264338,
+            419264338,
+            419264338
+          ],
+          [
+            409525588,
+            409525588,
+            409525588,
+            409451860,
+            409525588,
+            409525588,
+            409525588,
+            409451860,
+            409525588,
+            409525588,
+            409525588,
+            409451860,
+            409525588,
+            409525588,
+            409525588,
+            409451860
+          ],
+          [
+            440101206,
+            440101206,
+            440101206,
+            440019286,
+            440101206,
+            440101206,
+            440101206,
+            440019286,
+            440101206,
+            440101206,
+            440101206,
+            440019286,
+            440101206,
+            440101206,
+            440101206,
+            440019286
+          ],
+          [
+            392144214,
+            392144214,
+            392144214,
+            392144214,
+            392144214,
+            392144214,
+            392144214,
+            392144214,
+            392144214,
+            392144214,
+            392144214,
+            392144214,
+            392144214,
+            392144214,
+            392144214,
+            392144214
+          ],
+          [
+            440101206,
+            440101206,
+            440101206,
+            440019286,
+            440101206,
+            440101206,
+            440101206,
+            440019286,
+            440101206,
+            440101206,
+            440101206,
+            440019286,
+            440101206,
+            440101206,
+            440101206,
+            440019286
+          ],
+          [
+            436580176,
+            436580176,
+            436580176,
+            436580176,
+            436580176,
+            436580176,
+            436580176,
+            436580176,
+            436580176,
+            436580176,
+            436580176,
+            436580176,
+            436580176,
+            436580176,
+            436580176,
+            436580176
+          ]
+        ]
+      }
+    },
+    {
+      "tp": 16,
+      "kvp": 8,
+      "minimum_pp": 6,
+      "minimum_lp30": 96,
+      "partition": {
+        "layer_counts": [
+          10,
+          10,
+          10,
+          11,
+          11,
+          8
+        ],
+        "kv_watermark": 0.01,
+        "peak_capacity_fraction": 0.984605356,
+        "stage_rank_bytes": [
+          [
+            477240148,
+            477240148,
+            477240148,
+            477240148,
+            477240148,
+            477240148,
+            477240148,
+            477084500,
+            477240148,
+            477240148,
+            477240148,
+            477240148,
+            477240148,
+            477240148,
+            477240148,
+            477084500
+          ],
+          [
+            461727060,
+            461727060,
+            461727060,
+            461727060,
+            461727060,
+            461727060,
+            461727060,
+            461653332,
+            461727060,
+            461727060,
+            461727060,
+            461727060,
+            461727060,
+            461727060,
+            461727060,
+            461653332
+          ],
+          [
+            461727060,
+            461727060,
+            461727060,
+            461727060,
+            461727060,
+            461727060,
+            461727060,
+            461653332,
+            461727060,
+            461727060,
+            461727060,
+            461727060,
+            461727060,
+            461727060,
+            461727060,
+            461653332
+          ],
+          [
+            419573078,
+            419573078,
+            419573078,
+            419573078,
+            419573078,
+            419573078,
+            419573078,
+            419573078,
+            419573078,
+            419573078,
+            419573078,
+            419573078,
+            419573078,
+            419573078,
+            419573078,
+            419573078
+          ],
+          [
+            492302678,
+            492302678,
+            492302678,
+            492302678,
+            492302678,
+            492302678,
+            492302678,
+            492220758,
+            492302678,
+            492302678,
+            492302678,
+            492302678,
+            492302678,
+            492302678,
+            492302678,
+            492220758
+          ],
+          [
+            488781648,
+            488781648,
+            488781648,
+            488781648,
+            488781648,
+            488781648,
+            488781648,
+            488724304,
+            488781648,
+            488781648,
+            488781648,
+            488781648,
+            488781648,
+            488781648,
+            488781648,
+            488724304
+          ]
+        ]
+      }
+    },
+    {
+      "tp": 32,
+      "kvp": 1,
+      "minimum_pp": 5,
+      "minimum_lp30": 160,
+      "partition": {
+        "layer_counts": [
+          12,
+          12,
+          12,
+          12,
+          12
+        ],
+        "kv_watermark": 0.01,
+        "peak_capacity_fraction": 0.940470192,
+        "stage_rank_bytes": [
+          [
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096
+          ],
+          [
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152
+          ],
+          [
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152
+          ],
+          [
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152,
+            426184152
+          ],
+          [
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096,
+            470235096
+          ]
+        ]
+      }
+    },
+    {
+      "tp": 32,
+      "kvp": 2,
+      "minimum_pp": 4,
+      "minimum_lp30": 128,
+      "partition": {
+        "layer_counts": [
+          15,
+          15,
+          17,
+          13
+        ],
+        "kv_watermark": 0.01,
+        "peak_capacity_fraction": 0.890213044,
+        "stage_rank_bytes": [
+          [
+            421231966,
+            421231966,
+            421231966,
+            421231966,
+            421231966,
+            421231966,
+            421231966,
+            421231966,
+            421231966,
+            421231966,
+            421231966,
+            421231966,
+            421231966,
+            421231966,
+            421231966,
+            421231966,
+            421231966,
+            421231966,
+            421231966,
+            421231966,
+            421231966,
+            421231966,
+            421231966,
+            421231966,
+            421231966,
+            421231966,
+            421231966,
+            421231966,
+            421231966,
+            421231966,
+            421231966,
+            421231966
+          ],
+          [
+            434911070,
+            434788190,
+            434911070,
+            434788190,
+            434911070,
+            434788190,
+            434911070,
+            434788190,
+            434911070,
+            434788190,
+            434911070,
+            434788190,
+            434911070,
+            434788190,
+            434911070,
+            434788190,
+            434911070,
+            434788190,
+            434911070,
+            434788190,
+            434911070,
+            434788190,
+            434911070,
+            434788190,
+            434911070,
+            434788190,
+            434911070,
+            434788190,
+            434911070,
+            434788190,
+            434911070,
+            434788190
+          ],
+          [
+            411020130,
+            411020130,
+            411020130,
+            411020130,
+            411020130,
+            411020130,
+            411020130,
+            411020130,
+            411020130,
+            411020130,
+            411020130,
+            411020130,
+            411020130,
+            411020130,
+            411020130,
+            411020130,
+            411020130,
+            411020130,
+            411020130,
+            411020130,
+            411020130,
+            411020130,
+            411020130,
+            411020130,
+            411020130,
+            411020130,
+            411020130,
+            411020130,
+            411020130,
+            411020130,
+            411020130,
+            411020130
+          ],
+          [
+            445106522,
+            445106522,
+            445106522,
+            445106522,
+            445106522,
+            445106522,
+            445106522,
+            445106522,
+            445106522,
+            445106522,
+            445106522,
+            445106522,
+            445106522,
+            445106522,
+            445106522,
+            445106522,
+            445106522,
+            445106522,
+            445106522,
+            445106522,
+            445106522,
+            445106522,
+            445106522,
+            445106522,
+            445106522,
+            445106522,
+            445106522,
+            445106522,
+            445106522,
+            445106522,
+            445106522,
+            445106522
+          ]
+        ]
+      }
+    },
+    {
+      "tp": 32,
+      "kvp": 4,
+      "minimum_pp": 4,
+      "minimum_lp30": 128,
+      "partition": {
+        "layer_counts": [
+          15,
+          15,
+          17,
+          13
+        ],
+        "kv_watermark": 0.01,
+        "peak_capacity_fraction": 0.765433524,
+        "stage_rank_bytes": [
+          [
+            379707230,
+            379707230,
+            379707230,
+            379707230,
+            379707230,
+            379707230,
+            379707230,
+            379707230,
+            379707230,
+            379707230,
+            379707230,
+            379707230,
+            379707230,
+            379707230,
+            379707230,
+            379707230,
+            379707230,
+            379707230,
+            379707230,
+            379707230,
+            379707230,
+            379707230,
+            379707230,
+            379707230,
+            379707230,
+            379707230,
+            379707230,
+            379707230,
+            379707230,
+            379707230,
+            379707230,
+            379707230
+          ],
+          [
+            372517214,
+            372517214,
+            372517214,
+            372406622,
+            372517214,
+            372517214,
+            372517214,
+            372406622,
+            372517214,
+            372517214,
+            372517214,
+            372406622,
+            372517214,
+            372517214,
+            372517214,
+            372406622,
+            372517214,
+            372517214,
+            372517214,
+            372406622,
+            372517214,
+            372517214,
+            372517214,
+            372406622,
+            372517214,
+            372517214,
+            372517214,
+            372406622,
+            372517214,
+            372517214,
+            372517214,
+            372406622
+          ],
+          [
+            369479010,
+            369479010,
+            369479010,
+            369479010,
+            369479010,
+            369479010,
+            369479010,
+            369479010,
+            369479010,
+            369479010,
+            369479010,
+            369479010,
+            369479010,
+            369479010,
+            369479010,
+            369479010,
+            369479010,
+            369479010,
+            369479010,
+            369479010,
+            369479010,
+            369479010,
+            369479010,
+            369479010,
+            369479010,
+            369479010,
+            369479010,
+            369479010,
+            369479010,
+            369479010,
+            369479010,
+            369479010
+          ],
+          [
+            382716762,
+            382716762,
+            382716762,
+            382622554,
+            382716762,
+            382716762,
+            382716762,
+            382622554,
+            382716762,
+            382716762,
+            382716762,
+            382622554,
+            382716762,
+            382716762,
+            382716762,
+            382622554,
+            382716762,
+            382716762,
+            382716762,
+            382622554,
+            382716762,
+            382716762,
+            382716762,
+            382622554,
+            382716762,
+            382716762,
+            382716762,
+            382622554,
+            382716762,
+            382716762,
+            382716762,
+            382622554
+          ]
+        ]
+      }
+    },
+    {
+      "tp": 32,
+      "kvp": 8,
+      "minimum_pp": 4,
+      "minimum_lp30": 128,
+      "partition": {
+        "layer_counts": [
+          15,
+          15,
+          17,
+          13
+        ],
+        "kv_watermark": 0.01,
+        "peak_capacity_fraction": 0.75354898,
+        "stage_rank_bytes": [
+          [
+            375903070,
+            375903070,
+            375903070,
+            375903070,
+            375903070,
+            375903070,
+            375903070,
+            375903070,
+            375903070,
+            375903070,
+            375903070,
+            375903070,
+            375903070,
+            375903070,
+            375903070,
+            375903070,
+            375903070,
+            375903070,
+            375903070,
+            375903070,
+            375903070,
+            375903070,
+            375903070,
+            375903070,
+            375903070,
+            375903070,
+            375903070,
+            375903070,
+            375903070,
+            375903070,
+            375903070,
+            375903070
+          ],
+          [
+            366542174,
+            366542174,
+            366542174,
+            366542174,
+            366542174,
+            366542174,
+            366542174,
+            366437726,
+            366542174,
+            366542174,
+            366542174,
+            366542174,
+            366542174,
+            366542174,
+            366542174,
+            366437726,
+            366542174,
+            366542174,
+            366542174,
+            366542174,
+            366542174,
+            366542174,
+            366542174,
+            366437726,
+            366542174,
+            366542174,
+            366542174,
+            366542174,
+            366542174,
+            366542174,
+            366542174,
+            366437726
+          ],
+          [
+            365621602,
+            365621602,
+            365621602,
+            365621602,
+            365621602,
+            365621602,
+            365621602,
+            365621602,
+            365621602,
+            365621602,
+            365621602,
+            365621602,
+            365621602,
+            365621602,
+            365621602,
+            365621602,
+            365621602,
+            365621602,
+            365621602,
+            365621602,
+            365621602,
+            365621602,
+            365621602,
+            365621602,
+            365621602,
+            365621602,
+            365621602,
+            365621602,
+            365621602,
+            365621602,
+            365621602,
+            365621602
+          ],
+          [
+            376774490,
+            376774490,
+            376774490,
+            376774490,
+            376774490,
+            376774490,
+            376774490,
+            376686426,
+            376774490,
+            376774490,
+            376774490,
+            376774490,
+            376774490,
+            376774490,
+            376774490,
+            376686426,
+            376774490,
+            376774490,
+            376774490,
+            376774490,
+            376774490,
+            376774490,
+            376774490,
+            376686426,
+            376774490,
+            376774490,
+            376774490,
+            376774490,
+            376774490,
+            376774490,
+            376774490,
+            376686426
+          ]
+        ]
+      }
+    }
+  ]
+}

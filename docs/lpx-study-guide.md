@@ -837,3 +837,12 @@ The QPS entry point `scripts/search_lpx_capacity.py` applies the same algorithm 
 
 The [LPX implementation corrections and retests](lpx-model-corrections.md) document three fixes, source limits and retests of 18 formal points with 9,002 full requests.
 The report also retains AA 350 ns mapping controls, native single-step breakdowns and uniform-arrival QPS boundaries; its small fixed-layout grid does not represent the complete Figure 11 frontier.
+
+## October 22, 2026 context-parallel record
+
+The [context-parallel specification and results](lpx-context-parallel.md#results) add Helix-style KV parallelism to colocated LP30 decode and prefill.
+`Layout(a_tp=TPA, a_cp=KVP)` splits each attention stage of `TPA * KVP` ranks, and `scripts/search_lpx_native.py --kvp` searches those layouts.
+On the TP16/PP8 Gemma layout, `KVP = 4` gives 5,730.77, 5,533.30 and 4,152.44 TPS at 1K, 10K and 100K, within 0.5% of the pre-registered expectation.
+The 100K/10K ratio rises from 0.647 to 0.750 and stays below the published 1.0145.
+KV parallelism lowers the memory-feasible TP16 inventory from 128 to 96 chips.
+These results remain conditional on the Helix hypothesis and the uncalibrated LP30 parameters.

@@ -122,6 +122,13 @@ All four conditions use Gemma 4 31B.
 The SPEED-Bench median, P80, and maximum describe one reported sample set and must not count as three independent calibration workloads.
 The Hot Chips example is separate from the benchmark medians and does not establish comparable sustained performance.
 
+The S5 AA chart footnotes identify the measured endpoint as an updated private, pre-release Gemma4-31B-LPX deployment accessed through Google Cloud Private Service Connect.
+S7 labels its 10,996 TPS-per-user coding example with the same Gemma4-31B-LPX name.
+This record adds the name on 2026-10-22 from the 2026-10-21 review of those images.
+The same name appears with approximately 3,400 TPS on AA prompts and 4,767 to 10,996 TPS on coding workloads.
+Speculative decoding would produce such content-dependent speed, but no reviewed source states that the endpoint uses it.
+All repository AA experiments assume no speculative decoding.
+
 The [NVIDIA SPEED-Bench dataset](https://huggingface.co/datasets/nvidia/SPEED-Bench) publishes benchmark inputs and links to its evaluation framework.
 Those resources do not supply the missing LPX-specific serving configuration or per-request performance logs in the material reviewed here.
 A published benchmark input set is distinct from a measured LPX result dataset.

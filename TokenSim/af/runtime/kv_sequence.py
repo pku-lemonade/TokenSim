@@ -51,6 +51,16 @@ def visible_tokens(
     )
 
 
+def busiest_visible_tokens(
+    context: int, window: int | None, kvp_size: int, block: int
+) -> int:
+    """Keys read by the slowest rank of a KVP group, which bounds the step."""
+    return max(
+        visible_tokens(context, window, kvp_size, rank, block)
+        for rank in range(kvp_size)
+    )
+
+
 def peak_resident_tokens(
     maximum_context: int, window: int | None, kvp_size: int, kvp_rank: int, block: int
 ) -> int:
@@ -106,12 +116,16 @@ class AttentionPartition:
         }
 
 
-def layer_selected(model, layer_id: int, kv_parallel_layers: str) -> bool:
+def layer_kv_parallel_size(
+    window: int | None, kv_parallel_size: int, kv_parallel_layers: str
+) -> int:
+    """Return the KVP applied to a layer with attention ``window``."""
     if kv_parallel_layers not in KV_PARALLEL_LAYERS:
         raise ConfigurationError(
             f"kv_parallel_layers must be one of {KV_PARALLEL_LAYERS}"
         )
-    return kv_parallel_layers == "all" or not model.attention_window(layer_id)
+    selected = kv_parallel_layers == "all" or not window
+    return kv_parallel_size if selected else 1
 
 
 def attention_partition(
@@ -126,7 +140,9 @@ def attention_partition(
     integer(kv_parallel_size, "KV-parallel size", minimum=1)
     if tp % kv_parallel_size:
         raise ConfigurationError("KV-parallel size must divide TP size")
-    kvp = kv_parallel_size if layer_selected(model, layer_id, kv_parallel_layers) else 1
+    kvp = layer_kv_parallel_size(
+        model.attention_window(layer_id), kv_parallel_size, kv_parallel_layers
+    )
     tpa = tp // kvp
     geometry = model.attention_geometry(layer_id)
     heads, kv_heads = model.num_attention_heads, geometry.num_key_value_heads
@@ -145,3 +161,23 @@ def attention_partition(
         kv_heads_per_rank=local_kv_heads(kv_heads, tpa),
         kv_replica_factor=max(1, tpa // kv_heads),
     )
+
+
+def validate_kv_parallel_domain(domain, model, *, colocated: bool, mla: bool) -> None:
+    """Reject KV-parallel domains outside the specified decode scope."""
+    parallel = domain.parallel
+    if parallel.kv_parallel_size == 1:
+        return
+    if mla or not colocated:
+        raise ConfigurationError(
+            f"execution domain {domain.name!r} KV parallelism requires colocated "
+            "attention/FFN execution without MLA"
+        )
+    for layer_id in range(model.num_layers):
+        attention_partition(
+            model,
+            layer_id,
+            parallel.tensor_parallel_size,
+            parallel.kv_parallel_size,
+            parallel.kv_parallel_layers,
+        )

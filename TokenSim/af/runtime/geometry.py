@@ -124,6 +124,22 @@ class RuntimeGeometryMixin:
                         layer.num_attention_heads, domain_plan.tensor_parallel_size
                     )
                 )
+            kvp = partition.kv_parallel_size
+            if kvp > 1:
+                # Local attention covers tp/kvp query heads over owned positions.
+                heads = layer.num_attention_heads // (
+                    domain_plan.tensor_parallel_size // kvp
+                )
+                shape.update(
+                    {
+                        "num_heads": heads,
+                        "query_width": heads * layer.head_dim,
+                        "output_heads": shape["num_heads"],
+                        "kv_parallel_size": kvp,
+                        "kv_parallel_rank": partition.kv_parallel_rank,
+                        "kv_append_block": partition.kv_append_block,
+                    }
+                )
         elif operation == "dense_ffn":
             if layer.layer_type != "dense":
                 raise ConfigurationError(

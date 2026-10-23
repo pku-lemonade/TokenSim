@@ -105,6 +105,23 @@ class UnitAccountingTest(unittest.TestCase):
         self.assertEqual(estimate.details["exponential_operations"], 256)
         self.assertEqual(estimate.details["vector_operations"], 1024)
 
+    def test_lse_merge_counts_kv_parallel_fragments(self):
+        # Two tokens, two retained heads and four fragments of 512 outputs + LSE.
+        estimate = self.estimate(
+            "elementwise",
+            dict(
+                op_name="weighted_combine",
+                dtype="bf16",
+                num_tokens=16,
+                hidden_size=513,
+                lpx_vector_operation="lse_merge",
+                kv_parallel_size=4,
+            ),
+        )
+        self.assertEqual(estimate.details["exponential_operations"], 16)
+        self.assertEqual(estimate.details["vector_operations"], 16 * (2 * 512 + 3))
+        self.assertEqual(estimate.work.activation_bytes, 16 * 513 * 4 + 4 * 512 * 2)
+
     def test_explicit_configuration_rejects_invalid_assumptions(self):
         for raw in (
             {"typo": {}},

@@ -34,7 +34,8 @@ def stored_components(
                 )
             q = shape["q_heads_local"] * shape["head_dim"]
             kv = shape["kv_heads_local"] * shape["head_dim"]
-            tensors = ((q + shape.get("kv_projections", 2) * kv, h), (h, q))
+            o = shape.get("o_heads_local", shape["q_heads_local"]) * shape["head_dim"]
+            tensors = ((q + shape.get("kv_projections", 2) * kv, h), (h, o))
             if shape.get("qk_norm_elements"):
                 tensors += ((shape["qk_norm_elements"],),)
         elif component.category == "router":

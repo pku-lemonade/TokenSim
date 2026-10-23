@@ -8,7 +8,7 @@ from TokenSim.errors import ConfigurationError, SimulationStateError
 
 
 def rank_layer_kv_bytes(plan, binding, context):
-    """Return bounded-window KV residence per layer on one physical rank."""
+    """Return bounded-window, locally owned KV residence per layer on one rank."""
     integer(context, "KV context")
     if binding.kv_partition is None:
         return {}
@@ -28,7 +28,9 @@ def rank_layer_kv_bytes(plan, binding, context):
             if binding.kv_partition.layer_partitions
             else per_layer
         )
-        * min(context, plan.layer_plan(layer).attention_window or context)
+        * binding.kv_partition.for_layer(layer).resident_tokens(
+            context, plan.layer_plan(layer).attention_window
+        )
         for layer in layers
     }
 

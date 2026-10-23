@@ -18,6 +18,12 @@ def session_prefix_context(
 def runtime_configurations(
     hardware, target, case, *, draft_spec=None, a_dp=1, verification_width=1, **settings
 ):
+    if (case.prefill or case.draft) and any(
+        layout.a_cp != 1 for layout in (case.decode, case.prefill, case.draft) if layout
+    ):
+        raise ConfigurationError(
+            "KV parallelism does not yet specify prefill handoff or external drafting"
+        )
     layouts = [("target", target, case.decode, a_dp)]
     if case.prefill:
         layouts.append(("prefill", target, case.prefill, 1))
@@ -60,21 +66,24 @@ def configuration(
     pipeline_layer_counts=None,
     ffn_batching=False,
     ffn_batch_wait_us=5.0,
+    kv_parallel_layers="full_attention",
+    kv_append_block=16,
 ):
     boolean(colocated_dense_reuse, "colocated dense reuse")
     policy = hardware.device(layout.a_device).analytical.get("lpx_pipeline")
     if policy and policy.get("activation_dtype", "bf16") != model.activation_dtype:
         raise ConfigurationError("LP30 pipeline activation dtype must match the model")
-    if layout.a_cp != 1:
+    if layout.a_cp != 1 and (not layout.colocated or layout.a_device != "groq_lp30"):
         raise ConfigurationError(
-            "context parallelism needs a native distributed-attention plan"
+            "native KV parallelism requires colocated attention/FFN LP30 ranks"
         )
     if layout.colocated and layout.f_tp != 1 and (layout.f_ep != 1 or a_dp != 1):
         raise ConfigurationError(
             "colocated expert TP with EP or multiple attention replicas needs "
             "a complete-model prefill backend supporting hybrid expert TP/EP"
         )
-    a_tp, a_pp = layout.a_tp, layout.a_pp
+    # A KV-parallel layout keeps TP a_tp * a_cp on unselected layers and FFN.
+    a_tp, a_pp = layout.a_stage_ranks, layout.a_pp
     f_tp, f_pp, ep = layout.f_tp, layout.f_pp, layout.f_ep
     f_dp = ep * a_dp if layout.colocated else ep
     a_count, f_count = a_tp * a_pp * a_dp, f_tp * f_pp * f_dp
@@ -178,6 +187,15 @@ def configuration(
                     **(
                         {"pipeline_layer_counts": pipeline_layer_counts}
                         if pipeline_layer_counts is not None
+                        else {}
+                    ),
+                    **(
+                        dict(
+                            kv_parallel_size=layout.a_cp,
+                            kv_parallel_layers=kv_parallel_layers,
+                            kv_append_block=kv_append_block,
+                        )
+                        if name == "a" and layout.a_cp > 1
                         else {}
                     ),
                 ),

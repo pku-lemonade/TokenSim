@@ -34,7 +34,7 @@ def validate_local_reuse(events, by_node, local):
         not any(event.operation in {"af_a_to_f", "af_f_to_a"} for event in events),
         "cannot mix local reuse and endpoint copies",
     )
-    attention = [event for event in events if event.stage == "attention"]
+    attention = [event for event in events if event.operation == "attention"]
     physical = {event.physical_endpoints[0] for event in attention}
     layer_ids = {event.node_id for event in events}
     for stage in ("dense_ffn", "residual"):

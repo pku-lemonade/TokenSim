@@ -15,8 +15,11 @@ from scripts.lpx.token_units import TokenUnits
 WORKLOADS = ((1000, 1000, 3400), (10000, 1500, 3382), (100000, 2000, 3431))
 
 
-def layouts(model, tp_values, max_chips, pp_values=None):
+def layouts(model, tp_values, max_chips, pp_values=None, kvp_values=(1,)):
+    """Yield stage TP ``N`` layouts with KVP factors that divide ``N``."""
     integer(max_chips, "maximum LP30 chips", minimum=1)
+    for kvp in kvp_values:
+        integer(kvp, "KVP", minimum=1)
     for tp in sorted(set(tp_values)):
         integer(tp, "TP", minimum=1)
         if model.num_attention_heads % tp or model.intermediate_size % tp:
@@ -28,16 +31,18 @@ def layouts(model, tp_values, max_chips, pp_values=None):
             for pp in pp_values:
                 integer(pp, "PP", minimum=1)
             stages = sorted(set(pp_values) & set(stages))
-        for pp in stages:
-            yield Layout(
-                a_device="groq_lp30",
-                f_device="groq_lp30",
-                a_tp=tp,
-                f_tp=tp,
-                a_pp=pp,
-                f_pp=pp,
-                f_ep=1,
-            )
+        for kvp in sorted(k for k in set(kvp_values) if tp % k == 0):
+            for pp in stages:
+                yield Layout(
+                    a_device="groq_lp30",
+                    f_device="groq_lp30",
+                    a_tp=tp // kvp,
+                    a_cp=kvp,
+                    f_tp=tp,
+                    a_pp=pp,
+                    f_pp=pp,
+                    f_ep=1,
+                )
 
 
 def with_startup(hardware, kernel_launch_us):
@@ -46,7 +51,9 @@ def with_startup(hardware, kernel_launch_us):
     )
 
 
-def build_runtime(hardware, model, layout, *, reuse=True, layer_counts=None):
+def build_runtime(
+    hardware, model, layout, *, reuse=True, layer_counts=None, kv_settings=None
+):
     return configuration(
         hardware,
         model,
@@ -55,6 +62,7 @@ def build_runtime(hardware, model, layout, *, reuse=True, layer_counts=None):
         dag_template_cache=True,
         colocated_dense_reuse=reuse,
         pipeline_layer_counts=layer_counts,
+        **(kv_settings or {}),
     )
 
 
@@ -104,7 +112,9 @@ def streaming_settings(layout, launch_us=0.5):
     # Multi-tray overlap is unsupported by the existing streaming refinement.
     # Retain its complete catalog collective cost and disclose this limitation.
     return asdict(
-        StreamingConfig(overlap=layout.a_tp <= 16, collective_launch_us=launch_us)
+        StreamingConfig(
+            overlap=layout.a_stage_ranks <= 16, collective_launch_us=launch_us
+        )
     )
 
 
@@ -144,6 +154,7 @@ def screen(
     invocation_us=0.0,
     layer_counts=None,
     token_units=None,
+    kv_settings=None,
 ):
     units = TokenUnits(**(token_units or {}))
     workloads = [
@@ -152,7 +163,12 @@ def screen(
     row = dict(layout=asdict(layout), lp30=layout.a_ranks)
     try:
         runtime = build_runtime(
-            hardware, model, layout, reuse=reuse, layer_counts=layer_counts
+            hardware,
+            model,
+            layout,
+            reuse=reuse,
+            layer_counts=layer_counts,
+            kv_settings=kv_settings,
         )
         memory = memory_report(runtime, max(i + o for _, _, _, i, o in workloads))
     except ConfigurationError as exc:
@@ -198,13 +214,14 @@ def screen(
         streaming=streaming,
         overlap_scope=(
             "single-tray"
-            if layout.a_tp <= 16
+            if layout.a_stage_ranks <= 16
             else "catalog-only; multi-tray overlap unmodeled"
         ),
         colocated_dense_reuse=reuse,
         invocation_us=invocation_us,
         token_units=units.report(),
         pipeline_layer_counts=layer_counts,
+        **({"kv_settings": kv_settings} if kv_settings else {}),
     )
 
 

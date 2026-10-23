@@ -1,4 +1,4 @@
-"""KV-parallel domain configuration and the runtime compiler guard."""
+"""KV-parallel domain configuration and runtime compiler validation."""
 
 from dataclasses import replace
 from pathlib import Path
@@ -51,7 +51,7 @@ class KVParallelConfigTest(unittest.TestCase):
             )
 
 
-class KVParallelCompilerGuardTest(unittest.TestCase):
+class KVParallelCompilerTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.hardware = HardwareContext.load(
@@ -70,7 +70,7 @@ class KVParallelCompilerGuardTest(unittest.TestCase):
             vocab_size=128,
         )
 
-    def runtime(self, kv_parallel_size):
+    def runtime(self, kv_parallel_size, tp=2):
         def build(doc, **kwargs):
             doc["af"]["execution_domains"][0]["parallel"][
                 "kv_parallel_size"
@@ -78,15 +78,22 @@ class KVParallelCompilerGuardTest(unittest.TestCase):
             return build_model_runtime(doc, **kwargs)
 
         layout = Layout(
-            a_device="groq_lp30", f_device="groq_lp30", a_tp=2, f_tp=2, f_ep=1
+            a_device="groq_lp30", f_device="groq_lp30", a_tp=tp, f_tp=tp, f_ep=1
         )
         with patch("scripts.lpx.native_config.build_model_runtime", build):
             return configuration(self.hardware, self.model, layout, namespace="kvp")
 
-    def test_compiler_rejects_unimplemented_kv_parallelism(self):
-        self.assertIsNotNone(self.runtime(1))
-        with self.assertRaisesRegex(ConfigurationError, "not implemented"):
-            self.runtime(2)
+    def test_compiler_records_kv_parallelism_and_rejects_uneven_heads(self):
+        domain = self.runtime(2).plan.domain_runtime("kvp-a-domain")
+        self.assertEqual(
+            (domain.kv_parallel_size, domain.kv_parallel_layers), (2, "full_attention")
+        )
+        self.assertEqual(
+            self.runtime(1).plan.domain_runtime("kvp-a-domain").kv_parallel_size, 1
+        )
+        self.model = replace(self.model, num_attention_heads=2, num_key_value_heads=1)
+        with self.assertRaisesRegex(ConfigurationError, "divisible"):
+            self.runtime(2, tp=4)
 
 
 if __name__ == "__main__":

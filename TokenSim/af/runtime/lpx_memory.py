@@ -50,7 +50,9 @@ def workspace_components(components, model, raw):
                 )
             q = shape["q_heads_local"] * shape["head_dim"]
             kv = shape["kv_heads_local"] * shape["head_dim"]
-            tile = min(policy.maximum_context, policy.attention_tile_keys)
+            kvp = shape.get("kv_parallel_size", 1)
+            local_context = -(-policy.maximum_context // kvp)
+            tile = min(local_context, policy.attention_tile_keys)
             qkv = tokens * (q + 2 * kv) * activation_bytes
             # QK scores, online max/sum/output state and double-buffered KV tiles.
             scores = tokens * shape["q_heads_local"] * tile * 4
@@ -58,7 +60,16 @@ def workspace_components(components, model, raw):
             cache_tile = (
                 policy.tile_buffers * tile * 2 * kv * (cache_bytes + activation_bytes)
             )
-            attention = max(attention, qkv + scores + online + cache_tile)
+            # KV-parallel partial outputs and LSE values, sent and received in FP32.
+            combine = (
+                tokens
+                * (shape["q_heads_local"] + shape["o_heads_local"] * kvp)
+                * (shape["head_dim"] + 1)
+                * 4
+                if kvp > 1
+                else 0
+            )
+            attention = max(attention, qkv + scores + online + cache_tile + combine)
         elif component.category == "dense_ffn":
             hidden, width = shape["hidden_size"], shape["local_intermediate_size"]
             # Gate/up and activation outputs coexist with down-projection inputs.

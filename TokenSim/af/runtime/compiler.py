@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from TokenSim.af.runtime.kv_sequence import validate_kv_parallel_domain
 from TokenSim.af.runtime.memory import (
     _compile_physical_states,
     _components_for_binding,
@@ -208,20 +209,21 @@ def compile_af_runtime_plan(
         if domain.capability in {"af_attention", "af_ffn"}
     )
     for domain in domain_configs:
-        if domain.parallel.kv_parallel_size != 1:
-            # Phases 2-3 of docs/lpx-context-parallel-plan.md add KV ownership
-            # and the combine graph; until then the setting must not be ignored.
-            raise ConfigurationError(
-                f"execution domain {domain.name!r} declares kv_parallel_size="
-                f"{domain.parallel.kv_parallel_size}, but KV-parallel memory and "
-                "execution are not implemented by the AF runtime"
-            )
+        validate_kv_parallel_domain(
+            domain,
+            model,
+            colocated=cluster_config.af_link.colocated,
+            mla=model.attention_type == "mla",
+        )
     domains = tuple(
         AFDomainRuntime(
             name=domain.name,
             capability=domain.capability,
             pipeline_parallel_size=domain.parallel.pipeline_parallel_size,
             pipeline_layer_counts=domain.parallel.pipeline_layer_counts,
+            kv_parallel_size=domain.parallel.kv_parallel_size,
+            kv_parallel_layers=domain.parallel.kv_parallel_layers,
+            kv_append_block=domain.parallel.kv_append_block,
             tensor_parallel_size=domain.parallel.tensor_parallel_size,
             data_parallel_size=domain.parallel.data_parallel_size,
             expert_parallel_size=(

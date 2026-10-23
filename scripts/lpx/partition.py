@@ -210,7 +210,9 @@ def native_footprint(runtime, maximum_context):
     )
 
 
-def capacity_partition(hardware, model, layout, maximum_context, cache, *, reuse=True):
+def capacity_partition(
+    hardware, model, layout, maximum_context, cache, *, reuse=True, kv_settings=None
+):
     """Reuse compact memory vectors across PP points; retain no runtime graphs."""
     from scripts.lpx.native_search import build_runtime
 
@@ -218,7 +220,7 @@ def capacity_partition(hardware, model, layout, maximum_context, cache, *, reuse
         raise ConfigurationError(
             "capacity partition search requires colocated dense LP30 ranks"
         )
-    tp = layout.a_tp
+    tp = layout.a_stage_ranks
     key = (
         json.dumps(model.to_dict(), sort_keys=True, allow_nan=False),
         json.dumps(
@@ -227,12 +229,19 @@ def capacity_partition(hardware, model, layout, maximum_context, cache, *, reuse
         maximum_context,
         reuse,
         tp,
+        *(
+            (layout.a_cp, json.dumps(kv_settings or {}, sort_keys=True))
+            if layout.a_cp > 1
+            else ()
+        ),
     )
     if key not in cache:
         stages = min(model.num_layers, 256 // tp)
         seed = replace(layout, a_pp=stages, f_pp=stages)
         try:
-            runtime = build_runtime(hardware, model, seed, reuse=reuse)
+            runtime = build_runtime(
+                hardware, model, seed, reuse=reuse, kv_settings=kv_settings
+            )
             footprint = native_footprint(runtime, maximum_context)
             cache[key] = partition_solutions(footprint, stages)
         except ConfigurationError as exc:

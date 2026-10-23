@@ -8,6 +8,7 @@ from TokenSim.config.parallel_config import ParallelConfig, ParallelRankInfo
 from TokenSim.errors import ConfigurationError
 from TokenSim.latency.operator_table import OperatorTableLatencyBackend
 from TokenSim.latency.operator_table.communication import collective_model_for
+from TokenSim.latency.operator_table.kv_parallel import apply_kv_parallel
 from TokenSim.llm.llm_request import Request
 from TokenSim.parallel import ParallelCommunicator
 
@@ -118,6 +119,13 @@ class CompletePrefill:
         )
         # One admitted cohort supplies the expert tokens in this forward.
         backend.moe_token_multiplier = 1
+        apply_kv_parallel(
+            backend,
+            workers,
+            kv_parallel_size=a_domain.parallel.kv_parallel_size,
+            kv_parallel_layers=a_domain.parallel.kv_parallel_layers,
+            kv_append_block=a_domain.parallel.kv_append_block,
+        )
         self.backends[binding.rank_key] = backend
         return backend
 

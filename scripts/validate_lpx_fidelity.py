@@ -83,7 +83,24 @@ def main(argv=None):
     )
     parser.add_argument("--tp", type=int, default=16)
     parser.add_argument("--pp", type=int, default=8)
+    parser.add_argument("--kvp", type=int, default=1, help="KV-parallel size")
+    parser.add_argument(
+        "--kv-parallel-layers",
+        choices=["full_attention", "all"],
+        default="full_attention",
+    )
+    parser.add_argument("--kv-append-block", type=int, default=16)
     args = parser.parse_args(argv)
+    if args.kvp < 1 or args.tp % args.kvp:
+        parser.error("--kvp must be a positive divisor of --tp")
+    kv_settings = (
+        dict(
+            kv_parallel_layers=args.kv_parallel_layers,
+            kv_append_block=args.kv_append_block,
+        )
+        if args.kvp > 1
+        else None
+    )
     config = load(args.config)
     if "memory" not in config:
         parser.error(
@@ -101,14 +118,20 @@ def main(argv=None):
     layout = Layout(
         a_device="groq_lp30",
         f_device="groq_lp30",
-        a_tp=args.tp,
+        a_tp=args.tp // args.kvp,
+        a_cp=args.kvp,
         f_tp=args.tp,
         a_pp=args.pp,
         f_pp=args.pp,
         f_ep=1,
     )
     partition = capacity_partition(
-        hardware, model, layout, max(i + o for i, o, _ in WORKLOADS), {}
+        hardware,
+        model,
+        layout,
+        max(i + o for i, o, _ in WORKLOADS),
+        {},
+        kv_settings=kv_settings,
     )
     parameters = dict(
         config=config,
@@ -116,6 +139,7 @@ def main(argv=None):
         model=model.to_dict(),
         layout=asdict(layout),
         partition=partition,
+        **({"kv_settings": kv_settings} if kv_settings else {}),
     )
     runner = ExperimentRunner(
         args.output / "points",
@@ -125,7 +149,11 @@ def main(argv=None):
 
     def execute(directory):
         runtime = build_runtime(
-            hardware, model, layout, layer_counts=partition["layer_counts"]
+            hardware,
+            model,
+            layout,
+            layer_counts=partition["layer_counts"],
+            kv_settings=kv_settings,
         )
         prefill = complete_prefill(
             runtime, 100000, 2000, config["memory"]["prefill_chunk"]
@@ -140,6 +168,7 @@ def main(argv=None):
             warmup=5,
             layer_counts=partition["layer_counts"],
             token_units=config.get("token_units"),
+            kv_settings=kv_settings,
         )
         if result["status"] != "ok":
             raise ConfigurationError(result["reason"])

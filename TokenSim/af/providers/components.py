@@ -8,6 +8,10 @@ import math
 from typing import Any, Mapping
 
 from TokenSim.af.providers.attention import attention_core
+from TokenSim.af.providers.context_parallel import (
+    kv_parallel_size,
+    local_attention_lengths,
+)
 from TokenSim.af.providers.compute import (
     OperatorComponent,
     _estimate_dataset_version,
@@ -33,8 +37,11 @@ class ComputeComponentsMixin:
         weight_dtype = model.operator_dtype("attention", query.weight_dtype or dtype)
         h = model.hidden_size
         geometry = model.attention_geometry(query.layer_id)
-        heads_local = math.ceil(model.num_attention_heads / tp_size)
-        kv_heads_local = local_kv_heads(geometry.num_key_value_heads, tp_size)
+        kvp = kv_parallel_size(query)
+        # KV-parallel ranks keep tp/kvp heads; attention_output applies O.
+        attention_tp = tp_size // kvp
+        heads_local = math.ceil(model.num_attention_heads / attention_tp)
+        kv_heads_local = local_kv_heads(geometry.num_key_value_heads, attention_tp)
         q_local = heads_local * geometry.head_dim
         kv_local = kv_heads_local * geometry.head_dim
         components = [
@@ -70,14 +77,29 @@ class ComputeComponentsMixin:
                     dtype,
                 ),
             ]
+        lengths = (
+            local_attention_lengths(query, model.attention_window(query.layer_id))
+            if kvp > 1
+            else None
+        )
         components.extend(
             attention_core(
-                self, resolver, query, tokens, heads_local, kv_heads_local, dtype
+                self,
+                resolver,
+                query,
+                tokens,
+                heads_local,
+                kv_heads_local,
+                dtype,
+                lengths,
             )
         )
-        components.append(
-            self._gemm(resolver, "output_projection", tokens, h, q_local, weight_dtype)
-        )
+        if kvp == 1:
+            components.append(
+                self._gemm(
+                    resolver, "output_projection", tokens, h, q_local, weight_dtype
+                )
+            )
         if model.architecture != "gemma4_text":
             components.append(
                 self._elementwise(

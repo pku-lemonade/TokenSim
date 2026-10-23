@@ -64,6 +64,8 @@ Add LSE merge work to the LP30 vector-unit estimator.
 Allow `all_to_all` in AF collectives and route its pairwise messages in the flat collective model and the LPX fabric refinement.
 Place new execution code in new modules because `execution/communication.py` has 499 lines.
 Add local context and CP layout to directed acyclic graph (DAG) template and service cache keys.
+The implementation builds the combine node directly from the attention all-reduce's network and resources, so `_COLLECTIVE_OPERATIONS` and the execution modules need no change.
+The existing endpoint and flat providers already price `all_to_all`, and the KVP fields in the attention local shape separate the estimate cache keys.
 With `KVP = 1`, complete results and traces must match the current implementation field by field.
 
 ### Phase 4: LPX experiment entry points
@@ -71,11 +73,13 @@ With `KVP = 1`, complete results and traces must match the current implementatio
 Remove the `a_cp != 1` rejections in `scripts/lpx/config.py` and `scripts/lpx/native_config.py`.
 Map `a_cp` to `kv_parallel_size` and extend `native_search.layouts` to enumerate (TPA, KVP) pairs.
 Add command-line options, fidelity-configuration fields and checkpoint fingerprints for KVP, block size and layer selection.
+The implementation keeps these settings in the layout, command line and checkpoint parameters and adds no fidelity-configuration section, because they describe a deployment.
 
 ### Phase 5: prefill under CP
 
 Extend `CompletePrefill` and `OperatorTableLatencyBackend` so each prefill chunk attends across distributed KV with the same combine step.
 Reuse the Phase 1 and Phase 3 helpers and keep prefill ownership identical to decode ownership.
+The implementation bounds the chunk's own positions by its query count on every rank, as the [specification](lpx-context-parallel.md#implementation) describes.
 
 ### Phase 6: experiments and documentation
 
@@ -92,11 +96,11 @@ Every phase runs Black, the complete test suite, `git diff --check` and the 500-
 | --- | --- | --- |
 | 0 | Complete | [Specification](lpx-context-parallel.md) |
 | 1 | Complete | `TokenSim/af/runtime/kv_sequence.py`, `DomainParallelConfig`, compiler guard and tests |
-| 2 | Not started | |
-| 3 | Not started | |
-| 4 | Not started | |
-| 5 | Not started | |
-| 6 | Not started | |
+| 2 | Complete | `layer_kv.py`, `admission.py`, `memory.py`, `component_storage.py`, `lpx_memory.py` and runtime tests |
+| 3 | Complete | `planning/context_parallel.py`, `providers/context_parallel.py`, LP30 `lse_merge`, LPX streaming support and graph tests |
+| 4 | Complete | `Layout.a_stage_ranks`, KVP mapping in `native_config.py`, `native_search.layouts` and command-line options |
+| 5 | Complete | `latency/operator_table/kv_parallel.py` applied by `CompletePrefill` |
+| 6 | Complete | [Results](lpx-context-parallel.md#results) and `scripts/run_lpx_context_parallel.py` |
 
 ## Exclusions
 

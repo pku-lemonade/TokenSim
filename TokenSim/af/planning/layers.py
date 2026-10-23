@@ -7,6 +7,7 @@ from typing import Any, Mapping
 from TokenSim.af.planning.batching import AFBlock
 from TokenSim.af.planning.conversions import batch_conversions
 from TokenSim.af.planning.colocated import build_dense_reuse, dense_reuse_pairs
+from TokenSim.af.planning.context_parallel import append_kv_parallel_combine
 from TokenSim.af.planning.dag import AFExecutionDAG
 from TokenSim.af.planning.nodes import ExecutionNode
 from TokenSim.config.af.domains import ExecutionDomainConfig
@@ -83,6 +84,17 @@ class RuntimeLayerPlannerMixin:
                     output_token_count=block.token_count,
                 )
             )
+        attention_ids = append_kv_parallel_combine(
+            self,
+            nodes,
+            block=block,
+            layer_id=layer_id,
+            layer_type=layer.layer_type,
+            prefix=prefix,
+            domain=a_domain,
+            bindings=a_bindings,
+            producers=attention_ids,
+        )
         a_collective = self._append_runtime_collective(
             nodes,
             node_id=f"{prefix}:attention:collective",

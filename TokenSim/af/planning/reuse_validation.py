@@ -9,7 +9,8 @@ def validate_dense_reuse(nodes):
             raise ConfigurationError(f"colocated dense reuse: {message}")
 
     by_id = {node.node_id: node for node in nodes}
-    attention = [node for node in nodes if node.stage == "attention"]
+    # One attention node per rank; KV-parallel output nodes share its stage.
+    attention = [node for node in nodes if node.operation == "attention"]
     reuse = [node for node in nodes if node.metadata.get("colocated_dense_reuse")]
     require(all(node.layer_type == "dense" for node in nodes), "requires dense work")
     require(

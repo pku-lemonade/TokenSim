@@ -102,7 +102,7 @@ They do not support a universal model-utilization correction factor.
 | --- | --- | --- |
 | Decode micro-batching and multiple layouts | Supported, scarcely sampled after repair | Expand the repaired configuration grid |
 | Native dynamic FFN batching | Supported by the native service; disabled by the study driver and rejected by sampled replay | Use a native pilot and validate a replay representation before a large sweep |
-| Context parallelism | [Native configuration](../scripts/lpx/native_config.py) rejects `a_cp != 1` | Requires distributed attention, softmax reduction, KV ownership and communication semantics |
+| Context parallelism | [Helix-style KV parallelism](lpx-context-parallel.md) supports colocated LP30 decode and prefill; non-colocated AF, prefill/decode handoff and drafting reject `a_cp != 1` | The AF proxies still require KV ownership and combine semantics across separate attention and FFN pools |
 | Producer-ready vector streaming | Generic collective cost selection exists; vector-level dependencies and overlap are absent | Requires execution-model work and operator-level validation |
 | Layer-dependent attention placement | Both proxies keep attention on GPUs | Needs explicit placement and capacity accounting before sweeping |
 | Complete prefill scheduling | [CompletePrefill](../TokenSim/af/serving/prefill.py) aggregates a stage, reserves its global expert-parallel ranks during compute, then communicates | Native/replay agreement shares this approximation |
@@ -113,6 +113,7 @@ The [flat collective model](../TokenSim/comm/flat_collectives.py) omits topology
 Selecting an idealized direct algorithm does not implement a hardware collective schedule.
 The [model executor](../TokenSim/af/execution/model.py) executes layers sequentially with operator-level dependencies.
 Increasing tensor parallelism beyond the eight KV heads replicates KV heads in the current setup; it does not distribute the 400K context as context parallelism would.
+The colocated KV-parallel layouts distribute context only for pure-LPX deployments such as the Gemma study.
 
 [NVIDIA's article](https://developer.nvidia.com/blog/how-nvidia-groq-3-lpx-unlocks-ultrafast-interactivity-at-long-context-on-nvidia-vera-rubin/) describes 320-byte transfer/compute overlap and transfer once per full-attention layer.
 Those statements motivate checking granularity and placement, but do not disclose a complete executable schedule for Figure 11.
@@ -153,7 +154,8 @@ The [forty-eight existing sensitivity controls](../experiments/lpx/results/draft
 5. Hold attention geometry fixed and preserve the expert-count/intermediate-width product while testing `(2240, 2880)`, `(1120, 5760)`, `(560, 11520)`, `(280, 23040)` and `(140, 46080)`.
    This varies active expert work while approximately preserving total expert parameters.
    Count any additional tensor partitions and memory requirements in the deployment budget.
-6. Validate native FFN batching and prefill interference separately from context parallelism, streaming and layer placement that require implementation work.
+6. Validate native FFN batching and prefill interference separately from streaming and layer placement that require implementation work.
+   Context parallelism for separate attention and FFN pools also requires implementation work.
    Sweep draft acceptance, proposal length and draft-model cost separately from the AF experiment.
 
 The processor budgets of 450 W per LP30 and 1,800 W per Rubin, GPU/LPU bridge costs and the two 2T architectures remain assumptions.
