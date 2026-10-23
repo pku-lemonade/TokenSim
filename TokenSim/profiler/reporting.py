@@ -6,6 +6,7 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 from TokenSim.profiler.records import union_duration, intervals_for as _intervals
+from TokenSim.profiler.collectives import service_metrics
 
 
 def _accounting(spans):
@@ -20,6 +21,10 @@ def _accounting(spans):
             {"compute", "kernel", "gpu_kernel", "collective", "transfer", "gpu_memcpy"},
         )
     )
+    calls = [
+        call for span in spans for call in span.details.get("collective_calls", ())
+    ]
+    resolved = all("peer_arrival_us" in call for call in calls)
     return dict(
         makespan_us=max((end for _, end in intervals), default=0)
         - min((start for start, _ in intervals), default=0),
@@ -41,6 +46,33 @@ def _accounting(spans):
         compute_busy_us=compute,
         communication_busy_us=communication,
         compute_communication_overlap_us=max(0, compute + communication - both),
+        collective_residence_us=union_duration(
+            [(call["start_us"], call["end_us"]) for call in calls]
+        ),
+        collective_peer_wait_us=(
+            union_duration(
+                [(call["start_us"], call["peer_arrival_us"]) for call in calls]
+            )
+            if resolved
+            else None
+        ),
+        known_collective_peer_wait_us=union_duration(
+            [
+                (call["start_us"], call["peer_arrival_us"])
+                for call in calls
+                if "peer_arrival_us" in call
+            ]
+        ),
+        collective_after_peer_arrival_us=(
+            union_duration(
+                [(call["peer_arrival_us"], call["end_us"]) for call in calls]
+            )
+            if resolved
+            else None
+        ),
+        unresolved_collective_calls=sum(
+            "peer_arrival_us" not in call for call in calls
+        ),
     )
 
 
@@ -64,12 +96,22 @@ def write_comparison(
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
     anchors = {}
+    common = (
+        observed.diagnostics.get("collective_waits", {})
+        .get("shared_clock", {})
+        .get("available", False)
+    )
+    shared_shift = None
     for left, right in sorted(pairs, key=lambda pair: pair[1].start_us):
         if right.clock not in anchors:
+            if shared_shift is None:
+                shared_shift = left.start_us - right.start_us
             anchors[right.clock] = dict(
                 simulated_id=left.id,
                 profiled_id=right.id,
-                translation_us=left.start_us - right.start_us,
+                translation_us=(
+                    shared_shift if common else left.start_us - right.start_us
+                ),
             )
     matches = []
     for left, right in pairs:
@@ -91,6 +133,7 @@ def write_comparison(
                 end_offset_us=left.end_us - (right.end_us + shift),
                 evidence="rank_forward_layer_order_and_operation",
                 duration_scope="invocation_span",
+                **service_metrics(left, right),
             )
         )
     clocks = sorted({span.clock for span in observed.spans})
@@ -107,8 +150,12 @@ def write_comparison(
         mapping_sha256=mapping_hash,
         alignment=dict(
             anchors=anchors,
-            method="translation_at_earliest_unambiguous_match_per_clock",
-            cross_rank_overlap_available=len(clocks) <= 1,
+            method=(
+                "shared_clock_translation"
+                if common and len(clocks) > 1
+                else "translation_at_earliest_unambiguous_match_per_clock"
+            ),
+            cross_rank_overlap_available=common or len(clocks) <= 1,
         ),
         coverage=dict(
             matched_units=len(matches),
@@ -117,6 +164,25 @@ def write_comparison(
             excluded_units=len(excluded),
             matched_simulated_service_us=sum(left.duration_us for left, _ in pairs),
             matched_profiled_service_us=sum(right.duration_us for _, right in pairs),
+            device_service_comparable_units=sum(
+                row["profiled_device_service_us"] is not None for row in matches
+            ),
+            matched_profiled_device_service_us=(
+                sum(row["profiled_device_service_us"] for row in matches)
+                if all(row["profiled_device_service_us"] is not None for row in matches)
+                else None
+            ),
+            comparable_profiled_device_service_us=sum(
+                row["profiled_device_service_us"] or 0 for row in matches
+            ),
+            matched_profiled_peer_wait_us=(
+                sum(row["profiled_peer_wait_us"] or 0 for row in matches)
+                if all(row["profiled_peer_wait_us"] is not None for row in matches)
+                else None
+            ),
+            known_matched_profiled_peer_wait_us=sum(
+                row["profiled_peer_wait_us"] or 0 for row in matches
+            ),
         ),
         accounting=dict(
             simulated=dict(
@@ -137,6 +203,10 @@ def write_comparison(
             simulated=simulated.diagnostics, profiled=observed.diagnostics
         ),
         matches=matches,
+        measurement_quality=[
+            entry["manifest"].get("timing_quality", {"status": "unreported"})
+            for entry in observed.inputs
+        ],
         unmatched=unmatched,
         excluded=excluded,
     )
@@ -182,6 +252,19 @@ def write_comparison(
                 args=dict(span.as_dict(), comparison_side=side),
             )
         )
+        for wait_start, wait_end in span.details.get("collective_wait_intervals", ()):
+            events.append(
+                dict(
+                    ph="X",
+                    name="collective_peer_wait",
+                    cat="collective_wait",
+                    pid=1,
+                    tid=tracks[key],
+                    ts=wait_start + start - span.start_us - origin,
+                    dur=wait_end - wait_start,
+                    args=dict(comparison_side=side, parent_id=span.id),
+                )
+            )
     timeline = dict(
         displayTimeUnit="us",
         traceEvents=events,
@@ -211,6 +294,13 @@ def write_comparison(
                 "service_error_us",
                 "absolute_error_us",
                 "relative_error",
+                "simulated_device_service_us",
+                "profiled_device_service_us",
+                "device_service_error_us",
+                "profiled_internal_gap_us",
+                "profiled_collective_residence_us",
+                "profiled_peer_wait_us",
+                "device_service_unavailable_reason",
             ]
         )
         for row in matches:
@@ -230,6 +320,18 @@ def write_comparison(
                     row["service_error_us"],
                     row["absolute_service_error_us"],
                     row["relative_service_error"],
+                    *[
+                        row[key]
+                        for key in (
+                            "simulated_device_service_us",
+                            "profiled_device_service_us",
+                            "device_service_error_us",
+                            "profiled_internal_gap_us",
+                            "profiled_collective_residence_us",
+                            "profiled_peer_wait_us",
+                            "device_service_unavailable_reason",
+                        )
+                    ],
                 ]
             )
         for row in unmatched + excluded:
@@ -244,6 +346,7 @@ def write_comparison(
                     row["id"] if row["side"] == "simulated" else "",
                     row["id"] if row["side"] == "profiled" else "",
                     "",
+                    *([""] * 7),
                     "",
                     "",
                     "",

@@ -9,6 +9,10 @@ def kernel_operation(name):
         token in name for token in ("allreduce", "all_reduce", "cross_device_reduce")
     ):
         return "all_reduce"
+    if "allgather" in name or "all_gather" in name:
+        return "all_gather"
+    if "reducescatter" in name or "reduce_scatter" in name:
+        return "reduce_scatter"
     return None
 
 
@@ -22,8 +26,12 @@ def fused_members(operation, kernel_names):
         }.get(operation)
         if predecessor:
             return [predecessor, operation]
-    if operation in ("moe_module", "output", "ffn_down") and any(
+    if operation in ("moe_module", "output", "ffn_down", "embedding_lookup") and any(
         kernel_operation(name) == "all_reduce" for name in names
     ):
         return [operation, "all_reduce"]
+    if operation == "lm_head" and any(
+        kernel_operation(name) == "all_gather" for name in names
+    ):
+        return [operation, "all_gather"]
     return None

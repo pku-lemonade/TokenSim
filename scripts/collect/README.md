@@ -9,13 +9,15 @@ A collective is a communication operation involving a group of GPU workers.
 ## Operator timeline collection
 
 `collect_operator_trace.py` records a short vLLM prefill/decode workload with PyTorch Profiler and writes Chrome Trace JSON files plus a collection manifest.
-It installs CPU observation ranges through a vLLM worker extension and uses method-name remote procedure calls to initialize them.
+It uses a separate annotated structure pass and GPU-only timing passes through a vLLM worker extension.
+The structure pass identifies layers, embedding, the LM head and token selection.
+All added hooks and method wrappers are removed before timing.
 The extension preserves model return values and adds no kernel replacements.
 The target vLLM installation must support `profiler_config`, `worker_extension_cls` and `collective_rpc`.
 
 ```bash
 CUDA_VISIBLE_DEVICES=0 \
-  python scripts/collect/collect_operator_trace.py \
+  python -m scripts.collect.collect_operator_trace \
     --model /path/to/local/Qwen3-8B \
     --output outputs/profiler/qwen3-8b \
     --tensor-parallel-size 1 \
@@ -31,14 +33,34 @@ Store remote data under `/home/youwei/bzh/project/TokenSim/profiler`.
 The [development specification](../../docs/operator-tracing-design.md#10-remote-environment-and-collection) describes the copy and verification procedure.
 
 The collector warms up the same fixed workload before starting capture.
-It uses explicit token identifiers, deterministic sampling and fixed output lengths.
+It uses seeded token identifiers, greedy sampling and fixed output lengths.
+`--prompt-pattern varied` is the default; `--prompt-pattern repeated` reproduces the repeated-token workload.
+`--seed` controls the token identifiers and framework seed.
+For batches larger than one request, the collector pauses the scheduler, enqueues the complete burst and resumes it before waiting for results.
+This path requires vLLM's synchronous scheduler utility calls, `enqueue` and `wait_for_completion` APIs.
+The observed forward count must match the fixed-batch contract.
+Output-token changes between passes fail collection and are recorded in the manifest.
 Eager execution is the default; `--cuda-graph` selects graph capture when supported by the target installation.
-Manifests record software versions, loaded model configuration, device selection, annotation coverage, capture policy, generated token counts and completion status.
+`--record-shapes` adds shape recording to the structure pass only.
+The timing passes collect CUDA activities without CPU operator tracing, shape recording or added module annotations.
+Kernel category, name, available launch dimensions, device inventory and per-stream order must agree with the structure pass before its ownership can be reused.
+Changed inventories fail explicitly; operation ownership is never chosen by duration similarity.
+The structure trace and timing traces are pinned by SHA-256.
+The importer requires retained structure files and rejects changed artifacts.
+
+`--repeats` defaults to three timing captures and three unprofiled baseline invocations on each side of capture.
+The manifest selects the actual upper-median timing sample and retains every other sample.
+Profiler startup, shutdown and export are excluded from `generate` wall-time measurements.
+`timing_quality` compares the selected sample with the unprofiled baseline and marks differences outside 10% as `perturbed`.
+This check reports collection quality; it does not correct measured durations.
+Manifests also record software versions, source hashes, model configuration, worker clock identities, annotation coverage, capture policy and completion status.
 Inspect the run log and manifest before using a trace as validation evidence.
-Profiler and annotation overhead is part of the observed workload and must be considered when interpreting timing differences.
+GPU-only PyTorch profiling can still perturb execution, and the original timing traces retain that effect.
 Local `outputs/` data is already ignored by Git; preserve raw traces and logs there and commit only small relevant fixtures.
 
 Use the [offline comparison tool](../../docs/operator-latency-model.md#pytorch-profiler-comparison) to generate a combined timeline and difference report.
+Pass `--collection outputs/profiler/qwen3-8b/manifest.json` to select the manifest's timing sample automatically.
+Do not combine the structure pass or independent timing replicates into one comparison input.
 
 | Script | Tables produced | Requirements |
 | --- | --- | --- |

@@ -61,12 +61,15 @@ The offline tool requires no GPU, PyTorch or vLLM installation.
 ```bash
 python -m TokenSim.profiler.compare \
   --simulated outputs/operator-trace/result_inf.trace.json \
-  --profile outputs/profiler/raw/*.json.gz \
+  --collection outputs/profiler/qwen3-8b/manifest.json \
   --output outputs/operator-trace/comparison
 ```
 
 CPU ranges, GPU activity and launch correlation establish operator ownership.
-The collector in [scripts/collect](../scripts/collect/README.md#operator-timeline-collection) adds layer and operator annotations to the loaded vLLM model through a worker extension.
+The collector in [scripts/collect](../scripts/collect/README.md#operator-timeline-collection) records an annotated structure pass and separate GPU-only timing passes.
+It removes its hooks before timing and measures unprofiled baselines to report collection perturbation.
+The importer transfers ownership only across identical per-stream activity sequences and verifies retained capture hashes.
+`--collection` selects one completed collection's timing sample; `--profile` accepts explicit external trace files.
 The importer distinguishes CPU annotations from their GPU counterparts so each forward is counted once.
 Unattributed kernels remain in the report.
 Lossy simulated exports must retain `node_id`, `worker_id`, `layer_id` and `iteration_id` for comparison.
@@ -110,11 +113,24 @@ The known residual/normalization adapter can also group a previous layer's resid
 | `operators.csv` | Matched, unmatched, ambiguous and excluded comparison units. |
 | `comparison.trace.json` | Simulated and observed tracks with translated time origins and original timestamps in event arguments. |
 
-Service error is simulated duration minus observed duration, and relative error divides by observed duration.
+The legacy `service_error_us` and relative-error columns compare module invocation spans.
+The additional `simulated_device_service_us`, `profiled_device_service_us` and `device_service_error_us` columns compare modeled service with the union of observed device-work intervals.
+Aggregate adjusted service is null if any matched scope has unresolved waiting; `comparable_profiled_device_service_us` explicitly sums the comparable subset.
+Known waiting totals are named `known_matched_profiled_peer_wait_us` and `known_collective_peer_wait_us`, with unresolved calls retained in diagnostics.
+`profiled_internal_gap_us` keeps module gaps separate.
+`profiled_collective_residence_us` retains full collective kernel residence.
+For the inspected vLLM custom all-reduce kernels with an entry barrier, `profiled_peer_wait_us` records the interval until the last corresponding peer starts.
+The remaining device-work intervals retain any computation overlapping that wait.
+This attribution requires complete participant groups and a shared host, boot identity, time namespace and Kineto timestamp basis recorded by the collector.
+NCCL calls and other kernels without a proven entry-barrier contract retain unknown peer wait and unknown adjusted service.
+Unknown clocks, missing peers and nonoverlapping collective intervals also produce null adjusted-service fields with an explicit reason.
+After-arrival residence still includes kernel and barrier overhead; it is not a pure network payload-transfer measurement.
+The combined timeline preserves original spans and adds `collective_peer_wait` intervals.
 Zero observed duration produces a null relative error with a reason.
 Module invocation span, kernel-duration sum and device busy-time union are reported separately.
 The report keeps cumulative device time separate from elapsed forward time.
-Each observed clock is translated at its earliest unambiguous match, and cross-rank overlap is unavailable when the files do not establish a common clock domain.
+Inputs with a proven shared clock use one common translation so rank-arrival differences remain visible.
+Other inputs are translated independently at their earliest unambiguous matches, and cross-rank overlap remains unavailable.
 The CLI returns status 2 when no operators match and reports invalid inputs as argument errors.
 Small collection samples validate ownership, order and accounting; they do not establish a general prediction-accuracy target.
 The [trace discrepancy analysis](operator-tracing-analysis.md) separates profiler perturbation, host dispatch gaps, peer-arrival waiting and operator-cost errors in the initial Dense and MoE samples.
@@ -529,11 +545,12 @@ Compressed-attention models differ as described below the table.
 
 | Component | Operator Queries |
 | --- | --- |
+| **Input** (initial PP stage only) | `embedding_lookup(T, h)` and one TP all-reduce of `T * h * activation_bytes` when TP > 1 |
 | **Attention block** (per layer) | `rmsnorm(T, h)` + `gemm(T, q_local + 2*kv_local, h)` + `rope(T, q_local + kv_local)` + attention core + `gemm(T, h, q_local)` + `residual_add(T, h)` |
 | **Attention core** | Context chunks grouped by `(query_len, kv_len)` issue one `context_attention` query each, with the cached-context correction below; decode tokens are bucketed by context length (4.4) |
 | **Dense FFN** (per dense layer) | `rmsnorm(T, h)` + `gemm(T, g*inter_local, h)` + `swiglu(T, inter_local)` (gated FFNs) + `gemm(T, h, inter_local)` + `residual_add(T, h)`, where `g` is 2 for gated FFNs and 1 otherwise |
 | **MoE layer** | `rmsnorm(T, h)` + router `gemm(T, E, h)` + `moe(num_tokens = T * replicas_per_group)` + straggler time (4.5) + `residual_add(T, h)` |
-| **Final Norm and LM head** (last PP stage only) | `rmsnorm(T, h)` for every forwarded token, followed by `gemm(B, vocab_local, h)` when `B > 0` |
+| **Final Norm and LM head** (last PP stage only) | `rmsnorm(T, h)` for every forwarded token; when `B > 0`, `gemm(B, vocab_local, h)`, a TP vocabulary all-gather and `argmax(B, vocab_size)` token selection |
 | **Communication** | With TP > 1, one all-reduce per layer after the attention output projection, plus one after the FFN for dense layers and for MoE layers without EP (message `T * h * activation_bytes`). EP MoE layers: one dispatch and one combine each (message `T * top_k * h * activation_bytes`). PP: one point-to-point transfer of `T * h * activation_bytes` per step |
 | **Fixed overhead** | `device.step_overhead_us` (0 in every bundled device file, grade D) |
 

@@ -3,7 +3,9 @@
 The existing experiments expose errors in the simulator's operator costs and limits in its execution model.
 The large cumulative module-span differences also include host dispatch gaps and GPU kernels waiting for another rank.
 Those effects require separate measurements before they can guide calibration.
-This investigation changes no production estimator parameters or scheduling behavior.
+The initial investigation measured discrepancies without fitting estimator parameters.
+The measurements below describe the initial implementation at the source revision listed in the experiment scope.
+The implemented follow-ups at the end of this document describe subsequent corrections.
 
 ## Experiment scope
 
@@ -196,3 +198,39 @@ Local evidence is retained under `outputs/operator_trace/investigation/` and rem
 `routes/routes.json` retains router scores and histograms; `routes-audit.json` records the diagnostic active-weight substitution.
 `collective-v2/` and `collective-v3/` retain per-rank collective timings; version 3 also retains selected-kernel evidence and output validation.
 The standalone analysis and experiment scripts are retained alongside these artifacts.
+
+## Implemented follow-ups
+
+The collector now separates annotated structure capture from GPU-only timing capture and removes its instrumentation before timing.
+It records unprofiled baselines, selects an actual upper-median timing sample and reports collection perturbation.
+Exact per-stream activity inventories and retained hashes gate semantic transfer.
+Multi-request collection uses paused scheduler admission to enqueue a complete burst, and verifies the expected number of forwards.
+An ungated four-request experiment exposed an extra forward; the corrected importer rejects that capture instead of labeling the extra forward as decode.
+
+The comparator preserves collective kernel residence and attributes peer-arrival waits only for the inspected custom all-reduce kernels with start barriers.
+This requires complete groups and observed common-clock evidence.
+It preserves computation overlapping a wait and uses one shared timestamp translation across proven peer clocks.
+NCCL waiting remains unresolved instead of being inferred from kernel residence.
+
+Ordinary and PD execution now include embedding lookup, its TP reduction, vocabulary-logits all-gather and argmax token-selection work.
+AF already represents those boundary operations; its final Norm now covers all forwarded rows even when a chunk produces no logits.
+LM-head collection wraps the actual logits methods, and embedding and sampler scopes are retained.
+Floating-point roundoff at the simulation cutoff no longer marks a completed final operation as interrupted.
+
+| Updated collection | Unprofiled median, ms | Selected timing capture, ms | Capture/baseline |
+| --- | ---: | ---: | ---: |
+| Dense, one request | 67.637 | 96.155 | 1.422 |
+| MoE TP 2, one request | 169.798 | 193.916 | 1.142 |
+| Dense, four-request gated burst | 88.042 | 86.632 | 0.984 |
+
+These are collection-quality observations, not accuracy-calibration results.
+PyTorch profiling still perturbs the two single-request cases and the manifests mark them accordingly.
+The four-request experiment validates a controlled batch, without establishing correctness of mixed-phase continuous batching or a complete multi-request PD/AF GPU pipeline.
+Attention estimation parameters and expert-routing assumptions remain unchanged.
+The updated comparisons match 1200 units for Dense with one request, 2904 units for MoE TP 2, and 1200 units for the four-request Dense burst, with no ambiguous or incomplete units.
+The MoE comparison attributes 582 custom all-reduce calls and about 108.718 ms of cumulative peer-arrival waiting across both ranks.
+Six NCCL all-gather calls retain unresolved waiting; adjusted aggregate service remains null when it would include those unqualified calls.
+Explicit comparable-subset and known-wait totals remain available alongside their coverage counts.
+Recording-off and recording-on result JSONs match after removing execution wall time and the trace descriptor in all three reproduced workloads.
+The added input/output work increases the one-request simulated duration by 19.084 microseconds for Dense and 232.097 microseconds for MoE.
+Updated raw traces, baseline measurements, mode-parity checks and comparison artifacts are retained under `outputs/operator_trace/improvement/` and the remote `profiler` directory.

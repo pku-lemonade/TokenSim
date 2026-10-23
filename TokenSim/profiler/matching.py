@@ -88,6 +88,14 @@ def _merge(members, operation, rule, *, owner=None):
             communication_intervals=intervals_for(
                 members, {"collective", "transfer", "gpu_memcpy"}
             ),
+            collective_groups=[
+                dict(
+                    operation=item.operation,
+                    participants=list(item.details["participants"]),
+                )
+                for item in members
+                if item.details.get("participants")
+            ],
         ),
     )
 
