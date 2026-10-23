@@ -154,6 +154,11 @@ One mechanism could therefore explain both the level and the shape.
 The simulation assumes a dedicated endpoint at batch size 1.
 The native runtime supports fixed batches, so this hypothesis can be tested directly.
 
+The [batched-serving control](lpx-batched-serving.md) tested it on 2026-10-23 and supports only the level effect.
+About seven short background requests bring the 10K speed to the published value.
+Background requests add the same time at both contexts, so the AA request's own attention increment remains.
+The 100K speed then stays 10% to 26% below the published value, and no point of 156 matches both values within 5%.
+
 ### Reason 5: the selected chip count follows from assumed parameters
 
 Strength: moderate.

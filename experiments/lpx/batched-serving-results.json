@@ -1,0 +1,3497 @@
+{
+  "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+  "points": [
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 179.2639076190685,
+          "aa_tps": 5578.367744414988,
+          "published_tps": 3382,
+          "error": 0.6494286648181513
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 276.91867367816053,
+          "aa_tps": 3611.1685308814403,
+          "published_tps": 3431,
+          "error": 0.052511958869554176
+        }
+      ],
+      "ratio_100k_10k": 0.6473521819168179,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.1,
+      "background_count": 0,
+      "background_context": null
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 193.2923545883898,
+          "aa_tps": 5173.510365319257,
+          "published_tps": 3382,
+          "error": 0.5297192091422995
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 290.9486864328878,
+          "aa_tps": 3437.032186878997,
+          "published_tps": 3431,
+          "error": 0.001758142488777814
+        }
+      ],
+      "ratio_100k_10k": 0.6643520441979239,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.1,
+      "background_count": 1,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 196.6163934059148,
+          "aa_tps": 5086.045892091504,
+          "published_tps": 3382,
+          "error": 0.5038574488738925
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 294.2742247088638,
+          "aa_tps": 3398.190925451716,
+          "published_tps": 3431,
+          "error": -0.009562539944122483
+        }
+      ],
+      "ratio_100k_10k": 0.6681400438670242,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.1,
+      "background_count": 1,
+      "background_context": 4000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 209.6001893182158,
+          "aa_tps": 4770.988057085178,
+          "published_tps": 3382,
+          "error": 0.410700194288935
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 307.25781259216376,
+          "aa_tps": 3254.5958443287564,
+          "published_tps": 3431,
+          "error": -0.05141479325888765
+        }
+      ],
+      "ratio_100k_10k": 0.6821639051255858,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.1,
+      "background_count": 1,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 229.21105010778467,
+          "aa_tps": 4362.791407873913,
+          "published_tps": 3382,
+          "error": 0.29000337311469937
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 326.8923922077315,
+          "aa_tps": 3059.1106548742387,
+          "published_tps": 3431,
+          "error": -0.10839094873965649
+        }
+      ],
+      "ratio_100k_10k": 0.7011819655996372,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.1,
+      "background_count": 3,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 239.19360460337842,
+          "aa_tps": 4180.713784794378,
+          "published_tps": 3382,
+          "error": 0.23616611022897027
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 336.8684608157478,
+          "aa_tps": 2968.5177341281465,
+          "published_tps": 3431,
+          "error": -0.13479518095944432
+        }
+      ],
+      "ratio_100k_10k": 0.7100504571551647,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.1,
+      "background_count": 3,
+      "background_context": 4000
+    },
+    {
+      "status": "infeasible",
+      "reason": "resident KV exceeds compiled replica budget on ('batched-a-domain', 48): required_bytes=282296320, available_bytes=265494528",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.1,
+      "background_count": 3,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 301.44209326261273,
+          "aa_tps": 3317.386729824796,
+          "published_tps": 3382,
+          "error": -0.01910504736108931
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 399.14460328867256,
+          "aa_tps": 2505.357686815001,
+          "published_tps": 3431,
+          "error": -0.2697879082439518
+        }
+      ],
+      "ratio_100k_10k": 0.7552202654850912,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.1,
+      "background_count": 7,
+      "background_context": 1000
+    },
+    {
+      "status": "infeasible",
+      "reason": "resident KV exceeds compiled replica budget on ('batched-a-domain', 48): required_bytes=265584640, available_bytes=261292032",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.1,
+      "background_count": 7,
+      "background_context": 4000
+    },
+    {
+      "status": "infeasible",
+      "reason": "resident KV exceeds compiled replica budget on ('batched-a-domain', 48): required_bytes=273899520, available_bytes=261292032",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.1,
+      "background_count": 7,
+      "background_context": 16000
+    },
+    {
+      "status": "infeasible",
+      "reason": "resident KV exceeds compiled replica budget on ('batched-a-domain', 48): required_bytes=252989440, available_bytes=252887040",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.1,
+      "background_count": 15,
+      "background_context": 1000
+    },
+    {
+      "status": "infeasible",
+      "reason": "resident KV exceeds compiled replica budget on ('batched-a-domain', 48): required_bytes=254771200, available_bytes=252887040",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.1,
+      "background_count": 15,
+      "background_context": 4000
+    },
+    {
+      "status": "infeasible",
+      "reason": "resident KV exceeds compiled replica budget on ('batched-a-domain', 48): required_bytes=273899520, available_bytes=252887040",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.1,
+      "background_count": 15,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 178.86624659734866,
+          "aa_tps": 5590.769745681146,
+          "published_tps": 3382,
+          "error": 0.6530957261032364
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 276.52112635910504,
+          "aa_tps": 3616.360215101058,
+          "published_tps": 3431,
+          "error": 0.054025128271949274
+        }
+      ],
+      "ratio_100k_10k": 0.6468447780191067,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.3,
+      "background_count": 0,
+      "background_context": null
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 192.5041496338002,
+          "aa_tps": 5194.693215197155,
+          "published_tps": 3382,
+          "error": 0.5359826183315066
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 290.160867427597,
+          "aa_tps": 3446.3641112788137,
+          "published_tps": 3431,
+          "error": 0.004478027187063249
+        }
+      ],
+      "ratio_100k_10k": 0.6634393925701757,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.3,
+      "background_count": 1,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 195.8225289706668,
+          "aa_tps": 5106.664719613516,
+          "published_tps": 3382,
+          "error": 0.5099540862251675
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 293.4798773524569,
+          "aa_tps": 3407.3886394570154,
+          "published_tps": 3431,
+          "error": -0.006881772236369765
+        }
+      ],
+      "ratio_100k_10k": 0.6672434605643924,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.3,
+      "background_count": 1,
+      "background_context": 4000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 208.80805751156856,
+          "aa_tps": 4789.087221620253,
+          "published_tps": 3382,
+          "error": 0.41605181005921144
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 306.4629289450771,
+          "aa_tps": 3263.037403715525,
+          "published_tps": 3431,
+          "error": -0.0489544145393398
+        }
+      ],
+      "ratio_100k_10k": 0.6813485018574308,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.3,
+      "background_count": 1,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 227.65887230098056,
+          "aa_tps": 4392.536912323503,
+          "published_tps": 3382,
+          "error": 0.29879861393362006
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 325.32358587811297,
+          "aa_tps": 3073.862589153508,
+          "published_tps": 3431,
+          "error": -0.10409134679291521
+        }
+      ],
+      "ratio_100k_10k": 0.69979209065486,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.3,
+      "background_count": 3,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 237.61835254209726,
+          "aa_tps": 4208.429144052906,
+          "published_tps": 3382,
+          "error": 0.24436107157093612
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 335.28038724061696,
+          "aa_tps": 2982.578277930528,
+          "published_tps": 3431,
+          "error": -0.13069709183021616
+        }
+      ],
+      "ratio_100k_10k": 0.7087153367296976,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.3,
+      "background_count": 3,
+      "background_context": 4000
+    },
+    {
+      "status": "infeasible",
+      "reason": "resident KV exceeds compiled replica budget on ('batched-a-domain', 48): required_bytes=282296320, available_bytes=265494528",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.3,
+      "background_count": 3,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 298.34087272128676,
+          "aa_tps": 3351.870599822944,
+          "published_tps": 3382,
+          "error": -0.008908752269975229
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 396.0143050682978,
+          "aa_tps": 2525.1613065531483,
+          "published_tps": 3431,
+          "error": -0.26401594096381575
+        }
+      ],
+      "ratio_100k_10k": 0.753358827959091,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.3,
+      "background_count": 7,
+      "background_context": 1000
+    },
+    {
+      "status": "infeasible",
+      "reason": "resident KV exceeds compiled replica budget on ('batched-a-domain', 48): required_bytes=265584640, available_bytes=261292032",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.3,
+      "background_count": 7,
+      "background_context": 4000
+    },
+    {
+      "status": "infeasible",
+      "reason": "resident KV exceeds compiled replica budget on ('batched-a-domain', 48): required_bytes=273899520, available_bytes=261292032",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.3,
+      "background_count": 7,
+      "background_context": 16000
+    },
+    {
+      "status": "infeasible",
+      "reason": "resident KV exceeds compiled replica budget on ('batched-a-domain', 48): required_bytes=252989440, available_bytes=252887040",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.3,
+      "background_count": 15,
+      "background_context": 1000
+    },
+    {
+      "status": "infeasible",
+      "reason": "resident KV exceeds compiled replica budget on ('batched-a-domain', 48): required_bytes=254771200, available_bytes=252887040",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.3,
+      "background_count": 15,
+      "background_context": 4000
+    },
+    {
+      "status": "infeasible",
+      "reason": "resident KV exceeds compiled replica budget on ('batched-a-domain', 48): required_bytes=273899520, available_bytes=252887040",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.3,
+      "background_count": 15,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 178.7867143930044,
+          "aa_tps": 5593.256766282004,
+          "published_tps": 3382,
+          "error": 0.6538310958846847
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 276.44161689529346,
+          "aa_tps": 3617.400343808456,
+          "published_tps": 3431,
+          "error": 0.05432828440934312
+        }
+      ],
+      "ratio_100k_10k": 0.6467431221136384,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.5,
+      "background_count": 0,
+      "background_context": null
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 192.34650864288196,
+          "aa_tps": 5198.950618108899,
+          "published_tps": 3382,
+          "error": 0.5372414601149909
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 290.00330362653864,
+          "aa_tps": 3448.2365803935227,
+          "published_tps": 3431,
+          "error": 0.005023777439091326
+        }
+      ],
+      "ratio_100k_10k": 0.6632562672133645,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.5,
+      "background_count": 1,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 195.66375608361642,
+          "aa_tps": 5110.808562688802,
+          "published_tps": 3382,
+          "error": 0.511179350292372
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 293.32100788117344,
+          "aa_tps": 3409.2341602927654,
+          "published_tps": 3431,
+          "error": -0.0063438763355391226
+        }
+      ],
+      "ratio_100k_10k": 0.6670635611714565,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.5,
+      "background_count": 1,
+      "background_context": 4000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 208.64963115023716,
+          "aa_tps": 4792.723545626375,
+          "published_tps": 3382,
+          "error": 0.41712700935138236
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 306.3039522156583,
+          "aa_tps": 3264.7309731607174,
+          "published_tps": 3431,
+          "error": -0.04846080642357409
+        }
+      ],
+      "ratio_100k_10k": 0.6811849133547385,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.5,
+      "background_count": 1,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 227.34843673962177,
+          "aa_tps": 4398.534752826485,
+          "published_tps": 3382,
+          "error": 0.3005720735737685
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 325.0098246121908,
+          "aa_tps": 3076.830065654855,
+          "published_tps": 3431,
+          "error": -0.10322644545180559
+        }
+      ],
+      "ratio_100k_10k": 0.6995125055400991,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.5,
+      "background_count": 3,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 237.3033021298407,
+          "aa_tps": 4214.016370715521,
+          "published_tps": 3382,
+          "error": 0.2460131196675106
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 334.96277252558934,
+          "aa_tps": 2985.4063854920037,
+          "published_tps": 3431,
+          "error": -0.12987281099038073
+        }
+      ],
+      "ratio_100k_10k": 0.7084467934767646,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.5,
+      "background_count": 3,
+      "background_context": 4000
+    },
+    {
+      "status": "infeasible",
+      "reason": "resident KV exceeds compiled replica budget on ('batched-a-domain', 48): required_bytes=282296320, available_bytes=265494528",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.5,
+      "background_count": 3,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 297.7206286130182,
+          "aa_tps": 3358.8535824966807,
+          "published_tps": 3382,
+          "error": -0.006844002809970218
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 395.3882454242174,
+          "aa_tps": 2529.159659076578,
+          "published_tps": 3431,
+          "error": -0.26285058027497
+        }
+      ],
+      "ratio_100k_10k": 0.7529830035629657,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.5,
+      "background_count": 7,
+      "background_context": 1000
+    },
+    {
+      "status": "infeasible",
+      "reason": "resident KV exceeds compiled replica budget on ('batched-a-domain', 48): required_bytes=265584640, available_bytes=261292032",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.5,
+      "background_count": 7,
+      "background_context": 4000
+    },
+    {
+      "status": "infeasible",
+      "reason": "resident KV exceeds compiled replica budget on ('batched-a-domain', 48): required_bytes=273899520, available_bytes=261292032",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.5,
+      "background_count": 7,
+      "background_context": 16000
+    },
+    {
+      "status": "infeasible",
+      "reason": "resident KV exceeds compiled replica budget on ('batched-a-domain', 48): required_bytes=252989440, available_bytes=252887040",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.5,
+      "background_count": 15,
+      "background_context": 1000
+    },
+    {
+      "status": "infeasible",
+      "reason": "resident KV exceeds compiled replica budget on ('batched-a-domain', 48): required_bytes=254771200, available_bytes=252887040",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.5,
+      "background_count": 15,
+      "background_context": 4000
+    },
+    {
+      "status": "infeasible",
+      "reason": "resident KV exceeds compiled replica budget on ('batched-a-domain', 48): required_bytes=273899520, available_bytes=252887040",
+      "layout_name": "tp16-pp8",
+      "attention_mfu": 0.5,
+      "background_count": 15,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 180.70791608839667,
+          "aa_tps": 5533.791887184573,
+          "published_tps": 3382,
+          "error": 0.6362483403857402
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 240.82292894454704,
+          "aa_tps": 4152.4285265638655,
+          "published_tps": 3431,
+          "error": 0.21026771395041255
+        }
+      ],
+      "ratio_100k_10k": 0.7503767057413675,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.1,
+      "background_count": 0,
+      "background_context": null
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 195.59698664171268,
+          "aa_tps": 5112.553200176662,
+          "published_tps": 3382,
+          "error": 0.5116952099871859
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 255.72543848961246,
+          "aa_tps": 3910.443974233795,
+          "published_tps": 3431,
+          "error": 0.1397388441369265
+        }
+      ],
+      "ratio_100k_10k": 0.7648710577913734,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.1,
+      "background_count": 1,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 197.63962870040635,
+          "aa_tps": 5059.714018770285,
+          "published_tps": 3382,
+          "error": 0.49607156084278103
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 257.79999798747156,
+          "aa_tps": 3878.975980630526,
+          "published_tps": 3431,
+          "error": 0.13056717593428324
+        }
+      ],
+      "ratio_100k_10k": 0.7666393725496118,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.1,
+      "background_count": 1,
+      "background_context": 4000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 205.6297637171266,
+          "aa_tps": 4863.109220782086,
+          "published_tps": 3382,
+          "error": 0.43793885889476214
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 265.76695656853815,
+          "aa_tps": 3762.6950050959845,
+          "published_tps": 3431,
+          "error": 0.09667589772544005
+        }
+      ],
+      "ratio_100k_10k": 0.7737220848374998,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.1,
+      "background_count": 1,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 233.75469969854177,
+          "aa_tps": 4277.98885451131,
+          "published_tps": 3382,
+          "error": 0.2649286973717653
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 294.04828029617096,
+          "aa_tps": 3400.8020689418117,
+          "published_tps": 3431,
+          "error": -0.008801495499326184
+        }
+      ],
+      "ratio_100k_10k": 0.7949534663596728,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.1,
+      "background_count": 3,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 240.12309330672622,
+          "aa_tps": 4164.530725591767,
+          "published_tps": 3382,
+          "error": 0.23138105428496947
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 300.305900872742,
+          "aa_tps": 3329.937896970467,
+          "published_tps": 3431,
+          "error": -0.02945558234611856
+        }
+      ],
+      "ratio_100k_10k": 0.7995949883398431,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.1,
+      "background_count": 3,
+      "background_context": 4000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 264.06650157593873,
+          "aa_tps": 3786.924861851232,
+          "published_tps": 3382,
+          "error": 0.11972940918132235
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 324.20540197352847,
+          "aa_tps": 3084.464336228582,
+          "published_tps": 3431,
+          "error": -0.10100135930382337
+        }
+      ],
+      "ratio_100k_10k": 0.8145037065036317,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.1,
+      "background_count": 3,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 310.27344258286155,
+          "aa_tps": 3222.963562964111,
+          "published_tps": 3382,
+          "error": -0.047024375232374016
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 370.9908657114148,
+          "aa_tps": 2695.484154528691,
+          "published_tps": 3431,
+          "error": -0.21437360695753693
+        }
+      ],
+      "ratio_100k_10k": 0.8363371480531708,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.1,
+      "background_count": 7,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 325.4804937393923,
+          "aa_tps": 3072.3807393529587,
+          "published_tps": 3382,
+          "error": -0.09154916045152017
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 385.6842746178557,
+          "aa_tps": 2592.7943289645955,
+          "published_tps": 3431,
+          "error": -0.24430360566464715
+        }
+      ],
+      "ratio_100k_10k": 0.8439039783560928,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.1,
+      "background_count": 7,
+      "background_context": 4000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 381.3956616366283,
+          "aa_tps": 2621.949069134253,
+          "published_tps": 3382,
+          "error": -0.22473416051618778
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 441.4783478492608,
+          "aa_tps": 2265.116748922513,
+          "published_tps": 3431,
+          "error": -0.3398085838173963
+        }
+      ],
+      "ratio_100k_10k": 0.8639057011395103,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.1,
+      "background_count": 7,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 464.37572232429403,
+          "aa_tps": 2153.4286826942603,
+          "published_tps": 3382,
+          "error": -0.36326768696207556
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 525.0255941584328,
+          "aa_tps": 1904.669050663915,
+          "published_tps": 3431,
+          "error": -0.44486474769340867
+        }
+      ],
+      "ratio_100k_10k": 0.8844820661907828,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.1,
+      "background_count": 15,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 496.0413961528791,
+          "aa_tps": 2015.9607802002915,
+          "published_tps": 3382,
+          "error": -0.4039146125960108
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 556.8073912463295,
+          "aa_tps": 1795.9531710986282,
+          "published_tps": 3431,
+          "error": -0.4765511013994088
+        }
+      ],
+      "ratio_100k_10k": 0.8908671184169541,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.1,
+      "background_count": 15,
+      "background_context": 4000
+    },
+    {
+      "status": "infeasible",
+      "reason": "resident KV exceeds compiled replica budget on ('batched-a-domain', 80): required_bytes=154238976, available_bytes=152068096",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.1,
+      "background_count": 15,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 176.54927430015104,
+          "aa_tps": 5664.1410958161305,
+          "published_tps": 3382,
+          "error": 0.6747903890644975
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 204.90802215511718,
+          "aa_tps": 4880.238408835898,
+          "published_tps": 3431,
+          "error": 0.4223953392118618
+        }
+      ],
+      "ratio_100k_10k": 0.8616025494917015,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.3,
+      "background_count": 0,
+      "background_context": null
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 190.70425054746156,
+          "aa_tps": 5243.72161149667,
+          "published_tps": 3382,
+          "error": 0.5504794829972415
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 219.07193722928812,
+          "aa_tps": 4564.710627237327,
+          "published_tps": 3431,
+          "error": 0.3304315439339338
+        }
+      ],
+      "ratio_100k_10k": 0.8705097191333276,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.3,
+      "background_count": 1,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 191.7000376709892,
+          "aa_tps": 5216.483064631836,
+          "published_tps": 3382,
+          "error": 0.5424255069875328
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 220.092326721703,
+          "aa_tps": 4543.547768770947,
+          "published_tps": 3431,
+          "error": 0.32426341264090563
+        }
+      ],
+      "ratio_100k_10k": 0.8709982784333293,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.3,
+      "background_count": 1,
+      "background_context": 4000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 195.47726135171646,
+          "aa_tps": 5115.684520465679,
+          "published_tps": 3382,
+          "error": 0.5126210882512356
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 223.8526255704244,
+          "aa_tps": 4467.224797796255,
+          "published_tps": 3431,
+          "error": 0.3020183030592407
+        }
+      ],
+      "ratio_100k_10k": 0.8732408693156875,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.3,
+      "background_count": 1,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 227.45166293748287,
+          "aa_tps": 4396.538530803615,
+          "published_tps": 3382,
+          "error": 0.2999818246018968
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 255.9410269703774,
+          "aa_tps": 3907.1500643612712,
+          "published_tps": 3431,
+          "error": 0.13877880045504853
+        }
+      ],
+      "ratio_100k_10k": 0.8886877794852645,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.3,
+      "background_count": 3,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 230.58744398270707,
+          "aa_tps": 4336.7495763342395,
+          "published_tps": 3382,
+          "error": 0.28230324551574193
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 258.9949015838428,
+          "aa_tps": 3861.0798663782816,
+          "published_tps": 3431,
+          "error": 0.1253511706144803
+        }
+      ],
+      "ratio_100k_10k": 0.89031653740126,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.3,
+      "background_count": 3,
+      "background_context": 4000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 241.89825901525947,
+          "aa_tps": 4133.9693971791585,
+          "published_tps": 3382,
+          "error": 0.22234458816651648
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 270.27462620757603,
+          "aa_tps": 3699.9403681793688,
+          "published_tps": 3431,
+          "error": 0.07838541771476804
+        }
+      ],
+      "ratio_100k_10k": 0.8950091335228673,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.3,
+      "background_count": 3,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 301.19166830421716,
+          "aa_tps": 3320.144961612799,
+          "published_tps": 3382,
+          "error": -0.01828948503465444
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 329.9943900864791,
+          "aa_tps": 3030.3545455361764,
+          "published_tps": 3431,
+          "error": -0.11677221056946185
+        }
+      ],
+      "ratio_100k_10k": 0.9127175411233088,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.3,
+      "background_count": 7,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 308.7477985070691,
+          "aa_tps": 3238.8894911492102,
+          "published_tps": 3382,
+          "error": -0.04231534856617081
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 337.16780501874763,
+          "aa_tps": 2965.882225749273,
+          "published_tps": 3431,
+          "error": -0.13556332679997873
+        }
+      ],
+      "ratio_100k_10k": 0.9157096078313343,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.3,
+      "background_count": 7,
+      "background_context": 4000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 335.1417262139082,
+          "aa_tps": 2983.8122853187733,
+          "published_tps": 3382,
+          "error": -0.11773734910739997
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 363.48151294964174,
+          "aa_tps": 2751.1715572135417,
+          "published_tps": 3431,
+          "error": -0.1981429445603201
+        }
+      ],
+      "ratio_100k_10k": 0.9220323847951523,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.3,
+      "background_count": 7,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 449.5128389041897,
+          "aa_tps": 2224.6305632510366,
+          "published_tps": 3382,
+          "error": -0.34221449933440673
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 478.307804659111,
+          "aa_tps": 2090.703915468613,
+          "published_tps": 3431,
+          "error": -0.3906429858733276
+        }
+      ],
+      "ratio_100k_10k": 0.9397982523504013,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.3,
+      "background_count": 15,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 465.10661233707714,
+          "aa_tps": 2150.044685400579,
+          "published_tps": 3382,
+          "error": -0.3642682775279187
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 493.88306394005144,
+          "aa_tps": 2024.7707868787784,
+          "published_tps": 3431,
+          "error": -0.4098598697526149
+        }
+      ],
+      "ratio_100k_10k": 0.9417342814442665,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.3,
+      "background_count": 15,
+      "background_context": 4000
+    },
+    {
+      "status": "infeasible",
+      "reason": "resident KV exceeds compiled replica budget on ('batched-a-domain', 80): required_bytes=154238976, available_bytes=152068096",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.3,
+      "background_count": 15,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 176.40569554735052,
+          "aa_tps": 5668.751209518526,
+          "published_tps": 3382,
+          "error": 0.6761535214424972
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 204.760627260406,
+          "aa_tps": 4883.751399766136,
+          "published_tps": 3431,
+          "error": 0.4234192363060729
+        }
+      ],
+      "ratio_100k_10k": 0.8615215625560919,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.5,
+      "background_count": 0,
+      "background_context": null
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 190.41773593982813,
+          "aa_tps": 5251.611647751128,
+          "published_tps": 3382,
+          "error": 0.5528124328063655
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 218.77847265252868,
+          "aa_tps": 4570.833628536358,
+          "published_tps": 3431,
+          "error": 0.33221615521316195
+        }
+      ],
+      "ratio_100k_10k": 0.8703677909035228,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.5,
+      "background_count": 1,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 191.42237030777065,
+          "aa_tps": 5224.0498244389655,
+          "published_tps": 3382,
+          "error": 0.5446628694378963
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 219.79936389090602,
+          "aa_tps": 4549.6037035681975,
+          "published_tps": 3431,
+          "error": 0.3260284767030597
+        }
+      ],
+      "ratio_100k_10k": 0.8708959248980364,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.5,
+      "background_count": 1,
+      "background_context": 4000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 195.19401426435581,
+          "aa_tps": 5123.1079178774235,
+          "published_tps": 3382,
+          "error": 0.5148160608744599
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 223.55989819941144,
+          "aa_tps": 4473.074142787531,
+          "published_tps": 3431,
+          "error": 0.30372315441198805
+        }
+      ],
+      "ratio_100k_10k": 0.8731172980327905,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.5,
+      "background_count": 1,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 226.92162718755878,
+          "aa_tps": 4406.807814635775,
+          "published_tps": 3382,
+          "error": 0.30301827753866784
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 255.36237348422182,
+          "aa_tps": 3916.003702330044,
+          "published_tps": 3431,
+          "error": 0.14135928368698458
+        }
+      ],
+      "ratio_100k_10k": 0.8886259322052382,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.5,
+      "background_count": 3,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 230.02216720234725,
+          "aa_tps": 4347.407087597406,
+          "published_tps": 3382,
+          "error": 0.2854544907147858
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 258.4090305489254,
+          "aa_tps": 3869.833797509901,
+          "published_tps": 3431,
+          "error": 0.12790259327015474
+        }
+      ],
+      "ratio_100k_10k": 0.8901475568161169,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.5,
+      "background_count": 3,
+      "background_context": 4000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 241.3233242396576,
+          "aa_tps": 4143.818270159839,
+          "published_tps": 3382,
+          "error": 0.2252567327498045
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 269.6898491824519,
+          "aa_tps": 3707.9630658381775,
+          "published_tps": 3431,
+          "error": 0.08072371490474417
+        }
+      ],
+      "ratio_100k_10k": 0.8948179732059415,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.5,
+      "background_count": 3,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 300.21625220996395,
+          "aa_tps": 3330.932261790492,
+          "published_tps": 3382,
+          "error": -0.01509986345638914
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 328.86321514738654,
+          "aa_tps": 3040.777909903454,
+          "published_tps": 3431,
+          "error": -0.11373421454285804
+        }
+      ],
+      "ratio_100k_10k": 0.9128909479140624,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.5,
+      "background_count": 7,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 307.6013376600686,
+          "aa_tps": 3250.961155133544,
+          "published_tps": 3382,
+          "error": -0.03874596240876882
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 335.9962404855833,
+          "aa_tps": 2976.223777250589,
+          "published_tps": 3431,
+          "error": -0.13254917596893345
+        }
+      ],
+      "ratio_100k_10k": 0.9154904150579833,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.5,
+      "background_count": 7,
+      "background_context": 4000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 333.96079957996386,
+          "aa_tps": 2994.3634140825534,
+          "published_tps": 3382,
+          "error": -0.11461755940787899
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 362.3234507088404,
+          "aa_tps": 2759.9648823271727,
+          "published_tps": 3431,
+          "error": -0.19558004012615193
+        }
+      ],
+      "ratio_100k_10k": 0.9217200789146035,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.5,
+      "background_count": 7,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 447.46486456378324,
+          "aa_tps": 2234.8123376678136,
+          "published_tps": 3382,
+          "error": -0.33920392144653644
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 476.12738795748135,
+          "aa_tps": 2100.27825597233,
+          "published_tps": 3431,
+          "error": -0.3878524465251151
+        }
+      ],
+      "ratio_100k_10k": 0.9398007253549175,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.5,
+      "background_count": 15,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 462.932995290185,
+          "aa_tps": 2160.1398262250887,
+          "published_tps": 3382,
+          "error": -0.36128331572291883
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 491.5404319764186,
+          "aa_tps": 2034.4206395781794,
+          "published_tps": 3431,
+          "error": -0.40704732160356183
+        }
+      ],
+      "ratio_100k_10k": 0.9418004403601005,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.5,
+      "background_count": 15,
+      "background_context": 4000
+    },
+    {
+      "status": "infeasible",
+      "reason": "resident KV exceeds compiled replica budget on ('batched-a-domain', 80): required_bytes=154238976, available_bytes=152068096",
+      "layout_name": "tp16-pp8-kvp4",
+      "attention_mfu": 0.5,
+      "background_count": 15,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 186.68790761906894,
+          "aa_tps": 5356.533332841621,
+          "published_tps": 3382,
+          "error": 0.5838359943351925
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 284.34267367816096,
+          "aa_tps": 3516.8832981146907,
+          "published_tps": 3431,
+          "error": 0.025031564591865507
+        }
+      ],
+      "ratio_100k_10k": 0.6565595842654819,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.1,
+      "background_count": 0,
+      "background_context": null
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 201.7403545883891,
+          "aa_tps": 4956.866473444544,
+          "published_tps": 3382,
+          "error": 0.46566128723966393
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 299.39668643289195,
+          "aa_tps": 3340.050325587502,
+          "published_tps": 3431,
+          "error": -0.026508211720343344
+        }
+      ],
+      "ratio_100k_10k": 0.6738229370270871,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.1,
+      "background_count": 1,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 205.06439340591436,
+          "aa_tps": 4876.516997373365,
+          "published_tps": 3382,
+          "error": 0.44190331087325974
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 302.7222247088688,
+          "aa_tps": 3303.358387253234,
+          "published_tps": 3431,
+          "error": -0.03720245198098693
+        }
+      ],
+      "ratio_100k_10k": 0.677401183884424,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.1,
+      "background_count": 1,
+      "background_context": 4000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 218.04818931821578,
+          "aa_tps": 4586.142187773994,
+          "published_tps": 3382,
+          "error": 0.3560444079757523
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 315.70581259216203,
+          "aa_tps": 3167.505823821588,
+          "published_tps": 3431,
+          "error": -0.07679806941953138
+        }
+      ],
+      "ratio_100k_10k": 0.6906689095392006,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.1,
+      "background_count": 1,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 239.7070501077856,
+          "aa_tps": 4171.758817900201,
+          "published_tps": 3382,
+          "error": 0.2335182785039034
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 337.38839220773303,
+          "aa_tps": 2963.943108582974,
+          "published_tps": 3431,
+          "error": -0.13612850230749807
+        }
+      ],
+      "ratio_100k_10k": 0.7104780592457248,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.1,
+      "background_count": 3,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 249.68960460338377,
+          "aa_tps": 4004.9725001104352,
+          "published_tps": 3382,
+          "error": 0.184202395065179
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 347.36446081574735,
+          "aa_tps": 2878.8206993070326,
+          "published_tps": 3431,
+          "error": -0.1609382980743128
+        }
+      ],
+      "ratio_100k_10k": 0.7188116021340097,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.1,
+      "background_count": 3,
+      "background_context": 4000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 288.65980643295916,
+          "aa_tps": 3464.2855628473117,
+          "published_tps": 3382,
+          "error": 0.024330444366443382
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 386.3185043683793,
+          "aa_tps": 2588.5376669568905,
+          "published_tps": 3431,
+          "error": -0.2455442532914921
+        }
+      ],
+      "ratio_100k_10k": 0.7472067818881998,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.1,
+      "background_count": 3,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 316.03409326259145,
+          "aa_tps": 3164.215574580759,
+          "published_tps": 3382,
+          "error": -0.06439515831438236
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 413.73660328866697,
+          "aa_tps": 2416.99668835511,
+          "published_tps": 3431,
+          "error": -0.29554162391282135
+        }
+      ],
+      "ratio_100k_10k": 0.7638533568229936,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.1,
+      "background_count": 7,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 339.3577133278423,
+          "aa_tps": 2946.743099467826,
+          "published_tps": 3382,
+          "error": -0.1286980782176741
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 437.0167108992528,
+          "aa_tps": 2288.242016975259,
+          "published_tps": 3431,
+          "error": -0.3330684882030722
+        }
+      ],
+      "ratio_100k_10k": 0.7765325784214135,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.1,
+      "background_count": 7,
+      "background_context": 4000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 430.2534646148823,
+          "aa_tps": 2324.2113829230752,
+          "published_tps": 3382,
+          "error": -0.3127701410635496
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 527.9096726944724,
+          "aa_tps": 1894.2634540033323,
+          "published_tps": 3431,
+          "error": -0.4478975651403869
+        }
+      ],
+      "ratio_100k_10k": 0.8150134139782874,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.1,
+      "background_count": 7,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 468.86572639339516,
+          "aa_tps": 2132.806779655641,
+          "published_tps": 3382,
+          "error": -0.36936523369141305
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 566.7627608161406,
+          "aa_tps": 1764.4066779546279,
+          "published_tps": 3431,
+          "error": -0.4857456490951245
+        }
+      ],
+      "ratio_100k_10k": 0.8272698187125538,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.1,
+      "background_count": 15,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 518.9367651498118,
+          "aa_tps": 1927.0170609540646,
+          "published_tps": 3382,
+          "error": -0.4302137608060128
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 616.6614148713048,
+          "aa_tps": 1621.6354321580127,
+          "published_tps": 3431,
+          "error": -0.5273577871879882
+        }
+      ],
+      "ratio_100k_10k": 0.8415262454163962,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.1,
+      "background_count": 15,
+      "background_context": 4000
+    },
+    {
+      "status": "infeasible",
+      "reason": "resident KV exceeds compiled replica budget on ('batched-a-domain', 240): required_bytes=297254912, available_bytes=289865728",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.1,
+      "background_count": 15,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 186.2902465973491,
+          "aa_tps": 5367.967557428903,
+          "published_tps": 3382,
+          "error": 0.587216900481639
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 283.9451263591055,
+          "aa_tps": 3521.8072337515655,
+          "published_tps": 3431,
+          "error": 0.026466695934586282
+        }
+      ],
+      "ratio_100k_10k": 0.6560783380439069,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.3,
+      "background_count": 0,
+      "background_context": null
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 200.95214963380087,
+          "aa_tps": 4976.309045821704,
+          "published_tps": 3382,
+          "error": 0.4714101259082506
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 298.6088674276003,
+          "aa_tps": 3348.8623717527635,
+          "published_tps": 3431,
+          "error": -0.023939850844429178
+        }
+      ],
+      "ratio_100k_10k": 0.6729610924314667,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.3,
+      "background_count": 1,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 204.2705289706665,
+          "aa_tps": 4895.468793462621,
+          "published_tps": 3382,
+          "error": 0.44750703532306946
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 301.92787735246014,
+          "aa_tps": 3312.0492508634256,
+          "published_tps": 3431,
+          "error": -0.034669410998710126
+        }
+      ],
+      "ratio_100k_10k": 0.6765540524507716,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.3,
+      "background_count": 1,
+      "background_context": 4000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 217.2560575115685,
+          "aa_tps": 4602.863604605141,
+          "published_tps": 3382,
+          "error": 0.3609886471333945
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 314.91092894507534,
+          "aa_tps": 3175.5010959762953,
+          "published_tps": 3431,
+          "error": -0.07446776567289559
+        }
+      ],
+      "ratio_100k_10k": 0.6898968487354749,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.3,
+      "background_count": 1,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 238.15487230098333,
+          "aa_tps": 4198.948316019278,
+          "published_tps": 3382,
+          "error": 0.2415577516319567
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 335.8195858781127,
+          "aa_tps": 2977.789390649045,
+          "published_tps": 3431,
+          "error": -0.13209286195014724
+        }
+      ],
+      "ratio_100k_10k": 0.7091750520692462,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.3,
+      "background_count": 3,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 248.1143525420991,
+          "aa_tps": 4030.3996514281607,
+          "published_tps": 3382,
+          "error": 0.1917207721549854
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 345.7763872406168,
+          "aa_tps": 2892.042478609524,
+          "published_tps": 3431,
+          "error": -0.1570846754271279
+        }
+      ],
+      "ratio_100k_10k": 0.7175572471044496,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.3,
+      "background_count": 3,
+      "background_context": 4000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 287.0739906732058,
+          "aa_tps": 3483.4225060059944,
+          "published_tps": 3382,
+          "error": 0.029988913662328365
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 384.7293079060793,
+          "aa_tps": 2599.2301065977576,
+          "published_tps": 3431,
+          "error": -0.24242783252761357
+        }
+      ],
+      "ratio_100k_10k": 0.7461713593789604,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.3,
+      "background_count": 3,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 312.93287272127276,
+          "aa_tps": 3195.5735148690924,
+          "published_tps": 3382,
+          "error": -0.05512314758453807
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 410.6063050682848,
+          "aa_tps": 2435.4229042676234,
+          "published_tps": 3431,
+          "error": -0.2901711150487837
+        }
+      ],
+      "ratio_100k_10k": 0.7621238857236527,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.3,
+      "background_count": 7,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 336.1800404059924,
+          "aa_tps": 2974.5965845929954,
+          "published_tps": 3382,
+          "error": -0.12046227540124321
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 433.8354227255086,
+          "aa_tps": 2305.021553375342,
+          "published_tps": 3431,
+          "error": -0.3281779209048843
+        }
+      ],
+      "ratio_100k_10k": 0.7749022389504058,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.3,
+      "background_count": 7,
+      "background_context": 4000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 427.0729690155902,
+          "aa_tps": 2341.5202378764816,
+          "published_tps": 3382,
+          "error": -0.30765220642327573
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 524.7368386482169,
+          "aa_tps": 1905.7171640095182,
+          "published_tps": 3431,
+          "error": -0.4445592643516414
+        }
+      ],
+      "ratio_100k_10k": 0.8138802873375154,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.3,
+      "background_count": 7,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 462.78794846565603,
+          "aa_tps": 2160.816856435947,
+          "published_tps": 3382,
+          "error": -0.361083129380264
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 560.5423194870198,
+          "aa_tps": 1783.9866237310143,
+          "published_tps": 3431,
+          "error": -0.4800388738761252
+        }
+      ],
+      "ratio_100k_10k": 0.8256075096866484,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.3,
+      "background_count": 15,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 512.6472817795488,
+          "aa_tps": 1950.6589336213917,
+          "published_tps": 3382,
+          "error": -0.4232232603130125
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 610.330013118908,
+          "aa_tps": 1638.457848221818,
+          "published_tps": 3431,
+          "error": -0.5224547221737633
+        }
+      ],
+      "ratio_100k_10k": 0.8399509622012837,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.3,
+      "background_count": 15,
+      "background_context": 4000
+    },
+    {
+      "status": "infeasible",
+      "reason": "resident KV exceeds compiled replica budget on ('batched-a-domain', 240): required_bytes=297254912, available_bytes=289865728",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.3,
+      "background_count": 15,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 186.21071439300485,
+          "aa_tps": 5370.260262733656,
+          "published_tps": 3382,
+          "error": 0.5878948145279883
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 283.8656168952939,
+          "aa_tps": 3522.793675885227,
+          "published_tps": 3431,
+          "error": 0.02675420457161959
+        }
+      ],
+      "ratio_100k_10k": 0.6559819270457476,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.5,
+      "background_count": 0,
+      "background_context": null
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 200.79450864288262,
+          "aa_tps": 4980.215877210674,
+          "published_tps": 3382,
+          "error": 0.47256530964242294
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 298.4513036265419,
+          "aa_tps": 3350.6303636432426,
+          "published_tps": 3431,
+          "error": -0.02342455154670864
+        }
+      ],
+      "ratio_100k_10k": 0.6727881775116681,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.5,
+      "background_count": 1,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 204.1117560836152,
+          "aa_tps": 4899.276843173824,
+          "published_tps": 3382,
+          "error": 0.44863301099166897
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 301.7690078811767,
+          "aa_tps": 3313.7929140614588,
+          "published_tps": 3431,
+          "error": -0.03416120254693711
+        }
+      ],
+      "ratio_100k_10k": 0.676384090986525,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.5,
+      "background_count": 1,
+      "background_context": 4000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 217.09763115023725,
+          "aa_tps": 4606.222530857436,
+          "published_tps": 3382,
+          "error": 0.3619818246178108
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 314.7519522156565,
+          "aa_tps": 3177.104996365,
+          "published_tps": 3431,
+          "error": -0.07400029251967366
+        }
+      ],
+      "ratio_100k_10k": 0.6897419686264246,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.5,
+      "background_count": 1,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 237.8444367396245,
+          "aa_tps": 4204.428801060124,
+          "published_tps": 3382,
+          "error": 0.24317823804261507
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 335.5058246121906,
+          "aa_tps": 2980.5741857265652,
+          "published_tps": 3431,
+          "error": -0.13128120497622697
+        }
+      ],
+      "ratio_100k_10k": 0.7089129883647999,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.5,
+      "background_count": 3,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 247.79930212984263,
+          "aa_tps": 4035.5238751883853,
+          "published_tps": 3382,
+          "error": 0.19323591815150354
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 345.4587725255891,
+          "aa_tps": 2894.7014217910105,
+          "published_tps": 3431,
+          "error": -0.15630969927396954
+        }
+      ],
+      "ratio_100k_10k": 0.7173049921940756,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.5,
+      "background_count": 3,
+      "background_context": 4000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 286.75682752125533,
+          "aa_tps": 3487.2752939975835,
+          "published_tps": 3382,
+          "error": 0.03112811768113044
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 384.41146861361864,
+          "aa_tps": 2601.37920340021,
+          "published_tps": 3431,
+          "error": -0.24180145631005245
+        }
+      ],
+      "ratio_100k_10k": 0.7459632475468145,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.5,
+      "background_count": 3,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 312.3126286130042,
+          "aa_tps": 3201.9198341131746,
+          "published_tps": 3382,
+          "error": -0.05324664869509921
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 409.9802454242044,
+          "aa_tps": 2439.141912716563,
+          "published_tps": 3431,
+          "error": -0.2890871720441378
+        }
+      ],
+      "ratio_100k_10k": 0.7617748223206607,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.5,
+      "background_count": 7,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 335.54450582162,
+          "aa_tps": 2980.230588342917,
+          "published_tps": 3382,
+          "error": -0.1187963961138625
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 433.199165090759,
+          "aa_tps": 2308.4070344191255,
+          "published_tps": 3431,
+          "error": -0.3271911878696807
+        }
+      ],
+      "ratio_100k_10k": 0.7745732975993168,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.5,
+      "background_count": 7,
+      "background_context": 4000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 426.43686989573087,
+          "aa_tps": 2345.012991593603,
+          "published_tps": 3382,
+          "error": -0.30661945842885774
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 524.1022718389655,
+          "aa_tps": 1908.0245473678422,
+          "published_tps": 3431,
+          "error": -0.4438867539003666
+        }
+      ],
+      "ratio_100k_10k": 0.8136520156637613,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.5,
+      "background_count": 7,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 461.5723928801095,
+          "aa_tps": 2166.5073895780934,
+          "published_tps": 3382,
+          "error": -0.3594005353110309
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 559.2982312212014,
+          "aa_tps": 1787.954876625565,
+          "published_tps": 3431,
+          "error": -0.47888228603160443
+        }
+      ],
+      "ratio_100k_10k": 0.8252706107657228,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.5,
+      "background_count": 15,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 511.3893851054908,
+          "aa_tps": 1955.4570922384657,
+          "published_tps": 3382,
+          "error": -0.4218045262452792
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 609.0637327684308,
+          "aa_tps": 1641.864301219533,
+          "published_tps": 3431,
+          "error": -0.5214618766483436
+        }
+      ],
+      "ratio_100k_10k": 0.8396319754273133,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.5,
+      "background_count": 15,
+      "background_context": 4000
+    },
+    {
+      "status": "infeasible",
+      "reason": "resident KV exceeds compiled replica budget on ('batched-a-domain', 240): required_bytes=297254912, available_bytes=289865728",
+      "layout_name": "tp16-pp16",
+      "attention_mfu": 0.5,
+      "background_count": 15,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 188.13191608839753,
+          "aa_tps": 5315.419205798818,
+          "published_tps": 3382,
+          "error": 0.571679244766061
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 248.24692894454762,
+          "aa_tps": 4028.247214382966,
+          "published_tps": 3431,
+          "error": 0.17407380191867272
+        }
+      ],
+      "ratio_100k_10k": 0.7578418669196173,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.1,
+      "background_count": 0,
+      "background_context": null
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 204.0449866417114,
+          "aa_tps": 4900.880028755273,
+          "published_tps": 3382,
+          "error": 0.4491070457585078
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 264.1734384896161,
+          "aa_tps": 3785.391921751842,
+          "published_tps": 3431,
+          "error": 0.10329114594923983
+        }
+      ],
+      "ratio_100k_10k": 0.7723902441074969,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.1,
+      "background_count": 1,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 206.08762870040695,
+          "aa_tps": 4852.30484869966,
+          "published_tps": 3382,
+          "error": 0.4347441894440154
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 266.2479979874775,
+          "aa_tps": 3755.8967863000917,
+          "published_tps": 3431,
+          "error": 0.09469448740894548
+        }
+      ],
+      "ratio_100k_10k": 0.774043862332065,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.1,
+      "background_count": 1,
+      "background_context": 4000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 214.07776371712657,
+          "aa_tps": 4671.199767021848,
+          "published_tps": 3382,
+          "error": 0.3811944905446032
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 274.21495656854165,
+          "aa_tps": 3646.774094723911,
+          "published_tps": 3431,
+          "error": 0.0628895641865086
+        }
+      ],
+      "ratio_100k_10k": 0.7806932429800436,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.1,
+      "background_count": 1,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 244.25069969854542,
+          "aa_tps": 4094.1540852664966,
+          "published_tps": 3382,
+          "error": 0.21057187618760986
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 304.54428029616906,
+          "aa_tps": 3283.594750252741,
+          "published_tps": 3431,
+          "error": -0.042962765883782894
+        }
+      ],
+      "ratio_100k_10k": 0.8020203152757025,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.1,
+      "background_count": 3,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 250.6190933067298,
+          "aa_tps": 3990.118976195128,
+          "published_tps": 3382,
+          "error": 0.1798104601404873
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 310.8019008727424,
+          "aa_tps": 3217.483539167443,
+          "published_tps": 3431,
+          "error": -0.06223155372560685
+        }
+      ],
+      "ratio_100k_10k": 0.8063628073154726,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.1,
+      "background_count": 3,
+      "background_context": 4000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 274.56250157593945,
+          "aa_tps": 3642.157957696989,
+          "published_tps": 3382,
+          "error": 0.07692429263660228
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 334.70140197353186,
+          "aa_tps": 2987.7377092046954,
+          "published_tps": 3431,
+          "error": -0.12919332287825835
+        }
+      ],
+      "ratio_100k_10k": 0.820320739492008,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.1,
+      "background_count": 3,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 324.86544258284397,
+          "aa_tps": 3078.19752094743,
+          "published_tps": 3382,
+          "error": -0.08982923685764932
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 385.58286571140013,
+          "aa_tps": 2593.476237993617,
+          "published_tps": 3431,
+          "error": -0.2441048563119741
+        }
+      ],
+      "ratio_100k_10k": 0.8425308058838856,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.1,
+      "background_count": 7,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 340.07249373937276,
+          "aa_tps": 2940.5494957977617,
+          "published_tps": 3382,
+          "error": -0.1305294217037961
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 400.27627461784095,
+          "aa_tps": 2498.2744754350933,
+          "published_tps": 3431,
+          "error": -0.27185238256045074
+        }
+      ],
+      "ratio_100k_10k": 0.8495944309066356,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.1,
+      "background_count": 7,
+      "background_context": 4000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 395.98766163661344,
+          "aa_tps": 2525.3312082174707,
+          "published_tps": 3382,
+          "error": -0.25330242217106125
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 456.07034784925514,
+          "aa_tps": 2192.6441934140603,
+          "published_tps": 3431,
+          "error": -0.3609314504768113
+        }
+      ],
+      "ratio_100k_10k": 0.8682600469511321,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.1,
+      "background_count": 7,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 487.1597223242998,
+          "aa_tps": 2052.7148575191627,
+          "published_tps": 3382,
+          "error": -0.3930470557305846
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 547.8095941584712,
+          "aa_tps": 1825.4517822678338,
+          "published_tps": 3431,
+          "error": -0.4679534298257553
+        }
+      ],
+      "ratio_100k_10k": 0.8892865833659962,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.1,
+      "background_count": 15,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 518.8253961529208,
+          "aa_tps": 1927.4307067753016,
+          "published_tps": 3382,
+          "error": -0.4300914527571551
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 579.5913912463502,
+          "aa_tps": 1725.3534388245578,
+          "published_tps": 3431,
+          "error": -0.49712811459499917
+        }
+      ],
+      "ratio_100k_10k": 0.8951571814019554,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.1,
+      "background_count": 15,
+      "background_context": 4000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 638.8478652176782,
+          "aa_tps": 1565.317901875221,
+          "published_tps": 3382,
+          "error": -0.5371620633130629
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 699.1446717431551,
+          "aa_tps": 1430.3191319569553,
+          "published_tps": 3431,
+          "error": -0.583118877307795
+        }
+      ],
+      "ratio_100k_10k": 0.9137563240307035,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.1,
+      "background_count": 15,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 183.97327430015093,
+          "aa_tps": 5435.572116678795,
+          "published_tps": 3382,
+          "error": 0.6072064212533399
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 212.33202215511668,
+          "aa_tps": 4709.60522040082,
+          "published_tps": 3431,
+          "error": 0.37266255330831255
+        }
+      ],
+      "ratio_100k_10k": 0.8664414930582228,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.3,
+      "background_count": 0,
+      "background_context": null
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 199.15225054746085,
+          "aa_tps": 5021.283953613597,
+          "published_tps": 3382,
+          "error": 0.4847084428189228
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 227.51993722928898,
+          "aa_tps": 4395.219215414185,
+          "published_tps": 3431,
+          "error": 0.2810315404879582
+        }
+      ],
+      "ratio_100k_10k": 0.8753177983991801,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.3,
+      "background_count": 1,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 200.14803767098985,
+          "aa_tps": 4996.30179559309,
+          "published_tps": 3382,
+          "error": 0.4773216426945861
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 228.54032672170283,
+          "aa_tps": 4375.595389857457,
+          "published_tps": 3431,
+          "error": 0.2753119760587168
+        }
+      ],
+      "ratio_100k_10k": 0.8757668309221999,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.3,
+      "background_count": 1,
+      "background_context": 4000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 203.92526135171494,
+          "aa_tps": 4903.757353902689,
+          "published_tps": 3382,
+          "error": 0.44995782197004397
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 232.30062557042493,
+          "aa_tps": 4304.766711430302,
+          "published_tps": 3431,
+          "error": 0.25466823416796913
+        }
+      ],
+      "ratio_100k_10k": 0.8778506766865869,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.3,
+      "background_count": 1,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 237.9476629374856,
+          "aa_tps": 4202.604840303573,
+          "published_tps": 3382,
+          "error": 0.24263892380354024
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 266.437026970379,
+          "aa_tps": 3753.2320915409946,
+          "published_tps": 3431,
+          "error": 0.09391783489973604
+        }
+      ],
+      "ratio_100k_10k": 0.8930728046441506,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.3,
+      "background_count": 3,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 241.083443982708,
+          "aa_tps": 4147.941407671802,
+          "published_tps": 3382,
+          "error": 0.22647587453335372
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 269.490901583848,
+          "aa_tps": 3710.700413716436,
+          "published_tps": 3431,
+          "error": 0.08152154290773406
+        }
+      ],
+      "ratio_100k_10k": 0.8945884353268179,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.3,
+      "background_count": 3,
+      "background_context": 4000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 252.39425901526482,
+          "aa_tps": 3962.055253956945,
+          "published_tps": 3382,
+          "error": 0.17151249377792577
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 280.77062620758403,
+          "aa_tps": 3561.626134140768,
+          "published_tps": 3431,
+          "error": 0.03807232123018589
+        }
+      ],
+      "ratio_100k_10k": 0.8989339890158614,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.3,
+      "background_count": 3,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 315.7836683041995,
+          "aa_tps": 3166.724882797561,
+          "published_tps": 3382,
+          "error": -0.06365319846316941
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 344.58639008646423,
+          "aa_tps": 2902.029879209908,
+          "published_tps": 3431,
+          "error": -0.15417374549405194
+        }
+      ],
+      "ratio_100k_10k": 0.9164136407852977,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.3,
+      "background_count": 7,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 323.3397985070589,
+          "aa_tps": 3092.721665001498,
+          "published_tps": 3382,
+          "error": -0.08553469396762325
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 351.75980501872607,
+          "aa_tps": 2842.848971748676,
+          "published_tps": 3431,
+          "error": -0.17142262554687382
+        }
+      ],
+      "ratio_100k_10k": 0.9192062137112164,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.3,
+      "background_count": 7,
+      "background_context": 4000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 349.73372621389336,
+          "aa_tps": 2859.3181756466083,
+          "published_tps": 3382,
+          "error": -0.1545481443978095
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 378.0735129496361,
+          "aa_tps": 2644.9882516187054,
+          "published_tps": 3431,
+          "error": -0.2290911537106659
+        }
+      ],
+      "ratio_100k_10k": 0.9250415970305809,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.3,
+      "background_count": 7,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 472.29683890418977,
+          "aa_tps": 2117.3124984706074,
+          "published_tps": 3382,
+          "error": -0.3739466296656986
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 501.09180465911675,
+          "aa_tps": 1995.6422968846618,
+          "published_tps": 3431,
+          "error": -0.4183496657287491
+        }
+      ],
+      "ratio_100k_10k": 0.9425355484021224,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.3,
+      "background_count": 15,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 487.89061233708156,
+          "aa_tps": 2049.639764966628,
+          "published_tps": 3382,
+          "error": -0.3939563084072656
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 516.6670639400868,
+          "aa_tps": 1935.4823827437954,
+          "published_tps": 3431,
+          "error": -0.43588388727956995
+        }
+      ],
+      "ratio_100k_10k": 0.944303684884504,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.3,
+      "background_count": 15,
+      "background_context": 4000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 544.6416214367786,
+          "aa_tps": 1836.0697395141678,
+          "published_tps": 3382,
+          "error": -0.4571053401791343
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 573.0710948907077,
+          "aa_tps": 1744.9841894236756,
+          "published_tps": 3431,
+          "error": -0.49140653179140903
+        }
+      ],
+      "ratio_100k_10k": 0.9503910183092534,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.3,
+      "background_count": 15,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 183.8296955473504,
+          "aa_tps": 5439.817527970732,
+          "published_tps": 3382,
+          "error": 0.6084617173183713
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 212.18462726040562,
+          "aa_tps": 4712.876766386758,
+          "published_tps": 3431,
+          "error": 0.3736160788069829
+        }
+      ],
+      "ratio_100k_10k": 0.866366701117059,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.5,
+      "background_count": 0,
+      "background_context": null
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 198.86573593982743,
+          "aa_tps": 5028.518338134322,
+          "published_tps": 3382,
+          "error": 0.48684752753823846
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 227.22647265252954,
+          "aa_tps": 4400.8956717344345,
+          "published_tps": 3431,
+          "error": 0.2826860016713595
+        }
+      ],
+      "ratio_100k_10k": 0.8751873565538695,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.5,
+      "background_count": 1,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 199.87037030777134,
+          "aa_tps": 5003.2428441501625,
+          "published_tps": 3382,
+          "error": 0.47937399294800787
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 228.24736389090594,
+          "aa_tps": 4381.211607236631,
+          "published_tps": 3431,
+          "error": 0.2769488799873596
+        }
+      ],
+      "ratio_100k_10k": 0.8756743863350913,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.5,
+      "background_count": 1,
+      "background_context": 4000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 203.64201426435415,
+          "aa_tps": 4910.578023952701,
+          "published_tps": 3382,
+          "error": 0.4519745783420168
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 232.0078981994119,
+          "aa_tps": 4310.198091361938,
+          "published_tps": 3431,
+          "error": 0.25625126533428677
+        }
+      ],
+      "ratio_100k_10k": 0.8777374212033199,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.5,
+      "background_count": 1,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 237.41762718756246,
+          "aa_tps": 4211.987171491649,
+          "published_tps": 3382,
+          "error": 0.24541311989699843
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 265.85837348422706,
+          "aa_tps": 3761.4011809913086,
+          "published_tps": 3431,
+          "error": 0.09629879947283837
+        }
+      ],
+      "ratio_100k_10k": 0.8930229432914516,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.5,
+      "background_count": 3,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 240.51816720234817,
+          "aa_tps": 4157.6900889931485,
+          "published_tps": 3382,
+          "error": 0.22935839414345027
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 268.90503054892696,
+          "aa_tps": 3718.785022201551,
+          "published_tps": 3431,
+          "error": 0.08387788464049861
+        }
+      ],
+      "ratio_100k_10k": 0.8944353577594607,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.5,
+      "background_count": 3,
+      "background_context": 4000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 251.81932423966302,
+          "aa_tps": 3971.1011179121183,
+          "published_tps": 3382,
+          "error": 0.17418720222120587
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 280.18584918245824,
+          "aa_tps": 3569.0596185276854,
+          "published_tps": 3431,
+          "error": 0.04023888619285487
+        }
+      ],
+      "ratio_100k_10k": 0.8987581813087112,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.5,
+      "background_count": 3,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 314.8082522099501,
+          "aa_tps": 3176.536806071671,
+          "published_tps": 3382,
+          "error": -0.06075197928099618
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 343.4552151473717,
+          "aa_tps": 2911.5877584532072,
+          "published_tps": 3431,
+          "error": -0.15138800394835117
+        }
+      ],
+      "ratio_100k_10k": 0.9165918533945406,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.5,
+      "background_count": 7,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 322.1933376600574,
+          "aa_tps": 3103.7264993203826,
+          "published_tps": 3382,
+          "error": -0.08228075123584189
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 350.58824048556846,
+          "aa_tps": 2852.3489510514937,
+          "published_tps": 3431,
+          "error": -0.1686537595303137
+        }
+      ],
+      "ratio_100k_10k": 0.9190078287104445,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.5,
+      "background_count": 7,
+      "background_context": 4000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 348.55279957994895,
+          "aa_tps": 2869.0057896683916,
+          "published_tps": 3382,
+          "error": -0.15168368135174704
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 376.91545070883495,
+          "aa_tps": 2653.1149044683084,
+          "published_tps": 3431,
+          "error": -0.22672255771835959
+        }
+      ],
+      "ratio_100k_10k": 0.9247506275597176,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.5,
+      "background_count": 7,
+      "background_context": 16000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 470.24886456378914,
+          "aa_tps": 2126.5335769127632,
+          "published_tps": 3382,
+          "error": -0.3712201132723941
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 498.9113879574886,
+          "aa_tps": 2004.3639494659285,
+          "published_tps": 3431,
+          "error": -0.4158076509863222
+        }
+      ],
+      "ratio_100k_10k": 0.9425498714089449,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.5,
+      "background_count": 15,
+      "background_context": 1000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 485.71699529018497,
+          "aa_tps": 2058.8120442492723,
+          "published_tps": 3382,
+          "error": -0.39124422109719925
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 514.3244319764536,
+          "aa_tps": 1944.2980691334942,
+          "published_tps": 3431,
+          "error": -0.4333144654230562
+        }
+      ],
+      "ratio_100k_10k": 0.9443786160880293,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.5,
+      "background_count": 15,
+      "background_context": 4000
+    },
+    {
+      "status": "ok",
+      "workloads": [
+        {
+          "input_tokens": 10000,
+          "step_us": 542.3414562463327,
+          "aa_tps": 1843.8568331494057,
+          "published_tps": 3382,
+          "error": -0.45480282875535016
+        },
+        {
+          "input_tokens": 100000,
+          "step_us": 570.7205769169533,
+          "aa_tps": 1752.1709229445078,
+          "published_tps": 3431,
+          "error": -0.4893118848893886
+        }
+      ],
+      "ratio_100k_10k": 0.9502749299422052,
+      "source_sha256": "d3fdcca7c42fa0350691c55e86875999a994277d5000939e770f8649d7150244",
+      "layout_name": "tp16-pp16-kvp4",
+      "attention_mfu": 0.5,
+      "background_count": 15,
+      "background_context": 16000
+    }
+  ]
+}

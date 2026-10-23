@@ -134,8 +134,20 @@ def capture_profile(
     sample,
     streaming=None,
     invocation_us=0.0,
+    contexts=None,
+    maximum_contexts=None,
 ):
+    """Capture one forward; ``contexts`` gives each session its own context."""
     number(invocation_us, "LPX invocation_us", minimum=0)
+    if contexts is None:
+        contexts = maximum_contexts = (context,) * batch
+    elif maximum_contexts is None:
+        maximum_contexts = contexts
+    if not len(contexts) == len(maximum_contexts) == batch or any(
+        type(c) is not int or c < queries or m < c
+        for c, m in zip(contexts, maximum_contexts)
+    ):
+        raise ConfigurationError("per-session contexts must match the batch")
     if invocation_us:
         if phase != "decode" or any(
             worker.hardware != "groq_lp30" for worker in runtime.workers
@@ -150,10 +162,10 @@ def capture_profile(
         service.admit(
             index + sample * batch,
             dp_rank,
-            maximum_context=context,
-            current_context=context - queries,
+            maximum_context=maximum,
+            current_context=current - queries,
         )
-        for index in range(batch)
+        for index, (current, maximum) in enumerate(zip(contexts, maximum_contexts))
     ]
     for session in sessions:
         session.generated = 1 + sample if phase == "decode" else 0
@@ -172,6 +184,11 @@ def capture_profile(
             batch=batch,
             queries=queries,
             context=context,
+            **(
+                {"contexts": list(contexts)}
+                if set(contexts) != {context} or set(maximum_contexts) != {context}
+                else {}
+            ),
             emit_logits=emit_logits,
             dp_rank=dp_rank,
             seed=seed,

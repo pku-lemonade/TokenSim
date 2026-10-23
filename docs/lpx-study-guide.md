@@ -851,3 +851,10 @@ These results remain conditional on the Helix hypothesis and the uncalibrated LP
 
 The [placement plausibility record](lpx-placement-plausibility.md) gives six reasons why the simulated pure-LPX, minimum-chip, batch-1 configuration without speculative decoding is unlikely to have produced the published AA pair.
 It also records the sources of the 10,996 TPS Hot Chips example and three tests that distinguish batched serving, speculative decoding and operator-cost error.
+
+## October 23, 2026 batched-serving record
+
+The [batched-serving control](lpx-batched-serving.md) adds background decode requests to the AA request's forward on TP16/PP8 and TP16/PP16, with and without `KVP = 4`, at attention matrix efficiencies 0.10, 0.30 and 0.50.
+The LPX streaming refinement now accepts batches of single-token decode requests.
+About seven background requests bring the 10K speed to the published 3,382 TPS, but the 100K speed then reaches at most 3,041 TPS against the published 3,431 TPS.
+No point matches both published values within 5%, as recorded before the sweep.

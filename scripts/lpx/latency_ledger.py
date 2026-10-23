@@ -30,7 +30,7 @@ def close(left, right):
         raise AssertionError(f"latency conservation failed: {left} != {right}")
 
 
-def build(hardware, *, colocated_dense_reuse=False):
+def build(hardware, *, colocated_dense_reuse=False, micro_batch=1):
     model = replace(
         hardware.models.resolve("gemma-4-31b-text"),
         dtype="fp8",
@@ -52,6 +52,7 @@ def build(hardware, *, colocated_dense_reuse=False):
         namespace="ledger",
         dag_template_cache=True,
         colocated_dense_reuse=colocated_dense_reuse,
+        micro_batch=micro_batch,
     )
     memory = ResidentKV(runtime.plan)
     owner = next(iter(runtime.plan.request_owners))

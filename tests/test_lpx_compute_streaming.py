@@ -285,9 +285,33 @@ class NativeStreamingTest(unittest.TestCase):
             transform(
                 self.runtime,
                 (),
-                replace(profile, metadata=dict(phase="decode", batch=2, queries=1)),
+                replace(profile, metadata=dict(phase="decode", batch=1, queries=2)),
                 {},
             )
+
+    def test_batched_decode_streams_every_request_row(self):
+        hardware = HardwareContext.load(Path(__file__).resolve().parents[1] / "data")
+        runtime = build(hardware, micro_batch=2)
+        settings = {**self.settings, "batch": 2, "context": 2000}
+        single = capture_profile(runtime, "ledger", streaming={}, **settings)
+        mixed = capture_profile(
+            runtime,
+            "ledger",
+            streaming={},
+            **{**settings, "contexts": (2000, 6000), "maximum_contexts": (2000, 6000)},
+        )
+        for profile in (single, mixed):
+            self.assertEqual(
+                profile.metadata["streaming"]["streaming_collectives"],
+                2 * runtime.model.num_layers,
+            )
+        self.assertNotIn("contexts", single.metadata)
+        self.assertEqual(mixed.metadata["contexts"], [2000, 6000])
+        self.assertGreater(
+            mixed.metadata["modeled_duration_s"], single.metadata["modeled_duration_s"]
+        )
+        with self.assertRaises(ConfigurationError):
+            capture_profile(runtime, "ledger", **{**settings, "contexts": (2000,)})
 
 
 if __name__ == "__main__":

@@ -132,11 +132,10 @@ class StreamingBuilder:
         if (
             part["table"] != "gemm"
             or any(item["match_type"] != "analytical" for item in components)
-            or part["key"]["m"] != 1
-            or part["key"]["n"] * element_bytes != payload
+            or part["key"]["m"] * part["key"]["n"] * element_bytes != payload
         ):
             raise ConfigurationError(
-                "streaming supports analytical, single-token, full-output GEMMs"
+                "streaming supports analytical GEMMs that produce the full output"
             )
         device = self.runtime.hardware.device(event.details["device_id"])
         estimate = analytical_model_for(device.family).estimate(
@@ -320,9 +319,10 @@ def transform(runtime, events, profile, settings):
         return replace(
             profile, metadata={**profile.metadata, "streaming_skipped": "prefill"}
         )
-    if profile.metadata["batch"] != 1 or profile.metadata["queries"] != 1:
+    # A batch of single-token decodes produces one output row per request.
+    if profile.metadata["queries"] != 1:
         raise ConfigurationError(
-            "LPX output streaming currently requires single-token decode"
+            "LPX output streaming requires one query token per decode request"
         )
     builder = StreamingBuilder(runtime, events, profile, config)
     nodes, metadata = builder.build()
