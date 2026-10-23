@@ -846,3 +846,8 @@ On the TP16/PP8 Gemma layout, `KVP = 4` gives 5,730.77, 5,533.30 and 4,152.44 TP
 The 100K/10K ratio rises from 0.647 to 0.750 and stays below the published 1.0145.
 KV parallelism lowers the memory-feasible TP16 inventory from 128 to 96 chips.
 These results remain conditional on the Helix hypothesis and the uncalibrated LP30 parameters.
+
+## October 23, 2026 placement plausibility record
+
+The [placement plausibility record](lpx-placement-plausibility.md) gives six reasons why the simulated pure-LPX, minimum-chip, batch-1 configuration without speculative decoding is unlikely to have produced the published AA pair.
+It also records the sources of the 10,996 TPS Hot Chips example and three tests that distinguish batched serving, speculative decoding and operator-cost error.
