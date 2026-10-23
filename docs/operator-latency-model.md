@@ -117,6 +117,7 @@ The report keeps cumulative device time separate from elapsed forward time.
 Each observed clock is translated at its earliest unambiguous match, and cross-rank overlap is unavailable when the files do not establish a common clock domain.
 The CLI returns status 2 when no operators match and reports invalid inputs as argument errors.
 Small collection samples validate ownership, order and accounting; they do not establish a general prediction-accuracy target.
+The [trace discrepancy analysis](operator-tracing-analysis.md) separates profiler perturbation, host dispatch gaps, peer-arrival waiting and operator-cost errors in the initial Dense and MoE samples.
 
 An operator's shape is its set of dimensions, such as matrix sizes, batch size and context length.
 Its data type is recorded as `dtype`.
@@ -532,7 +533,7 @@ Compressed-attention models differ as described below the table.
 | **Attention core** | Context chunks grouped by `(query_len, kv_len)` issue one `context_attention` query each, with the cached-context correction below; decode tokens are bucketed by context length (4.4) |
 | **Dense FFN** (per dense layer) | `rmsnorm(T, h)` + `gemm(T, g*inter_local, h)` + `swiglu(T, inter_local)` (gated FFNs) + `gemm(T, h, inter_local)` + `residual_add(T, h)`, where `g` is 2 for gated FFNs and 1 otherwise |
 | **MoE layer** | `rmsnorm(T, h)` + router `gemm(T, E, h)` + `moe(num_tokens = T * replicas_per_group)` + straggler time (4.5) + `residual_add(T, h)` |
-| **LM head** (last PP stage only) | `gemm(B, vocab_local, h)` + `rmsnorm(B, h)` |
+| **Final Norm and LM head** (last PP stage only) | `rmsnorm(T, h)` for every forwarded token, followed by `gemm(B, vocab_local, h)` when `B > 0` |
 | **Communication** | With TP > 1, one all-reduce per layer after the attention output projection, plus one after the FFN for dense layers and for MoE layers without EP (message `T * h * activation_bytes`). EP MoE layers: one dispatch and one combine each (message `T * top_k * h * activation_bytes`). PP: one point-to-point transfer of `T * h * activation_bytes` per step |
 | **Fixed overhead** | `device.step_overhead_us` (0 in every bundled device file, grade D) |
 
