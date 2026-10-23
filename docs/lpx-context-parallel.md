@@ -296,6 +296,44 @@ The driver screens the smallest TP16 inventory and breaks the tie toward the lar
 That 96-chip layout reaches 5,716.56, 5,518.62 and 4,143.38 TPS, within 0.3% of `KVP = 4` on 128 chips.
 Serial decode passes every layer regardless of the stage count, so fewer stages change TPS only through stage-boundary transfers and the per-stage layer mix.
 
+### TP8 with KV parallelism
+
+TP8 layouts fit in 88 chips with PP11, but the TP8 baseline reaches only 3,112.38 TPS at 100K and misses the 3,431 TPS target.
+At TP8 each rank holds four query heads of a global layer, so the 100K global-attention core has 13.45 microseconds of matrix-unit service and 11.51 microseconds of vector-unit service.
+The matrix unit already sets the core time, and KV parallelism leaves it unchanged.
+The LP30 estimator gives a 100K core time of 13.73 microseconds at `KVP = 1` and 13.73 to 13.76 microseconds at `KVP = 2`, 4 and 8.
+The expectation before the run was therefore a small loss at every context from the added combine step.
+
+The native search screened TP8/PP11 with `KVP = 2` on 88 chips with the settings of the fidelity search:
+
+```bash
+.venv/bin/python scripts/search_lpx_native.py \
+  --fidelity-config experiments/lpx/fidelity-study.json \
+  --execution-model compiled \
+  --instruction-floor-us 0 \
+  --c2c-hop-us 0.35 \
+  --collective-launch-us 0 \
+  --pipeline-partition capacity \
+  --max-chips 88 \
+  --tp 8 \
+  --pp 11 \
+  --kvp 2 \
+  --verify-limit 0 \
+  --output outputs/lpx-native-minimum-kvp-tp8
+```
+
+| TP8/PP11, 88 chips | 1K TPS | 10K TPS | 100K TPS |
+| --- | ---: | ---: | ---: |
+| `KVP = 1`, [fidelity search](../experiments/lpx/fidelity-results.json) | 5,297.08 | 4,972.06 | 3,112.38 |
+| `KVP = 2` | 5,137.48 | 4,830.72 | 3,056.37 |
+| Change | −3.01% | −2.84% | −1.80% |
+
+The `KVP = 2` layout misses the 100K target by 10.9%, and the peak rank keeps 55,073,716 bytes of headroom.
+KV parallelism helps only layouts whose global attention is bound by vector-unit KV conversion.
+`KVP = 4` and 8 at TP8 were not screened; the core-time estimate above predicts no gain for them.
+Layouts with TP below 8 hold more query heads per rank and therefore more matrix work per global layer.
+Under the study configuration, TP16/PP6 on 96 chips therefore remains the smallest layout found that clears all three targets.
+
 ### Complete prefill and decode validation
 
 The fidelity validator ran the complete 100K prompt and the serial decode workloads with `KVP = 4`:
@@ -314,7 +352,7 @@ Decode reproduced the fixed-layout `KVP = 4` TPS to every recorded digit and met
 
 ### Interpretation
 
-Under the Helix hypothesis and the current LP30 parameters, KV parallelism raises modeled 100K throughput by approximately 15%, costs up to 3% at 1K and lowers the minimum TP16 inventory from 128 to 96 chips.
+Under the Helix hypothesis and the current LP30 parameters, KV parallelism raises modeled 100K throughput by approximately 15%, costs up to 3% at 1K and lowers the minimum inventory that clears the targets from 128 to 96 chips.
 It narrows the gap to the published 100K/10K ratio without closing it.
 These results test the simulator against its own pre-registered cost model.
 They do not show that LPX uses Helix-style KV parallelism, and they do not calibrate any LP30 parameter.
