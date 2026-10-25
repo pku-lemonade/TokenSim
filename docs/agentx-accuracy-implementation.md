@@ -37,6 +37,17 @@ It completed nine requests with no unfinished requests and retained the per-work
 The trace is a functional fixture with short outputs; it cannot establish hardware latency error.
 Logs retain measured-table clamp, analytical-fallback, and missing-shape diagnostics for the remaining timing work.
 
+A separate warmed offload smoke replay exercised SimpleCPU with the same model/topology and conditional rates `[0.8, 0.6, 0.5]`.
+Its input expands each committed fixture prompt and hash list by four and multiplies each output length by eight, allowing complete 256-token cache blocks and several verification rounds.
+For each source hash `h`, the expanded hashes are `(4*h+i) mod 2**64` for `i=0..3`, preserving the fixture's prefix relationships.
+The runtime uses a two-second issue window, two lanes, `max_num_seqs=4`, `max_num_batched_tokens=1024`, GPU memory utilization 0.9, and seeds 0/42.
+SimpleCPU uses 356,125,000,000 bytes per rank, a 3,108,436,443,136-byte host budget, eager offload, and transfer utilization 0.75.
+All 21 preparation requests and three measured requests succeeded, with no unfinished requests.
+The measured acceptance counters record 15 verification rounds, 41 accepted tokens before output clipping, and 37 emitted decode tokens.
+Measured connector counters record four transfers totaling 90,931,200 bytes.
+The final cache-window ledger has no pending writes; its cumulative directional counters include preparation and must not be compared directly with profile-only connector counts.
+This validates the combined execution and accounting path; no silicon measurements were used.
+
 ## Scope, priorities, and evidence
 
 AgentX uses the ordinary simulation engine, so shared lookup and attention fixes must cover both AgentX and other workloads.
