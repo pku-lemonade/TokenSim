@@ -51,6 +51,17 @@ def activity_details(rows):
             if collective
         ],
         kernel_names=[row.get("name") for row in rows],
+        device_activities=[
+            dict(
+                name=row.get("name", "unknown"),
+                category=row.get("cat", "kernel"),
+                start_us=interval[0],
+                end_us=interval[1],
+                device=row.get("args", {}).get("device"),
+                stream=row.get("args", {}).get("stream"),
+            )
+            for row, interval in zip(rows, intervals)
+        ],
     )
 
 

@@ -234,3 +234,6 @@ Explicit comparable-subset and known-wait totals remain available alongside thei
 Recording-off and recording-on result JSONs match after removing execution wall time and the trace descriptor in all three reproduced workloads.
 The added input/output work increases the one-request simulated duration by 19.084 microseconds for Dense and 232.097 microseconds for MoE.
 Updated raw traces, baseline measurements, mode-parity checks and comparison artifacts are retained under `outputs/operator_trace/improvement/` and the remote `profiler` directory.
+
+The [deferred timing work](operator-tracing-followups.md) records the quantitative audit of the exported figures, host submission evidence and acceptance criteria for separate follow-up pull requests.
+Those timing and execution-model changes are outside the current visualization work.

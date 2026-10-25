@@ -135,6 +135,53 @@ The CLI returns status 2 when no operators match and reports invalid inputs as a
 Small collection samples validate ownership, order and accounting; they do not establish a general prediction-accuracy target.
 The [trace discrepancy analysis](operator-tracing-analysis.md) separates profiler perturbation, host dispatch gaps, peer-arrival waiting and operator-cost errors in the initial Dense and MoE samples.
 
+### Paired timeline images
+
+The offline image exporter produces paired timelines in the layout of [Charon Figure 8](https://arxiv.org/pdf/2605.17164#page=10), with simulated operators above observed GPU activities.
+Install the optional plotting dependency and select a layer from an existing comparison report:
+
+```bash
+python -m pip install -e '.[plot]'
+python -m TokenSim.profiler.plot \
+  --comparison outputs/operator-trace/comparison/comparison.json \
+  --output outputs/operator-trace/figures/prefill-layer0 \
+  --forward 0 \
+  --layer 0 \
+  --rank 0 \
+  --alignment selection
+```
+
+The output stem receives `.png`, `.svg` and `.timeline.json` suffixes.
+The JSON sidecar retains full labels, original timestamps, display translations, selectors and the source report hash.
+Long names are truncated to fit inside visible bars, and intervals too narrow for text retain their complete names in the sidecar.
+SVG labels remain editable text.
+PNG exports default to 180 dots per inch.
+
+| Argument | Default | Meaning |
+| --- | --- | --- |
+| `--forward` | all | Forward occurrence, starting at zero. |
+| `--layer` | all | Global layer index, or `-1` for model-boundary work. |
+| `--rank` | all | Native rank identifier; repeat to select several ranks. |
+| `--detail` | `kernel` | Show simulated component intervals and observed kernels/copies; `module` shows module envelopes with device activity overlaid. |
+| `--alignment` | `global` | Retain comparison clock translations; `selection` translates each side's selected origin to zero. |
+| `--start-us` | selected minimum | Left display boundary in microseconds after alignment. |
+| `--end-us` | selected maximum | Right display boundary in microseconds after alignment. |
+| `--formats` | `png svg` | Image formats to write. |
+| `--width` | `20` | Figure width in inches. |
+| `--dpi` | `180` | PNG resolution, from 72 to 600 dots per inch. |
+| `--title` | generated | Figure title. |
+
+Both panels use the same time scale and retain execution gaps and collective kernel residence.
+Known peer waits appear in red without shortening the original kernels.
+Actual streams occupy separate rows, and overlapping intervals use additional rows instead of hiding one another.
+Legacy reports without per-activity stream metadata use a row labeled `stream unavailable`.
+Regenerate the comparison from its original captures to retain stream metadata.
+Clocks without common-clock evidence remain independently aligned and carry a warning about unavailable cross-rank overlap.
+Selectors apply to each side's own forward, layer and native rank fields, including unmatched and excluded work when those fields are available.
+Selection-relative alignment retains offsets between ranks on proven shared clocks and does not establish global scheduling accuracy.
+The exporter imports Matplotlib only when rendering images and adds no dependency to recording-off simulation paths.
+The [deferred timing work](operator-tracing-followups.md) documents the remaining execution-boundary and calibration questions for separate pull requests.
+
 An operator's shape is its set of dimensions, such as matrix sizes, batch size and context length.
 Its data type is recorded as `dtype`.
 Prompt processing is called prefill, and output token generation is called decode.
