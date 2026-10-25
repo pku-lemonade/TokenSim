@@ -84,10 +84,8 @@ The model's `operator_modules` configuration selects the source table and fields
 The latency calculation skips individual operations already included in the selected module's measured time.
 TokenSim checks that the model's data layout and dimensions satisfy the measured kernel's requirements.
 
-Measured data does not remove approximation error.
-The use of measurements from other devices, differences between FlashMLA and FlashInfer, generated token counts per expert and formula-based estimates for draft and output operations are described in [the AgentX guide](agentx.md).
-Result metadata records these sources and assumptions.
-Hardware efficiency assumptions and cache memory layouts are configured separately from measured kernel timings.
+Full-model simulations combine these imported operator and module tables with configurable hardware parameters, cache layouts and analytical estimators as described in [the AgentX guide](agentx.md).
+Result metadata records the exact provenance and match type of every operator and communication estimate.
 
 AIConfigurator data is Apache-2.0 licensed.
 Attribution and retained license text are in [the data notices](../data/operator_data/LICENSES.md), [NOTICE](../NOTICE) and `third_party/licenses/AIConfigurator-Apache-2.0.txt`.

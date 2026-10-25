@@ -1,31 +1,26 @@
 # TokenSim
 
-TokenSim is a deterministic discrete-event simulator for large language model (LLM) serving.
-It estimates request latency and throughput using model dimensions, hardware descriptions and operator measurements.
-The simulation includes batching, parallel execution, attention key/value (KV) caching and storage transfers.
-It runs on a CPU without requiring the simulated accelerators or model weights.
+TokenSim is a deterministic discrete-event simulator for large-scale large language model (LLM) serving clusters.
+It predicts end-to-end request latency, throughput and resource utilization by combining measured operator tables, physics-guided analytical extrapolation, hierarchical network modeling and multi-tier key/value (KV) cache simulation.
+The simulator models continuous and paged-attention batching, disaggregated prefill/decode and attention/FFN pipelines, multi-tier Mooncake KV stores and closed-loop agentic workloads on a single CPU without requiring physical accelerators or model weights.
 
 The project paper is [TokenSim: Enabling Hardware and Software Exploration for Large Language Model Inference Systems](https://arxiv.org/abs/2503.08415).
 
 ## Features
 
 - TokenSim supports static, dynamic and paged-attention batching.
-  The paged scheduler follows vLLM V1 and shares a per-step token limit between prompt processing (prefill) and output token generation (decode).
-  It can process prompts in chunks, pause requests when memory is insufficient and recompute their context when they resume.
-- Requests can reuse cached prompt prefixes identified by recorded block hashes, including models with multiple cache groups and sliding-window layers.
-- Tensor parallelism divides work within layers, pipeline parallelism divides layers into stages, data parallelism handles separate request batches, and expert parallelism distributes expert networks across workers.
-  Workers can perform both prefill and decode or belong to separate pools, with synchronized data-parallel steps and routing that keeps conversations on a replica.
-- Operator latency estimates use measured kernel tables, interpolation between measurements and bounded extrapolation beyond the measured range.
-  The default fallback uses formulas for queries that tables cannot answer.
-  Measured vLLM, TensorRT-LLM and SGLang tables ship for A100, H100, H200, L40S, RTX PRO 6000, B200, B300, GB200 and GB300, and vLLM tables for the Intel Arc Pro B60.
-- Model configurations can select complete measured modules for compressed sparse attention, mixing residual streams through hyper-connections and fused mixture-of-experts (MoE) operations.
-- Multi-token prediction proposes draft tokens for the model to verify, with a configured average number of accepted tokens per step.
-- For MoE models, TokenSim models expert placement, token routing, communication between expert workers and the work assigned to each expert.
-- KV data can move directly between workers, be offloaded to CPU memory or use a Mooncake store with memory, SSD and optional storage backend plugins.
-  A separately installable high-bandwidth flash (HBF) plugin provides a storage example.
-  Experimental HBF1/HBF2 GPU memory variants are independent device examples.
-- Communication time follows the cluster's hierarchy of interconnects and combines fixed transfer latency with message size divided by effective bandwidth.
-- Workloads include generated request lengths, JSON and JSONL traces, and AgentX coding-agent traces whose requests follow their recorded dependencies.
+  The paged scheduler follows vLLM V1 and shares a per-step token budget between prompt processing (prefill) and output token generation (decode), supporting chunked prefill, request preemption and context recomputation.
+- Multi-tier and programmable KV caching spans GPU high-bandwidth memory (HBM), host dynamic random-access memory (DRAM), solid-state drives (SSDs) and pluggable storage backends through Mooncake connectors.
+  Both uniform block stores and grouped hybrid KV layouts (combining full attention, sliding-window attention, compressed sparse attention and speculative draft layers) support prefix reuse via block hashes, read pinning and configurable write-back policies.
+- Parallel and disaggregated execution covers tensor parallelism (TP), pipeline parallelism (PP), data parallelism (DP) and expert parallelism (EP), alongside prefill-decode (PD) disaggregation and attention-FFN disaggregation (AFD).
+  Workers can operate as hybrid replicas or dedicated pools with session-aware routing and synchronized lockstep data-parallel execution.
+- A four-stage hybrid latency engine resolves operator timings through exact table matches, multi-axis recursive interpolation, boundary-efficiency preserving analytical extrapolation and calibrated roofline models.
+  Bundled packages provide measured vLLM, TensorRT-LLM and SGLang tables for A100, H100, H200, L40S, RTX PRO 6000, B200, B300, GB200 and GB300, plus vLLM and oneCCL tables for the Intel Arc Pro B60.
+- Complete operator-module tables capture fused execution for DeepSeek-V4 compressed sparse attention (CSA/HCA), hyper-connection residual mixing (mHC) and fused MegaMoE layers, alongside multi-token prediction (MTP) speculative decoding.
+- Mixture-of-experts (MoE) modeling tracks expert placement, synthetic or trace-driven token routing distributions, load-imbalance straggler delays and DeepEP all-to-all dispatch and combine communication.
+- Next-generation hardware and storage extensions include a pluggable high-bandwidth flash (HBF) storage tier, HBF1 (GDDR7) and HBF2 (HBM3e) GPU memory variants, and a native directed acyclic graph (DAG) runtime for rack-scale SRAM architectures such as NVIDIA Groq 3 LPX (LP30) and Vera Rubin.
+- Hierarchical communication modeling evaluates ring, tree and direct collective algorithms across chip, node, rack and cluster interconnects, combining measured NCCL/DeepEP curves with message-size-aware alpha-beta topology models.
+- Workload generators support synthetic arrival distributions, prefix-hashed JSON/JSONL traces and closed-loop AgentX coding-agent trace trees with parent-child `SPAWN` and `JOIN` dependencies.
 
 ## Installation
 

@@ -109,8 +109,7 @@ For DeepEP modes, the simulator uses the selected package's measured `ep_all2all
 Queries specify tokens per rank, hidden size, `top_k`, expert count, EP group size and node count.
 If the requested DeepEP mode has no rows, the simulator tries the other DeepEP mode.
 When measurements are unavailable, the communication model estimates two all-to-all transfers from the topology and scales them by `EP_ALL2ALL_MODE_SCALE`.
-The factors are 1.5 for `naive`, 1.0 for `allgather_reducescatter`, 0.7 for `deepep_high_throughput` and 0.5 for `deepep_low_latency`, all recorded as grade D assumptions.
-Grade D identifies formulas or unmeasured engineering assumptions.
+The factors are 1.5 for `naive`, 1.0 for `allgather_reducescatter`, 0.7 for `deepep_high_throughput` and 0.5 for `deepep_low_latency` (grade D).
 Serving deployments often choose high-throughput kernels for prompt processing (prefill) and low-latency kernels for token generation (decode).
 TokenSim applies the configured mode to every step.
 

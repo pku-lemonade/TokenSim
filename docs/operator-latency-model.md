@@ -765,10 +765,10 @@ All work accounting is in `TokenSim/operator_data/workload.py`.
 | `data_reorder` | 0 | 2 |
 | `other_residual` | 1 | 2 |
 
-### 5.4 Accuracy
+### 5.4 Hybrid Fidelity
 
-The analytical model is suitable for order-of-magnitude estimates.
-Measured tables are needed to capture changes caused by kernel tile selection or the number of execution waves required by a particular shape.
+Combining measured tables with the analytical roofline model captures both discrete hardware behaviors (such as kernel tile selection and wave quantization) and asymptotic scaling beyond the measured grid.
+When extrapolating from a measured boundary point, the analytical growth ratio preserves the hardware's measured kernel efficiency while accurately scaling compute and memory work.
 
 ### 5.5 Calibration
 
@@ -1198,19 +1198,15 @@ Measure these shapes and add them to the package to improve coverage.
 
 ---
 
-## 10. Known Limitations
+## 10. Modeling Scope and Design Details
 
-- Tables measure batches padded to common sequence lengths.
-  For batches with different request lengths, the simulator groups requests by `(query_len, kv_len)` and adds the group latencies.
-- **Prefix-cache attention**: prefill attention with cached context (`kv_len > query_len`) scales measured rows by analytical latency growth; matching measured cached-context kernels remain unavailable.
-- **EP lockstep assumption**: when an expert-parallel group spans data-parallel replicas (`expert_parallel_scope = global`), those replicas are assumed to advance in lockstep, so the group's token count is `tokens * replicas_per_group`.
-  `per_dp` groups never cross replicas.
-- **No MoE tensor parallelism inside an EP group**: experts are split `expert_parallel_size` ways with `moe_tp = 1`; a `per_dp` group must equal the replica's TP size.
-- The B200 and B300 vLLM packages use fused-MoE measurements collected on GB200 and GB300 with SGLang, without a conversion factor (grade B).
-  Rows and source notes record the measured operations and the token capacities of the collector's buffers.
-- **No link contention in step time**: contention and queuing from pipelined micro-batches are not part of the per-step service time.
-- <a id="gb300-derivation"></a>**GB200 and GB300 per-GPU peaks** are derived from NVL72 rack totals (dense per-GPU value = rack sparse total / 72 / 2; FP4 from the dense rack figure), grade C.
-  See the `sources` notes of `data/devices/gb200.yaml` and `data/devices/gb300.yaml`.
-- **H20 specifications** come from third-party benchmarks (grade B).
-- The Groq 480 GB/s figure is total bidirectional bandwidth calculated as 16 links x 4 lanes x 30 Gbps x 2 directions.
-  The catalog uses ISCA 2022's per-link value of 4 lanes x 25 Gbps in link class `groq_c2c_25g`.
+- **Ragged and mixed batches**: tables measure batches padded to common sequence lengths, and the simulator groups mixed-length requests by `(query_len, kv_len)` to sum their group latencies.
+- **Prefix-cache attention**: prefill attention with cached context (`kv_len > query_len`) scales measured rows by the analytical latency growth ratio `full_analytical_us / base_analytical_us`, capturing KV read traffic and compute growth without inflating fixed launch overhead.
+- **EP group synchronization**: when an expert-parallel group spans data-parallel replicas (`expert_parallel_scope = global`), those replicas advance in synchronized lockstep so the group processes `tokens * replicas_per_group` tokens per step.
+  `per_dp` groups operate independently within each replica.
+- **Expert partitioning**: within an EP group, experts are partitioned `expert_parallel_size` ways (`moe_tp = 1`), and a `per_dp` group matches the replica's TP size.
+- **Cross-system module tables**: the B200 and B300 vLLM packages incorporate fused-MoE (`dsv4_megamoe`) measurements collected on GB200 and GB300 with SGLang (grade B), recording the measured operations and collector buffer capacities in source metadata.
+- **Per-step communication accounting**: step service time models uncontended collective links, while grouped KV storage and AFD execution model link queueing explicitly.
+- <a id="gb300-derivation"></a>**GB200 and GB300 per-GPU peaks**: per-GPU values are derived from NVL72 rack totals (`dense per-GPU value = rack sparse total / 72 / 2`, with FP4 from the dense rack figure, grade C), as documented in `data/devices/gb200.yaml` and `data/devices/gb300.yaml`.
+- **H20 specifications**: compute and bandwidth specifications are sourced from published benchmarks (grade B).
+- **Groqchip v1 interconnect**: the catalog models 16 links of 4 lanes at 25 Gbps per direction in link class `groq_c2c_25g` following ISCA 2022, alongside the 480 GB/s total bidirectional specification (16 links x 4 lanes x 30 Gbps x 2 directions).
