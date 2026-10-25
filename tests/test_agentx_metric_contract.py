@@ -63,3 +63,19 @@ class AgentXMetricContractTest(unittest.TestCase):
         result = self.report([0.04] * 4)["interactivity_tps"]
         self.assertEqual(result["mean"], 25)
         self.assertEqual(result["p90"], 25)
+
+    def test_zero_itl_is_excluded_from_both_latency_and_speed_samples(self):
+        result = self.report([0.0, 0.01, 0.04])
+        self.assertEqual(result["tpot_s"]["count"], 2)
+        self.assertEqual(result["interactivity_tps"]["count"], 2)
+        self.assertEqual(
+            result["root_tpot_s"]["count"] + result["subagent_tpot_s"]["count"], 2
+        )
+        self.assertAlmostEqual(
+            result["interactivity_tps"]["p90"], 1 / result["tpot_s"]["p90"]
+        )
+
+    def test_nonfinite_intervals_do_not_contaminate_percentiles(self):
+        result = self.report([float("nan"), float("inf"), -1.0, 0.04])
+        self.assertEqual(result["tpot_s"]["count"], 1)
+        self.assertEqual(result["interactivity_tps"]["mean"], 25)

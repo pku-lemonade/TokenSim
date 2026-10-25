@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from dataclasses import asdict, dataclass
+import math
 from typing import Any
 import numpy as np
 from TokenSim.results import MetricData
@@ -91,6 +92,7 @@ def get_agentx_metrics(
         computed_input_tokens = sum(s.computed_tokens for s in sources)
 
     def summary(values):
+        values = [value for value in values if math.isfinite(value) and value > 0]
         if not values and metadata.get("replay_protocol"):
             return {
                 key: 0 if key == "count" else None
@@ -99,7 +101,7 @@ def get_agentx_metrics(
         return _percentile_summary(values)
 
     def interactivity_summary(latencies):
-        values = [value for value in latencies if value > 0]
+        values = [value for value in latencies if math.isfinite(value) and value > 0]
         result = summary(values)
         for name, value in result.items():
             if name not in ("count", "max") and value:
@@ -223,9 +225,9 @@ def get_agentx_metrics(
             for r in subset
             if r.generation_idx > 1
         ]
-        result[f"{label}_ttft_s"] = _percentile_summary(sub_ttft)
-        result[f"{label}_tpot_s"] = _percentile_summary(sub_tpot)
-        result[f"{label}_e2e_s"] = _percentile_summary(sub_e2e)
+        result[f"{label}_ttft_s"] = summary(sub_ttft)
+        result[f"{label}_tpot_s"] = summary(sub_tpot)
+        result[f"{label}_e2e_s"] = summary(sub_e2e)
         result[f"{label}_output_tokens"] = sum(r.generation_idx for r in subset)
         result[f"{label}_input_tokens"] = sum(r.prefill_len for r in subset)
 
