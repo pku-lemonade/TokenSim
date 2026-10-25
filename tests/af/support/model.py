@@ -267,7 +267,7 @@ def _request(request_id, prefill_len=8, decode_len=8):
     return request
 
 
-def _engine(cluster, *, moe_config=None):
+def _engine(cluster, *, moe_config=None, trace=None):
     from tests.af.support.config import _with_prefill_pool
 
     cluster = _with_prefill_pool(cluster)
@@ -289,6 +289,7 @@ def _engine(cluster, *, moe_config=None):
             0.001, 0.001, dispatch=0.001, combine=0.001, collective=0.001
         ),
         config=SimulationConfig(
+            trace=trace or {},
             block_size=4,
             batching="paged-attn",
             prefill_worker_pool_type="round_robin",

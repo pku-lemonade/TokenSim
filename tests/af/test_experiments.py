@@ -2,6 +2,7 @@
 
 import importlib.util
 import json
+import subprocess
 import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -10,9 +11,9 @@ from unittest.mock import patch
 
 from TokenSim.af.experiments import AFExperimentRunner
 from TokenSim.af.factory import build_model_runtime, simulate_decode
-from TokenSim.af.trace.config import AFTraceConfig
-from TokenSim.af.trace.formats import TRACE_SUFFIXES
-from TokenSim.af.trace.export import write_chrome_trace
+from TokenSim.trace.config import TraceConfig
+from TokenSim.trace.formats import TRACE_SUFFIXES
+from TokenSim.trace.export import write_chrome_trace
 from TokenSim.errors import ConfigurationError
 from TokenSim.operator_data.package import (
     OperatorDataPackage,
@@ -77,9 +78,9 @@ class AFExperimentRunnerTest(unittest.TestCase):
 
     def test_trace_modes_preserve_throughput(self):
         choices = [
-            AFTraceConfig(),
-            AFTraceConfig(mode="validate"),
-            AFTraceConfig(mode="off"),
+            TraceConfig(mode="full"),
+            TraceConfig(mode="validate"),
+            TraceConfig(mode="off"),
         ]
         with TemporaryDirectory() as directory:
             runner = AFExperimentRunner(
@@ -339,8 +340,17 @@ class ExperimentTraceFormatsTest(unittest.TestCase):
                     self.assertEqual(summary.pop("trace_format"), trace_format)
                 profile = summary["results"][0].pop("profile")
                 self.assertEqual(Path(profile).suffix, TRACE_SUFFIXES[trace_format])
-                converted = AFExperimentRunner.export_trace_json(
-                    output / profile, root / f"{trace_format}-converted.json"
+                converted = root / f"{trace_format}-converted.json"
+                subprocess.run(
+                    [
+                        sys.executable,
+                        "-c",
+                        "import sys; from TokenSim.trace.formats import convert_trace_to_json; "
+                        "convert_trace_to_json(sys.argv[1], sys.argv[2])",
+                        str(output / profile),
+                        str(converted),
+                    ],
+                    check=True,
                 )
                 traces.append(converted.read_bytes())
                 summaries.append(summary)

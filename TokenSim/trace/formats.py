@@ -5,7 +5,7 @@ from pathlib import Path
 import shutil
 from tempfile import NamedTemporaryFile
 
-from TokenSim.af.trace.export import _export_options, write_chrome_trace
+from TokenSim.trace.export import _export_options, write_chrome_trace
 from TokenSim.errors import ConfigurationError
 
 TRACE_FORMATS = ("json", "msgpack", "archive")
@@ -16,7 +16,7 @@ def validate_trace_format(value, *, require_dependency=False):
     if not isinstance(value, str) or value not in TRACE_FORMATS:
         raise ConfigurationError("trace_format must be json, msgpack or archive")
     if require_dependency and value == "msgpack":
-        from TokenSim.af.trace.msgpack import require_msgpack
+        from TokenSim.trace.msgpack import require_msgpack
 
         require_msgpack()
     return value
@@ -25,15 +25,15 @@ def validate_trace_format(value, *, require_dependency=False):
 def make_trace_recorder(directory, options, trace_format):
     validate_trace_format(trace_format, require_dependency=True)
     if trace_format == "json":
-        from TokenSim.af.trace.pipeline import PipelinedTraceRecorder
+        from TokenSim.trace.pipeline import PipelinedTraceRecorder
 
         kind = PipelinedTraceRecorder
     elif trace_format == "msgpack":
-        from TokenSim.af.trace.msgpack import MessagePackTraceRecorder
+        from TokenSim.trace.msgpack import MessagePackTraceRecorder
 
         kind = MessagePackTraceRecorder
     else:
-        from TokenSim.af.trace.binary_archive import ArchiveTraceRecorder
+        from TokenSim.trace.binary_archive import ArchiveTraceRecorder
 
         kind = ArchiveTraceRecorder
     return kind(directory, trace_config=options)
@@ -47,10 +47,10 @@ def write_trace(path, events, metadata=None, *, trace_config=None, trace_format=
     options, metadata = _export_options(trace_config, metadata)
     output = Path(path).with_suffix(TRACE_SUFFIXES[trace_format])
     if trace_format == "archive":
-        from TokenSim.af.trace.binary_archive import write_archive
+        from TokenSim.trace.binary_archive import write_archive
 
         return write_archive(output, events, metadata, options)
-    from TokenSim.af.trace.msgpack import MessagePackWriter
+    from TokenSim.trace.msgpack import MessagePackWriter
 
     output.parent.mkdir(parents=True, exist_ok=True)
     if getattr(events, "trace_format", None) == "msgpack":
@@ -83,9 +83,9 @@ def convert_trace_to_json(source, output, *, trace_format=None):
     validate_trace_format(trace_format, require_dependency=True)
     if trace_format != "json":
         if trace_format == "msgpack":
-            from TokenSim.af.trace.msgpack import convert
+            from TokenSim.trace.msgpack import convert
         else:
-            from TokenSim.af.trace.binary_archive import convert
+            from TokenSim.trace.binary_archive import convert
         convert(source, output)
         return output
     if source.resolve() == output.resolve():

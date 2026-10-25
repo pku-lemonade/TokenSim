@@ -146,6 +146,11 @@ class LLMEngine(AFEngineMixin, Worker):
                 self.prefill_workers.workers,
                 sync_interval=config.dp_sync_interval,
             )
+        self.trace_session = None
+        if config.trace.enabled:
+            from TokenSim.trace.session import TraceSession
+
+            self.trace_session = TraceSession(self)
         self.action = self.env.process(self.run())
 
     def record_worker_failure(self, worker_id: int, error: Exception) -> None:
@@ -174,6 +179,8 @@ class LLMEngine(AFEngineMixin, Worker):
         from TokenSim.parallel import ParallelStats
 
         self.timing_recorder.reset()
+        if self.trace_session is not None:
+            self.trace_session.run_phase = "profiling"
         self.connector_stats = ConnectorStats()
         if self.router is not None:
             self.router.reset_stats()

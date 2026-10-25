@@ -5,9 +5,12 @@ from dataclasses import fields
 import json
 from pathlib import Path
 
-from TokenSim.af.trace.config import AFTraceConfig, EVENT_FIELDS, EVENT_TYPES
-from TokenSim.af.trace.formats import TRACE_FORMATS
+from TokenSim.trace.config import TraceConfig, EVENT_TYPES
+from TokenSim.af.trace.metrics import AFTraceEvent
+from TokenSim.trace.formats import TRACE_FORMATS
 from TokenSim.errors import ConfigurationError
+
+EVENT_FIELDS = tuple(field.name for field in fields(AFTraceEvent))
 
 
 def add_trace_arguments(parser):
@@ -66,19 +69,25 @@ def add_trace_arguments(parser):
 
 
 def trace_configuration(args):
-    values = {}
+    values = {"mode": "full"}
     path = getattr(args, "trace_config", None)
     if path is not None:
         try:
-            values = json.loads(Path(path).read_text(encoding="utf-8"))
+            supplied = json.loads(Path(path).read_text(encoding="utf-8"))
         except (OSError, ValueError) as exc:
             raise ConfigurationError(
                 f"cannot read trace configuration {path}: {exc}"
             ) from exc
-        AFTraceConfig.from_mapping(values)
+        if not isinstance(supplied, dict):
+            raise ConfigurationError("trace configuration must be an object")
+        values.update(supplied)
+        TraceConfig.from_mapping(values)
     names = {"mode": "trace", "validate": "trace_validation"}
-    for field in fields(AFTraceConfig):
+    for field in fields(TraceConfig):
+        if field.name in ("format", "output"):
+            # Standalone experiments own their output paths and representation.
+            continue
         value = getattr(args, names.get(field.name, "trace_" + field.name), None)
         if value is not None:
             values[field.name] = value
-    return AFTraceConfig.from_mapping(values)
+    return TraceConfig.from_mapping(values)

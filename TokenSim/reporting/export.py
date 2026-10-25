@@ -149,6 +149,12 @@ def export_result(
             "af_operator_stats",
         ):
             result_dict.pop(name, None)
+    if engine.trace_session is not None:
+        result_dict["trace"] = engine.trace_session.export(
+            results_path,
+            termination=run.termination_reason,
+            result_name=run.result_name,
+        )
     result_file = results_path / run.result_name
     with open(result_file, "w") as f:
         json.dump(result_dict, f, indent=4)

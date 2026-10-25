@@ -132,7 +132,9 @@ class AFExecutorEndToEndTest(unittest.TestCase):
         self.assertLess(block_one_a.start_at, block_zero_expert.end_at)
         self.assertEqual(iteration.barrier_wait[1], 0.0)
         self.assertGreater(iteration.barrier_wait[0], 0.0)
-        summary = executor.trace.summarize(iteration)
+        from TokenSim.af.trace.metrics import summarize_iteration
+
+        summary = summarize_iteration(executor.trace, iteration)
         self.assertAlmostEqual(summary["resource_utilization"]["worker:0"], 4 / 10)
         self.assertAlmostEqual(summary["resource_utilization"]["worker:1"], 6 / 10)
 

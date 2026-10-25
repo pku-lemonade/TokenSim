@@ -16,6 +16,18 @@ LATENCY_BACKEND_KEYWORDS = ("operator_table", "analytical")
 def build_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument(
+        "--trace_mode",
+        choices=("off", "validate", "full"),
+        default=None,
+        help="Global operator recording mode (default: off).",
+    )
+    parser.add_argument(
+        "--trace_output", default=None, help="Global operator trace output path."
+    )
+    parser.add_argument(
+        "--trace_config", default=None, help="JSON global trace configuration."
+    )
+    parser.add_argument(
         "--sim_time",
         type=float,
         default=None,

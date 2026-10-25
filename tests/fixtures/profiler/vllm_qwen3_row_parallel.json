@@ -1,0 +1,202 @@
+{
+  "metadata": {
+    "provenance": "Locally collected Qwen3-30B-A3B TP2 output projection; a common timestamp translation and removal of ancillary device counters.",
+    "vllm_revision": "9cf0c96c91c690ad2e3dfc8ddd81f20014565327",
+    "torch": "2.13.0+cu132",
+    "raw_sha256": "2fb1f093e9480d417aa63912b17425876bc9e4208986b67a70c4eaa075c795a9"
+  },
+  "traceEvents": [
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "tokensim.forward",
+      "pid": 3889974,
+      "tid": 3889974,
+      "ts": 0.0,
+      "dur": 141248.108,
+      "args": {
+        "External id": 202
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "tokensim.layer.0",
+      "pid": 3889974,
+      "tid": 3889974,
+      "ts": 428.160888671875,
+      "dur": 4238.339,
+      "args": {
+        "External id": 209
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "tokensim.layer.0.output",
+      "pid": 3889974,
+      "tid": 3889974,
+      "ts": 2195.376953125,
+      "dur": 345.2,
+      "args": {
+        "External id": 282
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "cpu_op",
+      "name": "aten::mm",
+      "pid": 3889974,
+      "tid": 3889974,
+      "ts": 2261.64990234375,
+      "dur": 84.997,
+      "args": {
+        "External id": 288,
+        "Input Dims": [
+          [
+            32,
+            2048
+          ],
+          [
+            2048,
+            2048
+          ]
+        ]
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "cpu_op",
+      "name": "_C_custom_ar::all_reduce",
+      "pid": 3889974,
+      "tid": 3889974,
+      "ts": 2445.341796875,
+      "dur": 60.795,
+      "args": {
+        "External id": 292,
+        "Input Dims": [
+          [],
+          [
+            32,
+            2048
+          ],
+          [
+            32,
+            2048
+          ],
+          [],
+          []
+        ]
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "kernel",
+      "name": "ampere_bf16_s16816gemm_bf16_64x64_sliced1x2_ldg8_f2f_stages_64x6_tn",
+      "pid": 0,
+      "tid": 17,
+      "ts": 2341.137939453125,
+      "dur": 12.992,
+      "args": {
+        "External id": 288,
+        "device": 0,
+        "stream": 17,
+        "correlation": 641
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "cuda_runtime",
+      "name": "cudaLaunchKernel",
+      "pid": 3889974,
+      "tid": 3889974,
+      "ts": 2320.794921875,
+      "dur": 21.692,
+      "args": {
+        "External id": 288,
+        "correlation": 641
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "gpu_memcpy",
+      "name": "Memcpy DtoD (Device -> Device)",
+      "pid": 0,
+      "tid": 17,
+      "ts": 2478.802978515625,
+      "dur": 2.496,
+      "args": {
+        "External id": 292,
+        "device": 0,
+        "stream": 17,
+        "correlation": 653
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "cuda_runtime",
+      "name": "cudaMemcpyAsync",
+      "pid": 3889974,
+      "tid": 3889974,
+      "ts": 2452.796875,
+      "dur": 26.946,
+      "args": {
+        "External id": 292,
+        "correlation": 653
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "cuda_runtime",
+      "name": "cudaStreamIsCapturing",
+      "pid": 3889974,
+      "tid": 3889974,
+      "ts": 2481.580810546875,
+      "dur": 1.156,
+      "args": {
+        "External id": 292,
+        "correlation": 654
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "kernel",
+      "name": "void vllm::cross_device_reduce_1stage<__nv_bfloat16, 2>(vllm::RankData*, vllm::RankSignals, vllm::Signal*, __nv_bfloat16*, int, int)",
+      "pid": 0,
+      "tid": 17,
+      "ts": 2501.682861328125,
+      "dur": 8.128,
+      "args": {
+        "External id": 292,
+        "device": 0,
+        "stream": 17,
+        "correlation": 656
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "cuda_runtime",
+      "name": "cudaLaunchKernel",
+      "pid": 3889974,
+      "tid": 3889974,
+      "ts": 2488.597900390625,
+      "dur": 13.498,
+      "args": {
+        "External id": 292,
+        "correlation": 656
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "gpu_user_annotation",
+      "name": "tokensim.forward",
+      "pid": 0,
+      "tid": 17,
+      "ts": 146687.61499023438,
+      "dur": 174.115,
+      "args": {
+        "External id": 7734
+      }
+    }
+  ]
+}

@@ -228,7 +228,10 @@ python benchmark.py \
 ```
 
 `af_runtime_state` reports the modeled placement, component storage and KV capacity.
-`af_trace` separates dependency readiness, resource queueing and service time.
+`af_trace` reports AF iteration summaries.
+The [global operator trace](operator-latency-model.md#global-operator-tracing) separates dependency readiness, resource queueing and service time across ordinary prefill and AF decode.
+Use `--trace_mode full` with the main simulation CLI to export it.
+The global configuration controls serving trace collection; the legacy cluster `af.trace_enabled` field applies to low-level compatibility entry points.
 A shared F invocation can appear in several request traces; physical utilization and operation totals count that execution once.
 `af_operator_stats` and `af_latency_providers` identify measurement coverage and analytical assumptions.
 `af_phase_fidelity` distinguishes aggregate complete-model prefill from rank-local AFD decode.

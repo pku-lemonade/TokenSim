@@ -23,6 +23,7 @@ dependencies = [
 agentx = ["huggingface_hub>=0.34", "orjson>=3.10"]
 dev = ["pytest>=8", "black==24.2.0"]
 trace = ["msgpack>=1.1,<2"]
+plot = ["matplotlib>=3.8,<4"]
 
 [project.scripts]
 tokensim = "TokenSim.cli:cli"

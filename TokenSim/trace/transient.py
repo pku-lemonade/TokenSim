@@ -1,10 +1,10 @@
 """Retain active events for validation without archiving completed iterations."""
 
-from TokenSim.af.trace.history import IndexedEventHistory
-from TokenSim.af.trace.recorder import AFTraceRecorder
+from TokenSim.trace.history import IndexedEventHistory
+from TokenSim.trace.recorder import TraceRecorder
 
 
-class ValidationTraceRecorder(AFTraceRecorder):
+class ValidationTraceRecorder(TraceRecorder):
     """Completion runs after final dependency patches and full validation."""
 
     def __init__(self, resource_capacities=None):

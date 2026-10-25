@@ -34,8 +34,9 @@ from TokenSim.af.providers.queries import (
     AF_MATCH_TYPES,
 )
 from TokenSim.af.runtime.plan import AFRuntimePlan
-from TokenSim.af.trace.recorder import AFTraceRecorder
-from TokenSim.af.trace.archive import ArchivedTraceRecorder
+from TokenSim.trace.recorder import TraceRecorder
+from TokenSim.trace.archive import ArchivedTraceRecorder
+from TokenSim.af.trace.validation import validate_af_events
 from TokenSim.config.cluster_config import ClusterConfig, WorkerConfig
 from TokenSim.errors import ConfigurationError, SimulationStateError
 from TokenSim.moe.routing import ExpertRouting
@@ -73,7 +74,7 @@ class AFExecutor(
         total_layers: int,
         hidden_size: int,
         resources: AFResourceRegistry | None = None,
-        trace_recorder: AFTraceRecorder | None = None,
+        trace_recorder: TraceRecorder | None = None,
         moe_config: Any | None = None,
         random_seed: int = 0,
         runtime_plan: AFRuntimePlan | None = None,
@@ -220,6 +221,7 @@ class AFExecutor(
             cluster_config.af.trace_enabled,
             self.resources.resource_capacities(),
         )
+        self.trace.event_validator = validate_af_events
         self.builder = AFBlockBuilder()
         self.replica_selector = IndependentRoundRobinAFReplicaSelector()
         self.expert_routing = (

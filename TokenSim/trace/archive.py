@@ -4,9 +4,9 @@ from collections.abc import Mapping, Sequence
 from heapq import merge
 from operator import index as integer_index
 
-from TokenSim.af.trace.archive_store import TraceArchiveStore
-from TokenSim.af.trace.history import IndexedEventHistory
-from TokenSim.af.trace.recorder import AFTraceRecorder
+from TokenSim.trace.archive_store import TraceArchiveStore
+from TokenSim.trace.history import IndexedEventHistory
+from TokenSim.trace.recorder import TraceRecorder
 from TokenSim.errors import SimulationStateError
 
 
@@ -89,7 +89,7 @@ class ArchivedIterationIndex(Mapping):
         self.active.clear()
 
 
-class ArchivedTraceRecorder(AFTraceRecorder):
+class ArchivedTraceRecorder(TraceRecorder):
     """Retain active iterations and a readback cache bounded by concurrency.
 
     Completion is called after dependency patching and invariant validation.

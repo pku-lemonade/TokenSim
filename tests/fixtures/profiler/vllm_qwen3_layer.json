@@ -1,0 +1,182 @@
+{
+  "metadata": {
+    "provenance": "Locally collected PyTorch Profiler slice from Qwen3-8B on PKUa100; one common timestamp translation; ancillary device counters removed.",
+    "vllm_revision": "9cf0c96c91c690ad2e3dfc8ddd81f20014565327",
+    "torch": "2.13.0+cu132",
+    "raw_sha256": "099fa8899d5eef6bdd1e4f90211a5f815302abcff6f7cc549f1accac27435ab1"
+  },
+  "traceEvents": [
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "tokensim.forward",
+      "pid": 3880635,
+      "tid": 3880635,
+      "ts": 0.0,
+      "dur": 82854.756,
+      "args": {
+        "External id": 202
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "tokensim.layer.0",
+      "pid": 3880635,
+      "tid": 3880635,
+      "ts": 398.64990234375,
+      "dur": 8058.68,
+      "args": {
+        "External id": 217
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "tokensim.layer.0.qkv",
+      "pid": 3880635,
+      "tid": 3880635,
+      "ts": 670.722900390625,
+      "dur": 244.342,
+      "args": {
+        "External id": 221
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "cpu_op",
+      "name": "aten::mm",
+      "pid": 3880635,
+      "tid": 3880635,
+      "ts": 754.407958984375,
+      "dur": 126.776,
+      "args": {
+        "External id": 227,
+        "Input Dims": [
+          [
+            32,
+            4096
+          ],
+          [
+            4096,
+            6144
+          ]
+        ]
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "cpu_op",
+      "name": "_C::rotary_embedding",
+      "pid": 3880635,
+      "tid": 3880635,
+      "ts": 1371.31005859375,
+      "dur": 32.312,
+      "args": {
+        "External id": 242,
+        "Input Dims": [
+          [
+            32
+          ],
+          [
+            32,
+            4096
+          ],
+          [
+            32,
+            1024
+          ],
+          [],
+          [
+            40960,
+            128
+          ],
+          [],
+          [],
+          []
+        ]
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "cuda_runtime",
+      "name": "cudaOccupancyMaxActiveBlocksPerMultiprocessor",
+      "pid": 3880635,
+      "tid": 3880635,
+      "ts": 841.2490234375,
+      "dur": 6.333,
+      "args": {
+        "External id": 227,
+        "correlation": 550
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "kernel",
+      "name": "ampere_bf16_s16816gemm_bf16_64x64_sliced1x2_ldg8_f2f_stages_64x6_tn",
+      "pid": 0,
+      "tid": 7,
+      "ts": 873.574951171875,
+      "dur": 41.408,
+      "args": {
+        "External id": 227,
+        "device": 0,
+        "stream": 7,
+        "correlation": 553
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "cuda_runtime",
+      "name": "cudaLaunchKernel",
+      "pid": 3880635,
+      "tid": 3880635,
+      "ts": 855.070068359375,
+      "dur": 22.049,
+      "args": {
+        "External id": 227,
+        "correlation": 553
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "kernel",
+      "name": "void vllm::rotary_embedding_kernel<c10::BFloat16, c10::BFloat16, true>(long const*, c10::BFloat16*, c10::BFloat16*, c10::BFloat16 const*, int, long, long, long, int, int, int, long, bool)",
+      "pid": 0,
+      "tid": 7,
+      "ts": 1398.762939453125,
+      "dur": 4.8,
+      "args": {
+        "External id": 242,
+        "device": 0,
+        "stream": 7,
+        "correlation": 586
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "cuda_runtime",
+      "name": "cudaLaunchKernel",
+      "pid": 3880635,
+      "tid": 3880635,
+      "ts": 1383.8310546875,
+      "dur": 16.051,
+      "args": {
+        "External id": 242,
+        "correlation": 586
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "gpu_user_annotation",
+      "name": "tokensim.forward",
+      "pid": 0,
+      "tid": 7,
+      "ts": 176606.97802734375,
+      "dur": 92.899,
+      "args": {
+        "External id": 8330
+      }
+    }
+  ]
+}

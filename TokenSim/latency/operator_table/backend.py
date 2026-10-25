@@ -148,6 +148,7 @@ class OperatorTableLatencyBackend(StepComposition, OperatorQueries, LatencyBacke
                 self.package.meta.calibration.items() if self.package else []
             )
         }
+        self.trace_composition = None
         self._init_dimensions()
         if attention_backend not in ("generic", "module"):
             raise ConfigurationError(

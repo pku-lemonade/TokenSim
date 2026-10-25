@@ -266,6 +266,7 @@ class ModelExecutorTest(unittest.TestCase):
             cluster_config=cluster,
             hardware=hardware,
             config=SimulationConfig(
+                trace={"mode": "full"},
                 block_size=16,
                 batching="paged-attn",
                 prefill_worker_pool_type="round_robin",
@@ -316,3 +317,33 @@ class ModelExecutorTest(unittest.TestCase):
             attention.service_duration,
             sum(item["latency_us"] for item in attention.details["components"]) / 1e6,
         )
+
+    def test_af_output_normalization_covers_forward_rows_without_logits(self):
+        executor = object.__new__(ModelAFExecutor)
+        executor.total_layers = 2
+        executor.hidden_size = 256
+        binding = SimpleNamespace(
+            domain="a",
+            domain_rank=0,
+            physical_identity="worker:0",
+            dp_rank=0,
+            tp_rank=0,
+            ep_rank=0,
+            tp_group=(0,),
+            ep_group=(0,),
+        )
+        executor.runtime_plan = SimpleNamespace(
+            bindings_for_layer=lambda *args: (binding,)
+        )
+        block = SimpleNamespace(
+            placement=SimpleNamespace(a_domain="a", a_instance=0),
+            token_count=32,
+            logits_rows=0,
+            iteration_id=0,
+            block_id=0,
+        )
+        self.assertEqual(
+            executor._boundary_nodes(block, "final_norm")[0].local_work.token_count, 32
+        )
+        self.assertEqual(executor._boundary_nodes(block, "lm_head"), ())
+        self.assertEqual(executor._boundary_nodes(block, "token_selection"), ())

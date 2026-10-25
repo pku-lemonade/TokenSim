@@ -1,29 +1,15 @@
 """Private temporary trace chunks and disk indexes with bounded read caching."""
 
 from collections import OrderedDict
-from io import BytesIO
 from pathlib import Path
 import pickle
 import sqlite3
 from tempfile import TemporaryDirectory
 import weakref
 
-from TokenSim.af.caching.estimates import FrozenDict
-
-
-class _TracePickler(pickle.Pickler):
-    def reducer_override(self, value):
-        # dict's default pickle restores items through __setitem__, which is
-        # deliberately disabled for immutable provider snapshots.
-        if isinstance(value, FrozenDict):
-            return FrozenDict, (dict(value),)
-        return NotImplemented
-
 
 def _encode(events):
-    stream = BytesIO()
-    _TracePickler(stream, protocol=pickle.HIGHEST_PROTOCOL).dump(events)
-    return stream.getvalue()
+    return pickle.dumps(events, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 def _cleanup(connection, directory):

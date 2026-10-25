@@ -10,7 +10,7 @@ from TokenSim.af.communication.endpoints import EndpointResources
 from TokenSim.af.communication.resources import DomainScheduler
 from TokenSim.af.serving.metrics import steady_metrics
 from TokenSim.af.trace.metrics import AFTraceEvent
-from TokenSim.af.trace.occupancy import validate_resource_capacity
+from TokenSim.trace.occupancy import validate_resource_capacity
 
 
 class EndpointBudgetTest(unittest.TestCase):

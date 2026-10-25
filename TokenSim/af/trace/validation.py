@@ -1,0 +1,421 @@
+"""AF payload, routing, ownership and layer validation over shared trace storage."""
+
+from TokenSim.af.providers.queries import AFEndpoint, AFRoutingEdge
+from TokenSim.af.trace.metrics import AFTraceEvent
+from TokenSim.errors import SimulationStateError
+
+
+def validate_af_events(events, by_node):
+    iteration_id = events[0].iteration_id if events else None
+    tolerance = 1e-12
+    for event in events:
+        returned_payload = event.details.get("payload_bytes")
+        if (
+            returned_payload is not None
+            and event.payload_bytes is not None
+            and returned_payload != event.payload_bytes
+        ):
+            raise SimulationStateError(
+                f"AF trace invariant failed: payload mismatch for node={event.node_id}: "
+                f"planned={event.payload_bytes}, provider={returned_payload}"
+            )
+        if event.event_type == "transfer" and event.tensor_slices:
+            slice_payloads = [
+                item.payload_bytes
+                for item in event.tensor_slices
+                if item.payload_bytes is not None
+            ]
+            if (
+                len(slice_payloads) == len(event.tensor_slices)
+                and event.payload_bytes is not None
+                and sum(slice_payloads) != event.payload_bytes
+            ):
+                raise SimulationStateError(
+                    "AF trace invariant failed: tensor slice payload total "
+                    f"does not match leg payload for node={event.node_id}"
+                )
+        if event.stage == "residual" and _is_f_domain(event.source_domain):
+            raise SimulationStateError(
+                f"AF trace invariant failed: residual cannot execute in F domain "
+                f"for node={event.node_id}"
+            )
+        if event.stage == "weighted_combine":
+            if (
+                event.original_token_count is None
+                or event.output_token_count != event.original_token_count
+            ):
+                raise SimulationStateError(
+                    "AF trace invariant failed: weighted combine must preserve "
+                    f"original token count for node={event.node_id}"
+                )
+
+    for event in events:
+        if (
+            len(event.predecessor_ids) > 1
+            and event.details.get("readiness_mode") != "invocation_events"
+        ):
+            latest = max(by_node[key].end_at for key in event.predecessor_ids)
+            if abs(event.ready_at - latest) > tolerance:
+                raise SimulationStateError(
+                    f"AF trace invariant failed: join ready time for node={event.node_id}"
+                )
+
+    transfer_copies: set[tuple[object, ...]] = set()
+    for event in events:
+        if event.event_type != "transfer":
+            continue
+        for tensor_slice in event.tensor_slices:
+            copy_key = (
+                event.logical_stage_id,
+                event.direction,
+                _endpoint_identity(event.source_endpoint),
+                _endpoint_identity(event.target_endpoint),
+                tensor_slice.tensor_item_id,
+                tensor_slice.interval,
+                tensor_slice.partial_id,
+            )
+            if copy_key in transfer_copies:
+                raise SimulationStateError(
+                    "AF trace invariant failed: duplicate physical tensor copy "
+                    f"in logical stage {event.logical_stage_id!r}: {copy_key!r}"
+                )
+            transfer_copies.add(copy_key)
+
+    by_layer: dict[tuple[int, int], list[AFTraceEvent]] = {}
+    for event in events:
+        by_layer.setdefault((event.block_id, event.layer_id), []).append(event)
+    for (block_id, layer_id), layer_events in by_layer.items():
+        # Negative layer IDs explicitly represent whole-model input/output
+        # communication. They still participate in dependency and resource
+        # checks, but do not contain a transformer layer's A/F stages.
+        if layer_id < 0:
+            if any(event.layer_type is not None for event in layer_events):
+                raise SimulationStateError(
+                    "Model boundary cannot have a transformer layer type"
+                )
+            continue
+        _validate_transfer_stages(layer_events, by_node)
+        typed_events = [event for event in layer_events if event.layer_type is not None]
+        if typed_events:
+            _validate_runtime_layer_semantics(
+                iteration_id,
+                block_id,
+                layer_id,
+                typed_events,
+            )
+
+
+def _validate_runtime_layer_semantics(
+    iteration_id: int,
+    block_id: int,
+    layer_id: int,
+    events: list[AFTraceEvent],
+) -> None:
+    context = f"iteration={iteration_id}, block={block_id}, layer={layer_id}"
+    layer_types = {event.layer_type for event in events}
+    if len(layer_types) != 1:
+        raise SimulationStateError(
+            f"AF trace invariant failed: {context} mixes layer types "
+            f"{sorted(layer_types)}"
+        )
+    layer_type = next(iter(layer_types))
+    attention = [event for event in events if event.stage == "attention"]
+    if not attention:
+        raise SimulationStateError(
+            f"AF trace invariant failed: {context} has no A Attention events"
+        )
+    a_domains = {event.source_domain for event in attention}
+    if len(a_domains) != 1:
+        raise SimulationStateError(
+            f"AF trace invariant failed: {context} spans A domains {a_domains}"
+        )
+    a_domain = next(iter(a_domains))
+    attention_counts = {event.original_token_count for event in attention}
+    if len(attention_counts) != 1 or None in attention_counts:
+        raise SimulationStateError(
+            f"AF trace invariant failed: Attention token counts differ for {context}"
+        )
+    attention_token_count = next(iter(attention_counts))
+    residuals = [event for event in events if event.stage == "residual"]
+    for event in residuals:
+        if event.source_domain != a_domain or event.target_domain != a_domain:
+            raise SimulationStateError(
+                f"AF trace invariant failed: residual must execute in A domain "
+                f"for node={event.node_id}"
+            )
+    attention_ranks = {event.participant_ranks[0] for event in attention}
+    residual_ranks = {event.participant_ranks[0] for event in residuals}
+    if residual_ranks != attention_ranks or len(residuals) != len(residual_ranks):
+        raise SimulationStateError(
+            f"AF trace invariant failed: residual does not cover every A owner "
+            f"exactly once for {context}"
+        )
+    for event in residuals:
+        if (
+            event.token_count != attention_token_count
+            or event.original_token_count != attention_token_count
+            or event.output_token_count != attention_token_count
+        ):
+            raise SimulationStateError(
+                "AF trace invariant failed: residual must preserve original "
+                f"tokens for node={event.node_id}"
+            )
+
+    referenced = {
+        predecessor for event in events for predecessor in event.predecessor_ids
+    }
+    terminals = [event for event in events if event.node_id not in referenced]
+    if not terminals:
+        raise SimulationStateError(
+            f"AF trace invariant failed: {context} has no terminal events"
+        )
+    for terminal in terminals:
+        if (
+            terminal.source_domain != a_domain
+            or terminal.target_domain != a_domain
+            or (
+                terminal.stage not in {"residual", "layout"}
+                and terminal.operation != "all_gather"
+                and not (
+                    terminal.event_type == "synchronize"
+                    and terminal.details.get("communication_operation") == "all_gather"
+                )
+            )
+        ):
+            raise SimulationStateError(
+                f"AF trace invariant failed: runtime terminal must be A-side "
+                f"residual/layout for node={terminal.node_id}"
+            )
+
+    if layer_type == "dense":
+        forbidden = {
+            "router",
+            "routed_expert",
+            "shared_expert",
+            "weighted_combine",
+        }
+        present = {event.stage for event in events} & forbidden
+        if present:
+            raise SimulationStateError(
+                f"AF trace invariant failed: Dense layer has MoE stages "
+                f"{sorted(present)}"
+            )
+        return
+
+    routers = [event for event in events if event.stage == "router"]
+    if len(routers) != 1:
+        raise SimulationStateError(
+            f"AF trace invariant failed: {context} must have one Router event"
+        )
+    router = routers[0]
+    expected_edges = tuple(router.routing_edges)
+    expected_edge_set = set(expected_edges)
+    if (
+        len(expected_edges) != len(expected_edge_set)
+        or router.assignment_count != len(expected_edges)
+        or router.original_token_count is None
+    ):
+        raise SimulationStateError(
+            f"AF trace invariant failed: Router workload is inconsistent for "
+            f"node={router.node_id}"
+        )
+    original_tokens = router.original_token_count
+    if original_tokens != attention_token_count:
+        raise SimulationStateError(
+            f"AF trace invariant failed: Router token count differs from "
+            f"Attention for {context}"
+        )
+
+    routed = [event for event in events if event.stage == "routed_expert"]
+    consumers: dict[AFRoutingEdge, list[AFTraceEvent]] = {}
+    for event in routed:
+        if event.assignment_count != len(event.routing_edges) or len(
+            event.routing_edges
+        ) != len(set(event.routing_edges)):
+            raise SimulationStateError(
+                f"AF trace invariant failed: Routed Expert workload is "
+                f"inconsistent for node={event.node_id}"
+            )
+        for edge in event.routing_edges:
+            consumers.setdefault(edge, []).append(event)
+    if set(consumers) != expected_edge_set:
+        raise SimulationStateError(
+            f"AF trace invariant failed: Routed Expert assignment coverage "
+            f"differs from Router for {context}"
+        )
+    for edge, edge_events in consumers.items():
+        groups = {event.tp_group for event in edge_events}
+        actual_ranks = [event.participant_ranks[0] for event in edge_events]
+        if (
+            len(groups) != 1
+            or len(actual_ranks) != len(set(actual_ranks))
+            or set(actual_ranks) != set(next(iter(groups)))
+        ):
+            raise SimulationStateError(
+                "AF trace invariant failed: routing assignment must execute "
+                f"once per Expert TP rank for expert={edge.expert_id}"
+            )
+
+    shared = [event for event in events if event.stage == "shared_expert"]
+    if shared:
+        groups = {event.tp_group for event in shared}
+        ranks = [event.participant_ranks[0] for event in shared]
+        if (
+            len(groups) != 1
+            or len(ranks) != len(set(ranks))
+            or set(ranks) != set(next(iter(groups)))
+        ):
+            raise SimulationStateError(
+                f"AF trace invariant failed: Shared Expert TP coverage for {context}"
+            )
+        for event in shared:
+            if (
+                event.token_count != original_tokens
+                or event.original_token_count != original_tokens
+                or event.output_token_count != original_tokens
+            ):
+                raise SimulationStateError(
+                    "AF trace invariant failed: Shared Expert must process every "
+                    f"original token for node={event.node_id}"
+                )
+
+    combines = [event for event in events if event.stage == "weighted_combine"]
+    combine_ranks = {event.participant_ranks[0] for event in combines}
+    expected_ranks = (
+        {router.participant_ranks[0]}
+        if combines
+        and all(event.operation == "f_weighted_combine" for event in combines)
+        else attention_ranks
+    )
+    if combine_ranks != expected_ranks or len(combines) != len(combine_ranks):
+        raise SimulationStateError(
+            f"AF trace invariant failed: combine does not cover every A owner "
+            f"for {context}"
+        )
+    expected_inputs = len(expected_edges) + (original_tokens if shared else 0)
+    for event in combines:
+        expected_domain = (
+            router.source_domain
+            if event.operation == "f_weighted_combine"
+            else a_domain
+        )
+        if event.source_domain != expected_domain or (
+            event.operation == "f_weighted_combine"
+            and (expected_domain == a_domain or len(combines) != 1)
+        ):
+            raise SimulationStateError(
+                "AF trace invariant failed: combine protocol domain mismatch"
+            )
+        if (
+            event.original_token_count != original_tokens
+            or event.assignment_count != len(expected_edges)
+            or event.input_edge_count != expected_inputs
+            or event.output_token_count != original_tokens
+            or len(event.routing_edges) != len(expected_edges)
+            or set(event.routing_edges) != expected_edge_set
+        ):
+            raise SimulationStateError(
+                f"AF trace invariant failed: combine workload is inconsistent "
+                f"for node={event.node_id}"
+            )
+
+
+def _endpoint_identity(endpoint: AFEndpoint | None) -> tuple[object, ...] | None:
+    if endpoint is None:
+        return None
+    return (endpoint.domain, endpoint.domain_rank, endpoint.physical_worker)
+
+
+def _is_f_domain(domain: str | None) -> bool:
+    if domain is None:
+        return False
+    value = domain.strip().lower()
+    return value.startswith("f") or "ffn" in value or value.endswith("-f")
+
+
+def _validate_transfer_stages(events, by_node):
+    local = [event for event in events if event.details.get("colocated_dense_reuse")]
+    if local:
+        _validate_local_reuse(events, by_node, local)
+        return
+    for operation in ("af_a_to_f", "af_f_to_a"):
+        stage_ids = {
+            event.logical_stage_id or event.node_id
+            for event in events
+            if event.operation == operation
+        }
+        if len(stage_ids) != 1:
+            event = events[0]
+            raise SimulationStateError(
+                f"AF trace invariant failed: block={event.block_id}, layer={event.layer_id} "
+                f"requires exactly one {operation} logical stage; got {len(stage_ids)}"
+            )
+
+
+def _validate_local_reuse(events, by_node, local):
+    def require(condition, message):
+        if not condition:
+            raise SimulationStateError(
+                f"AF trace local reuse invariant failed: {message}"
+            )
+
+    require(all(event.layer_type == "dense" for event in local), "requires dense work")
+    require(
+        not any(event.operation in {"af_a_to_f", "af_f_to_a"} for event in events),
+        "cannot mix local reuse and endpoint copies",
+    )
+    attention = [event for event in events if event.stage == "attention"]
+    physical = {event.physical_endpoints[0] for event in attention}
+    layer_ids = {event.node_id for event in events}
+    for stage in ("dense_ffn", "residual"):
+        branch = [event for event in local if event.stage == stage]
+        require(
+            len(branch) == len(attention)
+            and {event.physical_endpoints[0] for event in branch} == physical,
+            f"{stage} must consume one replica on every attention worker",
+        )
+    require(len(local) == 2 * len(attention), "unexpected reuse consumer")
+    for event in local:
+        endpoint = event.physical_endpoints[0]
+        width = event.local_work["tensor_shape"]["global_hidden_size"]
+        require(
+            event.source_layout == "replicated"
+            and event.local_work["tensor_shape"]["hidden_size"] == width
+            and len(event.tensor_slices) == event.token_count,
+            "consumer must read complete replicas",
+        )
+        pending, ancestors = list(event.predecessor_ids), {}
+        while pending:
+            node_id = pending.pop()
+            if node_id in layer_ids and node_id not in ancestors:
+                ancestors[node_id] = by_node[node_id]
+                pending.extend(by_node[node_id].predecessor_ids)
+        items = set()
+        for item in event.tensor_slices:
+            require(
+                item.interval == (0, width)
+                and item.layout == "replicated"
+                and item.owner_physical_worker == endpoint
+                and item.canonical_producer == endpoint
+                and item.tensor_item_id not in items,
+                "slice must identify a unique complete local replica",
+            )
+            items.add(item.tensor_item_id)
+            operation = (
+                "post_attention_norm"
+                if event.stage == "dense_ffn"
+                else "all_reduce" if len(attention) > 1 else "dense_ffn"
+            )
+            producers = [
+                source
+                for source in ancestors.values()
+                if source.operation == operation
+                and source.source_domain == item.owner_domain
+                and item.owner_domain_rank in source.participant_ranks
+                and endpoint in source.physical_endpoints
+            ]
+            require(bool(producers), "local replica producer is not a dependency")
+        if event.stage == "residual":
+            require(
+                event.target_layout == "replicated", "residual must retain replicas"
+            )

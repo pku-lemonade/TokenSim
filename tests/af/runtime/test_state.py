@@ -101,7 +101,9 @@ class RuntimePlannerAndSummaryTest(unittest.TestCase):
 
     def test_combined_tp_dp_ep_engine_runs_with_one_scheduler_per_a_replica(self):
         cluster = _cluster(a_tp=2, a_dp=2, f_tp=2, f_dp=2, f_ep=4)
-        env, engine = _engine(cluster, moe_config=_moe(top_k=1, shared=1))
+        env, engine = _engine(
+            cluster, moe_config=_moe(top_k=1, shared=1), trace={"mode": "full"}
+        )
         requests = [
             Request(
                 request_id,

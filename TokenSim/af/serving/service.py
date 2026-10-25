@@ -7,8 +7,8 @@ from TokenSim.af.execution.model import ModelAFExecutor
 from TokenSim.af.planning.batching import request_batches
 from TokenSim.af.providers.operator_table import build_operator_table_af_providers
 from TokenSim.af.runtime.admission import ResidentKV
-from TokenSim.af.trace.recorder import AFTraceRecorder
-from TokenSim.af.trace.archive import ArchivedTraceRecorder
+from TokenSim.trace.recorder import TraceRecorder
+from TokenSim.trace.archive import ArchivedTraceRecorder
 from TokenSim.af.trace.metrics import AFTraceEvent
 from TokenSim.af.serving.timing import CompletedTiming
 from TokenSim.af.serving.history import StreamingTraceRecorder
@@ -64,7 +64,7 @@ class AFService:
         elif retain_trace:
             self.trace = ArchivedTraceRecorder(trace)
         else:
-            self.trace = AFTraceRecorder(trace)
+            self.trace = TraceRecorder(trace)
         self.retain_trace = retain_trace
         self.executor = ModelAFExecutor(
             env,

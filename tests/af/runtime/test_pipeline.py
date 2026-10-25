@@ -10,7 +10,7 @@ from TokenSim.af.execution.model import ModelAFExecutor
 from TokenSim.af.providers.operator_table import build_operator_table_af_providers
 from TokenSim.af.runtime.admission import ResidentKV, rank_kv_bytes
 from TokenSim.af.runtime.compiler import compile_af_runtime_plan
-from TokenSim.af.trace.recorder import AFTraceRecorder
+from TokenSim.trace.recorder import TraceRecorder
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware.placement import build_topology_placement
 
@@ -85,7 +85,7 @@ class PipelineRuntimeTest(unittest.TestCase):
             fallback="analytical_only",
         )
         env = simpy.Environment()
-        trace = AFTraceRecorder(True)
+        trace = TraceRecorder(True)
         executor = ModelAFExecutor(
             env,
             cluster,
@@ -131,7 +131,7 @@ class PipelineRuntimeTest(unittest.TestCase):
         transfer.placement = build_topology_placement(
             cluster, cluster.workers(), hardware
         )
-        trace = AFTraceRecorder(True)
+        trace = TraceRecorder(True)
         executor = ModelAFExecutor(
             env,
             cluster,
@@ -165,7 +165,7 @@ class PipelineRuntimeTest(unittest.TestCase):
     def simulate(self, parallel):
         cluster, model, plan = self.runtime()
         env = simpy.Environment()
-        trace = AFTraceRecorder(True)
+        trace = TraceRecorder(True)
         transfer = FixedTransferProvider(0, 0)
         transfer.operation_durations["af_pipeline_handoff"] = 0.1
         transfer.placement = build_topology_placement(
@@ -300,7 +300,7 @@ class ExpertShardTest(unittest.TestCase):
             runtime_plan=plan,
             model=model,
             moe_config=model.moe,
-            trace_recorder=AFTraceRecorder(True),
+            trace_recorder=TraceRecorder(True),
         )
         request = SimpleNamespace(
             id=1, is_prefill=False, prefill_len=8, context_len=8, generation_idx=0

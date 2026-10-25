@@ -9,8 +9,8 @@ import json
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
-from TokenSim.af.trace import pipeline
-from TokenSim.af.trace.export import _encode_event, _record_dict
+from TokenSim.trace import pipeline
+from TokenSim.trace.export import _encode_event, _record_dict
 from TokenSim.errors import ConfigurationError
 
 HEADER = {

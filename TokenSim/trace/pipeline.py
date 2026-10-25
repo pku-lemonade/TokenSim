@@ -7,9 +7,9 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 import weakref
 
-from TokenSim.af.trace.archive import ArchivedEventHistory, ArchivedTraceRecorder
-from TokenSim.af.trace.config import AFTraceConfig
-from TokenSim.af.trace.export import _encode_event, _event_encoder
+from TokenSim.trace.archive import ArchivedEventHistory, ArchivedTraceRecorder
+from TokenSim.trace.config import TraceConfig
+from TokenSim.trace.export import _encode_event, _event_encoder
 from TokenSim.errors import ConfigurationError
 
 
@@ -139,12 +139,12 @@ class PipelinedTraceRecorder(ArchivedTraceRecorder):
         resource_capacities=None,
         writer_factory=None,
     ):
-        if trace_config is not None and not isinstance(trace_config, AFTraceConfig):
-            raise ConfigurationError("trace_config must be an AFTraceConfig")
+        if trace_config is not None and not isinstance(trace_config, TraceConfig):
+            raise ConfigurationError("trace_config must be an TraceConfig")
         if trace_config is not None and trace_config.mode != "full":
             raise ConfigurationError("trace preparation requires full mode")
         super().__init__(True, resource_capacities)
-        self.options = trace_config or AFTraceConfig()
+        self.options = trace_config or TraceConfig(mode="full")
         self.directory = Path(directory).resolve()
         self.archive.chunk_size = 1024
         self.events = _PreparedHistory(self.archive, self)

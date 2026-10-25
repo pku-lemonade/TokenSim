@@ -36,7 +36,9 @@ class ModelLayersTest(unittest.TestCase):
                     model_spec=hardware.model("TestModel"),
                     cluster_config=cluster,
                     hardware=hardware,
-                    config=SimulationConfig(latency_fallback="analytical_only"),
+                    config=SimulationConfig(
+                        trace={"mode": "full"}, latency_fallback="analytical_only"
+                    ),
                 )
                 req = Request(1, 8, 3, 4)
                 req.generation_idx = int(phase == "decode")
@@ -73,7 +75,9 @@ class ModelBoundaryTest(unittest.TestCase):
             model_spec=hardware.model("TestModel"),
             cluster_config=cluster,
             hardware=hardware,
-            config=SimulationConfig(latency_fallback="analytical_only"),
+            config=SimulationConfig(
+                trace={"mode": "full"}, latency_fallback="analytical_only"
+            ),
         )
 
     def test_ordinary_serving_includes_embedding_head_and_sampling(self):

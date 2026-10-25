@@ -4,22 +4,25 @@ from __future__ import annotations
 
 from bisect import bisect_right
 from collections import defaultdict
-from dataclasses import asdict, dataclass, field, replace
+from dataclasses import dataclass, field, replace
 from math import isfinite
 import math
 import sys
-from typing import Any, Literal, Mapping
-from TokenSim.af.trace.occupancy import occupied_until, unique_executions
+from typing import Mapping
 
-from TokenSim.af.planning.batching import ForwardPhase
+from TokenSim.af.caching.estimates import FrozenDict
 from TokenSim.af.providers.queries import (
-    AFComputeStage,
+    AFComputeQuery,
     AFEndpoint,
     AFLayerType,
     AFRoutingEdge,
+    AFServiceEstimate,
     AFTensorLayout,
     AFTensorSlice,
+    AFTransferQuery,
 )
+from TokenSim.trace.events import TraceEvent, register_records
+from TokenSim.trace.occupancy import occupied_until, unique_executions
 
 
 class _ResourceBusyTime:
@@ -51,50 +54,13 @@ class _ResourceBusyTime:
 
 
 @dataclass(frozen=True)
-class AFTraceEvent:
-    iteration_id: int
-    block_id: int
-    layer_id: int
-    phase: ForwardPhase
-    event_type: Literal[
-        "compute",
-        "transfer",
-        "control_transfer",
-        "control_device",
-        "operation_service",
-        "collective",
-        "host_submit",
-        "host_prepare",
-        "synchronize",
-    ]
-    resource_id: str
-    ready_at: float
-    start_at: float
-    end_at: float
-    queue_duration: float
-    service_duration: float
-    request_count: int
-    token_count: int
-    source_id: str
+class AFTraceEvent(TraceEvent):
     dataset_version: str = "test-stub"
-    match_type: Literal["exact", "interpolated"] = "exact"
-    stage: AFComputeStage | Literal["cast"] | None = None
-    direction: str | None = None
-    worker_id: int | None = None
-    payload_bytes: int | None = None
-    details: Mapping[str, object] = field(default_factory=dict)
-    operation: str | None = None
     source_domain: str | None = None
     target_domain: str | None = None
     logical_participants: tuple[str, ...] = ()
     participant_ranks: tuple[int, ...] = ()
     physical_endpoints: tuple[str, ...] = ()
-    resource_ids: tuple[str, ...] = ()
-    node_id: str | None = None
-    predecessor_ids: tuple[str, ...] = ()
-    dp_rank: int | None = None
-    tp_rank: int | None = None
-    ep_rank: int | None = None
     tp_group: tuple[int, ...] = ()
     ep_group: tuple[int, ...] = ()
     local_work: Mapping[str, object] = field(default_factory=dict)
@@ -122,25 +88,6 @@ class AFTraceEvent:
     routing_edges: tuple[AFRoutingEdge, ...] = ()
     source_dtype: str | None = None
     target_dtype: str | None = None
-    execution_group_id: str | None = None
-    input_ready_at: float | None = None
-    resource_queue_intervals: tuple[tuple[float, float], ...] | None = None
-
-    def as_dict(self) -> dict[str, Any]:
-        return asdict(self)
-
-
-def _endpoint_identity(endpoint: AFEndpoint | None) -> tuple[object, ...] | None:
-    if endpoint is None:
-        return None
-    return (endpoint.domain, endpoint.domain_rank, endpoint.physical_worker)
-
-
-def _is_f_domain(domain: str | None) -> bool:
-    if domain is None:
-        return False
-    value = domain.strip().lower()
-    return value.startswith("f") or "ffn" in value or value.endswith("-f")
 
 
 def communication_window(start, end, *, fixed_intervals=(), transport_intervals=()):
@@ -383,3 +330,43 @@ def summarize_timeline(events, start, end, capacities=None):
         unexplained_duration=totals.get("unexplained", 0.0),
         interpretation="one timestamp-supported chain; busy unions across categories may overlap; external blockers remain queue/gaps",
     )
+
+
+register_records(
+    AFTraceEvent,
+    FrozenDict,
+    AFEndpoint,
+    AFTensorSlice,
+    AFRoutingEdge,
+    AFComputeQuery,
+    AFTransferQuery,
+    AFServiceEstimate,
+)
+
+
+def summarize_iteration(recorder, iteration):
+    """Return aggregate metadata without materializing full event dictionaries."""
+    events = recorder.events_for(iteration.iteration_id)
+    utilization = {}
+    makespan = iteration.makespan or 0.0
+    busy_by_resource = {}
+    for event in unique_executions(events):
+        for resource_id in set(event.resource_ids or (event.resource_id,)):
+            if resource_id not in busy_by_resource:
+                busy_by_resource[resource_id] = _ResourceBusyTime()
+            busy_by_resource[resource_id].add(occupied_until(event) - event.start_at)
+    for resource_id, busy in sorted(busy_by_resource.items()):
+        capacity = recorder.resource_capacities.get(resource_id, 1)
+        utilization[resource_id] = (
+            busy.value() / (makespan * capacity) if makespan > 0 else 0.0
+        )
+    return {
+        "iteration_id": iteration.iteration_id,
+        "phase": iteration.phase,
+        "start_at": iteration.start_at,
+        "end_at": iteration.end_at,
+        "makespan": iteration.makespan,
+        "block_completed_at": dict(iteration.block_completed_at),
+        "barrier_wait": dict(iteration.barrier_wait),
+        "resource_utilization": utilization,
+    }

@@ -9,6 +9,7 @@ from collections import OrderedDict
 from contextlib import closing
 from dataclasses import asdict
 from io import BytesIO
+from importlib import import_module
 from itertools import islice
 import json
 from pathlib import Path
@@ -16,35 +17,28 @@ import pickle
 import sqlite3
 from tempfile import NamedTemporaryFile
 
-from TokenSim.af.caching.estimates import FrozenDict
-from TokenSim.af.providers import queries
-from TokenSim.af.trace.archive import ArchivedTraceRecorder
-from TokenSim.af.trace.archive_store import TraceArchiveStore, _encode
-from TokenSim.af.trace.config import AFTraceConfig
-from TokenSim.af.trace.export import write_chrome_trace
-from TokenSim.af.trace.metrics import AFTraceEvent
-from TokenSim.af.trace.pipeline import PipelinedTraceRecorder
+from TokenSim.trace.archive import ArchivedTraceRecorder
+from TokenSim.trace.archive_store import TraceArchiveStore, _encode
+from TokenSim.trace.config import TraceConfig
+from TokenSim.trace.export import write_chrome_trace
+from TokenSim.trace.events import TraceEvent, RECORD_TYPES
+from TokenSim.trace.pipeline import PipelinedTraceRecorder
 
 FORMAT = "tokensim-indexed-trace-v1"
 LEGACY_FORMAT = "tokensim-indexed-trace-probe-v1"
-_RECORDS = (AFTraceEvent, FrozenDict) + tuple(
-    getattr(queries, name)
-    for name in (
-        "AFEndpoint",
-        "AFTensorSlice",
-        "AFRoutingEdge",
-        "AFComputeQuery",
-        "AFTransferQuery",
-        "AFServiceEstimate",
-    )
-)
-_CONSTRUCTORS = {(kind.__module__, kind.__name__): kind for kind in _RECORDS}
 
 
 class _RecordReader(pickle.Unpickler):
     def find_class(self, module, name):
+        if (module, name) not in RECORD_TYPES and module in {
+            "TokenSim.af.trace.metrics",
+            "TokenSim.af.caching.estimates",
+            "TokenSim.af.providers.queries",
+        }:
+            # Register the domain's record definitions only when reading its data.
+            import_module("TokenSim.af.trace.metrics")
         try:
-            return _CONSTRUCTORS[module, name]
+            return RECORD_TYPES[module, name]
         except KeyError:
             raise pickle.UnpicklingError(f"unsupported trace record: {module}.{name}")
 
@@ -157,7 +151,7 @@ def _events(connection, expected):
             cache.move_to_end(chunk)
             records = cache[chunk]
             if not 0 <= ordinal < len(records) or not isinstance(
-                records[ordinal], AFTraceEvent
+                records[ordinal], TraceEvent
             ):
                 raise ValueError("invalid trace chunk event")
             count += 1
@@ -187,7 +181,7 @@ def convert(source, destination):
             destination,
             _events(connection, count),
             json.loads(metadata),
-            trace_config=AFTraceConfig.from_mapping(json.loads(options)),
+            trace_config=TraceConfig.from_mapping(json.loads(options)),
         )
         return count
     finally:

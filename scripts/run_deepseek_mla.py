@@ -20,8 +20,8 @@ from scripts.deepseek_v3_runtime import (
     write_profile,
 )
 from scripts.af_trace_options import add_trace_arguments, trace_configuration
-from TokenSim.af.trace.config import AFTraceConfig
-from TokenSim.af.trace.formats import validate_trace_format
+from TokenSim.trace.config import TraceConfig
+from TokenSim.trace.formats import validate_trace_format
 from TokenSim.af.experiments import AFExperimentRunner
 from TokenSim.errors import ConfigurationError
 
@@ -51,7 +51,9 @@ def publish_trace(source, target):
 def run(args):
     trace_config = trace_configuration(args)
     trace_kwargs = (
-        {"trace_config": trace_config} if trace_config != AFTraceConfig() else {}
+        {"trace_config": trace_config}
+        if trace_config != TraceConfig(mode="full")
+        else {}
     )
     config = configuration(
         full_model=args.full_model,

@@ -1,6 +1,7 @@
 """Incremental Chrome trace export without copying the full event history."""
 
 from collections.abc import Iterable, Mapping
+from contextlib import nullcontext
 from dataclasses import fields, is_dataclass
 from functools import lru_cache
 from inspect import getattr_static
@@ -10,9 +11,9 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Any
 
-from TokenSim.af.runtime.host import host_collection
-from TokenSim.af.trace.metrics import AFTraceEvent
-from TokenSim.af.trace.config import AFTraceConfig, TIMING_FIELDS
+from TokenSim.trace.host import host_collection
+from TokenSim.trace.events import TraceEvent
+from TokenSim.trace.config import TraceConfig, TIMING_FIELDS
 from TokenSim.errors import ConfigurationError
 
 
@@ -57,15 +58,16 @@ def _event_encoder():
         separators=(",", ":"),
         default=_record_dict,
         check_circular=False,
+        allow_nan=False,
     )
 
 
-def _encode_event(event, options, encoder):
+def _encode_event(event, options, encoder, *, track=None):
     selected = options.fields
     if selected is None and options.detail == "timing":
         selected = TIMING_FIELDS
     row = (
-        {name: getattr(event, name) for name in selected}
+        {name: getattr(event, name, None) for name in selected}
         if selected is not None
         else _record_dict(event)
     )
@@ -74,7 +76,7 @@ def _encode_event(event, options, encoder):
         cat=event.event_type,
         ph="X",
         pid=1,
-        tid=event.resource_id,
+        tid=event.resource_id if track is None else track,
         ts=event.start_at * 1e6,
         dur=event.service_duration * 1e6,
         args=row,
@@ -84,32 +86,42 @@ def _encode_event(event, options, encoder):
     except RecursionError:
         # Retry with cycle checks to preserve the standard failure type.
         return json.dumps(
-            item, ensure_ascii=False, separators=(",", ":"), default=_record_dict
+            item,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            default=_record_dict,
+            allow_nan=False,
         )
 
 
 def _export_options(trace_config, metadata):
-    if trace_config is not None and not isinstance(trace_config, AFTraceConfig):
-        raise ConfigurationError("trace_config must be an AFTraceConfig")
-    options = trace_config or AFTraceConfig()
+    if trace_config is not None and not isinstance(trace_config, TraceConfig):
+        raise ConfigurationError("trace_config must be an TraceConfig")
+    options = trace_config or TraceConfig(mode="full")
     if options.mode != "full":
         raise ConfigurationError("trace export requires full mode")
-    if options != AFTraceConfig():
-        metadata = dict(metadata or {}, trace_config=options.describe())
+    selection = options.describe()
+    selection.pop("format")
+    selection.pop("output")
+    defaults = TraceConfig(mode="full").describe()
+    defaults.pop("format")
+    defaults.pop("output")
+    if selection != defaults:
+        metadata = dict(metadata or {}, trace_config=selection)
     return options, metadata
 
 
 def write_chrome_trace(
     path: str | Path,
-    events: Iterable[AFTraceEvent],
+    events: Iterable[TraceEvent],
     metadata: Mapping[str, Any] | None = None,
     *,
-    trace_config: AFTraceConfig | None = None,
+    trace_config: TraceConfig | None = None,
 ) -> Path:
     """Write complete events in input order, with temporary memory per event.
 
     Read final event records after execution has patched their dependencies.
-    JSON values match AFTraceEvent.as_dict(); whitespace is compact.
+    JSON values match TraceEvent.as_dict(); whitespace is compact.
     A failed export leaves any existing destination intact.
     """
     options, metadata = _export_options(trace_config, metadata)
@@ -123,10 +135,14 @@ def write_chrome_trace(
     if options.filtered:
         events = (event for event in events if options.includes(event))
     encoder = _event_encoder()
+    modern = metadata is not None and metadata.get("schema_version") == 2
+    if modern:
+        from TokenSim.trace.flows import FlowIndex
     temporary = None
     try:
         with (
             host_collection(),
+            FlowIndex() if modern else nullcontext(None) as flows,
             NamedTemporaryFile(
                 mode="w",
                 encoding="utf-8",
@@ -139,10 +155,25 @@ def write_chrome_trace(
         ):
             temporary = Path(stream.name)
             stream.write('{"displayTimeUnit":"us","traceEvents":[')
-            for index, event in enumerate(events):
-                if index:
+            count = 0
+
+            def append(encoded):
+                nonlocal count
+                if count:
                     stream.write(",")
-                stream.write(_encode_event(event, options, encoder))
+                stream.write(encoded)
+                count += 1
+
+            for event in events:
+                track = None
+                if flows is not None:
+                    track, item = flows.add(event)
+                    if item is not None:
+                        append(encoder.encode(item))
+                append(_encode_event(event, options, encoder, track=track))
+            if flows is not None:
+                for item in flows.flows():
+                    append(encoder.encode(item))
             stream.write('],"metadata":')
             stream.write(
                 json.dumps(
