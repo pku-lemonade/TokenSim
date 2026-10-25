@@ -140,7 +140,7 @@ The [`docs/`](docs/) directory contains detailed feature descriptions, configura
 
 | Guide | Features covered |
 | --- | --- |
-| [Operator latency model](docs/operator-latency-model.md) | Operator tables, interpolation and extrapolation, formula-based fallback, communication timing, calibration and result provenance |
+| [Operator latency model](docs/operator-latency-model.md) | Operator tables, interpolation and extrapolation, formula-based fallback, communication timing, calibration, tracing, profiler comparison and result provenance |
 | [Attention-FFN Disaggregation (AFD)](docs/afd.md) | A/F placement, micro-batch scheduling, compute and communication costs, KV capacity and modeling scope |
 | [DeepSeek-V3 MLA](docs/deepseek-v3-mla.md) | Model geometry, compressed KV storage, prefill/decode computation and operator-data coverage |
 | [LP30 and Rubin](docs/lpx.md) | Native Gemma decode, mixed attention geometry, SRAM admission, collective policies and hardware assumptions |
