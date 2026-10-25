@@ -17,6 +17,8 @@ AISimulate's AgentX qualification is functional; its finite 722-request memory r
 | W2 decode | Shared ordinary/AF histogram queries, one-launch ragged decode, strict measured-domain handling, and complete generic verification query widths | Six additional focused tests; all 577 tests pass |
 | W3 | Versioned per-round mean/conditional/empirical acceptance, legacy replay, committed execution counters, and CLI configuration | Eleven focused tests, including real paged-cache execution; all 588 tests pass |
 | W8 running queue | Constant-time deque removal at both ends with stable arrival ordering and the same preemption victims | Complete AgentX result and replay-file equality against the list queue; all 589 tests pass |
+| W7 observed capacity | Deployment-bound per-rank runtime KV observations, source metadata, no repeated reservation deductions, and strict allocation checks | Seven focused tests and a complete CLI replay; see the full validation report for its deployment scope |
+| W9 comparison and metric contract | Frozen before/after hardware comparisons, visible regressions, inverse-latency percentiles, and finite positive latency populations | Six metric tests, four comparison tests, real hardware-sample reconstruction, and all 606 tests pass |
 
 W1's synthetic roofline fixture uses the test GPU, BF16 attention/KV, 32 query heads, eight KV heads, head dimension 128, and a batch-1/context-256 anchor.
 At batch 16/context 1024, the corrected lookup agrees with the analytical target of 83.33711058823529 us; the reviewed default returned 168.9648785036551 us.
@@ -26,7 +28,8 @@ Measured homogeneous rows retain their exact values; ragged measured rows requir
 Generic cached prefill and mixed physical invocation fusion remain planned work requiring the backend invocation evidence specified below.
 W3 uses a stateless draw keyed by worker seed, request ID, committed round, and draft position; scheduler retries do not consume random state.
 The mean-2.49 test checks 20,000 draws and adjacent-round changes; conditional and empirical tests check full acceptance distributions.
-Hardware acceptance probabilities and serving-error improvements remain unmeasured.
+Conditional and empirical acceptance probabilities have no deployment-specific telemetry fit.
+The [full replay validation and AISimulate comparison](agentx-validation.md) records serving errors, including regressions, separately from these CPU checks.
 The queue-only microbenchmark alternated list/deque order across five pairs of 500 queue constructions and drains.
 Median speedups were 1.44x at length 64, 1.87x at length 512, and 6.26x at length 4096.
 Those figures cover queue construction and removal only; full simulator speedup has not been established.
@@ -76,7 +79,7 @@ The user-reported probes and independently repeated probes use different fixture
 | --- | --- | --- |
 | Multi-axis probe: analytical target 43.67 us; default lookup 108.23 us; bound lookup 43.67 us | Reported review probe; mechanism independently reproduced | Internal model consistency failure; no silicon error estimate follows |
 | Sixteen attention buckets: 74.51 us versus 14.51 us for a single ragged call | Reported review probe; one-launch accounting independently reproduced | 60 us of additional fixed cost at a 4 us launch assumption |
-| MTP mean 2.49, K=3: six sampled requests retained one acceptance value throughout 200 rounds each | Direct execution of the existing function | Strong within-request correlation and restricted acceptance support |
+| MTP mean 2.49, K=3: six sampled requests retained one acceptance value throughout 200 rounds each | Direct execution of the baseline function | Strong within-request correlation; two-point support alone is compatible with synthetic acceptance |
 | 934 of 9,450 parsed child streams start before their assigned parent's recorded completion | Scan of all 393 local trace trees | Candidate dispatch/completion differences; individual harness behavior still requires comparison |
 | Parent executes during seconds 0–10; child recorded at second 2 dispatches at second 10 | Minimal TokenSim replay with fixed service times | Completion-gated spawn behavior is reproducible |
 | Existing B300 report: throughput -16.3%, inter-token latency p90 +36.6%, GPU prefix hits 0.947 versus 0.899 | Historical [AgentX comparison](agentx.md#comparison-with-the-inferencex-reference) | Useful baseline; it has not been remeasured for this document |
@@ -211,8 +214,12 @@ Do not increase context bucketing merely to obtain more cache hits without measu
 
 ## W3: Model MTP acceptance per committed round
 
-The current [acceptance function](../TokenSim/llm/paged_tokens.py) samples between the floor and ceiling of a configured mean using a linear expression in request ID and generated position.
-This restricts the distribution and produces strong correlation across successive rounds.
+The baseline [acceptance function](../TokenSim/llm/paged_tokens.py) sampled between the floor and ceiling of a configured mean using a linear expression in request ID and generated position.
+The six-request probe exposes strong correlation across successive rounds.
+Two-point support at mean 2.49 agrees with the minimum-variance synthetic acceptance schedule documented by vLLM; that support alone does not establish a defect.
+AISimulate interprets its configured rates as conditional draft-token probabilities.
+The corresponding conditional schedule `[1, 0.49, 0]` yields accepted lengths two and three with mean 2.49, including the base token.
+General unconditional acceptance rates require conversion before use as conditional probabilities.
 The reference [conditional sampler][ais-speculative] provides a suitable probability contract.
 
 Support an explicit acceptance model with mutually exclusive inputs:
@@ -240,7 +247,8 @@ Required tests include all-reject/all-accept boundaries, conditional mean and di
 Use deterministic large-sample CPU tests with statistical tolerances derived from sample count.
 Do not assert hardware ITL values in unit tests.
 Collect hardware acceptance statistics by phase, workload class, and context/load regime before fitting deployment-specific probabilities.
-Treat the existing value 2.49 as a mean observation, with no implied conditional distribution.
+For the published synthetic benchmark, retain its specified mean and minimum-variance schedule.
+For naturally sampled deployments, collect the distribution instead of inferring it from the mean.
 
 Optimization during W3: draw only for a committed round, avoid reseeding a generator per token, and retain constant-sized state per live request.
 Benchmark the sampling cost separately from any change in the number of simulated rounds.

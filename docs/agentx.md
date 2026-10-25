@@ -281,6 +281,7 @@ The DeepSeek-V4-Pro configuration combines module-level measurements and analyti
 
 ### Comparison with the InferenceX reference
 
+The [current full replay validation](agentx-validation.md) compares the corrected simulator with a frozen baseline, reports individual regressions, and documents the observed-capacity experiment and AISimulate checks.
 The validation benchmark replays the published InferenceX AgentX configuration of DeepSeek-V4-Pro on eight B300 GPUs (InferenceX run 439522) using vLLM with DEP8, three MTP draft tokens per step (`K=3`), concurrency 384 and SimpleCPU offload.
 The table below compares the simulation (`--random_seed 0`, `--agentx_workload_seed 42`) with the published hardware measurements.
 These historical results precede the `blake2b_round_v1` acceptance implementation; retain the `legacy` model to reproduce their sampling behavior.
