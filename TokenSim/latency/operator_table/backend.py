@@ -369,6 +369,7 @@ class OperatorTableLatencyBackend(StepComposition, OperatorQueries, LatencyBacke
                 else {}
             ),
             "analytical_model": type(self.analytical).__name__,
+            "lookup_semantics": self.lookup.semantics if self.lookup else None,
             "decode_context_bucket": self.decode_context_bucket,
             "missing_shape_scope": "cumulative collection checklist; estimate counters reset after warmup",
             "moe_cost_dtype": self.moe_dtype,

@@ -2,11 +2,22 @@
 
 This document specifies the implementation work accepted after the AISimulate comparison and the additional operator-accounting review.
 The implementation must improve replay fidelity, timing estimates, and central processing unit (CPU) execution cost while preserving reproducible experiments.
-The changes below are planned; this document does not claim that they have been implemented or validated on hardware.
+The implementation record below identifies completed work; the remaining sections specify planned behavior and validation.
+CPU validation does not establish hardware accuracy.
 Configuration names introduced here are proposed API names and are unavailable until their implementation lands.
 
 Imported snapshot selections, live trajectory warmup, learned forward models, and the standalone offload least recently used (LRU) implementation described below include changes after v0.13.0.
 AISimulate's AgentX qualification is functional; its finite 722-request memory result does not establish accuracy or memory requirements for TokenSim's continuous DeepSeek-V4-Pro workload.
+
+## Implementation record
+
+| Item | Completed behavior | Validation |
+| --- | --- | --- |
+| W1 | Default branch-bound analytical coordinates, empirical-fit sample binding, and ordinary/AF lookup provenance | Eight focused tests and all 571 tests pass; baseline contained 563 passing tests |
+
+W1's synthetic roofline fixture uses the test GPU, BF16 attention/KV, 32 query heads, eight KV heads, head dimension 128, and a batch-1/context-256 anchor.
+At batch 16/context 1024, the corrected lookup agrees with the analytical target of 83.33711058823529 us; the reviewed default returned 168.9648785036551 us.
+Mixed-direction and three-axis transfers, ragged-grid interpolation, empirical fitting, policy failures, and ordinary/AF consumers have regression coverage in `tests/test_lookup_growth.py`.
 
 ## Scope, priorities, and evidence
 

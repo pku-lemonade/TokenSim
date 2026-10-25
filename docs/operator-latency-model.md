@@ -485,6 +485,10 @@ The default `analytical` policy scales a boundary measurement by the analytical 
 Simple scaling by the dimension ratio suits the GEMM `m` axis, while decode attention and group communication also include fixed costs.
 Using the analytical ratio preserves those fixed costs and uses the measurement to set the latency level.
 AIConfigurator applies the same boundary-efficiency rule.
+Recursive interpolation, extrapolation and empirical-fit samples bind every resolved outer axis to the selected branch coordinate.
+For a single measured anchor `a`, pure analytical transfers telescope to `measured(a) * analytical(target) / analytical(a)` even when several axes exceed the measured range.
+Ordinary and AF result provenance reports this convention as `lookup_semantics: bound_axes_v1`.
+Direct Python callers can request `bind_analytical_axes=False` to reproduce the legacy target-coordinate behavior.
 
 `max_extrapolation_ratio` (default **16**) caps how far a query may go past the boundary on any axis, in either direction.
 Policy and axis bounds must be finite numbers greater than or equal to one.

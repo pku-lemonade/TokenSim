@@ -124,14 +124,15 @@ class OperatorLookup:
         policy: LookupPolicy | None = None,
         analytical_scaler: AnalyticalScaler | None = None,
         *,
-        bind_analytical_axes: bool = False,
+        bind_analytical_axes: bool = True,
     ) -> None:
         self.package = package
         self.policy = policy or LookupPolicy()
         self.analytical_scaler = analytical_scaler
         # Nonseparable growth models (fixed weights + variable KV reads)
         # must evaluate inner-axis growth at the selected outer-axis node.
-        # Opt in per consumer; existing generic interpolation stays intact.
+        # False retains the legacy coordinate behavior for explicit replay.
+        boolean(bind_analytical_axes, "bind_analytical_axes")
         self.bind_analytical_axes = bind_analytical_axes
         # The index is owned by the (immutable) package and shared by every
         # lookup created for it; see OperatorDataPackage.lookup_index.
@@ -144,6 +145,10 @@ class OperatorLookup:
         }
 
     # -- public API --------------------------------------------------------
+
+    @property
+    def semantics(self) -> str:
+        return "bound_axes_v1" if self.bind_analytical_axes else "target_axes_legacy"
 
     def has_table(self, table_name: str) -> bool:
         return bool(self._exact.get(table_name))
@@ -402,10 +407,11 @@ class OperatorLookup:
             if v <= 0:
                 continue
             try:
+                sample_key = {**key, axis_name: v} if self.bind_analytical_axes else key
                 lat, _, _ = self._resolve(
-                    spec, rest_axes, node[v], key, table_name, scaler
+                    spec, rest_axes, node[v], sample_key, table_name, scaler
                 )
-            except (MissingOperatorDataError, Exception):
+            except Exception:
                 continue
             if lat <= 0 or not math.isfinite(lat):
                 continue
