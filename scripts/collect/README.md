@@ -30,7 +30,7 @@ Use the authorized inference environment's Python executable for collection.
 For the agreed `PKUa100` campaign, the source installation is `/home/youwei/bzh/project/TokenCake/RFC/vllm-rfc` and the independent working copy is `/home/youwei/bzh/project/TokenSim/vllm-rfc`.
 Keep the source installation unchanged, including editable-install mappings and generated caches.
 Store remote data under `/home/youwei/bzh/project/TokenSim/profiler`.
-The [development specification](../../docs/operator-tracing-design.md#10-remote-environment-and-collection) describes the copy and verification procedure.
+The [tracing specification](../../docs/operator-tracing.md#collection-environment) describes the collection environment and source verification.
 
 The collector warms up the same fixed workload before starting capture.
 It uses seeded token identifiers, greedy sampling and fixed output lengths.

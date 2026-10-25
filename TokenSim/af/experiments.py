@@ -5,9 +5,8 @@ from dataclasses import asdict
 from pathlib import Path
 
 from TokenSim.af import factory
-from TokenSim.af.trace.config import AFTraceConfig
 from TokenSim.trace.config import TraceConfig
-from TokenSim.af.trace.formats import (
+from TokenSim.trace.formats import (
     TRACE_SUFFIXES,
     convert_trace_to_json,
     validate_trace_format,
@@ -22,7 +21,9 @@ from TokenSim.experiments.fingerprints import identity
 def _trace_config(value):
     if isinstance(value, TraceConfig):
         return value
-    return AFTraceConfig.from_mapping(value)
+    if not isinstance(value, Mapping):
+        raise ConfigurationError("trace configuration must be an object")
+    return TraceConfig.from_mapping({"mode": "full", **value})
 
 
 def _write_profile(path, executor, metadata=None):
@@ -63,7 +64,9 @@ class AFExperimentRunner:
     ):
         self.runtime = runtime
         self.trace_config = (
-            AFTraceConfig() if trace_config is None else _trace_config(trace_config)
+            TraceConfig(mode="full")
+            if trace_config is None
+            else _trace_config(trace_config)
         )
         self.fallback = fallback
         self.trace_format = validate_trace_format(trace_format)
@@ -167,7 +170,9 @@ class AFExperimentRunner:
                 directory
                 / f"decode-layers{self.runtime.plan.total_layers}-b{batch}.trace{TRACE_SUFFIXES[trace_format]}"
             )
-            kwargs = {"trace_config": options} if options != AFTraceConfig() else {}
+            kwargs = (
+                {"trace_config": options} if options != TraceConfig(mode="full") else {}
+            )
             # The original seed default keeps diagnostic wrappers compatible.
             if seed != 42:
                 kwargs["seed"] = seed

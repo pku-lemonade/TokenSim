@@ -8,7 +8,7 @@ import simpy
 
 from TokenSim.af.execution.executor import AFExecutor
 from TokenSim.af.serving.metrics import ResourceMetrics, steady_metrics
-from TokenSim.af.trace.occupancy import unique_executions, validate_resource_capacity
+from TokenSim.trace.occupancy import unique_executions, validate_resource_capacity
 from TokenSim.errors import SimulationStateError
 from tests.af.support.config import _cluster
 from tests.af.support.execution import (

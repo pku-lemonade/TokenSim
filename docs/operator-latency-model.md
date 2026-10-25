@@ -44,14 +44,14 @@ Layer indices are global model indices, and `-1` represents model-boundary work.
 `detail="timing"` exports common timing arguments, while `fields` selects named event payload fields.
 Dependency arrows connect selected endpoints only.
 Direct JSON exports index dependency endpoints on disk and stream event records.
-Existing standalone AF experiment arguments remain compatibility adapters to the same storage and export implementation, with their legacy defaults.
-Pass a global `TraceConfig` explicitly to standalone factories to select the same collection behavior as the main CLI.
+Standalone AF experiments use the same `TraceConfig`, recorder and output implementations.
+Fixed-batch experiment commands explicitly default to full recording and accept the global collection modes.
 
 Operator costs are evaluated once and expanded into their model execution positions when recording is enabled.
 Fused module estimates retain their measured boundaries, and shared AF executions contribute physical service once.
 Ordinary tensor-parallel tracks that reuse a representative estimate identify the symmetric-rank assumption in their event details.
 Tracing does not introduce additional simulated synchronization or modify request batching.
-The [development specification](operator-tracing-design.md) describes the event contract, validation and migration.
+The [tracing specification](operator-tracing.md) describes the event contract, validation and experiments.
 
 ## PyTorch Profiler comparison
 
@@ -133,7 +133,7 @@ Inputs with a proven shared clock use one common translation so rank-arrival dif
 Other inputs are translated independently at their earliest unambiguous matches, and cross-rank overlap remains unavailable.
 The CLI returns status 2 when no operators match and reports invalid inputs as argument errors.
 Small collection samples validate ownership, order and accounting; they do not establish a general prediction-accuracy target.
-The [trace discrepancy analysis](operator-tracing-analysis.md) separates profiler perturbation, host dispatch gaps, peer-arrival waiting and operator-cost errors in the initial Dense and MoE samples.
+The [experiment analysis](operator-tracing.md#experiments-and-findings) separates profiler perturbation, host dispatch gaps, peer-arrival waiting and operator-cost errors.
 
 ### Paired timeline images
 
@@ -180,7 +180,7 @@ Clocks without common-clock evidence remain independently aligned and carry a wa
 Selectors apply to each side's own forward, layer and native rank fields, including unmatched and excluded work when those fields are available.
 Selection-relative alignment retains offsets between ranks on proven shared clocks and does not establish global scheduling accuracy.
 The exporter imports Matplotlib only when rendering images and adds no dependency to recording-off simulation paths.
-The [deferred timing work](operator-tracing-followups.md) documents the remaining execution-boundary and calibration questions for separate pull requests.
+The [deferred timing work](operator-tracing.md#deferred-work-and-evidence) documents the remaining execution-boundary and calibration questions for separate pull requests.
 
 An operator's shape is its set of dimensions, such as matrix sizes, batch size and context length.
 Its data type is recorded as `dtype`.

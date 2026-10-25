@@ -22,7 +22,7 @@ def validate_trace_format(value, *, require_dependency=False):
     return value
 
 
-def make_trace_recorder(directory, options, trace_format, *, recorder_classes=None):
+def make_trace_recorder(directory, options, trace_format):
     validate_trace_format(trace_format, require_dependency=True)
     if trace_format == "json":
         from TokenSim.trace.pipeline import PipelinedTraceRecorder
@@ -36,8 +36,6 @@ def make_trace_recorder(directory, options, trace_format, *, recorder_classes=No
         from TokenSim.trace.binary_archive import ArchiveTraceRecorder
 
         kind = ArchiveTraceRecorder
-    if recorder_classes is not None:
-        kind = recorder_classes[trace_format]
     return kind(directory, trace_config=options)
 
 

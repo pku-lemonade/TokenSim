@@ -1,10 +1,10 @@
 """Stable event positions while completed iterations release their trace storage."""
 
-from TokenSim.af.trace.recorder import AFTraceRecorder
-from TokenSim.af.trace.history import IndexedEventHistory
+from TokenSim.trace.recorder import TraceRecorder
+from TokenSim.trace.history import IndexedEventHistory
 
 
-class StreamingTraceRecorder(AFTraceRecorder):
+class StreamingTraceRecorder(TraceRecorder):
     def __init__(self, enabled, sink):
         super().__init__(enabled)
         self.events = IndexedEventHistory()

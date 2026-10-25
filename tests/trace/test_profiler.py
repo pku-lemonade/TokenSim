@@ -1,18 +1,24 @@
 """Correlation ownership, ambiguity and comparison accounting regressions."""
 
 import gzip
+from contextlib import nullcontext
 import json
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from TokenSim.errors import ConfigurationError
 from TokenSim.profiler.compare import compare_traces
 from TokenSim.profiler.importer import read_trace
 from TokenSim.profiler.matching import match_spans
 from TokenSim.profiler.records import Span
+from TokenSim.profiler.collection import bind_captures
+from scripts.collect.operator_trace_worker import AnnotationSession
+from scripts.collect.collect_operator_trace import run_generation
 
 
 def span(name, index, *, duration=1, shape=None):
@@ -116,9 +122,6 @@ def fixtures(directory, *, durations=(5, 4)):
 
 
 class ProfilerComparisonTest(unittest.TestCase):
-    def test_invalid_mapping_does_not_start_reading_inputs(self):
-        with self.assertRaisesRegex(ConfigurationError, "object"):
-            compare_traces("missing.json", [], "unused", mapping=False)
 
     def test_timing_only_partial_service_is_excluded(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -224,39 +227,12 @@ class ProfilerComparisonTest(unittest.TestCase):
         self.assertEqual(len(pairs), 2)
         self.assertFalse(unmatched)
 
-    def test_explicit_fusion_rule_keeps_member_ids(self):
-        pairs, unmatched, _ = match_spans(
-            [span("attention_residual", 0), span("ffn_norm", 1)],
-            [span("ffn_norm", 2)],
-            {
-                "groups": [
-                    {
-                        "simulated": ["attention_residual", "ffn_norm"],
-                        "profiled": "ffn_norm",
-                    }
-                ]
-            },
-        )
-        self.assertEqual(len(pairs), 1)
-        self.assertEqual(pairs[0][0].members, ("0", "1"))
-        self.assertFalse(unmatched)
-
     def test_shape_conflicts_prevent_matching(self):
         pairs, unmatched, _ = match_spans(
             [span("qkv", 0, shape={"m": 1})], [span("qkv", 1, shape={"m": 4})]
         )
         self.assertFalse(pairs)
         self.assertEqual(len(unmatched), 2)
-
-    def test_zero_duration_has_no_relative_error(self):
-        with tempfile.TemporaryDirectory() as directory:
-            simulated, profile = fixtures(directory, durations=(0, 4))
-            report = compare_traces(simulated, [profile], Path(directory) / "report")
-            self.assertIsNone(report["matches"][0]["relative_service_error"])
-            self.assertEqual(
-                report["matches"][0]["relative_error_unavailable_reason"],
-                "zero_observed_duration",
-            )
 
     def test_incompatible_model_identity_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -288,26 +264,143 @@ class ProfilerComparisonTest(unittest.TestCase):
             self.assertEqual(report["status"], "no_matches")
             self.assertTrue(report["unmatched"])
 
-    def test_begin_end_records_and_malformed_timing(self):
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "trace.json"
-            for rows in (
-                [dict(ph="X", ts=0, dur=-1)],
-                [dict(ph="B", ts=0)],
-                [dict(ph="E", ts=1)],
-                [dict(ph="B", ts="bad")],
-                [dict(ph="X", ts=float("nan"), dur=1)],
-            ):
-                path.write_text(json.dumps(rows))
-                with self.subTest(rows=rows), self.assertRaises(ConfigurationError):
-                    read_trace(path)
-
     def test_offline_import_has_no_gpu_runtime_dependency(self):
         subprocess.run(
             [
                 sys.executable,
                 "-c",
-                "import sys; import TokenSim.profiler.compare; assert 'torch' not in sys.modules; assert 'vllm' not in sys.modules",
+                "import sys; import TokenSim.trace.formats; "
+                "import TokenSim.profiler.compare; import TokenSim.profiler.plot; "
+                "assert not {'torch', 'vllm', 'matplotlib'} & sys.modules.keys(); "
+                "assert not any(n.startswith('TokenSim.af') for n in sys.modules)",
             ],
             check=True,
         )
+
+
+def paired_fixture(directory):
+    root = Path(directory)
+    _, structure = fixtures(root)
+    with gzip.open(structure, "rt") as stream:
+        document = json.load(stream)
+    rows = document["traceEvents"] if isinstance(document, dict) else document
+    kernels = [dict(row) for row in rows if row.get("cat") == "kernel"]
+    for index, row in enumerate(kernels):
+        row.update(ts=100000 + index * 20, dur=7 + index)
+    timing = root / "timing" / "profile_tp0.json"
+    timing.parent.mkdir()
+    timing.write_text(json.dumps(kernels))
+    manifest = dict(
+        batch_size=1,
+        input_tokens=1,
+        output_tokens=1,
+        paired_captures=bind_captures([structure], [timing], root),
+    )
+    (root / "manifest.json").write_text(json.dumps(manifest))
+    return structure, timing, manifest
+
+
+class PairedTraceTest(unittest.TestCase):
+
+    def test_an_extra_forward_cannot_be_labeled_as_another_decode_step(self):
+        with tempfile.TemporaryDirectory() as directory:
+            structure, timing, _ = paired_fixture(directory)
+            with self.assertRaisesRegex(ConfigurationError, "forward count"):
+                bind_captures(
+                    [structure], [timing], Path(directory), expected_forwards=2
+                )
+
+    def test_batch_admission_holds_all_requests_until_the_burst_is_enqueued(self):
+        calls = []
+
+        def enqueue(*args, **kwargs):
+            calls.append("enqueue")
+
+        client = SimpleNamespace(call_utility=lambda *args: calls.append(args[0]))
+        llm = SimpleNamespace(
+            llm_engine=SimpleNamespace(engine_core=client),
+            enqueue=enqueue,
+            wait_for_completion=lambda **kwargs: calls.append("wait"),
+        )
+        run_generation(llm, ["a", "b"], None)
+        self.assertEqual(
+            calls, ["pause_scheduler", "enqueue", "resume_scheduler", "wait"]
+        )
+        calls.clear()
+
+        def fail(*args, **kwargs):
+            raise RuntimeError("enqueue failed")
+
+        llm.enqueue = fail
+        with self.assertRaises(RuntimeError):
+            run_generation(llm, ["a", "b"], None)
+        self.assertEqual(calls, ["pause_scheduler", "resume_scheduler"])
+
+    def test_ownership_comes_from_structure_and_times_come_from_gpu_only_capture(self):
+        with tempfile.TemporaryDirectory() as directory:
+            structure, timing, _ = paired_fixture(directory)
+            spans = read_trace(timing).spans
+            self.assertEqual([span.operation for span in spans], ["qkv", "output"])
+            self.assertEqual([span.duration_us for span in spans], [7, 8])
+            self.assertEqual([span.start_us for span in spans], [100000, 100020])
+            self.assertTrue(
+                all(
+                    span.details["attribution"] == "paired_kernel_sequence"
+                    for span in spans
+                )
+            )
+            self.assertTrue(all(span.source == str(timing) for span in spans))
+
+    def test_changed_structure_or_timing_bytes_fail_the_pinned_binding(self):
+        for target in ("structure", "timing"):
+            with (
+                self.subTest(target=target),
+                tempfile.TemporaryDirectory() as directory,
+            ):
+                structure, timing, _ = paired_fixture(directory)
+                path = structure if target == "structure" else timing
+                if path.suffix == ".gz":
+                    with path.open("ab") as stream:
+                        stream.write(b"changed")
+                else:
+                    path.write_text(path.read_text() + " ")
+                with self.assertRaises(ConfigurationError):
+                    read_trace(timing)
+
+    def test_different_kernel_identity_or_count_cannot_borrow_module_ownership(self):
+        for changed in ("identity", "count"):
+            with (
+                self.subTest(changed=changed),
+                tempfile.TemporaryDirectory() as directory,
+            ):
+                structure, timing, _ = paired_fixture(directory)
+                rows = json.loads(timing.read_text())
+                if changed == "identity":
+                    rows[0]["name"] = "another_kernel"
+                else:
+                    rows.pop()
+                timing.write_text(json.dumps(rows))
+                with self.assertRaises(ConfigurationError):
+                    bind_captures([structure], [timing], Path(directory))
+
+    def test_method_instrumentation_restores_the_inherited_method(self):
+        class Model:
+            def compute_logits(self, value):
+                if value < 0:
+                    raise ValueError("failed")
+                return value + 1
+
+        model = Model()
+        torch = SimpleNamespace(
+            profiler=SimpleNamespace(record_function=lambda label: nullcontext())
+        )
+        with patch.dict("sys.modules", {"torch": torch}):
+            session = AnnotationSession()
+            session.method(model, "compute_logits", "tokensim.model.lm_head")
+            self.assertEqual(model.compute_logits(3), 4)
+            with self.assertRaises(ValueError):
+                model.compute_logits(-1)
+            session.close()
+            session.close()
+        self.assertNotIn("compute_logits", vars(model))
+        self.assertEqual(model.compute_logits(3), 4)

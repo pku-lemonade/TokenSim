@@ -2,7 +2,7 @@
 
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass, fields
-from typing import ClassVar, get_args, get_type_hints
+from typing import get_args, get_type_hints
 
 from TokenSim.trace.events import TraceEvent, RECORD_TYPES
 from TokenSim.errors import ConfigurationError
@@ -45,7 +45,6 @@ class TraceConfig:
     """
 
     mode: str = "off"
-    event_fields: ClassVar[tuple[str, ...]] = EVENT_FIELDS
     validate: bool = True
     event_types: tuple[str, ...] | None = None
     iterations: tuple[int, ...] | None = None
@@ -104,7 +103,7 @@ class TraceConfig:
                 self, "event_types", tuple(dict.fromkeys(self.event_types))
             )
         if self.fields is not None:
-            known_fields = set(self.event_fields)
+            known_fields = set(EVENT_FIELDS)
             for record_type in RECORD_TYPES.values():
                 if issubclass(record_type, TraceEvent):
                     known_fields.update(field.name for field in fields(record_type))

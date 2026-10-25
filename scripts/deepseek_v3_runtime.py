@@ -9,8 +9,8 @@ from typing import Any
 
 
 from TokenSim.af.factory import build_model_runtime, simulate_decode
-from TokenSim.af.trace.export import write_chrome_trace
-from TokenSim.af.trace.formats import write_trace
+from TokenSim.trace.export import write_chrome_trace
+from TokenSim.trace.formats import write_trace
 from TokenSim.hardware import HardwareContext
 from TokenSim.hardware.device.sourced_value import SourcedValue
 

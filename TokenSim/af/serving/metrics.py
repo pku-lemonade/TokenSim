@@ -4,7 +4,7 @@ from collections import defaultdict
 
 from TokenSim.config.validation import number
 from TokenSim.errors import SimulationStateError
-from TokenSim.af.trace.occupancy import (
+from TokenSim.trace.occupancy import (
     occupied_until,
     validate_resource_capacity,
     unique_executions,

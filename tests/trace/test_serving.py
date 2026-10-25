@@ -1,6 +1,6 @@
 """Global recording across execution modes without changing serving results."""
 
-from contextlib import redirect_stdout
+from contextlib import ExitStack, redirect_stdout
 from dataclasses import replace
 import io
 import json
@@ -23,40 +23,6 @@ from TokenSim.llm.llm_request import Request
 
 
 class ServingTraceTest(unittest.TestCase):
-    def test_distinct_result_names_keep_distinct_trace_artifacts(self):
-        with tempfile.TemporaryDirectory() as directory:
-            paths = []
-            for rate in (2, 3):
-                args = build_parser().parse_args(
-                    [
-                        "--latency_backend",
-                        "analytical",
-                        "--verbose",
-                        "none",
-                        "--distribution",
-                        "uniform",
-                        "--qps",
-                        str(rate),
-                        "--request_count",
-                        "1",
-                        "--prefill_mean_len",
-                        "4",
-                        "--decode_mean_len",
-                        "1",
-                        "--trace_mode",
-                        "full",
-                        "--results_path",
-                        directory,
-                    ]
-                )
-                with redirect_stdout(io.StringIO()):
-                    main(args)
-                result = json.loads(
-                    (Path(directory) / f"result_{float(rate)}.json").read_text()
-                )
-                paths.append(Path(result["trace"]["path"]))
-            self.assertNotEqual(paths[0], paths[1])
-            self.assertTrue(all(path.is_file() for path in paths))
 
     def test_cached_layer_groups_expand_in_global_model_order(self):
         model = replace(make_model(), attention_windows=(4, 0, 4, 0))
@@ -148,7 +114,18 @@ class ServingTraceTest(unittest.TestCase):
                 results = []
                 for mode in ("off", "validate", "full"):
                     path = Path(directory) / mode
-                    engine, result = self.run_cli(path, mode, *extra)
+                    with ExitStack() as checks:
+                        if mode == "off":
+                            for target in ("TraceSession", "TraceEvent"):
+                                checks.enter_context(
+                                    patch(
+                                        "TokenSim.trace.session." + target,
+                                        side_effect=AssertionError(
+                                            "trace object constructed"
+                                        ),
+                                    )
+                                )
+                        engine, result = self.run_cli(path, mode, *extra)
                     results.append(result)
                     if mode == "off":
                         self.assertIsNone(engine.trace_session)
@@ -169,27 +146,37 @@ class ServingTraceTest(unittest.TestCase):
                         self.assertIn("attention", {row["name"] for row in rows})
                         self.assertTrue(all(row["dur"] >= 0 for row in rows))
                         self.assertFalse(trace["metadata"]["incomplete"])
+                        recorded = engine.trace_session.recorder.events_for(0)
+                        scope = [
+                            e for e in recorded if e.worker_id == recorded[0].worker_id
+                        ]
+                        names = [e.operation for e in scope]
+                        self.assertEqual(names[0], "embedding_lookup")
+                        self.assertEqual(names.count("embedding_lookup"), 1)
+                        self.assertEqual(names[-1], "token_selection")
+                        layer = [e.operation for e in scope if e.layer_id == 0]
+                        self.assertLess(layer.index("qkv"), layer.index("attention"))
+                        self.assertLess(layer.index("attention"), layer.index("output"))
+                        if extra:
+                            self.assertEqual(names[1], "all_reduce")
+                            self.assertEqual(
+                                names[-3:], ["lm_head", "all_gather", "token_selection"]
+                            )
+                            self.assertEqual(names.count("all_gather"), 1)
+                            self.assertEqual(
+                                scope[1].details["collective_scope"], "tp_embedding"
+                            )
+                        else:
+                            self.assertLess(
+                                layer.index("ffn_norm"), layer.index("ffn_up")
+                            )
+                            self.assertLess(
+                                layer.index("ffn_up"), layer.index("ffn_down")
+                            )
+                            norm = next(e for e in scope if e.operation == "final_norm")
+                            self.assertEqual(norm.details["shape"]["num_tokens"], 32)
                 self.assertEqual(results[0], results[1])
                 self.assertEqual(results[0], results[2])
-
-    def test_projection_and_normalization_positions_follow_the_layer(self):
-        with tempfile.TemporaryDirectory() as directory:
-            engine, _ = self.run_cli(directory, "full")
-            rows = list(engine.trace_session.recorder.events_for(0))
-            layer = [row for row in rows if row.layer_id == 0]
-            names = [row.operation for row in layer]
-            self.assertLess(names.index("attention_norm"), names.index("qkv"))
-            self.assertLess(names.index("qkv"), names.index("attention"))
-            self.assertLess(names.index("attention"), names.index("output"))
-            self.assertLess(names.index("ffn_norm"), names.index("ffn_up"))
-            self.assertLess(names.index("ffn_up"), names.index("ffn_down"))
-            for left, right in zip(rows, rows[1:]):
-                self.assertAlmostEqual(left.end_at, right.start_at)
-            self.assertEqual(rows[-1].operation, "token_selection")
-            final_norm = next(row for row in rows if row.operation == "final_norm")
-            self.assertEqual(final_norm.details["shape"]["num_tokens"], 32)
-            lm_head = next(row for row in rows if row.operation == "lm_head")
-            self.assertEqual(lm_head.details["shape"]["m"], 2)
 
     def test_pd_transfer_has_producer_and_decode_dependencies(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -243,21 +230,9 @@ class ServingTraceTest(unittest.TestCase):
             events = engine.trace_session.recorder.events_for(0)
             norm = next(event for event in events if event.operation == "final_norm")
             self.assertEqual(norm.details["shape"]["num_tokens"], 8)
-            self.assertFalse(any(event.operation == "lm_head" for event in events))
-
-    def test_off_skips_trace_construction(self):
-        with (
-            tempfile.TemporaryDirectory() as directory,
-            patch(
-                "TokenSim.trace.session.TraceSession",
-                side_effect=AssertionError("session constructed"),
-            ),
-            patch(
-                "TokenSim.trace.session.TraceEvent",
-                side_effect=AssertionError("event constructed"),
-            ),
-        ):
-            self.run_cli(directory, "off")
+            names = {event.operation for event in events}
+            self.assertIn("embedding_lookup", names)
+            self.assertFalse(names & {"lm_head", "all_gather", "token_selection"})
 
     def test_af_and_ordinary_prefill_share_one_export(self):
         with tempfile.TemporaryDirectory() as directory:

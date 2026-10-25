@@ -13,6 +13,7 @@ class TraceRecorder:
         self.events = []
         self.iteration_event_indices = {}
         self.resource_capacities = dict(resource_capacities or {})
+        self.event_validator = None
 
     def record(self, event):
         if self.enabled:
@@ -109,4 +110,6 @@ class TraceRecorder:
         if visited != len(by_node):
             raise SimulationStateError("trace dependency graph contains a cycle")
         validate_resource_capacity(events, self.resource_capacities)
+        if self.event_validator is not None:
+            self.event_validator(events, by_node)
         return by_node

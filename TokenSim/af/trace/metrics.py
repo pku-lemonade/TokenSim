@@ -359,3 +359,31 @@ register_records(
         )
     ],
 )
+
+
+def summarize_iteration(recorder, iteration):
+    """Return aggregate metadata without materializing full event dictionaries."""
+    events = recorder.events_for(iteration.iteration_id)
+    utilization = {}
+    makespan = iteration.makespan or 0.0
+    busy_by_resource = {}
+    for event in unique_executions(events):
+        for resource_id in set(event.resource_ids or (event.resource_id,)):
+            if resource_id not in busy_by_resource:
+                busy_by_resource[resource_id] = _ResourceBusyTime()
+            busy_by_resource[resource_id].add(occupied_until(event) - event.start_at)
+    for resource_id, busy in sorted(busy_by_resource.items()):
+        capacity = recorder.resource_capacities.get(resource_id, 1)
+        utilization[resource_id] = (
+            busy.value() / (makespan * capacity) if makespan > 0 else 0.0
+        )
+    return {
+        "iteration_id": iteration.iteration_id,
+        "phase": iteration.phase,
+        "start_at": iteration.start_at,
+        "end_at": iteration.end_at,
+        "makespan": iteration.makespan,
+        "block_completed_at": dict(iteration.block_completed_at),
+        "barrier_wait": dict(iteration.barrier_wait),
+        "resource_utilization": utilization,
+    }

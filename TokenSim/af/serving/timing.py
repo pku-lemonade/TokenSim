@@ -1,7 +1,7 @@
 """Compact timing history after full native trace invariant validation."""
 
 from dataclasses import dataclass, replace
-from TokenSim.af.trace.occupancy import occupied_until
+from TokenSim.trace.occupancy import occupied_until
 
 
 @dataclass(frozen=True)

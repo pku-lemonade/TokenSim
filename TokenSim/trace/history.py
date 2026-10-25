@@ -4,7 +4,7 @@
 class IndexedEventHistory:
     """Keep append positions stable while retaining only active iterations.
 
-    len() is the append position used by AFTraceRecorder, not the live count.
+    len() is the append position used by TraceRecorder, not the live count.
     Iteration yields live events, and retained_count reports their count.
     """
 

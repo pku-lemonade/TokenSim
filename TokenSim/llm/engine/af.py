@@ -163,9 +163,9 @@ class AFEngineMixin:
             self.af_compute_provider = af_compute_provider
             self.af_transfer_provider = af_transfer_provider
             executor_type = ModelAFExecutor
-            from TokenSim.af.trace.archive import ArchivedTraceRecorder
-            from TokenSim.af.trace.recorder import AFTraceRecorder
-            from TokenSim.af.trace.transient import ValidationTraceRecorder
+            from TokenSim.trace.archive import ArchivedTraceRecorder
+            from TokenSim.trace.recorder import TraceRecorder
+            from TokenSim.trace.transient import ValidationTraceRecorder
 
             options = config.trace
             capacities = (
@@ -177,7 +177,7 @@ class AFEngineMixin:
                 else (
                     ArchivedTraceRecorder(resource_capacities=capacities)
                     if options.mode == "full"
-                    else AFTraceRecorder(False)
+                    else TraceRecorder(False)
                 )
             )
             recorder.validate_on_completion = options.validate
@@ -295,7 +295,11 @@ class AFEngineMixin:
         """Keep aggregates here; complete trace events remain owned by the recorder."""
         if self.af_executor is None:
             return
-        self.af_iteration_summaries.append(self.af_executor.trace.summarize(iteration))
+        from TokenSim.af.trace.metrics import summarize_iteration
+
+        self.af_iteration_summaries.append(
+            summarize_iteration(self.af_executor.trace, iteration)
+        )
 
     def af_runtime_summary(self) -> dict[str, Any] | None:
         if self.af_runtime_plan is None:

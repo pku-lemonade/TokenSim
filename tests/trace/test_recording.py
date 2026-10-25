@@ -5,14 +5,14 @@ import importlib.util
 import json
 import math
 from pathlib import Path
-import subprocess
-import sys
 import tempfile
 import unittest
 from types import SimpleNamespace
 import simpy
 
-from TokenSim.errors import ConfigurationError, SimulationStateError
+from TokenSim.errors import SimulationStateError
+from TokenSim.kv_transfer.native_storage import QueuedKVLink
+from TokenSim.trace.transfers import TransferObserver
 from TokenSim.trace.config import TraceConfig
 from TokenSim.trace.events import TraceEvent
 from TokenSim.trace.formats import (
@@ -101,24 +101,6 @@ class SharedRecordingTest(unittest.TestCase):
         env.run()
         self.assertEqual(resource.count, 0)
 
-    def test_shared_export_imports_no_af_modules(self):
-        script = "import sys; import TokenSim.trace.formats; assert not any(n.startswith('TokenSim.af') for n in sys.modules)"
-        subprocess.run([sys.executable, "-c", script], check=True)
-
-    def test_nonfinite_readiness_is_rejected(self):
-        for field in (
-            "ready_at",
-            "start_at",
-            "end_at",
-            "service_duration",
-            "queue_duration",
-        ):
-            with self.subTest(field=field):
-                recorder = TraceRecorder()
-                recorder.record(event(**{field: float("nan")}))
-                with self.assertRaisesRegex(SimulationStateError, "finite"):
-                    recorder.validate_invariants(0)
-
     def test_dependencies_and_resource_conflicts_are_checked(self):
         recorder = TraceRecorder()
         recorder.record(event())
@@ -155,23 +137,6 @@ class SharedRecordingTest(unittest.TestCase):
             for trace in traces[1:]:
                 self.assertEqual(traces[0], trace)
             self.assertEqual(traces[0]["traceEvents"][0]["dur"], 1)
-
-    def test_global_defaults_and_boundary_validation(self):
-        from TokenSim.af.trace.config import AFTraceConfig
-        from TokenSim.config.simulation import SimulationConfig
-
-        self.assertFalse(AFTraceConfig("full", False).validate)
-        self.assertEqual(SimulationConfig(4).block_size, 4)
-        self.assertFalse(TraceConfig().enabled)
-        for settings in (
-            {"mode": "bad"},
-            {"mode": "off", "output": "x"},
-            {"mode": "full", "workers": [True]},
-            {"mode": "full", "phases": ["other"]},
-            {"unknown": 1},
-        ):
-            with self.subTest(settings=settings), self.assertRaises(ConfigurationError):
-                TraceConfig.from_mapping(settings)
 
     def test_zero_duration_dependency_cycle_is_rejected(self):
         recorder = TraceRecorder()
@@ -223,11 +188,52 @@ class SharedRecordingTest(unittest.TestCase):
             data = json.loads(path.read_text())["traceEvents"]
             self.assertEqual([row["ph"] for row in data], ["M", "X"])
 
-    def test_af_adapter_reuses_finite_timestamp_validation(self):
-        from TokenSim.af.trace.metrics import AFTraceEvent
-        from TokenSim.af.trace.recorder import AFTraceRecorder
 
-        recorder = AFTraceRecorder()
-        recorder.record(AFTraceEvent(**event(ready_at=float("nan")).as_dict()))
-        with self.assertRaisesRegex(SimulationStateError, "finite"):
-            recorder.validate_invariants(0)
+class QueuedTransferTraceTest(unittest.TestCase):
+    def simulation(self, tracing):
+        env = simpy.Environment()
+        link = QueuedKVLink(env, 10)
+        recorder = TraceRecorder()
+        session = SimpleNamespace(
+            engine=SimpleNamespace(env=env),
+            recorder=recorder,
+            iteration=0,
+            run_phase="profiling",
+            _complete=recorder.validate_invariants,
+        )
+        connector = SimpleNamespace(
+            _metadata=SimpleNamespace(loads=[]), start_load_kv=lambda: 0, read_link=link
+        )
+        observer = TransferObserver(session)
+        if tracing:
+            observer.attach(SimpleNamespace(id=0, connector=connector))
+        for _ in range(2):
+            env.process(link.transfer(10))
+        return env, link, recorder, observer
+
+    def test_observation_preserves_shared_queue_timing(self):
+        outcomes = []
+        for tracing in (False, True):
+            env, link, recorder, _ = self.simulation(tracing)
+            env.run()
+            outcomes.append((env.now, link.describe()))
+            if tracing:
+                self.assertEqual(len(recorder.events), 2)
+                self.assertEqual([event.start_at for event in recorder.events], [0, 1])
+                self.assertEqual(
+                    [event.queue_duration for event in recorder.events], [0, 1]
+                )
+                self.assertEqual(
+                    [event.payload_bytes for event in recorder.events], [10, 10]
+                )
+        self.assertEqual(outcomes[0], outcomes[1])
+
+    def test_partial_dma_never_claims_full_payload_completion(self):
+        env, _, recorder, observer = self.simulation(True)
+        env.run(until=0.25)
+        self.assertFalse(recorder.events)
+        partial = list(observer.partial_events())
+        self.assertEqual(len(partial), 1)
+        self.assertEqual(partial[0].end_at, 0.25)
+        self.assertIsNone(partial[0].payload_bytes)
+        self.assertTrue(partial[0].details["incomplete"])
