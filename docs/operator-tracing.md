@@ -36,6 +36,7 @@ AF summaries consume the shared recorder through `summarize_iteration`.
 The AF package contains no storage subclasses, configuration subclasses or forwarding modules for shared trace utilities.
 Repository callers import shared infrastructure directly from `TokenSim.trace`.
 Common recording and offline plotting do not import AF runtime modules.
+Archive conversion loads supported AF record definitions on demand, so a fresh process can convert a saved AF trace without constructing its runtime.
 
 ## Configuration and event contract
 

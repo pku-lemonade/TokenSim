@@ -9,6 +9,7 @@ from collections import OrderedDict
 from contextlib import closing
 from dataclasses import asdict
 from io import BytesIO
+from importlib import import_module
 from itertools import islice
 import json
 from pathlib import Path
@@ -29,6 +30,13 @@ LEGACY_FORMAT = "tokensim-indexed-trace-probe-v1"
 
 class _RecordReader(pickle.Unpickler):
     def find_class(self, module, name):
+        if (module, name) not in RECORD_TYPES and module in {
+            "TokenSim.af.trace.metrics",
+            "TokenSim.af.caching.estimates",
+            "TokenSim.af.providers.queries",
+        }:
+            # Register the domain's record definitions only when reading its data.
+            import_module("TokenSim.af.trace.metrics")
         try:
             return RECORD_TYPES[module, name]
         except KeyError:

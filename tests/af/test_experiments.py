@@ -2,6 +2,7 @@
 
 import importlib.util
 import json
+import subprocess
 import sys
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -339,8 +340,17 @@ class ExperimentTraceFormatsTest(unittest.TestCase):
                     self.assertEqual(summary.pop("trace_format"), trace_format)
                 profile = summary["results"][0].pop("profile")
                 self.assertEqual(Path(profile).suffix, TRACE_SUFFIXES[trace_format])
-                converted = AFExperimentRunner.export_trace_json(
-                    output / profile, root / f"{trace_format}-converted.json"
+                converted = root / f"{trace_format}-converted.json"
+                subprocess.run(
+                    [
+                        sys.executable,
+                        "-c",
+                        "import sys; from TokenSim.trace.formats import convert_trace_to_json; "
+                        "convert_trace_to_json(sys.argv[1], sys.argv[2])",
+                        str(output / profile),
+                        str(converted),
+                    ],
+                    check=True,
                 )
                 traces.append(converted.read_bytes())
                 summaries.append(summary)
