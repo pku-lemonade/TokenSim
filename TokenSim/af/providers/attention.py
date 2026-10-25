@@ -1,10 +1,10 @@
 """Uniform and variable-length attention invocation estimates."""
 
 from collections import Counter
-import json
 
 from dataclasses import replace
 from TokenSim.errors import ConfigurationError
+from TokenSim.operator_data.ragged_attention import generation_attention_query
 
 
 def attention_core(provider, resolver, query, tokens, heads, kv_heads, dtype):
@@ -26,19 +26,7 @@ def attention_core(provider, resolver, query, tokens, heads, kv_heads, dtype):
         lengths = lengths * tokens
     if len(lengths) != tokens:
         raise ValueError("decode attention requires one context per query token")
-    histogram = Counter(lengths)
-    if len(histogram) == 1:
-        table = "generation_attention"
-        key = {**common, "batch_size": tokens, "context_len": lengths[0]}
-    else:
-        table = "ragged_generation_attention"
-        key = {
-            **common,
-            "batch_size": tokens,
-            "context_lengths": json.dumps(
-                sorted(histogram.items()), separators=(",", ":")
-            ),
-        }
+    table, key = generation_attention_query(common, Counter(lengths))
     return [provider._component(resolver, "attention_core", table, key)]
 
 

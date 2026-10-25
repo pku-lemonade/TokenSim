@@ -585,7 +585,7 @@ The backend uses these token counts to estimate each step, following the rules b
 | Query | Rule |
 | --- | --- |
 | `T` for GEMM, elementwise, MoE and communication | sum of the step's query tokens (MTP verification positions included) |
-| decode attention (request already sampled, not recomputing) | `generation_attention(batch=count, context_len=bucket(kv_len))` |
+| decode attention (request already sampled, not recomputing) | One uniform `generation_attention` query or one exact-histogram `ragged_generation_attention` query for the batch |
 | context chunk (`q_len` = this step's tokens, `kv_len = num_computed_tokens + q_len`) | requests grouped by `(q_len, kv_len)` issue `context_attention(batch=count, input_seq_len=q_len)`; cached context uses the analytical full-context latency or scales measured rows by analytical latency growth |
 | LM head rows | requests sampling this step: decodes plus the last chunk of each context build |
 
@@ -634,7 +634,13 @@ Missing analytical references produce a configuration error.
 ### 4.4 Decode Tokens
 
 Decode tokens are grouped by context length into buckets of `--decode_context_bucket` tokens (default 128, rounding up).
-Each bucket uses one `generation_attention(batch=count, context_len=bucket_ceiling)` lookup.
+The ordinary backend combines these context buckets into one decode invocation.
+A uniform invocation uses `generation_attention`; a heterogeneous invocation uses `ragged_generation_attention` with exact counts at the configured bucket ceilings.
+The analytical ragged model sums request FLOPs and KV traffic and charges one launch for the invocation.
+`table_only` requires a measured ragged row and reports a missing shape when only uniform measurements exist.
+`table_first` reports the analytical fallback for an unmeasured ragged invocation.
+Verification queries wider than one token use context-attention work with their complete query width; their cost is not reduced to one-token decode work.
+Compressed-attention module composition retains its separate measured execution contract.
 Rounding nearby context lengths to the same boundary reduces the number of distinct queries.
 All other operators follow the composition above.
 

@@ -343,10 +343,7 @@ class OperatorTableLatencyBackend(StepComposition, OperatorQueries, LatencyBacke
             attention_us = sum(
                 self._attention_prefill(count, q_len, kv_len)
                 for (q_len, kv_len), count in context_groups.items()
-            ) + sum(
-                self._attention_decode(count, context, query_width)
-                for (context, query_width), count in decode_buckets.items()
-            )
+            ) + self._attention_decode_batch(decode_buckets)
         return self._compose(
             tokens=tokens,
             requests=sampling,
@@ -371,6 +368,7 @@ class OperatorTableLatencyBackend(StepComposition, OperatorQueries, LatencyBacke
             "analytical_model": type(self.analytical).__name__,
             "lookup_semantics": self.lookup.semantics if self.lookup else None,
             "decode_context_bucket": self.decode_context_bucket,
+            "ordinary_decode_invocation": "one uniform or ragged q=1 attention call; wider queries use context work",
             "missing_shape_scope": "cumulative collection checklist; estimate counters reset after warmup",
             "moe_cost_dtype": self.moe_dtype,
             "moe_cost_distribution_candidates": list(self.moe_distributions),

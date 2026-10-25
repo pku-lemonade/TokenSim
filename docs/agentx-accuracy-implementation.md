@@ -14,10 +14,14 @@ AISimulate's AgentX qualification is functional; its finite 722-request memory r
 | Item | Completed behavior | Validation |
 | --- | --- | --- |
 | W1 | Default branch-bound analytical coordinates, empirical-fit sample binding, and ordinary/AF lookup provenance | Eight focused tests and all 571 tests pass; baseline contained 563 passing tests |
+| W2 decode | Shared ordinary/AF histogram queries, one-launch ragged decode, strict measured-domain handling, and complete generic verification query widths | Six additional focused tests; all 577 tests pass |
 
 W1's synthetic roofline fixture uses the test GPU, BF16 attention/KV, 32 query heads, eight KV heads, head dimension 128, and a batch-1/context-256 anchor.
 At batch 16/context 1024, the corrected lookup agrees with the analytical target of 83.33711058823529 us; the reviewed default returned 168.9648785036551 us.
 Mixed-direction and three-axis transfers, ragged-grid interpolation, empirical fitting, policy failures, and ordinary/AF consumers have regression coverage in `tests/test_lookup_growth.py`.
+W2's sixteen-context analytical step removes fifteen redundant launches per layer while retaining identical FLOPs and KV bytes.
+Measured homogeneous rows retain their exact values; ragged measured rows require an exact histogram.
+Generic cached prefill and mixed physical invocation fusion remain planned work requiring the backend invocation evidence specified below.
 
 ## Scope, priorities, and evidence
 
