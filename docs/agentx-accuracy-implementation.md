@@ -16,6 +16,7 @@ AISimulate's AgentX qualification is functional; its finite 722-request memory r
 | W1 | Default branch-bound analytical coordinates, empirical-fit sample binding, and ordinary/AF lookup provenance | Eight focused tests and all 571 tests pass; baseline contained 563 passing tests |
 | W2 decode | Shared ordinary/AF histogram queries, one-launch ragged decode, strict measured-domain handling, and complete generic verification query widths | Six additional focused tests; all 577 tests pass |
 | W3 | Versioned per-round mean/conditional/empirical acceptance, legacy replay, committed execution counters, and CLI configuration | Eleven focused tests, including real paged-cache execution; all 588 tests pass |
+| W8 running queue | Constant-time deque removal at both ends with stable arrival ordering and the same preemption victims | Complete AgentX result and replay-file equality against the list queue; all 589 tests pass |
 
 W1's synthetic roofline fixture uses the test GPU, BF16 attention/KV, 32 query heads, eight KV heads, head dimension 128, and a batch-1/context-256 anchor.
 At batch 16/context 1024, the corrected lookup agrees with the analytical target of 83.33711058823529 us; the reviewed default returned 168.9648785036551 us.
@@ -26,6 +27,15 @@ Generic cached prefill and mixed physical invocation fusion remain planned work 
 W3 uses a stateless draw keyed by worker seed, request ID, committed round, and draft position; scheduler retries do not consume random state.
 The mean-2.49 test checks 20,000 draws and adjacent-round changes; conditional and empirical tests check full acceptance distributions.
 Hardware acceptance probabilities and serving-error improvements remain unmeasured.
+The queue-only microbenchmark alternated list/deque order across five pairs of 500 queue constructions and drains.
+Median speedups were 1.44x at length 64, 1.87x at length 512, and 6.26x at length 4096.
+Those figures cover queue construction and removal only; full simulator speedup has not been established.
+The equivalence test compares every result field except simulator wall time and every replay file byte-for-byte at the same output path.
+
+A cold two-lane AgentX smoke replay used the committed fixture, DeepSeek-V4-Pro, B300 DEP8, K=3, and a two-second issue window.
+It completed nine requests with no unfinished requests and retained the per-worker `blake2b_round_v1` acceptance records.
+The trace is a functional fixture with short outputs; it cannot establish hardware latency error.
+Logs retain measured-table clamp, analytical-fallback, and missing-shape diagnostics for the remaining timing work.
 
 ## Scope, priorities, and evidence
 

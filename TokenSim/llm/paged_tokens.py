@@ -145,7 +145,7 @@ class PagedTokenBudgetMixin:
                 req, query_tokens, lookahead=lookahead
             ):
                 if queue:
-                    victim = queue.pop(-1)
+                    victim = queue.pop()
                     self._preempt(victim)
                     preempted.append(victim)
                 else:
@@ -159,7 +159,7 @@ class PagedTokenBudgetMixin:
                 self.block_manager.append_slot(req)
                 return True
             if queue:
-                victim = queue.pop(-1)
+                victim = queue.pop()
                 self._preempt(victim)
                 preempted.append(victim)
             else:
