@@ -159,6 +159,38 @@ It defaults to `random_seed`; the DeepSeek-V4-Pro example sets it to 42.
 The results record both seeds.
 Synthetic and dataset arrival generators use their own seeded random number stream.
 
+`--mtp_acceptance_length` selects a two-point acceptance approximation with the requested mean.
+Each verification round samples independently using `blake2b_round_v1`, keyed by the worker seed, request ID and committed decode-round index.
+Repeated scheduling probes and failed reservations reuse the same draw; actual decode execution advances the index.
+KV recomputation retains that index.
+Full verification query width determines target work even when accepted output is clipped by the remaining output length.
+
+`--mtp_acceptance` accepts a JSON object to select another acceptance model.
+Conditional acceptance supplies exactly one probability for each of the K draft positions and stops at the initial rejection.
+For K=3, this example has an expected accepted length of `1 + 0.8 + 0.8*0.6 + 0.8*0.6*0.5 = 2.52`.
+
+```json
+{
+  "kind": "conditional",
+  "rates": [0.8, 0.6, 0.5]
+}
+```
+
+Empirical acceptance supplies K+1 probabilities for accepted lengths 1 through K+1.
+They must be finite, nonnegative and sum to one.
+Both explicit models require the default `--mtp_acceptance_length 1`; the distribution determines the expected progress.
+
+```json
+{
+  "kind": "empirical",
+  "distribution": [0.1, 0.2, 0.3, 0.4]
+}
+```
+
+Historical linear sampling is available through `--mtp_acceptance` with `kind` set to `legacy`, together with the original mean and seeds.
+Results retain the selected model, expected acceptance, sampling version, seed and committed verification/accepted/emitted counts under `module_stats.speculative.acceptance`, keyed by worker ID.
+Warmup resets those measured counts while preserving each continuing request's round index.
+
 ## Replay and stopping
 
 In `closed_loop` mode, a request is issued after its required predecessors finish and the recorded delay before the next request has elapsed.
@@ -212,6 +244,7 @@ The DeepSeek-V4-Pro configuration combines module-level measurements and analyti
 
 The validation benchmark replays the published InferenceX AgentX configuration of DeepSeek-V4-Pro on eight B300 GPUs (InferenceX run 439522) using vLLM with DEP8, three MTP draft tokens per step (`K=3`), concurrency 384 and SimpleCPU offload.
 The table below compares the simulation (`--random_seed 0`, `--agentx_workload_seed 42`) with the published hardware measurements.
+These historical results precede the `blake2b_round_v1` acceptance implementation; retain the `legacy` model to reproduce their sampling behavior.
 Latency percentiles describe successful requests issued during the measurement window, including those that finish during the grace period.
 TTFT measures the time from request arrival to the first output token.
 ITL is the per-request mean time between output tokens after the first token.

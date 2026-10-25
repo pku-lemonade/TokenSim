@@ -183,6 +183,22 @@ def get_latency_stats(engine: LLMEngine) -> dict[str, Any]:
         if backend is None:
             continue
         _add_module_stats(modules, backend)
+        scheduler = getattr(worker, "scheduler", None)
+        if getattr(scheduler, "mtp_enabled", False):
+            acceptance = modules.setdefault("speculative", {}).setdefault(
+                "acceptance", {}
+            )
+            acceptance[str(worker.id)] = {
+                **scheduler.mtp_acceptance.describe(
+                    scheduler.speculative_tokens, scheduler.mtp_acceptance_length
+                ),
+                "seed": scheduler.mtp_seed,
+                **{
+                    name: value
+                    for name, value in scheduler.stats.items()
+                    if name.startswith("mtp_")
+                },
+            }
         stats = getattr(backend, "stats", None)
         if isinstance(stats, OperatorStats):
             aggregate = aggregate.aggregate(stats)
@@ -290,7 +306,9 @@ def _finish_module_stats(modules: dict[str, dict[str, Any]]) -> dict[str, Any]:
         if not modules.get(name):
             modules.pop(name, None)
     for name in ("attention", "moe", "speculative"):
-        if name in modules and not modules[name].get("counts"):
+        if name in modules and not (
+            modules[name].get("counts") or modules[name].get("acceptance")
+        ):
             del modules[name]
     mixing = modules.get("residual_mixing")
     if mixing is not None:

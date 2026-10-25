@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import math
-
 from TokenSim.llm.llm_request import Request
+from TokenSim.llm.speculative_acceptance import sample_acceptance, legacy_acceptance
 
 
 class PagedTokenBudgetMixin:
@@ -36,24 +35,28 @@ class PagedTokenBudgetMixin:
     def _decode_output_tokens(self, req: Request, remaining: int) -> int:
         if not self.mtp_enabled:
             return min(1, remaining)
-        low = max(1, int(math.floor(self.mtp_acceptance_length)))
-        high = max(low, int(math.ceil(self.mtp_acceptance_length)))
-        high = min(high, 1 + self.speculative_tokens)
-        if high == low:
-            return min(low, remaining)
-        state = (
-            (int(req.id) * 1103515245)
-            + (int(req.generation_idx) * 12345)
-            # Mix the simulation seed before reducing to a uint32.  Adding
-            # seed 1 or 2 directly changes the fraction by only 1e-10, which
-            # can leave two supposedly independent runs bit-identical.  The
-            # multiplicative constant is the standard golden-ratio hash step
-            # and keeps request/generation identity deterministic.
-            + (int(self.mtp_seed) * 0x9E3779B9)
-        ) & 0xFFFFFFFF
-        fraction = state / 4294967296.0
-        accepted = high if fraction < self.mtp_acceptance_length - low else low
+        if self.mtp_acceptance.kind == "legacy":
+            accepted = legacy_acceptance(
+                self.mtp_acceptance_length, self.mtp_seed, req.id, req.generation_idx
+            )
+        else:
+            accepted = sample_acceptance(
+                self.mtp_acceptance,
+                self.mtp_acceptance_length,
+                self.mtp_seed,
+                req.id,
+                req.decode_round,
+            )
+        req.scheduled_accepted_tokens = accepted
         return min(accepted, remaining)
+
+    def record_mtp_execution(self, req):
+        self.stats["mtp_verification_rounds"] += 1
+        self.stats["mtp_verified_tokens"] += req.query_tokens
+        self.stats["mtp_accepted_tokens"] += min(
+            req.scheduled_accepted_tokens, req.query_tokens
+        )
+        self.stats["mtp_emitted_tokens"] += req.scheduled_tokens
 
     def _query_tokens(self, req: Request, accepted: int) -> int:
         if req.is_context_build or not self.mtp_enabled:

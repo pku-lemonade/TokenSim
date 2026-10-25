@@ -5,7 +5,10 @@ from dataclasses import dataclass, field
 from TokenSim.config.moe_execution import MoEExecutionConfig
 from TokenSim.trace.config import TraceConfig, DEFAULT_TRACE_CONFIG
 from TokenSim.config.router_config import validate_router_mapping
-from TokenSim.config.speculative_execution import validate_mtp_token_budget
+from TokenSim.config.speculative_execution import (
+    MTPAcceptanceConfig,
+    validate_mtp_token_budget,
+)
 from TokenSim.errors import ConfigurationError
 from TokenSim.config.validation import integer, number, boolean
 
@@ -38,6 +41,7 @@ class SimulationConfig:
     mtp_acceptance_length: float = 1.0
     mtp_num_speculative_tokens: int | None = None
     mtp_seed: int | None = None
+    mtp_acceptance: MTPAcceptanceConfig = field(default_factory=MTPAcceptanceConfig)
     long_prefill_token_threshold: int = 0
     prefill_schedule_interval: int = 1
     adaptive_long_prefill_threshold: bool = False
@@ -65,11 +69,11 @@ class SimulationConfig:
         for name in ("mtp_seed", "mtp_num_speculative_tokens"):
             if getattr(self, name) is not None:
                 integer(getattr(self, name), name)
-        number(self.mtp_acceptance_length, "mtp_acceptance_length", minimum=1)
-        if self.mtp_acceptance_length > 1 + (self.mtp_num_speculative_tokens or 0):
-            raise ConfigurationError(
-                "MTP acceptance length cannot exceed 1 + draft tokens"
-            )
+        acceptance = MTPAcceptanceConfig.from_value(self.mtp_acceptance)
+        acceptance.validate(
+            self.mtp_num_speculative_tokens or 0, self.mtp_acceptance_length
+        )
+        object.__setattr__(self, "mtp_acceptance", acceptance)
         validate_mtp_token_budget(
             self.max_num_batched_tokens, self.mtp_num_speculative_tokens or 0
         )

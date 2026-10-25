@@ -233,6 +233,7 @@ class LLMWorker(Worker):
                 mtp_acceptance_length=config.mtp_acceptance_length,
                 mtp_enabled=self.mtp_num_speculative_tokens > 0,
                 mtp_seed=config.mtp_seed + id,
+                mtp_acceptance=config.mtp_acceptance,
             )
         elif config.batching == "static":
             self.scheduler = LLMStaticScheduler(
@@ -259,6 +260,11 @@ class LLMWorker(Worker):
             if request.cancel_requested:
                 continue
             was_prefill = request.is_prefill
+            if (
+                getattr(self.scheduler, "mtp_enabled", False)
+                and not request.is_context_build
+            ):
+                self.scheduler.record_mtp_execution(request)
             if was_prefill and request.first_prefill_source is None:
                 request.record_prefill_admission(
                     request.gpu_cached_prefill_tokens,

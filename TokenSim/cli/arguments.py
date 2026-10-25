@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from TokenSim.config.parallel_config import EXPERT_PARALLEL_SCOPES
 from TokenSim.config.paths import default_data_root
 from TokenSim.latency import FALLBACK_POLICIES
@@ -418,6 +419,12 @@ def build_parser():
         type=float,
         default=1.0,
         help="Average accepted output tokens per speculative verification step.",
+    )
+    parser.add_argument(
+        "--mtp_acceptance",
+        type=json.loads,
+        default={},
+        help="Acceptance JSON: kind mean, conditional (rates), empirical (distribution), or legacy.",
     )
     parser.add_argument(
         "--mtp_num_speculative_tokens",
