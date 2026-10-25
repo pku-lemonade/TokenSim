@@ -5,6 +5,7 @@ Each trace tree contains requests from a main agent and its subagents, along wit
 AgentX uses the same simulation engine, scheduler and latency calculations as other workloads.
 The replay implementation is in `TokenSim/workload/agentx.py`.
 Trace parsing and warmup preparation are in `TokenSim/workload/agentx_support`.
+The [accuracy and performance implementation plan](agentx-accuracy-implementation.md) specifies planned corrections, measurement requirements and validation gates.
 
 ## Install and obtain traces
 

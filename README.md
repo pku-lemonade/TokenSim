@@ -151,6 +151,7 @@ The [`docs/`](docs/) directory contains detailed feature descriptions, configura
 | [Storage backend plugins](docs/storage-backends.md) | Backend contracts, configuration, lazy loading, ownership and per-instance metrics |
 | [HBF examples](docs/hbf.md) | Optional flash storage, independent GPU memory variants, byte units and migration from the HBF snapshot |
 | [AgentX workloads](docs/agentx.md) | Trace downloads, request dependencies, warmup, concurrency, stopping and cancellation, replay logs and comparison with InferenceX measurements |
+| [AgentX accuracy implementation plan](docs/agentx-accuracy-implementation.md) | Planned lookup and attention corrections, MTP and replay semantics, forward timing, calibration, runtime memory, CPU optimization and validation gates |
 | [AIConfigurator data](docs/aiconfigurator.md) | Importing measured tables, rebuilding data packages, selecting operator-module scopes, data sources and latency units |
 | [Data collection checklist](docs/data-collection-checklist.md) | Required measurements for each operator table, shape manifests, recording metadata and validation data |
 
