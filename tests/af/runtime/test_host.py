@@ -7,7 +7,7 @@ import unittest
 
 import simpy
 
-from TokenSim.af.runtime.host import run_environment
+from TokenSim.trace.host import run_environment
 
 
 class HostRunTest(unittest.TestCase):

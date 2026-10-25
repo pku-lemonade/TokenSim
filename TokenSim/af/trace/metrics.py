@@ -9,16 +9,20 @@ from math import isfinite
 import math
 import sys
 from typing import Mapping
-from TokenSim.trace.occupancy import occupied_until, unique_executions
 
-from TokenSim.trace.events import TraceEvent, register_records
+from TokenSim.af.caching.estimates import FrozenDict
 from TokenSim.af.providers.queries import (
+    AFComputeQuery,
     AFEndpoint,
     AFLayerType,
     AFRoutingEdge,
+    AFServiceEstimate,
     AFTensorLayout,
     AFTensorSlice,
+    AFTransferQuery,
 )
+from TokenSim.trace.events import TraceEvent, register_records
+from TokenSim.trace.occupancy import occupied_until, unique_executions
 
 
 class _ResourceBusyTime:
@@ -84,19 +88,6 @@ class AFTraceEvent(TraceEvent):
     routing_edges: tuple[AFRoutingEdge, ...] = ()
     source_dtype: str | None = None
     target_dtype: str | None = None
-
-
-def _endpoint_identity(endpoint: AFEndpoint | None) -> tuple[object, ...] | None:
-    if endpoint is None:
-        return None
-    return (endpoint.domain, endpoint.domain_rank, endpoint.physical_worker)
-
-
-def _is_f_domain(domain: str | None) -> bool:
-    if domain is None:
-        return False
-    value = domain.strip().lower()
-    return value.startswith("f") or "ffn" in value or value.endswith("-f")
 
 
 def communication_window(start, end, *, fixed_intervals=(), transport_intervals=()):
@@ -341,23 +332,15 @@ def summarize_timeline(events, start, end, capacities=None):
     )
 
 
-from TokenSim.af.caching.estimates import FrozenDict
-from TokenSim.af.providers import queries as _queries
-
 register_records(
     AFTraceEvent,
     FrozenDict,
-    *[
-        getattr(_queries, name)
-        for name in (
-            "AFEndpoint",
-            "AFTensorSlice",
-            "AFRoutingEdge",
-            "AFComputeQuery",
-            "AFTransferQuery",
-            "AFServiceEstimate",
-        )
-    ],
+    AFEndpoint,
+    AFTensorSlice,
+    AFRoutingEdge,
+    AFComputeQuery,
+    AFTransferQuery,
+    AFServiceEstimate,
 )
 
 

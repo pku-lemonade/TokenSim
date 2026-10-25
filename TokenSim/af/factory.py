@@ -11,7 +11,7 @@ from TokenSim.af.execution.model import ModelAFExecutor
 from TokenSim.af.providers.operator_table import build_operator_table_af_providers
 from TokenSim.af.runtime.plan import AFRuntimePlan
 from TokenSim.af.runtime.compiler import compile_af_runtime_plan
-from TokenSim.af.runtime.host import host_collection, run_environment
+from TokenSim.trace.host import host_collection, run_environment
 from TokenSim.trace.archive import ArchivedTraceRecorder
 from TokenSim.trace.config import TraceConfig
 from TokenSim.trace.formats import make_trace_recorder, validate_trace_format

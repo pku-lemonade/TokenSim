@@ -1222,10 +1222,9 @@ Measure these shapes and add them to the package to improve coverage.
 | [`TokenSim/trace`](../TokenSim/trace) | Global configuration, common events, recording, timing validation, bounded storage and export. |
 | [`TokenSim/profiler`](../TokenSim/profiler) | Observed ownership, paired captures, operator matching, wait attribution, comparison reports and images. |
 | [`TokenSim/latency`](../TokenSim/latency) | Operator evaluation, measured-data lookup, analytical fallback and estimate provenance. |
-| [`TokenSim/af/trace/metrics.py`](../TokenSim/af/trace/metrics.py) | AF event fields, routing record registration and iteration summaries. |
-| [`TokenSim/af/trace/validation.py`](../TokenSim/af/trace/validation.py) | AF payload, endpoint ownership, routing coverage and layer invariants. |
-| [`TokenSim/af/trace/stages.py`](../TokenSim/af/trace/stages.py) | AF logical transfer stages and local replica-consumption checks. |
-| [`TokenSim/af/trace/session.py`](../TokenSim/af/trace/session.py) | AF producer boundaries and dependencies in the engine's global session. |
+| [`TokenSim/af/trace/metrics.py`](../TokenSim/af/trace/metrics.py) | AF event fields, archive record registration, resource utilization, critical-chain/message-wait accounting and iteration summaries. |
+| [`TokenSim/af/trace/validation.py`](../TokenSim/af/trace/validation.py) | AF payload, endpoint ownership, routing coverage, layer invariants, logical transfer stages and local replica-consumption checks. |
+| [`TokenSim/llm/engine/af.py`](../TokenSim/llm/engine/af.py) | AF producer boundaries and request dependencies in the engine's global session through `AFEngineMixin.attach_trace`. |
 
 ```mermaid
 flowchart LR
@@ -1242,6 +1241,7 @@ flowchart LR
 All deployments use the same recorder, archive implementations, writers and configuration class.
 AF executors install an event validator on the shared recorder; generic timing, dependencies and resource capacity are checked before AF-specific invariants.
 AF summaries consume the shared recorder through `summarize_iteration`.
+Transfer-stage validation shares the AF validator, and session attachment is implemented by its engine caller.
 The AF package contains no storage subclasses, configuration subclasses or forwarding modules for shared trace utilities.
 Repository callers import shared infrastructure directly from `TokenSim.trace`.
 Common recording and offline plotting do not import AF runtime modules.
@@ -1324,6 +1324,14 @@ Plot rendering tests use the optional Matplotlib dependency.
 | Paired collection | Structure labels transfer to a different workload, timing sample or changed file; instrumentation survives timing setup. |
 | Collective accounting | Peer waiting is priced as service, overlapping work is removed, or unsupported waits appear as measured zero. |
 | Paired image export | Output changes durations, loses real streams/rank offsets, hides overlap or misclassifies endpoint roundoff. |
+
+The profiler suite retains two reduced local vLLM captures:
+
+- [`vllm_qwen3_layer.json`](../tests/fixtures/profiler/vllm_qwen3_layer.json) contains Qwen3-8B QKV/RoPE activity and CPU/GPU annotations, covering asynchronous ownership, kernel-name fallback and forward deduplication.
+- [`vllm_qwen3_row_parallel.json`](../tests/fixtures/profiler/vllm_qwen3_row_parallel.json) contains a Qwen3-30B-A3B TP 2 output projection with GEMM, device copy and custom all-reduce, covering module grouping and communication accounting.
+
+The slices retain launch correlations and original relative timing, with one common timestamp translation and auxiliary device counters removed.
+Their metadata records the vLLM revision, PyTorch version and source capture hash.
 
 Refactors compare deterministic result JSON, full AF events and applicable replay logs with a saved baseline.
 Only host execution-time fields and explicit trace descriptors are omitted from result comparisons.
