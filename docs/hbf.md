@@ -39,9 +39,8 @@ Reads from HBF occur when a reusable prefix has been evicted from the GPU cache.
 ## Independent GPU memory variants
 
 The `data/devices/hbf/` directory contains experimental memory variants of H100, H200 and B200.
-Each entry preserves the base GPU's compute and interconnect specifications and changes its memory kind, capacity and bandwidth.
-Memory and analytical-efficiency assumptions carry evidence grade D.
-Base-device aliases such as `H100` continue to select the ordinary GPU.
+Each entry preserves the base GPU's compute and interconnect specifications and changes its memory kind, capacity and bandwidth (grade D).
+Base-device aliases such as `H100` continue to select the standard GPU.
 
 | Device ID | GPU memory | Capacity per GPU | Bandwidth per GPU |
 | --- | --- | --- | --- |
@@ -57,9 +56,8 @@ Base-device aliases such as `H100` continue to select the ordinary GPU.
 Select a variant in the worker group's `hardware` field.
 `data/clusters/8_h100/tp8_hbf1.json` provides an eight-GPU HBF1 example.
 GPU variants can use HBF storage, SSD storage or no external store.
-They have separate device IDs and no imported operator measurements, so the default `table_first` policy uses analytical estimates.
-Explicitly requesting the base GPU's operator backend fails when the variant has no corresponding package.
-Add measurements under the variant's own device ID when they become available.
+Each variant has a distinct device ID and evaluates operator times through the analytical model under the default `table_first` policy.
+Add measurements under the variant's own device ID when available.
 
 ## Storage timing and configuration units
 

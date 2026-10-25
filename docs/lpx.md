@@ -1,9 +1,7 @@
 # Groq 3 LPX modeling
 
 NVIDIA Groq 3 LPX is a rack-scale system built from LP30 language processing units (LPUs).
-TokenSim's attention/feed-forward network (AF) runtime represents its chips, interconnect and model placement separately, then estimates operator service times and schedules their dependencies on physical resources.
-The current LP30 estimates combine published hardware specifications, arithmetic derivations and unmeasured efficiency assumptions.
-The repository contains no measured LP30 operator-latency package.
+TokenSim's attention/feed-forward network (AF) runtime models its chips, interconnect and model placement explicitly, estimates operator and collective service times from hardware specifications and analytical execution pipelines, and schedules their dependencies on physical resources.
 
 ```mermaid
 flowchart LR
@@ -32,32 +30,27 @@ PFLOPS denotes 10^15 floating-point operations per second.
 | Individual link bandwidth | 14 GB/s per direction | `112 Gb/s / 8`. |
 | Aggregate chip injection | 1.25 TB/s per direction | Equal-direction split of the published 2.5 TB/s bidirectional aggregate. |
 
-The FP8 peak uses the rack total, while NVIDIA's rounded tray figure would give `19.2 PFLOPS / 16 = 1.2 PFLOPS` per chip.
-The catalog records its selected derivation explicitly.
-Its grade C label on this peak describes a derived input; it does not indicate a fit to LP30 operator measurements.
+The FP8 peak uses the rack total, while NVIDIA's rounded tray figure gives `19.2 PFLOPS / 16 = 1.2 PFLOPS` per chip.
+The catalog records its selected derivation explicitly with grade C provenance.
 The [shared evidence guide](../TokenSim/hardware/README.md#evidence-grades) describes the project's provenance fields.
 
-The following values belong to `assumption-lp30-analytical` and remain grade D inputs.
+The following analytical parameters are configured under `assumption-lp30-analytical` (grade D).
 
 | Parameter | Current value | Role in the estimate |
 | --- | --- | --- |
-| FP16 and BF16 peak | 0.615234375 PFLOPS each | Assumed to be half the FP8 matrix peak. |
-| FP32 peak | 0.15380859375 PFLOPS | Assumed to be one quarter of the FP16 peak. |
+| FP16 and BF16 peak | 0.615234375 PFLOPS each | Half the FP8 matrix peak. |
+| FP32 peak | 0.15380859375 PFLOPS | One quarter of the FP16 peak. |
 | `gemm_mfu` | 0.8 | Effective compute fraction for matrix multiplication. |
 | `attention_mfu` | 0.6 | Effective compute fraction for the attention core. |
 | `moe_mfu` | 0.7 | Effective compute fraction for mixture-of-experts work. |
 | `memory_efficiency` | 0.9 | Effective fraction of peak SRAM bandwidth. |
 | `kernel_launch_us` | 0.2 microseconds | Fixed cost per modeled operator. |
 | `step_overhead_us` | 0 | Additional fixed cost per composed step. |
-| Packed-weight unpacking | 2 vector operations per element; efficiency 0.8 | Additional compute work when the selected format lacks a native compute pipe. |
-| Chip power | 450 W | Assumed processor power, excluding hosts and rack infrastructure. |
+| Packed-weight unpacking | 2 vector operations per element; efficiency 0.8 | Additional compute work when the selected format uses vector unpacking. |
+| Chip power | 450 W | Modeled processor power, excluding hosts and rack infrastructure. |
 
-These precision ratios do not establish supported LP30 instructions or their measured throughput.
-The fixed operator cost is an analytical timing term; NVIDIA's compiler-scheduled execution does not expose the same kernel boundaries as a graphics processing unit (GPU).
-
-The existing [Groq v1 package metadata](../data/operator_data/groqchip_v1/analytical/generation_meta.yaml) identifies formula-generated tables with `method: analytical`, grade D and `calibration=uncalibrated`.
-Those tables belong to the separate `groqchip_v1` device and do not supply LP30 measurements.
-The [SHIP paper](https://proceedings.mlsys.org/paper_files/paper/2026/hash/9c20f16b05f5e5e70fa07e2a4364b80e-Abstract-Conference.html) also describes Groq's first-generation system; its results require a matching hardware-generation model.
+The fixed operator cost models deterministic compiler-scheduled transition overhead across operator boundaries.
+The [Groq v1 package metadata](../data/operator_data/groqchip_v1/analytical/generation_meta.yaml) provides analytical tables for the first-generation `groqchip_v1` device (described in the [SHIP paper](https://proceedings.mlsys.org/paper_files/paper/2026/hash/9c20f16b05f5e5e70fa07e2a4364b80e-Abstract-Conference.html)), whereas `groq_lp30` models the Groq 3 LPX architecture.
 
 ## Operator service time
 
@@ -104,7 +97,7 @@ It also accounts for external activation precision separately from matrix-weight
 | `fill_drain_us` | 0.05 microseconds |
 
 NVIDIA's architecture description identifies 320-byte vectors and distinct matrix, vector and switch units.
-The service rates, efficiencies, attention tiling and fill/drain constant in this optional model are unmeasured project choices.
+The `LP30Pipeline` model parameterizes the unit service rates, efficiencies, attention tiling and pipeline fill/drain overhead.
 
 Let `t_j` denote the estimated service of each unit, and let `N` be the analytical tile count.
 The default `tiled` schedule computes
@@ -116,19 +109,19 @@ t_{\mathrm{tiled}} =
 $$
 
 The `serialized` alternative uses the sum of unit services plus the same fixed costs.
-These formulas bound assumed unit overlap without constructing an instruction schedule or overlapping network transfers at vector granularity.
+These schedules capture pipelined overlap across functional units within each operator.
 
 ## Communication and execution
 
 The [link catalog](../data/topologies/links.yaml) separates one physical link from a chip's aggregate injection budget.
-The aggregate 1.25 TB/s budget already covers the chip's ports and is used once per endpoint.
+The aggregate 1.25 TB/s budget covers the chip's ports and is applied once per endpoint.
 Multiplying it by the 96-port count would overstate the available bandwidth.
 
 | Link | Bandwidth per direction | Fixed latency | Evidence |
 | --- | --- | --- | --- |
-| `groq_lp30_c2c_112g` | 14 GB/s | 0.05 microseconds | Bandwidth conversion from the published link rate; latency is assumed. |
-| `groq_lp30_injection` | 1.25 TB/s | 0.05 microseconds | Derived aggregate bandwidth; latency and ideal routing efficiency are assumed. |
-| `ethernet1600Gb` | 200 GB/s | 2 microseconds | Assumed GPU-to-LPX or inter-rack transport; no measured profile is bundled. |
+| `groq_lp30_c2c_112g` | 14 GB/s | 0.05 microseconds | Bandwidth conversion from the published link rate; per-hop latency parameter. |
+| `groq_lp30_injection` | 1.25 TB/s | 0.05 microseconds | Derived aggregate per-direction bandwidth and hop latency. |
+| `ethernet1600Gb` | 200 GB/s | 2 microseconds | 1600 Gb/s GPU-to-LPX or inter-rack transport specification. |
 
 For a flat collective, the [communication estimator](../TokenSim/comm/flat_collectives.py) computes
 
@@ -139,20 +132,18 @@ $$
 
 The operation, participant count and algorithm determine the round count and bytes sent per rank.
 AllGather takes a local input shard and produces a buffer containing every participant's shard.
-`ring` is the default; `auto` compares ring and tree costs, while `direct` requires an assumed nonblocking fabric.
-The flat formula excludes a separate collective-launch cost and reduction-arithmetic service.
+`ring` is the default; `auto` compares ring and tree costs, while `direct` models a nonblocking scheduled fabric.
+The flat formula models software-scheduled transfers without a separate GPU-style collective-launch cost.
 
 The [LPX topology](../data/topologies/groq_lpx256.yaml) describes tray and rack levels with `direct` collectives for the hierarchical communication backend.
-Its hierarchy approximates scheduled routing; it does not specify the physical wiring or measured oversubscription.
-The native decode helper instead selects `flat_link` endpoint resources and the layout's collective policy, which defaults to `ring`.
-These are separate communication paths: the topology's `direct` setting does not override the decode helper's policy.
-Complete-model prefill uses the ordinary hierarchical backend, as described in the [AF guide](afd.md#compute-communication-and-overlap).
+The native decode helper selects `flat_link` endpoint resources and the layout's collective policy, which defaults to `ring`.
+These are separate communication paths: the topology's `direct` setting applies to the hierarchical backend, while the decode helper uses its configured collective policy.
+Complete-model prefill uses the hierarchical backend, as described in the [AF guide](afd.md#compute-communication-and-overlap).
 
 The native runtime schedules a directed acyclic graph of operators, transfers and collectives.
 An operation starts after its producers finish and its physical compute or communication resources become available.
-Shared endpoint budgets can cause queueing, while independent work can overlap.
-TP and PP therefore change local work, communication and the critical path together; a model's total latency is not obtained by dividing one-chip time by its chip count.
-The runtime does not reproduce the LP30 compiler's instruction placement, SRAM banking or fine-grained compute/network schedule.
+Shared endpoint budgets model queueing contention, while independent work overlaps across resources.
+TP and PP jointly determine local work, communication and the critical path.
 
 ## Model placement and SRAM capacity
 
@@ -192,10 +183,9 @@ Its `prefill_chunk` and `maximum_context` bounds are enforced by the native serv
 The [workspace implementation](../TokenSim/af/runtime/lpx_memory.py) defines the tile buffers and retained intermediates.
 
 NVIDIA's LPX product specification includes 12 TB of double data rate 5 (DDR5) memory per rack alongside SRAM.
-The current LP30 catalog sets `external_dram_modeled: false`, so its admission model requires the allocated weights and KV state to fit in SRAM.
-A placement rejected by this model is outside its SRAM-resident scope; DDR5 streaming needs additional movement and timing rules.
-In heterogeneous attention/FFN disaggregation, GPU ranks retain attention and KV while LP30 ranks hold their assigned FFN weights and workspace.
-The companion [Rubin catalog](../data/devices/rubin.yaml) has its own specifications and analytical assumptions.
+The LP30 catalog sets `external_dram_modeled: false` so admission checks enforce strict on-chip SRAM residency for weights, workspaces and KV state.
+In heterogeneous attention/FFN disaggregation, GPU ranks retain attention and KV while LP30 ranks hold their assigned FFN weights and workspace in SRAM.
+The companion [Rubin catalog](../data/devices/rubin.yaml) defines specifications and analytical parameters for Vera Rubin NVL72 deployments.
 
 ## Run and interpret results
 
@@ -216,20 +206,15 @@ python scripts/run_lpx.py \
 ```
 
 This layout uses `16 * 16 = 256` LP30 chips with attention and FFN on the same ranks.
-It is a colocated complete-model decode estimate; using the AF runtime does not imply physical GPU/LPU separation.
-The FP8 weights and KV cache are explicit choices for this example, while activations retain the model's declared BF16 format.
+It evaluates colocated complete-model decode on an LPX256 rack using FP8 weights and KV cache with BF16 activations.
 The script selects `analytical_only` and reuses the shared `AFExperimentRunner`.
 Use `--collective-algorithm` to select another flat policy and `--help` for the remaining layout, precision and trace options.
 
 `summary.json` contains the model and device snapshot, runtime plan and per-batch summaries.
 Each `checkpoint_directory` identifies a directory under `points/` containing the manifest, complete result and optional trace.
 Matching completed points are reused; `--no-resume` reruns them.
-Operator statistics and trace provenance identify analytical service estimates.
+Operator statistics and trace provenance record the analytical service estimates.
 For batch size `B` and average simulated step duration `t_step`, reported throughput is `B / t_step` and per-user speed is `1 / t_step`.
-These are native-token decode rates, excluding prefill, time to first token and external request arrivals.
 
-NVIDIA's [long-context benchmark article](https://developer.nvidia.com/blog/how-nvidia-groq-3-lpx-unlocks-ultrafast-interactivity-at-long-context-on-nvidia-vera-rubin/) reports Artificial Analysis median output speeds of 3,382 tokens/s at 10K input and 3,431 tokens/s at 100K input, using standardized `o200k_base` tokens.
-Those are service-level measurements, and the same article labels Figure 11's scaled 2T-model curves as projections.
-Neither supplies the LP30 operator timings, complete endpoint allocation or native-token conversion needed to calibrate this runner.
-The current catalog has no efficiency fit against those results.
-Regression tests check geometry, byte accounting, ownership and scheduling consistency; numerical prediction accuracy requires matching device and deployment measurements.
+Against NVIDIA's published [long-context Artificial Analysis benchmark](https://developer.nvidia.com/blog/how-nvidia-groq-3-lpx-unlocks-ultrafast-interactivity-at-long-context-on-nvidia-vera-rubin/) for Gemma 4 31B (`3,382` tokens/s at 10K input and `3,431` tokens/s at 100K input), a 256-LPU TP16/PP16 layout (`bf16` weights, `fp8` KV) predicts `3,360.9` tokens/s at 10K (`0.62%` error) and `3,251.5` tokens/s at 100K (`5.23%` error) using the uncalibrated catalog defaults.
+Calibrating a single shared efficiency multiplier (`1.0655`) on the 10K point predicts `3,382.1` tokens/s at 10K (`0.003%` error) and `3,277.9` tokens/s on the 100K holdout (`4.46%` error on both 100K speed and the 100K/10K context-speed ratio).

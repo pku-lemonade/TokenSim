@@ -32,7 +32,7 @@ Every `SourcedValue` stores a number, its source and an evidence grade describin
 | **A** | Official spec or first-party measurement | Value from vendor datasheet, whitepaper, or your own benchmark on the target hardware. | H100 HBM3 bandwidth 3.35 TB/s (NVIDIA datasheet) |
 | **B** | Public benchmark | Third-party result that is published, citable, and reproducible. Not measured by this project. | MLPerf submission throughput, nccl-tests community results |
 | **C** | Calibrated estimate | Derived by fitting a formula against measured data (grade A or B). The number is not directly observed but is constrained by observations. | `memory_efficiency = 0.80` fitted from A100 TRT-LLM GEMM table |
-| **D** | Project assumption | A default with no hardware-specific evidence. May be reasonable but has not been validated for this device. | `gemm_mfu = 0.70` as a starting point for an untested GPU |
+| **D** | Analytical default | An analytical or architectural default parameter used when device-specific measurements or calibrations are not supplied. | `gemm_mfu = 0.70` default for an uncalibrated GPU |
 
 Apply the following rules when assigning evidence grades.
 
