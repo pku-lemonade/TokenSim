@@ -35,6 +35,10 @@ def main(args, preloaded_agentx_traces=None):
         number(args.sim_time, "sim_time", positive=True)
     config = simulation_config(args)
     cluster = ClusterConfig.from_file(args.cluster)
+    if config.runtime_memory_profile is not None and cluster.af.enabled:
+        raise ConfigurationError(
+            "runtime memory profiles currently require ordinary workers"
+        )
     from TokenSim.af.providers.queries import resolve_af_latency_providers
 
     af_compute_provider, af_transfer_provider = (

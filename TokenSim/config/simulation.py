@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 
 from TokenSim.config.moe_execution import MoEExecutionConfig
+from TokenSim.config.runtime_memory import RuntimeMemoryProfile
 from TokenSim.trace.config import TraceConfig, DEFAULT_TRACE_CONFIG
 from TokenSim.config.router_config import validate_router_mapping
 from TokenSim.config.speculative_execution import (
@@ -21,6 +22,7 @@ class SimulationConfig:
     max_num_batched_tokens: int | None = 8192
     max_occupy_ratio: float = 1.0
     gpu_memory_utilization: float = 1.0
+    runtime_memory_profile: RuntimeMemoryProfile | None = None
     prefill_worker_pool_type: str = "round_robin"
     decode_worker_pool_type: str = "least_gpu_memory"
     latency_backend_type: str = "operator_table"
@@ -48,6 +50,11 @@ class SimulationConfig:
     trace: TraceConfig = DEFAULT_TRACE_CONFIG
 
     def __post_init__(self):
+        object.__setattr__(
+            self,
+            "runtime_memory_profile",
+            RuntimeMemoryProfile.from_value(self.runtime_memory_profile),
+        )
         if not isinstance(self.trace, TraceConfig):
             object.__setattr__(self, "trace", TraceConfig.from_mapping(self.trace))
         if self.router_mapping is not None:

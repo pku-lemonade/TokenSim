@@ -109,6 +109,13 @@ class LLMWorker(Worker):
             raise ConfigurationError(
                 "hybrid KV allocation requires a finite prefill token budget"
             )
+        if (
+            config.runtime_memory_profile is not None
+            and cache_config_override is not None
+        ):
+            raise ConfigurationError(
+                "runtime memory profiles cannot replace an AF cache configuration"
+            )
         self.cache_config = cache_config_override or CacheConfig(
             self.block_size,
             self.device,
@@ -128,6 +135,17 @@ class LLMWorker(Worker):
             ),
             attention_backend=config.attention_backend,
             speculative_tokens=self.mtp_num_speculative_tokens,
+            runtime_memory_profile=config.runtime_memory_profile,
+            runtime_memory_context={
+                "operator_backend": worker_config.operator_backend
+                or config.operator_backend,
+                "mhc_backend": config.mhc_backend,
+                "batching": config.batching,
+                "dp_lockstep": config.dp_lockstep,
+                "dp_sync_interval": config.dp_sync_interval,
+                "kv_connector": kv_transfer_config.kv_connector,
+                "kv_connector_extra_config": kv_transfer_config.kv_connector_extra_config,
+            },
         )
         self.preempted_cnt = 0
         self.pending_connector_metadata: KVConnectorMetadata | None = None

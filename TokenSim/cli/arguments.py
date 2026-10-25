@@ -110,6 +110,9 @@ def build_parser():
         help="KV connector JSON; replaces the cluster's storage configuration.",
     )
     parser.add_argument(
+        "--runtime_memory_profile", help="JSON with deployment-bound observed KV bytes."
+    )
+    parser.add_argument(
         "--prefill_worker_pool_type",
         choices=["round_robin", "least_gpu_memory", "balanced_load"],
         default="round_robin",

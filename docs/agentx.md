@@ -191,6 +191,39 @@ Historical linear sampling is available through `--mtp_acceptance` with `kind` s
 Results retain the selected model, expected acceptance, sampling version, seed and committed verification/accepted/emitted counts under `module_stats.speculative.acceptance`, keyed by worker ID.
 Warmup resets those measured counts while preserving each continuing request's round index.
 
+### Observed runtime KV capacity
+
+`--runtime_memory_profile PATH` imports available KV bytes recorded after the target serving framework reserves weights, CUDA graphs, and workspaces.
+This mode currently supports compressed attention on ordinary workers.
+Without this argument, the existing analytical memory estimate determines capacity.
+The observation changes cache capacity; operator timing continues to use the configured tables and formulas.
+
+Every compressed cache exports `worker_cache_budgets[].cache.memory_budget.deployment_identity` in the result JSON.
+Copy this identity from a probe using the target configuration into the profile below.
+The identity covers the complete model and device descriptors, parallel layout, block size, utilization, token and sequence limits, MTP depth, attention/MoE settings, and worker execution and connector settings.
+Profile reuse with a different identity fails before cache allocation.
+Framework version and graph strategy describe the source deployment and must be recorded explicitly; TokenSim cannot verify the configuration of an external server process.
+
+| Profile field | Meaning |
+| --- | --- |
+| `schema_version` | Integer `1` |
+| `deployment_identity` | Exact identity exported by the matching simulation configuration |
+| `kv_bytes_per_rank` | Positive integer byte capacities in global rank order, with one entry for every rank |
+| `uncertainty_bytes` | Nonnegative measurement rounding uncertainty, retained in provenance without changing the nominal capacity |
+| `provenance.source` | Measurement artifact or source URL |
+| `provenance.measurement_id` | Immutable deployment/run identifier |
+| `provenance.framework` | Serving framework name |
+| `provenance.framework_version` | Exact source framework version or commit |
+| `provenance.graph_strategy` | Source CUDA graph policy and capture configuration |
+
+Unknown profile fields, missing provenance, unmatched identities, incomplete rank coverage, capacities exceeding the device budget with weights, and capacities smaller than one physical KV slot cause an error.
+The available bytes are divided by the existing physical slot size; allocation continues to use the existing grouped cache manager.
+The result retains analytical deductions and `analytical_available_kv_bytes` for comparison, and marks the selected `capacity_source` as `runtime_observation`.
+It records the profile hash, rank, provenance, uncertainty, and `deductions_applied_to_observation: false` in `runtime_observation`.
+Recorded bytes already include runtime reservations and receive no additional graph/workspace deduction.
+Capacities inferred from one rank require an explicit uniform-rank assumption in provenance.
+Do not fit capacity to a cache-hit ratio or reuse a measurement for a different deployment.
+
 ## Replay and stopping
 
 In `closed_loop` mode, a request is issued after its required predecessors finish and the recorded delay before the next request has elapsed.

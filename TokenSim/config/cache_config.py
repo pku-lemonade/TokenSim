@@ -32,6 +32,8 @@ class CacheConfig:
         max_concurrent_batches: int = 2,
         moe_execution=None,
         attention_backend: str = "generic",
+        runtime_memory_profile=None,
+        runtime_memory_context=None,
     ):
         self.block_size: int = block_size
         self.device = device
@@ -41,6 +43,10 @@ class CacheConfig:
         self.rank_info = rank_info or ParallelRankInfo()
         self.expert_placement = expert_placement
         self.moe_config = model.moe
+        if runtime_memory_profile is not None and model.components is None:
+            raise ConfigurationError(
+                "runtime memory profiles currently require compressed attention"
+            )
         if (
             model.components is not None
             and kv_cache_capacity_tokens_per_dp_rank is not None
@@ -155,7 +161,37 @@ class CacheConfig:
                 speculative_tokens=speculative_tokens,
                 moe_execution=moe_execution,
                 attention_backend=attention_backend,
+                require_positive=runtime_memory_profile is None,
             )
+            from TokenSim.config.runtime_memory import (
+                RuntimeMemoryProfile,
+                runtime_memory_identity,
+            )
+
+            binding = runtime_memory_identity(
+                model,
+                device,
+                self.parallel_config,
+                block_size=block_size,
+                utilization=usable_memory_fraction,
+                max_num_batched_tokens=max_num_batched_tokens,
+                max_num_seqs=max_num_seqs,
+                speculative_tokens=speculative_tokens,
+                max_concurrent_batches=max_concurrent_batches,
+                moe_execution=moe_execution,
+                attention_backend=attention_backend,
+                execution=runtime_memory_context,
+            )
+            self.memory_budget["deployment_identity"] = binding
+            if runtime_memory_profile is not None:
+                self.memory_budget = RuntimeMemoryProfile.from_value(
+                    runtime_memory_profile
+                ).apply(
+                    self.memory_budget,
+                    binding,
+                    self.rank_info.global_rank,
+                    self.parallel_config.world_size,
+                )
         else:
             weight_bytes = dtype_bytes(model.dtype)
             self.model_param_size_unsharded = model.total_params() * weight_bytes
@@ -180,6 +216,10 @@ class CacheConfig:
             self.num_gpu_blocks = (
                 self.memory_budget["available_kv_bytes"] // self.physical_slot_bytes
             )
+            if runtime_memory_profile is not None and self.num_gpu_blocks == 0:
+                raise ConfigurationError(
+                    "observed runtime memory cannot hold one physical KV slot"
+                )
             # This storage-equivalent value only supports legacy byte-reporting
             # interfaces. Allocation uses group slots and physical_slot_bytes.
             self.size_per_token = self.physical_slot_bytes // self.block_size
