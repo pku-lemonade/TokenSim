@@ -55,6 +55,8 @@ Save the following configuration as `kv_transfer.json`.
 This example runs the complete DeepSeek-V4-Pro model on eight B200 GPUs.
 DEP8 uses eight data-parallel ranks to run separate request batches, with model experts distributed across all eight GPUs.
 Multi-token prediction (MTP) proposes three draft tokens at a time for the model to verify.
+The example imports the [B200 runtime KV profile](../data/runtime_memory/agentx_b200_440239.json) from InferenceX run 440239, with 32.27 GiB available per rank after runtime reservations.
+This profile is bound to the model, device, scheduler, parallelism, and connector settings shown here.
 
 ```bash
 tokensim --workload_type agentx_weka \
@@ -66,6 +68,7 @@ tokensim --workload_type agentx_weka \
   --max_num_seqs 49 \
   --max_num_batched_tokens 8192 \
   --gpu_memory_utilization 0.9 \
+  --runtime_memory_profile data/runtime_memory/agentx_b200_440239.json \
   --router_policy consistent_hash \
   --dp_lockstep \
   --dp_sync_interval 16 \
@@ -105,6 +108,7 @@ To run on eight B300 GPUs, use the argument values below and choose another resu
 | `--max_num_seqs` | 49 | 96 |
 | `--max_num_batched_tokens` | 8192 | 16384 |
 | `--gpu_memory_utilization` | 0.9 | 0.92 |
+| `--runtime_memory_profile` | `data/runtime_memory/agentx_b200_440239.json` | `data/runtime_memory/agentx_b300_439522.json` |
 
 Omit `--kv_transfer_config` to use the cluster's storage configuration.
 Both example clusters default to storing KV data only on GPUs.
@@ -197,6 +201,8 @@ Warmup resets those measured counts while preserving each continuing request's r
 This mode currently supports compressed attention on ordinary workers.
 Without this argument, the existing analytical memory estimate determines capacity.
 The observation changes cache capacity; operator timing continues to use the configured tables and formulas.
+The bundled [B200 profile](../data/runtime_memory/agentx_b200_440239.json) reproduces the capacity input used in the reported B200 validation.
+Its source reports available bytes on rank 0 and equal equivalent-token counts across eight ranks; the profile records uniform rounded capacity as an assumption and retains 0.005 GiB of rounding uncertainty.
 
 Every compressed cache exports `worker_cache_budgets[].cache.memory_budget.deployment_identity` in the result JSON.
 Copy this identity from a probe using the target configuration into the profile below.
@@ -281,35 +287,46 @@ The DeepSeek-V4-Pro configuration combines module-level measurements and analyti
 
 ### Comparison with the InferenceX reference
 
-The [current full replay validation](agentx-validation.md) compares the corrected simulator with a frozen baseline, reports individual regressions, and documents the observed-capacity experiment and AISimulate checks.
-The validation benchmark replays the published InferenceX AgentX configuration of DeepSeek-V4-Pro on eight B300 GPUs (InferenceX run 439522) using vLLM with DEP8, three MTP draft tokens per step (`K=3`), concurrency 384 and SimpleCPU offload.
-The table below compares the simulation (`--random_seed 0`, `--agentx_workload_seed 42`) with the published hardware measurements.
-These historical results precede the `blake2b_round_v1` acceptance implementation; retain the `legacy` model to reproduce their sampling behavior.
+The selected complete runs replay DeepSeek-V4-Pro on eight GPUs with DEP8, K=3, synthetic mean MTP acceptance 2.49, and SimpleCPU offload.
+Both load the full 393-tree corpus and use live cache warmup, a 3,600-second closed-loop issue window, a 30-second grace period, `--random_seed 0`, and `--agentx_workload_seed 42`.
+B200 uses concurrency 196 and the imported 32.27 GiB per-rank runtime observation from [InferenceX run 440239](https://inferencex.semianalysis.com/agentx/telemetry?id=440239).
+B300 uses concurrency 384 and the imported 103.07 GiB per-rank runtime observation from [InferenceX run 439522](https://inferencex.semianalysis.com/agentx/telemetry?id=439522).
+Each hardware column contains one complete run with a single capacity policy.
+Both selected runs completed with no unfinished requests.
+
 Latency percentiles describe successful requests issued during the measurement window, including those that finish during the grace period.
-TTFT measures the time from request arrival to the first output token.
-ITL is the per-request mean time between output tokens after the first token.
-End-to-end latency measures the time from request arrival to completion.
-p50 is the median, and p90 is the 90th percentile.
+TTFT measures the time from arrival to the initial output token.
+ITL is the per-request mean interval between output tokens after the initial token.
+End-to-end latency measures the time from arrival to completion.
+p50 is the median, and p90 and p99 describe the 90th and 99th percentiles.
 Percentage error is `(simulated - measured) / measured × 100%`.
 
-| Metric | B300 simulated | B300 measured | Error |
-| --- | ---: | ---: | ---: |
-| Output tokens/s (8 GPUs) | 5,322 | 6,360 | -16.3% |
-| Input tokens/s (8 GPUs) | 705,681 | 813,832 | -13.3% |
-| Successful requests | 21,688 | 25,696 | -15.6% |
-| TTFT p50 (s) | 4.58 | 4.27 | +7.5% |
-| TTFT p90 (s) | 19.8 | 18.9 | +4.5% |
-| Inter-token latency p50 (s) | 0.049 | 0.045 | +9.3% |
-| Inter-token latency p90 (s) | 0.068 | 0.050 | +36.6% |
-| End-to-end p50 (s) | 30.2 | 26.5 | +13.8% |
-| End-to-end p90 (s) | 129.0 | 112.1 | +15.1% |
-| GPU prefix hit rate | 0.947 | 0.899 | |
-| CPU prefix hit rate | 0.008 | 0.016 | |
+| Metric | B200 simulated | B200 measured | Error | B300 simulated | B300 measured | Error |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Output tokens/s (8 GPUs) | 3,347.55 | 3,599.26 | -6.99% | 5,441.33 | 6,360.26 | -14.45% |
+| Input tokens/s (8 GPUs) | 442,044.70 | 470,700.88 | -6.09% | 714,189.45 | 813,831.84 | -12.24% |
+| Successful requests | 12,923 | 13,991 | -7.63% | 21,963 | 25,696 | -14.53% |
+| TTFT p50 (s) | 3.476 | 3.363 | +3.35% | 4.656 | 4.265 | +9.16% |
+| TTFT p90 (s) | 17.061 | 16.207 | +5.27% | 20.288 | 18.916 | +7.26% |
+| ITL p50 (ms) | 36.52 | 34.25 | +6.64% | 51.34 | 45.21 | +13.55% |
+| ITL p90 (ms) | 55.02 | 50.25 | +9.50% | 57.03 | 49.49 | +15.24% |
+| ITL p99 (ms) | 100.89 | 71.62 | +40.87% | 64.62 | 61.08 | +5.80% |
+| End-to-end p50 (s) | 23.35 | 21.44 | +8.95% | 30.40 | 26.53 | +14.57% |
+| End-to-end p90 (s) | 105.72 | 95.38 | +10.84% | 128.84 | 112.06 | +14.98% |
 
-Simulated B300 TTFT matches hardware within 7.5% at p50 and 4.5% at p90, while median ITL is within 9.3% and end-to-end request latency is within 13.8% to 15.1%.
-Input and output token throughputs match within 13.3% and 16.3% across the one-hour closed-loop multi-agent trace without fitting workload-specific parameters to the benchmark run.
+The selected B200 run has output-throughput error of -6.99% and TTFT/ITL p50/p90 errors between +3.35% and +9.50%.
+Its ITL p99 error remains +40.87%, and its end-to-end p90 error is +10.84%.
+The observed capacity is an input from the measured deployment; this result does not validate the analytical memory estimate on unmeasured configurations.
 
-### Run time
+B300's analytical and imported-capacity runs were repeated with identical simulator code, seeds, operator timing, scheduling, and connector settings.
+The documented B300 run minimizes the largest absolute error across output throughput, TTFT p50/p90, and ITL p50/p90 among those two runs.
+Importing B300 capacity reduces that maximum from 15.62% to 15.24%, while throughput error changes from -14.25% to -14.45% and median ITL error from +13.07% to +13.55%.
+These small tradeoffs do not establish a uniform improvement across metrics.
+The [full validation report](agentx-validation.md) retains both capacity modes, the earlier before/after matrix, individual regressions, and the selection rule.
+The [machine-readable results](data/agentx-selected-results.json) retain every available metric, source run IDs, simulator revisions, and result hashes.
+Cache hit ratios remain diagnostics because hardware server counters and successful-request admission counters use different populations.
+
+### Regression checks
 
 Use `scripts/compare_agentx_results.py` to compare a frozen baseline/current matrix against archived hardware points.
 Its manifest names a `reference_directory` containing `inferencex_key_points.json` and a `cases` array with `label`, `hardware`, `reference_id`, `concurrency`, `output`, and the complete simulation `args`.
@@ -327,9 +344,12 @@ python scripts/compare_agentx_results.py \
 The command exits with status 2 for incomplete or invalid comparisons and status 1 when `--require-no-regression` detects a throughput, median/tail TTFT, or median/tail ITL regression.
 Omitting this flag exports a valid comparison containing regressions without treating them as improvements.
 
-A one-hour simulated measurement window completes in about 9 minutes for B200 and 19 minutes for B300 on a single core of an AMD EPYC 7C13 processor.
-Peak host memory usage is 5.4 GB for B200 and 6.6 GB for B300, including roughly 30 seconds to load the 393 trace trees.
-Identical inputs and seeds produce bit-exact deterministic results.
+### Run time
+
+The selected B200 replay took 785.13 seconds of wall time on one CPU core, including trace loading, warmup, and the complete measurement window.
+The paired B300 experiments ran concurrently on separate pinned CPU cores, so their wall times do not establish a simulator speedup.
+The queue optimization has a separate result-equivalence test that compares complete result fields and replay logs.
+Identical inputs, configuration, and seeds preserve deterministic replay behavior.
 
 ## Core validation
 

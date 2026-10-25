@@ -2,6 +2,8 @@
 
 The validation artifacts are retained in `results/agentx-accuracy-20261026/` and are excluded from Git because they contain full replay logs.
 `manifest.json` freezes the trace hash, commands, reference identities, and code revisions; `comparison.json` retains errors and regressions for every available metric.
+The [AgentX guide](agentx.md#comparison-with-the-inferencex-reference) presents one selected complete run per hardware.
+The [committed result summary](data/agentx-selected-results.json) preserves their source values, result hashes, capacity policies, and the B300 capacity comparison for review without the full replay logs.
 The results below cover the published DeepSeek-V4-Pro deployments and do not establish accuracy for other models or configurations.
 Agreement with AISimulate is a differential check; acceptance of a change requires independent arithmetic invariants, target-framework evidence, or the stated hardware comparison.
 
@@ -12,7 +14,7 @@ Pareto curves combine deployment configurations, so comparisons use individual r
 
 ## Complete replay results
 
-All four runs replay all 393 source trees with live warmup, a 3,600-second closed-loop issue window, a 30-second grace period, SimpleCPU offload, and seeds 0 and 42.
+All four runs load the full 393-tree corpus and use live warmup, a 3,600-second closed-loop issue window, a 30-second grace period, SimpleCPU offload, and seeds 0 and 42.
 The baseline is `89fa355ddd457f7bcebb685229ae5f930fa91f1d` and the corrected simulator is `acffa30`.
 Each before/after pair uses identical simulation arguments except its result path.
 The B200 concurrency is 196 and the B300 concurrency is 384.
@@ -111,6 +113,40 @@ The replay completed successfully with 12,923 successful profiling requests and 
 The CLI replay and diagnostic have byte-identical `requests.jsonl`, `events.jsonl`, and `cache_windows.jsonl`, matching throughput, latency statistics, operator totals, and scheduling counters.
 `runtime-memory-equivalence.json` retains these file hashes and `runtime-memory-comparison.json` reports the conditional hardware errors.
 The replay used revision `d7ba4e2`; the subsequent positive-population metric fix is validated separately with the archived hardware samples.
+
+## B300 capacity comparison
+
+Both B300 capacity modes were rerun at revision `4574dd6dde620a1d6ce78ec2509a616eedbd289b` with identical model, data, seeds, scheduler, connector, and operator timing settings.
+Both load the full 393-tree corpus and use live warmup and a 3,600-second issue window at concurrency 384, with no unfinished requests after cleanup.
+The three analytical-baseline replay files match the frozen `acffa30` baseline byte-for-byte, confirming that the reporting and profile changes preserve its execution behavior.
+
+The analytical budget is 104.4398 GiB per rank, or 91,260 physical KV slots.
+The imported [B300 profile](../data/runtime_memory/agentx_b300_439522.json) uses 103.07 GiB per rank from reference run 439522, or 90,063 slots.
+Rank 0 provides the available-byte observation; applying that rounded value to every rank is an explicit assumption with 0.005 GiB uncertainty.
+The imported geometry yields 5,416,880 equivalent tokens per rank, within the server log's range of 5,416,820 to 5,416,940.
+
+| Metric | Analytical capacity | Imported capacity | Hardware | Analytical error | Imported error |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Output tokens/s | 5,453.81 | 5,441.33 | 6,360.26 | -14.25% | -14.45% |
+| TTFT p50 (s) | 4.654 | 4.656 | 4.265 | +9.11% | +9.16% |
+| TTFT p90 (s) | 20.367 | 20.288 | 18.916 | +7.67% | +7.26% |
+| ITL p50 (ms) | 51.12 | 51.34 | 45.21 | +13.07% | +13.55% |
+| ITL p90 (ms) | 57.21 | 57.03 | 49.49 | +15.62% | +15.24% |
+| ITL p99 (ms) | 64.50 | 64.62 | 61.08 | +5.61% | +5.80% |
+| End-to-end p90 (s) | 128.53 | 128.84 | 112.06 | +14.70% | +14.98% |
+
+The selection rule was recorded before the runs completed: minimize the largest absolute percentage error across output throughput, TTFT p50/p90, and ITL p50/p90, while retaining every metric in the comparison.
+The largest critical error is 15.62% with analytical capacity and 15.24% with imported capacity, so the main guide selects the complete imported-capacity run.
+This choice improves TTFT p90 and ITL p90, with small regressions in throughput, median latencies, ITL p99, and end-to-end p90.
+The two modes remain close and do not establish a general accuracy gain from the capacity change.
+
+Both modes have zero preemptions and recomputed tokens.
+The successful-request GPU cache ratio changes from 0.947164 to 0.946711, the CPU cache ratio from 0.007670 to 0.008115, and accumulated connector load wait from 1.2174 to 1.2378 seconds.
+These changes are consistent with a small increase in CPU cache use at the lower GPU capacity; the counters alone do not identify the remaining timing-model error.
+The selected imported-capacity run completes 21,963 successful profiling requests, compared with 22,001 under analytical capacity and 25,696 in the reference.
+
+The local `b300-capacity-comparison/manifest.json`, `selection-policy.json`, and `comparison.json` retain commands, source identity, the selection rule, all errors, cache diagnostics, and baseline-equivalence hashes.
+The [committed result summary](data/agentx-selected-results.json) retains both capacity modes and the selected complete run.
 
 ## Remaining sources of serving error
 

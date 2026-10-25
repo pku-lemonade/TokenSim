@@ -119,6 +119,8 @@ Provide a trace file or directory with `--dataset_path`.
 The `agentx` extra adds the tools for downloading and parsing AgentX traces.
 Install the extra with `python -m pip install -e '.[agentx,dev]'`.
 See the [AgentX guide](docs/agentx.md) for trace downloads, warmup and replay options.
+The [validated AgentX runs](docs/agentx.md#comparison-with-the-inferencex-reference) predict output throughput within 7.0% on eight B200 GPUs and 14.5% on eight B300 GPUs using observed KV capacity.
+The guide reports latency tails, remaining errors, and the capacity policy for each deployment.
 
 Model, hardware and operator data are loaded from the checkout or installed package.
 Select another data directory with `--data_root` or `TOKENSIM_DATA_ROOT`.
@@ -151,6 +153,7 @@ The [`docs/`](docs/) directory contains detailed feature descriptions, configura
 | [Storage backend plugins](docs/storage-backends.md) | Backend contracts, configuration, lazy loading, ownership and per-instance metrics |
 | [HBF examples](docs/hbf.md) | Optional flash storage, independent GPU memory variants, byte units and migration from the HBF snapshot |
 | [AgentX workloads](docs/agentx.md) | Trace downloads, request dependencies, warmup, concurrency, stopping and cancellation, replay logs and comparison with InferenceX measurements |
+| [AgentX validation](docs/agentx-validation.md) | Complete reference runs, runtime KV capacity comparisons, metric errors, source checks, and remaining limitations |
 | [AgentX accuracy implementation plan](docs/agentx-accuracy-implementation.md) | Planned lookup and attention corrections, MTP and replay semantics, forward timing, calibration, runtime memory, CPU optimization and validation gates |
 | [AIConfigurator data](docs/aiconfigurator.md) | Importing measured tables, rebuilding data packages, selecting operator-module scopes, data sources and latency units |
 | [Data collection checklist](docs/data-collection-checklist.md) | Required measurements for each operator table, shape manifests, recording metadata and validation data |

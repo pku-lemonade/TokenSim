@@ -1,0 +1,68 @@
+{
+  "deployment_identity": {
+    "model_sha256": "fb1049de9426bee2172f2ee8e3e10fd2b0b0816974493443446f1d5f8f0a920c",
+    "device_sha256": "d8d192d5329a4bb016cb76e028d09d4f83b494c738708ad6223c0a8d29054aa9",
+    "parallel": {
+      "tensor_parallel_size": 1,
+      "pipeline_parallel_size": 1,
+      "data_parallel_size": 8,
+      "data_parallel_rank": 0,
+      "data_parallel_size_local": 8,
+      "tensor_parallel_collective_latency_scale": 1.0,
+      "pipeline_parallel_activation_latency_scale": 1.0,
+      "enable_expert_parallel": true,
+      "expert_parallel_scope": "global",
+      "expert_parallel_size": 8,
+      "expert_placement_strategy": "linear",
+      "all2all_backend": "allgather_reducescatter"
+    },
+    "settings": {
+      "block_size": 256,
+      "utilization": 0.9,
+      "max_num_seqs": 49,
+      "max_num_batched_tokens": 8192,
+      "speculative_tokens": 3,
+      "max_concurrent_batches": 2,
+      "moe_execution": {
+        "backend": "deep_gemm_amxf4_mega_moe",
+        "shared_expert_fusion": true,
+        "table": null
+      },
+      "attention_backend": "module",
+      "execution": {
+        "operator_backend": "vllm",
+        "mhc_backend": "module",
+        "batching": "paged-attn",
+        "dp_lockstep": true,
+        "dp_sync_interval": 16,
+        "kv_connector": "SimpleCPUOffloadConnector",
+        "kv_connector_extra_config": {
+          "cpu_bytes_to_use_per_rank": 356125000000,
+          "host_available_bytes": 3108436443136,
+          "lazy_offload": false,
+          "transfer_utilization": 0.75
+        }
+      }
+    }
+  },
+  "kv_bytes_per_rank": [
+    34649648660,
+    34649648660,
+    34649648660,
+    34649648660,
+    34649648660,
+    34649648660,
+    34649648660,
+    34649648660
+  ],
+  "provenance": {
+    "source": "https://inferencex.semianalysis.com/api/v1/server-log-search?id=440239&q=Available%20KV%20cache%20memory&limit=3",
+    "measurement_id": "440239",
+    "framework": "vllm",
+    "framework_version": "0.17.2rc1.dev3682+g426e59f62",
+    "graph_strategy": "recorded default CUDA graphs; max_num_seqs=49, max_num_batched_tokens=8192, K=3",
+    "rank_evidence": "rank 0 available KV bytes; all eight ranks report 2742953 equivalent tokens; uniform rounded byte capacity assumed"
+  },
+  "uncertainty_bytes": 5368709,
+  "schema_version": 1
+}

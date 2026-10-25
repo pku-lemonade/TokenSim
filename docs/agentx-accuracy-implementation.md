@@ -82,7 +82,7 @@ The user-reported probes and independently repeated probes use different fixture
 | MTP mean 2.49, K=3: six sampled requests retained one acceptance value throughout 200 rounds each | Direct execution of the baseline function | Strong within-request correlation; two-point support alone is compatible with synthetic acceptance |
 | 934 of 9,450 parsed child streams start before their assigned parent's recorded completion | Scan of all 393 local trace trees | Candidate dispatch/completion differences; individual harness behavior still requires comparison |
 | Parent executes during seconds 0–10; child recorded at second 2 dispatches at second 10 | Minimal TokenSim replay with fixed service times | Completion-gated spawn behavior is reproducible |
-| Existing B300 report: throughput -16.3%, inter-token latency p90 +36.6%, GPU prefix hits 0.947 versus 0.899 | Historical [AgentX comparison](agentx.md#comparison-with-the-inferencex-reference) | Useful baseline; it has not been remeasured for this document |
+| Complete B200/B300 replay errors, including capacity imports and regressions | [Full validation report](agentx-validation.md) and [selected complete runs](agentx.md#comparison-with-the-inferencex-reference) | Deployment-specific evidence; additional concurrency points and held-out configurations remain unmeasured |
 
 The complete trace scan used the local dataset described in the [AgentX guide](agentx.md#install-and-obtain-traces).
 Future retained experiments must verify the documented dataset checksum and save the parse/protocol version.
