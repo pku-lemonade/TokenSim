@@ -275,6 +275,22 @@ Input and output token throughputs match within 13.3% and 16.3% across the one-h
 
 ### Run time
 
+Use `scripts/compare_agentx_results.py` to compare a frozen baseline/current matrix against archived hardware points.
+Its manifest names a `reference_directory` containing `inferencex_key_points.json` and a `cases` array with `label`, `hardware`, `reference_id`, `concurrency`, `output`, and the complete simulation `args`.
+Each hardware needs exactly one `baseline` case and one `current` case with identical arguments except `--results_path`.
+The report retains signed metric errors, changes in absolute error, individual regressions, incomplete runs, and SHA-256 hashes of its inputs.
+Cache ratios remain diagnostics because hardware server counters and successful-request admission counters use different populations.
+
+```bash
+python scripts/compare_agentx_results.py \
+  --manifest results/agentx-accuracy-20261026/manifest.json \
+  --output results/agentx-accuracy-20261026/comparison.json \
+  --require-no-regression
+```
+
+The command exits with status 2 for incomplete or invalid comparisons and status 1 when `--require-no-regression` detects a throughput, median/tail TTFT, or median/tail ITL regression.
+Omitting this flag exports a valid comparison containing regressions without treating them as improvements.
+
 A one-hour simulated measurement window completes in about 9 minutes for B200 and 19 minutes for B300 on a single core of an AMD EPYC 7C13 processor.
 Peak host memory usage is 5.4 GB for B200 and 6.6 GB for B300, including roughly 30 seconds to load the 393 trace trees.
 Identical inputs and seeds produce bit-exact deterministic results.
