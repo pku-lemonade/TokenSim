@@ -29,6 +29,7 @@ All results use the bundled [fidelity configuration](../experiments/lpx/fidelity
 | Attention-group size | [Attention-group control](lpx-attention-group.md) | TP32 with `KVP = 8` matches without speculation, and with `K = 3` speculation it also reaches the coding example, at attention matrix efficiency 0.30 or more |
 | Per-workload acceptance | [Workload-acceptance control](lpx-workload-acceptance.md) | 29 setups reach both AA values and both coding values with one acceptance per speed; every fit needs a higher acceptance at 100K than at 10K |
 | Published acceptance | [Acceptance evidence](lpx-acceptance-evidence.md) | No drafter type matches any fit for all four speeds; capable drafters imply AA steps 1.3 to 3.2 times longer than simulated |
+| GroqChip v1 BERT check | [BERT validation](groqchip-v1-bert-validation.md) | The LP30 method with matrix efficiency 0.3 predicts the measured BERT-base layer within 6.5% to 9.5%; decode weight streaming, communication and fixed costs remain untested |
 
 ## DCP
 
@@ -106,6 +107,14 @@ At its acceptance, the AA 10K speed needs steps of 615 to 882 microseconds, 1.3 
 Lookup drafting matches the direction of every fit but reaches the long-context range only at 100K.
 The remaining explanations are more work per AA step than simulated, an underestimated LP30 decode step or a drafter that performs poorly on AA's prompts.
 
+## GroqChip v1 BERT check
+
+The [BERT validation](groqchip-v1-bert-validation.md) prices one BERT-base encoder layer on the first-generation chip and compares it with the 8.9-microsecond layer measured in ASAP 2022.
+The LP30 method with the study's matrix efficiency of 0.3 predicts 9.49 to 9.76 microseconds when non-matrix work is hidden, as the paper describes, while the generic Groq model with efficiency 0.8 predicts about half of the measurement.
+The check supports the matrix efficiency for compute-bound work on one chip.
+It does not test decode weight streaming, collectives, chip-to-chip hops or fixed per-operator costs, where a decode-step underestimate would have to sit.
+The paper's 20 TB/s operand bandwidth is one quarter of the chip's quoted 80 TB/s memory bandwidth, which makes weight streaming a candidate.
+
 ## Ablation
 
 The table lists every tested combination and whether it matches both AA values within 5%.
@@ -152,7 +161,8 @@ No result calibrates an LP30 operator cost against measured hardware.
 
 | Item | Purpose |
 | --- | --- |
-| GroqChip v1 validation | Test the operator cost-modeling method against measured results from the previous Groq chip; published drafting acceptance suggests the simulated decode step may be 1.3 to 3.2 times too short |
+| GroqChip v1 multi-chip validation | Compare simulated multi-chip decode with the GroqCloud Llama-2 70B throughput to test weight streaming, collectives and fixed costs; the BERT check covered only single-chip matrix work |
+| LP30 operand bandwidth | Establish whether LP30's matrix-unit operand bandwidth is below its 150 TB/s SRAM bandwidth, as GroqChip v1's 20 TB/s is below its 80 TB/s |
 | LP30 FP8 attention path | Establish whether KV conversion runs on the vector unit, which decides whether a larger attention group helps |
 | Measured acceptance | Replace the fitted acceptances with lookup and model drafting on 10K and 100K long-document prompts and on coding prompts, including whether acceptance rises at 100K |
 | Lift the 16-row forward limit | Test longer drafts and heavier background traffic in one forward |

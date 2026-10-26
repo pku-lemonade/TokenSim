@@ -1,0 +1,258 @@
+{
+  "measured_encoder_us": 106.987,
+  "measured_total_us": 128.9,
+  "v1_vector_ops_per_s": 4608000000000.0,
+  "v1_operand_bytes_per_s": 20000000000000.0,
+  "exp_fraction": 0.05,
+  "cases": [
+    {
+      "case": "generic Groq model, device defaults",
+      "efficiencies": null,
+      "operators": [
+        {
+          "operator": "qkv_gemm",
+          "table": "gemm",
+          "latency_us": 0.95497472,
+          "bottleneck": "compute"
+        },
+        {
+          "operator": "attention_core",
+          "table": "context_attention",
+          "latency_us": 0.25592405333333335,
+          "bottleneck": "compute"
+        },
+        {
+          "operator": "output_gemm",
+          "table": "gemm",
+          "latency_us": 0.45165824,
+          "bottleneck": "compute"
+        },
+        {
+          "operator": "layernorm_1",
+          "table": "elementwise",
+          "latency_us": 0.20548266666666667,
+          "bottleneck": "memory"
+        },
+        {
+          "operator": "ffn_up_gemm",
+          "table": "gemm",
+          "latency_us": 1.2066329599999999,
+          "bottleneck": "compute"
+        },
+        {
+          "operator": "gelu",
+          "table": "elementwise",
+          "latency_us": 0.22184533333333334,
+          "bottleneck": "memory"
+        },
+        {
+          "operator": "ffn_down_gemm",
+          "table": "gemm",
+          "latency_us": 1.2066329599999999,
+          "bottleneck": "compute"
+        },
+        {
+          "operator": "layernorm_2",
+          "table": "elementwise",
+          "latency_us": 0.20548266666666667,
+          "bottleneck": "memory"
+        }
+      ],
+      "layer_serialized_us": 4.7086336,
+      "layer_matrix_only_us": 4.075822933333333,
+      "encoder_serialized_us": 56.5036032,
+      "encoder_matrix_only_us": 48.909875199999995,
+      "matrix_only_error": -0.5428428201557198,
+      "serialized_error": -0.4718647760942918
+    },
+    {
+      "case": "LP30 method, study efficiencies",
+      "efficiencies": {
+        "gemm_mfu": 0.3,
+        "attention_mfu": 0.1
+      },
+      "operators": [
+        {
+          "operator": "qkv_gemm",
+          "table": "gemm",
+          "latency_us": 2.063351465972335,
+          "bottleneck": "mxm"
+        },
+        {
+          "operator": "attention_core",
+          "table": "context_attention",
+          "latency_us": 1.5095629866666669,
+          "bottleneck": "vxm"
+        },
+        {
+          "operator": "output_gemm",
+          "table": "gemm",
+          "latency_us": 0.721213626167616,
+          "bottleneck": "mxm"
+        },
+        {
+          "operator": "layernorm_1",
+          "table": "elementwise",
+          "latency_us": 0.2633577698541329,
+          "bottleneck": "vxm"
+        },
+        {
+          "operator": "ffn_up_gemm",
+          "table": "gemm",
+          "latency_us": 2.7344351718795767,
+          "bottleneck": "mxm"
+        },
+        {
+          "operator": "gelu",
+          "table": "elementwise",
+          "latency_us": 4.487357776285898,
+          "bottleneck": "vxm"
+        },
+        {
+          "operator": "ffn_down_gemm",
+          "table": "gemm",
+          "latency_us": 2.7346770075183073,
+          "bottleneck": "mxm"
+        },
+        {
+          "operator": "layernorm_2",
+          "table": "elementwise",
+          "latency_us": 0.2633577698541329,
+          "bottleneck": "vxm"
+        }
+      ],
+      "layer_serialized_us": 14.777313574198665,
+      "layer_matrix_only_us": 9.763240258204501,
+      "encoder_serialized_us": 177.32776289038398,
+      "encoder_matrix_only_us": 117.15888309845401,
+      "matrix_only_error": 0.09507587929798955,
+      "serialized_error": 0.6574701869421891
+    },
+    {
+      "case": "LP30 method, attention efficiency 0.5",
+      "efficiencies": {
+        "gemm_mfu": 0.3,
+        "attention_mfu": 0.5
+      },
+      "operators": [
+        {
+          "operator": "qkv_gemm",
+          "table": "gemm",
+          "latency_us": 2.063351465972335,
+          "bottleneck": "mxm"
+        },
+        {
+          "operator": "attention_core",
+          "table": "context_attention",
+          "latency_us": 1.2411275306666667,
+          "bottleneck": "vxm"
+        },
+        {
+          "operator": "output_gemm",
+          "table": "gemm",
+          "latency_us": 0.721213626167616,
+          "bottleneck": "mxm"
+        },
+        {
+          "operator": "layernorm_1",
+          "table": "elementwise",
+          "latency_us": 0.2633577698541329,
+          "bottleneck": "vxm"
+        },
+        {
+          "operator": "ffn_up_gemm",
+          "table": "gemm",
+          "latency_us": 2.7344351718795767,
+          "bottleneck": "mxm"
+        },
+        {
+          "operator": "gelu",
+          "table": "elementwise",
+          "latency_us": 4.487357776285898,
+          "bottleneck": "vxm"
+        },
+        {
+          "operator": "ffn_down_gemm",
+          "table": "gemm",
+          "latency_us": 2.7346770075183073,
+          "bottleneck": "mxm"
+        },
+        {
+          "operator": "layernorm_2",
+          "table": "elementwise",
+          "latency_us": 0.2633577698541329,
+          "bottleneck": "vxm"
+        }
+      ],
+      "layer_serialized_us": 14.508878118198666,
+      "layer_matrix_only_us": 9.494804802204502,
+      "encoder_serialized_us": 174.106537418384,
+      "encoder_matrix_only_us": 113.93765762645403,
+      "matrix_only_error": 0.06496731029427893,
+      "serialized_error": 0.6273616179384784
+    },
+    {
+      "case": "LP30 method, device-default efficiencies",
+      "efficiencies": {
+        "gemm_mfu": 0.8,
+        "attention_mfu": 0.6
+      },
+      "operators": [
+        {
+          "operator": "qkv_gemm",
+          "table": "gemm",
+          "latency_us": 0.8050602659723353,
+          "bottleneck": "mxm"
+        },
+        {
+          "operator": "attention_core",
+          "table": "context_attention",
+          "latency_us": 1.2299427200000002,
+          "bottleneck": "vxm"
+        },
+        {
+          "operator": "output_gemm",
+          "table": "gemm",
+          "latency_us": 0.30178322616761594,
+          "bottleneck": "mxm"
+        },
+        {
+          "operator": "layernorm_1",
+          "table": "elementwise",
+          "latency_us": 0.2633577698541329,
+          "bottleneck": "vxm"
+        },
+        {
+          "operator": "ffn_up_gemm",
+          "table": "gemm",
+          "latency_us": 1.0567135718795768,
+          "bottleneck": "mxm"
+        },
+        {
+          "operator": "gelu",
+          "table": "elementwise",
+          "latency_us": 4.487357776285898,
+          "bottleneck": "vxm"
+        },
+        {
+          "operator": "ffn_down_gemm",
+          "table": "gemm",
+          "latency_us": 1.0569554075183076,
+          "bottleneck": "mxm"
+        },
+        {
+          "operator": "layernorm_2",
+          "table": "elementwise",
+          "latency_us": 0.2633577698541329,
+          "bottleneck": "vxm"
+        }
+      ],
+      "layer_serialized_us": 9.464528507532,
+      "layer_matrix_only_us": 4.450455191537836,
+      "encoder_serialized_us": 113.574342090384,
+      "encoder_matrix_only_us": 53.40546229845403,
+      "matrix_only_error": -0.500822882233785,
+      "serialized_error": 0.06157142541041427
+    }
+  ]
+}
