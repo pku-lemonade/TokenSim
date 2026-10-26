@@ -28,6 +28,7 @@ All results use the bundled [fidelity configuration](../experiments/lpx/fidelity
 | Speculative decoding | [Speculative-decoding control](lpx-speculative-decoding.md) | Speculation shared with background traffic matches both AA values within 5% on TP16 |
 | Attention-group size | [Attention-group control](lpx-attention-group.md) | TP32 with `KVP = 8` matches without speculation, and with `K = 3` speculation it also reaches the coding example, at attention matrix efficiency 0.30 or more |
 | Per-workload acceptance | [Workload-acceptance control](lpx-workload-acceptance.md) | 29 setups reach both AA values and both coding values with one acceptance per speed; every fit needs a higher acceptance at 100K than at 10K |
+| Published acceptance | [Acceptance evidence](lpx-acceptance-evidence.md) | No drafter type matches any fit for all four speeds; capable drafters imply AA steps 1.3 to 3.2 times longer than simulated |
 
 ## DCP
 
@@ -95,6 +96,16 @@ Without background, TP32/PP4 with `KVP = 8` at `K = 7` needs 0.147, 0.262, 0.401
 Every fit needs a higher acceptance at 100K than at 10K, and the gap shrinks from 0.20 on TP16/PP8 without `KVP` to 0.07 on TP32/PP4 with `KVP = 8`.
 Public reports describe the AA measurement as 50 sequential requests at client concurrency one against a private, pre-release endpoint, so background requests are better read as unidentified fixed time per step than as other users.
 
+## Published acceptance
+
+The [acceptance evidence record](lpx-acceptance-evidence.md) compares the fits with published drafting acceptance.
+Capable drafters reach about 0.55 to 0.73 per position on prose at 10K or more input, while the fits need at most 0.48 at AA 10K.
+Fits with an AA 10K acceptance below 0.10 fall below every published prior.
+A drafter trained with the model, such as Gemma's MTP drafter, keeps acceptance stable with context and cannot make AA 100K faster than AA 10K.
+At its acceptance, the AA 10K speed needs steps of 615 to 882 microseconds, 1.3 to 3.2 times the simulated steps with at most one background request.
+Lookup drafting matches the direction of every fit but reaches the long-context range only at 100K.
+The remaining explanations are more work per AA step than simulated, an underestimated LP30 decode step or a drafter that performs poorly on AA's prompts.
+
 ## Ablation
 
 The table lists every tested combination and whether it matches both AA values within 5%.
@@ -141,7 +152,7 @@ No result calibrates an LP30 operator cost against measured hardware.
 
 | Item | Purpose |
 | --- | --- |
-| GroqChip v1 validation | Test the operator cost-modeling method against measured results from the previous Groq chip |
+| GroqChip v1 validation | Test the operator cost-modeling method against measured results from the previous Groq chip; published drafting acceptance suggests the simulated decode step may be 1.3 to 3.2 times too short |
 | LP30 FP8 attention path | Establish whether KV conversion runs on the vector unit, which decides whether a larger attention group helps |
 | Measured acceptance | Replace the fitted acceptances with lookup and model drafting on 10K and 100K long-document prompts and on coding prompts, including whether acceptance rises at 100K |
 | Lift the 16-row forward limit | Test longer drafts and heavier background traffic in one forward |
