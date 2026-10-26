@@ -143,6 +143,8 @@ class Request:
     # verifies 1+K query positions.  Ordinary requests keep this equal to
     # scheduled_tokens.
     scheduled_query_tokens: int = field(default=0, repr=False)
+    scheduled_accepted_tokens: int = field(default=0, repr=False)
+    decode_round: int = field(default=0, repr=False)
     scheduled_placeholder_tokens: int = field(default=0, repr=False)
     prefill_chunk_pending: bool = field(default=False, repr=False)
     max_model_len: int | None = field(default=None, repr=False)
@@ -371,6 +373,8 @@ class Request:
         if self.cancel_requested:
             return None
         context_build = self.is_prefill or self.needs_recompute
+        if not context_build:
+            self.decode_round += 1
         tokens = self.step_tokens
         self.scheduled_tokens = 0
         self.scheduled_query_tokens = 0

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from collections import deque
 
 from TokenSim.errors import ConfigurationError
 from TokenSim.llm.llm_request import Request, RequestStatus
@@ -72,10 +73,10 @@ class PagedSchedulingMixin:
 
     def _schedule_running(self, step):
         """Running requests, oldest first: decode tokens and context chunks."""
-        queue = sorted(self.running, key=lambda req: req.arrival_time)
+        queue = deque(sorted(self.running, key=lambda req: req.arrival_time))
         self.running = []
         while queue:
-            req = queue.pop(0)
+            req = queue.popleft()
             if self.defer_prefills and req.prefill_chunk_pending:
                 self.stats["deferred_running_prefills"] += 1
                 self.running.append(req)

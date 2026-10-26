@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from dataclasses import asdict, dataclass
+import math
 from typing import Any
 import numpy as np
 from TokenSim.results import MetricData
@@ -62,11 +63,10 @@ def get_agentx_metrics(
         for request in requests
         if request.generation_idx > 1
     ]
-    interactivity = [1.0 / value for value in tpot if value > 0]
-    normalized_interactivity = [
-        request.generation_idx / request.total_time
+    normalized_latency = [
+        request.total_time / request.generation_idx
         for request in requests
-        if request.total_time > 0
+        if request.total_time > 0 and request.generation_idx > 0
     ]
 
     input_tokens = sum(request.prefill_len for request in requests)
@@ -92,12 +92,23 @@ def get_agentx_metrics(
         computed_input_tokens = sum(s.computed_tokens for s in sources)
 
     def summary(values):
+        values = [value for value in values if math.isfinite(value) and value > 0]
         if not values and metadata.get("replay_protocol"):
             return {
                 key: 0 if key == "count" else None
-                for key in ("count", "mean", "p50", "p90", "p95", "p99", "max")
+                for key in ("count", "mean", "p50", "p75", "p90", "p95", "p99", "max")
             }
         return _percentile_summary(values)
+
+    def interactivity_summary(latencies):
+        values = [value for value in latencies if math.isfinite(value) and value > 0]
+        result = summary(values)
+        for name, value in result.items():
+            if name not in ("count", "max") and value:
+                result[name] = 1.0 / value
+        if values:
+            result["max"] = 1.0 / min(values)
+        return result
 
     # In-flight request count at profile end (set by benchmark if available).
     in_flight_at_cutoff = metadata.get("in_flight_at_cutoff", 0)
@@ -164,8 +175,9 @@ def get_agentx_metrics(
         "ttft_s": summary(ttft),
         "tpot_s": summary(tpot),
         "e2e_s": summary(e2e),
-        "interactivity_tps": summary(interactivity),
-        "e2e_normalized_interactivity_tps": summary(normalized_interactivity),
+        "interactivity_tps": interactivity_summary(tpot),
+        "e2e_normalized_interactivity_tps": interactivity_summary(normalized_latency),
+        "interactivity_percentile_semantics": "inverse_of_matching_latency_percentile",
     }
     # Native replay records the input-token decomposition per request. Older
     # Mooncake paths expose their own counters; absent native observations
@@ -213,9 +225,9 @@ def get_agentx_metrics(
             for r in subset
             if r.generation_idx > 1
         ]
-        result[f"{label}_ttft_s"] = _percentile_summary(sub_ttft)
-        result[f"{label}_tpot_s"] = _percentile_summary(sub_tpot)
-        result[f"{label}_e2e_s"] = _percentile_summary(sub_e2e)
+        result[f"{label}_ttft_s"] = summary(sub_ttft)
+        result[f"{label}_tpot_s"] = summary(sub_tpot)
+        result[f"{label}_e2e_s"] = summary(sub_e2e)
         result[f"{label}_output_tokens"] = sum(r.generation_idx for r in subset)
         result[f"{label}_input_tokens"] = sum(r.prefill_len for r in subset)
 
@@ -228,6 +240,7 @@ def _percentile_summary(values: list[float]) -> dict[str, float | int]:
             "count": 0,
             "mean": 0.0,
             "p50": 0.0,
+            "p75": 0.0,
             "p90": 0.0,
             "p95": 0.0,
             "p99": 0.0,
@@ -237,6 +250,7 @@ def _percentile_summary(values: list[float]) -> dict[str, float | int]:
         "count": len(values),
         "mean": float(np.mean(values)),
         "p50": float(np.percentile(values, 50)),
+        "p75": float(np.percentile(values, 75)),
         "p90": float(np.percentile(values, 90)),
         "p95": float(np.percentile(values, 95)),
         "p99": float(np.percentile(values, 99)),

@@ -10,7 +10,10 @@ from TokenSim.llm.llm_comm import KVConnectorMetadata, KVConnectorWorkerMetadata
 from TokenSim.llm.llm_request import Request, RequestStatus
 from TokenSim.block.block_manager import BlockManager
 from TokenSim.config.config import CacheConfig, KVTransferConfig
-from TokenSim.config.speculative_execution import validate_mtp_token_budget
+from TokenSim.config.speculative_execution import (
+    MTPAcceptanceConfig,
+    validate_mtp_token_budget,
+)
 from TokenSim.errors import ConfigurationError
 from TokenSim.kv_transfer import NoopConnector
 from TokenSim.llm.paged_scheduling import PagedSchedulingMixin
@@ -174,6 +177,7 @@ class LLMPagedAttnScheduler(PagedSchedulingMixin, PagedTokenBudgetMixin, LLMSche
         mtp_acceptance_length: float = 1.0,
         mtp_enabled: bool | None = None,
         mtp_seed: int = 0,
+        mtp_acceptance=None,
         max_parallem_sum: int | None = None,
     ):
         super().__init__(connector=connector)
@@ -198,11 +202,15 @@ class LLMPagedAttnScheduler(PagedSchedulingMixin, PagedTokenBudgetMixin, LLMSche
         # context limit; uniform caches have neither.
         layout = getattr(self.cache_config, "hybrid_layout", None)
         self.speculative_tokens = layout.speculative_tokens if layout else 0
+        self.mtp_acceptance = MTPAcceptanceConfig.from_value(
+            {} if mtp_acceptance is None else mtp_acceptance
+        )
+        self.mtp_acceptance.validate(
+            self.speculative_tokens, self.mtp_acceptance_length
+        )
         self.max_model_len = layout.max_model_len if layout else None
         self.mtp_enabled = (
-            bool(self.speculative_tokens and self.mtp_acceptance_length > 1)
-            if mtp_enabled is None
-            else bool(mtp_enabled)
+            bool(self.speculative_tokens) if mtp_enabled is None else bool(mtp_enabled)
         )
         if self.mtp_enabled and not self.speculative_tokens:
             raise ConfigurationError("enabled MTP scheduler requires positive cache K")
@@ -214,6 +222,10 @@ class LLMPagedAttnScheduler(PagedSchedulingMixin, PagedTokenBudgetMixin, LLMSche
         self.defer_prefills = False
         self.effective_long_prefill_threshold = 0
         self.stats = {
+            "mtp_verification_rounds": 0,
+            "mtp_verified_tokens": 0,
+            "mtp_accepted_tokens": 0,
+            "mtp_emitted_tokens": 0,
             "steps": 0,
             "deferred_running_prefills": 0,
             "deferred_waiting_prefills": 0,

@@ -166,6 +166,9 @@ class OperatorTableAFComputeProvider(
                     "device_id": resolver.device.device_id,
                     "operator_backend": resolver.operator_backend,
                     "dataset_version": resolver.dataset_version,
+                    "lookup_semantics": (
+                        resolver.lookup.semantics if resolver.lookup else None
+                    ),
                 }
                 for device_type, resolver in sorted(self._resolvers.items())
             },

@@ -6,6 +6,25 @@ from TokenSim.operator_data.schema import canonical_histogram
 from TokenSim.operator_data.workload import OperatorWork, generation_attention_work
 
 
+def generation_attention_query(common, context_counts):
+    """Select one uniform or ragged q=1 invocation from exact context counts."""
+    pairs = sorted(context_counts.items())
+    if not pairs or any(
+        type(length) is not int or length < 1 or type(count) is not int or count < 1
+        for length, count in pairs
+    ):
+        raise ValueError(
+            "decode attention requires positive integer contexts and counts"
+        )
+    key = {**common, "batch_size": sum(count for _, count in pairs)}
+    if len(pairs) == 1:
+        return "generation_attention", {**key, "context_len": pairs[0][0]}
+    return "ragged_generation_attention", {
+        **key,
+        "context_lengths": json.dumps(pairs, separators=(",", ":")),
+    }
+
+
 def ragged_generation_work(key):
     histogram = json.loads(
         canonical_histogram(key["context_lengths"], field="context_lengths")

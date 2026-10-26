@@ -119,6 +119,8 @@ Provide a trace file or directory with `--dataset_path`.
 The `agentx` extra adds the tools for downloading and parsing AgentX traces.
 Install the extra with `python -m pip install -e '.[agentx,dev]'`.
 See the [AgentX guide](docs/agentx.md) for trace downloads, warmup and replay options.
+The [validated AgentX runs](docs/agentx.md#comparison-with-the-inferencex-reference) predict output throughput within 7.0% on eight B200 GPUs and 14.5% on eight B300 GPUs using observed KV capacity.
+The guide reports latency tails, remaining errors, and the capacity policy for each deployment.
 
 Model, hardware and operator data are loaded from the checkout or installed package.
 Select another data directory with `--data_root` or `TOKENSIM_DATA_ROOT`.

@@ -19,6 +19,7 @@ def _generic_memory_budget(
     max_num_batched_tokens,
     max_num_seqs,
     speculative_tokens=3,
+    require_positive=True,
 ):
     """Estimate runtime envelopes for the generic attention backend."""
     if not 0 < utilization <= 1:
@@ -89,7 +90,7 @@ def _generic_memory_budget(
         "decode_graph_estimate": graph,
     }
     remaining = hardware_budget - sum(deductions.values())
-    if remaining <= 0:
+    if require_positive and remaining <= 0:
         raise ConfigurationError(
             "compressed attention weights and explicit runtime estimates exhaust the configured HBM budget"
         )
@@ -124,12 +125,16 @@ def hybrid_memory_budget(
     speculative_tokens=3,
     moe_execution=None,
     attention_backend="module",
+    require_positive=True,
 ):
     """Budget named persistent allocations and a source live-phase upper bound.
 
     Generic attention retains its previous estimate. Native FlashInfer storage
     is independent of borrowed FlashMLA timing. Unverified generic MoE buffers,
     SM count and graph driver increments stay explicit grade-D estimates.
+    A runtime observation may retain a nonpositive analytical remainder for
+    diagnostics with require_positive=False; the caller must validate the
+    observed capacity before allocating any cache slots.
     """
     from .live_buffers import PHASES, live_phases
     from .persistent_buffers import (
@@ -163,6 +168,7 @@ def hybrid_memory_budget(
             max_num_batched_tokens=max_num_batched_tokens,
             max_num_seqs=max_num_seqs,
             speculative_tokens=speculative_tokens,
+            require_positive=require_positive,
         )
     if parallel.pipeline_parallel_size != 1:
         raise ConfigurationError(
@@ -337,7 +343,7 @@ def hybrid_memory_budget(
         "decode_graph_estimate": graph_bytes,
     }
     remaining = hardware_budget - sum(deductions.values())
-    if remaining <= 0:
+    if require_positive and remaining <= 0:
         raise ConfigurationError(
             "compressed attention native storage and runtime estimates exhaust the configured HBM budget"
         )

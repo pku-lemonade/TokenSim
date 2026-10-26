@@ -54,6 +54,8 @@ Save the following configuration as `kv_transfer.json`.
 This example runs the complete DeepSeek-V4-Pro model on eight B200 GPUs.
 DEP8 uses eight data-parallel ranks to run separate request batches, with model experts distributed across all eight GPUs.
 Multi-token prediction (MTP) proposes three draft tokens at a time for the model to verify.
+The command uses analytical memory estimates by default.
+To reproduce the observed-capacity results below, prepare an external profile as described under [observed runtime KV capacity](#observed-runtime-kv-capacity) and add `--runtime_memory_profile runtime_memory.json`.
 
 ```bash
 tokensim --workload_type agentx_weka \
@@ -104,6 +106,9 @@ To run on eight B300 GPUs, use the argument values below and choose another resu
 | `--max_num_seqs` | 49 | 96 |
 | `--max_num_batched_tokens` | 8192 | 16384 |
 | `--gpu_memory_utilization` | 0.9 | 0.92 |
+
+Observed-capacity replay requires a separate profile for each deployment.
+The reported B200 and B300 runs use 32.27 GiB and 103.07 GiB of available KV memory per rank, respectively.
 
 Omit `--kv_transfer_config` to use the cluster's storage configuration.
 Both example clusters default to storing KV data only on GPUs.
@@ -158,6 +163,106 @@ It defaults to `random_seed`; the DeepSeek-V4-Pro example sets it to 42.
 The results record both seeds.
 Synthetic and dataset arrival generators use their own seeded random number stream.
 
+`--mtp_acceptance_length` selects a two-point acceptance approximation with the requested mean.
+Each verification round samples independently using `blake2b_round_v1`, keyed by the worker seed, request ID and committed decode-round index.
+Repeated scheduling probes and failed reservations reuse the same draw; actual decode execution advances the index.
+KV recomputation retains that index.
+Full verification query width determines target work even when accepted output is clipped by the remaining output length.
+
+`--mtp_acceptance` accepts a JSON object to select another acceptance model.
+Conditional acceptance supplies exactly one probability for each of the K draft positions and stops at the initial rejection.
+For K=3, this example has an expected accepted length of `1 + 0.8 + 0.8*0.6 + 0.8*0.6*0.5 = 2.52`.
+
+```json
+{
+  "kind": "conditional",
+  "rates": [0.8, 0.6, 0.5]
+}
+```
+
+Empirical acceptance supplies K+1 probabilities for accepted lengths 1 through K+1.
+They must be finite, nonnegative and sum to one.
+Both explicit models require the default `--mtp_acceptance_length 1`; the distribution determines the expected progress.
+
+```json
+{
+  "kind": "empirical",
+  "distribution": [0.1, 0.2, 0.3, 0.4]
+}
+```
+
+Historical linear sampling is available through `--mtp_acceptance` with `kind` set to `legacy`, together with the original mean and seeds.
+Results retain the selected model, expected acceptance, sampling version, seed and committed verification/accepted/emitted counts under `module_stats.speculative.acceptance`, keyed by worker ID.
+Warmup resets those measured counts while preserving each continuing request's round index.
+
+### Observed runtime KV capacity
+
+`--runtime_memory_profile PATH` imports available KV bytes recorded after the target serving framework reserves weights, CUDA graphs, and workspaces.
+This mode currently supports grouped compressed KV caches on ordinary workers.
+Without this argument, the existing analytical memory estimate determines capacity.
+The observation changes cache capacity; operator timing continues to use the configured tables and formulas.
+
+Every compressed cache exports `worker_cache_budgets[].cache.memory_budget.deployment_identity` in the result JSON.
+Copy this identity from a probe using the target configuration into your external profile.
+The identity covers the complete model and device descriptors, parallel layout, block size, utilization, token and sequence limits, MTP depth, attention/MoE settings, and worker execution and connector settings.
+Profile reuse with a different identity fails before cache allocation.
+Framework version and graph strategy describe the source deployment and must be recorded explicitly; TokenSim cannot verify the configuration of an external server process.
+
+Run a short probe with the same model, device, parallel, scheduler, and connector settings as the target deployment.
+For the B200 command above, shorten `--agentx_profile_duration` to 1 and select `--no-agentx_warmup` to obtain the deployment identity without a full benchmark run.
+The following example creates `runtime_memory.json` from that result and the recorded B200 observation.
+
+```bash
+python - <<'PY'
+from dataclasses import asdict
+import json
+from pathlib import Path
+
+from TokenSim.config.runtime_memory import RuntimeMemoryProfile
+
+result = json.loads(Path("results/agentx/b200/agentx_c196.json").read_text())
+identity = result["worker_cache_budgets"][0]["cache"]["memory_budget"]["deployment_identity"]
+profile = RuntimeMemoryProfile(
+    deployment_identity=identity,
+    kv_bytes_per_rank=[int(32.27 * (1 << 30))] * 8,
+    uncertainty_bytes=int(0.005 * (1 << 30)),
+    provenance={
+        "source": "https://inferencex.semianalysis.com/agentx/telemetry?id=440239",
+        "measurement_id": "440239",
+        "framework": "vllm",
+        "framework_version": "0.17.2rc1.dev3682+g426e59f62",
+        "graph_strategy": "default CUDA graphs; max_num_seqs=49, max_num_batched_tokens=8192, K=3",
+        "rank_evidence": "rank 0 available bytes; uniform rounded capacity assumed across eight ranks",
+    },
+)
+Path("runtime_memory.json").write_text(json.dumps(asdict(profile), indent=2) + "\n")
+PY
+```
+
+Repeat the command with `--runtime_memory_profile runtime_memory.json` to select the observed capacity.
+For B300, use its probe result, 103.07 GiB per rank, reference ID 439522, and the corresponding capture settings from the table above.
+Profiles belong to the measured deployment and are supplied by the caller; the package does not include benchmark-specific snapshots.
+
+| Profile field | Meaning |
+| --- | --- |
+| `schema_version` | Integer `1` |
+| `deployment_identity` | Exact identity exported by the matching simulation configuration |
+| `kv_bytes_per_rank` | Positive integer byte capacities in global rank order, with one entry for every rank |
+| `uncertainty_bytes` | Nonnegative measurement rounding uncertainty, retained in provenance without changing the nominal capacity |
+| `provenance.source` | Measurement artifact or source URL |
+| `provenance.measurement_id` | Immutable deployment/run identifier |
+| `provenance.framework` | Serving framework name |
+| `provenance.framework_version` | Exact source framework version or commit |
+| `provenance.graph_strategy` | Source CUDA graph policy and capture configuration |
+
+Unknown profile fields, missing provenance, unmatched identities, incomplete rank coverage, capacities exceeding the device budget with weights, and capacities smaller than one physical KV slot cause an error.
+The available bytes are divided by the existing physical slot size; allocation continues to use the existing grouped cache manager.
+The result retains analytical deductions and `analytical_available_kv_bytes` for comparison, and marks the selected `capacity_source` as `runtime_observation`.
+It records the profile hash, rank, provenance, uncertainty, and `deductions_applied_to_observation: false` in `runtime_observation`.
+Recorded bytes already include runtime reservations and receive no additional graph/workspace deduction.
+Capacities inferred from one rank require an explicit uniform-rank assumption in provenance.
+Do not fit capacity to a cache-hit ratio or reuse a measurement for a different deployment.
+
 ## Replay and stopping
 
 In `closed_loop` mode, a request is issued after its required predecessors finish and the recorded delay before the next request has elapsed.
@@ -194,7 +299,14 @@ Prefix-source counts separate input tokens reused from GPU memory, loaded from C
 Output token totals count actual tokens generated by successful requests issued during the measurement window.
 Root and subagent output totals and ITL summaries use the actual generated lengths, including when the model's context limit truncates an output.
 Requests that generate only one token are excluded from AgentX ITL summaries.
+Latency summaries retain finite positive observations, matching the InferenceX request-metrics parser.
+Zero ITL observations do not enter either the latency or interactivity population, and each summary reports its own sample count.
+Interactivity uses the inverse of the corresponding latency statistic, including the arithmetic mean.
+For example, `interactivity_tps.p90` is `1 / tpot_s.p90`, and normalized interactivity uses end-to-end seconds per actual output token.
+Percentiles use NumPy linear interpolation; computing percentiles of reciprocal samples would reverse the latency tail and change the interpolated value.
+Results record `interactivity_percentile_semantics: inverse_of_matching_latency_percentile` to identify this convention.
 Latency summaries exclude warmup, cancelled and unfinished requests.
+Throughput divides successful output tokens by their observation span, including successful grace-period completions, so its denominator can exceed the issue window.
 Engine statistics record repeated computation, time spent waiting for transfers and the measurement or formula used to estimate each operator's latency.
 Model-specific fields appear only when used.
 Unknown result fields cause an error.
@@ -209,37 +321,62 @@ The DeepSeek-V4-Pro configuration combines module-level measurements and analyti
 
 ### Comparison with the InferenceX reference
 
-The validation benchmark replays the published InferenceX AgentX configuration of DeepSeek-V4-Pro on eight B300 GPUs (InferenceX run 439522) using vLLM with DEP8, three MTP draft tokens per step (`K=3`), concurrency 384 and SimpleCPU offload.
-The table below compares the simulation (`--random_seed 0`, `--agentx_workload_seed 42`) with the published hardware measurements.
+The selected complete runs replay DeepSeek-V4-Pro on eight GPUs with DEP8, K=3, synthetic mean MTP acceptance 2.49, and SimpleCPU offload.
+Both load the full 393-tree corpus and use live cache warmup, a 3,600-second closed-loop issue window, a 30-second grace period, `--random_seed 0`, and `--agentx_workload_seed 42`.
+B200 uses concurrency 196 and the imported 32.27 GiB per-rank runtime observation from [InferenceX run 440239](https://inferencex.semianalysis.com/agentx/telemetry?id=440239).
+B300 uses concurrency 384 and the imported 103.07 GiB per-rank runtime observation from [InferenceX run 439522](https://inferencex.semianalysis.com/agentx/telemetry?id=439522).
+Each hardware column contains one complete run with a single capacity policy.
+Both selected runs completed with no unfinished requests.
+
 Latency percentiles describe successful requests issued during the measurement window, including those that finish during the grace period.
-TTFT measures the time from request arrival to the first output token.
-ITL is the per-request mean time between output tokens after the first token.
-End-to-end latency measures the time from request arrival to completion.
-p50 is the median, and p90 is the 90th percentile.
+TTFT measures the time from arrival to the initial output token.
+ITL is the per-request mean interval between output tokens after the initial token.
+End-to-end latency measures the time from arrival to completion.
+p50 is the median, and p90 and p99 describe the 90th and 99th percentiles.
 Percentage error is `(simulated - measured) / measured × 100%`.
 
-| Metric | B300 simulated | B300 measured | Error |
-| --- | ---: | ---: | ---: |
-| Output tokens/s (8 GPUs) | 5,322 | 6,360 | -16.3% |
-| Input tokens/s (8 GPUs) | 705,681 | 813,832 | -13.3% |
-| Successful requests | 21,688 | 25,696 | -15.6% |
-| TTFT p50 (s) | 4.58 | 4.27 | +7.5% |
-| TTFT p90 (s) | 19.8 | 18.9 | +4.5% |
-| Inter-token latency p50 (s) | 0.049 | 0.045 | +9.3% |
-| Inter-token latency p90 (s) | 0.068 | 0.050 | +36.6% |
-| End-to-end p50 (s) | 30.2 | 26.5 | +13.8% |
-| End-to-end p90 (s) | 129.0 | 112.1 | +15.1% |
-| GPU prefix hit rate | 0.947 | 0.899 | |
-| CPU prefix hit rate | 0.008 | 0.016 | |
+| Metric | B200 simulated | B200 measured | Error | B300 simulated | B300 measured | Error |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Output tokens/s (8 GPUs) | 3,347.55 | 3,599.26 | -6.99% | 5,441.33 | 6,360.26 | -14.45% |
+| Input tokens/s (8 GPUs) | 442,044.70 | 470,700.88 | -6.09% | 714,189.45 | 813,831.84 | -12.24% |
+| Successful requests | 12,923 | 13,991 | -7.63% | 21,963 | 25,696 | -14.53% |
+| TTFT p50 (s) | 3.476 | 3.363 | +3.35% | 4.656 | 4.265 | +9.16% |
+| TTFT p90 (s) | 17.061 | 16.207 | +5.27% | 20.288 | 18.916 | +7.26% |
+| ITL p50 (ms) | 36.52 | 34.25 | +6.64% | 51.34 | 45.21 | +13.55% |
+| ITL p90 (ms) | 55.02 | 50.25 | +9.50% | 57.03 | 49.49 | +15.24% |
+| ITL p99 (ms) | 100.89 | 71.62 | +40.87% | 64.62 | 61.08 | +5.80% |
+| End-to-end p50 (s) | 23.35 | 21.44 | +8.95% | 30.40 | 26.53 | +14.57% |
+| End-to-end p90 (s) | 105.72 | 95.38 | +10.84% | 128.84 | 112.06 | +14.98% |
 
-Simulated B300 TTFT matches hardware within 7.5% at p50 and 4.5% at p90, while median ITL is within 9.3% and end-to-end request latency is within 13.8% to 15.1%.
-Input and output token throughputs match within 13.3% and 16.3% across the one-hour closed-loop multi-agent trace without fitting workload-specific parameters to the benchmark run.
+The selected B200 run has output-throughput error of -6.99% and TTFT/ITL p50/p90 errors between +3.35% and +9.50%.
+Its ITL p99 error remains +40.87%, and its end-to-end p90 error is +10.84%.
+The observed capacity is an input from the measured deployment; this result does not validate the analytical memory estimate on unmeasured configurations.
+B200's analytical estimate was 25.60 GiB per rank; importing 32.27 GiB reduced throughput error from -42.32% to -6.99% and ITL p90 error from +104.55% to +9.50%.
+The successful-request GPU cache ratio increased from 37.28% to 74.07%, with request preemptions falling from 28 to zero.
+The available-byte observation comes from rank 0; the experiment assumes uniform rounded capacity across ranks and retains 0.005 GiB of rounding uncertainty.
+
+B300's analytical and imported-capacity runs were repeated with identical simulator code, seeds, operator timing, scheduling, and connector settings.
+The documented B300 run minimizes the largest absolute error across output throughput, TTFT p50/p90, and ITL p50/p90 among those two runs.
+Importing B300 capacity reduces that maximum from 15.62% to 15.24%, while throughput error changes from -14.25% to -14.45% and median ITL error from +13.07% to +13.55%.
+These small tradeoffs do not establish a uniform improvement across metrics.
+B300's analytical capacity was 104.44 GiB per rank, compared with the imported 103.07 GiB.
+Both modes have zero preemptions and recomputed tokens; their GPU cache ratios are 94.72% and 94.67%, respectively.
+The imported geometry yields 5,416,880 equivalent tokens per rank, within the recorded range of 5,416,820 to 5,416,940.
+The analytical replay's requests, events, and cache time series match the frozen baseline byte-for-byte, and the B200 profile replay matches its capacity diagnostic in the same three files.
+Cache hit ratios remain diagnostics because hardware server counters and successful-request admission counters use different populations.
+
+The reference serving image is vLLM `0.17.2rc1.dev3682+g426e59f62`; imported timing tables include vLLM 0.24.0 and SGLang 0.5.10 measurements from related Blackwell systems.
+These framework, kernel, and hardware differences remain timing approximations.
+The [pinned benchmark harness](https://github.com/SemiAnalysisAI/agentx-harness/blob/49634d1c6c2e6dcc18979d704a65e7c7064efc49/src/aiperf/timing/branch_orchestrator.py) distinguishes dispatch-triggered overlapping SPAWN children from completion-triggered FORK children; TokenSim currently releases its minimal branch model from completion.
+Whole-forward measurement models and typed dependency triggers remain unimplemented.
+Accuracy outside the listed deployments and concurrency points requires separate measurements.
 
 ### Run time
 
-A one-hour simulated measurement window completes in about 9 minutes for B200 and 19 minutes for B300 on a single core of an AMD EPYC 7C13 processor.
-Peak host memory usage is 5.4 GB for B200 and 6.6 GB for B300, including roughly 30 seconds to load the 393 trace trees.
-Identical inputs and seeds produce bit-exact deterministic results.
+The selected B200 replay took 785.13 seconds of wall time on one CPU core, including trace loading, warmup, and the complete measurement window.
+The paired B300 experiments ran concurrently on separate pinned CPU cores, so their wall times do not establish a simulator speedup.
+The queue optimization has a separate result-equivalence test that compares complete result fields and replay logs.
+Identical inputs, configuration, and seeds preserve deterministic replay behavior.
 
 ## Core validation
 
@@ -250,3 +387,4 @@ python -m unittest discover \
 ```
 
 The test suite verifies request timing, trace replacement, cancellation accounting, first-in-first-out scheduling, prefill-to-decode transfer accounting, grouped KV cache restoration, reference integrity, time limits and diagnostic exports.
+Regression coverage also checks complete anchor coordinates, ragged invocation costs, committed speculative rounds, latency/interactivity populations, external capacity validation, and queue result equivalence.

@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import math
+from collections import Counter
 from typing import Any, Mapping
 from TokenSim.llm.llm_request import Request
 from TokenSim.operator_data.analytical import Calibration
 from TokenSim.operator_data.lookup import MissingOperatorDataError
+from TokenSim.operator_data.ragged_attention import generation_attention_query
 from TokenSim.errors import ConfigurationError
 from .stats import OperatorEstimate
 
@@ -84,18 +86,33 @@ class OperatorQueries:
     def _attention_decode(
         self, batch: int, context_len: int, query_width: int = 1
     ) -> float:
-        model = self.model
-        key = {
-            "attn_dtype": model.activation_dtype,
-            "kv_cache_dtype": model.kv_cache_dtype,
-            "batch_size": int(batch),
-            "context_len": int(context_len),
-            "num_heads": self.heads_local,
-            "num_kv_heads": self.kv_heads_local,
-            "head_dim": model.head_dim,
-            "window_size": model.sliding_window,
-        }
-        return self.query("generation_attention", key).latency_us
+        return self._attention_decode_batch(
+            {(int(context_len), int(query_width)): int(batch)}
+        )
+
+    def _attention_decode_batch(self, buckets) -> float:
+        """Price one ragged q=1 call; verification extends retain context work."""
+        contexts = Counter()
+        latency = 0.0
+        for (context, width), count in buckets.items():
+            if width == 1:
+                contexts[context] += count
+            else:
+                latency += self._attention_prefill(count, width, context)
+        if contexts:
+            table, key = generation_attention_query(
+                {
+                    "attn_dtype": self.model.activation_dtype,
+                    "kv_cache_dtype": self.model.kv_cache_dtype,
+                    "num_heads": self.heads_local,
+                    "num_kv_heads": self.kv_heads_local,
+                    "head_dim": self.model.head_dim,
+                    "window_size": self.model.sliding_window,
+                },
+                contexts,
+            )
+            latency += self.query(table, key).latency_us
+        return latency
 
     def _moe_layers(self, tokens: int, requests: list[Request]) -> float:
         """Expert compute for all MoE layers on this rank, including straggler time."""
