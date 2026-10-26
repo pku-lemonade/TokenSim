@@ -5,7 +5,6 @@ Each trace tree contains requests from a main agent and its subagents, along wit
 AgentX uses the same simulation engine, scheduler and latency calculations as other workloads.
 The replay implementation is in `TokenSim/workload/agentx.py`.
 Trace parsing and warmup preparation are in `TokenSim/workload/agentx_support`.
-The [accuracy and performance implementation plan](agentx-accuracy-implementation.md) specifies planned corrections, measurement requirements and validation gates.
 
 ## Install and obtain traces
 
@@ -55,8 +54,8 @@ Save the following configuration as `kv_transfer.json`.
 This example runs the complete DeepSeek-V4-Pro model on eight B200 GPUs.
 DEP8 uses eight data-parallel ranks to run separate request batches, with model experts distributed across all eight GPUs.
 Multi-token prediction (MTP) proposes three draft tokens at a time for the model to verify.
-The example imports the [B200 runtime KV profile](../data/runtime_memory/agentx_b200_440239.json) from InferenceX run 440239, with 32.27 GiB available per rank after runtime reservations.
-This profile is bound to the model, device, scheduler, parallelism, and connector settings shown here.
+The command uses analytical memory estimates by default.
+To reproduce the observed-capacity results below, prepare an external profile as described under [observed runtime KV capacity](#observed-runtime-kv-capacity) and add `--runtime_memory_profile runtime_memory.json`.
 
 ```bash
 tokensim --workload_type agentx_weka \
@@ -68,7 +67,6 @@ tokensim --workload_type agentx_weka \
   --max_num_seqs 49 \
   --max_num_batched_tokens 8192 \
   --gpu_memory_utilization 0.9 \
-  --runtime_memory_profile data/runtime_memory/agentx_b200_440239.json \
   --router_policy consistent_hash \
   --dp_lockstep \
   --dp_sync_interval 16 \
@@ -108,7 +106,9 @@ To run on eight B300 GPUs, use the argument values below and choose another resu
 | `--max_num_seqs` | 49 | 96 |
 | `--max_num_batched_tokens` | 8192 | 16384 |
 | `--gpu_memory_utilization` | 0.9 | 0.92 |
-| `--runtime_memory_profile` | `data/runtime_memory/agentx_b200_440239.json` | `data/runtime_memory/agentx_b300_439522.json` |
+
+Observed-capacity replay requires a separate profile for each deployment.
+The reported B200 and B300 runs use 32.27 GiB and 103.07 GiB of available KV memory per rank, respectively.
 
 Omit `--kv_transfer_config` to use the cluster's storage configuration.
 Both example clusters default to storing KV data only on GPUs.
@@ -198,17 +198,50 @@ Warmup resets those measured counts while preserving each continuing request's r
 ### Observed runtime KV capacity
 
 `--runtime_memory_profile PATH` imports available KV bytes recorded after the target serving framework reserves weights, CUDA graphs, and workspaces.
-This mode currently supports compressed attention on ordinary workers.
+This mode currently supports grouped compressed KV caches on ordinary workers.
 Without this argument, the existing analytical memory estimate determines capacity.
 The observation changes cache capacity; operator timing continues to use the configured tables and formulas.
-The bundled [B200 profile](../data/runtime_memory/agentx_b200_440239.json) reproduces the capacity input used in the reported B200 validation.
-Its source reports available bytes on rank 0 and equal equivalent-token counts across eight ranks; the profile records uniform rounded capacity as an assumption and retains 0.005 GiB of rounding uncertainty.
 
 Every compressed cache exports `worker_cache_budgets[].cache.memory_budget.deployment_identity` in the result JSON.
-Copy this identity from a probe using the target configuration into the profile below.
+Copy this identity from a probe using the target configuration into your external profile.
 The identity covers the complete model and device descriptors, parallel layout, block size, utilization, token and sequence limits, MTP depth, attention/MoE settings, and worker execution and connector settings.
 Profile reuse with a different identity fails before cache allocation.
 Framework version and graph strategy describe the source deployment and must be recorded explicitly; TokenSim cannot verify the configuration of an external server process.
+
+Run a short probe with the same model, device, parallel, scheduler, and connector settings as the target deployment.
+For the B200 command above, shorten `--agentx_profile_duration` to 1 and select `--no-agentx_warmup` to obtain the deployment identity without a full benchmark run.
+The following example creates `runtime_memory.json` from that result and the recorded B200 observation.
+
+```bash
+python - <<'PY'
+from dataclasses import asdict
+import json
+from pathlib import Path
+
+from TokenSim.config.runtime_memory import RuntimeMemoryProfile
+
+result = json.loads(Path("results/agentx/b200/agentx_c196.json").read_text())
+identity = result["worker_cache_budgets"][0]["cache"]["memory_budget"]["deployment_identity"]
+profile = RuntimeMemoryProfile(
+    deployment_identity=identity,
+    kv_bytes_per_rank=[int(32.27 * (1 << 30))] * 8,
+    uncertainty_bytes=int(0.005 * (1 << 30)),
+    provenance={
+        "source": "https://inferencex.semianalysis.com/agentx/telemetry?id=440239",
+        "measurement_id": "440239",
+        "framework": "vllm",
+        "framework_version": "0.17.2rc1.dev3682+g426e59f62",
+        "graph_strategy": "default CUDA graphs; max_num_seqs=49, max_num_batched_tokens=8192, K=3",
+        "rank_evidence": "rank 0 available bytes; uniform rounded capacity assumed across eight ranks",
+    },
+)
+Path("runtime_memory.json").write_text(json.dumps(asdict(profile), indent=2) + "\n")
+PY
+```
+
+Repeat the command with `--runtime_memory_profile runtime_memory.json` to select the observed capacity.
+For B300, use its probe result, 103.07 GiB per rank, reference ID 439522, and the corresponding capture settings from the table above.
+Profiles belong to the measured deployment and are supplied by the caller; the package does not include benchmark-specific snapshots.
 
 | Profile field | Meaning |
 | --- | --- |
@@ -273,6 +306,7 @@ For example, `interactivity_tps.p90` is `1 / tpot_s.p90`, and normalized interac
 Percentiles use NumPy linear interpolation; computing percentiles of reciprocal samples would reverse the latency tail and change the interpolated value.
 Results record `interactivity_percentile_semantics: inverse_of_matching_latency_percentile` to identify this convention.
 Latency summaries exclude warmup, cancelled and unfinished requests.
+Throughput divides successful output tokens by their observation span, including successful grace-period completions, so its denominator can exceed the issue window.
 Engine statistics record repeated computation, time spent waiting for transfers and the measurement or formula used to estimate each operator's latency.
 Model-specific fields appear only when used.
 Unknown result fields cause an error.
@@ -317,32 +351,25 @@ Percentage error is `(simulated - measured) / measured × 100%`.
 The selected B200 run has output-throughput error of -6.99% and TTFT/ITL p50/p90 errors between +3.35% and +9.50%.
 Its ITL p99 error remains +40.87%, and its end-to-end p90 error is +10.84%.
 The observed capacity is an input from the measured deployment; this result does not validate the analytical memory estimate on unmeasured configurations.
+B200's analytical estimate was 25.60 GiB per rank; importing 32.27 GiB reduced throughput error from -42.32% to -6.99% and ITL p90 error from +104.55% to +9.50%.
+The successful-request GPU cache ratio increased from 37.28% to 74.07%, with request preemptions falling from 28 to zero.
+The available-byte observation comes from rank 0; the experiment assumes uniform rounded capacity across ranks and retains 0.005 GiB of rounding uncertainty.
 
 B300's analytical and imported-capacity runs were repeated with identical simulator code, seeds, operator timing, scheduling, and connector settings.
 The documented B300 run minimizes the largest absolute error across output throughput, TTFT p50/p90, and ITL p50/p90 among those two runs.
 Importing B300 capacity reduces that maximum from 15.62% to 15.24%, while throughput error changes from -14.25% to -14.45% and median ITL error from +13.07% to +13.55%.
 These small tradeoffs do not establish a uniform improvement across metrics.
-The [full validation report](agentx-validation.md) retains both capacity modes, the earlier before/after matrix, individual regressions, and the selection rule.
-The [machine-readable results](data/agentx-selected-results.json) retain every available metric, source run IDs, simulator revisions, and result hashes.
+B300's analytical capacity was 104.44 GiB per rank, compared with the imported 103.07 GiB.
+Both modes have zero preemptions and recomputed tokens; their GPU cache ratios are 94.72% and 94.67%, respectively.
+The imported geometry yields 5,416,880 equivalent tokens per rank, within the recorded range of 5,416,820 to 5,416,940.
+The analytical replay's requests, events, and cache time series match the frozen baseline byte-for-byte, and the B200 profile replay matches its capacity diagnostic in the same three files.
 Cache hit ratios remain diagnostics because hardware server counters and successful-request admission counters use different populations.
 
-### Regression checks
-
-Use `scripts/compare_agentx_results.py` to compare a frozen baseline/current matrix against archived hardware points.
-Its manifest names a `reference_directory` containing `inferencex_key_points.json` and a `cases` array with `label`, `hardware`, `reference_id`, `concurrency`, `output`, and the complete simulation `args`.
-Each hardware needs exactly one `baseline` case and one `current` case with identical arguments except `--results_path`.
-The report retains signed metric errors, changes in absolute error, individual regressions, incomplete runs, and SHA-256 hashes of its inputs.
-Cache ratios remain diagnostics because hardware server counters and successful-request admission counters use different populations.
-
-```bash
-python scripts/compare_agentx_results.py \
-  --manifest results/agentx-accuracy-20261026/manifest.json \
-  --output results/agentx-accuracy-20261026/comparison.json \
-  --require-no-regression
-```
-
-The command exits with status 2 for incomplete or invalid comparisons and status 1 when `--require-no-regression` detects a throughput, median/tail TTFT, or median/tail ITL regression.
-Omitting this flag exports a valid comparison containing regressions without treating them as improvements.
+The reference serving image is vLLM `0.17.2rc1.dev3682+g426e59f62`; imported timing tables include vLLM 0.24.0 and SGLang 0.5.10 measurements from related Blackwell systems.
+These framework, kernel, and hardware differences remain timing approximations.
+The [pinned benchmark harness](https://github.com/SemiAnalysisAI/agentx-harness/blob/49634d1c6c2e6dcc18979d704a65e7c7064efc49/src/aiperf/timing/branch_orchestrator.py) distinguishes dispatch-triggered overlapping SPAWN children from completion-triggered FORK children; TokenSim currently releases its minimal branch model from completion.
+Whole-forward measurement models and typed dependency triggers remain unimplemented.
+Accuracy outside the listed deployments and concurrency points requires separate measurements.
 
 ### Run time
 
@@ -360,3 +387,4 @@ python -m unittest discover \
 ```
 
 The test suite verifies request timing, trace replacement, cancellation accounting, first-in-first-out scheduling, prefill-to-decode transfer accounting, grouped KV cache restoration, reference integrity, time limits and diagnostic exports.
+Regression coverage also checks complete anchor coordinates, ragged invocation costs, committed speculative rounds, latency/interactivity populations, external capacity validation, and queue result equivalence.

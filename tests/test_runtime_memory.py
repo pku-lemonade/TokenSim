@@ -11,7 +11,6 @@ from TokenSim.cli import build_parser
 from TokenSim.cli.configuration import simulation_config
 from TokenSim.config.cache_config import CacheConfig
 from TokenSim.config.cluster_config import ClusterConfig
-from TokenSim.config.parallel_config import ParallelRankInfo
 from TokenSim.config.runtime_memory import RuntimeMemoryProfile, runtime_memory_identity
 from TokenSim.errors import ConfigurationError
 from TokenSim.hardware import HardwareContext
@@ -49,14 +48,14 @@ class RuntimeMemoryTest(unittest.TestCase):
     def profile(self, **changes):
         values = dict(
             deployment_identity=self.binding(),
-            kv_bytes_per_rank=[int(32.27 * (1 << 30))] * 8,
-            uncertainty_bytes=int(0.005 * (1 << 30)),
+            kv_bytes_per_rank=[32 * (1 << 30)] * 8,
+            uncertainty_bytes=1 << 20,
             provenance=dict(
-                source="https://inferencex.semianalysis.com/agentx/telemetry?id=440239",
-                measurement_id="440239",
+                source="synthetic-runtime-memory-fixture",
+                measurement_id="fixture-v1",
                 framework="vllm",
-                framework_version="426e59f62",
-                graph_strategy="recorded deployment default",
+                framework_version="test-version",
+                graph_strategy="synthetic capture configuration",
             ),
         )
         return RuntimeMemoryProfile.from_value(values | changes)
@@ -93,7 +92,7 @@ class RuntimeMemoryTest(unittest.TestCase):
         )
         observation = observed.to_dict()["memory_budget"]["runtime_observation"]
         self.assertFalse(observation["deductions_applied_to_observation"])
-        self.assertEqual(observation["provenance"]["measurement_id"], "440239")
+        self.assertEqual(observation["provenance"]["measurement_id"], "fixture-v1")
         self.assertEqual(len(observation["profile_sha256"]), 64)
 
     def test_incompatible_scheduler_and_geometry_fail_before_allocation(self):
