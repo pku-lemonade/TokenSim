@@ -30,6 +30,7 @@ All results use the bundled [fidelity configuration](../experiments/lpx/fidelity
 | Per-workload acceptance | [Workload-acceptance control](lpx-workload-acceptance.md) | 29 setups reach both AA values and both coding values with one acceptance per speed; every fit needs a higher acceptance at 100K than at 10K |
 | Published acceptance | [Acceptance evidence](lpx-acceptance-evidence.md) | No drafter type matches any fit for all four speeds; capable drafters imply AA steps 1.3 to 3.2 times longer than simulated |
 | GroqChip v1 BERT check | [BERT validation](groqchip-v1-bert-validation.md) | The LP30 method with matrix efficiency 0.3 predicts the measured BERT-base layer within 6.5% to 9.5%; decode weight streaming, communication and fixed costs remain untested |
+| GroqChip v1 Llama-2 70B check | [Llama-2 validation](groqchip-v1-llama2-validation.md) | With the direct all-reduce that production uses, simulated decode is 3.5 to 5.2 times faster than the published 241 to 300 tokens per second |
 
 ## DCP
 
@@ -115,6 +116,14 @@ The check supports the matrix efficiency for compute-bound work on one chip.
 It does not test decode weight streaming, collectives, chip-to-chip hops or fixed per-operator costs, where a decode-step underestimate would have to sit.
 The paper's 20 TB/s operand bandwidth is one quarter of the chip's quoted 80 TB/s memory bandwidth, which makes weight streaming a candidate.
 
+## GroqChip v1 Llama-2 70B check
+
+The [Llama-2 validation](groqchip-v1-llama2-validation.md) simulates batch-one Llama-2 70B decode on 328 to 656 first-generation chips.
+With the direct all-reduce that the production system uses, the simulation gives 1,036 to 1,256 tokens per second, 3.5 to 5.2 times the published 241 to 300.
+The default 14-round ring all-reduce lands at 313 to 705 tokens per second, but the production system does not use it.
+The published speeds come from an unknown production configuration under unknown load, so the check cannot size the error.
+It agrees in direction with the published acceptance: both suggest that the simulated decode step is shorter than real decode on Groq hardware.
+
 ## Ablation
 
 The table lists every tested combination and whether it matches both AA values within 5%.
@@ -161,7 +170,7 @@ No result calibrates an LP30 operator cost against measured hardware.
 
 | Item | Purpose |
 | --- | --- |
-| GroqChip v1 multi-chip validation | Compare simulated multi-chip decode with the GroqCloud Llama-2 70B throughput to test weight streaming, collectives and fixed costs; the BERT check covered only single-chip matrix work |
+| Measured batch-one Groq decode | Obtain a batch-one decode latency on a known Groq configuration, because the GroqCloud speeds describe an unknown production configuration and load |
 | LP30 operand bandwidth | Establish whether LP30's matrix-unit operand bandwidth is below its 150 TB/s SRAM bandwidth, as GroqChip v1's 20 TB/s is below its 80 TB/s |
 | LP30 FP8 attention path | Establish whether KV conversion runs on the vector unit, which decides whether a larger attention group helps |
 | Measured acceptance | Replace the fitted acceptances with lookup and model drafting on 10K and 100K long-document prompts and on coding prompts, including whether acceptance rises at 100K |
