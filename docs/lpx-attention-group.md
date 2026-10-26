@@ -122,7 +122,25 @@ TP32/PP8 with `KVP = 8` admitted every point.
 
 Every increment matches its expectation to 0.1 microseconds, and background requests add at most 1.1 microseconds to it.
 The TP32 step without background is approximately 87 microseconds longer than the TP16/PP8 step with `KVP = 4`.
-This record does not break that difference down by operator.
+
+### Base step
+
+A breakdown on 2026-10-26 removed one category of work at a time from the modeled 10K step at efficiency 0.50 and recorded how much the step shrank.
+
+| Removed work | TP16/PP8, `KVP = 4` | TP32/PP4, `KVP = 8` | Difference |
+| --- | ---: | ---: | ---: |
+| TP-group collectives: all-reduce, all-to-all and all-gather | 89.5 µs | 188.5 µs | +99.0 µs |
+| Attention compute | 36.6 µs | 34.0 µs | −2.6 µs |
+| Feed-forward compute | 18.8 µs | 14.3 µs | −4.5 µs |
+| Normalization, residual and output-head compute | 20.3 µs | 20.0 µs | −0.3 µs |
+| Pipeline-stage transfers | 6.2 µs | 2.6 µs | −3.5 µs |
+| Whole step | 176.4 µs | 263.4 µs | +87.0 µs |
+
+The removals sum to the whole step within 5 microseconds, most of which is the 4-microsecond graph submission.
+The TP-group collectives account for the whole difference, while compute shrinks by about 7 microseconds because batch-one operators are dominated by fixed per-operator costs.
+The collective cost ratio of 2.11 is close to the ratio of 2.14 between the 0.75-microsecond middle fabric tier and the 0.35-microsecond tier inside a 16-chip tray.
+A TP32 group spans two trays, so its collectives probably use the middle tier, but this record has not repriced the collectives tier by tier.
+The TP32 matches therefore also depend on the assumed middle-tier latency.
 
 Six one-token points match both AA values within 5%:
 

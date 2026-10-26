@@ -1,6 +1,6 @@
 # Progress on reproducing the AA Gemma 4 31B LPX results
 
-Record date: 2026-10-25.
+Record date: 2026-10-26.
 This page summarizes the work to reproduce the Artificial Analysis (AA) Gemma 4 31B results on NVIDIA Groq 3 LPX (LP30) hardware with TokenSim.
 Each section links to the detailed record that holds the method, the expectations recorded before each run and the complete results.
 
@@ -27,6 +27,7 @@ All results use the bundled [fidelity configuration](../experiments/lpx/fidelity
 | Batched serving | [Batched-serving control](lpx-batched-serving.md) | Background traffic explains the 10K level but not the flat context dependence; no match in 156 points |
 | Speculative decoding | [Speculative-decoding control](lpx-speculative-decoding.md) | Speculation shared with background traffic matches both AA values within 5% on TP16 |
 | Attention-group size | [Attention-group control](lpx-attention-group.md) | TP32 with `KVP = 8` matches without speculation, and with `K = 3` speculation it also reaches the coding example, at attention matrix efficiency 0.30 or more |
+| Per-workload acceptance | [Workload-acceptance control](lpx-workload-acceptance.md) | 29 setups reach both AA values and both coding values with one acceptance per speed; every fit needs a higher acceptance at 100K than at 10K |
 
 ## DCP
 
@@ -84,9 +85,20 @@ Without background and draft cost, the same layout reaches the 10,996 TPS coding
 One draft length therefore covers both on one layout.
 No TP32 point matches at efficiency 0.10, the study value.
 
+## Per-workload acceptance
+
+A shared acceptance for the AA 10K and 100K workloads makes the AA speed proportional to the reciprocal of the step time, so it cannot reproduce the published rise from 10K to 100K.
+The [workload-acceptance control](lpx-workload-acceptance.md) fits one acceptance to each of the four published speeds and prices the coding prompt under the same background traffic as the AA prompts.
+29 of 105 setups reach all four speeds, all with `K = 3` or `K = 7`.
+`K = 7` with one background request reaches them on every layout at efficiency 0.50, with AA acceptances of 0.25 to 0.35 at 10K and 0.41 to 0.47 at 100K and coding-example acceptances of 0.82 to 0.87.
+Without background, TP32/PP4 with `KVP = 8` at `K = 7` needs 0.147, 0.262, 0.401 and 0.774.
+Every fit needs a higher acceptance at 100K than at 10K, and the gap shrinks from 0.20 on TP16/PP8 without `KVP` to 0.07 on TP32/PP4 with `KVP = 8`.
+Public reports describe the AA measurement as 50 sequential requests at client concurrency one against a private, pre-release endpoint, so background requests are better read as unidentified fixed time per step than as other users.
+
 ## Ablation
 
 The table lists every tested combination and whether it matches both AA values within 5%.
+Rows marked "one acceptance per speed" fit all four published speeds exactly instead.
 
 | DCP | Background | Speculation | Attention group | Result |
 | --- | --- | --- | --- | --- |
@@ -103,12 +115,18 @@ The table lists every tested combination and whether it matches both AA values w
 | `KVP = 8` | 1 or 2 requests | none | TP32 | Yes: 6 points at efficiency 0.30 or 0.50 |
 | `KVP = 8` | none to 7 requests | `K = 1` or `K = 3` | TP32 | Yes: 21 points at efficiency 0.50 |
 | `KVP = 8` | any | any | TP32, efficiency 0.10 | No |
+| none to `KVP = 8` | none or 1 request | `K = 3` or `K = 7`, one acceptance per speed | TP16 or TP32 | Yes: 29 setups reach all four speeds, including the coding values |
+| any | any | `K = 1`, one acceptance per speed | TP16 or TP32 | No: the coding example is unreachable |
 
-Every match uses DCP and some context-independent work per step, from background requests, verification of draft tokens or both.
+With one acceptance shared by both AA workloads, every match uses DCP and some context-independent work per step, from background requests, verification of draft tokens or both.
+With one acceptance per published speed, DCP is no longer required, and it reduces the acceptance gap between the AA workloads.
 Speculation is required on TP16 and optional on TP32.
 TP32 is required for a match without speculation and depends on an attention matrix efficiency of at least 0.30.
 
 ## Current position
+
+With one acceptance per published speed, many setups reproduce the AA pair, the 4,767 TPS coding median and the 10,996 TPS coding example together, including the published rise from 10K to 100K.
+The fitted acceptances, not the fit itself, now discriminate between setups.
 
 The simulator reproduces both published AA values within 5% under several fitted serving regimes on 128 or 256 chips.
 Every regime combines DCP with additional context-independent work per step.
@@ -125,7 +143,7 @@ No result calibrates an LP30 operator cost against measured hardware.
 | --- | --- |
 | GroqChip v1 validation | Test the operator cost-modeling method against measured results from the previous Groq chip |
 | LP30 FP8 attention path | Establish whether KV conversion runs on the vector unit, which decides whether a larger attention group helps |
-| Measured acceptance | Replace the fitted acceptances with a Gemma drafter run on AA-length prompts and coding prompts |
+| Measured acceptance | Replace the fitted acceptances with lookup and model drafting on 10K and 100K long-document prompts and on coding prompts, including whether acceptance rises at 100K |
 | Lift the 16-row forward limit | Test longer drafts and heavier background traffic in one forward |
 | Native token conversion | Replace the assumed one-to-one conversion between Gemma tokens and AA `o200k_base` tokens |
 
@@ -142,3 +160,4 @@ The work is on branch `lpx-experiment`, pushed to `origin/lpx-context-parallel`.
 | `15e86e9` | Batched-serving control |
 | `0aec3d4` | Speculative-decoding control |
 | `d90008a` | Progress summary |
+| `fddccce` | Attention-group control |
