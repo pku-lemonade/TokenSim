@@ -88,6 +88,9 @@ A flat curve still conflicts with the simulation.
 The simulated speed falls by 35% without KV parallelism and by 25% with it.
 The Helix-style KV parallelism, which addresses the published statement that LPX parallelizes long-context KV cache, removes only part of that decline.
 The remaining decline comes from global-attention matrix work, which KV parallelism cannot reduce.
+The [attention-group control](lpx-attention-group.md) refined this on 2026-10-25.
+Matrix work bounds the remaining decline only at attention matrix efficiency 0.10, and vector-unit FP8 KV conversion bounds it from efficiency 0.30 upward.
+Neither shrinks with KV parallelism inside a fixed TP group, and both shrink when TP32 with `KVP = 8` doubles the chips that share each global layer.
 
 A configuration that matches the published pair therefore needs a mechanism outside the simulated one.
 Candidates include other requests in the same forward pass, speculative decoding with content-dependent acceptance, a measurement-window effect or different deployments for the two context lengths.
