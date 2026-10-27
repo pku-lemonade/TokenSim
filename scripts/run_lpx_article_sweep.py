@@ -54,7 +54,7 @@ def article_config(config):
     return {**config, "fabric": fabric}
 
 
-def run_point(runner, config, name, mfu):
+def run_point(runner, config, name, mfu, queries=1, namespace="article-sweep"):
     spec = LAYOUTS[name]
     assert spec["tp"] * spec["pp"] == CHIPS
     config = {**config, "compute": {**config["compute"], "attention_mfu": mfu}}
@@ -65,9 +65,10 @@ def run_point(runner, config, name, mfu):
         layout=asdict(layout),
         layer_counts=None,
         attention_mfu=mfu,
+        queries=queries,
         workloads=[list(w) for w in workloads],
         config=config,
-        metric="native batch-one decode step time",
+        metric="native batch-one step time verifying q query tokens",
     )
 
     def execute(directory):
@@ -83,15 +84,16 @@ def run_point(runner, config, name, mfu):
                 hardware,
                 model,
                 layout,
-                namespace="article-sweep",
+                namespace=namespace,
                 dag_template_cache=True,
                 colocated_dense_reuse=True,
                 pipeline_layer_counts=None,
-                micro_batch=1,
+                micro_batch=queries,
                 **kv,
             )
             for workload, context, reserve in workloads:
-                steps[workload] = step(runtime, layout, 1, context, reserve, 0, 0) * 1e6
+                seconds = step(runtime, layout, queries, context, reserve, 0, 0)
+                steps[workload] = seconds * 1e6
         except ConfigurationError as exc:
             return dict(parameters=parameters, status="infeasible", reason=str(exc))
         return dict(
@@ -108,6 +110,7 @@ def run_point(runner, config, name, mfu):
             dict(
                 layout=name,
                 mfu=mfu,
+                queries=queries,
                 status=result["status"],
                 step_us={k: round(v, 1) for k, v in result.get("step_us", {}).items()},
                 reused=receipt.reused,
