@@ -82,8 +82,9 @@ The thinking makes `combined` requests more alike, because most of their tokens 
 
 Plain decoding cannot produce NVIDIA's coding spread.
 Its step depends on the context alone, so its speeds differ by 0.1% across requests, while NVIDIA's P80 is 15.8% and its maximum 46.4% above the median.
-Measurement noise or prompt-length differences of that size are unlikely on a dedicated system, because 100K tokens of context add only about 5% to the step.
-The SPEED-Bench coding run therefore most likely used speculative decoding or another mechanism whose speed depends on the content.
+Prompt-length differences of that size are unlikely, because 100K tokens of context add only about 5% to the step.
+NVIDIA's slide does not state the load, and requests sharing the system with a changing number of other requests would also spread speeds.
+If the run served one request at a time, it most likely used speculative decoding or another mechanism whose speed depends on the content.
 
 Lookup drafting on the CodeX answers without thinking reproduces the maximum/median ratio, and with thinking it reaches about 1.26.
 Its P80/median ratio of 1.04 to 1.09 is about half of NVIDIA's 1.158, so NVIDIA's requests differ more from each other in the middle of the distribution.
@@ -91,6 +92,6 @@ SPEED-Bench selects its prompts for semantic diversity, while the CodeX prompts 
 A drafter whose acceptance varies more between requests, such as a trained draft model, could also widen it.
 The data does not separate these causes.
 
-The result supports drafting in the build that produced the coding values.
+Under that assumption, the result supports drafting in the build that produced the coding values.
 It strengthens the lookup explanation of the [lookup-coding record](lpx-lookup-coding.md) when the AA deployment used the same build, which the AA footnotes' description of an "updated" deployment leaves open.
-The [API-outputs record](lpx-api-outputs.md) repeats this test on Gemma's answers to SPEED-Bench's own 80 coding prompts, where lookup drafting of 3 tokens without thinking gives a P80/median ratio of 1.158 and a maximum/median ratio of 1.610.
+The [API-outputs record](lpx-api-outputs.md) repeats this test on Gemma's answers to SPEED-Bench's own 80 coding prompts, where the best of 16 lookup settings, lookup of 3 tokens without thinking, gives a P80/median ratio of 1.158 and a maximum/median ratio of 1.610.

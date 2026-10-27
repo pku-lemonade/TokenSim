@@ -207,16 +207,32 @@ The SPEED-Bench median without thinking allows at most 21 µs, so no lookup sett
 6. Held: without thinking at `K = 3`, the median is 4,863 TPS without extra time.
 7. Missed: code completion commits 1.96 tokens per step at `K = 7`, and its fastest request reaches 9,785 TPS.
 
+## Differences from the published setup
+
+The simulated hardware follows the published conditions: 256 LP30 chips, high tensor parallelism and the article's link bandwidth.
+The generated text differs from the published runs in ways that limit what these measurements show:
+
+| Setting | Published runs | This record |
+| --- | --- | --- |
+| AA prompts | Not published | Classic Project Gutenberg books with two questions written for this record; Gemma has likely seen the books in training |
+| Model build | "Updated private, pre-release Gemma4-31B-LPX deployment" | Public `google/gemma-4-31b-it` on Parasail's FP8 endpoint |
+| Thinking | Not stated for AA or SPEED-Bench | Chosen per set; the coding match holds only without thinking |
+| Drafter | Not stated whether either run drafted, or with which drafter | The lookup drafter of the earlier records, with `K` and `n_min` varied |
+| Sampling | Not stated | Temperature 0 |
+| SPEED-Bench split, load and context | The slide names SPEED-Bench coding without the split or the load | The qualitative split at batch one, priced at a 16K input although the prompts hold about 130 tokens; at their own length the median of the matching setting rises 1.2% and its ratios by at most 0.002 |
+| AA token counting | `o200k_base` | `o200k_base` |
+
 ## Interpretation
 
-Lookup drafting without thinking on TP32/PP8 with DCP 8 reproduces all three of NVIDIA's SPEED-Bench coding statistics on SPEED-Bench's own prompts: the median and P80 within 2% and the maximum within 13%, with 0 to 21 µs of extra time per step.
-That fits the [coding-spread record](lpx-coding-spread.md), whose competitive-programming stand-ins gave about half of NVIDIA's P80 spread.
+The SPEED-Bench coding result shows that lookup drafting can produce NVIDIA's coding statistics on TP32/PP8 with DCP 8.
+The best of 16 settings, chosen after the results, gives the median and P80 within 2% and the maximum within 13% with 0 to 21 µs of extra time per step.
+With 16 settings and a free extra time, matching three statistics is weak evidence of which drafter, if any, NVIDIA used.
+It agrees with the [coding-spread record](lpx-coding-spread.md), which found that plain decoding cannot produce NVIDIA's spread.
 
-On AA-like document questions, lookup acceptance is the same at 10K and 100K within about 0.01, so lookup drafting does not explain AA's higher speed at 100K.
-The token ratio of about 1.0 leaves the plain-decoding gap at 13 to 24 µs per step.
-With lookup at the measured acceptance, the AA values need 40 to 99 µs of extra time with thinking and 26 to 78 µs without, while the coding values without thinking allow at most 21 µs.
+The document measurements are more robust, because they agree with earlier records on other data.
+The token ratio of 1.006 on long English prose answers matches the 1.006 to 1.035 measured on public prose in the [token-ratio record](lpx-token-ratio.md), so the ratio is unlikely to remove the plain-decoding gap of 13 to 24 µs per step.
+Lookup acceptance is the same at 10K and 100K within about 0.01, as the [lookup-context record](lpx-lookup-context.md) found on agent traces, so more context is unlikely to explain AA's higher speed at 100K.
 
-The published values are therefore consistent with one TP32/PP8 DCP 8 build and one extra time of about 13 to 21 µs per step only if the coding run drafted and the AA run did not, or drafted with almost no gain.
-A lookup drafter accepts about 0.15 to 0.3 per position on AA-like answers, so an AA run with the same drafter would be faster than measured unless AA's questions give it much less to copy than these books.
-The coding values with thinking fit the AA values with lookup at 40 to 63 µs, but their P80 spread is 1.08 to 1.12, below NVIDIA's 1.158.
-Gemma has likely seen these books in training, AA's prompts remain unpublished, and the replay assumes a lookup drafter, so these results narrow the explanations without identifying the deployment.
+With lookup at the acceptance measured on these books, the AA values need 26 to 99 µs of extra time per step, while the coding values without thinking allow at most 21 µs.
+One possibility is therefore one build with about 13 to 21 µs of unmodeled time per step, in which the coding run drafted and the AA run did not.
+AA's prompts may give a drafter less to copy than these books, another drafter may behave differently, and the AA build may differ from the SPEED-Bench build, so the data does not establish this possibility.
