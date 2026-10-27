@@ -35,6 +35,7 @@ All results use the bundled [fidelity configuration](../experiments/lpx/fidelity
 | Published-condition sweep | [Article-condition sweep](lpx-article-sweep.md) | At batch one without speculation on 256 chips, only TP32/PP8 with `KVP = 8` at efficiency 0.30 or more matches, and only with 14 to 25 µs of unmodeled time per step |
 | Token ratio | [Token-ratio record](lpx-token-ratio.md) | Gemma 4 produces 1.006 to 1.035 tokens per `o200k_base` token on prose and 1.027 to 1.100 on reasoning traces; at 1.053 to 1.090, TP32/PP8 with `KVP = 8` matches both AA values without extra time per step |
 | Cross-tray latency | [Tray-latency record](lpx-tray-latency.md) | The TP32/PP8 step grows by about 25 µs per 0.1 µs of cross-tray latency; 0.81 to 0.85 µs instead of the assumed 0.75 µs matches both AA values without extra time at one token per AA token, and about 0.73 to 0.77 µs at the measured reasoning ratio |
+| GroqRack Llama-2-7B check | [GroqRack validation](groqrack-llama2-7b-validation.md) | A measured 2.98 to 3.05 ms per token on 72 known first-generation cards exceeds the simulated forward by 2.70 to 2.83 ms; adding that per-token host cost to the 70B check gives 264 to 286 tokens per second, inside GroqCloud's 241 to 300 |
 
 ## DCP
 

@@ -19,7 +19,9 @@ Llama-2 70B in FP16 needs about 140 GB, which exceeds the 132.9 GB of SRAM on 57
 
 ## Method
 
-[`scripts/validate_groqchip_llama2.py`](../scripts/validate_groqchip_llama2.py) builds the native attention/feed-forward runtime on the `groqchip_v1` device with the `groq_node8_rack72` topology and its 4-lane, 25 Gbps links.
+[`scripts/validate_groqchip_llama2.py`](../scripts/validate_groqchip_llama2.py) builds the native attention/feed-forward runtime on the `groqchip_v1` device, whose collectives and pipeline handoffs use the device's `groq_c2c_25g` links of 4 lanes at 25 Gb/s.
+The runtime's nominal placement topology is `rubin_nvl72`, and it does not enter the step: on 2026-10-26, setting that topology's NVLink latency to 50 µs left the TP8/PP41 direct step at 908.68 µs.
+An earlier version of this record named the `groq_node8_rack72` topology instead.
 It prices one batch-one decode forward at a context of 200 tokens and attributes the critical path to operations.
 The first and last pipeline stages hold one layer each beside the embedding and output head, and the other stages share the remaining 78 layers evenly.
 Operators use TokenSim's generic Groq model with matrix efficiency 0.8, attention efficiency 0.6 and a 0.2-microsecond launch per operator.
@@ -70,3 +72,4 @@ Several causes could contribute:
 The check cannot separate these causes, because the published speeds describe an unknown production configuration.
 It agrees in direction with the [acceptance evidence](lpx-acceptance-evidence.md): both suggest that the simulated decode step is shorter than real decode on Groq hardware.
 A measured batch-one decode latency on a known Groq configuration would be needed to calibrate the size of the difference.
+The [GroqRack Llama-2-7B check](groqrack-llama2-7b-validation.md) supplies one: a fixed per-token cost of 2.70 to 2.83 ms outside the forward, measured on a host-driven decode loop, brings these direct-all-reduce steps to 264 to 286 tokens per second.

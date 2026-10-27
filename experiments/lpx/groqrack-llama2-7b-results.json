@@ -1,0 +1,434 @@
+{
+  "measured_tpot_ms": [
+    2.98,
+    3.05
+  ],
+  "contexts": [
+    [
+      150,
+      200
+    ],
+    [
+      2400,
+      3200
+    ]
+  ],
+  "cases": [
+    {
+      "layout": "tp8-pp9",
+      "tp": 8,
+      "pp": 9,
+      "algorithm": "ring",
+      "hop_us": 0.5,
+      "context": 150,
+      "step_us": 645.1205911111108,
+      "missing_ms": [
+        2.3348794088888893,
+        2.404879408888889
+      ],
+      "critical_path_us": {
+        "af_pipeline_handoff": 9.242879999999916,
+        "all_gather": 7.979999999999988,
+        "all_reduce": 529.5471999999993,
+        "attention": 46.02766222222209,
+        "dense_ffn": 34.24420977777773,
+        "embedding_lookup": 0.2002275555555557,
+        "final_norm": 0.2003413333333476,
+        "lm_head": 0.6553359999999717,
+        "post_attention_norm": 6.41092266666688,
+        "residual": 6.4109226666668935,
+        "token_selection": 0.20088888888893183
+      }
+    },
+    {
+      "layout": "tp8-pp9",
+      "tp": 8,
+      "pp": 9,
+      "algorithm": "ring",
+      "hop_us": 0.5,
+      "context": 2400,
+      "step_us": 647.1685911111107,
+      "missing_ms": [
+        2.3328314088888895,
+        2.402831408888889
+      ],
+      "critical_path_us": {
+        "af_pipeline_handoff": 9.242879999999916,
+        "all_gather": 7.979999999999988,
+        "all_reduce": 529.5471999999993,
+        "attention": 48.075662222222064,
+        "dense_ffn": 34.244209777777726,
+        "embedding_lookup": 0.2002275555555557,
+        "final_norm": 0.2003413333333476,
+        "lm_head": 0.6553359999999717,
+        "post_attention_norm": 6.41092266666688,
+        "residual": 6.4109226666668935,
+        "token_selection": 0.20088888888893183
+      }
+    },
+    {
+      "layout": "tp4-pp18",
+      "tp": 4,
+      "pp": 18,
+      "algorithm": "ring",
+      "hop_us": 0.5,
+      "context": 150,
+      "step_us": 405.31991644444395,
+      "missing_ms": [
+        2.574680083555556,
+        2.644680083555556
+      ],
+      "critical_path_us": {
+        "af_pipeline_handoff": 19.641120000000075,
+        "all_gather": 5.34,
+        "all_reduce": 258.8975999999997,
+        "attention": 53.62619733333314,
+        "dense_ffn": 49.28113777777753,
+        "embedding_lookup": 0.2002275555555557,
+        "final_norm": 0.2003413333333476,
+        "lm_head": 1.1105582222222117,
+        "post_attention_norm": 6.410922666666731,
+        "residual": 6.410922666666731,
+        "token_selection": 0.20088888888887763
+      }
+    },
+    {
+      "layout": "tp4-pp18",
+      "tp": 4,
+      "pp": 18,
+      "algorithm": "ring",
+      "hop_us": 0.5,
+      "context": 2400,
+      "step_us": 409.4159164444441,
+      "missing_ms": [
+        2.570584083555556,
+        2.640584083555556
+      ],
+      "critical_path_us": {
+        "af_pipeline_handoff": 19.641120000000075,
+        "all_gather": 5.34,
+        "all_reduce": 258.8975999999997,
+        "attention": 57.722197333333334,
+        "dense_ffn": 49.28113777777753,
+        "embedding_lookup": 0.2002275555555557,
+        "final_norm": 0.2003413333333476,
+        "lm_head": 1.1105582222222117,
+        "post_attention_norm": 6.410922666666731,
+        "residual": 6.410922666666731,
+        "token_selection": 0.20088888888887763
+      }
+    },
+    {
+      "layout": "tp8-pp9",
+      "tp": 8,
+      "pp": 9,
+      "algorithm": "ring",
+      "hop_us": 0.3,
+      "context": 150,
+      "step_us": 460.12059111111097,
+      "missing_ms": [
+        2.519879408888889,
+        2.589879408888889
+      ],
+      "critical_path_us": {
+        "af_pipeline_handoff": 7.642879999999993,
+        "all_gather": 6.580000000000008,
+        "all_reduce": 347.5471999999996,
+        "attention": 46.02766222222209,
+        "dense_ffn": 34.244209777777726,
+        "embedding_lookup": 0.2002275555555557,
+        "final_norm": 0.2003413333333476,
+        "lm_head": 0.6553360000000259,
+        "post_attention_norm": 6.410922666666772,
+        "residual": 6.410922666666798,
+        "token_selection": 0.20088888888887763
+      }
+    },
+    {
+      "layout": "tp8-pp9",
+      "tp": 8,
+      "pp": 9,
+      "algorithm": "ring",
+      "hop_us": 0.3,
+      "context": 2400,
+      "step_us": 462.16859111111063,
+      "missing_ms": [
+        2.517831408888889,
+        2.5878314088888894
+      ],
+      "critical_path_us": {
+        "af_pipeline_handoff": 7.642879999999993,
+        "all_gather": 6.580000000000008,
+        "all_reduce": 347.5471999999996,
+        "attention": 48.0756622222218,
+        "dense_ffn": 34.244209777777726,
+        "embedding_lookup": 0.2002275555555557,
+        "final_norm": 0.2003413333333476,
+        "lm_head": 0.6553360000000259,
+        "post_attention_norm": 6.410922666666772,
+        "residual": 6.410922666666798,
+        "token_selection": 0.20088888888887763
+      }
+    },
+    {
+      "layout": "tp4-pp18",
+      "tp": 4,
+      "pp": 18,
+      "algorithm": "ring",
+      "hop_us": 0.3,
+      "context": 150,
+      "step_us": 323.3199164444442,
+      "missing_ms": [
+        2.656680083555556,
+        2.726680083555556
+      ],
+      "critical_path_us": {
+        "af_pipeline_handoff": 16.24112000000004,
+        "all_gather": 4.739999999999985,
+        "all_reduce": 180.8976,
+        "attention": 53.62619733333317,
+        "dense_ffn": 49.281137777777666,
+        "embedding_lookup": 0.2002275555555557,
+        "final_norm": 0.2003413333333476,
+        "lm_head": 1.1105582222222117,
+        "post_attention_norm": 6.410922666666608,
+        "residual": 6.410922666666623,
+        "token_selection": 0.20088888888887763
+      }
+    },
+    {
+      "layout": "tp4-pp18",
+      "tp": 4,
+      "pp": 18,
+      "algorithm": "ring",
+      "hop_us": 0.3,
+      "context": 2400,
+      "step_us": 327.41591644444446,
+      "missing_ms": [
+        2.6525840835555554,
+        2.7225840835555553
+      ],
+      "critical_path_us": {
+        "af_pipeline_handoff": 16.24112000000004,
+        "all_gather": 4.739999999999985,
+        "all_reduce": 180.89760000000024,
+        "attention": 57.722197333333334,
+        "dense_ffn": 49.281137777777666,
+        "embedding_lookup": 0.2002275555555557,
+        "final_norm": 0.2003413333333476,
+        "lm_head": 1.1105582222222117,
+        "post_attention_norm": 6.410922666666636,
+        "residual": 6.410922666666623,
+        "token_selection": 0.20088888888887763
+      }
+    },
+    {
+      "layout": "tp8-pp9",
+      "tp": 8,
+      "pp": 9,
+      "algorithm": "direct",
+      "hop_us": 0.5,
+      "context": 150,
+      "step_us": 252.12059111111057,
+      "missing_ms": [
+        2.7278794088888896,
+        2.7978794088888894
+      ],
+      "critical_path_us": {
+        "af_pipeline_handoff": 9.242880000000083,
+        "all_gather": 4.9800000000000235,
+        "all_reduce": 139.54719999999978,
+        "attention": 46.027662222222126,
+        "dense_ffn": 34.244209777777726,
+        "embedding_lookup": 0.2002275555555557,
+        "final_norm": 0.2003413333333476,
+        "lm_head": 0.6553360000000259,
+        "post_attention_norm": 6.41092266666646,
+        "residual": 6.410922666666487,
+        "token_selection": 0.20088888888887763
+      }
+    },
+    {
+      "layout": "tp8-pp9",
+      "tp": 8,
+      "pp": 9,
+      "algorithm": "direct",
+      "hop_us": 0.5,
+      "context": 2400,
+      "step_us": 254.16859111111077,
+      "missing_ms": [
+        2.7258314088888893,
+        2.795831408888889
+      ],
+      "critical_path_us": {
+        "af_pipeline_handoff": 9.242880000000083,
+        "all_gather": 4.9800000000000235,
+        "all_reduce": 139.54719999999986,
+        "attention": 48.07566222222223,
+        "dense_ffn": 34.244209777777726,
+        "embedding_lookup": 0.2002275555555557,
+        "final_norm": 0.2003413333333476,
+        "lm_head": 0.6553360000000259,
+        "post_attention_norm": 6.410922666666487,
+        "residual": 6.410922666666487,
+        "token_selection": 0.20088888888887763
+      }
+    },
+    {
+      "layout": "tp4-pp18",
+      "tp": 4,
+      "pp": 18,
+      "algorithm": "direct",
+      "hop_us": 0.5,
+      "context": 150,
+      "step_us": 274.3199164444442,
+      "missing_ms": [
+        2.705680083555556,
+        2.7756800835555557
+      ],
+      "critical_path_us": {
+        "af_pipeline_handoff": 19.641120000000157,
+        "all_gather": 4.339999999999975,
+        "all_reduce": 128.89760000000004,
+        "attention": 53.62619733333318,
+        "dense_ffn": 49.2811377777778,
+        "embedding_lookup": 0.2002275555555557,
+        "final_norm": 0.2003413333333476,
+        "lm_head": 1.1105582222222117,
+        "post_attention_norm": 6.4109226666665275,
+        "residual": 6.4109226666665275,
+        "token_selection": 0.20088888888887763
+      }
+    },
+    {
+      "layout": "tp4-pp18",
+      "tp": 4,
+      "pp": 18,
+      "algorithm": "direct",
+      "hop_us": 0.5,
+      "context": 2400,
+      "step_us": 278.41591644444435,
+      "missing_ms": [
+        2.701584083555556,
+        2.7715840835555556
+      ],
+      "critical_path_us": {
+        "af_pipeline_handoff": 19.641120000000132,
+        "all_gather": 4.339999999999975,
+        "all_reduce": 128.89760000000004,
+        "attention": 57.722197333333334,
+        "dense_ffn": 49.281137777777786,
+        "embedding_lookup": 0.2002275555555557,
+        "final_norm": 0.2003413333333476,
+        "lm_head": 1.1105582222222117,
+        "post_attention_norm": 6.4109226666665275,
+        "residual": 6.410922666666541,
+        "token_selection": 0.20088888888887763
+      }
+    },
+    {
+      "layout": "tp8-pp9",
+      "tp": 8,
+      "pp": 9,
+      "algorithm": "direct",
+      "hop_us": 0.3,
+      "context": 150,
+      "step_us": 224.32059111111028,
+      "missing_ms": [
+        2.7556794088888896,
+        2.8256794088888895
+      ],
+      "critical_path_us": {
+        "af_pipeline_handoff": 7.642880000000057,
+        "all_gather": 4.779999999999991,
+        "all_reduce": 113.54719999999962,
+        "attention": 46.027662222222126,
+        "dense_ffn": 34.244209777777726,
+        "embedding_lookup": 0.2002275555555557,
+        "final_norm": 0.20034133333332052,
+        "lm_head": 0.6553359999999988,
+        "post_attention_norm": 6.4109226666665,
+        "residual": 6.410922666666487,
+        "token_selection": 0.20088888888887763
+      }
+    },
+    {
+      "layout": "tp8-pp9",
+      "tp": 8,
+      "pp": 9,
+      "algorithm": "direct",
+      "hop_us": 0.3,
+      "context": 2400,
+      "step_us": 226.36859111111036,
+      "missing_ms": [
+        2.75363140888889,
+        2.8236314088888896
+      ],
+      "critical_path_us": {
+        "af_pipeline_handoff": 7.642880000000057,
+        "all_gather": 4.779999999999991,
+        "all_reduce": 113.54719999999962,
+        "attention": 48.07566222222222,
+        "dense_ffn": 34.244209777777726,
+        "embedding_lookup": 0.2002275555555557,
+        "final_norm": 0.20034133333332052,
+        "lm_head": 0.6553359999999988,
+        "post_attention_norm": 6.410922666666487,
+        "residual": 6.410922666666487,
+        "token_selection": 0.20088888888887763
+      }
+    },
+    {
+      "layout": "tp4-pp18",
+      "tp": 4,
+      "pp": 18,
+      "algorithm": "direct",
+      "hop_us": 0.3,
+      "context": 150,
+      "step_us": 244.7199164444439,
+      "missing_ms": [
+        2.735280083555556,
+        2.805280083555556
+      ],
+      "critical_path_us": {
+        "af_pipeline_handoff": 16.241120000000134,
+        "all_gather": 4.139999999999998,
+        "all_reduce": 102.89759999999974,
+        "attention": 53.626197333333224,
+        "dense_ffn": 49.28113777777788,
+        "embedding_lookup": 0.2002275555555557,
+        "final_norm": 0.20034133333332052,
+        "lm_head": 1.1105582222222117,
+        "post_attention_norm": 6.410922666666473,
+        "residual": 6.410922666666473,
+        "token_selection": 0.20088888888887763
+      }
+    },
+    {
+      "layout": "tp4-pp18",
+      "tp": 4,
+      "pp": 18,
+      "algorithm": "direct",
+      "hop_us": 0.3,
+      "context": 2400,
+      "step_us": 248.81591644444404,
+      "missing_ms": [
+        2.731184083555556,
+        2.801184083555556
+      ],
+      "critical_path_us": {
+        "af_pipeline_handoff": 16.241120000000134,
+        "all_gather": 4.1400000000000245,
+        "all_reduce": 102.89759999999976,
+        "attention": 57.722197333333334,
+        "dense_ffn": 49.281137777777865,
+        "embedding_lookup": 0.2002275555555557,
+        "final_norm": 0.20034133333332052,
+        "lm_head": 1.1105582222222388,
+        "post_attention_norm": 6.410922666666473,
+        "residual": 6.41092266666646,
+        "token_selection": 0.20088888888887763
+      }
+    }
+  ]
+}
