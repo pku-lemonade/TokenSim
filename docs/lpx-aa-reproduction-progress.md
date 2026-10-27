@@ -169,28 +169,25 @@ TP32 is required for a match without speculation and depends on an attention mat
 
 ## Current position
 
-With one acceptance per published speed, many setups reproduce the AA pair, the 4,767 TPS coding median and the 10,996 TPS coding example together, including the published rise from 10K to 100K.
-The fitted acceptances, not the fit itself, now discriminate between setups.
-
-The simulator reproduces both published AA values within 5% under several fitted serving regimes on 128 or 256 chips.
-Every regime combines DCP with additional context-independent work per step.
-On TP32/PP4 with `KVP = 8`, three-token drafting with zero to three background requests matches the AA pair and also reaches the 10,996 TPS coding example.
-No regime makes the 100K speed exceed the 10K speed, and every match sits near the lower edge of the 100K band.
-The acceptance rates and background loads are fitted to the published speeds and are not measured.
-The TP32 regimes also depend on the assumed attention matrix efficiency and on FP8 KV conversion running on the vector unit.
-The matches show that the cost model can produce the published pair, and they do not identify the regime that NVIDIA used.
-No result calibrates an LP30 operator cost against measured hardware.
+The AA footnotes establish one request at a time on one named deployment, and press reports give FP8 weights on LP30 chips only.
+Under those conditions on one 256-chip rack, only TP32/PP8 with `KVP = 8` at attention matrix efficiency 0.30 or more reproduces both AA values.
+At one native token per AA token it needs 14 to 25 µs of unmodeled time per step.
+The [token-ratio record](lpx-token-ratio.md) measures 1.073 Gemma tokens per `o200k_base` token on reasoning text, and any ratio from 1.053 to 1.090 removes that need.
+The [tray-latency record](lpx-tray-latency.md) shows the same effect from a cross-tray latency of 0.81 to 0.85 µs instead of 0.75 µs.
+Speculative decoding matches on the same layout only at AA acceptances of 0.006 to 0.335, below the published acceptance of Gemma's drafter class, so the AA values fit best without effective drafting.
+The [GroqRack Llama-2-7B check](groqrack-llama2-7b-validation.md) supports the multi-chip device model on first-generation hardware once a per-token host loop is added.
+The remaining uncertainty sits in two measurable numbers, the token ratio of AA-like Gemma outputs and the LP30 cross-tray collective latency, and the match does not identify NVIDIA's deployment.
 
 ## Open work
 
 | Item | Purpose |
 | --- | --- |
-| Measured batch-one Groq decode | Obtain a batch-one decode latency on a known Groq configuration, because the GroqCloud speeds describe an unknown production configuration and load |
+| Token ratio on Gemma outputs | Tokenize Gemma 4 31B answers to AA-like long-document questions, because the ratio decides whether the TP32 match needs extra time |
+| LP30 cross-tray collective latency | Measure an all-reduce across two LP30 trays; the TP32 match holds for about 0.73 to 0.85 µs |
 | LP30 operand bandwidth | Establish whether LP30's matrix-unit operand bandwidth is below its 150 TB/s SRAM bandwidth, as GroqChip v1's 20 TB/s is below its 80 TB/s |
 | LP30 FP8 attention path | Establish whether KV conversion runs on the vector unit, which decides whether a larger attention group helps |
 | Measured acceptance | Replace the fitted acceptances with lookup and model drafting on 10K and 100K long-document prompts and on coding prompts, including whether acceptance rises at 100K |
 | Lift the 16-row forward limit | Test longer drafts and heavier background traffic in one forward |
-| Native token conversion | Replace the assumed one-to-one conversion between Gemma tokens and AA `o200k_base` tokens |
 
 ## Commits
 
