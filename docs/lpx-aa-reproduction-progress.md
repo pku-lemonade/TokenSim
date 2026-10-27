@@ -39,6 +39,7 @@ All results use the bundled [fidelity configuration](../experiments/lpx/fidelity
 | Lookup acceptance and context length | [Lookup-context record](lpx-lookup-context.md) | On Gemma 4 31B agent turns with up to 66K context tokens, widening the lookback beyond 16K tokens adds less than 0.005 acceptance; acceptance rises 0.240 from 2K to 16K+ contexts, but 75% of that rise remains with a 1,024-token lookback, so it comes from more repetitive late turns |
 | Lookup acceptance on coding outputs | [Lookup-coding record](lpx-lookup-coding.md) | Lookup drafting on Gemma 4 31B coding outputs commits 1.19 to 1.92 tokens per step; with 38 to 61 µs of unmodeled time per step, one lookup setting places both AA values and the 4,767 TPS coding median within 5%, while plain decoding needs 14 to 25 µs and leaves the coding median 22% to 29% too slow |
 | Coding speed spread | [Coding-spread record](lpx-coding-spread.md) | NVIDIA's coding P80 and maximum are 1.158 and 1.464 times the median; plain decoding gives 1.000 and 1.001, and lookup drafting on Gemma coding outputs gives 1.04 to 1.09 and up to 1.53, so the coding run most likely drafted |
+| Gemma outputs on SPEED-Bench and AA-like prompts | [API-outputs record](lpx-api-outputs.md) | Lookup drafting of 3 tokens without thinking reproduces NVIDIA's SPEED-Bench coding median and P80 within 2% and maximum within 13% with 0 to 21 µs of extra time; AA-like answers give 1.006 Gemma tokens per `o200k_base` token and the same lookup acceptance at 10K and 100K within 0.01, and lookup on them needs 26 to 99 µs |
 | Token ratio | [Token-ratio record](lpx-token-ratio.md) | Gemma 4 31B's own writing outputs give 1.031 to 1.048 tokens per `o200k_base` token, which cuts the TP32/PP8 extra time from 14 to 25 µs to about 1 to 16 µs; ratios of 1.053 to 1.090, seen on reasoning-heavy text, remove it |
 | Cross-tray latency | [Tray-latency record](lpx-tray-latency.md) | The TP32/PP8 step grows by about 25 µs per 0.1 µs of cross-tray latency; 0.81 to 0.85 µs instead of the assumed 0.75 µs matches both AA values without extra time at one token per AA token, and about 0.73 to 0.77 µs at the measured reasoning ratio |
 | GroqRack Llama-2-7B check | [GroqRack validation](groqrack-llama2-7b-validation.md) | A measured 2.98 to 3.05 ms per token on 72 known first-generation cards exceeds the simulated forward by 2.70 to 2.83 ms; adding that per-token host cost to the 70B check gives 264 to 286 tokens per second, inside GroqCloud's 241 to 300 |
@@ -184,17 +185,19 @@ The [lookup-context record](lpx-lookup-context.md) finds that more text to copy 
 The [lookup-coding record](lpx-lookup-coding.md) shows that lookup drafting at the measured writing and coding acceptances, with 38 to 61 µs of unmodeled time per step, also fits the AA values and the coding median under one build; the published sources do not decide between that and plain decoding.
 The [coding-spread record](lpx-coding-spread.md) finds that plain decoding cannot produce the spread of NVIDIA's coding speeds, so the build behind the coding values most likely drafted.
 The [GroqRack Llama-2-7B check](groqrack-llama2-7b-validation.md) supports the multi-chip device model on first-generation hardware once a per-token host loop is added.
-The remaining uncertainty sits in two measurable numbers, the token ratio of AA-like Gemma outputs and the LP30 cross-tray collective latency, and the match does not identify NVIDIA's deployment.
+The [API-outputs record](lpx-api-outputs.md) generates Gemma 4 31B answers to SPEED-Bench's coding prompts and to AA-like questions about 10K and 100K-token books.
+Lookup drafting without thinking reproduces NVIDIA's coding median, P80 and maximum with 0 to 21 µs of extra time, while AA-like answers give 1.006 Gemma tokens per `o200k_base` token, which leaves the plain-decoding need at 13 to 24 µs, and the same lookup acceptance at 10K and 100K.
+The published values fit one TP32/PP8 build with about 13 to 21 µs of unmodeled time per step if the coding run drafted and the AA run did not, or drafted with almost no gain.
+The remaining uncertainty sits in the source of that time, such as the LP30 cross-tray collective latency, and in whether the AA run drafted, and the match does not identify NVIDIA's deployment.
 
 ## Open work
 
 | Item | Purpose |
 | --- | --- |
-| Token ratio on Gemma outputs | Tokenize Gemma 4 31B answers to AA-like long-document questions, because the ratio decides whether the TP32 match needs extra time |
-| LP30 cross-tray collective latency | Measure an all-reduce across two LP30 trays; the TP32 match holds for about 0.73 to 0.85 µs, and about 0.76 to 0.81 µs at the ratios of Gemma's writing outputs |
+| LP30 cross-tray collective latency | Measure an all-reduce across two LP30 trays; the TP32 match holds for about 0.80 to 0.85 µs at the 1.006 Gemma tokens per `o200k_base` token of AA-like outputs |
 | LP30 operand bandwidth | Establish whether LP30's matrix-unit operand bandwidth is below its 150 TB/s SRAM bandwidth, as GroqChip v1's 20 TB/s is below its 80 TB/s |
 | LP30 FP8 attention path | Establish whether KV conversion runs on the vector unit, which decides whether a larger attention group helps |
-| Measured acceptance | Replace the fitted acceptances with lookup and model drafting on 10K and 100K long-document prompts and on coding prompts; no Gemma 4 31B generations on such prompts were public on 2026-10-27, and the longest available contexts, agent turns of up to 66K tokens, show little gain from more context |
+| AA drafting status | Establish whether the AA run drafted, from AA's prompts, its per-request speed spread or a statement of the deployment's settings; lookup acceptance measured on AA-like book answers would make the AA values too fast without 26 to 99 µs of extra time |
 | Lift the 16-row forward limit | Test longer drafts and heavier background traffic in one forward |
 
 ## Earlier records
@@ -259,3 +262,4 @@ The work is on branch `lpx-experiment`, pushed to `origin/lpx-context-parallel`.
 | `92bc22e`, `4499b4b` | Lookup acceptance against context length |
 | `e35a1ac`, `1170ced` | Lookup acceptance on coding outputs |
 | `a5f48a6`, `90cd654` | Coding speed spread |
+| `9a45292` | Expectations for Gemma outputs on SPEED-Bench and AA-like prompts |

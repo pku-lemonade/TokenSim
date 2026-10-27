@@ -68,7 +68,7 @@ def ratios(speeds):
 def spread(speeds, rng):
     median, p80, maximum = ratios(speeds)
     samples = {}
-    for size in SAMPLE_SIZES:
+    for size in (n for n in SAMPLE_SIZES if n < len(speeds)):
         drawn = [
             ratios(rng.choice(speeds, size, replace=False))[1:] for _ in range(DRAWS)
         ]
@@ -126,7 +126,7 @@ def main(argv=None):
                 f"extra {extra:4.0f} {data:20s} n_min={minimum} K={draft_tokens}:"
                 f" median {row['median_tps']:6.0f},"
                 f" P80 x{row['p80_ratio']:.3f},"
-                f" max80 x{row['samples']['80']['maximum_ratio'][1]:.3f}",
+                f" max x{row['maximum_ratio']:.3f}",
                 flush=True,
             )
     if args.summary:

@@ -123,3 +123,4 @@ The coding median and the AA values now admit two consistent explanations on TP3
 Lookup drafting lets one build explain three of the four published speeds, at the cost of more than twice the unmodeled time per step.
 A drafter that runs outside the LP30 chips, such as n-gram matching on the host CPU, would add time to every step, but no source describes where the deployment drafts, so the cause of the 38 to 61 µs remains unidentified.
 Neither explanation reproduces AA's higher speed at 100K or the 10,996 TPS example.
+The [API-outputs record](lpx-api-outputs.md) repeats this measurement on Gemma's answers to SPEED-Bench's own coding prompts and to AA-like document questions, and finds the coding values with lookup drafting without thinking at 0 to 21 µs and the AA values with lookup at 26 to 99 µs, so the two no longer share one extra time.

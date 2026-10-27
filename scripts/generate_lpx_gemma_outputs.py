@@ -17,6 +17,7 @@ with one row per turn, for measure_lpx_lookup_acceptance.py
 
 import argparse
 from concurrent.futures import ThreadPoolExecutor
+import http.client
 import json
 import os
 from pathlib import Path
@@ -61,7 +62,13 @@ def complete(key, provider, messages, request):
                 result["elapsed_s"] = time.time() - start
                 return result
             error = result.get("error")
-        except (urllib.error.URLError, TimeoutError, ConnectionError) as exc:
+        except (
+            urllib.error.URLError,
+            http.client.HTTPException,
+            json.JSONDecodeError,
+            TimeoutError,
+            ConnectionError,
+        ) as exc:
             error = repr(exc)
         print(f"retry {attempt + 1} {request['id']}: {str(error)[:200]}", flush=True)
         time.sleep(min(300, 10 * 2**attempt))

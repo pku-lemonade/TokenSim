@@ -93,3 +93,4 @@ The data does not separate these causes.
 
 The result supports drafting in the build that produced the coding values.
 It strengthens the lookup explanation of the [lookup-coding record](lpx-lookup-coding.md) when the AA deployment used the same build, which the AA footnotes' description of an "updated" deployment leaves open.
+The [API-outputs record](lpx-api-outputs.md) repeats this test on Gemma's answers to SPEED-Bench's own 80 coding prompts, where lookup drafting of 3 tokens without thinking gives a P80/median ratio of 1.158 and a maximum/median ratio of 1.610.
