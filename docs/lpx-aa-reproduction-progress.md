@@ -34,6 +34,7 @@ All results use the bundled [fidelity configuration](../experiments/lpx/fidelity
 | AA test configuration | [Test-configuration record](lpx-aa-test-configuration.md) | Sequential single-request decode on one named deployment is established; LP30-only execution, FP8 and batch size 1 are likely; chip count, layout and speculative decoding are unknown |
 | Published-condition sweep | [Article-condition sweep](lpx-article-sweep.md) | At batch one without speculation on 256 chips, only TP32/PP8 with `KVP = 8` at efficiency 0.30 or more matches, and only with 14 to 25 µs of unmodeled time per step |
 | Token ratio | [Token-ratio record](lpx-token-ratio.md) | Gemma 4 produces 1.006 to 1.035 tokens per `o200k_base` token on prose and 1.027 to 1.100 on reasoning traces; at 1.053 to 1.090, TP32/PP8 with `KVP = 8` matches both AA values without extra time per step |
+| Cross-tray latency | [Tray-latency record](lpx-tray-latency.md) | The TP32/PP8 step grows by about 25 µs per 0.1 µs of cross-tray latency; 0.81 to 0.85 µs instead of the assumed 0.75 µs matches both AA values without extra time at one token per AA token, and about 0.73 to 0.77 µs at the measured reasoning ratio |
 
 ## DCP
 
