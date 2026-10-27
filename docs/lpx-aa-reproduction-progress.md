@@ -251,4 +251,4 @@ The work is on branch `lpx-experiment`, pushed to `origin/lpx-context-parallel`.
 | `5454a49`, `3e26048` | Prompt-lookup acceptance on Gemma outputs |
 | `851dbaf` | Script reproducing the derived published-condition tables |
 | `a187b44` | Documentation of unreferenced inputs, shared scripts and earlier records |
-| `92bc22e` | Expectations for lookup acceptance against context length |
+| `92bc22e`, `4499b4b` | Lookup acceptance against context length |
