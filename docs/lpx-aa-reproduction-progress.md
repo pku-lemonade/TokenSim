@@ -31,6 +31,7 @@ All results use the bundled [fidelity configuration](../experiments/lpx/fidelity
 | Published acceptance | [Acceptance evidence](lpx-acceptance-evidence.md) | No drafter type matches any fit for all four speeds; capable drafters imply AA steps 1.3 to 3.2 times longer than simulated |
 | GroqChip v1 BERT check | [BERT validation](groqchip-v1-bert-validation.md) | The LP30 method with matrix efficiency 0.3 predicts the measured BERT-base layer within 6.5% to 9.5%; decode weight streaming, communication and fixed costs remain untested |
 | GroqChip v1 Llama-2 70B check | [Llama-2 validation](groqchip-v1-llama2-validation.md) | With the direct all-reduce that production uses, simulated decode is 3.5 to 5.2 times faster than the published 241 to 300 tokens per second |
+| AA test configuration | [Test-configuration record](lpx-aa-test-configuration.md) | Sequential single-request decode on one named deployment is established; LP30-only execution, FP8 and batch size 1 are likely; chip count, layout and speculative decoding are unknown |
 
 ## DCP
 
