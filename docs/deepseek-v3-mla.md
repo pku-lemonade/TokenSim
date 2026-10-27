@@ -97,6 +97,23 @@ Measurements must match the intended operator boundary to avoid charging a fused
 Reported provenance distinguishes measurements, interpolation, extrapolation and analytical estimates.
 See [operator latency data](operator-latency-model.md) for package generation and lookup policies.
 
+## Run the simulation
+
+[`scripts/run_deepseek_mla.py`](../scripts/run_deepseek_mla.py) simulates DeepSeek-V3 MLA decode with the attention/FFN (AF) runtime on the operator-table backend.
+
+```bash
+python scripts/run_deepseek_mla.py \
+  --batches 1 4 16 32 \
+  --context 2048 \
+  --device a100_sxm_80g \
+  --output outputs/deepseek-v3-operator-table
+```
+
+By default the model is reduced to one MoE layer; `--full-model` runs all 61 layers and sets FFN tensor parallelism to 32 unless `--f-tp` is given.
+`--a-tp` sets attention tensor parallelism, `--resume` reuses matching completed points, and `--fallback` selects one of the operator-table policies described above.
+[`scripts/deepseek_v3_runtime.py`](../scripts/deepseek_v3_runtime.py) builds the runtime configuration shared by this command and the AF and MLA tests.
+[`scripts/af_trace_options.py`](../scripts/af_trace_options.py) adds the trace collection and export arguments, such as `--trace`, `--trace-format`, `--trace-detail`, `--trace-layers` and `--trace-config`; [AF disaggregation](afd.md) describes the trace contents.
+
 ## Inspect the catalog model
 
 Run this example from the repository root:

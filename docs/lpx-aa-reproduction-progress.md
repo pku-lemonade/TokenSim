@@ -190,6 +190,36 @@ The remaining uncertainty sits in two measurable numbers, the token ratio of AA-
 | Measured acceptance | Replace the fitted acceptances with lookup and model drafting on 10K and 100K long-document prompts and on coding prompts, including whether acceptance rises at 100K |
 | Lift the 16-row forward limit | Test longer drafts and heavier background traffic in one forward |
 
+## Earlier records
+
+These records come from the study phases of October 19 to 22, before the context-parallel work, and set up the model, evidence and baselines that the records above build on.
+
+| Record | Content |
+| --- | --- |
+| [Study guide](lpx-study-guide.md) | Study plan, commands and metrics for the AA calibration and the Figure 11 deployments |
+| [Groq hardware evidence](groq-hardware-evidence.md) | Groq literature and LP30 evidence audit |
+| [Parameter evidence audit](lpx-parameter-evidence-audit.md) | Recorded LP30 and LPX parameters with their sources and status |
+| [Public-evidence and model-validity audit](lpx-public-model-validity-audit.md) | Modeling tasks that public LP30 evidence requires |
+| [Fidelity model](lpx-fidelity-model.md) | LP30 execution, fabric, workspace and token-unit model implementing those tasks |
+| [Timing recommendations](lpx-timing-recommendations.md) | Settings for the coarse operator model and their evidence limits |
+| [Model corrections](lpx-model-corrections.md) | Corrections to AF collectives, GPU graph prefill and QPS propagation, with retests |
+| [Coverage-gap analysis](lpx-coverage-gap-analysis.md) | What the Figure 11 experiment covers and where it diverges |
+| [Architecture study](lpx-aa-architecture-study.md) | Gemma 4 architecture and inventory exploration |
+| [FP8 study](lpx-fp8-study.md) | The Gemma experiment with FP8 weights |
+| [Compute-efficiency sensitivity](lpx-compute-efficiency-sensitivity.md) | Decode study with matrix efficiency 0.3 and attention efficiency 0.1 |
+| [Context sensitivity](lpx-context-sensitivity.md) | Numerical explanations tested against the 10K and 100K speeds |
+| [Conventional AF](lpx-conventional-af.md) | All attention on Rubin and all FFNs on LPX |
+| [Native Gemma AF search](lpx-native-gemma-af-search.md) | AF layout search with the native Gemma model |
+| [Native global-attention AF](lpx-native-global-attention-af.md) | AF with only the global attention layers on Rubin |
+| [Native minimum-chip search](lpx-native-minimum-search.md) | Smallest LP30-only deployment with balanced stages |
+| [Native context ordering](lpx-native-context-ordering.md) | Parameters that would make the 100K speed exceed the 10K speed, as published; operator startup and a per-request pause can, without a confirmed physical cause |
+| [Execution boundaries](lpx-execution-boundaries.md) | Execution boundaries and placement sensitivity of the minimum search |
+| [Latency ledger](lpx-latency-ledger.md) | Reconciliation of isolated and full-model decode latency |
+| [Compute and communication overlap](lpx-compute-communication-overlap.md) | Output-vector overlap at 320-byte granularity |
+| [Colocated dense reuse](lpx-colocated-dense-reuse.md) | Local tensor reuse when A and F share chips |
+| [Integration verification](lpx-integration-20261021.md) | Branch integration checks of October 21 |
+| [Context-parallel plan](lpx-context-parallel-plan.md) | Implementation plan for the context parallelism that the records above use |
+
 ## Commits
 
 The work is on branch `lpx-experiment`, pushed to `origin/lpx-context-parallel`.

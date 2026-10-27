@@ -283,6 +283,17 @@ python scripts/reproduce_lpx.py \
   --output outputs/lpx-expert-study
 ```
 
+[`experiments/lpx/pipeline-sweep.json`](../experiments/lpx/pipeline-sweep.json) sweeps eight-stage pipelines: Rubin TP8/PP8, A/F TP8/PP8, prefill/decode TP16 and external draft TP8/PP8, at 1, 2, 8, 16 and 32 concurrent clients on the original 400K/4K/400 workload.
+The larger client counts populate every pipeline stage, which separates pipeline throughput from the latency of one request on an idle deployment.
+LP30-only decode can reject the larger cohorts because full-attention KV and the output-head shard share SRAM.
+
+```bash
+python scripts/reproduce_lpx.py \
+  --config experiments/lpx/pipeline-sweep.json \
+  --jobs 2 \
+  --output outputs/lpx-pipeline-study
+```
+
 ### Parameter reference
 
 | Parameter | Meaning |
@@ -316,6 +327,7 @@ python scripts/reproduce_lpx.py \
 | Vertical axis | TPS/MW with explicit power scope; retain throughput and mark missing power when no power input is available |
 
 The restored configuration uses device thermal design power (TDP) assumptions plus `--facility-watts`, which cannot be called measured rack power.
+[`scripts/lpx_power.py`](../scripts/lpx_power.py) defines the two power scopes shared by `run_lpx_study.py` and `report_lpx_study.py`: `allocated_processors` charges only the GPUs and LPUs a configuration uses, and `processor_racks` rounds them up to whole 72-GPU NVL72 and 256-chip LPX racks, at 1,800 W per Rubin GPU and 450 W per LP30 by default.
 The final power table covers unique physical GPUs/LPUs, prefill, draft, CPU/host, memory and network; colocated A/F resources are charged once.
 Report rated budgets and load power separately when data are available.
 Output absolute tokens/s (TPS) and TPS/MW, then normalize every curve against one shared Rubin baseline.
@@ -343,6 +355,7 @@ python scripts/check_lpx_results.py \
 `--original-workload` checks 400K/4K/400 and complete measured turns without validating undisclosed NVIDIA deployment settings.
 The checker verifies inventory, power provenance, units, measurement boundaries, output counts, KV bytes and frontier coverage.
 `--plot` or `scripts/plot_lpx.py` generates sampled reference, independent simulation and side-by-side plots.
+The sampled reference is [`experiments/lpx/reference.json`](../experiments/lpx/reference.json), an approximate manual digitization of the Figure 11 image with estimated reading uncertainty; it is not NVIDIA raw data and is never used for calibration.
 Reference and simulation normalization sources are documented separately; manual samples are excluded from calibration.
 
 ## Execution sequence and deliverables
