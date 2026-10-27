@@ -262,4 +262,4 @@ The work is on branch `lpx-experiment`, pushed to `origin/lpx-context-parallel`.
 | `92bc22e`, `4499b4b` | Lookup acceptance against context length |
 | `e35a1ac`, `1170ced` | Lookup acceptance on coding outputs |
 | `a5f48a6`, `90cd654` | Coding speed spread |
-| `9a45292` | Expectations for Gemma outputs on SPEED-Bench and AA-like prompts |
+| `9a45292`, `1486ad7` | Gemma outputs on SPEED-Bench and AA-like prompts |
