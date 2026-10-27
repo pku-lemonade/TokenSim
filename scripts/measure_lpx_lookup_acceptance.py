@@ -4,7 +4,10 @@ The outputs were generated at temperature 0, so a draft token is accepted
 exactly when it equals the recorded token.  The script needs the
 ``tokenizers`` package and Gemma 4's ``tokenizer.json``.  Each ``--data``
 argument is ``name=path`` for Hugging Face dataset-server rows with ``input``
-and ``raw_output`` fields.  See docs/lpx-lookup-acceptance.md.
+and ``raw_output`` fields, or ``name=path#part`` for rows with a user and an
+assistant message whose ``reasoning`` field holds the thinking; ``part`` is
+one of MESSAGE_PARTS.  See docs/lpx-lookup-acceptance.md and
+docs/lpx-lookup-coding.md.
 """
 
 import argparse
@@ -16,6 +19,25 @@ DRAFT_TOKENS = (1, 3, 5, 7)
 MINIMUM_NGRAMS = (1, 2)
 MAXIMUM_NGRAM = 3
 PROMPTS = ("full", "half", "none")
+# Prompt and output texts of a user/assistant row: the thinking followed by
+# the answer, the thinking alone, the answer after the thinking, which the
+# drafter can copy from, and the answer without the thinking.
+MESSAGE_PARTS = {
+    "combined": lambda q, r, a: (q, r + "\n\n" + a),
+    "thinking": lambda q, r, a: (q, r),
+    "answer": lambda q, r, a: (q + "\n\n" + r, a),
+    "answer-alone": lambda q, r, a: (q, a),
+}
+
+
+def texts(row, part=None):
+    """Prompt and output text of one dataset-server row."""
+    if part is None:
+        return row["input"], row["raw_output"]
+    user, assistant = row["messages"]
+    return MESSAGE_PARTS[part](
+        user["content"], assistant.get("reasoning") or "", assistant["content"]
+    )
 
 
 def equivalent_acceptance(tau, draft_tokens):
@@ -89,13 +111,17 @@ def main(argv=None):
     results, files = [], []
     for item in args.data:
         name, path = item.split("=", 1)
+        path, _, part = path.partition("#")
         path = Path(path)
         rows = [row["row"] for row in json.loads(path.read_text())["rows"]]
-        pairs = [(encode(row["input"]), encode(row["raw_output"])) for row in rows]
+        pairs = [
+            tuple(encode(text) for text in texts(row, part or None)) for row in rows
+        ]
         files.append(
             dict(
                 name=name,
                 file=path.name,
+                part=part or None,
                 sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
                 rows=len(rows),
                 prompt_tokens=sum(len(p) for p, _ in pairs),

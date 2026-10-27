@@ -4,9 +4,10 @@ Reads committed results only and recomputes the values that the records
 derive from them: extra-time windows at measured token ratios, their
 cross-tray latency equivalents, speculative matches at other ratios, the
 per-workload acceptances of the TP32 layout, the prompt-lookup pricing and
-the GroqRack-adjusted Llama-2 70B speeds.  See docs/lpx-token-ratio.md,
-docs/lpx-article-speculative.md, docs/lpx-lookup-acceptance.md and
-docs/groqrack-llama2-7b-validation.md.
+the GroqRack-adjusted Llama-2 70B speeds and the coding speeds at measured
+lookup acceptance.  See docs/lpx-token-ratio.md,
+docs/lpx-article-speculative.md, docs/lpx-lookup-acceptance.md,
+docs/lpx-lookup-coding.md and docs/groqrack-llama2-7b-validation.md.
 """
 
 import argparse
@@ -23,6 +24,9 @@ from scripts.search_lpx_native import write_json
 
 RESULTS = ROOT / "experiments/lpx"
 AA_TPS = dict(aa_10k=3382, aa_100k=3431)
+# NVIDIA's coding speeds of the same deployment name, in native tokens.
+CODING_TPS = dict(median=4767, example=10996)
+CODING = "coding_16k"
 BAND = 0.05
 LAYOUT, EFFICIENCY = "tp32-pp8-kvp8", 0.5
 TOKEN_RATIOS = (1.0, 1.031, 1.035, 1.036, 1.048, 1.053, 1.069, 1.073, 1.08, 1.09)
@@ -164,6 +168,46 @@ def lookup_pricing(lookup, verify, ratio=1.036):
     return rows
 
 
+def coding_pricing(coding, verify, aa_pricing):
+    """Coding speed of each lookup setting and the extra time that fits it."""
+    aa_extra = {
+        (r["minimum_ngram"], r["draft_tokens"]): r["extra_us"]
+        for r in aa_pricing
+        if r["data"] == "writingbench"
+    }
+    rows = []
+    for row in coding["results"]:
+        if row["prompt"] != "full":
+            continue
+        shares = row["proposal_length_shares"]
+        step = sum(s * verify[n + 1][CODING] for n, s in enumerate(shares))
+        tps = row["tau"] / step * 1e6
+        median = CODING_TPS["median"]
+        extra = [
+            max(0.0, row["tau"] * 1e6 / (median * (1 + BAND)) - step),
+            row["tau"] * 1e6 / (median * (1 - BAND)) - step,
+        ]
+        extra = extra if extra[0] <= extra[1] else None
+        aa = aa_extra.get((row["minimum_ngram"], row["draft_tokens"]))
+        shared = None
+        if extra and aa and max(extra[0], aa[0]) <= min(extra[1], aa[1]):
+            shared = [max(extra[0], aa[0]), min(extra[1], aa[1])]
+        rows.append(
+            dict(
+                data=row["data"],
+                minimum_ngram=row["minimum_ngram"],
+                draft_tokens=row["draft_tokens"],
+                tau=row["tau"],
+                step_us=step,
+                tps=tps,
+                error={k: tps / v - 1 for k, v in CODING_TPS.items()},
+                median_extra_us=extra,
+                extra_us_with_writingbench_aa=shared,
+            )
+        )
+    return rows
+
+
 def groqrack_adjusted(groqrack, llama70b):
     direct = [c["step_us"] for c in groqrack["cases"] if c["algorithm"] == "direct"]
     low, high = groqrack["measured_tpot_ms"]
@@ -185,13 +229,15 @@ def main(argv=None):
     args = parser.parse_args(argv)
     sweep = load("article-sweep-results.json")
     speculative = load("article-speculative-results.json")
+    verify = verification_steps(sweep, speculative)
+    aa_pricing = lookup_pricing(load("lookup-acceptance-results.json"), verify)
     result = dict(
         ratio_windows=ratio_windows(sweep),
         speculative_matches=speculative_matches(speculative),
         workload_acceptances=workload_acceptances(speculative),
-        lookup_pricing=lookup_pricing(
-            load("lookup-acceptance-results.json"),
-            verification_steps(sweep, speculative),
+        lookup_pricing=aa_pricing,
+        coding_pricing=coding_pricing(
+            load("lookup-coding-results.json"), verify, aa_pricing
         ),
         groqrack=groqrack_adjusted(
             load("groqrack-llama2-7b-results.json"),
