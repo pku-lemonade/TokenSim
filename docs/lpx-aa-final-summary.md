@@ -53,7 +53,10 @@ The [lookup-coding record](lpx-lookup-coding.md) measures lookup drafting on Gem
 
 Plain decoding needs less unmodeled time and fits the AA values alone.
 Lookup drafting lets one build explain the AA values and the coding median, at the cost of more than twice the unmodeled time.
-The published sources do not say whether the AA deployment drafts, so the data does not decide between them.
+The published sources do not say whether the AA deployment drafts.
+The [coding-spread record](lpx-coding-spread.md) finds that NVIDIA's coding speeds spread too widely for plain decoding: the 80th percentile is 1.158 times the median and the maximum 1.464 times, while plain decoding gives 1.000 and 1.001.
+Lookup drafting reproduces the maximum ratio and about half of the 80th-percentile ratio, so the build that produced the coding values most likely drafted.
+Whether the AA deployment used that build remains open, so the data favors lookup drafting without deciding between the two.
 Gemma's MTP drafter at its published acceptance fits neither, and no measured acceptance reaches the 10,996 TPS example, which needs about 0.8 per position.
 
 ## Speed at 100K
