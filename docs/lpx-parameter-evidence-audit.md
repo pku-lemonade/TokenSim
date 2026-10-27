@@ -90,6 +90,8 @@ Artificial Analysis (AA) reports performance tokens using `o200k_base`, which ne
 | Gemma 4 31B, 10K input | 3,382 output TPS | Published measurement | S5, 10K chart | Published endpoint median; hardware inventory and serving precision remain undisclosed. |
 | Gemma 4 31B, 100K input | 3,431 output TPS | Published measurement | S5, 100K chart | Same deployment uncertainty; not an isolated-chip benchmark. |
 | AA request count and client concurrency | 50 sequential requests; concurrency 1 | Published measurement | S5 chart footnotes | Client measurement scope; does not identify internal serving batch size. |
+| AA measurement window for LPX | 50 requests per workload; both charts dated August 21, 2026 | Published measurement | S5 chart footnotes | The 72-hour and 14-day medians in the footnotes apply only to public providers; the times of the two LPX request sets are not stated. |
+| AA endpoint hardware and weight precision | LP30 chips only; FP8 | Press report | S8 | Not confirmed by NVIDIA or AA; chip count and layout remain undisclosed. |
 | Gemma 4 31B, SPEED-Bench coding median | 4,767 output TPS | Published measurement | S5 text and coding chart | NVIDIA self-test; no matching LPX per-request result log or complete serving configuration located. |
 | Gemma 4 31B, SPEED-Bench coding P80 | 5,520 output TPS | Published measurement | S5 text and coding chart | A percentile of speed, not a separate workload or a sustained minimum. |
 | Gemma 4 31B, SPEED-Bench coding maximum | 6,981 output TPS | Published measurement | S5 coding chart | Maximum within the reported samples; not an independent benchmark or a hardware upper bound. |
@@ -108,6 +110,8 @@ S5 is the [NVIDIA long-context benchmark article](https://developer.nvidia.com/b
 S6 is the [NVIDIA power-management article](https://developer.nvidia.com/blog/how-nvidia-groq-3-lpx-deterministic-execution-drives-power-efficient-high-interactivity-inference-on-nvidia-vera-rubin/), published 2026-09-15.
 S7 is the [NVIDIA Hot Chips performance-example slide](https://www.servethehome.com/wp-content/uploads/2026/08/NVIDIA-Groq-3-LPU-Hot-Chips-2026-LPX-Performance.png), mirrored by ServeTheHome.
 ServeTheHome publishes S7 in [NVIDIA's Groq 3 LPU Accelerators for Heterogeneous AI Compute at Hot Chips 2026](https://www.servethehome.com/nvidias-groq-3-lpu-accelerators-for-heterogeneous-ai-compute-at-hot-chips-2026/), dated 2026-08-25, whose text says a single rack decodes 11,000 tokens per second on Gemma 4 31B.
+S8 is The Register's [analysis of the first Groq 3 LPU benchmarks](https://www.theregister.com/systems/2026/08/24/what-nvidias-first-groq-3-lpu-benchmarks-do-and-dont-tell-us-about-its-20b-gamble/5291880), dated 2026-08-24, which states that the published figures "are for a model running entirely on LPUs" and that "Nvidia is running the model at FP8".
+S8 and the S5 footnote transcriptions were reviewed on 2026-10-26.
 The [placement plausibility record](lpx-placement-plausibility.md) transcribes S7 and a speculative-decoding slide from the same article.
 All sources in this record were reviewed on 2026-10-20.
 Unknown-value rows record the limits of this search and do not assert that a vendor has never published additional information.
