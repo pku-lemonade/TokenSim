@@ -1,0 +1,888 @@
+{
+  "gemma_tokenizer_sha256": "cc8d3a0ce36466ccc1278bf987df5f71db1719b9ca6b4118264f45cb627bfe0f",
+  "maximum_ngram": 3,
+  "files": [
+    {
+      "name": "writingbench",
+      "file": "g4-2.json",
+      "sha256": "452eeaa4432649d8ec6542bd07869234d41f2da36dd232641207140ce676d4ef",
+      "rows": 100,
+      "prompt_tokens": 84531,
+      "output_tokens": 279607
+    },
+    {
+      "name": "aime",
+      "file": "g4-3.json",
+      "sha256": "66248e7fa47394a3a3ce80f1153196e2e71d158b3c993b26c5875379a53c1395",
+      "rows": 100,
+      "prompt_tokens": 10133,
+      "output_tokens": 546975
+    }
+  ],
+  "results": [
+    {
+      "data": "writingbench",
+      "prompt": "full",
+      "minimum_ngram": 1,
+      "draft_tokens": 1,
+      "steps": 237225,
+      "tau": 1.1786573927705764,
+      "proposing_share": 0.7097101907471809,
+      "accepted_per_proposal": 0.25179227968472506,
+      "equivalent_acceptance": 0.17865739277057618,
+      "proposal_length_shares": [
+        0.29028980925281905,
+        0.7097101907471809
+      ]
+    },
+    {
+      "data": "writingbench",
+      "prompt": "full",
+      "minimum_ngram": 1,
+      "draft_tokens": 3,
+      "steps": 221686,
+      "tau": 1.2612749564699621,
+      "proposing_share": 0.6893624315473237,
+      "accepted_per_proposal": 0.3790815458507283,
+      "equivalent_acceptance": 0.20865425945268318,
+      "proposal_length_shares": [
+        0.3106375684526763,
+        0.000374403435489837,
+        0.0048988208547224455,
+        0.6840892072571114
+      ]
+    },
+    {
+      "data": "writingbench",
+      "prompt": "full",
+      "minimum_ngram": 1,
+      "draft_tokens": 5,
+      "steps": 217664,
+      "tau": 1.2845808218171126,
+      "proposing_share": 0.683622463981182,
+      "accepted_per_proposal": 0.41635752688172045,
+      "equivalent_acceptance": 0.2216281962469278,
+      "proposal_length_shares": [
+        0.316377536018818,
+        0.00035835048515142604,
+        0.00498934137018524,
+        0.0053568803293149074,
+        0.006918920905615996,
+        0.6659989708909144
+      ]
+    },
+    {
+      "data": "writingbench",
+      "prompt": "full",
+      "minimum_ngram": 1,
+      "draft_tokens": 7,
+      "steps": 216568,
+      "tau": 1.2910817849359093,
+      "proposing_share": 0.6820213512614975,
+      "accepted_per_proposal": 0.42687401830688404,
+      "equivalent_acceptance": 0.22546090042922834,
+      "proposal_length_shares": [
+        0.31797864873850246,
+        0.000332459089062096,
+        0.005014591260019948,
+        0.005365520298474382,
+        0.006921613534778915,
+        0.0068800561486461525,
+        0.007184810313619741,
+        0.6503223006168963
+      ]
+    },
+    {
+      "data": "writingbench",
+      "prompt": "full",
+      "minimum_ngram": 2,
+      "draft_tokens": 1,
+      "steps": 249419,
+      "tau": 1.1210332813458477,
+      "proposing_share": 0.298381438462988,
+      "accepted_per_proposal": 0.40568649055386846,
+      "equivalent_acceptance": 0.12103328134584762,
+      "proposal_length_shares": [
+        0.701618561537012,
+        0.298381438462988
+      ]
+    },
+    {
+      "data": "writingbench",
+      "prompt": "full",
+      "minimum_ngram": 2,
+      "draft_tokens": 3,
+      "steps": 236821,
+      "tau": 1.180668099535092,
+      "proposing_share": 0.26105792982885806,
+      "accepted_per_proposal": 0.6921583850931677,
+      "equivalent_acceptance": 0.15349204758827,
+      "proposal_length_shares": [
+        0.7389420701711419,
+        0.00016890394010666285,
+        5.911637903733199e-05,
+        0.2608299095097141
+      ]
+    },
+    {
+      "data": "writingbench",
+      "prompt": "full",
+      "minimum_ngram": 2,
+      "draft_tokens": 5,
+      "steps": 233709,
+      "tau": 1.1963895271470075,
+      "proposing_share": 0.2512183955260602,
+      "accepted_per_proposal": 0.7818503883362856,
+      "equivalent_acceptance": 0.16416819033099145,
+      "proposal_length_shares": [
+        0.7487816044739398,
+        0.00014120123743629898,
+        5.990355527600563e-05,
+        0.0007017273618046374,
+        0.0012109075816506853,
+        0.24910465578989255
+      ]
+    },
+    {
+      "data": "writingbench",
+      "prompt": "full",
+      "minimum_ngram": 2,
+      "draft_tokens": 7,
+      "steps": 232794,
+      "tau": 1.201091952541732,
+      "proposing_share": 0.2482752991915599,
+      "accepted_per_proposal": 0.8100766475768638,
+      "equivalent_acceptance": 0.16742479166904506,
+      "proposal_length_shares": [
+        0.7517247008084401,
+        0.0001245736573966683,
+        6.013900701908125e-05,
+        0.0006873029373609286,
+        0.0011855975669476018,
+        0.0011297542032870263,
+        0.001224258357174154,
+        0.24386367346237445
+      ]
+    },
+    {
+      "data": "writingbench",
+      "prompt": "half",
+      "minimum_ngram": 1,
+      "draft_tokens": 1,
+      "steps": 238825,
+      "tau": 1.1707610174814194,
+      "proposing_share": 0.6888893541295928,
+      "accepted_per_proposal": 0.24792735406384478,
+      "equivalent_acceptance": 0.1707610174814193,
+      "proposal_length_shares": [
+        0.3111106458704072,
+        0.6888893541295928
+      ]
+    },
+    {
+      "data": "writingbench",
+      "prompt": "half",
+      "minimum_ngram": 1,
+      "draft_tokens": 3,
+      "steps": 223960,
+      "tau": 1.248468476513663,
+      "proposing_share": 0.6682398642614753,
+      "accepted_per_proposal": 0.37188541952037635,
+      "equivalent_acceptance": 0.20030810828636075,
+      "proposal_length_shares": [
+        0.33176013573852475,
+        0.0005224147169137346,
+        0.005170566172530809,
+        0.6625468833720307
+      ]
+    },
+    {
+      "data": "writingbench",
+      "prompt": "half",
+      "minimum_ngram": 1,
+      "draft_tokens": 5,
+      "steps": 220075,
+      "tau": 1.270507781438146,
+      "proposing_share": 0.6623832784278088,
+      "accepted_per_proposal": 0.40844732256781047,
+      "equivalent_acceptance": 0.21298659894234645,
+      "proposal_length_shares": [
+        0.3376167215721913,
+        0.0005089174145177781,
+        0.005261842553674884,
+        0.005584459843235261,
+        0.007188458480063615,
+        0.6438396001363171
+      ]
+    },
+    {
+      "data": "writingbench",
+      "prompt": "half",
+      "minimum_ngram": 1,
+      "draft_tokens": 7,
+      "steps": 219049,
+      "tau": 1.2764586918908554,
+      "proposing_share": 0.6608019210313674,
+      "accepted_per_proposal": 0.41843756044988534,
+      "equivalent_acceptance": 0.21658635403879095,
+      "proposal_length_shares": [
+        0.3391980789686326,
+        0.0004839099927413501,
+        0.005286488411268712,
+        0.005587790859579364,
+        0.00719017206195874,
+        0.007039520837803414,
+        0.007272345456952554,
+        0.6279416934110633
+      ]
+    },
+    {
+      "data": "writingbench",
+      "prompt": "half",
+      "minimum_ngram": 2,
+      "draft_tokens": 1,
+      "steps": 250834,
+      "tau": 1.1147093296762003,
+      "proposing_share": 0.28290423148377014,
+      "accepted_per_proposal": 0.40551280967278264,
+      "equivalent_acceptance": 0.11470932967620012,
+      "proposal_length_shares": [
+        0.7170957685162298,
+        0.28290423148377014
+      ]
+    },
+    {
+      "data": "writingbench",
+      "prompt": "half",
+      "minimum_ngram": 2,
+      "draft_tokens": 3,
+      "steps": 238844,
+      "tau": 1.1706678836395303,
+      "proposing_share": 0.24690593023061078,
+      "accepted_per_proposal": 0.6913111307060978,
+      "equivalent_acceptance": 0.14617677867845774,
+      "proposal_length_shares": [
+        0.7530940697693892,
+        0.00020515482909346688,
+        6.698933194888714e-05,
+        0.24663378606956843
+      ]
+    },
+    {
+      "data": "writingbench",
+      "prompt": "half",
+      "minimum_ngram": 2,
+      "draft_tokens": 5,
+      "steps": 235876,
+      "tau": 1.185398260102766,
+      "proposing_share": 0.23742983601553358,
+      "accepted_per_proposal": 0.7809442182701236,
+      "equivalent_acceptance": 0.15641401725573684,
+      "proposal_length_shares": [
+        0.7625701639844664,
+        0.000178059658464617,
+        6.783225084366361e-05,
+        0.000699520086825281,
+        0.0012336990622191322,
+        0.23525072495718088
+      ]
+    },
+    {
+      "data": "writingbench",
+      "prompt": "half",
+      "minimum_ngram": 2,
+      "draft_tokens": 7,
+      "steps": 235025,
+      "tau": 1.1896904584618657,
+      "proposing_share": 0.234668652271035,
+      "accepted_per_proposal": 0.8084419705183762,
+      "equivalent_acceptance": 0.15944557245672691,
+      "proposal_length_shares": [
+        0.765331347728965,
+        0.00016168492713541113,
+        6.80778640570152e-05,
+        0.0006807786405701521,
+        0.00120838208701202,
+        0.001153068822465695,
+        0.0012424210190405277,
+        0.23015423891075418
+      ]
+    },
+    {
+      "data": "writingbench",
+      "prompt": "none",
+      "minimum_ngram": 1,
+      "draft_tokens": 1,
+      "steps": 241406,
+      "tau": 1.1582437884725318,
+      "proposing_share": 0.6473575636065384,
+      "accepted_per_proposal": 0.24449051677800815,
+      "equivalent_acceptance": 0.15824378847253168,
+      "proposal_length_shares": [
+        0.35264243639346166,
+        0.6473575636065384
+      ]
+    },
+    {
+      "data": "writingbench",
+      "prompt": "none",
+      "minimum_ngram": 1,
+      "draft_tokens": 3,
+      "steps": 227526,
+      "tau": 1.2289013123774866,
+      "proposing_share": 0.6258449583783832,
+      "accepted_per_proposal": 0.36580381471389645,
+      "equivalent_acceptance": 0.1872657362008357,
+      "proposal_length_shares": [
+        0.3741550416216169,
+        0.0008834155217425701,
+        0.005568594358446947,
+        0.6193929484981936
+      ]
+    },
+    {
+      "data": "writingbench",
+      "prompt": "none",
+      "minimum_ngram": 1,
+      "draft_tokens": 5,
+      "steps": 223885,
+      "tau": 1.2488867052281305,
+      "proposing_share": 0.6197601447171539,
+      "accepted_per_proposal": 0.40164318402940435,
+      "equivalent_acceptance": 0.1993370911077516,
+      "proposal_length_shares": [
+        0.3802398552828461,
+        0.0008754494494941599,
+        0.005659155369944391,
+        0.006083480358219622,
+        0.007570851106594904,
+        0.5995712084329008
+      ]
+    },
+    {
+      "data": "writingbench",
+      "prompt": "none",
+      "minimum_ngram": 1,
+      "draft_tokens": 7,
+      "steps": 222933,
+      "tau": 1.254219877721109,
+      "proposing_share": 0.6181363907541728,
+      "accepted_per_proposal": 0.4113335703867115,
+      "equivalent_acceptance": 0.20269390674955673,
+      "proposal_length_shares": [
+        0.38186360924582724,
+        0.0008522740016058636,
+        0.005683321894919101,
+        0.00609151628516191,
+        0.0075717816563720935,
+        0.0071994724872495326,
+        0.007383384245490798,
+        0.5833546401833735
+      ]
+    },
+    {
+      "data": "writingbench",
+      "prompt": "none",
+      "minimum_ngram": 2,
+      "draft_tokens": 1,
+      "steps": 252928,
+      "tau": 1.105480611082996,
+      "proposing_share": 0.2573696862348178,
+      "accepted_per_proposal": 0.4098869362172791,
+      "equivalent_acceptance": 0.10548061108299595,
+      "proposal_length_shares": [
+        0.7426303137651822,
+        0.2573696862348178
+      ]
+    },
+    {
+      "data": "writingbench",
+      "prompt": "none",
+      "minimum_ngram": 2,
+      "draft_tokens": 3,
+      "steps": 241778,
+      "tau": 1.1564617128109258,
+      "proposing_share": 0.22312203757165663,
+      "accepted_per_proposal": 0.7013309605902198,
+      "equivalent_acceptance": 0.13558569508791624,
+      "proposal_length_shares": [
+        0.7768779624283434,
+        0.00034329012565245806,
+        7.8584486595141e-05,
+        0.22270016295940903
+      ]
+    },
+    {
+      "data": "writingbench",
+      "prompt": "none",
+      "minimum_ngram": 2,
+      "draft_tokens": 5,
+      "steps": 239034,
+      "tau": 1.1697373595388103,
+      "proposing_share": 0.2142038371110386,
+      "accepted_per_proposal": 0.7925081051521425,
+      "equivalent_acceptance": 0.14511522323376042,
+      "proposal_length_shares": [
+        0.7857961628889614,
+        0.0003179464009304116,
+        7.94866002326029e-05,
+        0.0007488474442966272,
+        0.0012676020984462462,
+        0.2117899545671327
+      ]
+    },
+    {
+      "data": "writingbench",
+      "prompt": "none",
+      "minimum_ngram": 2,
+      "draft_tokens": 7,
+      "steps": 238250,
+      "tau": 1.1735865687303253,
+      "proposing_share": 0.2116180482686254,
+      "accepted_per_proposal": 0.8204014439287556,
+      "equivalent_acceptance": 0.14791137053611486,
+      "proposal_length_shares": [
+        0.7883819517313746,
+        0.00030220356768100737,
+        7.974816369359916e-05,
+        0.0007345225603357817,
+        0.001242392444910808,
+        0.0011836306400839455,
+        0.001229800629590766,
+        0.2068457502623295
+      ]
+    },
+    {
+      "data": "aime",
+      "prompt": "full",
+      "minimum_ngram": 1,
+      "draft_tokens": 1,
+      "steps": 361609,
+      "tau": 1.5126144537331758,
+      "proposing_share": 0.9371088662063167,
+      "accepted_per_proposal": 0.5470228732806677,
+      "equivalent_acceptance": 0.5126144537331758,
+      "proposal_length_shares": [
+        0.06289113379368323,
+        0.9371088662063167
+      ]
+    },
+    {
+      "data": "aime",
+      "prompt": "full",
+      "minimum_ngram": 1,
+      "draft_tokens": 3,
+      "steps": 274697,
+      "tau": 1.9911939336796542,
+      "proposing_share": 0.9172105993148815,
+      "accepted_per_proposal": 1.0806771050385982,
+      "equivalent_acceptance": 0.540720378255841,
+      "proposal_length_shares": [
+        0.08278940068511852,
+        0.001437947993607502,
+        0.00318896820860803,
+        0.9125836831126659
+      ]
+    },
+    {
+      "data": "aime",
+      "prompt": "full",
+      "minimum_ngram": 1,
+      "draft_tokens": 5,
+      "steps": 249635,
+      "tau": 2.191099004546638,
+      "proposing_share": 0.9088989925290925,
+      "accepted_per_proposal": 1.3105031887277263,
+      "equivalent_acceptance": 0.5572780627296445,
+      "proposal_length_shares": [
+        0.09110100747090752,
+        0.0015742984757746309,
+        0.003489094077352935,
+        0.004318304724898352,
+        0.00966210667574659,
+        0.88985518857532
+      ]
+    },
+    {
+      "data": "aime",
+      "prompt": "full",
+      "minimum_ngram": 1,
+      "draft_tokens": 7,
+      "steps": 237283,
+      "tau": 2.3051588187944354,
+      "proposing_share": 0.9041566399615649,
+      "accepted_per_proposal": 1.443528276646422,
+      "equivalent_acceptance": 0.5710994086257353,
+      "proposal_length_shares": [
+        0.09584336003843512,
+        0.0015930344778176272,
+        0.0036496504174340343,
+        0.00449674017944817,
+        0.009052481635852547,
+        0.00665450116527522,
+        0.008820690904953157,
+        0.8698895411807841
+      ]
+    },
+    {
+      "data": "aime",
+      "prompt": "full",
+      "minimum_ngram": 2,
+      "draft_tokens": 1,
+      "steps": 375660,
+      "tau": 1.4560373742213704,
+      "proposing_share": 0.7777325240909333,
+      "accepted_per_proposal": 0.5863747291751522,
+      "equivalent_acceptance": 0.45603737422137025,
+      "proposal_length_shares": [
+        0.2222674759090667,
+        0.7777325240909333
+      ]
+    },
+    {
+      "data": "aime",
+      "prompt": "full",
+      "minimum_ngram": 2,
+      "draft_tokens": 3,
+      "steps": 293698,
+      "tau": 1.8623722327016188,
+      "proposing_share": 0.7157045672765903,
+      "accepted_per_proposal": 1.2049466938787161,
+      "equivalent_acceptance": 0.49538879003916547,
+      "proposal_length_shares": [
+        0.28429543272340974,
+        0.0003779392437129296,
+        0.0003370809470953156,
+        0.714989547085782
+      ]
+    },
+    {
+      "data": "aime",
+      "prompt": "full",
+      "minimum_ngram": 2,
+      "draft_tokens": 5,
+      "steps": 269589,
+      "tau": 2.0289218031892995,
+      "proposing_share": 0.6902803897785147,
+      "accepted_per_proposal": 1.490606796638222,
+      "equivalent_acceptance": 0.5164829617532263,
+      "proposal_length_shares": [
+        0.3097196102214853,
+        0.0004043191673250763,
+        0.00032642281398721757,
+        0.0015430896661213923,
+        0.00538597643078909,
+        0.6826205817002919
+      ]
+    },
+    {
+      "data": "aime",
+      "prompt": "full",
+      "minimum_ngram": 2,
+      "draft_tokens": 7,
+      "steps": 257641,
+      "tau": 2.1230122534844997,
+      "proposing_share": 0.6759172647210654,
+      "accepted_per_proposal": 1.6614870452039692,
+      "equivalent_acceptance": 0.5319931699406049,
+      "proposal_length_shares": [
+        0.32408273527893466,
+        0.0003648487624252351,
+        0.0003376791737339942,
+        0.001575836144091973,
+        0.0045644909001284735,
+        0.0030235870843538103,
+        0.004451931175550475,
+        0.6615988914807814
+      ]
+    },
+    {
+      "data": "aime",
+      "prompt": "half",
+      "minimum_ngram": 1,
+      "draft_tokens": 1,
+      "steps": 362232,
+      "tau": 1.5100129198966408,
+      "proposing_share": 0.9332195940723073,
+      "accepted_per_proposal": 0.5465149300974436,
+      "equivalent_acceptance": 0.5100129198966408,
+      "proposal_length_shares": [
+        0.06678040592769274,
+        0.9332195940723073
+      ]
+    },
+    {
+      "data": "aime",
+      "prompt": "half",
+      "minimum_ngram": 1,
+      "draft_tokens": 3,
+      "steps": 275604,
+      "tau": 1.9846410066617322,
+      "proposing_share": 0.9122291403608075,
+      "accepted_per_proposal": 1.0793909647036362,
+      "equivalent_acceptance": 0.5385011249044191,
+      "proposal_length_shares": [
+        0.08777085963919247,
+        0.0014840132944369457,
+        0.003243784560456307,
+        0.9075013425059143
+      ]
+    },
+    {
+      "data": "aime",
+      "prompt": "half",
+      "minimum_ngram": 1,
+      "draft_tokens": 5,
+      "steps": 250656,
+      "tau": 2.1821739754883187,
+      "proposing_share": 0.9034932337546279,
+      "accepted_per_proposal": 1.3084657299550484,
+      "equivalent_acceptance": 0.5551568307133488,
+      "proposal_length_shares": [
+        0.09650676624537215,
+        0.0016237393080556618,
+        0.003542703944848717,
+        0.004376516021958381,
+        0.009746425379803397,
+        0.8842038490999617
+      ]
+    },
+    {
+      "data": "aime",
+      "prompt": "half",
+      "minimum_ngram": 1,
+      "draft_tokens": 7,
+      "steps": 238391,
+      "tau": 2.2944448406189832,
+      "proposing_share": 0.8985280484582052,
+      "accepted_per_proposal": 1.440646869062236,
+      "equivalent_acceptance": 0.5689500970582315,
+      "proposal_length_shares": [
+        0.10147195154179478,
+        0.0016443573792634788,
+        0.0037039988925756427,
+        0.004555541106837087,
+        0.009140445738303879,
+        0.0067326367186680705,
+        0.008930706276663128,
+        0.8638203623458939
+      ]
+    },
+    {
+      "data": "aime",
+      "prompt": "half",
+      "minimum_ngram": 2,
+      "draft_tokens": 1,
+      "steps": 376289,
+      "tau": 1.4536034803037028,
+      "proposing_share": 0.7737802593219574,
+      "accepted_per_proposal": 0.5862243058059863,
+      "equivalent_acceptance": 0.4536034803037029,
+      "proposal_length_shares": [
+        0.22621974067804268,
+        0.7737802593219574
+      ]
+    },
+    {
+      "data": "aime",
+      "prompt": "half",
+      "minimum_ngram": 2,
+      "draft_tokens": 3,
+      "steps": 294649,
+      "tau": 1.856361297679612,
+      "proposing_share": 0.711100326150776,
+      "accepted_per_proposal": 1.2042954301396014,
+      "equivalent_acceptance": 0.493180122934198,
+      "proposal_length_shares": [
+        0.288899673849224,
+        0.000390294893245862,
+        0.00034617460096589503,
+        0.7103638566565642
+      ]
+    },
+    {
+      "data": "aime",
+      "prompt": "half",
+      "minimum_ngram": 2,
+      "draft_tokens": 5,
+      "steps": 270677,
+      "tau": 2.020766448571545,
+      "proposing_share": 0.6855144692751878,
+      "accepted_per_proposal": 1.4890732028045894,
+      "equivalent_acceptance": 0.5142953972450086,
+      "proposal_length_shares": [
+        0.3144855307248122,
+        0.0004174717467682884,
+        0.00033249962131987575,
+        0.0015442760190189783,
+        0.005390188305618875,
+        0.6778300335824617
+      ]
+    },
+    {
+      "data": "aime",
+      "prompt": "half",
+      "minimum_ngram": 2,
+      "draft_tokens": 7,
+      "steps": 258809,
+      "tau": 2.1134311403390145,
+      "proposing_share": 0.6710933545587673,
+      "accepted_per_proposal": 1.6591530644557677,
+      "equivalent_acceptance": 0.5297715409318107,
+      "proposal_length_shares": [
+        0.3289066454412327,
+        0.00037865762009821915,
+        0.00034388294070144393,
+        0.0015764521326538104,
+        0.004574802267309097,
+        0.0030292609607857532,
+        0.004458886669319846,
+        0.6567314119678991
+      ]
+    },
+    {
+      "data": "aime",
+      "prompt": "none",
+      "minimum_ngram": 1,
+      "draft_tokens": 1,
+      "steps": 363359,
+      "tau": 1.5053294400303832,
+      "proposing_share": 0.9258419359366357,
+      "accepted_per_proposal": 0.5458112498625202,
+      "equivalent_acceptance": 0.5053294400303832,
+      "proposal_length_shares": [
+        0.07415806406336434,
+        0.9258419359366357
+      ]
+    },
+    {
+      "data": "aime",
+      "prompt": "none",
+      "minimum_ngram": 1,
+      "draft_tokens": 3,
+      "steps": 277278,
+      "tau": 1.9726592084478394,
+      "proposing_share": 0.902819552939649,
+      "accepted_per_proposal": 1.0773692536311779,
+      "equivalent_acceptance": 0.5344205430649249,
+      "proposal_length_shares": [
+        0.09718044706035098,
+        0.0015507901816949055,
+        0.003310756713478891,
+        0.8979580060444752
+      ]
+    },
+    {
+      "data": "aime",
+      "prompt": "none",
+      "minimum_ngram": 1,
+      "draft_tokens": 5,
+      "steps": 252503,
+      "tau": 2.1662118865914466,
+      "proposing_share": 0.8932844362245201,
+      "accepted_per_proposal": 1.3055502600229654,
+      "equivalent_acceptance": 0.551329454220312,
+      "proposal_length_shares": [
+        0.1067155637754799,
+        0.0016950293659877308,
+        0.003615798624174762,
+        0.004621727266606733,
+        0.009908793162853511,
+        0.8734430878048973
+      ]
+    },
+    {
+      "data": "aime",
+      "prompt": "none",
+      "minimum_ngram": 1,
+      "draft_tokens": 7,
+      "steps": 240319,
+      "tau": 2.2760372671324363,
+      "proposing_share": 0.8878740340963469,
+      "accepted_per_proposal": 1.4372015203423114,
+      "equivalent_acceptance": 0.5652164404221109,
+      "proposal_length_shares": [
+        0.11212596590365306,
+        0.0017185490951610151,
+        0.003778311327860053,
+        0.004810273012121388,
+        0.009312621973293831,
+        0.006815940479113178,
+        0.009000536786521249,
+        0.8524378014222762
+      ]
+    },
+    {
+      "data": "aime",
+      "prompt": "none",
+      "minimum_ngram": 2,
+      "draft_tokens": 1,
+      "steps": 377423,
+      "tau": 1.4492360031052691,
+      "proposing_share": 0.7667762695967124,
+      "accepted_per_proposal": 0.5858831578547266,
+      "equivalent_acceptance": 0.44923600310526923,
+      "proposal_length_shares": [
+        0.23322373040328756,
+        0.7667762695967124
+      ]
+    },
+    {
+      "data": "aime",
+      "prompt": "none",
+      "minimum_ngram": 2,
+      "draft_tokens": 3,
+      "steps": 296325,
+      "tau": 1.8458618071374335,
+      "proposing_share": 0.7029477769341095,
+      "accepted_per_proposal": 1.2033259561884004,
+      "equivalent_acceptance": 0.4893006701090906,
+      "proposal_length_shares": [
+        0.2970522230658905,
+        0.0004015860963469164,
+        0.0003408419809330971,
+        0.7022053488568295
+      ]
+    },
+    {
+      "data": "aime",
+      "prompt": "none",
+      "minimum_ngram": 2,
+      "draft_tokens": 5,
+      "steps": 272521,
+      "tau": 2.0070930313627207,
+      "proposing_share": 0.6770010384520826,
+      "accepted_per_proposal": 1.487601424413405,
+      "equivalent_acceptance": 0.5105956596633818,
+      "proposal_length_shares": [
+        0.3229989615479174,
+        0.0004293247125909563,
+        0.0003302497789161202,
+        0.001588868380785334,
+        0.00539407972229663,
+        0.6692585158574935
+      ]
+    },
+    {
+      "data": "aime",
+      "prompt": "none",
+      "minimum_ngram": 2,
+      "draft_tokens": 7,
+      "steps": 260737,
+      "tau": 2.0978035338291074,
+      "proposing_share": 0.6624031111809985,
+      "accepted_per_proposal": 1.657327473901791,
+      "equivalent_acceptance": 0.5261088897457791,
+      "proposal_length_shares": [
+        0.3375968888190015,
+        0.0003911987941872462,
+        0.00034134012433985203,
+        0.0016223244111882855,
+        0.004586997625960259,
+        0.003029873013803181,
+        0.004471939157081657,
+        0.647959438054438
+      ]
+    }
+  ]
+}

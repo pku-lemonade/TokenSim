@@ -35,7 +35,7 @@ def equivalent_acceptance(tau, draft_tokens):
 
 
 def replay(prompt, output, draft_tokens, minimum):
-    """Steps, proposing steps and accepted draft tokens for one output."""
+    """Steps, proposing steps, accepted draft tokens and proposal lengths."""
     sequence = prompt + output
     index = {}
 
@@ -47,6 +47,7 @@ def replay(prompt, output, draft_tokens, minimum):
     for end in range(1, len(prompt)):
         insert(end)
     position, steps, proposing, accepted = len(prompt), 0, 0, 0
+    lengths = [0] * (draft_tokens + 1)
     while position < len(sequence):
         proposal = []
         for n in range(MAXIMUM_NGRAM, minimum - 1, -1):
@@ -66,11 +67,12 @@ def replay(prompt, output, draft_tokens, minimum):
         commit = min(matched + 1, len(sequence) - position)
         steps += 1
         proposing += bool(proposal)
+        lengths[len(proposal)] += 1
         accepted += min(matched, commit)
         for end in range(position, position + commit):
             insert(end)
         position += commit
-    return steps, proposing, accepted
+    return steps, proposing, accepted, lengths
 
 
 def main(argv=None):
@@ -104,12 +106,14 @@ def main(argv=None):
             for minimum in MINIMUM_NGRAMS:
                 for draft_tokens in DRAFT_TOKENS:
                     steps = proposing = accepted = tokens = 0
+                    lengths = [0] * (draft_tokens + 1)
                     for prompt, output in pairs:
                         if prompt_mode == "half":
                             prompt = prompt[: len(prompt) // 2]
                         elif prompt_mode == "none":
                             prompt = []
-                        s, p, a = replay(prompt, output, draft_tokens, minimum)
+                        s, p, a, counts = replay(prompt, output, draft_tokens, minimum)
+                        lengths = [x + y for x, y in zip(lengths, counts)]
                         steps, proposing, accepted = (
                             steps + s,
                             proposing + p,
@@ -127,6 +131,7 @@ def main(argv=None):
                         proposing_share=proposing / steps,
                         accepted_per_proposal=accepted / max(proposing, 1),
                         equivalent_acceptance=equivalent_acceptance(tau, draft_tokens),
+                        proposal_length_shares=[x / steps for x in lengths],
                     )
                     results.append(row)
                     print(
