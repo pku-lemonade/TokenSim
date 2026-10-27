@@ -20,6 +20,7 @@ The [test-configuration record](lpx-aa-test-configuration.md) lists the establis
 
 Under these conditions on 256 chips, one layout comes close.
 It uses tensor parallelism (TP) of 32 with 8 pipeline-parallel (PP) stages, splits each request's KV cache across 8 chips with decode context parallelism (DCP), runs attention matrix work at 30% efficiency or more and decodes one token per step without speculative decoding.
+The same layout with prompt-lookup drafting is the alternative described under speculative decoding.
 The [article-condition sweep](lpx-article-sweep.md) gives its step times.
 
 | Value | 10K | 100K |
@@ -36,11 +37,24 @@ A token ratio from 1.053 to 1.090 on Gemma's answers to AA's prompts would also 
 
 ## Speculative decoding
 
-The [article-condition speculation record](lpx-article-speculative.md) finds matches on the same layout only at per-position acceptances of 0.006 to 0.335.
+The [article-condition speculation record](lpx-article-speculative.md) finds matches on the same layout without unmodeled time only at per-position acceptances of 0.006 to 0.335.
 Gemma's multi-token prediction (MTP) drafter class reaches 0.57 to 0.68 on prose.
-The [lookup-acceptance record](lpx-lookup-acceptance.md) measures prompt-lookup drafting on Gemma's own outputs, and that acceptance makes the endpoint 13% to 24% too fast at 10K.
+The [lookup-acceptance record](lpx-lookup-acceptance.md) measures prompt-lookup drafting on Gemma's own outputs, and that acceptance makes the endpoint 13% to 24% too fast at 10K without extra time.
 The [lookup-context record](lpx-lookup-context.md) finds that widening the lookback beyond 16K tokens adds less than 0.005 acceptance on Gemma agent turns with up to 66K context tokens.
-Plain decoding fits the AA values better than any drafter at its measured or published acceptance.
+
+NVIDIA also reports 4,767 TPS as the SPEED-Bench coding median and 10,996 TPS as a coding example under the same deployment name.
+Plain decoding on the closest setup is 22% to 29% too slow for the coding median, so under plain decoding the coding values come from another build.
+The [lookup-coding record](lpx-lookup-coding.md) measures lookup drafting on Gemma's coding outputs and finds two consistent explanations on the closest layout:
+
+| Explanation | AA 10K and 100K | Coding median | Unmodeled time per step |
+| --- | --- | --- | --- |
+| Plain decoding | Within 5% | Too slow | 14 to 25 µs at one Gemma token per AA token, 1 to 16 µs at Gemma's writing token ratio |
+| Lookup drafting at the measured writing and coding acceptances | Within 5% | Within 5% | 38 to 61 µs |
+
+Plain decoding needs less unmodeled time and fits the AA values alone.
+Lookup drafting lets one build explain the AA values and the coding median, at the cost of more than twice the unmodeled time.
+The published sources do not say whether the AA deployment drafts, so the data does not decide between them.
+Gemma's MTP drafter at its published acceptance fits neither, and no measured acceptance reaches the 10,996 TPS example, which needs about 0.8 per position.
 
 ## Speed at 100K
 
@@ -57,7 +71,7 @@ The LP30 cross-tray latency, matrix-unit operand bandwidth and FP8 attention pat
 
 ## Open questions
 
-NVIDIA's chip count and layout remain unknown.
+NVIDIA's chip count and layout remain unknown, and so does whether the deployment drafts tokens.
 The token ratio and drafting acceptance of Gemma's answers to AA-style long-document prompts remain unmeasured.
 The match shows that the cost model is compatible with the published values under one plausible setup and does not identify NVIDIA's deployment.
 
@@ -67,7 +81,7 @@ These measurements would settle the remaining questions:
 | --- | --- |
 | Gemma 4 31B answers to AA-like 10K and 100K document questions, generated on a GPU host | Token ratio and lookup acceptance on AA-like content, using [`scripts/measure_lpx_token_ratio.py`](../scripts/measure_lpx_token_ratio.py) and [`scripts/measure_lpx_lookup_acceptance.py`](../scripts/measure_lpx_lookup_acceptance.py) |
 | One all-reduce across two LP30 trays | Whether the cross-tray latency supplies the missing 1 to 16 µs per step |
-| AA's per-request speed spread | Whether the 1.45% difference between 100K and 10K lies within the spread of the 50 requests |
+| AA's per-request speed spread | Whether the 1.45% difference between 100K and 10K lies within the spread of the 50 requests; a wide spread also points to speculative decoding |
 
 ## Reproduction
 

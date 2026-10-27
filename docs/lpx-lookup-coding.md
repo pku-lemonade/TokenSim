@@ -47,3 +47,79 @@ The script reports the extra time per step that places the coding median within 
 3. At least one setting of the `combined` part places the coding median within 5% of 4,767 TPS with 0 to 25 µs of extra time per step.
 4. No setting reaches 10,996 TPS within 5% without extra time.
 5. No setting places the coding median and both AA values within 5% with one shared extra time.
+
+## Results
+
+The replay took 96 seconds and used at most 0.44 GB.
+[`experiments/lpx/lookup-coding-results.json`](../experiments/lpx/lookup-coding-results.json) holds every part, prompt mode, `n_min` and `K` with the proposal-length shares.
+The extended script reproduces every value of the earlier WritingBench and AIME results.
+
+```bash
+python -I scripts/measure_lpx_lookup_acceptance.py \
+  --gemma-tokenizer tokenizer.json \
+  --data codex-combined=codex-500.json#combined \
+  --data codex-thinking=codex-500.json#thinking \
+  --data codex-answer=codex-500.json#answer \
+  --data codex-answer-alone=codex-500.json#answer-alone \
+  --summary experiments/lpx/lookup-coding-results.json
+python scripts/analyze_lpx_published_conditions.py \
+  --summary experiments/lpx/published-conditions-analysis.json
+```
+
+Committed tokens per step `tau` and equivalent per-position acceptance with the full prompt and `n_min = 1`:
+
+| Part | `K` = 1 | `K` = 3 | `K` = 5 | `K` = 7 | Acceptance at `K` = 7 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `combined` | 1.415 | 1.738 | 1.854 | 1.906 | 0.477 |
+| `thinking` | 1.418 | 1.745 | 1.864 | 1.917 | 0.480 |
+| `answer` | 1.398 | 1.690 | 1.789 | 1.836 | 0.456 |
+| `answer-alone` | 1.286 | 1.451 | 1.493 | 1.510 | 0.338 |
+
+With `n_min = 2`, `tau` is 1.347 to 1.731 for `combined` and 1.189 to 1.328 for `answer-alone`.
+Removing the prompt changes the `combined` and `thinking` acceptance by at most 0.011, because the problems are short, and the `answer-alone` acceptance by at most 0.043.
+Removing the prompt of the `answer` part, which contains the thinking, lowers its `K = 7` acceptance from 0.456 to 0.294.
+
+Coding speed on TP32/PP8 with DCP 8 at efficiency 0.50 and the 16K coding context, without extra time:
+
+| Part | `n_min` | `K` | Step | Coding TPS | Against 4,767 | Extra time for the median | Extra time shared with AA |
+| --- | ---: | ---: | ---: | ---: | ---: | --- | --- |
+| `combined` | 1 | 1 | 277.2 µs | 5,105 | +7.1% | 5.5 to 35.3 µs | none |
+| `combined` | 1 | 3 | 298.8 µs | 5,815 | +22.0% | 48.3 to 84.9 µs | 51.6 to 61.3 µs |
+| `combined` | 1 | 7 | 342.1 µs | 5,573 | +16.9% | 38.8 to 78.9 µs | none |
+| `combined` | 2 | 1 | 274.6 µs | 4,905 | +2.9% | 0 to 22.8 µs | none |
+| `combined` | 2 | 3 | 288.1 µs | 5,560 | +16.6% | 31.9 to 65.6 µs | 44.6 to 56.5 µs |
+| `combined` | 2 | 5 | 301.3 µs | 5,608 | +17.7% | 36.3 to 71.8 µs | 42.8 to 52.2 µs |
+| `combined` | 2 | 7 | 314.2 µs | 5,510 | +15.6% | 31.7 to 68.1 µs | 38.0 to 44.6 µs |
+| `answer-alone` | 1 | 3 | 293.7 µs | 4,941 | +3.7% | 0 to 26.8 µs | none |
+| `answer-alone` | 1 | 5 | 311.6 µs | 4,791 | +0.5% | 0 to 18.1 µs | none |
+
+The last column is the constant extra time per step that places the coding median and both AA values, priced at the WritingBench acceptance of the same `n_min` and `K`, within 5%.
+[`experiments/lpx/published-conditions-analysis.json`](../experiments/lpx/published-conditions-analysis.json) holds all 32 settings under `coding_pricing`.
+The fastest setting gives 5,841 TPS, 46.9% below the 10,996 TPS example.
+If every step proposed `K` tokens, the example would need 3.34 committed tokens per step at `K = 3` and 3.92 at `K = 7`, per-position acceptances of 0.88 and 0.78.
+
+### Comparison with the expectations
+
+1. Missed: the `combined` part gives 0.477 at `K = 7`, above the expected 0.25 to 0.45.
+2. Held: the `answer` part accepts 0.456 and the `answer-alone` part 0.338 at `K = 7`, a difference of 0.118.
+3. Held: `combined` with `K = 1` places the median within 5% with 5.5 to 35.3 µs of extra time at `n_min = 1` and 0 to 22.8 µs at `n_min = 2`.
+4. Held: no setting comes within 46% of 10,996 TPS.
+5. Missed: 13 of 32 settings, including 4 of the 8 `combined` settings, place the coding median and both AA values within 5% with one shared extra time of 38.0 to 61.3 µs per step.
+
+## Interpretation
+
+Lookup drafting on Gemma's coding outputs commits 1.19 to 1.92 tokens per step.
+Without extra time, the coding median needs 4,767 TPS times the step time: 1.31 committed tokens at the 274.6 µs step and 1.63 at the 342.1 µs step.
+The 4,767 TPS median is therefore reachable with lookup drafting on the closest AA layout, with or without thinking.
+The 10,996 TPS example needs an acceptance of about 0.8 per position, which competitive-programming answers do not reach; it would need an output that mostly copies its prompt, such as an edit of supplied code.
+
+The coding median and the AA values now admit two consistent explanations on TP32/PP8 with DCP 8:
+
+| Explanation | AA 10K and 100K | Coding median | Unmodeled time per step |
+| --- | --- | --- | --- |
+| Plain decoding | Within 5% | 22% to 29% too slow, so it needs another build | 14 to 25 µs at one Gemma token per AA token |
+| Lookup drafting at the measured writing and coding acceptances | Within 5% | Within 5% | 38 to 61 µs |
+
+Lookup drafting lets one build explain three of the four published speeds, at the cost of more than twice the unmodeled time per step.
+A drafter that runs outside the LP30 chips, such as n-gram matching on the host CPU, would add time to every step, but no source describes where the deployment drafts, so the cause of the 38 to 61 µs remains unidentified.
+Neither explanation reproduces AA's higher speed at 100K or the 10,996 TPS example.
