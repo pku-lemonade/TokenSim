@@ -32,6 +32,7 @@ All results use the bundled [fidelity configuration](../experiments/lpx/fidelity
 | GroqChip v1 BERT check | [BERT validation](groqchip-v1-bert-validation.md) | The LP30 method with matrix efficiency 0.3 predicts the measured BERT-base layer within 6.5% to 9.5%; decode weight streaming, communication and fixed costs remain untested |
 | GroqChip v1 Llama-2 70B check | [Llama-2 validation](groqchip-v1-llama2-validation.md) | With the direct all-reduce that production uses, simulated decode is 3.5 to 5.2 times faster than the published 241 to 300 tokens per second |
 | AA test configuration | [Test-configuration record](lpx-aa-test-configuration.md) | Sequential single-request decode on one named deployment is established; LP30-only execution, FP8 and batch size 1 are likely; chip count, layout and speculative decoding are unknown |
+| Published-condition sweep | [Article-condition sweep](lpx-article-sweep.md) | At batch one without speculation on 256 chips, only TP32/PP8 with `KVP = 8` at efficiency 0.30 or more matches, and only with 14 to 25 µs of unmodeled time per step |
 
 ## DCP
 
@@ -124,6 +125,15 @@ With the direct all-reduce that the production system uses, the simulation gives
 The default 14-round ring all-reduce lands at 313 to 705 tokens per second, but the production system does not use it.
 The published speeds come from an unknown production configuration under unknown load, so the check cannot size the error.
 It agrees in direction with the published acceptance: both suggest that the simulated decode step is shorter than real decode on Groq hardware.
+
+## Published-condition sweep
+
+The [article-condition sweep](lpx-article-sweep.md) keeps one request per forward, no speculation, FP8 weights and KV cache, 256 chips and the published C2C link bandwidth of 96 links at 112 Gb/s.
+Among TP32/PP8 with `KVP = 1` to `8` and TP16/PP16 with `KVP = 1` to `4`, only TP32/PP8 with `KVP = 8` at attention efficiency 0.30 or 0.50 can match both AA values.
+Its steps are 267.3 to 267.4 µs at 10K and 281.5 to 281.6 µs at 100K, so the 10K speed is 10.6% too fast and the 100K speed is 3.5% fast, inside the 5% band.
+A constant 14.2 to 25.3 µs per step that the model does not include would place both values within 5%.
+Every other layout exceeds the 25.2 µs bound on the 10K-to-100K increment.
+The published link bandwidth changed the steps by about 0.1 µs.
 
 ## Ablation
 
