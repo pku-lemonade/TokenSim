@@ -98,3 +98,4 @@ A lookup drafter can reproduce AA's higher 100K speed only if its acceptance is 
 The measured gain of about 0.008 per doubling of the prompt is too small to supply that difference if it continued to 100K tokens, and a 10K acceptance of 0.19 would be below the 0.225 measured on prompts of only 800 tokens.
 AA's prompts and answers may copy differently from WritingBench, so the measurement weakens the lookup explanation and does not exclude it.
 Gemma's mathematics output gives 0.57, which shows that the acceptance depends strongly on the content of the answer.
+The [lookup-context record](lpx-lookup-context.md) tests the context effect on Gemma 4 31B agent turns with up to 66K context tokens and finds less than 0.005 gain per doubling of the lookback beyond 16K tokens.

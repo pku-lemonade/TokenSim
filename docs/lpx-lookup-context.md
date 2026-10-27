@@ -56,3 +56,60 @@ The probability that the replay matches a draft prefix on a sampled output there
 4. With unlimited lookback, the `K = 7` acceptance of turns with 16,384 or more context tokens exceeds that of turns with 2,048 to 4,095 context tokens by less than 0.10.
 
 Expectations 2 and 4 together predict that more context does not add the 0.1 of acceptance that the lookup explanation of the AA values needs.
+
+## Results
+
+The replay took 73 seconds and used at most 0.77 GB.
+[`experiments/lpx/lookup-context-results.json`](../experiments/lpx/lookup-context-results.json) holds every window, draft length and context bin, with the SHA-256 of each row file.
+Without a window, the replay reproduces [`replay`](../scripts/measure_lpx_lookup_acceptance.py) of the earlier record exactly on 600 random prompt and output pairs.
+
+```bash
+python -I scripts/measure_lpx_lookup_context.py \
+  --gemma-tokenizer tokenizer.json \
+  --data oa-s0.json \
+  --data oa-s1.json \
+  --summary experiments/lpx/lookup-context-results.json
+```
+
+The command lists one `--data` argument for each of the 20 row files `oa-s0.json` to `oa-s19.json`.
+The 19,792 assistant turns hold 5,677,110 tokens.
+
+Equivalent per-position acceptance at `K = 7`:
+
+| Context before the turn | Turn tokens | Unlimited | `W` = 16,384 | `W` = 4,096 | `W` = 1,024 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Under 2,048 | 1,500,563 | 0.368 | 0.368 | 0.368 | 0.348 |
+| 2,048 to 4,095 | 928,842 | 0.423 | 0.423 | 0.422 | 0.351 |
+| 4,096 to 8,191 | 1,227,069 | 0.448 | 0.448 | 0.423 | 0.351 |
+| 8,192 to 16,383 | 1,197,442 | 0.536 | 0.536 | 0.495 | 0.422 |
+| 16,384 to 32,767 | 790,558 | 0.658 | 0.653 | 0.615 | 0.523 |
+| 32,768 or more | 32,636 | 0.775 | 0.773 | 0.758 | 0.710 |
+| 16,384 or more | 823,194 | 0.663 | 0.658 | 0.621 | 0.530 |
+| All turns | 5,677,110 | 0.471 | 0.470 | 0.451 | 0.391 |
+
+At `K = 3` the values are 0.02 to 0.04 lower and change with the window and the bin in the same way.
+Without a window, 81% of steps make a proposal at `K = 7` over all turns and 93% on turns with 16,384 or more context tokens.
+
+### Comparison with the expectations
+
+1. Held: the unlimited `K = 7` acceptance over all turns is 0.471.
+2. Held: a 4,096-token window lowers the acceptance by 0.020 over all turns and by 0.042 on turns with 16,384 or more context tokens.
+3. Held: a 1,024-token window lowers the acceptance by 0.080 over all turns.
+4. Missed: turns with 16,384 or more context tokens accept 0.663 and turns with 2,048 to 4,095 accept 0.423, a difference of 0.240.
+
+## Interpretation
+
+Acceptance rises strongly with the context length of a turn, and most of that rise comes from the turns themselves.
+With a 1,024-token window, which gives every turn the same amount of text to copy from, turns with 16,384 or more context tokens still accept 0.530 and turns with 2,048 to 4,095 accept 0.351.
+That 0.179 difference is 75% of the 0.240 difference without a window.
+Late agent turns repeat earlier commands and JSON fields, so they are easier to draft regardless of how far back the drafter can look.
+
+The text available for copying adds less with each increase in the window.
+On turns with 16,384 or more context tokens, widening the window from 1,024 to 4,096 tokens adds 0.091, from 4,096 to 16,384 tokens 0.037 and from 16,384 tokens to the whole context 0.005.
+That is about 0.045, 0.018 and less than 0.005 per doubling of the window, and the [WritingBench record](lpx-lookup-acceptance.md) found about 0.008 per doubling of a shorter prompt.
+
+A lookup drafter reproduces AA's higher 100K speed only if its acceptance at 100K exceeds its acceptance at 10K by about 0.1.
+Going from 10K to 100K tokens of context is about 3.3 doublings, and on this data the doublings beyond 16K tokens add less than 0.005 each, so more text to copy from would supply well under 0.1.
+The data shows a second route that is large: answers whose content repeats more text.
+AA's 100K questions would have to produce answers that repeat their context more than the 10K answers do.
+AA does not publish its prompts, so this record cannot test that route, and the agent-trace acceptance levels do not transfer to AA's long-document questions.
