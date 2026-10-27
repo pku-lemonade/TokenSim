@@ -102,6 +102,12 @@ def main(argv=None):
     parser.add_argument("--gemma-tokenizer", type=Path, required=True)
     parser.add_argument("--data", action="append", required=True)
     parser.add_argument("--summary", type=Path)
+    parser.add_argument(
+        "--per-row",
+        action="store_true",
+        help="record each row's output tokens and proposal-length counts"
+        " for the full prompt",
+    )
     args = parser.parse_args(argv)
 
     from tokenizers import Tokenizer
@@ -133,6 +139,7 @@ def main(argv=None):
                 for draft_tokens in DRAFT_TOKENS:
                     steps = proposing = accepted = tokens = 0
                     lengths = [0] * (draft_tokens + 1)
+                    per_row = []
                     for prompt, output in pairs:
                         if prompt_mode == "half":
                             prompt = prompt[: len(prompt) // 2]
@@ -140,6 +147,7 @@ def main(argv=None):
                             prompt = []
                         s, p, a, counts = replay(prompt, output, draft_tokens, minimum)
                         lengths = [x + y for x, y in zip(lengths, counts)]
+                        per_row.append([len(output), counts])
                         steps, proposing, accepted = (
                             steps + s,
                             proposing + p,
@@ -159,6 +167,8 @@ def main(argv=None):
                         equivalent_acceptance=equivalent_acceptance(tau, draft_tokens),
                         proposal_length_shares=[x / steps for x in lengths],
                     )
+                    if args.per_row and prompt_mode == "full":
+                        row["per_row"] = per_row
                     results.append(row)
                     print(
                         f"{name} prompt={prompt_mode} n_min={minimum} K={draft_tokens}:"
