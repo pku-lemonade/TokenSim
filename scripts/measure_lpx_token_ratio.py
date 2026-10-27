@@ -9,7 +9,9 @@ both tokenizers and reports the ratio per text category.  It needs the
 Each ``--text`` argument is ``category=path``.  Plain files are read as text;
 ``.json`` files are read as a Wikipedia extract query or as Hugging Face
 dataset-server rows with ``conversations``; Project Gutenberg files are cut to
-the book between the START and END markers.
+the book between the START and END markers.  A ``#thought`` or ``#solution``
+suffix on a dataset-server path keeps only that part of each OpenThoughts
+answer.
 """
 
 import argparse
@@ -18,7 +20,21 @@ import json
 from pathlib import Path
 
 
-def texts(path):
+SECTIONS = dict(
+    thought=("<|begin_of_thought|>", "<|end_of_thought|>"),
+    solution=("<|begin_of_solution|>", "<|end_of_solution|>"),
+)
+
+
+def section(text, name):
+    if name is None:
+        return text
+    begin, end = SECTIONS[name]
+    start, stop = text.find(begin), text.find(end)
+    return text[start + len(begin) : stop] if 0 <= start < stop else ""
+
+
+def texts(path, part=None):
     raw = path.read_text(encoding="utf-8")
     if path.suffix != ".json":
         start, end = raw.find("*** START OF"), raw.find("*** END OF")
@@ -29,7 +45,7 @@ def texts(path):
     if "query" in data:
         return [page.get("extract", "") for page in data["query"]["pages"].values()]
     return [
-        turn["value"]
+        section(turn["value"], part)
         for row in data["rows"]
         for turn in row["row"]["conversations"]
         if turn["from"] == "assistant"
@@ -50,10 +66,11 @@ def main(argv=None):
     o200k = tiktoken.get_encoding("o200k_base")
     totals, files = {}, []
     for item in args.text:
-        category, path = item.split("=", 1)
+        category, spec = item.split("=", 1)
+        path, _, part = spec.partition("#")
         path = Path(path)
         native = aa = characters = 0
-        for text in texts(path):
+        for text in texts(path, part or None):
             native += len(gemma.encode(text, add_special_tokens=False).ids)
             aa += len(o200k.encode(text, disallowed_special=()))
             characters += len(text)
@@ -61,6 +78,7 @@ def main(argv=None):
             dict(
                 category=category,
                 file=path.name,
+                part=part or None,
                 sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
                 characters=characters,
                 gemma_tokens=native,

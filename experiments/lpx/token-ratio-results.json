@@ -1,0 +1,293 @@
+{
+  "gemma_tokenizer_sha256": "cc8d3a0ce36466ccc1278bf987df5f71db1719b9ca6b4118264f45cb627bfe0f",
+  "tiktoken_encoding": "o200k_base",
+  "categories": {
+    "prose": {
+      "gemma_tokens": 171358,
+      "o200k_tokens": 170260,
+      "gemma_per_o200k": 1.0064489604134852
+    },
+    "wiki": {
+      "gemma_tokens": 100475,
+      "o200k_tokens": 97063,
+      "gemma_per_o200k": 1.035152426774363
+    },
+    "code": {
+      "gemma_tokens": 94441,
+      "o200k_tokens": 80697,
+      "gemma_per_o200k": 1.1703161207975514
+    },
+    "reasoning-thought": {
+      "gemma_tokens": 968981,
+      "o200k_tokens": 903145,
+      "gemma_per_o200k": 1.0728963787653145
+    },
+    "reasoning-solution": {
+      "gemma_tokens": 91605,
+      "o200k_tokens": 89163,
+      "gemma_per_o200k": 1.0273880421250967
+    },
+    "coding-thought": {
+      "gemma_tokens": 764622,
+      "o200k_tokens": 695308,
+      "gemma_per_o200k": 1.09968819573484
+    },
+    "coding-solution": {
+      "gemma_tokens": 73407,
+      "o200k_tokens": 67452,
+      "gemma_per_o200k": 1.0882850026685642
+    }
+  },
+  "files": [
+    {
+      "category": "prose",
+      "file": "gutenberg-1342.txt",
+      "part": null,
+      "sha256": "3f6bb9d6f78e0293b56acd4714dd68cb7d6d1d293402031ce9d5a216bcaf9d75",
+      "characters": 728750,
+      "gemma_tokens": 171358,
+      "o200k_tokens": 170260,
+      "gemma_per_o200k": 1.0064489604134852
+    },
+    {
+      "category": "wiki",
+      "file": "wiki-Black_hole.json",
+      "part": null,
+      "sha256": "c457e6b96487ab43e405151f36dc7d10b873c18f5e50a01368c29f78ea7c921a",
+      "characters": 76212,
+      "gemma_tokens": 15303,
+      "o200k_tokens": 15096,
+      "gemma_per_o200k": 1.0137122416534181
+    },
+    {
+      "category": "wiki",
+      "file": "wiki-Economy_of_Japan.json",
+      "part": null,
+      "sha256": "e65f397b92858533c086c50d444e1624dae11e8b50a69718edc4f78cebe49240",
+      "characters": 46785,
+      "gemma_tokens": 10809,
+      "o200k_tokens": 10037,
+      "gemma_per_o200k": 1.0769154129720035
+    },
+    {
+      "category": "wiki",
+      "file": "wiki-Photosynthesis.json",
+      "part": null,
+      "sha256": "304c4b252414d44e6eaa895a1c3da968a964f910cb3fd4b54f83b3cd300363ee",
+      "characters": 49740,
+      "gemma_tokens": 10065,
+      "o200k_tokens": 10342,
+      "gemma_per_o200k": 0.9732160123767163
+    },
+    {
+      "category": "wiki",
+      "file": "wiki-Python_programming_language.json",
+      "part": null,
+      "sha256": "64c6cef573b1012aba53c1a8bae141b0d135ea4c1e1b7bce87a0c046f3b1b181",
+      "characters": 40061,
+      "gemma_tokens": 8862,
+      "o200k_tokens": 8477,
+      "gemma_per_o200k": 1.0454170107349299
+    },
+    {
+      "category": "wiki",
+      "file": "wiki-Quantum_mechanics.json",
+      "part": null,
+      "sha256": "8b7d2fdab5b193e00af6b544ef1bc7a5799e5e97e475d353537f6d65ef61644d",
+      "characters": 76991,
+      "gemma_tokens": 16462,
+      "o200k_tokens": 14554,
+      "gemma_per_o200k": 1.131097979936787
+    },
+    {
+      "category": "wiki",
+      "file": "wiki-Roman_Empire.json",
+      "part": null,
+      "sha256": "74e01f24e03bb22c39dc7f6638b1b489d753140ecfcd787c53d07ab560be85b3",
+      "characters": 99564,
+      "gemma_tokens": 20005,
+      "o200k_tokens": 20044,
+      "gemma_per_o200k": 0.9980542805827181
+    },
+    {
+      "category": "wiki",
+      "file": "wiki-World_War_I.json",
+      "part": null,
+      "sha256": "41f726c0b3bec2126be3724f784160441fbb199d7e773a9f700db730060c954f",
+      "characters": 88843,
+      "gemma_tokens": 18969,
+      "o200k_tokens": 18513,
+      "gemma_per_o200k": 1.0246313401393616
+    },
+    {
+      "category": "code",
+      "file": "argparse.py",
+      "part": null,
+      "sha256": "29395feb61bc376ca4ff9d44069af8d914ec2a1f25a4bd7978f6e2afef5bc07f",
+      "characters": 101750,
+      "gemma_tokens": 24360,
+      "o200k_tokens": 20159,
+      "gemma_per_o200k": 1.208393273475867
+    },
+    {
+      "category": "code",
+      "file": "dataclasses.py",
+      "part": null,
+      "sha256": "0e449d55d6206b0022f541ba32be88fafc934ff71d9aa65f31f101ca6147f2ae",
+      "characters": 61753,
+      "gemma_tokens": 16925,
+      "o200k_tokens": 14555,
+      "gemma_per_o200k": 1.162830642390931
+    },
+    {
+      "category": "code",
+      "file": "typing.py",
+      "part": null,
+      "sha256": "c45d935c17234b1d6ae42d2d5499d3e03b4e2548fae0c4fce15477e23502214d",
+      "characters": 117428,
+      "gemma_tokens": 31316,
+      "o200k_tokens": 27406,
+      "gemma_per_o200k": 1.1426694884331898
+    },
+    {
+      "category": "code",
+      "file": "decoder.py",
+      "part": null,
+      "sha256": "9f02654649816145bc76f8c210a5fe3ba1de142d4d97a1c93105732e747c285b",
+      "characters": 12473,
+      "gemma_tokens": 3436,
+      "o200k_tokens": 3060,
+      "gemma_per_o200k": 1.122875816993464
+    },
+    {
+      "category": "code",
+      "file": "base_events.py",
+      "part": null,
+      "sha256": "4bf27730499a68f6a5b726204670590cb3425c9331941dd2036a0ad101af39cb",
+      "characters": 77971,
+      "gemma_tokens": 18404,
+      "o200k_tokens": 15517,
+      "gemma_per_o200k": 1.1860540052845268
+    },
+    {
+      "category": "reasoning-thought",
+      "file": "rows-20000.json",
+      "part": "thought",
+      "sha256": "9ab55124a48c667a5db84812b149d183eee444065ffe69e961e08271eff64281",
+      "characters": 711714,
+      "gemma_tokens": 254551,
+      "o200k_tokens": 235075,
+      "gemma_per_o200k": 1.0828501542061044
+    },
+    {
+      "category": "reasoning-solution",
+      "file": "rows-20000.json",
+      "part": "solution",
+      "sha256": "9ab55124a48c667a5db84812b149d183eee444065ffe69e961e08271eff64281",
+      "characters": 60754,
+      "gemma_tokens": 21328,
+      "o200k_tokens": 20639,
+      "gemma_per_o200k": 1.0333834003585445
+    },
+    {
+      "category": "reasoning-thought",
+      "file": "rows-45000.json",
+      "part": "thought",
+      "sha256": "8c2b2833d70e5c2cab8bcf541497679677f24089e5fe9291c2183e8167829a69",
+      "characters": 867443,
+      "gemma_tokens": 300515,
+      "o200k_tokens": 282687,
+      "gemma_per_o200k": 1.0630662181140271
+    },
+    {
+      "category": "reasoning-solution",
+      "file": "rows-45000.json",
+      "part": "solution",
+      "sha256": "8c2b2833d70e5c2cab8bcf541497679677f24089e5fe9291c2183e8167829a69",
+      "characters": 60538,
+      "gemma_tokens": 21829,
+      "o200k_tokens": 21718,
+      "gemma_per_o200k": 1.0051109678607606
+    },
+    {
+      "category": "reasoning-thought",
+      "file": "rows-70000.json",
+      "part": "thought",
+      "sha256": "736dde6c0d8c726e19e36be36e2c876e11592628f72a5acd646cc66cf895130e",
+      "characters": 713108,
+      "gemma_tokens": 233018,
+      "o200k_tokens": 219782,
+      "gemma_per_o200k": 1.0602233121911713
+    },
+    {
+      "category": "reasoning-solution",
+      "file": "rows-70000.json",
+      "part": "solution",
+      "sha256": "736dde6c0d8c726e19e36be36e2c876e11592628f72a5acd646cc66cf895130e",
+      "characters": 61738,
+      "gemma_tokens": 22740,
+      "o200k_tokens": 22118,
+      "gemma_per_o200k": 1.0281218916719415
+    },
+    {
+      "category": "reasoning-thought",
+      "file": "rows-95000.json",
+      "part": "thought",
+      "sha256": "dcafc00857ed3f3b8b60c3274a27dfc4c27496f87517cfe4357d0799f97e6a9a",
+      "characters": 379760,
+      "gemma_tokens": 136319,
+      "o200k_tokens": 123246,
+      "gemma_per_o200k": 1.1060724080294695
+    },
+    {
+      "category": "reasoning-solution",
+      "file": "rows-95000.json",
+      "part": "solution",
+      "sha256": "dcafc00857ed3f3b8b60c3274a27dfc4c27496f87517cfe4357d0799f97e6a9a",
+      "characters": 43365,
+      "gemma_tokens": 17075,
+      "o200k_tokens": 16246,
+      "gemma_per_o200k": 1.0510279453403915
+    },
+    {
+      "category": "reasoning-thought",
+      "file": "rows-113000.json",
+      "part": "thought",
+      "sha256": "9d8c70ec7bab226b19b7520818a73cb5984d92b2ee72d8891a980d4394de8222",
+      "characters": 185876,
+      "gemma_tokens": 44578,
+      "o200k_tokens": 42355,
+      "gemma_per_o200k": 1.0524849486483296
+    },
+    {
+      "category": "reasoning-solution",
+      "file": "rows-113000.json",
+      "part": "solution",
+      "sha256": "9d8c70ec7bab226b19b7520818a73cb5984d92b2ee72d8891a980d4394de8222",
+      "characters": 36153,
+      "gemma_tokens": 8633,
+      "o200k_tokens": 8442,
+      "gemma_per_o200k": 1.0226249703861645
+    },
+    {
+      "category": "coding-thought",
+      "file": "reasoning-rows.json",
+      "part": "thought",
+      "sha256": "5cec3f79ae2af9156b21836d1e2dc6f50ded19cabb7af82964ae893dbcb87f9c",
+      "characters": 2510057,
+      "gemma_tokens": 764622,
+      "o200k_tokens": 695308,
+      "gemma_per_o200k": 1.09968819573484
+    },
+    {
+      "category": "coding-solution",
+      "file": "reasoning-rows.json",
+      "part": "solution",
+      "sha256": "5cec3f79ae2af9156b21836d1e2dc6f50ded19cabb7af82964ae893dbcb87f9c",
+      "characters": 286481,
+      "gemma_tokens": 73407,
+      "o200k_tokens": 67452,
+      "gemma_per_o200k": 1.0882850026685642
+    }
+  ]
+}

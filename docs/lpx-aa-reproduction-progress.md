@@ -33,6 +33,7 @@ All results use the bundled [fidelity configuration](../experiments/lpx/fidelity
 | GroqChip v1 Llama-2 70B check | [Llama-2 validation](groqchip-v1-llama2-validation.md) | With the direct all-reduce that production uses, simulated decode is 3.5 to 5.2 times faster than the published 241 to 300 tokens per second |
 | AA test configuration | [Test-configuration record](lpx-aa-test-configuration.md) | Sequential single-request decode on one named deployment is established; LP30-only execution, FP8 and batch size 1 are likely; chip count, layout and speculative decoding are unknown |
 | Published-condition sweep | [Article-condition sweep](lpx-article-sweep.md) | At batch one without speculation on 256 chips, only TP32/PP8 with `KVP = 8` at efficiency 0.30 or more matches, and only with 14 to 25 µs of unmodeled time per step |
+| Token ratio | [Token-ratio record](lpx-token-ratio.md) | Gemma 4 produces 1.006 to 1.035 tokens per `o200k_base` token on prose and 1.027 to 1.100 on reasoning traces; at 1.053 to 1.090, TP32/PP8 with `KVP = 8` matches both AA values without extra time per step |
 
 ## DCP
 
