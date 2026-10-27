@@ -62,6 +62,8 @@ On TP8/PP9 with direct all-reduce and 0.5 µs hops, the critical path holds 139.
 4. Held within 0.03 ms: the measured TPOT exceeds the direct steps by 2.70 to 2.83 ms and the ring steps by 2.33 to 2.73 ms, against an expected 2.1 to 2.8 ms.
 5. Held: adding 2.70 to 2.83 ms to the direct 70B steps of 0.796 to 0.965 ms gives 3.50 to 3.79 ms, or 264 to 286 tokens per second, inside GroqCloud's published 241 to 300.
 
+The derived values in this record are reproduced from the committed results by [`scripts/analyze_lpx_published_conditions.py`](../scripts/analyze_lpx_published_conditions.py), which writes [`experiments/lpx/published-conditions-analysis.json`](../experiments/lpx/published-conditions-analysis.json).
+
 ## Interpretation
 
 The simulated device forward of Llama-2-7B takes about a tenth of the measured time per token, and the rest is nearly the same at every context and output length.

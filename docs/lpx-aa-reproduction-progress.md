@@ -204,3 +204,16 @@ The work is on branch `lpx-experiment`, pushed to `origin/lpx-context-parallel`.
 | `0aec3d4` | Speculative-decoding control |
 | `d90008a` | Progress summary |
 | `fddccce` | Attention-group control |
+| `ac2491e` | Per-workload acceptance fits |
+| `787fd5d` | Published drafter acceptance |
+| `1916fcd` | GroqChip v1 BERT validation |
+| `72967b2` | GroqChip v1 Llama-2 70B check |
+| `a64c090` | AA measurement windows and press report in the evidence audit |
+| `2cc4e1c` | AA test-configuration record |
+| `de93f75`, `4b7692b` | Article-condition sweep: expectations and results |
+| `8d7bb73`, `09991d1` | Article-condition speculation: expectations and results |
+| `4909029`, `a176a52`, `c397c75`, `971c161` | Token ratio on public text and on Gemma outputs |
+| `c34e57c`, `804b236` | Cross-tray latency sensitivity |
+| `e548087`, `628e72d` | GroqRack Llama-2-7B check |
+| `0c2e690` | Current position after the published-condition checks |
+| `5454a49`, `3e26048` | Prompt-lookup acceptance on Gemma outputs |

@@ -121,6 +121,8 @@ The latency column uses the 24.9 µs per 0.1 µs slope of the [tray-latency reco
 The ratio range that matches without extra time is 1.053 to 1.090, and the reasoning categories lie at or inside it.
 No other layout of the sweep matches at any ratio, because a larger ratio also tightens the bound on the 10K-to-100K increment to `25.2 / r` µs.
 
+The derived values in this record are reproduced from the committed results by [`scripts/analyze_lpx_published_conditions.py`](../scripts/analyze_lpx_published_conditions.py), which writes [`experiments/lpx/published-conditions-analysis.json`](../experiments/lpx/published-conditions-analysis.json).
+
 ## Interpretation
 
 The one-to-one assumption biases the targets.

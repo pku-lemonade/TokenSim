@@ -87,6 +87,9 @@ At 1.036 Gemma tokens per `o200k_base` token, the WritingBench acceptance applie
 With the same acceptance at both contexts, lookup drafting makes the endpoint faster than AA measured, and more so at 10K.
 It also widens the gap between the contexts, because each extra verified row costs more attention at 100K.
 No constant extra time per step fixes the `K = 7` row: the 10K value needs at least 25.9 µs, and the 100K value allows at most 20.3 µs.
+The other rows match only with 34 to 61 µs of extra time per step, two to four times the 14 to 25 µs that plain decoding needs.
+
+The derived values in this record are reproduced from the committed results by [`scripts/analyze_lpx_published_conditions.py`](../scripts/analyze_lpx_published_conditions.py), which writes [`experiments/lpx/published-conditions-analysis.json`](../experiments/lpx/published-conditions-analysis.json).
 
 ## Interpretation
 

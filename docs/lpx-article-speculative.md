@@ -99,6 +99,8 @@ With the 1.073 Gemma tokens per `o200k_base` token measured on another model's r
 6. Held: TP16/PP16 matched with no drafter.
 7. Held: with MTP drafting the coding example is reachable only at `K` of 3 and 4.
 
+The derived values in this record are reproduced from the committed results by [`scripts/analyze_lpx_published_conditions.py`](../scripts/analyze_lpx_published_conditions.py), which writes [`experiments/lpx/published-conditions-analysis.json`](../experiments/lpx/published-conditions-analysis.json).
+
 ## Interpretation
 
 The drafter changes which setups match, and the main conclusion holds for every drafter.
