@@ -83,7 +83,7 @@ All are TP32/PP8 with DCP 8.
 | 0.50 | 4 | MTP 0.10 | 1.085 | 421.9 µs | 0.332 to 0.335 | 0.525 | 0.965 |
 
 The 10K step includes drafting.
-With the 1.073 Gemma tokens per `o200k_base` token measured on reasoning text in the [token-ratio record](lpx-token-ratio.md), the same layout gives 13 matches, adding lookup at `K = 1` on both efficiencies, with shared acceptances of 0.028 to 0.383.
+With the 1.073 Gemma tokens per `o200k_base` token measured on another model's reasoning traces in the [token-ratio record](lpx-token-ratio.md), the upper end of the measured range, the same layout gives 13 matches, adding lookup at `K = 1` on both efficiencies, with shared acceptances of 0.028 to 0.383.
 
 ### Comparison with the expectations
 

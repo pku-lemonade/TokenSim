@@ -76,6 +76,21 @@ Expectations recorded before the measurement:
 5. Gemma's AIME thinking gives 1.05 to 1.15, above the writing tasks, because of formulas.
 6. The local tokenizer's count of each raw output lies within 1% of the recorded `completion_tokens` on average.
 
+[`experiments/lpx/token-ratio-gemma-outputs.json`](../experiments/lpx/token-ratio-gemma-outputs.json) holds the counts and the SHA-256 of each downloaded row file: `g4-1.json` is the mixed reasoning set, `g4-2.json` WritingBench and `g4-3.json` AIME.
+
+| Gemma 4 31B output | `o200k_base` tokens | Gemma tokens per `o200k_base` token |
+| --- | ---: | ---: |
+| WritingBench thinking | 83,000 | 1.048 |
+| WritingBench final answers | 186,470 | 1.031 |
+| WritingBench, thinking and answers together | 269,470 | 1.036 |
+| AIME thinking | 417,497 | 1.115 |
+| AIME final answers | 75,178 | 1.080 |
+| Mixed reasoning outputs with `<think>` sections | 50,820 | 1.069 |
+
+All three expectations held.
+The local tokenizer counted 279,607 tokens in the WritingBench raw outputs against 279,714 recorded, and 546,975 in the AIME raw outputs against 547,074, a difference of 0.04% and 0.02%.
+Gemma's own writing outputs give lower ratios than the reasoning traces of the first table, and its mathematics gives higher ones.
+
 ## Effect on the AA match
 
 The ratio scales both AA targets.
@@ -91,15 +106,28 @@ Applied to the [article-condition sweep](lpx-article-sweep.md), which needed 14 
 | 1.090 | Highest ratio that matches without extra time | +1.5%, −5.0% | 0 µs only |
 | 1.100 | Programming reasoning | — | no match |
 
+The same arithmetic on Gemma's own outputs:
+
+| Ratio `r` | Gemma 4 31B output | AA errors without extra time | Extra time per step for a match | Equivalent middle-tier latency |
+| ---: | --- | --- | --- | --- |
+| 1.031 | WritingBench final answers | +7.3%, +0.4% | 5.8 to 16.0 µs | 0.77 to 0.81 µs |
+| 1.036 | WritingBench, all output | +6.7%, −0.1% | 4.4 to 14.5 µs | 0.77 to 0.81 µs |
+| 1.048 | WritingBench thinking | +5.5%, −1.2% | 1.3 to 11.2 µs | 0.76 to 0.80 µs |
+| 1.069 | Mixed reasoning | +3.5%, −3.2% | 0 to 5.4 µs | up to 0.77 µs |
+| 1.115 | AIME thinking | −0.8%, −7.2% | no match | — |
+
+The latency column uses the 24.9 µs per 0.1 µs slope of the [tray-latency record](lpx-tray-latency.md).
+
 The ratio range that matches without extra time is 1.053 to 1.090, and the reasoning categories lie at or inside it.
 No other layout of the sweep matches at any ratio, because a larger ratio also tightens the bound on the 10K-to-100K increment to `25.2 / r` µs.
 
 ## Interpretation
 
-The one-to-one assumption biases the targets: on reasoning text Gemma 4 produces about 7% more tokens than `o200k_base`, so AA's 3,382 and 3,431 TPS correspond to about 3,630 and 3,680 native tokens per second.
-If AA's Gemma 4 31B (Reasoning) outputs tokenize like the reasoning traces measured here, TP32/PP8 with DCP 8 on 256 chips reproduces both AA values at batch one, without speculative decoding, background requests or unmodeled time per step.
+The one-to-one assumption biases the targets.
+On Gemma 4 31B's own writing outputs, the closest available proxy for AA's long-document questions, Gemma produces 1.031 to 1.048 tokens per `o200k_base` token, so AA's 3,382 and 3,431 TPS correspond to about 3,500 to 3,600 native tokens per second.
+At those ratios TP32/PP8 with DCP 8 still needs about 1 to 16 µs of extra time per step, down from 14 to 25 µs at a ratio of 1.0, or equivalently a middle-tier latency of about 0.76 to 0.81 µs.
+Reasoning-heavy outputs with ratios of 1.053 to 1.090 would need no extra time, and mathematics-heavy outputs above 1.09 would make the layout too slow.
 
-The corpus does not contain AA's prompts or Gemma 4's own outputs.
-The traces come from another model, Gemma's thinking style may differ, and AA's long-document questions may produce more prose-like answers, whose ratio is 1.00 to 1.04.
-Whether AA's streamed output includes Gemma's thinking is also not stated.
-The ratio therefore narrows the missing time from 14 to 25 µs to somewhere between 0 and 25 µs, and a measurement on Gemma 4's own outputs for AA-like prompts would settle it.
+AA's prompts and Gemma's outputs on them are not public, and whether AA's streamed output includes the thinking is not stated.
+The measured ratios therefore narrow the missing time and do not remove it.
+Tokenizing Gemma 4 31B's own answers to AA-like long-document questions would settle the value.

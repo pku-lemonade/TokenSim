@@ -59,9 +59,9 @@ All five expectations held.
 
 The TP32 step is almost a linear function of the middle-tier latency and grows by about 249 µs per microsecond of it.
 The 14 to 25 µs of extra time that the article-condition sweep needs is therefore equivalent to a middle-tier latency of 0.81 to 0.85 µs instead of 0.75 µs, an 8% to 13% change in a value that comes from a reachable-capacity chart.
-With the 1.073 Gemma tokens per `o200k_base` token measured on reasoning text in the [token-ratio record](lpx-token-ratio.md), the matching range moves to about 0.73 to 0.77 µs and includes the catalog value.
+With the 1.031 to 1.048 Gemma tokens per `o200k_base` token measured on Gemma 4 31B's own writing outputs in the [token-ratio record](lpx-token-ratio.md), the matching range moves to about 0.76 to 0.81 µs, and at the 1.073 measured on another model's reasoning traces it moves to about 0.73 to 0.77 µs, which includes the catalog value.
 
 The match therefore rests on one unmeasured number.
-The TP32/PP8, DCP 8 layout reproduces both AA values for any middle-tier latency between about 0.73 and 0.85 µs, depending on the token ratio, and no extra time per step is needed inside that range.
+The TP32/PP8, DCP 8 layout reproduces both AA values for any middle-tier latency between about 0.73 and 0.85 µs, depending on the token ratio, and for about 0.76 to 0.81 µs at the ratios of Gemma's own writing outputs, and no extra time per step is needed inside that range.
 Below that range the layout needs extra time per step, and above it the 100K speed falls below the band.
 A measured collective latency between two LP30 trays would decide whether this layout is consistent with the hardware.

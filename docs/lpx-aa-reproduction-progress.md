@@ -34,7 +34,7 @@ All results use the bundled [fidelity configuration](../experiments/lpx/fidelity
 | AA test configuration | [Test-configuration record](lpx-aa-test-configuration.md) | Sequential single-request decode on one named deployment is established; LP30-only execution, FP8 and batch size 1 are likely; chip count, layout and speculative decoding are unknown |
 | Published-condition sweep | [Article-condition sweep](lpx-article-sweep.md) | At batch one without speculation on 256 chips, only TP32/PP8 with `KVP = 8` at efficiency 0.30 or more matches, and only with 14 to 25 µs of unmodeled time per step |
 | Published-condition speculation | [Article-condition speculation](lpx-article-speculative.md) | 11 of 378 drafter combinations match on TP32/PP8 with `KVP = 8`, all at shared AA acceptances of 0.006 to 0.335, below published MTP (0.57 to 0.68) and mostly below lookup (0.13 to 0.73) acceptance |
-| Token ratio | [Token-ratio record](lpx-token-ratio.md) | Gemma 4 produces 1.006 to 1.035 tokens per `o200k_base` token on prose and 1.027 to 1.100 on reasoning traces; at 1.053 to 1.090, TP32/PP8 with `KVP = 8` matches both AA values without extra time per step |
+| Token ratio | [Token-ratio record](lpx-token-ratio.md) | Gemma 4 31B's own writing outputs give 1.031 to 1.048 tokens per `o200k_base` token, which cuts the TP32/PP8 extra time from 14 to 25 µs to about 1 to 16 µs; ratios of 1.053 to 1.090, seen on reasoning-heavy text, remove it |
 | Cross-tray latency | [Tray-latency record](lpx-tray-latency.md) | The TP32/PP8 step grows by about 25 µs per 0.1 µs of cross-tray latency; 0.81 to 0.85 µs instead of the assumed 0.75 µs matches both AA values without extra time at one token per AA token, and about 0.73 to 0.77 µs at the measured reasoning ratio |
 | GroqRack Llama-2-7B check | [GroqRack validation](groqrack-llama2-7b-validation.md) | A measured 2.98 to 3.05 ms per token on 72 known first-generation cards exceeds the simulated forward by 2.70 to 2.83 ms; adding that per-token host cost to the 70B check gives 264 to 286 tokens per second, inside GroqCloud's 241 to 300 |
 
@@ -172,7 +172,7 @@ TP32 is required for a match without speculation and depends on an attention mat
 The AA footnotes establish one request at a time on one named deployment, and press reports give FP8 weights on LP30 chips only.
 Under those conditions on one 256-chip rack, only TP32/PP8 with `KVP = 8` at attention matrix efficiency 0.30 or more reproduces both AA values.
 At one native token per AA token it needs 14 to 25 µs of unmodeled time per step.
-The [token-ratio record](lpx-token-ratio.md) measures 1.073 Gemma tokens per `o200k_base` token on reasoning text, and any ratio from 1.053 to 1.090 removes that need.
+The [token-ratio record](lpx-token-ratio.md) measures 1.031 to 1.048 Gemma tokens per `o200k_base` token on Gemma 4 31B's own writing outputs, which cuts that need to about 1 to 16 µs, and any ratio from 1.053 to 1.090 removes it.
 The [tray-latency record](lpx-tray-latency.md) shows the same effect from a cross-tray latency of 0.81 to 0.85 µs instead of 0.75 µs.
 Speculative decoding matches on the same layout only at AA acceptances of 0.006 to 0.335, below the published acceptance of Gemma's drafter class, so the AA values fit best without effective drafting.
 The [GroqRack Llama-2-7B check](groqrack-llama2-7b-validation.md) supports the multi-chip device model on first-generation hardware once a per-token host loop is added.
@@ -183,7 +183,7 @@ The remaining uncertainty sits in two measurable numbers, the token ratio of AA-
 | Item | Purpose |
 | --- | --- |
 | Token ratio on Gemma outputs | Tokenize Gemma 4 31B answers to AA-like long-document questions, because the ratio decides whether the TP32 match needs extra time |
-| LP30 cross-tray collective latency | Measure an all-reduce across two LP30 trays; the TP32 match holds for about 0.73 to 0.85 µs |
+| LP30 cross-tray collective latency | Measure an all-reduce across two LP30 trays; the TP32 match holds for about 0.73 to 0.85 µs, and about 0.76 to 0.81 µs at the ratios of Gemma's writing outputs |
 | LP30 operand bandwidth | Establish whether LP30's matrix-unit operand bandwidth is below its 150 TB/s SRAM bandwidth, as GroqChip v1's 20 TB/s is below its 80 TB/s |
 | LP30 FP8 attention path | Establish whether KV conversion runs on the vector unit, which decides whether a larger attention group helps |
 | Measured acceptance | Replace the fitted acceptances with lookup and model drafting on 10K and 100K long-document prompts and on coding prompts, including whether acceptance rises at 100K |

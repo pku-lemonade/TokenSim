@@ -1,0 +1,83 @@
+{
+  "gemma_tokenizer_sha256": "cc8d3a0ce36466ccc1278bf987df5f71db1719b9ca6b4118264f45cb627bfe0f",
+  "tiktoken_encoding": "o200k_base",
+  "categories": {
+    "gemma-writing-thinking": {
+      "gemma_tokens": 86960,
+      "o200k_tokens": 83000,
+      "gemma_per_o200k": 1.047710843373494
+    },
+    "gemma-writing-answer": {
+      "gemma_tokens": 192281,
+      "o200k_tokens": 186470,
+      "gemma_per_o200k": 1.0311631897892422
+    },
+    "gemma-aime-thinking": {
+      "gemma_tokens": 465395,
+      "o200k_tokens": 417497,
+      "gemma_per_o200k": 1.1147265728855538
+    },
+    "gemma-aime-answer": {
+      "gemma_tokens": 81180,
+      "o200k_tokens": 75178,
+      "gemma_per_o200k": 1.0798371864109182
+    },
+    "gemma-mixed-output": {
+      "gemma_tokens": 54329,
+      "o200k_tokens": 50820,
+      "gemma_per_o200k": 1.069047619047619
+    }
+  },
+  "files": [
+    {
+      "category": "gemma-writing-thinking",
+      "file": "g4-2.json",
+      "part": "thinking_content",
+      "sha256": "452eeaa4432649d8ec6542bd07869234d41f2da36dd232641207140ce676d4ef",
+      "characters": 343881,
+      "gemma_tokens": 86960,
+      "o200k_tokens": 83000,
+      "gemma_per_o200k": 1.047710843373494
+    },
+    {
+      "category": "gemma-writing-answer",
+      "file": "g4-2.json",
+      "part": "final_answer",
+      "sha256": "452eeaa4432649d8ec6542bd07869234d41f2da36dd232641207140ce676d4ef",
+      "characters": 848072,
+      "gemma_tokens": 192281,
+      "o200k_tokens": 186470,
+      "gemma_per_o200k": 1.0311631897892422
+    },
+    {
+      "category": "gemma-aime-thinking",
+      "file": "g4-3.json",
+      "part": "thinking_content",
+      "sha256": "66248e7fa47394a3a3ce80f1153196e2e71d158b3c993b26c5875379a53c1395",
+      "characters": 921563,
+      "gemma_tokens": 465395,
+      "o200k_tokens": 417497,
+      "gemma_per_o200k": 1.1147265728855538
+    },
+    {
+      "category": "gemma-aime-answer",
+      "file": "g4-3.json",
+      "part": "final_answer",
+      "sha256": "66248e7fa47394a3a3ce80f1153196e2e71d158b3c993b26c5875379a53c1395",
+      "characters": 176602,
+      "gemma_tokens": 81180,
+      "o200k_tokens": 75178,
+      "gemma_per_o200k": 1.0798371864109182
+    },
+    {
+      "category": "gemma-mixed-output",
+      "file": "g4-1.json",
+      "part": "output",
+      "sha256": "903b56639b89488bea4b2e7a46296cfb8e3d81026102e1d465f7cbc8889e5767",
+      "characters": 218177,
+      "gemma_tokens": 54329,
+      "o200k_tokens": 50820,
+      "gemma_per_o200k": 1.069047619047619
+    }
+  ]
+}
