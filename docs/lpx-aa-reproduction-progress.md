@@ -258,4 +258,4 @@ The work is on branch `lpx-experiment`, pushed to `origin/lpx-context-parallel`.
 | `a187b44` | Documentation of unreferenced inputs, shared scripts and earlier records |
 | `92bc22e`, `4499b4b` | Lookup acceptance against context length |
 | `e35a1ac`, `1170ced` | Lookup acceptance on coding outputs |
-| `a5f48a6` | Expectations for the coding speed spread |
+| `a5f48a6`, `90cd654` | Coding speed spread |
