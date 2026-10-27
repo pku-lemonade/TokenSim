@@ -11,7 +11,8 @@ Each ``--text`` argument is ``category=path``.  Plain files are read as text;
 dataset-server rows with ``conversations``; Project Gutenberg files are cut to
 the book between the START and END markers.  A ``#thought`` or ``#solution``
 suffix on a dataset-server path keeps only that part of each OpenThoughts
-answer.
+answer, and any other suffix names the row field to read, such as
+``#thinking_content`` or ``#final_answer``.
 """
 
 import argparse
@@ -44,10 +45,13 @@ def texts(path, part=None):
     data = json.loads(raw)
     if "query" in data:
         return [page.get("extract", "") for page in data["query"]["pages"].values()]
+    rows = [row["row"] for row in data["rows"]]
+    if part and part not in SECTIONS:
+        return [row[part] for row in rows if row.get(part)]
     return [
         section(turn["value"], part)
-        for row in data["rows"]
-        for turn in row["row"]["conversations"]
+        for row in rows
+        for turn in row["conversations"]
         if turn["from"] == "assistant"
     ]
 

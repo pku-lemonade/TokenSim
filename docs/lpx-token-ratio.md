@@ -55,6 +55,27 @@ All three expectations held.
 The prose categories gave 1.006 and 1.035, the reasoning categories 1.027 to 1.100, and code 1.170.
 The Wikipedia article on quantum mechanics gave 1.131, outside the expected prose range; it contains many formulas.
 
+## Gemma 4 31B's own outputs
+
+The corpus above contains no Gemma output.
+Three public Hugging Face datasets hold generations of `google/gemma-4-31B-it` with the thinking and the final answer stored separately:
+
+| Dataset | Content | Rows used |
+| --- | --- | ---: |
+| `ZachW/gemma-4-31b-it_writingbench-en100` | WritingBench writing tasks on supplied documents of about 2,000 tokens, temperature 0 | 100 |
+| `ZachW/gemma-4-31b-it_aime-all` | AIME mathematics problems, temperature 0 | 100 |
+| `trjxter/Gemma-4-31B-Reasoning-1000x` | Mixed reasoning prompts, including programming, with `<think>` sections | 100 |
+
+The first 100 rows of each dataset were read through the Hugging Face dataset server.
+WritingBench is the closest available proxy for AA's questions about long documents.
+The WritingBench and AIME rows also record the serving engine's `completion_tokens`, which checks that the local Gemma tokenizer counts the raw output the same way.
+
+Expectations recorded before the measurement:
+
+4. Gemma's WritingBench thinking gives 1.03 to 1.09 Gemma tokens per `o200k_base` token, and its final answers 1.00 to 1.06.
+5. Gemma's AIME thinking gives 1.05 to 1.15, above the writing tasks, because of formulas.
+6. The local tokenizer's count of each raw output lies within 1% of the recorded `completion_tokens` on average.
+
 ## Effect on the AA match
 
 The ratio scales both AA targets.
