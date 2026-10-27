@@ -3,6 +3,7 @@
 Record date: 2026-10-26.
 This page summarizes the work to reproduce the Artificial Analysis (AA) Gemma 4 31B results on NVIDIA Groq 3 LPX (LP30) hardware with TokenSim.
 Each section links to the detailed record that holds the method, the expectations recorded before each run and the complete results.
+The [final summary](lpx-aa-final-summary.md) states the outcome of the work in one page.
 
 ## Goal
 
