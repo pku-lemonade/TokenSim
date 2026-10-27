@@ -255,4 +255,4 @@ The work is on branch `lpx-experiment`, pushed to `origin/lpx-context-parallel`.
 | `851dbaf` | Script reproducing the derived published-condition tables |
 | `a187b44` | Documentation of unreferenced inputs, shared scripts and earlier records |
 | `92bc22e`, `4499b4b` | Lookup acceptance against context length |
-| `e35a1ac` | Expectations for lookup acceptance on coding outputs |
+| `e35a1ac`, `1170ced` | Lookup acceptance on coding outputs |
