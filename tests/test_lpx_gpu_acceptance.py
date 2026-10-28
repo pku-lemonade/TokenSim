@@ -11,7 +11,7 @@ from scripts.analyze_lpx_gpu_acceptance import (
     summarize,
 )
 from scripts.analyze_lpx_published_conditions import LAYOUT
-from scripts.lpx.gpu_metrics import acceptance
+from scripts.lpx.gpu_metrics import acceptance, ngram_acceptance
 
 
 def output(book="book-a", context=10000, drafts=2, accepted=3):
@@ -89,6 +89,42 @@ class GpuAcceptanceTest(unittest.TestCase):
         self.assertNotIn("per_row", result["turns"][0])
         self.assertNotIn("tau", result)
         self.assertIn("acceptance_unavailable", result)
+
+    def test_ngram_uses_validated_total_steps_including_zero_proposals(self):
+        measured = output()
+        measured["config"]["method"] = "ngram"
+        turn = measured["turns"][0]
+        turn.update(emitted_steps=6, preemptions=0, completion_tokens=9)
+        self.assertNotIn("tau", summarize([measured])[0])
+        result = summarize([measured], validated_ngram_engine_steps=True)[0]
+        self.assertEqual(result["tau"], 8 / 5)
+        self.assertEqual(result["pooled_tau"], 8 / 5)
+        self.assertEqual(result["per_position_acceptance"]["0"], 2 / 5)
+        self.assertEqual(result["turns"][0]["zero_proposal_steps"], 3)
+        self.assertEqual(result["turns"][0]["counter_identity_residual"], 0)
+        self.assertNotIn("per_row", result)
+        self.assertNotIn("per_row", result["turns"][0])
+
+    def test_ngram_zero_matches_and_invalid_engine_counters(self):
+        turn = output(drafts=0, accepted=0)["turns"][0]
+        turn.update(emitted_steps=6, preemptions=0, completion_tokens=6)
+        result = ngram_acceptance(turn, 3)
+        self.assertEqual(result["tau"], 1)
+        self.assertEqual(result["equivalent_acceptance"], 0)
+        self.assertEqual(result["zero_proposal_steps"], 5)
+        for changes in (
+            dict(emitted_steps=None),
+            dict(preemptions=1),
+            dict(preemptions=None),
+            dict(drafts=6),
+            dict(draft_tokens=1),
+            dict(completion_tokens=7),
+        ):
+            with (
+                self.subTest(changes=changes),
+                self.assertRaises(WorkloadValidationError),
+            ):
+                ngram_acceptance(dict(turn, **changes), 3)
 
     def test_pairing_joins_book_identity_and_reports_missing_books(self):
         low = output()

@@ -1,7 +1,7 @@
 # Gemma 4 31B GPU measurements for the LPX study
 
 Record date: 2026-10-28.
-Status: T0 is complete; the priority-1 sweep is queued after the full-cap document control and a plain engine-counter check.
+Status: T0 is complete and the BF16 priority-1 K=3 sweep is running; K=7 is queued behind it.
 The plain 10K document request entered a repetition loop, which needs investigation before a representative document-acceptance claim.
 The expectations in the [GPU TODO](lpx-gpu-gemma-todo.md#expectations) remain unchanged.
 
@@ -67,7 +67,8 @@ The client reports `(completion_tokens - 1) / decode_s` and leaves speed null wh
 It retains generated token IDs and checks their count against completion usage.
 Prompt token IDs returned by the server are discarded and never written.
 The timestamps measure client delivery, including transport and buffering; they do not identify individual GPU steps.
-The client logs token counts and the longest identical-token run at intervals of approximately 1,024 generated tokens, without logging prompts or generated text.
+The client logs token counts, identical-token runs and periodic spans at intervals of approximately 1,024 generated tokens, without logging prompts or generated text.
+The already-running K=3 document client retains its earlier single-token-only progress logging; the analysis applies the extended periodic diagnostic to its completed records.
 
 Metrics schema 2 additionally records `iteration_tokens_total_count` as `emitted_steps` and `num_preemptions_total` as `preemptions` when the server exposes them.
 The raw before/after snapshots and differences preserve both counters; missing counters in older records are not filled with zeros.
@@ -75,7 +76,11 @@ This schema version is part of the resume fingerprint, so it cannot silently mix
 In vLLM 0.32.0, the iteration histogram counts nonempty `EngineCoreOutputs` batches in the asynchronous output handler, including the prefill output and zero-proposal n-gram decode outputs.
 It does not count every GPU forward, because prefill chunks without output are omitted.
 Using it as a decode-step denominator requires concurrency one, no preemptions, and plain/MTP identity checks on the running server before T4.
-The analysis preserves these auxiliary counters without yet deriving n-gram acceptance from them.
+The [counter crosscheck](../experiments/lpx/gpu-engine-counter-crosscheck.json) observes 128 emitted steps for 128 plain tokens and 44 emitted steps for 43 MTP draft steps, with no preemptions.
+The n-gram acceptance calculation requires the explicit `--validated-ngram-engine-steps` flag after checking the serving configuration and these identities.
+It uses `emitted_steps - 1` as the total decode-step count, includes zero-proposal steps, rejects preemptions and checks the terminal-trimming residual.
+N-gram per-position acceptance then uses all decode steps as its denominator, including zero-proposal steps.
+The default analysis still withholds n-gram acceptance when that validation is not asserted.
 
 The client reads `/metrics` before each turn and after a configurable settling delay, which defaults to six seconds.
 The vLLM 0.32.0 implementation exports the four requested counters with the `_total` suffix and zero-based `position` labels.
@@ -117,11 +122,30 @@ It rejects impossible token counts instead of clipping them to an acceptance of 
 MTP turns have the requested `[decode_tokens, counts]` representation with only the `K + 1` verification-row count populated.
 N-gram turns do not receive that representation because their proposed lengths can vary.
 The vLLM 0.32.0 scheduler also omits zero-proposal forwards from the speculative draft counter.
-The analysis therefore retains n-gram counters without converting them into an overall committed-tokens-per-step estimate.
-T4 needs a total-step measurement or a separately validated correction for these omitted forwards.
+The default analysis therefore retains n-gram counters without converting them into an overall committed-tokens-per-step estimate.
+The guarded engine-step calculation described above provides a denominator for T4 after its serving-path checks.
 The [vLLM 0.32.0 n-gram proposer](https://github.com/vllm-project/vllm/blob/v0.32.0/vllm/v1/spec_decode/ngram_proposer.py) chooses the earliest occurrence among equally long matches.
 The existing lookup replay overwrites its index with each later occurrence, so it chooses the most recent one.
 T4 must report this matching-rule difference when comparing the replay with vLLM.
+The replay also tokenizes exported text without the server's chat-template tokens, inserts two newlines between thinking and answer, and flattens multi-turn history into user text.
+Its numerator includes all re-tokenized output text, while native decode acceptance excludes the prefill token and includes generated control tokens hidden by the text parser.
+These differences prevent attributing a measured discrepancy solely to the choice of matching occurrence.
+[`analyze_lpx_gpu_ngram.py`](../scripts/analyze_lpx_gpu_ngram.py) reuses `texts` and `replay` from the existing lookup script at minimum n-gram length one, maximum length three and K=7.
+It joins exports and measured turns by request/turn identity, rejects duplicate or mismatched text, and checks the recorded server command's lookup bounds and maximum sequence count.
+It reports per-turn differences and set-level equivalent acceptances derived from mean committed tokens per step, without inventing fixed verification-row counts.
+Its `--validated-engine-steps` flag is mandatory and no measured n-gram comparison has run yet.
+After collecting T4, export its rows outside the repository and use the recorded n-gram server command with the comparison:
+
+```bash
+/tmp/lpx-gpu/repo-venv/bin/python scripts/analyze_lpx_gpu_ngram.py \
+  --outputs experiments/lpx/gpu-ngram-outputs.jsonl \
+  --rows /tmp/lpx-gpu/rows-ngram \
+  --gemma-tokenizer /tmp/lpx-gpu/inputs/tokenizer.json \
+  --server-command experiments/lpx/gpu-server-ngram-command.json \
+  --validated-engine-steps \
+  --summary experiments/lpx/gpu-ngram-comparison.json
+```
+
 The 10K and 100K analysis joins document turns by book identity and reports unmatched books.
 Turn-level counters cannot split thinking acceptance from answer acceptance.
 
@@ -173,7 +197,7 @@ Warmups do not guarantee that every later prompt shape has already compiled.
 | Task | Status |
 | --- | --- |
 | T0 | Complete; 5/10 coding pairs identical, so expectation 1 missed |
-| T1 | Collection and acceptance analysis implemented; no measured rows |
+| T1 | K=3 document collection running; the completed summary request hits the cap in a two-token loop |
 | T2 | Identity-based pairing implemented; no measured pairs |
 | T3 | Not run |
 | T4 | N-gram counter collection and compatible export implemented; comparison not run |
@@ -206,8 +230,10 @@ Their median speed is 42.834 tokens per second, with P80/median of 1.041 and max
 These are smoke-test statistics on ten requests, not the full T5 comparison.
 Repository unit tests ran on the CPU during parts of T0, so these timings do not establish an isolated serving-stack performance result.
 
-The analysis now reports identical-token runs and flags runs of 128 tokens or more.
-That diagnostic threshold was chosen after observing the plain T0 loop, and no flagged turn is excluded from acceptance or speed summaries.
+The analysis reports identical-token runs and periodic spans of 128 tokens or more, searching native-token periods from one through eight.
+The 128-token threshold was chosen after observing the plain T0 loop; the periodic search was added after observing a two-token loop in the T1 K=3 document output.
+No flagged turn is excluded from acceptance or speed summaries.
+This bounded diagnostic does not detect every possible repeated phrase or establish semantic answer quality.
 The prescribed temperature remains zero.
 The cause of the loop is not yet established; the result alone does not distinguish greedy model behavior from a serving-path problem.
 
@@ -263,19 +289,38 @@ This is a mixed FA3/FA4 control, not a test without FlashAttention 4.
 It keeps the 8,192-token prefill batch limit and uses the same 512-token output cap as the eager control.
 The [capped output](../experiments/lpx/gpu-fa3-diagnostic.jsonl) has no repetition flag, a longest identical-token run of three and an earliest prefix difference from the original plain run at position 75.
 The cap ends during reasoning, so the absence of an early loop does not establish successful completion.
-A separately labeled full-cap run of this control is in progress to check answer completion.
-The primary run remains on the original FlashAttention 4 settings while this control is assessed.
+The [full-cap control](../experiments/lpx/gpu-fa3-full-diagnostic.jsonl) also fails: it reaches 16,384 tokens with a longest identical-token run of 14,910.
+It starts an answer but then repeats `al`, so a nonempty answer field does not establish successful completion.
+Its decode time is 774.451 seconds, giving 21.154 tokens per second.
+The [cap comparison](../experiments/lpx/gpu-fa3-cap-comparison.json) confirms identical native prefixes over all 512 tokens shared with the short control.
+The short control therefore missed a loop that began later in the same trajectory.
+The primary run retains the original FlashAttention 4 settings; the mixed-attention control did not eliminate the failure.
 CPU unit tests overlap portions of the control runs; their timings are not isolated throughput measurements.
+
+## T1 progress
+
+The K=3 warmup completes with 128 tokens, 43 draft steps and 44 emitted engine steps.
+The [progress snapshot](../experiments/lpx/gpu-mtp-k3-progress-acceptance.json) covers two completed 10K requests and is separate from the eventual full-set analysis.
+Both requests reach 16,384 tokens without a final answer.
+The summary request repeats a two-token pattern rendered as `alized`, with a periodic span of 15,346 tokens.
+Its longest identical-token run is only three, which motivated the periodic diagnostic described above.
+The turn has 4,210 draft steps and 4,211 emitted steps, with equivalent acceptance 0.981686 and a counter-identity residual of minus one.
+That high acceptance measures the failed repetitive output and is not evidence of ordinary prose acceptance.
+The quote request has an identical-token run of 15,594 tokens and is also retained.
+The full-set expectation outcomes remain pending until the prescribed requests are collected and their failure counts are reported.
+Validation tests overlap portions of the T1 document collection; document GPU timings are not isolated serving-performance measurements.
 
 ## Validation
 
 Black's repository-wide formatting check passes.
-The completed unit-suite run passes all 687 tests, including diagnostic-prefix comparison, smoke/warmup separation and auxiliary engine counters.
+The completed unit-suite run passes all 694 tests, including periodic-loop detection, guarded n-gram denominators, replay identity joins and server-command checks.
+The n-gram changes preserve the earlier MTP smoke acceptance and pricing values; the extended quality diagnostic adds periodic-span fields.
 The initial full-suite attempt lacked `matplotlib`, which the existing report tests import; installing it in the repository environment resolved that failure.
 `git diff --check` passes.
 
 The tooling and verified inputs are saved in local commit `fcf13ac`.
-Pushing that commit to `origin/lpx-context-parallel` returned HTTP 403 because the configured GitHub account does not have repository write permission.
+The T0 results and sweep runner are saved in local commit `edab20d`.
+Pushing those commits to `origin/lpx-context-parallel` returned HTTP 403 because the configured GitHub account does not have repository write permission.
 
 ## Expectations
 

@@ -1,0 +1,212 @@
+{
+  "layout": "tp32-pp8-kvp8",
+  "attention_mfu": 0.5,
+  "token_ratio": 1.006,
+  "results": [
+    {
+      "data": "aa-docs-think-10k-quotes",
+      "config": {
+        "K": 3,
+        "drafter_precision": "bf16",
+        "environment_sha256": "6d011ff07ab7c6ec1f331aac36db968b38c4ec39c2147eb86ba069da9f861ac7",
+        "kv_precision": "bf16",
+        "max_tokens_override": null,
+        "method": "mtp",
+        "metrics_schema": 2,
+        "metrics_settle_seconds": 6,
+        "model": "google/gemma-4-31B-it",
+        "requests_sha256": "7abb2f93587b01649c27e262e041afe96dd68cc055908d80f35610b5de9506ae",
+        "return_token_ids": true,
+        "run_label": "t1-mtp-k3",
+        "seed": 1,
+        "weight_precision": "bf16"
+      },
+      "turn_count": 1,
+      "gpu_speed": {
+        "turn_count": 1,
+        "median_tps": 65.51511806005888,
+        "p80_tps": 65.51511806005888,
+        "maximum_tps": 65.51511806005888,
+        "p80_ratio": 1.0,
+        "maximum_ratio": 1.0
+      },
+      "untimed_turns": 0,
+      "prompt": "full",
+      "draft_tokens": 3,
+      "quality": {
+        "length_limited_turns": 1,
+        "empty_answer_turns": 1,
+        "repetition_flagged_turns": 1,
+        "threshold_note": "128-token periodic span, periods 1 to 8; chosen after T0 and extended after the T1 two-token loop, no turns excluded"
+      },
+      "tau": 3.9184405644582636,
+      "pooled_tau": 3.9184405644582636,
+      "per_position_acceptance": {
+        "0": 0.9830184166467353,
+        "1": 0.9722554412819899,
+        "2": 0.963405883759866
+      },
+      "turns": [
+        {
+          "id": "aa-docs/pg1228/10k/quotes",
+          "turn": 0,
+          "meta": {
+            "book": "pg1228",
+            "title": "On the Origin of Species By Means of Natural Selection",
+            "context": 10000,
+            "style": "quotes",
+            "document_tokens": 9938
+          },
+          "prompt_tokens": 9998,
+          "decode_tokens": 16383,
+          "tau": 3.9184405644582636,
+          "equivalent_acceptance": 0.9862817304048852,
+          "counter_identity_residual": -1,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.9830184166467353,
+            "1": 0.9722554412819899,
+            "2": 0.963405883759866
+          },
+          "per_row": [
+            16383,
+            [
+              0,
+              0,
+              0,
+              4181
+            ]
+          ],
+          "quality": {
+            "empty_answer": true,
+            "finish_reason": "length",
+            "dominant_token_share": 0.951904296875,
+            "longest_identical_token_run": 15594,
+            "longest_periodic_token_span": 15594,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": true
+          },
+          "emitted_steps": 4182,
+          "preemptions": 0
+        }
+      ],
+      "per_row": [
+        [
+          16383,
+          [
+            0,
+            0,
+            0,
+            4181
+          ]
+        ]
+      ],
+      "equivalent_acceptance": 0.9862817304048852
+    },
+    {
+      "data": "aa-docs-think-10k-summary",
+      "config": {
+        "K": 3,
+        "drafter_precision": "bf16",
+        "environment_sha256": "6d011ff07ab7c6ec1f331aac36db968b38c4ec39c2147eb86ba069da9f861ac7",
+        "kv_precision": "bf16",
+        "max_tokens_override": null,
+        "method": "mtp",
+        "metrics_schema": 2,
+        "metrics_settle_seconds": 6,
+        "model": "google/gemma-4-31B-it",
+        "requests_sha256": "7abb2f93587b01649c27e262e041afe96dd68cc055908d80f35610b5de9506ae",
+        "return_token_ids": true,
+        "run_label": "t1-mtp-k3",
+        "seed": 1,
+        "weight_precision": "bf16"
+      },
+      "turn_count": 1,
+      "gpu_speed": {
+        "turn_count": 1,
+        "median_tps": 65.11109195339587,
+        "p80_tps": 65.11109195339587,
+        "maximum_tps": 65.11109195339587,
+        "p80_ratio": 1.0,
+        "maximum_ratio": 1.0
+      },
+      "untimed_turns": 0,
+      "prompt": "full",
+      "draft_tokens": 3,
+      "quality": {
+        "length_limited_turns": 1,
+        "empty_answer_turns": 1,
+        "repetition_flagged_turns": 1,
+        "threshold_note": "128-token periodic span, periods 1 to 8; chosen after T0 and extended after the T1 two-token loop, no turns excluded"
+      },
+      "tau": 3.8914489311163893,
+      "pooled_tau": 3.8914489311163893,
+      "per_position_acceptance": {
+        "0": 0.9798099762470309,
+        "1": 0.9619952494061758,
+        "2": 0.9498812351543943
+      },
+      "turns": [
+        {
+          "id": "aa-docs/pg1228/10k/summary",
+          "turn": 0,
+          "meta": {
+            "book": "pg1228",
+            "title": "On the Origin of Species By Means of Natural Selection",
+            "context": 10000,
+            "style": "summary",
+            "document_tokens": 9948
+          },
+          "prompt_tokens": 9998,
+          "decode_tokens": 16383,
+          "tau": 3.8914489311163893,
+          "equivalent_acceptance": 0.9816855667080502,
+          "counter_identity_residual": -1,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.9798099762470309,
+            "1": 0.9619952494061758,
+            "2": 0.9498812351543943
+          },
+          "per_row": [
+            16383,
+            [
+              0,
+              0,
+              0,
+              4210
+            ]
+          ],
+          "quality": {
+            "empty_answer": true,
+            "finish_reason": "length",
+            "dominant_token_share": 0.46868896484375,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 15346,
+            "periodic_token_period": 2,
+            "periodic_search_max_period": 8,
+            "repetition_flag": true
+          },
+          "emitted_steps": 4211,
+          "preemptions": 0
+        }
+      ],
+      "per_row": [
+        [
+          16383,
+          [
+            0,
+            0,
+            0,
+            4210
+          ]
+        ]
+      ],
+      "equivalent_acceptance": 0.9816855667080502
+    }
+  ],
+  "paired": [],
+  "aa": [],
+  "coding": []
+}

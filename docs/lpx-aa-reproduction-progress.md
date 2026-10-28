@@ -197,6 +197,8 @@ GPU measurement setup is recorded in the [GPU measurements record](lpx-gpu-measu
 The H20 environment, exact input hashes, sequential streaming client and LP30 pricing analysis are available; inference measurements are in progress and do not yet change the conclusions in this page.
 The plain 10K document smoke request loops at temperature zero, including an eager-mode control, so representative document acceptance still needs a successful generation check.
 T0 MTP smoke checks are complete and match five of ten greedy coding request pairs, missing the preregistered nine-pair minimum.
+The BF16 K=3 priority sweep is running, and its completed 10K document turns also hit the output cap in repetitive reasoning.
+Acceptance on those failed outputs does not establish ordinary prose acceptance; the GPU record retains every turn and reports repetition and completion diagnostics.
 
 ## Open work
 

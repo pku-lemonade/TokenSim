@@ -1,0 +1,73 @@
+{
+  "diagnostics": {
+    "id": "aa-docs/pg1228/10k/summary",
+    "baseline_label": "t0-fa3-diagnostic",
+    "comparison": "native token IDs over the shorter output; output caps may differ",
+    "runs": [
+      {
+        "config": {
+          "method": "plain",
+          "K": 0,
+          "weight_precision": "bf16",
+          "kv_precision": "bf16",
+          "drafter_precision": "bf16",
+          "model": "google/gemma-4-31B-it",
+          "run_label": "t0-fa3-diagnostic",
+          "max_tokens_override": 512,
+          "metrics_settle_seconds": 6,
+          "requests_sha256": "7abb2f93587b01649c27e262e041afe96dd68cc055908d80f35610b5de9506ae",
+          "return_token_ids": true,
+          "environment_sha256": "6d011ff07ab7c6ec1f331aac36db968b38c4ec39c2147eb86ba069da9f861ac7",
+          "seed": 1
+        },
+        "completion_tokens": 512,
+        "ttft_s": 5.278785463422537,
+        "output_tps": 27.78419504937891,
+        "quality": {
+          "empty_answer": true,
+          "finish_reason": "length",
+          "dominant_token_share": 0.068359375,
+          "longest_identical_token_run": 3,
+          "longest_periodic_token_span": 3,
+          "periodic_token_period": 1,
+          "periodic_search_max_period": 8,
+          "repetition_flag": false
+        },
+        "shared_prefix_tokens": 512,
+        "first_different_prefix_position": null
+      },
+      {
+        "config": {
+          "method": "plain",
+          "K": 0,
+          "weight_precision": "bf16",
+          "kv_precision": "bf16",
+          "drafter_precision": "bf16",
+          "model": "google/gemma-4-31B-it",
+          "run_label": "t0-fa3-full-diagnostic",
+          "max_tokens_override": null,
+          "metrics_settle_seconds": 6,
+          "requests_sha256": "7abb2f93587b01649c27e262e041afe96dd68cc055908d80f35610b5de9506ae",
+          "return_token_ids": true,
+          "environment_sha256": "6d011ff07ab7c6ec1f331aac36db968b38c4ec39c2147eb86ba069da9f861ac7",
+          "seed": 1
+        },
+        "completion_tokens": 16384,
+        "ttft_s": 5.275788526982069,
+        "output_tps": 21.15433459424229,
+        "quality": {
+          "empty_answer": false,
+          "finish_reason": "length",
+          "dominant_token_share": 0.91033935546875,
+          "longest_identical_token_run": 14910,
+          "longest_periodic_token_span": 14910,
+          "periodic_token_period": 1,
+          "periodic_search_max_period": 8,
+          "repetition_flag": true
+        },
+        "shared_prefix_tokens": 512,
+        "first_different_prefix_position": null
+      }
+    ]
+  }
+}

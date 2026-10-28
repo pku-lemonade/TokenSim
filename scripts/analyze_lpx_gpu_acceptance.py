@@ -29,7 +29,7 @@ from scripts.analyze_lpx_published_conditions import (
     verification_steps,
 )
 from scripts.generate_lpx_gemma_outputs import file_name
-from scripts.lpx.gpu_metrics import acceptance, output_quality
+from scripts.lpx.gpu_metrics import acceptance, ngram_acceptance, output_quality
 from scripts.measure_lpx_lookup_acceptance import equivalent_acceptance
 from scripts.search_lpx_native import write_json
 
@@ -54,7 +54,7 @@ def speed_summary(speeds):
     )
 
 
-def summarize(outputs):
+def summarize(outputs, *, validated_ngram_engine_steps=False):
     groups = defaultdict(list)
     seen = set()
     for output in outputs:
@@ -103,9 +103,12 @@ def summarize(outputs):
             repetition_flagged_turns=sum(
                 row["repetition_flag"] is True for row in quality
             ),
-            threshold_note="128 identical consecutive native tokens; diagnostic chosen after the plain T0 loop, no turns excluded",
+            threshold_note="128-token periodic span, periods 1 to 8; chosen after T0 and extended after the T1 two-token loop, no turns excluded",
         )
-        if config["method"] in ("plain", "ngram"):
+        unvalidated_ngram = (
+            config["method"] == "ngram" and not validated_ngram_engine_steps
+        )
+        if config["method"] == "plain" or unvalidated_ngram:
             result["turns"] = [
                 dict(
                     id=turn["id"],
@@ -119,7 +122,7 @@ def summarize(outputs):
             if config["method"] == "ngram":
                 result["acceptance_unavailable"] = (
                     "vLLM draft counters exclude zero-proposal forwards; "
-                    "the total verification-step count is not measured"
+                    "the total decode-step denominator has not been validated"
                 )
                 for measured, turn in zip(result["turns"], turns):
                     measured.update(
@@ -135,21 +138,32 @@ def summarize(outputs):
                     )
         else:
             measured = [
-                acceptance(turn, config["K"], config["method"] == "mtp")
+                (
+                    ngram_acceptance(turn, config["K"])
+                    if config["method"] == "ngram"
+                    else acceptance(turn, config["K"])
+                )
                 for turn in turns
             ]
-            drafts = sum(turn["drafts"] for turn in turns)
+            steps = sum(
+                (
+                    turn["emitted_steps"] - 1
+                    if config["method"] == "ngram"
+                    else turn["drafts"]
+                )
+                for turn in turns
+            )
             positions = sorted(
                 set().union(*(turn["accepted_per_position"] for turn in turns)), key=int
             )
             result.update(
                 tau=statistics.mean(row["tau"] for row in measured),
-                pooled_tau=sum(row["decode_tokens"] for row in measured) / drafts,
+                pooled_tau=sum(row["decode_tokens"] for row in measured) / steps,
                 per_position_acceptance={
                     position: sum(
                         turn["accepted_per_position"].get(position, 0) for turn in turns
                     )
-                    / drafts
+                    / steps
                     for position in positions
                 },
                 turns=[
@@ -165,6 +179,13 @@ def summarize(outputs):
             )
             if config["method"] == "mtp":
                 result["per_row"] = [row["per_row"] for row in measured]
+            else:
+                result["step_denominator"] = (
+                    "validated emitted_steps minus one prefill output"
+                )
+                result["position_denominator"] = (
+                    "all decode steps, including zero proposals"
+                )
             result["equivalent_acceptance"] = equivalent_acceptance(
                 result["tau"], config["K"]
             )
@@ -350,13 +371,20 @@ def main(argv=None):
     parser.add_argument("--outputs", type=Path, nargs="+", required=True)
     parser.add_argument("--summary", type=Path, required=True)
     parser.add_argument("--ratio", type=float, default=1.006)
+    parser.add_argument(
+        "--validated-ngram-engine-steps",
+        action="store_true",
+        help="Use emitted-step counters after source and plain/MTP identity checks at concurrency one",
+    )
     args = parser.parse_args(argv)
     outputs = [
         json.loads(line)
         for path in args.outputs
         for line in path.read_text().splitlines()
     ]
-    results = summarize(outputs)
+    results = summarize(
+        outputs, validated_ngram_engine_steps=args.validated_ngram_engine_steps
+    )
     speculative = load("article-speculative-results.json")
     result = dict(
         layout=LAYOUT,

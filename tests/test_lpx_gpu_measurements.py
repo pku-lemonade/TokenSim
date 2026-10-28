@@ -62,7 +62,17 @@ class GpuMetricsTest(unittest.TestCase):
         self.assertTrue(measured["empty_answer"])
         self.assertAlmostEqual(measured["dominant_token_share"], 128 / 129)
         self.assertFalse(
-            output_quality(dict(token_ids=[1, 2] * 100))["repetition_flag"]
+            output_quality(dict(token_ids=list(range(200))))["repetition_flag"]
+        )
+
+    def test_periodic_repetition_detects_two_token_loop_without_single_token_run(self):
+        measured = output_quality(dict(token_ids=[9] + [1, 2] * 80 + [8]))
+        self.assertEqual(measured["longest_identical_token_run"], 1)
+        self.assertEqual(measured["longest_periodic_token_span"], 160)
+        self.assertEqual(measured["periodic_token_period"], 2)
+        self.assertTrue(measured["repetition_flag"])
+        self.assertFalse(
+            output_quality(dict(token_ids=list(range(9)) * 20))["repetition_flag"]
         )
 
     def test_model_filter_and_position_counters(self):

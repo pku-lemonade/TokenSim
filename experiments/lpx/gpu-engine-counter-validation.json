@@ -1,0 +1,8 @@
+{
+  "configuration": "mixed FA3/FA4 plain",
+  "source": "gpu-engine-counter-smoke.jsonl",
+  "emitted_steps": 128,
+  "completion_tokens": 128,
+  "preemptions": 0,
+  "passed": true
+}

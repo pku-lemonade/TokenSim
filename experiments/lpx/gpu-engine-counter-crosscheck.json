@@ -1,0 +1,24 @@
+{
+  "checks": [
+    {
+      "method": "plain",
+      "source": "gpu-engine-counter-smoke.jsonl",
+      "environment_sha256": "6d011ff07ab7c6ec1f331aac36db968b38c4ec39c2147eb86ba069da9f861ac7",
+      "emitted_steps": 128,
+      "expected_emitted_steps": 128,
+      "preemptions": 0,
+      "passed": true
+    },
+    {
+      "method": "mtp",
+      "source": "gpu-mtp-k3-warmup.jsonl",
+      "environment_sha256": "6d011ff07ab7c6ec1f331aac36db968b38c4ec39c2147eb86ba069da9f861ac7",
+      "emitted_steps": 44,
+      "expected_emitted_steps": 44,
+      "preemptions": 0,
+      "passed": true
+    }
+  ],
+  "passed": true,
+  "scope": "vLLM 0.32.0, concurrency one, text generation, no preemptions; n-gram validation still requires its own run"
+}

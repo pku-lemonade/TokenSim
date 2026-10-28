@@ -90,7 +90,9 @@ def complete(args, messages, request):
                         diagnostic = output_quality(dict(token_ids=token_ids))
                         print(
                             f"{request.get('id', 'request')} progress tokens={len(token_ids)} "
-                            f"longest_run={diagnostic['longest_identical_token_run']}",
+                            f"longest_run={diagnostic['longest_identical_token_run']} "
+                            f"periodic_span={diagnostic['longest_periodic_token_span']} "
+                            f"period={diagnostic['periodic_token_period']}",
                             flush=True,
                         )
                         progress_tokens = (len(token_ids) // 1024 + 1) * 1024

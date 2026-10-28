@@ -143,6 +143,15 @@ def output_quality(turn):
         current = current + 1 if token == previous else 1
         longest = max(longest, current)
         previous = token
+    periodic_span = period_found = 0
+    for period in range(1, min(8, len(tokens or []) // 2) + 1):
+        matched = 0
+        for position in range(period, len(tokens)):
+            matched = (
+                matched + 1 if tokens[position] == tokens[position - period] else 0
+            )
+            if matched >= period and matched + period > periodic_span:
+                periodic_span, period_found = matched + period, period
     return dict(
         empty_answer=not turn["content"] if "content" in turn else None,
         finish_reason=turn.get("finish_reason"),
@@ -150,5 +159,40 @@ def output_quality(turn):
             max(Counter(tokens).values()) / len(tokens) if tokens else None
         ),
         longest_identical_token_run=longest if tokens else None,
-        repetition_flag=longest >= 128 if tokens else None,
+        longest_periodic_token_span=periodic_span if tokens else None,
+        periodic_token_period=period_found if periodic_span else None,
+        periodic_search_max_period=8,
+        repetition_flag=periodic_span >= 128 if tokens else None,
     )
+
+
+def ngram_acceptance(turn, draft_length):
+    """Use validated output-bearing engine steps, including zero-proposal steps."""
+    emitted = turn.get("emitted_steps")
+    if not isinstance(emitted, int) or emitted < 2 or turn.get("preemptions") != 0:
+        raise WorkloadValidationError(
+            "N-gram acceptance needs emitted engine steps and zero preemptions"
+        )
+    steps = emitted - 1
+    drafts = turn["drafts"]
+    if (
+        not 0 <= drafts <= steps
+        or not 0 <= turn["draft_tokens"] <= drafts * draft_length
+    ):
+        raise WorkloadValidationError("N-gram proposals exceed the measured steps")
+    if any(value > drafts for value in turn["accepted_per_position"].values()):
+        raise WorkloadValidationError("N-gram position count exceeds proposal steps")
+    result = acceptance(
+        dict(turn, drafts=steps), draft_length, fixed_verification=False
+    )
+    if not -draft_length <= result["counter_identity_residual"] <= 0:
+        raise WorkloadValidationError("N-gram engine counter identity is inconsistent")
+    result.update(
+        decode_steps=steps,
+        draft_steps=drafts,
+        zero_proposal_steps=steps - drafts,
+        draft_tokens=turn["draft_tokens"],
+        accepted_tokens=turn["accepted_tokens"],
+        accepted_per_position=turn["accepted_per_position"],
+    )
+    return result
