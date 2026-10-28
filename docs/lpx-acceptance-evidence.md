@@ -53,7 +53,7 @@ The fits need AA acceptances of 0.003 to 0.48 at 10K and 0.09 to 0.75 at 100K, a
 
 - **Fits with an AA 10K acceptance below 0.10** fall below every published prior for prose, including short-prompt n-gram drafting.
   They include TP32/PP4 with `KVP = 8` at `K = 3` without background, TP16/PP16 with `KVP = 4` at `K = 7` without background and the `K = 3` fits with one background request on TP16 at efficiency 0.50.
-- **A drafter trained with the model**, such as Gemma's MTP drafter, gives prose acceptances of about 0.57 to 0.68 that stay stable with context.
+- **A drafter trained with the model** gives prose acceptances of about 0.57 to 0.68 in the published MTP results for Qwen3-Next, and LongSpec reports such drafters stable with context; no acceptance is published for Gemma 4 31B's own MTP drafter.
   No fit reaches that range at 10K, and with a stable acceptance the AA 100K workload cannot be faster than the 10K workload.
   At 0.57 to 0.68, the AA 10K speed needs a step of 615 to 726 microseconds at `K = 3` and 680 to 882 microseconds at `K = 7`.
   The simulated 10K steps are 218 to 297 microseconds at `K = 3` and 276 to 347 microseconds at `K = 7` without background, and at most 457 microseconds with one background request at efficiency 0.50.

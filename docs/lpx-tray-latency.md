@@ -1,7 +1,7 @@
 # Cross-tray latency and the TP32 AA match
 
 Record date: 2026-10-26.
-The [article-condition sweep](lpx-article-sweep.md) found that TP32/PP8 with decode context parallelism (DCP) of 8 on 256 LP30 chips reproduces both Artificial Analysis (AA) speeds if each step costs 14 to 25 µs more than modeled.
+The [article-condition sweep](lpx-article-sweep.md) found that TP32/PP8 with decode context parallelism (DCP) of 8 on 256 LP30 chips places both Artificial Analysis (AA) speeds within 5% if each step costs 14 to 25 µs more than modeled.
 A TP32 group spans two 16-chip trays, so its collectives use the middle fabric tier.
 That tier's 0.75 µs latency comes from the Hot Chips reachable-capacity chart, which states the latency for reaching 64 GB of SRAM and does not describe a collective.
 The [attention-group record](lpx-attention-group.md) attributed the 87 µs longer TP32 base step to this tier.
@@ -62,6 +62,6 @@ The 14 to 25 µs of extra time that the article-condition sweep needs is therefo
 With the 1.031 to 1.048 Gemma tokens per `o200k_base` token measured on Gemma 4 31B's own writing outputs in the [token-ratio record](lpx-token-ratio.md), the matching range moves to about 0.76 to 0.81 µs, and at the 1.073 measured on another model's reasoning traces it moves to about 0.73 to 0.77 µs, which includes the catalog value.
 
 The match therefore rests on one unmeasured number.
-The TP32/PP8, DCP 8 layout reproduces both AA values for any middle-tier latency between about 0.73 and 0.85 µs, depending on the token ratio, and for about 0.76 to 0.81 µs at the ratios of Gemma's own writing outputs, and no extra time per step is needed inside that range.
+The TP32/PP8, DCP 8 layout places both AA values within 5% for any middle-tier latency between about 0.73 and 0.85 µs, depending on the token ratio, and for about 0.76 to 0.81 µs at the ratios of Gemma's own writing outputs, and no extra time per step is needed inside that range.
 Below that range the layout needs extra time per step, and above it the 100K speed falls below the band.
 A measured collective latency between two LP30 trays would decide whether this layout is consistent with the hardware.
