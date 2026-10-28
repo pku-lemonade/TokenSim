@@ -199,6 +199,7 @@ The remaining uncertainty sits in the source of that time, such as the LP30 cros
 | LP30 cross-tray collective latency | Measure an all-reduce across two LP30 trays; the TP32 match holds for about 0.80 to 0.85 µs at the 1.006 Gemma tokens per `o200k_base` token of AA-like outputs |
 | LP30 operand bandwidth | Establish whether LP30's matrix-unit operand bandwidth is below its 150 TB/s SRAM bandwidth, as GroqChip v1's 20 TB/s is below its 80 TB/s |
 | LP30 FP8 attention path | Establish whether KV conversion runs on the vector unit, which decides whether a larger attention group helps |
+| Gemma 4 31B measurements on GPUs | Measure the acceptance of Gemma's own MTP drafter at 10K and 100K, the per-request speed spread it causes and the fixed costs of a real decode step, following the [GPU TODO](lpx-gpu-gemma-todo.md) |
 | AA drafting status | Establish whether the AA run drafted, from AA's prompts, its per-request speed spread or a statement of the deployment's settings; lookup acceptance measured on AA-like book answers would make the AA values too fast without 26 to 99 µs of extra time |
 | Lift the 16-row forward limit | Test longer drafts and heavier background traffic in one forward |
 
