@@ -10,6 +10,7 @@ The [final summary](lpx-aa-final-summary.md) states the outcome of the work in o
 The published AA endpoint reaches a median output speed of 3,382 tokens per second (TPS) at 10K input tokens and 3,431 TPS at 100K input tokens.
 The goal is to reproduce both values, ideally with the smallest LP30 deployment.
 The published 100K speed is 1.45% higher than the 10K speed, so the endpoint's speed does not fall with context length.
+The [noise check](lpx-aa-noise-check.md) finds that this difference falls within two standard errors if the 50 requests vary by about 3% or more, which AA does not publish.
 A simulated point matches when both speeds lie within 5% of the published values.
 
 TP denotes tensor parallelism and PP pipeline parallelism.
@@ -44,6 +45,7 @@ All results use the bundled [fidelity configuration](../experiments/lpx/fidelity
 | Cross-tray latency | [Tray-latency record](lpx-tray-latency.md) | The TP32/PP8 step grows by about 25 µs per 0.1 µs of cross-tray latency; 0.81 to 0.85 µs instead of the assumed 0.75 µs matches both AA values without extra time at one token per AA token, about 0.80 to 0.85 µs at the 1.006 tokens per AA token of AA-like book answers, and about 0.73 to 0.77 µs at another model's reasoning ratio of 1.073 |
 | Per-step cost audit | [Step-cost audit](lpx-step-cost-audit.md) | The closest setup runs with the collective launch, the per-operator instruction floor and the per-step invocation at zero; a launch of 0.10 to 0.18 µs over 132 collectives or a floor of 0.012 to 0.023 µs over 1,036 kernel components supplies the 13 to 24 µs, while the 0.05 µs floor and 0.5 µs launch used elsewhere make the setup 8% to 28% too slow; the omitted token return between pipeline stages adds about 0.4 to 1.2 µs |
 | Published fixed costs | [Fixed-cost evidence](lpx-fixed-cost-evidence.md) | First-generation Groq data show no measurable collective launch beyond hop latency, no runtime instruction dispatch and about 0.28 µs of synchronization per spanning-tree level at each invocation, so the zeroed costs would supply about 1 to 2 µs; SHIP's production host collects each output and invokes the next step, a per-token cost without a published size that could supply the rest |
+| AA measurement noise | [Noise check](lpx-aa-noise-check.md) | A per-request spread of about 3% makes the 1.45% difference between two 50-request medians smaller than two standard errors; AA's shared public Gemma 4 31B endpoints vary by about 4% to 42% and are faster at 10K than at 1K on 6 of 11 endpoints, while no spread is published for the private LPX endpoint |
 | GroqRack Llama-2-7B check | [GroqRack validation](groqrack-llama2-7b-validation.md) | A measured 2.98 to 3.05 ms per token on 72 known first-generation cards exceeds the simulated forward by 2.70 to 2.83 ms; adding that per-token host cost to the 70B check gives 264 to 286 tokens per second, inside GroqCloud's 241 to 300 |
 
 ## DCP
@@ -275,3 +277,4 @@ The work is on branch `lpx-experiment`, pushed to `origin/lpx-context-parallel`.
 | `7aaa80e` | TODO for Gemma 4 31B measurements on GPUs |
 | `c3af9dc`, `d897025` | Per-step cost audit |
 | `13bfa7b`, `e429d26` | Published fixed costs |
+| `7accd04` | AA noise check: expectations |

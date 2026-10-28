@@ -61,6 +61,8 @@ No measured acceptance reaches the 10,996 TPS example on 16K code-completion pro
 No setup consistent with the test conditions reproduces AA's 1.45% higher speed at 100K, and the closest setup gives about equal speeds.
 On the AA-like book answers and on agent traces, lookup acceptance at long context is about the same as at short context, so more context is unlikely to explain the difference through drafting.
 The difference may lie within the spread of the 50 requests, which AA does not publish.
+The [noise check](lpx-aa-noise-check.md) shows that a per-request spread of about 3% would make it smaller than two standard errors of the difference between the two medians.
+AA's public Gemma 4 31B endpoints vary by about 4% to 42% between measurements and are faster at 10K than at 1K on 6 of 11 endpoints, which shows that AA's workloads differ in more than context length; those endpoints are shared, so they do not measure the private LPX endpoint's spread.
 
 ## Simulator validation
 
