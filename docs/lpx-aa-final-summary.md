@@ -33,6 +33,8 @@ AA counts tokens with the `o200k_base` tokenizer.
 The [API-outputs record](lpx-api-outputs.md) measures 1.006 Gemma tokens per `o200k_base` token on Gemma 4 31B's thinking and answers to questions about 10K and 100K-token books, and the [token-ratio record](lpx-token-ratio.md) measures 1.031 to 1.048 on its WritingBench outputs; AA's own prompts are not published.
 At the ratio of the book answers the 100K value matches and the 10K value is too fast unless each step takes about 13 to 24 µs longer than modeled.
 The [tray-latency record](lpx-tray-latency.md) shows that a cross-tray collective latency of about 0.80 to 0.85 µs instead of the assumed 0.75 µs supplies the same time.
+The [step-cost audit](lpx-step-cost-audit.md) finds that the closest setup runs with the collective launch, the per-operator instruction floor and the per-step invocation at zero.
+A collective launch of about 0.10 to 0.18 µs or a floor of about 0.012 to 0.023 µs per kernel component also supplies that time, while the larger values assumed in other records make the setup too slow, so the match requires LP30's fixed costs to total at most about 24 µs per step.
 
 ## Speculative decoding
 
@@ -64,20 +66,20 @@ The difference may lie within the spread of the 50 requests, which AA does not p
 On first-generation Groq hardware, the [BERT check](groqchip-v1-bert-validation.md) predicts a measured BERT-base layer within 6.5% to 9.5%.
 The [GroqRack check](groqrack-llama2-7b-validation.md) matches a measured 72-card Llama-2-7B decode once a fixed host loop of 2.7 to 2.8 ms per token is added.
 The same addition gives 264 to 286 TPS for Llama-2 70B, inside GroqCloud's published 241 to 300 TPS.
-The LP30 cross-tray latency, matrix-unit operand bandwidth and FP8 attention path remain assumptions.
+The LP30 cross-tray latency, collective launch and per-kernel costs, matrix-unit operand bandwidth and FP8 attention path remain assumptions.
 
 ## Open questions
 
 NVIDIA's chip count and layout remain unknown, and so do the model build, thinking mode and drafter of both the AA and the SPEED-Bench runs.
 AA's prompts remain unpublished, so the token ratio and acceptance on them remain unmeasured; the book answers give about one Gemma token per AA token.
-The source of the 13 to 24 µs of unmodeled time per step remains unidentified.
+Which of the unmeasured LP30 fixed costs supplies the 13 to 24 µs of unmodeled time per step remains unknown.
 The match shows that the cost model is compatible with the published values under one plausible setup and does not identify NVIDIA's deployment.
 
 These measurements would settle the remaining questions:
 
 | Measurement | Question it settles |
 | --- | --- |
-| One all-reduce across two LP30 trays | Whether the cross-tray latency supplies the missing 13 to 24 µs per step |
+| One all-reduce across two LP30 trays, and LP30's collective launch and per-kernel costs | Which fixed cost supplies the missing 13 to 24 µs per step, and whether together they stay within about 24 µs |
 | AA's prompts or per-request speed spread | Whether the AA run drafted, since drafting spreads per-request speeds as it does on SPEED-Bench, and whether the 1.45% difference between 100K and 10K lies within the spread |
 | A statement of the deployment's speculative-decoding settings | Whether the AA and SPEED-Bench runs used the same build |
 
