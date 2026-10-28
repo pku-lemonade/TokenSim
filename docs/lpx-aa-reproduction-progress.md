@@ -271,4 +271,4 @@ The work is on branch `lpx-experiment`, pushed to `origin/lpx-context-parallel`.
 | `9a45292`, `1486ad7` | Gemma outputs on SPEED-Bench and AA-like prompts |
 | `528eaf4`, `9d4f257`, `a768c38` | Qualified conclusions on the API outputs, coding spread and lookup coding |
 | `7aaa80e` | TODO for Gemma 4 31B measurements on GPUs |
-| `c3af9dc` | Per-step cost audit: expectations |
+| `c3af9dc`, `d897025` | Per-step cost audit |
