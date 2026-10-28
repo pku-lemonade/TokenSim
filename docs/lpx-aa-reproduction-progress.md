@@ -265,3 +265,4 @@ The work is on branch `lpx-experiment`, pushed to `origin/lpx-context-parallel`.
 | `e35a1ac`, `1170ced` | Lookup acceptance on coding outputs |
 | `a5f48a6`, `90cd654` | Coding speed spread |
 | `9a45292`, `1486ad7` | Gemma outputs on SPEED-Bench and AA-like prompts |
+| `528eaf4`, `9d4f257` | Qualified conclusions on the API outputs, coding spread and lookup coding |
