@@ -1,7 +1,7 @@
 # TODO: measure Gemma 4 31B on a GPU machine for the LPX study
 
 Record date: 2026-10-28.
-Status: not started.
+Status: in progress; see the [GPU measurements record](lpx-gpu-measurements.md) for environment setup, implemented tools and pending measurements.
 
 This page is a work plan for an agent on a machine with NVIDIA GPUs.
 It runs the public Gemma 4 31B checkpoint with its released multi-token prediction (MTP) drafter and measures what the LPX study could only borrow from other models: Gemma's own drafter acceptance, its dependence on context length, the per-request speed spread it causes and the fixed costs of a real decode step.
@@ -242,8 +242,10 @@ It sizes the per-step costs that the LP30 cost model may omit, on a real serving
 
 ### T7: TokenSim on the same GPU (optional)
 
-- [ ] Check whether TokenSim's operator data in `data/operator_data/` covers the GPU type and whether the Gemma 4 model in [`data/models/gemma-4-31b-text.yaml`](../data/models/gemma-4-31b-text.yaml) runs on it.
-- [ ] If both hold, compare the simulated batch-one decode step at 10K and 100K with the plain-server step of T6; otherwise record why the check did not run.
+- [x] Check whether TokenSim's operator data in `data/operator_data/` covers the GPU type and whether the Gemma 4 model in [`data/models/gemma-4-31b-text.yaml`](../data/models/gemma-4-31b-text.yaml) runs on it.
+- [x] If both hold, compare the simulated batch-one decode step at 10K and 100K with the plain-server step of T6; otherwise record why the check did not run.
+
+The GPU is an H20 and `data/operator_data/h20` does not exist, so T7 does not run.
 
 ## Pricing on LP30
 

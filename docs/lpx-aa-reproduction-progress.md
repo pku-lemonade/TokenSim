@@ -192,6 +192,9 @@ The book answers give 1.006 Gemma tokens per `o200k_base` token, which leaves th
 One possibility is one TP32/PP8 build with about 13 to 21 µs of unmodeled time per step in which the coding run drafted and the AA run did not; the model build, thinking mode, drafter and AA's prompts differ from the published runs, so the data does not establish it.
 The remaining uncertainty sits in the source of that time, such as the LP30 cross-tray collective latency, and in whether the AA run drafted, and the match does not identify NVIDIA's deployment.
 
+GPU measurement setup is recorded in the [GPU measurements record](lpx-gpu-measurements.md).
+The H20 environment, exact input hashes, sequential streaming client and LP30 pricing analysis are available; inference measurements are in progress and do not yet change the conclusions in this page.
+
 ## Open work
 
 | Item | Purpose |

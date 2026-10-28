@@ -1,0 +1,43 @@
+{
+  "label": "t0-plain",
+  "recorded_utc": "2026-10-28T07:33:05.373643+00:00",
+  "argv": [
+    "/tmp/lpx-gpu/server-venv/bin/python",
+    "/tmp/lpx-gpu/server-venv/bin/vllm",
+    "serve",
+    "google/gemma-4-31B-it",
+    "--revision",
+    "842da3794eaa0b77d5f08bae87a17459d91ff475",
+    "--tokenizer-revision",
+    "842da3794eaa0b77d5f08bae87a17459d91ff475",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "8000",
+    "--tensor-parallel-size",
+    "1",
+    "--dtype",
+    "bfloat16",
+    "--kv-cache-dtype",
+    "bfloat16",
+    "--max-model-len",
+    "120000",
+    "--max-num-seqs",
+    "1",
+    "--max-num-batched-tokens",
+    "8192",
+    "--gpu-memory-utilization",
+    "0.90",
+    "--no-enable-prefix-caching",
+    "--language-model-only",
+    "--reasoning-parser",
+    "gemma4",
+    "--seed",
+    "1"
+  ],
+  "environment": {
+    "HF_HUB_CACHE": "/tmp/lpx-gpu/hf",
+    "HF_HUB_OFFLINE": "1"
+  },
+  "log": "/tmp/lpx-gpu/server-plain.log"
+}

@@ -75,25 +75,35 @@ def complete(key, provider, messages, request):
     raise RuntimeError(f"{request['id']} failed after {RETRIES} attempts")
 
 
-def run_request(key, provider, request):
-    messages, turns = [], []
+def request_turns(request, complete_turn):
+    """Share sequential conversation history across remote and local clients."""
+    messages = []
     for text in request["turns"]:
         messages.append(dict(role="user", content=text))
+        turn = complete_turn(messages, request)
+        messages.append(dict(role="assistant", content=turn["content"]))
+        yield turn
+
+
+def run_request(key, provider, request):
+    def complete_turn(messages, request):
         result = complete(key, provider, messages, request)
         message = result["choices"][0]["message"]
-        turns.append(
-            dict(
-                content=message.get("content") or "",
-                reasoning=message.get("reasoning") or "",
-                finish_reason=result["choices"][0].get("finish_reason"),
-                provider=result.get("provider"),
-                model=result.get("model"),
-                usage=result.get("usage"),
-                elapsed_s=result["elapsed_s"],
-            )
+        return dict(
+            content=message.get("content") or "",
+            reasoning=message.get("reasoning") or "",
+            finish_reason=result["choices"][0].get("finish_reason"),
+            provider=result.get("provider"),
+            model=result.get("model"),
+            usage=result.get("usage"),
+            elapsed_s=result["elapsed_s"],
         )
-        messages.append(dict(role="assistant", content=turns[-1]["content"]))
-    return dict(id=request["id"], set=request["set"], turns=turns)
+
+    return dict(
+        id=request["id"],
+        set=request["set"],
+        turns=list(request_turns(request, complete_turn)),
+    )
 
 
 def generate(args, key):

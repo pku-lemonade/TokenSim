@@ -1,0 +1,125 @@
+{
+  "request_count": 264,
+  "files": [
+    {
+      "file": "gutenberg/pg1228.txt",
+      "sha256": "362142cb7c6f90850477520cfe2a62fe423ae92ea8eb6d9cd8b30ddb39de60b9",
+      "expected_sha256": "362142cb7c6f90850477520cfe2a62fe423ae92ea8eb6d9cd8b30ddb39de60b9",
+      "matches_expected": true
+    },
+    {
+      "file": "gutenberg/pg1260.txt",
+      "sha256": "13414dee2951c3ee731d76d2ffd822016b2479c892162760c5d0eb2aa5fa7631",
+      "expected_sha256": "13414dee2951c3ee731d76d2ffd822016b2479c892162760c5d0eb2aa5fa7631",
+      "matches_expected": true
+    },
+    {
+      "file": "gutenberg/pg1342.txt",
+      "sha256": "3f6bb9d6f78e0293b56acd4714dd68cb7d6d1d293402031ce9d5a216bcaf9d75",
+      "expected_sha256": "3f6bb9d6f78e0293b56acd4714dd68cb7d6d1d293402031ce9d5a216bcaf9d75",
+      "matches_expected": true
+    },
+    {
+      "file": "gutenberg/pg1399.txt",
+      "sha256": "a3e29e08c15c63bb22069f4256316c2ebebd422ecb5c33462ddc00ae00b27571",
+      "expected_sha256": "a3e29e08c15c63bb22069f4256316c2ebebd422ecb5c33462ddc00ae00b27571",
+      "matches_expected": true
+    },
+    {
+      "file": "gutenberg/pg1400.txt",
+      "sha256": "9a637118af8e953e9764ec603d9b0a032883384d465acac2e27966a80cf1c6f8",
+      "expected_sha256": "9a637118af8e953e9764ec603d9b0a032883384d465acac2e27966a80cf1c6f8",
+      "matches_expected": true
+    },
+    {
+      "file": "gutenberg/pg1404.txt",
+      "sha256": "0b92fadc9d7afd767eefd27805a20e44417ff26d1fb2f964229f39dcc7b2a65d",
+      "expected_sha256": "0b92fadc9d7afd767eefd27805a20e44417ff26d1fb2f964229f39dcc7b2a65d",
+      "matches_expected": true
+    },
+    {
+      "file": "gutenberg/pg145.txt",
+      "sha256": "dc2e0107e6ae07e8e33da934b2ec4e8e600826a2e0cd48df265119cd02e5fb50",
+      "expected_sha256": "dc2e0107e6ae07e8e33da934b2ec4e8e600826a2e0cd48df265119cd02e5fb50",
+      "matches_expected": true
+    },
+    {
+      "file": "gutenberg/pg1497.txt",
+      "sha256": "3d2e397122881d7737a48fb80e71cddf4c78cda54ceac7e0905fe945dfab48fd",
+      "expected_sha256": "3d2e397122881d7737a48fb80e71cddf4c78cda54ceac7e0905fe945dfab48fd",
+      "matches_expected": true
+    },
+    {
+      "file": "gutenberg/pg205.txt",
+      "sha256": "2d9a76a2e3e8195c69430516ebd33c4d0757a53ad432ff6186b7b794e6fe99f9",
+      "expected_sha256": "2d9a76a2e3e8195c69430516ebd33c4d0757a53ad432ff6186b7b794e6fe99f9",
+      "matches_expected": true
+    },
+    {
+      "file": "gutenberg/pg2701.txt",
+      "sha256": "b5e88b71a1cda068e9ab1d94344c9d932338ba6da1a66def97a1aecd9cfcc87d",
+      "expected_sha256": "b5e88b71a1cda068e9ab1d94344c9d932338ba6da1a66def97a1aecd9cfcc87d",
+      "matches_expected": true
+    },
+    {
+      "file": "gutenberg/pg3207.txt",
+      "sha256": "3de1e492641d939567a8b0de827fb13e1ad992324f9ac8b204f60475009b7294",
+      "expected_sha256": "3de1e492641d939567a8b0de827fb13e1ad992324f9ac8b204f60475009b7294",
+      "matches_expected": true
+    },
+    {
+      "file": "gutenberg/pg3300.txt",
+      "sha256": "e91d52dca43fd0fd69baf7776b00a5d8e74b69675b6b608ca8a0378aaf3ae58d",
+      "expected_sha256": "e91d52dca43fd0fd69baf7776b00a5d8e74b69675b6b608ca8a0378aaf3ae58d",
+      "matches_expected": true
+    },
+    {
+      "file": "gutenberg/pg345.txt",
+      "sha256": "96cd16eacdbfebae8fdda5591f66e0cc8ee76be18e0cd1aca02bc00615782d28",
+      "expected_sha256": "96cd16eacdbfebae8fdda5591f66e0cc8ee76be18e0cd1aca02bc00615782d28",
+      "matches_expected": true
+    },
+    {
+      "file": "gutenberg/pg4280.txt",
+      "sha256": "9e44b1bc6042da4aeb669d4f3f585037a5488a2908e7ec225f9431c43f6720fc",
+      "expected_sha256": "9e44b1bc6042da4aeb669d4f3f585037a5488a2908e7ec225f9431c43f6720fc",
+      "matches_expected": true
+    },
+    {
+      "file": "gutenberg/pg944.txt",
+      "sha256": "e13d57170a6dd9f7d97ddbc14cbde961dffbd95e8861ed199e5f00a525e7e52a",
+      "expected_sha256": "e13d57170a6dd9f7d97ddbc14cbde961dffbd95e8861ed199e5f00a525e7e52a",
+      "matches_expected": true
+    },
+    {
+      "file": "gutenberg/pg98.txt",
+      "sha256": "d54c2b80d40a40b982cd88852c6180bb944d95acdb028af3d0e01a1750681784",
+      "expected_sha256": "d54c2b80d40a40b982cd88852c6180bb944d95acdb028af3d0e01a1750681784",
+      "matches_expected": true
+    },
+    {
+      "file": "requests.jsonl",
+      "sha256": "7abb2f93587b01649c27e262e041afe96dd68cc055908d80f35610b5de9506ae",
+      "expected_sha256": "7abb2f93587b01649c27e262e041afe96dd68cc055908d80f35610b5de9506ae",
+      "matches_expected": true
+    },
+    {
+      "file": "speed-16k.parquet",
+      "sha256": "7e72b4b352c9ebb65f7847c62c446d93a8d2ff049c74d9a158a3c7e3d6ceb8b1",
+      "expected_sha256": "7e72b4b352c9ebb65f7847c62c446d93a8d2ff049c74d9a158a3c7e3d6ceb8b1",
+      "matches_expected": true
+    },
+    {
+      "file": "speed-qualitative.parquet",
+      "sha256": "4f76bc45bdffb38712a5c26d7a7c9a9a791484b392a7b64a6ffb9abe48e02e26",
+      "expected_sha256": "4f76bc45bdffb38712a5c26d7a7c9a9a791484b392a7b64a6ffb9abe48e02e26",
+      "matches_expected": true
+    },
+    {
+      "file": "tokenizer.json",
+      "sha256": "cc8d3a0ce36466ccc1278bf987df5f71db1719b9ca6b4118264f45cb627bfe0f",
+      "expected_sha256": "cc8d3a0ce36466ccc1278bf987df5f71db1719b9ca6b4118264f45cb627bfe0f",
+      "matches_expected": true
+    }
+  ]
+}
