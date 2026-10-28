@@ -277,4 +277,4 @@ The work is on branch `lpx-experiment`, pushed to `origin/lpx-context-parallel`.
 | `7aaa80e` | TODO for Gemma 4 31B measurements on GPUs |
 | `c3af9dc`, `d897025` | Per-step cost audit |
 | `13bfa7b`, `e429d26` | Published fixed costs |
-| `7accd04` | AA noise check: expectations |
+| `7accd04`, `e888cca` | AA noise check |
