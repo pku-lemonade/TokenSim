@@ -35,6 +35,7 @@ At the ratio of the book answers the 100K value matches and the 10K value is too
 The [tray-latency record](lpx-tray-latency.md) shows that a cross-tray collective latency of about 0.80 to 0.85 µs instead of the assumed 0.75 µs supplies the same time.
 The [step-cost audit](lpx-step-cost-audit.md) finds that the closest setup runs with the collective launch, the per-operator instruction floor and the per-step invocation at zero.
 A collective launch of about 0.10 to 0.18 µs or a floor of about 0.012 to 0.023 µs per kernel component also supplies that time, while the larger values assumed in other records make the setup too slow, so the match requires LP30's fixed costs to total at most about 24 µs per step.
+The [fixed-cost evidence record](lpx-fixed-cost-evidence.md) finds that first-generation Groq data leave about 1 to 2 µs of that to collective launches, instruction dispatch and synchronization, and that Groq's production host collects each output and invokes the next step, a per-token cost without a published size.
 
 ## Speculative decoding
 
@@ -79,7 +80,7 @@ These measurements would settle the remaining questions:
 
 | Measurement | Question it settles |
 | --- | --- |
-| One all-reduce across two LP30 trays, and LP30's collective launch and per-kernel costs | Which fixed cost supplies the missing 13 to 24 µs per step, and whether together they stay within about 24 µs |
+| One all-reduce across two LP30 trays, LP30's collective launch and per-kernel costs, and the host's per-token output collection and invocation | Which fixed cost supplies the missing 13 to 24 µs per step, and whether together they stay within about 24 µs |
 | AA's prompts or per-request speed spread | Whether the AA run drafted, since drafting spreads per-request speeds as it does on SPEED-Bench, and whether the 1.45% difference between 100K and 10K lies within the spread |
 | A statement of the deployment's speculative-decoding settings | Whether the AA and SPEED-Bench runs used the same build |
 

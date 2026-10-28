@@ -43,6 +43,7 @@ All results use the bundled [fidelity configuration](../experiments/lpx/fidelity
 | Token ratio | [Token-ratio record](lpx-token-ratio.md) | Gemma 4 31B's own writing outputs give 1.031 to 1.048 tokens per `o200k_base` token, which cuts the TP32/PP8 extra time from 14 to 25 µs to about 1 to 16 µs; ratios of 1.053 to 1.090, seen on reasoning-heavy text, remove it |
 | Cross-tray latency | [Tray-latency record](lpx-tray-latency.md) | The TP32/PP8 step grows by about 25 µs per 0.1 µs of cross-tray latency; 0.81 to 0.85 µs instead of the assumed 0.75 µs matches both AA values without extra time at one token per AA token, about 0.80 to 0.85 µs at the 1.006 tokens per AA token of AA-like book answers, and about 0.73 to 0.77 µs at another model's reasoning ratio of 1.073 |
 | Per-step cost audit | [Step-cost audit](lpx-step-cost-audit.md) | The closest setup runs with the collective launch, the per-operator instruction floor and the per-step invocation at zero; a launch of 0.10 to 0.18 µs over 132 collectives or a floor of 0.012 to 0.023 µs over 1,036 kernel components supplies the 13 to 24 µs, while the 0.05 µs floor and 0.5 µs launch used elsewhere make the setup 8% to 28% too slow; the omitted token return between pipeline stages adds about 0.4 to 1.2 µs |
+| Published fixed costs | [Fixed-cost evidence](lpx-fixed-cost-evidence.md) | First-generation Groq data show no measurable collective launch beyond hop latency, no runtime instruction dispatch and about 0.28 µs of synchronization per spanning-tree level at each invocation, so the zeroed costs would supply about 1 to 2 µs; SHIP's production host collects each output and invokes the next step, a per-token cost without a published size that could supply the rest |
 | GroqRack Llama-2-7B check | [GroqRack validation](groqrack-llama2-7b-validation.md) | A measured 2.98 to 3.05 ms per token on 72 known first-generation cards exceeds the simulated forward by 2.70 to 2.83 ms; adding that per-token host cost to the 70B check gives 264 to 286 tokens per second, inside GroqCloud's 241 to 300 |
 
 ## DCP
@@ -193,13 +194,14 @@ The book answers give 1.006 Gemma tokens per `o200k_base` token, which leaves th
 One possibility is one TP32/PP8 build with about 13 to 21 µs of unmodeled time per step in which the coding run drafted and the AA run did not; the model build, thinking mode, drafter and AA's prompts differ from the published runs, so the data does not establish it.
 The [step-cost audit](lpx-step-cost-audit.md) finds that the sweep sets the collective launch, the per-operator instruction floor and the per-step invocation to zero, and that small nonzero values of any of them, or a slightly longer cross-tray latency, supply that time.
 The match therefore requires LP30's fixed costs to total at most about 24 µs per step.
+The [fixed-cost evidence record](lpx-fixed-cost-evidence.md) finds that first-generation Groq data leave little of that time to collective launches, instruction dispatch or synchronization, and points to the host's per-token output collection and invocation, or a slightly longer cross-tray latency, as the remaining candidates.
 The remaining uncertainty sits in which fixed cost supplies that time and in whether the AA run drafted, and the match does not identify NVIDIA's deployment.
 
 ## Open work
 
 | Item | Purpose |
 | --- | --- |
-| LP30 fixed costs per step | Measure an all-reduce across two LP30 trays and LP30's collective launch and per-kernel costs; at the 1.006 Gemma tokens per `o200k_base` token of AA-like outputs the TP32 match holds if together they add 13 to 24 µs per step, for example a cross-tray latency of 0.80 to 0.85 µs, a collective launch of 0.10 to 0.18 µs or an instruction floor of 0.012 to 0.023 µs |
+| LP30 fixed costs per step | Measure an all-reduce across two LP30 trays, LP30's collective launch and per-kernel costs, and the host's per-token output collection and invocation; at the 1.006 Gemma tokens per `o200k_base` token of AA-like outputs the TP32 match holds if together they add 13 to 24 µs per step, for example a cross-tray latency of 0.80 to 0.85 µs, a collective launch of 0.10 to 0.18 µs or an instruction floor of 0.012 to 0.023 µs |
 | LP30 operand bandwidth | Establish whether LP30's matrix-unit operand bandwidth is below its 150 TB/s SRAM bandwidth, as GroqChip v1's 20 TB/s is below its 80 TB/s |
 | LP30 FP8 attention path | Establish whether KV conversion runs on the vector unit, which decides whether a larger attention group helps |
 | Gemma 4 31B measurements on GPUs | Measure the acceptance of Gemma's own MTP drafter at 10K and 100K, the per-request speed spread it causes and the fixed costs of a real decode step, following the [GPU TODO](lpx-gpu-gemma-todo.md) |
@@ -272,3 +274,4 @@ The work is on branch `lpx-experiment`, pushed to `origin/lpx-context-parallel`.
 | `528eaf4`, `9d4f257`, `a768c38` | Qualified conclusions on the API outputs, coding spread and lookup coding |
 | `7aaa80e` | TODO for Gemma 4 31B measurements on GPUs |
 | `c3af9dc`, `d897025` | Per-step cost audit |
+| `13bfa7b` | Published fixed costs: expectations |
