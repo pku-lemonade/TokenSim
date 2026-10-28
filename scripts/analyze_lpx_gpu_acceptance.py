@@ -29,7 +29,7 @@ from scripts.analyze_lpx_published_conditions import (
     verification_steps,
 )
 from scripts.generate_lpx_gemma_outputs import file_name
-from scripts.lpx.gpu_metrics import acceptance
+from scripts.lpx.gpu_metrics import acceptance, output_quality
 from scripts.measure_lpx_lookup_acceptance import equivalent_acceptance
 from scripts.search_lpx_native import write_json
 
@@ -94,7 +94,18 @@ def summarize(outputs):
             prompt="full",
             draft_tokens=config["K"],
         )
-        if config["method"] == "plain":
+        quality = [output_quality(turn) for turn in turns]
+        result["quality"] = dict(
+            length_limited_turns=sum(
+                row["finish_reason"] == "length" for row in quality
+            ),
+            empty_answer_turns=sum(row["empty_answer"] is True for row in quality),
+            repetition_flagged_turns=sum(
+                row["repetition_flag"] is True for row in quality
+            ),
+            threshold_note="128 identical consecutive native tokens; diagnostic chosen after the plain T0 loop, no turns excluded",
+        )
+        if config["method"] in ("plain", "ngram"):
             result["turns"] = [
                 dict(
                     id=turn["id"],
@@ -105,6 +116,23 @@ def summarize(outputs):
                 )
                 for turn in turns
             ]
+            if config["method"] == "ngram":
+                result["acceptance_unavailable"] = (
+                    "vLLM draft counters exclude zero-proposal forwards; "
+                    "the total verification-step count is not measured"
+                )
+                for measured, turn in zip(result["turns"], turns):
+                    measured.update(
+                        {
+                            field: turn[field]
+                            for field in (
+                                "drafts",
+                                "draft_tokens",
+                                "accepted_tokens",
+                                "accepted_per_position",
+                            )
+                        }
+                    )
         else:
             measured = [
                 acceptance(turn, config["K"], config["method"] == "mtp")
@@ -140,6 +168,11 @@ def summarize(outputs):
             result["equivalent_acceptance"] = equivalent_acceptance(
                 result["tau"], config["K"]
             )
+        for measured, diagnostic, turn in zip(result["turns"], quality, turns):
+            measured["quality"] = diagnostic
+            for field in ("emitted_steps", "preemptions"):
+                if field in turn:
+                    measured[field] = turn[field]
         results.append(result)
     return results
 
@@ -208,7 +241,7 @@ def paired(results):
     }
     pairs = []
     for (config_key, data), low in indexed.items():
-        if low["config"]["method"] == "plain":
+        if low["config"]["method"] != "mtp":
             continue
         for style in STYLES:
             if data != f"aa-docs-think-10k-{style}":

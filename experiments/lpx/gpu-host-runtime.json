@@ -1,0 +1,7 @@
+{
+  "environment": {
+    "OMP_NUM_THREADS": "18"
+  },
+  "cpu_affinity_count": 174,
+  "cpu_model": "Intel(R) Xeon(R) Platinum 8457C"
+}

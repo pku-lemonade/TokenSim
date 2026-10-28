@@ -1,0 +1,167 @@
+{
+  "runtime": {
+    "measured_plain_tps": 19.763088009003795,
+    "smoke_request": "aa-docs/pg1228/10k/summary",
+    "method": "previous API output lengths divided by plain 10K GPU rate; no assumed speculative speedup",
+    "excludes": [
+      "prefill",
+      "server startup",
+      "profiling overhead",
+      "metrics settling"
+    ],
+    "analysis_only": [
+      "T2",
+      "T5 analysis"
+    ],
+    "optional_skipped": [
+      "T7: no H20 operator data"
+    ],
+    "tasks": [
+      {
+        "task": "T1 priority 1",
+        "set": "aa-docs",
+        "thinking": true,
+        "draft_lengths": [
+          3,
+          7
+        ],
+        "requests": 128,
+        "reference_decode_tokens": 484698,
+        "estimated_generation_hours": 6.812616189939241,
+        "generation_hours_if_all_outputs_hit_cap": 29.474476175043318
+      },
+      {
+        "task": "T1 priority 1",
+        "set": "speed-coding",
+        "thinking": false,
+        "draft_lengths": [
+          3,
+          7
+        ],
+        "requests": 160,
+        "reference_decode_tokens": 82490,
+        "estimated_generation_hours": 1.1594285710031564,
+        "generation_hours_if_all_outputs_hit_cap": 40.987943430919614
+      },
+      {
+        "task": "T1 priority 2",
+        "set": "speed-coding",
+        "thinking": true,
+        "draft_lengths": [
+          3,
+          7
+        ],
+        "requests": 160,
+        "reference_decode_tokens": 405684,
+        "estimated_generation_hours": 5.702044131395861,
+        "generation_hours_if_all_outputs_hit_cap": 40.987943430919614
+      },
+      {
+        "task": "T1 priority 2",
+        "set": "aa-docs",
+        "thinking": true,
+        "draft_lengths": [
+          1,
+          5
+        ],
+        "requests": 128,
+        "reference_decode_tokens": 484698,
+        "estimated_generation_hours": 6.812616189939241,
+        "generation_hours_if_all_outputs_hit_cap": 29.474476175043318
+      },
+      {
+        "task": "T1 priority 3",
+        "set": "speed-cc16k",
+        "thinking": false,
+        "draft_lengths": [
+          3,
+          7
+        ],
+        "requests": 80,
+        "reference_decode_tokens": 54878,
+        "estimated_generation_hours": 0.7713313264578886,
+        "generation_hours_if_all_outputs_hit_cap": 4.604543579350637
+      },
+      {
+        "task": "T1 priority 3",
+        "set": "speed-coding",
+        "thinking": false,
+        "draft_lengths": [
+          1,
+          5
+        ],
+        "requests": 160,
+        "reference_decode_tokens": 82490,
+        "estimated_generation_hours": 1.1594285710031564,
+        "generation_hours_if_all_outputs_hit_cap": 40.987943430919614
+      },
+      {
+        "task": "T1 priority 3",
+        "set": "speed-coding",
+        "thinking": true,
+        "draft_lengths": [
+          1,
+          5
+        ],
+        "requests": 160,
+        "reference_decode_tokens": 405684,
+        "estimated_generation_hours": 5.702044131395861,
+        "generation_hours_if_all_outputs_hit_cap": 40.987943430919614
+      },
+      {
+        "task": "T3 FP8",
+        "set": "aa-docs",
+        "thinking": true,
+        "draft_lengths": [
+          3
+        ],
+        "requests": 64,
+        "reference_decode_tokens": 242349,
+        "estimated_generation_hours": 3.4063080949696203,
+        "generation_hours_if_all_outputs_hit_cap": 14.737238087521659
+      },
+      {
+        "task": "T4 ngram",
+        "set": "aa-docs",
+        "thinking": true,
+        "draft_lengths": [
+          7
+        ],
+        "requests": 64,
+        "reference_decode_tokens": 242349,
+        "estimated_generation_hours": 3.4063080949696203,
+        "generation_hours_if_all_outputs_hit_cap": 14.737238087521659
+      },
+      {
+        "task": "T4 ngram",
+        "set": "speed-coding",
+        "thinking": false,
+        "draft_lengths": [
+          7
+        ],
+        "requests": 80,
+        "reference_decode_tokens": 41245,
+        "estimated_generation_hours": 0.5797142855015782,
+        "generation_hours_if_all_outputs_hit_cap": 20.493971715459807
+      },
+      {
+        "task": "T5 plain",
+        "set": "speed-coding",
+        "thinking": false,
+        "draft_lengths": [
+          0
+        ],
+        "requests": 80,
+        "reference_decode_tokens": 41245,
+        "estimated_generation_hours": 0.5797142855015782,
+        "generation_hours_if_all_outputs_hit_cap": 20.493971715459807
+      },
+      {
+        "task": "T6",
+        "requests": 4,
+        "reference_decode_tokens": 1020,
+        "estimated_generation_hours": 0.014336490997978176
+      }
+    ]
+  }
+}

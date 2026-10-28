@@ -17,7 +17,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from TokenSim.errors import WorkloadValidationError
-from scripts.lpx.gpu_metrics import acceptance
+from scripts.lpx.gpu_metrics import acceptance, output_quality
 from scripts.search_lpx_native import write_json
 
 
@@ -26,6 +26,44 @@ def first_difference(left, right):
         if plain != draft:
             return position
     return min(len(left), len(right)) if len(left) != len(right) else None
+
+
+def diagnostic_report(outputs):
+    if not outputs:
+        raise WorkloadValidationError("Diagnostics need completed requests")
+    baseline = outputs[0]
+    rows = []
+    for candidate in outputs:
+        if any(candidate[field] != baseline[field] for field in ("id", "thinking")):
+            raise WorkloadValidationError("Diagnostics require the same request")
+        for field in ("requests_sha256", "model", "seed"):
+            if candidate["config"][field] != baseline["config"][field]:
+                raise WorkloadValidationError(f"Diagnostic inputs differ in {field}")
+        if len(candidate["turns"]) != 1:
+            raise WorkloadValidationError("Diagnostics require single-turn requests")
+        turn, plain = candidate["turns"][0], baseline["turns"][0]
+        if not turn.get("token_ids") or not plain.get("token_ids"):
+            raise WorkloadValidationError("Diagnostics require native token IDs")
+        shared = min(len(turn["token_ids"]), len(plain["token_ids"]))
+        rows.append(
+            dict(
+                config=candidate["config"],
+                completion_tokens=turn["completion_tokens"],
+                ttft_s=turn["ttft_s"],
+                output_tps=turn["output_tps"],
+                quality=output_quality(turn),
+                shared_prefix_tokens=shared,
+                first_different_prefix_position=first_difference(
+                    plain["token_ids"][:shared], turn["token_ids"][:shared]
+                ),
+            )
+        )
+    return dict(
+        id=baseline["id"],
+        baseline_label=baseline["config"]["run_label"],
+        comparison="native token IDs over the shorter output; output caps may differ",
+        runs=rows,
+    )
 
 
 def compare(plain, mtp, tokenizer):
@@ -203,6 +241,7 @@ def main(argv=None):
     parser.add_argument("--tokenizer", type=Path)
     parser.add_argument("--smoke", type=Path)
     parser.add_argument("--requests", type=Path)
+    parser.add_argument("--diagnostics", type=Path, nargs="+")
     parser.add_argument(
         "--reference",
         type=Path,
@@ -211,6 +250,10 @@ def main(argv=None):
     parser.add_argument("--summary", type=Path, required=True)
     args = parser.parse_args(argv)
     result = {}
+    if args.diagnostics:
+        result["diagnostics"] = diagnostic_report(
+            [row for path in args.diagnostics for row in read_outputs(path)]
+        )
     if args.plain or args.mtp:
         if not all((args.plain, args.mtp, args.tokenizer)):
             parser.error("comparison requires --plain, --mtp and --tokenizer")
@@ -230,7 +273,7 @@ def main(argv=None):
             read_outputs(args.smoke)[0],
         )
     if not result:
-        parser.error("select comparison or runtime estimation")
+        parser.error("select comparison, diagnostics or runtime estimation")
     write_json(args.summary, result)
     return 0
 

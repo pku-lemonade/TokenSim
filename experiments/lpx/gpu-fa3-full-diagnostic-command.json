@@ -1,0 +1,27 @@
+{
+  "pid": 242600,
+  "argv": [
+    "/tmp/lpx-gpu/repo-venv/bin/python",
+    "scripts/generate_lpx_gpu_outputs.py",
+    "--requests",
+    "/tmp/lpx-gpu/inputs/requests.jsonl",
+    "--outputs",
+    "experiments/lpx/gpu-fa3-full-diagnostic.jsonl",
+    "--environment",
+    "experiments/lpx/gpu-environment.json",
+    "--method",
+    "plain",
+    "--run-label",
+    "t0-fa3-full-diagnostic",
+    "--set",
+    "aa-docs",
+    "--thinking",
+    "on",
+    "--context",
+    "10000",
+    "--limit",
+    "1"
+  ],
+  "server_record": "gpu-server-fa3-diagnostic-command.json",
+  "started_unix": 1793175326.0769963
+}

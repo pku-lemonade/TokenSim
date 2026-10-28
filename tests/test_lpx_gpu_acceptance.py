@@ -87,6 +87,8 @@ class GpuAcceptanceTest(unittest.TestCase):
         result = summarize([measured])[0]
         self.assertNotIn("per_row", result)
         self.assertNotIn("per_row", result["turns"][0])
+        self.assertNotIn("tau", result)
+        self.assertIn("acceptance_unavailable", result)
 
     def test_pairing_joins_book_identity_and_reports_missing_books(self):
         low = output()

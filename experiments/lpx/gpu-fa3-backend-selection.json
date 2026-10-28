@@ -1,0 +1,9 @@
+{
+  "server_command": "gpu-server-fa3-diagnostic-command.json",
+  "log": "/tmp/lpx-gpu/server-fa3-diagnostic.log",
+  "selection_events": [
+    "(EngineCore pid=240638) INFO 10-28 16:12:29 [flash_attn.py:1117] Using FlashAttention version 3",
+    "(EngineCore pid=240638) INFO 10-28 16:12:29 [fa_utils.py:162] FA3 does not support head_size=512 on SM90: upgrading FlashAttention 3 -> 4",
+    "(EngineCore pid=240638) INFO 10-28 16:12:29 [flash_attn.py:1117] Using FlashAttention version 4"
+  ]
+}

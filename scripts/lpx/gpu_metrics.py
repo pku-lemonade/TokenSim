@@ -3,6 +3,7 @@
 import json
 import math
 import re
+from collections import Counter
 
 from TokenSim.errors import WorkloadValidationError
 from scripts.measure_lpx_lookup_acceptance import equivalent_acceptance
@@ -12,6 +13,10 @@ COUNTERS = {
     "spec_decode_num_draft_tokens": "draft_tokens",
     "spec_decode_num_accepted_tokens": "accepted_tokens",
     "spec_decode_num_accepted_tokens_per_pos": "accepted_per_position",
+}
+ENGINE_COUNTERS = {
+    "iteration_tokens_total_count": "emitted_steps",
+    "num_preemptions_total": "preemptions",
 }
 SAMPLE = re.compile(r"^vllm:(\w+)(?:\{(.*?)\})?\s+([^\s]+)")
 LABEL = re.compile(r'(\w+)="((?:[^"\\]|\\.)*)"')
@@ -25,8 +30,8 @@ def counters(text, model):
         if not match:
             continue
         name, labels, value = match.groups()
-        name = name.removesuffix("_total")
-        if name not in COUNTERS:
+        field = ENGINE_COUNTERS.get(name) or COUNTERS.get(name.removesuffix("_total"))
+        if field is None:
             continue
         labels = {
             key: json.loads('"' + value + '"')
@@ -37,9 +42,8 @@ def counters(text, model):
         value = float(value)
         if not math.isfinite(value) or value < 0 or not value.is_integer():
             raise WorkloadValidationError(
-                "Speculative counters must be nonnegative integers"
+                "Measurement counters must be nonnegative integers"
             )
-        field = COUNTERS[name]
         if field == "accepted_per_position":
             position = labels.get("position")
             if position is None:
@@ -54,8 +58,10 @@ def counters(text, model):
 def counter_delta(before, after, speculative):
     """Reject missing counters and server resets instead of implying zero acceptance."""
     result = {}
-    for field in COUNTERS.values():
-        if speculative and (field not in before or field not in after):
+    optional = set(ENGINE_COUNTERS.values()) & (before.keys() | after.keys())
+    for field in (*COUNTERS.values(), *sorted(optional)):
+        required = field in optional or speculative
+        if required and (field not in before or field not in after):
             raise WorkloadValidationError(f"Missing speculative counter: {field}")
         if field == "accepted_per_position":
             old, new = before.get(field, {}), after.get(field, {})
@@ -126,3 +132,23 @@ def acceptance(turn, draft_length, fixed_verification=True):
     if fixed_verification:
         result["per_row"] = [tokens, [0] * draft_length + [drafts]]
     return result
+
+
+def output_quality(turn):
+    """Describe repetition without excluding any measured turn."""
+    tokens = turn.get("token_ids")
+    longest = current = 0
+    previous = None
+    for token in tokens or []:
+        current = current + 1 if token == previous else 1
+        longest = max(longest, current)
+        previous = token
+    return dict(
+        empty_answer=not turn["content"] if "content" in turn else None,
+        finish_reason=turn.get("finish_reason"),
+        dominant_token_share=(
+            max(Counter(tokens).values()) / len(tokens) if tokens else None
+        ),
+        longest_identical_token_run=longest if tokens else None,
+        repetition_flag=longest >= 128 if tokens else None,
+    )

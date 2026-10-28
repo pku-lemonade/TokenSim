@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import unittest
 
 from TokenSim.errors import WorkloadValidationError
+from scripts.analyze_lpx_gpu_smoke import diagnostic_report
 from scripts.analyze_lpx_gpu_smoke import compare, estimate_runtime, first_difference
 
 
@@ -42,6 +43,26 @@ def smoke_output(method="plain"):
 
 
 class GpuSmokeTest(unittest.TestCase):
+    def test_diagnostics_compare_shared_native_prefix_with_different_caps(self):
+        baseline = smoke_output()
+        baseline["thinking"] = True
+        baseline["config"].update(seed=1, run_label="plain")
+        baseline["turns"][0].update(token_ids=[5, 6, 7, 8], ttft_s=1)
+        candidate = copy.deepcopy(baseline)
+        candidate["config"].update(run_label="eager", max_tokens_override=2)
+        candidate["turns"][0]["token_ids"] = [5, 6]
+        result = diagnostic_report([baseline, candidate])
+        self.assertEqual(result["runs"][1]["shared_prefix_tokens"], 2)
+        self.assertIsNone(result["runs"][1]["first_different_prefix_position"])
+        candidate["turns"][0]["token_ids"] = [5, 9]
+        result = diagnostic_report([baseline, candidate])
+        self.assertEqual(result["runs"][1]["first_different_prefix_position"], 1)
+        candidate["config"]["seed"] = 2
+        with self.assertRaises(WorkloadValidationError):
+            diagnostic_report([baseline, candidate])
+        with self.assertRaises(WorkloadValidationError):
+            diagnostic_report([])
+
     def test_first_difference_and_prefix_length(self):
         self.assertIsNone(first_difference([1, 2], [1, 2]))
         self.assertEqual(first_difference([1, 2], [1, 3]), 1)

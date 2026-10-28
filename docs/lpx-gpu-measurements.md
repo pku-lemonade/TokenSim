@@ -1,8 +1,8 @@
 # Gemma 4 31B GPU measurements for the LPX study
 
 Record date: 2026-10-28.
-Status: both checkpoints and all inputs are downloaded; the plain server is starting for T0.
-No model inference result is available yet.
+Status: T0 is complete; the priority-1 sweep is queued after the full-cap document control and a plain engine-counter check.
+The plain 10K document request entered a repetition loop, which needs investigation before a representative document-acceptance claim.
 The expectations in the [GPU TODO](lpx-gpu-gemma-todo.md#expectations) remain unchanged.
 
 ## Environment
@@ -14,6 +14,7 @@ A CUDA tensor allocation and transfer succeeded in that environment.
 The [environment record](../experiments/lpx/gpu-environment.json) contains the complete server package versions, GPU settings and checkpoint revisions.
 The repository environment uses Python 3.12 with the development dependencies, `tokenizers==0.21.1`, `pyarrow==17.0.0` and `tiktoken==0.9.0`.
 The system Python and PyTorch installations were not changed.
+The [host-runtime record](../experiments/lpx/gpu-host-runtime.json) records the CPU model, affinity and inherited `OMP_NUM_THREADS=18` setting.
 
 | Checkpoint | Revision |
 | --- | --- |
@@ -66,6 +67,15 @@ The client reports `(completion_tokens - 1) / decode_s` and leaves speed null wh
 It retains generated token IDs and checks their count against completion usage.
 Prompt token IDs returned by the server are discarded and never written.
 The timestamps measure client delivery, including transport and buffering; they do not identify individual GPU steps.
+The client logs token counts and the longest identical-token run at intervals of approximately 1,024 generated tokens, without logging prompts or generated text.
+
+Metrics schema 2 additionally records `iteration_tokens_total_count` as `emitted_steps` and `num_preemptions_total` as `preemptions` when the server exposes them.
+The raw before/after snapshots and differences preserve both counters; missing counters in older records are not filled with zeros.
+This schema version is part of the resume fingerprint, so it cannot silently mix with earlier collection files.
+In vLLM 0.32.0, the iteration histogram counts nonempty `EngineCoreOutputs` batches in the asynchronous output handler, including the prefill output and zero-proposal n-gram decode outputs.
+It does not count every GPU forward, because prefill chunks without output are omitted.
+Using it as a decode-step denominator requires concurrency one, no preemptions, and plain/MTP identity checks on the running server before T4.
+The analysis preserves these auxiliary counters without yet deriving n-gram acceptance from them.
 
 The client reads `/metrics` before each turn and after a configurable settling delay, which defaults to six seconds.
 The vLLM 0.32.0 implementation exports the four requested counters with the `_total` suffix and zero-based `position` labels.
@@ -73,7 +83,7 @@ The parser selects the served model and sums its engine series.
 Raw snapshots and their differences are saved together.
 Missing speculative counters, counter resets and incomplete streams raise errors.
 Only this client may send requests to the server while it measures a turn.
-The counter identity still needs verification on model outputs.
+The T0 counter identity includes the prefill token and a bounded terminal-token truncation, as recorded below.
 
 Example collection command after server startup:
 
@@ -106,6 +116,12 @@ It rejects impossible token counts instead of clipping them to an acceptance of 
 
 MTP turns have the requested `[decode_tokens, counts]` representation with only the `K + 1` verification-row count populated.
 N-gram turns do not receive that representation because their proposed lengths can vary.
+The vLLM 0.32.0 scheduler also omits zero-proposal forwards from the speculative draft counter.
+The analysis therefore retains n-gram counters without converting them into an overall committed-tokens-per-step estimate.
+T4 needs a total-step measurement or a separately validated correction for these omitted forwards.
+The [vLLM 0.32.0 n-gram proposer](https://github.com/vllm-project/vllm/blob/v0.32.0/vllm/v1/spec_decode/ngram_proposer.py) chooses the earliest occurrence among equally long matches.
+The existing lookup replay overwrites its index with each later occurrence, so it chooses the most recent one.
+T4 must report this matching-rule difference when comparing the replay with vLLM.
 The 10K and 100K analysis joins document turns by book identity and reports unmatched books.
 Turn-level counters cannot split thinking acceptance from answer acceptance.
 
@@ -134,32 +150,138 @@ Example analysis command:
 
 ## Task status
 
+[`run_lpx_gpu_study.py`](../scripts/run_lpx_gpu_study.py) runs T0 MTP and the priority-1 sweep in separate stages.
+It reuses the recorded plain-server command, pins the assistant revision, checks the MTP startup method and counters, and waits for GPU memory release between servers.
+An exclusive file lock prevents duplicate sweep runners.
+Progress is written to `/tmp/lpx-gpu/runner-status.json` and completed requests resume from their JSON Lines records.
+The T0 MTP coding turns are kept separate from the priority-1 `K = 3` sweep because the initial request triggered just-in-time kernel compilation.
+Their file was renamed to `gpu-mtp-k3-coding-smoke.jsonl` after T0 completed, without altering any records.
+Its SHA-256 is `ebe0ee9006c1cd555fc46eb4b0b5b6b5bbb23ac7f953201b77b047d33230fb12`.
+Those historical records retain the original `t1-mtp-k3` run label, but they are T0 observations and are excluded from the full-run files.
+The runner now gives smoke runs distinct labels and records a separate 128-token warmup before each priority-1 configuration.
+Warmups do not guarantee that every later prompt shape has already compiled.
+
+```bash
+/tmp/lpx-gpu/repo-venv/bin/python scripts/run_lpx_gpu_study.py \
+  --work-dir /tmp/lpx-gpu \
+  --stage t0-mtp
+/tmp/lpx-gpu/repo-venv/bin/python scripts/run_lpx_gpu_study.py \
+  --work-dir /tmp/lpx-gpu \
+  --stage priority1
+```
+
 | Task | Status |
 | --- | --- |
-| T0 | Checkpoints downloaded; plain-server startup and subsequent smoke requests in progress |
+| T0 | Complete; 5/10 coding pairs identical, so expectation 1 missed |
 | T1 | Collection and acceptance analysis implemented; no measured rows |
 | T2 | Identity-based pairing implemented; no measured pairs |
 | T3 | Not run |
 | T4 | N-gram counter collection and compatible export implemented; comparison not run |
-| T5 | GPU and LP30 speed summaries implemented; no measured speed spread |
+| T5 | Ten-request smoke spread available; full coding runs pending |
 | T6 | Nsight Systems is installed; profiling not run |
 | T7 | Skipped because `data/operator_data/h20` does not exist |
+
+The detached continuation records its status in `/tmp/lpx-gpu/continuation-status.json` and its output in `/tmp/lpx-gpu/continuation.log`.
+It waits for the full mixed-attention control, checks the emitted-step counter on a separate 128-token plain request, then runs the original BF16/FlashAttention 4 priority-1 configurations at K=3 and K=7.
+The full sweep retains every prescribed request even if it produces a failed or repetitive answer, with quality diagnostics included in the summaries.
+Those failures will qualify the acceptance interpretation and will not be omitted to improve a reported result.
+The request files are split by K as `gpu-mtp-k3-outputs.jsonl` and `gpu-mtp-k7-outputs.jsonl`; the combined analysis is `gpu-mtp-acceptance.json`.
+The lower-priority T1 rows and T3 through T6 remain pending.
 
 The device specification `data/devices/h20.yaml` exists, but it does not provide the operator measurements required by T7.
 No substituted GPU operator table was used.
 
+## T0 plain results
+
+The [raw document turn](../experiments/lpx/gpu-plain-smoke.jsonl), [raw coding turns](../experiments/lpx/gpu-plain-coding-smoke.jsonl) and [summary](../experiments/lpx/gpu-plain-smoke-summary.json) retain every completed turn.
+The document turn has 9,998 prompt tokens and 16,384 completion tokens, stops at the output limit and contains no final answer.
+Time to first token is 5.280 seconds and decode time is 828.970 seconds, giving 19.763 output tokens per second.
+Token 514 appears 16,135 times, with a longest identical run of 16,132 tokens.
+Its rendered reasoning repeats `al` for most of the output.
+This is a failed answer and cannot establish ordinary document-writing acceptance.
+The raw result remains in the record.
+
+The ten coding requests produce 12 turns, all with final answers and stop reasons of `stop`.
+Their median speed is 42.834 tokens per second, with P80/median of 1.041 and maximum/median of 1.077.
+These are smoke-test statistics on ten requests, not the full T5 comparison.
+Repository unit tests ran on the CPU during parts of T0, so these timings do not establish an isolated serving-stack performance result.
+
+The analysis now reports identical-token runs and flags runs of 128 tokens or more.
+That diagnostic threshold was chosen after observing the plain T0 loop, and no flagged turn is excluded from acceptance or speed summaries.
+The prescribed temperature remains zero.
+The cause of the loop is not yet established; the result alone does not distinguish greedy model behavior from a serving-path problem.
+
+The [runtime estimates](../experiments/lpx/gpu-runtime-estimates.json) use the observed 19.763-token/s rate and the previous API output lengths.
+They give 7.972 generation hours for the priority-1 rows and 36.106 generation hours for the listed GPU tasks, excluding prefill, server startup, metrics settling and profiling overhead.
+The rate comes from the looping document output, the length profile comes from different outputs, and speculative speedups are not assumed, so these are provisional planning estimates.
+
+## T0 MTP results
+
+Both MTP startups report `method='mtp'` and expose all four speculative-counter families.
+The [server commands](../experiments/lpx/gpu-mtp-server-commands.jsonl) pin the assistant revision and preserve the plain BF16 settings.
+The [K=1 document diagnostic](../experiments/lpx/gpu-mtp-k1-smoke.jsonl) uses the same 10K prompt with a separately recorded 128-token cap.
+It produces 128 tokens from 74 drafts and 53 accepted draft tokens, satisfying `128 = 1 + 74 + 53`.
+Its committed tokens per step are 1.716216, with equivalent acceptance 0.716216.
+The short diagnostic does not test expectation 2, which requires the full K=3 document set.
+
+The [K=3 coding smoke outputs](../experiments/lpx/gpu-mtp-k3-coding-smoke.jsonl) contain ten requests and 12 turns.
+The [comparison](../experiments/lpx/gpu-smoke-comparison.json) finds five identical request pairs out of ten, below the preregistered minimum of nine.
+Expectation 1 is missed.
+The seven nonidentical turns have zero-based earliest differing native-token positions of 516, 43, 166, 175, 858, 613 and 40, listed by request identity in the comparison file.
+All coding turns finish with `stop`, include an answer and have no identical-token repetition flag.
+Output differences at greedy decoding are observed facts; this comparison does not isolate their numerical or implementation cause.
+Later turns of a multi-turn request also inherit any differences in the preceding generated answer.
+
+For the 12 coding turns, `completion_tokens - 1 - drafts - accepted_tokens` is zero in five turns, minus one in two turns and minus two in five turns.
+The [vLLM scheduler](https://github.com/vllm-project/vllm/blob/v0.32.0/vllm/v1/core/sched/scheduler.py) counts sampled and accepted tokens before `_update_request_with_output` truncates the generated list at a stop condition.
+The observed identity is therefore `completion_tokens = 1 + drafts + accepted_tokens - terminal_trim`, with `terminal_trim` between zero and two in this sample.
+Acceptance pricing uses the delivered completion-token count, so terminally discarded tokens do not inflate committed tokens per step.
+Per-position acceptance remains the server's pre-truncation verification statistic.
+
+The [smoke acceptance analysis](../experiments/lpx/gpu-mtp-k3-coding-smoke-acceptance.json) gives mean committed tokens per step of 3.569670 and equivalent acceptance 0.924555.
+The pooled committed tokens per step are 3.515133.
+MTP's smoke median speed is 142.027 tokens per second, with P80/median of 1.091656 and maximum/median of 1.195024.
+These ten-request timings and their LP30 prices are smoke results; expectation 8 remains untested until the full coding runs.
+
+## Document-quality controls
+
+The [diagnostic summary](../experiments/lpx/gpu-document-diagnostics.json) compares native token prefixes and records repetition without excluding any output.
+`analyze_lpx_gpu_smoke.py --diagnostics` accepts separately capped single-turn runs of the same request and compares only their shared prefix length.
+The control settings were selected after observing the plain document loop and are not additional preregistered expectations.
+All controls retain temperature zero, seed one, thinking on and the same request hash.
+
+The [eager command](../experiments/lpx/gpu-server-eager-diagnostic-command.json) adds only `--enforce-eager` to the recorded plain command.
+In vLLM 0.32.0 this disables both torch compilation and CUDA graphs.
+The [eager output](../experiments/lpx/gpu-eager-diagnostic.jsonl) is capped at 512 tokens and still loops, with a longest identical-token run of 258 and no final answer.
+Its native prefix differs from the original plain output at position 20.
+The observed 23.693-token/s rate is a diagnostic timing, not a controlled CUDA-graph performance comparison.
+The loop persisting in eager mode does not establish its cause or exclude faults shared by both serving paths.
+
+The [FlashAttention control command](../experiments/lpx/gpu-server-fa3-diagnostic-command.json) adds `--attention-config` requesting `FLASH_ATTN` version 3 to the original compiled plain command.
+The [startup selection record](../experiments/lpx/gpu-fa3-backend-selection.json) selects version 3 for supported layers but upgrades attention with head size 512 to version 4 on SM90.
+This is a mixed FA3/FA4 control, not a test without FlashAttention 4.
+It keeps the 8,192-token prefill batch limit and uses the same 512-token output cap as the eager control.
+The [capped output](../experiments/lpx/gpu-fa3-diagnostic.jsonl) has no repetition flag, a longest identical-token run of three and an earliest prefix difference from the original plain run at position 75.
+The cap ends during reasoning, so the absence of an early loop does not establish successful completion.
+A separately labeled full-cap run of this control is in progress to check answer completion.
+The primary run remains on the original FlashAttention 4 settings while this control is assessed.
+CPU unit tests overlap portions of the control runs; their timings are not isolated throughput measurements.
+
 ## Validation
 
 Black's repository-wide formatting check passes.
-The complete unit suite passes all 678 tests, including the new collection, acceptance, pricing and smoke-comparison tests.
+The completed unit-suite run passes all 687 tests, including diagnostic-prefix comparison, smoke/warmup separation and auxiliary engine counters.
 The initial full-suite attempt lacked `matplotlib`, which the existing report tests import; installing it in the repository environment resolved that failure.
 `git diff --check` passes.
+
+The tooling and verified inputs are saved in local commit `fcf13ac`.
+Pushing that commit to `origin/lpx-context-parallel` returned HTTP 403 because the configured GitHub account does not have repository write permission.
 
 ## Expectations
 
 | Expectation | Outcome |
 | --- | --- |
-| 1: Plain and MTP output equality | Not tested |
+| 1: Plain and MTP output equality | Missed: 5/10 pairs identical, below the expected 9/10 |
 | 2: AA-document acceptance | Not tested |
 | 3: Coding acceptance advantage | Not tested |
 | 4: Paired context-length difference | Not tested |

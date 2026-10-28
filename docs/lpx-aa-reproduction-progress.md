@@ -43,6 +43,7 @@ All results use the bundled [fidelity configuration](../experiments/lpx/fidelity
 | Token ratio | [Token-ratio record](lpx-token-ratio.md) | Gemma 4 31B's own writing outputs give 1.031 to 1.048 tokens per `o200k_base` token, which cuts the TP32/PP8 extra time from 14 to 25 µs to about 1 to 16 µs; ratios of 1.053 to 1.090, seen on reasoning-heavy text, remove it |
 | Cross-tray latency | [Tray-latency record](lpx-tray-latency.md) | The TP32/PP8 step grows by about 25 µs per 0.1 µs of cross-tray latency; 0.81 to 0.85 µs instead of the assumed 0.75 µs matches both AA values without extra time at one token per AA token, about 0.80 to 0.85 µs at the 1.006 tokens per AA token of AA-like book answers, and about 0.73 to 0.77 µs at another model's reasoning ratio of 1.073 |
 | GroqRack Llama-2-7B check | [GroqRack validation](groqrack-llama2-7b-validation.md) | A measured 2.98 to 3.05 ms per token on 72 known first-generation cards exceeds the simulated forward by 2.70 to 2.83 ms; adding that per-token host cost to the 70B check gives 264 to 286 tokens per second, inside GroqCloud's 241 to 300 |
+| GPU smoke measurements | [GPU measurements](lpx-gpu-measurements.md) | The H20 plain 10K document turn loops to the token limit without an answer; ten coding requests produce 12 completed turns; MTP measurements and the document-loop investigation are in progress |
 
 ## DCP
 
@@ -194,6 +195,8 @@ The remaining uncertainty sits in the source of that time, such as the LP30 cros
 
 GPU measurement setup is recorded in the [GPU measurements record](lpx-gpu-measurements.md).
 The H20 environment, exact input hashes, sequential streaming client and LP30 pricing analysis are available; inference measurements are in progress and do not yet change the conclusions in this page.
+The plain 10K document smoke request loops at temperature zero, including an eager-mode control, so representative document acceptance still needs a successful generation check.
+T0 MTP smoke checks are complete and match five of ten greedy coding request pairs, missing the preregistered nine-pair minimum.
 
 ## Open work
 
@@ -202,7 +205,7 @@ The H20 environment, exact input hashes, sequential streaming client and LP30 pr
 | LP30 cross-tray collective latency | Measure an all-reduce across two LP30 trays; the TP32 match holds for about 0.80 to 0.85 µs at the 1.006 Gemma tokens per `o200k_base` token of AA-like outputs |
 | LP30 operand bandwidth | Establish whether LP30's matrix-unit operand bandwidth is below its 150 TB/s SRAM bandwidth, as GroqChip v1's 20 TB/s is below its 80 TB/s |
 | LP30 FP8 attention path | Establish whether KV conversion runs on the vector unit, which decides whether a larger attention group helps |
-| Gemma 4 31B measurements on GPUs | Measure the acceptance of Gemma's own MTP drafter at 10K and 100K, the per-request speed spread it causes and the fixed costs of a real decode step, following the [GPU TODO](lpx-gpu-gemma-todo.md) |
+| Gemma 4 31B measurements on GPUs | Investigate the plain 10K repetition loop and measure full-set acceptance, coding spread and decode costs following the [GPU TODO](lpx-gpu-gemma-todo.md) |
 | AA drafting status | Establish whether the AA run drafted, from AA's prompts, its per-request speed spread or a statement of the deployment's settings; lookup acceptance measured on AA-like book answers would make the AA values too fast without 26 to 99 µs of extra time |
 | Lift the 16-row forward limit | Test longer drafts and heavier background traffic in one forward |
 
@@ -270,3 +273,4 @@ The work is on branch `lpx-experiment`, pushed to `origin/lpx-context-parallel`.
 | `a5f48a6`, `90cd654` | Coding speed spread |
 | `9a45292`, `1486ad7` | Gemma outputs on SPEED-Bench and AA-like prompts |
 | `528eaf4`, `9d4f257` | Qualified conclusions on the API outputs, coding spread and lookup coding |
+| `fcf13ac` | GPU collection and pricing tools, H20 environment and verified input hashes |

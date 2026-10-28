@@ -1,0 +1,411 @@
+{
+  "layout": "tp32-pp8-kvp8",
+  "attention_mfu": 0.5,
+  "token_ratio": 1.006,
+  "results": [
+    {
+      "data": "aa-docs-think-10k-summary",
+      "config": {
+        "K": 0,
+        "drafter_precision": "bf16",
+        "environment_sha256": "6d011ff07ab7c6ec1f331aac36db968b38c4ec39c2147eb86ba069da9f861ac7",
+        "kv_precision": "bf16",
+        "max_tokens_override": null,
+        "method": "plain",
+        "metrics_settle_seconds": 6,
+        "model": "google/gemma-4-31B-it",
+        "requests_sha256": "7abb2f93587b01649c27e262e041afe96dd68cc055908d80f35610b5de9506ae",
+        "return_token_ids": true,
+        "run_label": "t0-plain",
+        "seed": 1,
+        "weight_precision": "bf16"
+      },
+      "turn_count": 1,
+      "gpu_speed": {
+        "turn_count": 1,
+        "median_tps": 19.763088009003795,
+        "p80_tps": 19.763088009003795,
+        "maximum_tps": 19.763088009003795,
+        "p80_ratio": 1.0,
+        "maximum_ratio": 1.0
+      },
+      "untimed_turns": 0,
+      "prompt": "full",
+      "draft_tokens": 0,
+      "quality": {
+        "length_limited_turns": 1,
+        "empty_answer_turns": 1,
+        "repetition_flagged_turns": 1,
+        "threshold_note": "128 identical consecutive native tokens; diagnostic chosen after the plain T0 loop, no turns excluded"
+      },
+      "turns": [
+        {
+          "id": "aa-docs/pg1228/10k/summary",
+          "turn": 0,
+          "meta": {
+            "book": "pg1228",
+            "title": "On the Origin of Species By Means of Natural Selection",
+            "context": 10000,
+            "style": "summary",
+            "document_tokens": 9948
+          },
+          "prompt_tokens": 9998,
+          "decode_tokens": 16383,
+          "quality": {
+            "empty_answer": true,
+            "finish_reason": "length",
+            "dominant_token_share": 0.98480224609375,
+            "longest_identical_token_run": 16132,
+            "repetition_flag": true
+          }
+        }
+      ]
+    },
+    {
+      "data": "speed-coding-plain",
+      "config": {
+        "K": 0,
+        "drafter_precision": "bf16",
+        "environment_sha256": "6d011ff07ab7c6ec1f331aac36db968b38c4ec39c2147eb86ba069da9f861ac7",
+        "kv_precision": "bf16",
+        "max_tokens_override": null,
+        "method": "plain",
+        "metrics_settle_seconds": 6,
+        "model": "google/gemma-4-31B-it",
+        "requests_sha256": "7abb2f93587b01649c27e262e041afe96dd68cc055908d80f35610b5de9506ae",
+        "return_token_ids": true,
+        "run_label": "t0-plain-coding",
+        "seed": 1,
+        "weight_precision": "bf16"
+      },
+      "turn_count": 12,
+      "gpu_speed": {
+        "turn_count": 12,
+        "median_tps": 42.834294295481484,
+        "p80_tps": 44.57293358183425,
+        "maximum_tps": 46.112209986201734,
+        "p80_ratio": 1.0405898898289114,
+        "maximum_ratio": 1.0765254977263867
+      },
+      "untimed_turns": 0,
+      "prompt": "full",
+      "draft_tokens": 0,
+      "quality": {
+        "length_limited_turns": 0,
+        "empty_answer_turns": 0,
+        "repetition_flagged_turns": 0,
+        "threshold_note": "128 identical consecutive native tokens; diagnostic chosen after the plain T0 loop, no turns excluded"
+      },
+      "turns": [
+        {
+          "id": "speed-coding/0daf539b787c4dccbb547330a8b4c3d7/plain",
+          "turn": 0,
+          "meta": {
+            "question_id": "0daf539b787c4dccbb547330a8b4c3d7",
+            "source": "https://huggingface.co/datasets/bigcode/humanevalpack/tree/9a41762f73a8cb23bb5811b73d5aab164efcf378",
+            "src_id": "Go/27"
+          },
+          "prompt_tokens": 64,
+          "decode_tokens": 159,
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.125,
+            "longest_identical_token_run": 1,
+            "repetition_flag": false
+          }
+        },
+        {
+          "id": "speed-coding/135c7fe91faa48fd83ca5eac94c09f00/plain",
+          "turn": 0,
+          "meta": {
+            "question_id": "135c7fe91faa48fd83ca5eac94c09f00",
+            "source": "https://huggingface.co/datasets/bigcode/humanevalpack/tree/9a41762f73a8cb23bb5811b73d5aab164efcf378",
+            "src_id": "Python/124"
+          },
+          "prompt_tokens": 308,
+          "decode_tokens": 445,
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.07174887892376682,
+            "longest_identical_token_run": 2,
+            "repetition_flag": false
+          }
+        },
+        {
+          "id": "speed-coding/1fd6d82bbde647f29b93afd7b4eb14b0/plain",
+          "turn": 0,
+          "meta": {
+            "question_id": "1fd6d82bbde647f29b93afd7b4eb14b0",
+            "source": "https://raw.githubusercontent.com/hemingkx/Spec-Bench/66230f10cb0a02aced5ef3ce1e85163c16160454/data/spec_bench/question.jsonl",
+            "src_id": "spec_bench_42"
+          },
+          "prompt_tokens": 40,
+          "decode_tokens": 921,
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.08676789587852494,
+            "longest_identical_token_run": 3,
+            "repetition_flag": false
+          }
+        },
+        {
+          "id": "speed-coding/1fd6d82bbde647f29b93afd7b4eb14b0/plain",
+          "turn": 1,
+          "meta": {
+            "question_id": "1fd6d82bbde647f29b93afd7b4eb14b0",
+            "source": "https://raw.githubusercontent.com/hemingkx/Spec-Bench/66230f10cb0a02aced5ef3ce1e85163c16160454/data/spec_bench/question.jsonl",
+            "src_id": "spec_bench_42"
+          },
+          "prompt_tokens": 998,
+          "decode_tokens": 448,
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.066815144766147,
+            "longest_identical_token_run": 1,
+            "repetition_flag": false
+          }
+        },
+        {
+          "id": "speed-coding/20de4633029f426fbd0c3c4eb6bd3853/plain",
+          "turn": 0,
+          "meta": {
+            "question_id": "20de4633029f426fbd0c3c4eb6bd3853",
+            "source": "https://huggingface.co/datasets/bigcode/humanevalpack/tree/9a41762f73a8cb23bb5811b73d5aab164efcf378",
+            "src_id": "Go/21"
+          },
+          "prompt_tokens": 130,
+          "decode_tokens": 356,
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.08123249299719888,
+            "longest_identical_token_run": 1,
+            "repetition_flag": false
+          }
+        },
+        {
+          "id": "speed-coding/3416d0ce7c7a4632943ff1326913437f/plain",
+          "turn": 0,
+          "meta": {
+            "question_id": "3416d0ce7c7a4632943ff1326913437f",
+            "source": "https://huggingface.co/datasets/bigcode/humanevalpack/tree/9a41762f73a8cb23bb5811b73d5aab164efcf378",
+            "src_id": "CPP/162"
+          },
+          "prompt_tokens": 130,
+          "decode_tokens": 438,
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.05239179954441914,
+            "longest_identical_token_run": 1,
+            "repetition_flag": false
+          }
+        },
+        {
+          "id": "speed-coding/37f349607a3d46b8bc5aafcefb5fd518/plain",
+          "turn": 0,
+          "meta": {
+            "question_id": "37f349607a3d46b8bc5aafcefb5fd518",
+            "source": "https://huggingface.co/datasets/bigcode/humanevalpack/tree/9a41762f73a8cb23bb5811b73d5aab164efcf378",
+            "src_id": "JavaScript/118"
+          },
+          "prompt_tokens": 164,
+          "decode_tokens": 233,
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.10683760683760683,
+            "longest_identical_token_run": 1,
+            "repetition_flag": false
+          }
+        },
+        {
+          "id": "speed-coding/48579d93b98d459fbf473748a607d748/plain",
+          "turn": 0,
+          "meta": {
+            "question_id": "48579d93b98d459fbf473748a607d748",
+            "source": "https://huggingface.co/datasets/bigcode/humanevalpack/tree/9a41762f73a8cb23bb5811b73d5aab164efcf378",
+            "src_id": "Python/6"
+          },
+          "prompt_tokens": 131,
+          "decode_tokens": 270,
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.0959409594095941,
+            "longest_identical_token_run": 1,
+            "repetition_flag": false
+          }
+        },
+        {
+          "id": "speed-coding/5ace1d46a306452da3c517a7a8bc2093/plain",
+          "turn": 0,
+          "meta": {
+            "question_id": "5ace1d46a306452da3c517a7a8bc2093",
+            "source": "https://raw.githubusercontent.com/hemingkx/Spec-Bench/66230f10cb0a02aced5ef3ce1e85163c16160454/data/spec_bench/question.jsonl",
+            "src_id": "spec_bench_45"
+          },
+          "prompt_tokens": 42,
+          "decode_tokens": 953,
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.057651991614255764,
+            "longest_identical_token_run": 1,
+            "repetition_flag": false
+          }
+        },
+        {
+          "id": "speed-coding/5ace1d46a306452da3c517a7a8bc2093/plain",
+          "turn": 1,
+          "meta": {
+            "question_id": "5ace1d46a306452da3c517a7a8bc2093",
+            "source": "https://raw.githubusercontent.com/hemingkx/Spec-Bench/66230f10cb0a02aced5ef3ce1e85163c16160454/data/spec_bench/question.jsonl",
+            "src_id": "spec_bench_45"
+          },
+          "prompt_tokens": 1015,
+          "decode_tokens": 937,
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.05223880597014925,
+            "longest_identical_token_run": 1,
+            "repetition_flag": false
+          }
+        },
+        {
+          "id": "speed-coding/988e25df0fba43039adf10baf818f7a9/plain",
+          "turn": 0,
+          "meta": {
+            "question_id": "988e25df0fba43039adf10baf818f7a9",
+            "source": "https://huggingface.co/datasets/bigcode/humanevalpack/tree/9a41762f73a8cb23bb5811b73d5aab164efcf378",
+            "src_id": "Python/153"
+          },
+          "prompt_tokens": 298,
+          "decode_tokens": 308,
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.08414239482200647,
+            "longest_identical_token_run": 1,
+            "repetition_flag": false
+          }
+        },
+        {
+          "id": "speed-coding/e281ab7c608141a683519a317e998dd2/plain",
+          "turn": 0,
+          "meta": {
+            "question_id": "e281ab7c608141a683519a317e998dd2",
+            "source": "https://huggingface.co/datasets/bigcode/humanevalpack/tree/9a41762f73a8cb23bb5811b73d5aab164efcf378",
+            "src_id": "Python/127"
+          },
+          "prompt_tokens": 280,
+          "decode_tokens": 367,
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.09239130434782608,
+            "longest_identical_token_run": 1,
+            "repetition_flag": false
+          }
+        }
+      ]
+    }
+  ],
+  "paired": [],
+  "aa": [],
+  "coding": [
+    {
+      "config": {
+        "K": 0,
+        "drafter_precision": "bf16",
+        "environment_sha256": "6d011ff07ab7c6ec1f331aac36db968b38c4ec39c2147eb86ba069da9f861ac7",
+        "kv_precision": "bf16",
+        "max_tokens_override": null,
+        "method": "plain",
+        "metrics_settle_seconds": 6,
+        "model": "google/gemma-4-31B-it",
+        "requests_sha256": "7abb2f93587b01649c27e262e041afe96dd68cc055908d80f35610b5de9506ae",
+        "return_token_ids": true,
+        "run_label": "t0-plain-coding",
+        "seed": 1,
+        "weight_precision": "bf16"
+      },
+      "data": "speed-coding-plain",
+      "drafter": "plain",
+      "turn_count": 12,
+      "median_tps": 3764.3761462241127,
+      "p80_tps": 3764.759071803152,
+      "maximum_tps": 3765.0768418644,
+      "p80_ratio": 1.0001017235165044,
+      "maximum_ratio": 1.000186138582615,
+      "median_error": -0.21032596051518504,
+      "turns": [
+        {
+          "id": "speed-coding/0daf539b787c4dccbb547330a8b4c3d7/plain",
+          "turn": 0,
+          "tps": 3765.0768418644
+        },
+        {
+          "id": "speed-coding/135c7fe91faa48fd83ca5eac94c09f00/plain",
+          "turn": 0,
+          "tps": 3764.2139697969214
+        },
+        {
+          "id": "speed-coding/1fd6d82bbde647f29b93afd7b4eb14b0/plain",
+          "turn": 0,
+          "tps": 3764.280844963019
+        },
+        {
+          "id": "speed-coding/1fd6d82bbde647f29b93afd7b4eb14b0/plain",
+          "turn": 1,
+          "tps": 3762.6731555670112
+        },
+        {
+          "id": "speed-coding/20de4633029f426fbd0c3c4eb6bd3853/plain",
+          "turn": 0,
+          "tps": 3764.710017160915
+        },
+        {
+          "id": "speed-coding/3416d0ce7c7a4632943ff1326913437f/plain",
+          "turn": 0,
+          "tps": 3764.618600854695
+        },
+        {
+          "id": "speed-coding/37f349607a3d46b8bc5aafcefb5fd518/plain",
+          "turn": 0,
+          "tps": 3764.7713354637112
+        },
+        {
+          "id": "speed-coding/48579d93b98d459fbf473748a607d748/plain",
+          "turn": 0,
+          "tps": 3764.803667736733
+        },
+        {
+          "id": "speed-coding/5ace1d46a306452da3c517a7a8bc2093/plain",
+          "turn": 0,
+          "tps": 3764.2407195782184
+        },
+        {
+          "id": "speed-coding/5ace1d46a306452da3c517a7a8bc2093/plain",
+          "turn": 1,
+          "tps": 3762.0908046534864
+        },
+        {
+          "id": "speed-coding/988e25df0fba43039adf10baf818f7a9/plain",
+          "turn": 0,
+          "tps": 3764.388964841041
+        },
+        {
+          "id": "speed-coding/e281ab7c608141a683519a317e998dd2/plain",
+          "turn": 0,
+          "tps": 3764.363327607184
+        }
+      ]
+    }
+  ]
+}

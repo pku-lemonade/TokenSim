@@ -20,7 +20,12 @@ if str(ROOT) not in sys.path:
 
 from TokenSim.errors import WorkloadValidationError
 from scripts.generate_lpx_gemma_outputs import export, request_turns, SEED, TIMEOUT_S
-from scripts.lpx.gpu_metrics import counters, counter_delta, decode_timing
+from scripts.lpx.gpu_metrics import (
+    counters,
+    counter_delta,
+    decode_timing,
+    output_quality,
+)
 
 
 def stream_events(response):
@@ -68,6 +73,7 @@ def complete(args, messages, request):
     start = time.perf_counter()
     arrivals, text_arrivals, content, reasoning = [], [], [], []
     token_arrivals, token_ids = [], []
+    progress_tokens = 1024
     usage, finish_reason = None, None
     with urllib.request.urlopen(http_request, timeout=TIMEOUT_S) as response:
         for event in stream_events(response):
@@ -80,6 +86,14 @@ def complete(args, messages, request):
                 if generated_ids:
                     token_arrivals.append(arrived)
                     token_ids.extend(generated_ids)
+                    if len(token_ids) >= progress_tokens:
+                        diagnostic = output_quality(dict(token_ids=token_ids))
+                        print(
+                            f"{request.get('id', 'request')} progress tokens={len(token_ids)} "
+                            f"longest_run={diagnostic['longest_identical_token_run']}",
+                            flush=True,
+                        )
+                        progress_tokens = (len(token_ids) // 1024 + 1) * 1024
                 delta = choice.get("delta", {})
                 answer = delta.get("content") or ""
                 thought = delta.get("reasoning") or delta.get("reasoning_content") or ""
@@ -131,6 +145,7 @@ def generate(args):
         run_label=args.run_label,
         max_tokens_override=args.max_tokens,
         metrics_settle_seconds=args.metrics_settle_seconds,
+        metrics_schema=2,
         requests_sha256=digest,
         return_token_ids=True,
         environment_sha256=(

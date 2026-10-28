@@ -1,0 +1,125 @@
+{
+  "diagnostics": {
+    "id": "aa-docs/pg1228/10k/summary",
+    "baseline_label": "t0-plain",
+    "comparison": "native token IDs over the shorter output; output caps may differ",
+    "runs": [
+      {
+        "config": {
+          "method": "plain",
+          "K": 0,
+          "weight_precision": "bf16",
+          "kv_precision": "bf16",
+          "drafter_precision": "bf16",
+          "model": "google/gemma-4-31B-it",
+          "run_label": "t0-plain",
+          "max_tokens_override": null,
+          "metrics_settle_seconds": 6,
+          "requests_sha256": "7abb2f93587b01649c27e262e041afe96dd68cc055908d80f35610b5de9506ae",
+          "return_token_ids": true,
+          "environment_sha256": "6d011ff07ab7c6ec1f331aac36db968b38c4ec39c2147eb86ba069da9f861ac7",
+          "seed": 1
+        },
+        "completion_tokens": 16384,
+        "ttft_s": 5.279945785179734,
+        "output_tps": 19.763088009003795,
+        "quality": {
+          "empty_answer": true,
+          "finish_reason": "length",
+          "dominant_token_share": 0.98480224609375,
+          "longest_identical_token_run": 16132,
+          "repetition_flag": true
+        },
+        "shared_prefix_tokens": 16384,
+        "first_different_prefix_position": null
+      },
+      {
+        "config": {
+          "method": "mtp",
+          "K": 1,
+          "weight_precision": "bf16",
+          "kv_precision": "bf16",
+          "drafter_precision": "bf16",
+          "model": "google/gemma-4-31B-it",
+          "run_label": "t0-mtp-k1",
+          "max_tokens_override": 128,
+          "metrics_settle_seconds": 6,
+          "requests_sha256": "7abb2f93587b01649c27e262e041afe96dd68cc055908d80f35610b5de9506ae",
+          "return_token_ids": true,
+          "environment_sha256": "6d011ff07ab7c6ec1f331aac36db968b38c4ec39c2147eb86ba069da9f861ac7",
+          "seed": 1
+        },
+        "completion_tokens": 128,
+        "ttft_s": 5.9606742691248655,
+        "output_tps": 42.30439358513446,
+        "quality": {
+          "empty_answer": true,
+          "finish_reason": "length",
+          "dominant_token_share": 0.0546875,
+          "longest_identical_token_run": 3,
+          "repetition_flag": false
+        },
+        "shared_prefix_tokens": 128,
+        "first_different_prefix_position": 4
+      },
+      {
+        "config": {
+          "method": "plain",
+          "K": 0,
+          "weight_precision": "bf16",
+          "kv_precision": "bf16",
+          "drafter_precision": "bf16",
+          "model": "google/gemma-4-31B-it",
+          "run_label": "t0-eager-diagnostic",
+          "max_tokens_override": 512,
+          "metrics_settle_seconds": 6,
+          "requests_sha256": "7abb2f93587b01649c27e262e041afe96dd68cc055908d80f35610b5de9506ae",
+          "return_token_ids": true,
+          "environment_sha256": "6d011ff07ab7c6ec1f331aac36db968b38c4ec39c2147eb86ba069da9f861ac7",
+          "seed": 1
+        },
+        "completion_tokens": 512,
+        "ttft_s": 15.31546683050692,
+        "output_tps": 23.69270923723123,
+        "quality": {
+          "empty_answer": true,
+          "finish_reason": "length",
+          "dominant_token_share": 0.51171875,
+          "longest_identical_token_run": 258,
+          "repetition_flag": true
+        },
+        "shared_prefix_tokens": 512,
+        "first_different_prefix_position": 20
+      },
+      {
+        "config": {
+          "method": "plain",
+          "K": 0,
+          "weight_precision": "bf16",
+          "kv_precision": "bf16",
+          "drafter_precision": "bf16",
+          "model": "google/gemma-4-31B-it",
+          "run_label": "t0-fa3-diagnostic",
+          "max_tokens_override": 512,
+          "metrics_settle_seconds": 6,
+          "requests_sha256": "7abb2f93587b01649c27e262e041afe96dd68cc055908d80f35610b5de9506ae",
+          "return_token_ids": true,
+          "environment_sha256": "6d011ff07ab7c6ec1f331aac36db968b38c4ec39c2147eb86ba069da9f861ac7",
+          "seed": 1
+        },
+        "completion_tokens": 512,
+        "ttft_s": 5.278785463422537,
+        "output_tps": 27.78419504937891,
+        "quality": {
+          "empty_answer": true,
+          "finish_reason": "length",
+          "dominant_token_share": 0.068359375,
+          "longest_identical_token_run": 3,
+          "repetition_flag": false
+        },
+        "shared_prefix_tokens": 512,
+        "first_different_prefix_position": 75
+      }
+    ]
+  }
+}

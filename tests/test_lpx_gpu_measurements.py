@@ -9,7 +9,13 @@ from unittest.mock import patch
 from TokenSim.errors import WorkloadValidationError
 from scripts.generate_lpx_gpu_outputs import complete, generate, stream_events
 from scripts.generate_lpx_gemma_outputs import run_request, export
-from scripts.lpx.gpu_metrics import acceptance, counters, counter_delta, decode_timing
+from scripts.lpx.gpu_metrics import (
+    acceptance,
+    counters,
+    counter_delta,
+    decode_timing,
+    output_quality,
+)
 
 
 def sample_metrics(drafts=2, proposed=6, accepted=3):
@@ -28,6 +34,37 @@ def sample_metrics(drafts=2, proposed=6, accepted=3):
 
 
 class GpuMetricsTest(unittest.TestCase):
+    def test_optional_engine_counters_preserve_missing_old_records(self):
+        before = counters(
+            'vllm:iteration_tokens_total_count{model_name="gemma"} 3\n'
+            'vllm:iteration_tokens_total_count{model_name="other"} 90\n'
+            'vllm:num_preemptions_total{model_name="gemma"} 0\n',
+            "gemma",
+        )
+        self.assertEqual(before, dict(emitted_steps=3, preemptions=0))
+        after = dict(emitted_steps=8, preemptions=0)
+        result = counter_delta(before, after, False)
+        self.assertEqual(result["emitted_steps"], 5)
+        self.assertEqual(result["preemptions"], 0)
+        self.assertNotIn("emitted_steps", counter_delta({}, {}, False))
+        with self.assertRaises(WorkloadValidationError):
+            counter_delta({}, after, False)
+        with self.assertRaises(WorkloadValidationError):
+            counter_delta(after, before, False)
+
+    def test_repetition_diagnostic_does_not_infer_missing_text_or_tokens(self):
+        self.assertIsNone(output_quality({})["repetition_flag"])
+        measured = output_quality(
+            dict(token_ids=[1] + [2] * 128, content="", finish_reason="length")
+        )
+        self.assertEqual(measured["longest_identical_token_run"], 128)
+        self.assertTrue(measured["repetition_flag"])
+        self.assertTrue(measured["empty_answer"])
+        self.assertAlmostEqual(measured["dominant_token_share"], 128 / 129)
+        self.assertFalse(
+            output_quality(dict(token_ids=[1, 2] * 100))["repetition_flag"]
+        )
+
     def test_model_filter_and_position_counters(self):
         measured = counters(sample_metrics(), "gemma")
         self.assertEqual(measured["drafts"], 2)

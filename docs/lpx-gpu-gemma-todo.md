@@ -181,10 +181,10 @@ If time is short, run the priority-1 rows before the others and record which row
 
 ### T0: setup and smoke tests
 
-- [ ] Start the plain server, send one 10K `aa-docs` request with thinking on and record the software versions, checkpoint hashes and GPU model.
-- [ ] Start the MTP server at `K = 1` and confirm the startup log reports the MTP method and that `/metrics` exposes the speculative-decoding counters.
-- [ ] Send the first 10 `speed-coding` prompts without thinking to the plain server and to the MTP server at `K = 3`, and record how many outputs are identical and, for the others, the first differing token position.
-- [ ] Confirm the counter identity of [Client and per-request record](#client-and-per-request-record).
+- [x] Start the plain server, send one 10K `aa-docs` request with thinking on and record the software versions, checkpoint hashes and GPU model.
+- [x] Start the MTP server at `K = 1` and confirm the startup log reports the MTP method and that `/metrics` exposes the speculative-decoding counters.
+- [x] Send the first 10 `speed-coding` prompts without thinking to the plain server and to the MTP server at `K = 3`, and record how many outputs are identical and, for the others, the first differing token position.
+- [x] Confirm the counter identity of [Client and per-request record](#client-and-per-request-record).
 
 ### T1: MTP acceptance by draft length
 
