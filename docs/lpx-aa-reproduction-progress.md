@@ -274,4 +274,4 @@ The work is on branch `lpx-experiment`, pushed to `origin/lpx-context-parallel`.
 | `528eaf4`, `9d4f257`, `a768c38` | Qualified conclusions on the API outputs, coding spread and lookup coding |
 | `7aaa80e` | TODO for Gemma 4 31B measurements on GPUs |
 | `c3af9dc`, `d897025` | Per-step cost audit |
-| `13bfa7b` | Published fixed costs: expectations |
+| `13bfa7b`, `e429d26` | Published fixed costs |
