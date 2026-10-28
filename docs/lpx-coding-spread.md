@@ -76,7 +76,7 @@ The thinking makes `combined` requests more alike, because most of their tokens 
 1. Held: plain decoding gives a P80/median ratio of 1.000 and a maximum/median ratio of 1.001.
 2. Partly held: `combined` with `n_min = 1` gives 1.082 and 1.088 at `K` of 5 and 7, and 1.066 at `K = 3`, below the expected range.
 3. Missed: the same settings give median maximum/median ratios of 1.197 to 1.262, below the expected 1.3 to 1.8.
-4. Missed: `answer-alone` at `K` of 5 and 7 reproduces the maximum/median ratio, but no setting gives a P80/median ratio above 1.105 in 90% of the subsets, against NVIDIA's 1.158.
+4. Missed: `answer-alone` at `K` of 5 and 7 matches the maximum/median ratio, but no setting gives a P80/median ratio above 1.105 in 90% of the subsets, against NVIDIA's 1.158.
 
 ## Interpretation
 
@@ -86,7 +86,7 @@ Prompt-length differences of that size are unlikely, because 100K tokens of cont
 NVIDIA's slide does not state the load, and requests sharing the system with a changing number of other requests would also spread speeds.
 If the run served one request at a time, it most likely used speculative decoding or another mechanism whose speed depends on the content.
 
-Lookup drafting on the CodeX answers without thinking reproduces the maximum/median ratio, and with thinking it reaches about 1.26.
+Lookup drafting on the CodeX answers without thinking matches the maximum/median ratio, and with thinking it reaches about 1.26.
 Its P80/median ratio of 1.04 to 1.09 is about half of NVIDIA's 1.158, so NVIDIA's requests differ more from each other in the middle of the distribution.
 SPEED-Bench selects its prompts for semantic diversity, while the CodeX prompts are all competitive-programming tasks, and more varied prompts would make acceptance vary more across requests.
 A drafter whose acceptance varies more between requests, such as a trained draft model, could also widen it.
