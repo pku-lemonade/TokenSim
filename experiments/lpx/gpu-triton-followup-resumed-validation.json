@@ -1,0 +1,63 @@
+{
+  "status": "verified",
+  "validations": [
+    {
+      "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-followup-plain-k0-outputs-validation.json",
+      "bytes": 424,
+      "sha256": "bff16d377d4ad2efac502d3a9bca05ddd8094f9f1cefc06fd250003db42f38b0"
+    },
+    {
+      "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-followup-ngram-k7-outputs-validation.json",
+      "bytes": 427,
+      "sha256": "a028465ce0c9577240a3542236452e1bbaa4cd9b4048e7a5b67623912bcd8974"
+    },
+    {
+      "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-followup-mtp-k1-outputs-validation.json",
+      "bytes": 442,
+      "sha256": "85ce63cb33e6166c6c4fb8b7fcd328a1c865becac6ed2fe19ece0b5bbc411a72"
+    },
+    {
+      "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-followup-mtp-k5-outputs-validation.json",
+      "bytes": 442,
+      "sha256": "8e0fcfece5f97c745d2ab7095d6c6ad5718e208af060d8edfeccc3433dad8a57"
+    },
+    {
+      "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-followup-mtp-k3-outputs-validation.json",
+      "bytes": 442,
+      "sha256": "4ef0b2da81d3bcb14890ce7f3cd538d26974019207dacf0f2044369a9f0a0780"
+    },
+    {
+      "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-followup-mtp-k7-outputs-validation.json",
+      "bytes": 442,
+      "sha256": "d6bef24e2c43a2b55efc69d9153346bfedfb6e294cf99e4df8244dc2cf67e2a1"
+    }
+  ],
+  "analysis_checks": [
+    {
+      "saved": {
+        "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-followup-remaining-mtp-acceptance.json",
+        "bytes": 1912305,
+        "sha256": "2862c02dfc842f3f3bc17bfe1769a0558643c438be3e2fb519900b555b612e30"
+      },
+      "recomputed": {
+        "path": "/tmp/lpx-gpu/resumed-mtp-verification.json",
+        "bytes": 1912305,
+        "sha256": "2862c02dfc842f3f3bc17bfe1769a0558643c438be3e2fb519900b555b612e30"
+      },
+      "byte_identical": true
+    },
+    {
+      "saved": {
+        "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-followup-ngram-comparison.json",
+        "bytes": 320477,
+        "sha256": "714230d53ffaa48b23f56cb763a0dcb4d62e189a2268c98e2c6cf47de7b805fe"
+      },
+      "recomputed": {
+        "path": "/tmp/lpx-gpu/resumed-ngram-verification.json",
+        "bytes": 320477,
+        "sha256": "714230d53ffaa48b23f56cb763a0dcb4d62e189a2268c98e2c6cf47de7b805fe"
+      },
+      "byte_identical": true
+    }
+  ]
+}

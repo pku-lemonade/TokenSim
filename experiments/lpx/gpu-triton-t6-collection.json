@@ -1,0 +1,573 @@
+{
+  "cases": [
+    {
+      "mode": "graphs",
+      "context": 10000,
+      "status": "collected",
+      "analysis_status": "pending",
+      "requests_sha256": "7abb2f93587b01649c27e262e041afe96dd68cc055908d80f35610b5de9506ae",
+      "environment_sha256": "6d011ff07ab7c6ec1f331aac36db968b38c4ec39c2147eb86ba069da9f861ac7",
+      "server": {
+        "pid": 1246704,
+        "argv": [
+          "/tmp/lpx-gpu/server-venv/bin/vllm",
+          "serve",
+          "google/gemma-4-31B-it",
+          "--served-model-name",
+          "google/gemma-4-31B-it",
+          "--revision",
+          "842da3794eaa0b77d5f08bae87a17459d91ff475",
+          "--tokenizer-revision",
+          "842da3794eaa0b77d5f08bae87a17459d91ff475",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "8000",
+          "--tensor-parallel-size",
+          "1",
+          "--dtype",
+          "bfloat16",
+          "--kv-cache-dtype",
+          "bfloat16",
+          "--max-model-len",
+          "120000",
+          "--max-num-seqs",
+          "1",
+          "--max-num-batched-tokens",
+          "8192",
+          "--gpu-memory-utilization",
+          "0.90",
+          "--no-enable-prefix-caching",
+          "--language-model-only",
+          "--reasoning-parser",
+          "gemma4",
+          "--seed",
+          "1",
+          "--attention-config",
+          "{\"backend\": \"TRITON_ATTN\"}",
+          "--profiler-config",
+          "{\"profiler\": \"torch\", \"torch_profiler_dir\": \"/tmp/lpx-gpu/t6-traces-graphs-1793313147110287746\", \"torch_profiler_activities\": [\"CPU\", \"CUDA\"], \"torch_profiler_with_stack\": true, \"torch_profiler_record_shapes\": true, \"torch_profiler_with_memory\": false, \"torch_profiler_use_gzip\": true, \"detailed_trace_annotation\": true, \"ignore_frontend\": false}"
+        ],
+        "environment": {
+          "HF_HUB_CACHE": "/tmp/lpx-gpu/hf",
+          "HF_HUB_OFFLINE": "1"
+        },
+        "draft_length": 0,
+        "method": "plain",
+        "profile": "triton",
+        "log": "/tmp/lpx-gpu/server-triton-plain-k0-1793313147114381286.log",
+        "started_unix": 1793313147.1159713
+      },
+      "outputs": [
+        {
+          "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-t6-graphs-10000-1793313232363272793-control.jsonl",
+          "bytes": 18428,
+          "sha256": "877f45d57cda32c5daa6e03237483564c822a2cabfc03b8aa7f8021316609f17"
+        },
+        {
+          "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-t6-graphs-10000-1793313232363272793-profiled.jsonl",
+          "bytes": 18391,
+          "sha256": "1daeb4b0843eacd97119f07590deb2560153e96144acde214f72f7a9b0c83c7a"
+        }
+      ],
+      "traces": [
+        {
+          "path": "/tmp/lpx-gpu/t6-traces-graphs-1793313147110287746/t6-graphs-10000-1793313232363272793_g340-cd51-5b00-704e-e74e-42b5-7b51_1246704.async_llm.1793313270049686855.pt.trace.json.gz",
+          "bytes": 4291582,
+          "sha256": "ba1a7a5338180470bbaa356966f6aac099bc1f2f9e11756e1003ec9cceb1d75e"
+        },
+        {
+          "path": "/tmp/lpx-gpu/t6-traces-graphs-1793313147110287746/t6-graphs-10000-1793313232363272793_g340-cd51-5b00-704e-e74e-42b5-7b51_1246704.async_llm.profiler_out.txt",
+          "bytes": 7699,
+          "sha256": "26f01fc41a37a8b9dece1ae5c971d4e09f6bd2432fea21bdcf721ee9ca3ed0e0"
+        },
+        {
+          "path": "/tmp/lpx-gpu/t6-traces-graphs-1793313147110287746/t6-graphs-10000-1793313232363272793_rank0.1793313273971365319.pt.trace.json.gz",
+          "bytes": 21704195,
+          "sha256": "1321fedc205647f7135a6f104e1df1902b5be036975f19ee0aef5d08993f3609"
+        },
+        {
+          "path": "/tmp/lpx-gpu/t6-traces-graphs-1793313147110287746/t6-graphs-10000-1793313232363272793_rank0.profiler_out.txt",
+          "bytes": 20654,
+          "sha256": "8d881b6167374a81170d5d3e4a45a028533c6ade636d44ef131303b8712ec0c0"
+        }
+      ],
+      "trace_summaries": [
+        {
+          "path": "/tmp/lpx-gpu/t6-traces-graphs-1793313147110287746/t6-graphs-10000-1793313232363272793_g340-cd51-5b00-704e-e74e-42b5-7b51_1246704.async_llm.1793313270049686855.pt.trace.json.gz",
+          "event_count": 195135,
+          "categories": {
+            "metadata": 18,
+            "python_function": 195116,
+            "Trace": 1
+          },
+          "kernel_events": 0
+        },
+        {
+          "path": "/tmp/lpx-gpu/t6-traces-graphs-1793313147110287746/t6-graphs-10000-1793313232363272793_rank0.1793313273971365319.pt.trace.json.gz",
+          "event_count": 1132981,
+          "categories": {
+            "metadata": 70,
+            "user_annotation": 381,
+            "cpu_op": 52862,
+            "python_function": 477690,
+            "kernel": 251915,
+            "ac2g": 300491,
+            "overhead": 616,
+            "gpu_memset": 31337,
+            "cuda_runtime": 12670,
+            "cuda_driver": 3521,
+            "gpu_memcpy": 1048,
+            "gpu_user_annotation": 379,
+            "Trace": 1
+          },
+          "kernel_events": 251915
+        }
+      ],
+      "timing": {
+        "control_stream_step_us": 24101.306169348605,
+        "profiled_stream_step_us": 24603.898596822044,
+        "profiled_over_control": 1.0208533273649967,
+        "control_completion_tokens": 256,
+        "profiled_completion_tokens": 256,
+        "identical_tokens": true,
+        "first_different_token": null,
+        "note": "Client delivery interval per decode token; includes buffering and profiler overhead; not a GPU kernel-time breakdown"
+      },
+      "captured_unix": 1793313379.196749,
+      "note": "Traces include prefill and decode; category attribution and instrumentation-overhead interpretation remain pending"
+    },
+    {
+      "mode": "graphs",
+      "context": 100000,
+      "status": "collected",
+      "analysis_status": "pending",
+      "requests_sha256": "7abb2f93587b01649c27e262e041afe96dd68cc055908d80f35610b5de9506ae",
+      "environment_sha256": "6d011ff07ab7c6ec1f331aac36db968b38c4ec39c2147eb86ba069da9f861ac7",
+      "server": {
+        "pid": 1246704,
+        "argv": [
+          "/tmp/lpx-gpu/server-venv/bin/vllm",
+          "serve",
+          "google/gemma-4-31B-it",
+          "--served-model-name",
+          "google/gemma-4-31B-it",
+          "--revision",
+          "842da3794eaa0b77d5f08bae87a17459d91ff475",
+          "--tokenizer-revision",
+          "842da3794eaa0b77d5f08bae87a17459d91ff475",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "8000",
+          "--tensor-parallel-size",
+          "1",
+          "--dtype",
+          "bfloat16",
+          "--kv-cache-dtype",
+          "bfloat16",
+          "--max-model-len",
+          "120000",
+          "--max-num-seqs",
+          "1",
+          "--max-num-batched-tokens",
+          "8192",
+          "--gpu-memory-utilization",
+          "0.90",
+          "--no-enable-prefix-caching",
+          "--language-model-only",
+          "--reasoning-parser",
+          "gemma4",
+          "--seed",
+          "1",
+          "--attention-config",
+          "{\"backend\": \"TRITON_ATTN\"}",
+          "--profiler-config",
+          "{\"profiler\": \"torch\", \"torch_profiler_dir\": \"/tmp/lpx-gpu/t6-traces-graphs-1793313147110287746\", \"torch_profiler_activities\": [\"CPU\", \"CUDA\"], \"torch_profiler_with_stack\": true, \"torch_profiler_record_shapes\": true, \"torch_profiler_with_memory\": false, \"torch_profiler_use_gzip\": true, \"detailed_trace_annotation\": true, \"ignore_frontend\": false}"
+        ],
+        "environment": {
+          "HF_HUB_CACHE": "/tmp/lpx-gpu/hf",
+          "HF_HUB_OFFLINE": "1"
+        },
+        "draft_length": 0,
+        "method": "plain",
+        "profile": "triton",
+        "log": "/tmp/lpx-gpu/server-triton-plain-k0-1793313147114381286.log",
+        "started_unix": 1793313147.1159713
+      },
+      "outputs": [
+        {
+          "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-t6-graphs-100000-1793313379197096839-control.jsonl",
+          "bytes": 19004,
+          "sha256": "79722971487dbcadeb78c3071b566313141ca78a4077a394d7c139cebf21a929"
+        },
+        {
+          "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-t6-graphs-100000-1793313379197096839-profiled.jsonl",
+          "bytes": 18991,
+          "sha256": "ca3fe4f548f6cadb6783bb9472b2cd713e0a9e53dda3d667c387eff3945f9602"
+        }
+      ],
+      "traces": [
+        {
+          "path": "/tmp/lpx-gpu/t6-traces-graphs-1793313147110287746/t6-graphs-100000-1793313379197096839_g340-cd51-5b00-704e-e74e-42b5-7b51_1246704.async_llm.1793313654896010180.pt.trace.json.gz",
+          "bytes": 4758398,
+          "sha256": "46e8ae223728870f95b5fd08eca770212a9baad53d0c279c9af6fccbe02fb522"
+        },
+        {
+          "path": "/tmp/lpx-gpu/t6-traces-graphs-1793313147110287746/t6-graphs-100000-1793313379197096839_g340-cd51-5b00-704e-e74e-42b5-7b51_1246704.async_llm.profiler_out.txt",
+          "bytes": 7699,
+          "sha256": "08b6e0c529545b9248b4434603cb217182237b2d56431d7c4ffd0709187a5552"
+        },
+        {
+          "path": "/tmp/lpx-gpu/t6-traces-graphs-1793313147110287746/t6-graphs-100000-1793313379197096839_rank0.1793313662296678114.pt.trace.json.gz",
+          "bytes": 35617752,
+          "sha256": "6c22e7779c75c04818fcb8eaba38f43c875e3f7cdc80ad28e046901ad747b8f3"
+        },
+        {
+          "path": "/tmp/lpx-gpu/t6-traces-graphs-1793313147110287746/t6-graphs-100000-1793313379197096839_rank0.profiler_out.txt",
+          "bytes": 20655,
+          "sha256": "cb60e97e7b34e1a1744734fff23965771479c02b2af47e11fe6e447e4cb30ac9"
+        }
+      ],
+      "trace_summaries": [
+        {
+          "path": "/tmp/lpx-gpu/t6-traces-graphs-1793313147110287746/t6-graphs-100000-1793313379197096839_g340-cd51-5b00-704e-e74e-42b5-7b51_1246704.async_llm.1793313654896010180.pt.trace.json.gz",
+          "event_count": 215001,
+          "categories": {
+            "metadata": 20,
+            "python_function": 214980,
+            "Trace": 1
+          },
+          "kernel_events": 0
+        },
+        {
+          "path": "/tmp/lpx-gpu/t6-traces-graphs-1793313147110287746/t6-graphs-100000-1793313379197096839_rank0.1793313662296678114.pt.trace.json.gz",
+          "event_count": 1828694,
+          "categories": {
+            "metadata": 70,
+            "user_annotation": 1063,
+            "cpu_op": 82143,
+            "python_function": 1093325,
+            "overhead": 5777,
+            "kernel": 260088,
+            "ac2g": 322627,
+            "cuda_driver": 11562,
+            "gpu_memset": 33988,
+            "cuda_runtime": 15886,
+            "gpu_memcpy": 1103,
+            "gpu_user_annotation": 1061,
+            "Trace": 1
+          },
+          "kernel_events": 260088
+        }
+      ],
+      "timing": {
+        "control_stream_step_us": 32653.599933666344,
+        "profiled_stream_step_us": 33146.17698391278,
+        "profiled_over_control": 1.0150849232932073,
+        "control_completion_tokens": 256,
+        "profiled_completion_tokens": 256,
+        "identical_tokens": true,
+        "first_different_token": null,
+        "note": "Client delivery interval per decode token; includes buffering and profiler overhead; not a GPU kernel-time breakdown"
+      },
+      "captured_unix": 1793313906.9232714,
+      "note": "Traces include prefill and decode; category attribution and instrumentation-overhead interpretation remain pending"
+    },
+    {
+      "mode": "eager",
+      "context": 10000,
+      "status": "collected",
+      "analysis_status": "pending",
+      "requests_sha256": "7abb2f93587b01649c27e262e041afe96dd68cc055908d80f35610b5de9506ae",
+      "environment_sha256": "6d011ff07ab7c6ec1f331aac36db968b38c4ec39c2147eb86ba069da9f861ac7",
+      "server": {
+        "mode": "eager",
+        "pid": 1248070,
+        "argv": [
+          "/tmp/lpx-gpu/server-venv/bin/vllm",
+          "serve",
+          "google/gemma-4-31B-it",
+          "--served-model-name",
+          "google/gemma-4-31B-it",
+          "--revision",
+          "842da3794eaa0b77d5f08bae87a17459d91ff475",
+          "--tokenizer-revision",
+          "842da3794eaa0b77d5f08bae87a17459d91ff475",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "8000",
+          "--tensor-parallel-size",
+          "1",
+          "--dtype",
+          "bfloat16",
+          "--kv-cache-dtype",
+          "bfloat16",
+          "--max-model-len",
+          "120000",
+          "--max-num-seqs",
+          "1",
+          "--max-num-batched-tokens",
+          "8192",
+          "--gpu-memory-utilization",
+          "0.90",
+          "--no-enable-prefix-caching",
+          "--language-model-only",
+          "--reasoning-parser",
+          "gemma4",
+          "--seed",
+          "1",
+          "--attention-config",
+          "{\"backend\": \"TRITON_ATTN\"}",
+          "--profiler-config",
+          "{\"profiler\": \"torch\", \"torch_profiler_dir\": \"/tmp/lpx-gpu/t6-traces-eager-1793313908962079467\", \"torch_profiler_activities\": [\"CPU\", \"CUDA\"], \"torch_profiler_with_stack\": true, \"torch_profiler_record_shapes\": true, \"torch_profiler_with_memory\": false, \"torch_profiler_use_gzip\": true, \"detailed_trace_annotation\": true, \"ignore_frontend\": false}",
+          "--enforce-eager"
+        ],
+        "environment": {
+          "HF_HUB_CACHE": "/tmp/lpx-gpu/hf",
+          "HF_HUB_OFFLINE": "1"
+        },
+        "draft_length": 0,
+        "method": "plain",
+        "profile": "triton",
+        "log": "/tmp/lpx-gpu/server-triton-plain-k0-1793313908962620647.log",
+        "started_unix": 1793313908.9640996
+      },
+      "outputs": [
+        {
+          "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-t6-eager-10000-1793313988387601529-control.jsonl",
+          "bytes": 18614,
+          "sha256": "bcec09ff76418665948dd42a0f66d03a5cd906ab773089f792913282b4c3d54e"
+        },
+        {
+          "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-t6-eager-10000-1793313988387601529-profiled.jsonl",
+          "bytes": 18628,
+          "sha256": "a0b98afce7dc99078f4790b982723d834eea8c90b388ec9e75aafa48db8e6841"
+        }
+      ],
+      "traces": [
+        {
+          "path": "/tmp/lpx-gpu/t6-traces-eager-1793313908962079467/t6-eager-10000-1793313988387601529_g340-cd51-5b00-704e-e74e-42b5-7b51_1248070.async_llm.1793314047826331451.pt.trace.json.gz",
+          "bytes": 4366330,
+          "sha256": "d54b5de4689da3fa193a13127eb62f6b3cdb9ac04bd784a37308c16bf36a1ab9"
+        },
+        {
+          "path": "/tmp/lpx-gpu/t6-traces-eager-1793313908962079467/t6-eager-10000-1793313988387601529_g340-cd51-5b00-704e-e74e-42b5-7b51_1248070.async_llm.profiler_out.txt",
+          "bytes": 7699,
+          "sha256": "c45ef1c7ddacfe3af0b3f828d0c9b17cf5590587c32d72955d894691b958a191"
+        },
+        {
+          "path": "/tmp/lpx-gpu/t6-traces-eager-1793313908962079467/t6-eager-10000-1793313988387601529_rank0.1793314109057678464.pt.trace.json.gz",
+          "bytes": 290502348,
+          "sha256": "58f3e33bdde8e24f4fbe3a02ba02d6f3904b137d2ecc82efab297db5b6357864"
+        }
+      ],
+      "trace_summaries": [
+        {
+          "path": "/tmp/lpx-gpu/t6-traces-eager-1793313908962079467/t6-eager-10000-1793313988387601529_g340-cd51-5b00-704e-e74e-42b5-7b51_1248070.async_llm.1793314047826331451.pt.trace.json.gz",
+          "event_count": 197424,
+          "categories": {
+            "metadata": 18,
+            "python_function": 197405,
+            "Trace": 1
+          },
+          "kernel_events": 0
+        },
+        {
+          "path": "/tmp/lpx-gpu/t6-traces-eager-1793313908962079467/t6-eager-10000-1793313988387601529_rank0.1793314109057678464.pt.trace.json.gz",
+          "event_count": 12368627,
+          "categories": {
+            "metadata": 68,
+            "user_annotation": 259,
+            "cpu_op": 1530585,
+            "python_function": 9313976,
+            "overhead": 1117,
+            "cuda_runtime": 273947,
+            "ac2g": 761182,
+            "gpu_memcpy": 1048,
+            "kernel": 344951,
+            "cuda_driver": 109899,
+            "gpu_memset": 31337,
+            "gpu_user_annotation": 257,
+            "Trace": 1
+          },
+          "kernel_events": 344951
+        }
+      ],
+      "timing": {
+        "control_stream_step_us": 45183.876354028194,
+        "profiled_stream_step_us": 88738.81860544869,
+        "profiled_over_control": 1.963948774783187,
+        "control_completion_tokens": 256,
+        "profiled_completion_tokens": 256,
+        "identical_tokens": true,
+        "first_different_token": null,
+        "note": "Client delivery interval per decode token; includes buffering and profiler overhead; not a GPU kernel-time breakdown"
+      },
+      "captured_unix": 1793323604.3523517,
+      "recovery": {
+        "original_status": {
+          "stage": "t6-collection",
+          "pid": 705529,
+          "status": "failed",
+          "after_followup": true,
+          "analysis_status": "pending",
+          "started_unix": 1793246546.790629,
+          "error": "timed out",
+          "finished_unix": 1793314951.2621803
+        },
+        "log": {
+          "path": "/tmp/lpx-gpu/triton-t6.log",
+          "bytes": 3910,
+          "sha256": "2b39ec296bcfbe40a5e6181721a915bc44e4eafbded03a8857c6bfc58af15f4f"
+        },
+        "note": "Recovered after stop_profile timed out: both gzip JSON traces parse completely and contain GPU kernels; the worker text table was not produced. Decode boundary validation remains separate."
+      }
+    },
+    {
+      "mode": "eager",
+      "context": 100000,
+      "status": "collected",
+      "analysis_status": "pending",
+      "requests_sha256": "7abb2f93587b01649c27e262e041afe96dd68cc055908d80f35610b5de9506ae",
+      "environment_sha256": "6d011ff07ab7c6ec1f331aac36db968b38c4ec39c2147eb86ba069da9f861ac7",
+      "server": {
+        "pid": 1284120,
+        "argv": [
+          "/tmp/lpx-gpu/server-venv/bin/vllm",
+          "serve",
+          "google/gemma-4-31B-it",
+          "--served-model-name",
+          "google/gemma-4-31B-it",
+          "--revision",
+          "842da3794eaa0b77d5f08bae87a17459d91ff475",
+          "--tokenizer-revision",
+          "842da3794eaa0b77d5f08bae87a17459d91ff475",
+          "--host",
+          "127.0.0.1",
+          "--port",
+          "8000",
+          "--tensor-parallel-size",
+          "1",
+          "--dtype",
+          "bfloat16",
+          "--kv-cache-dtype",
+          "bfloat16",
+          "--max-model-len",
+          "120000",
+          "--max-num-seqs",
+          "1",
+          "--max-num-batched-tokens",
+          "8192",
+          "--gpu-memory-utilization",
+          "0.90",
+          "--no-enable-prefix-caching",
+          "--language-model-only",
+          "--reasoning-parser",
+          "gemma4",
+          "--seed",
+          "1",
+          "--attention-config",
+          "{\"backend\": \"TRITON_ATTN\"}",
+          "--profiler-config",
+          "{\"profiler\": \"torch\", \"torch_profiler_dir\": \"/tmp/lpx-gpu/t6-traces-eager-1793323604984682669\", \"torch_profiler_activities\": [\"CPU\", \"CUDA\"], \"torch_profiler_with_stack\": true, \"torch_profiler_record_shapes\": true, \"torch_profiler_with_memory\": false, \"torch_profiler_use_gzip\": true, \"torch_profiler_dump_cuda_time_total\": false, \"detailed_trace_annotation\": true, \"ignore_frontend\": false}",
+          "--enforce-eager"
+        ],
+        "environment": {
+          "HF_HUB_CACHE": "/tmp/lpx-gpu/hf",
+          "HF_HUB_OFFLINE": "1"
+        },
+        "draft_length": 0,
+        "method": "plain",
+        "profile": "triton",
+        "log": "/tmp/lpx-gpu/server-triton-plain-k0-1793323604988935746.log",
+        "started_unix": 1793323604.9905076
+      },
+      "outputs": [
+        {
+          "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-t6-eager-100000-1793323672973430052-control.jsonl",
+          "bytes": 19079,
+          "sha256": "422e7bb4bb0a631e7188a2a7f4151596356134cfe277eb0bfa8bbcb5d0d69547"
+        },
+        {
+          "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-t6-eager-100000-1793323672973430052-profiled.jsonl",
+          "bytes": 19057,
+          "sha256": "2a3b957357b970923fd3f565c887736e785d14f3a174defe8403fe149411e3cc"
+        }
+      ],
+      "traces": [
+        {
+          "path": "/tmp/lpx-gpu/t6-traces-eager-1793323604984682669/t6-eager-100000-1793323672973430052_g340-cd51-5b00-704e-e74e-42b5-7b51_1284120.async_llm.1793323966541939603.pt.trace.json.gz",
+          "bytes": 4823304,
+          "sha256": "046e3e6009ff6b1d206790a6f7b26d40a6f7bdeded705587ef34d0bb5918840b"
+        },
+        {
+          "path": "/tmp/lpx-gpu/t6-traces-eager-1793323604984682669/t6-eager-100000-1793323672973430052_g340-cd51-5b00-704e-e74e-42b5-7b51_1284120.async_llm.profiler_out.txt",
+          "bytes": 7699,
+          "sha256": "faa9a74d0f686bc328761f9e024166adbb34ece8fb0cf2a22bda1f11b08ae934"
+        },
+        {
+          "path": "/tmp/lpx-gpu/t6-traces-eager-1793323604984682669/t6-eager-100000-1793323672973430052_rank0.1793324030844744426.pt.trace.json.gz",
+          "bytes": 305124736,
+          "sha256": "433c12e23079eda1de967cc87d65be0ad9eaebbb77a1eb67aa52292417008b5b"
+        }
+      ],
+      "trace_summaries": [
+        {
+          "path": "/tmp/lpx-gpu/t6-traces-eager-1793323604984682669/t6-eager-100000-1793323672973430052_g340-cd51-5b00-704e-e74e-42b5-7b51_1284120.async_llm.1793323966541939603.pt.trace.json.gz",
+          "event_count": 216118,
+          "categories": {
+            "metadata": 20,
+            "python_function": 216097,
+            "Trace": 1
+          },
+          "kernel_events": 0
+        },
+        {
+          "path": "/tmp/lpx-gpu/t6-traces-eager-1793323604984682669/t6-eager-100000-1793323672973430052_rank0.1793324030844744426.pt.trace.json.gz",
+          "event_count": 13084181,
+          "categories": {
+            "metadata": 68,
+            "user_annotation": 270,
+            "cpu_op": 1596320,
+            "python_function": 9896934,
+            "overhead": 7756,
+            "cuda_runtime": 285105,
+            "ac2g": 791282,
+            "gpu_memcpy": 1103,
+            "kernel": 357117,
+            "cuda_driver": 113969,
+            "gpu_memset": 33988,
+            "gpu_user_annotation": 268,
+            "Trace": 1
+          },
+          "kernel_events": 357117
+        }
+      ],
+      "timing": {
+        "control_stream_step_us": 44870.624640116504,
+        "profiled_stream_step_us": 87278.84463527623,
+        "profiled_over_control": 1.9451221224418775,
+        "control_completion_tokens": 256,
+        "profiled_completion_tokens": 256,
+        "identical_tokens": true,
+        "first_different_token": null,
+        "note": "Client delivery interval per decode token; includes buffering and profiler overhead; not a GPU kernel-time breakdown"
+      },
+      "captured_unix": 1793324440.5405157,
+      "note": "Traces include prefill and decode; category attribution and instrumentation-overhead interpretation remain pending"
+    }
+  ],
+  "analysis_status": "pending",
+  "required_attribution": [
+    "prefill versus decode",
+    "transformer layers",
+    "vocabulary head",
+    "logits and sampling",
+    "CPU scheduling and kernel gaps",
+    "output streaming",
+    "unclassified time"
+  ],
+  "note": "GPU host costs are a size reference and do not directly transfer to LP30"
+}

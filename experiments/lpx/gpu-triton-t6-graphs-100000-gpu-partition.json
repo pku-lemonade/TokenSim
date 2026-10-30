@@ -1,0 +1,3667 @@
+{
+  "analysis_status": "gpu_partition_only",
+  "selection_basis": "255 ordered generation_1 GPU annotations matched one-to-one by External id to CPU execute_1_context_0 scopes. Windows run from each GPU scope start to the next, preserving inter-step gaps; the final end includes every correlated GPU activity launched inside the final CPU scope. Prefill scopes are excluded. CPU time and streaming costs are not inferred from idle GPU intervals.",
+  "expected_decode_steps": 255,
+  "selected_wall_us": 8559303.699707031,
+  "mean_step_us": 33565.8968615962,
+  "gpu_busy_us": 8269944.083496094,
+  "selected_gpu_events": 282302,
+  "gpu_device_lanes": [
+    "0"
+  ],
+  "partitions": {
+    "transformer_layers": {
+      "total_us": 8060150.326660156,
+      "mean_step_us": 31608.43265356924,
+      "fraction": 0.9416829463518206
+    },
+    "vocabulary_head": {
+      "total_us": 194009.6923828125,
+      "mean_step_us": 760.8223230698529,
+      "fraction": 0.02266652746408018
+    },
+    "logits_sampling": {
+      "total_us": 8222.611328125,
+      "mean_step_us": 32.24553462009804,
+      "fraction": 0.0009606635792589582
+    },
+    "unclassified_gpu": {
+      "total_us": 7561.453125,
+      "mean_step_us": 29.652757352941176,
+      "fraction": 0.0008834191880887244
+    },
+    "gpu_category_overlap": {
+      "total_us": 0.0,
+      "mean_step_us": 0.0,
+      "fraction": 0.0
+    },
+    "no_gpu_activity": {
+      "total_us": 289359.6162109375,
+      "mean_step_us": 1134.7435929840685,
+      "fraction": 0.0338064434167515
+    }
+  },
+  "steps": [
+    {
+      "start_us": 2456613528384.597,
+      "end_us": 2456613561942.741,
+      "wall_us": 33558.14404296875,
+      "partitions_us": {
+        "transformer_layers": 31598.484375,
+        "vocabulary_head": 763.49169921875,
+        "logits_sampling": 32.64013671875,
+        "unclassified_gpu": 28.4462890625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1135.08154296875
+      }
+    },
+    {
+      "start_us": 2456613561942.741,
+      "end_us": 2456613595368.852,
+      "wall_us": 33426.11083984375,
+      "partitions_us": {
+        "transformer_layers": 31487.0126953125,
+        "vocabulary_head": 763.52294921875,
+        "logits_sampling": 31.201171875,
+        "unclassified_gpu": 28.67431640625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1115.69970703125
+      }
+    },
+    {
+      "start_us": 2456613595368.852,
+      "end_us": 2456613628914.869,
+      "wall_us": 33546.01708984375,
+      "partitions_us": {
+        "transformer_layers": 31589.6728515625,
+        "vocabulary_head": 763.0107421875,
+        "logits_sampling": 33.0224609375,
+        "unclassified_gpu": 35.77685546875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1124.5341796875
+      }
+    },
+    {
+      "start_us": 2456613628914.869,
+      "end_us": 2456613662458.42,
+      "wall_us": 33543.55078125,
+      "partitions_us": {
+        "transformer_layers": 31596.5224609375,
+        "vocabulary_head": 762.2119140625,
+        "logits_sampling": 31.39306640625,
+        "unclassified_gpu": 29.85302734375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1123.5703125
+      }
+    },
+    {
+      "start_us": 2456613662458.42,
+      "end_us": 2456613696019.412,
+      "wall_us": 33560.9921875,
+      "partitions_us": {
+        "transformer_layers": 31577.82958984375,
+        "vocabulary_head": 764.4208984375,
+        "logits_sampling": 34.017578125,
+        "unclassified_gpu": 29.4404296875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1155.28369140625
+      }
+    },
+    {
+      "start_us": 2456613696019.412,
+      "end_us": 2456613729580.789,
+      "wall_us": 33561.376953125,
+      "partitions_us": {
+        "transformer_layers": 31589.97509765625,
+        "vocabulary_head": 763.8740234375,
+        "logits_sampling": 31.04248046875,
+        "unclassified_gpu": 28.4814453125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1148.00390625
+      }
+    },
+    {
+      "start_us": 2456613729580.789,
+      "end_us": 2456613763101.46,
+      "wall_us": 33520.6708984375,
+      "partitions_us": {
+        "transformer_layers": 31577.91650390625,
+        "vocabulary_head": 762.85205078125,
+        "logits_sampling": 33.24755859375,
+        "unclassified_gpu": 30.08203125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1116.57275390625
+      }
+    },
+    {
+      "start_us": 2456613763101.46,
+      "end_us": 2456613796648.885,
+      "wall_us": 33547.4248046875,
+      "partitions_us": {
+        "transformer_layers": 31573.83984375,
+        "vocabulary_head": 764.26123046875,
+        "logits_sampling": 31.55224609375,
+        "unclassified_gpu": 30.20849609375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1147.56298828125
+      }
+    },
+    {
+      "start_us": 2456613796648.885,
+      "end_us": 2456613830213.588,
+      "wall_us": 33564.703125,
+      "partitions_us": {
+        "transformer_layers": 31589.91943359375,
+        "vocabulary_head": 763.8740234375,
+        "logits_sampling": 33.28125,
+        "unclassified_gpu": 29.306640625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1148.32177734375
+      }
+    },
+    {
+      "start_us": 2456613830213.588,
+      "end_us": 2456613863744.724,
+      "wall_us": 33531.13623046875,
+      "partitions_us": {
+        "transformer_layers": 31562.1923828125,
+        "vocabulary_head": 763.6201171875,
+        "logits_sampling": 31.35986328125,
+        "unclassified_gpu": 28.28857421875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1145.67529296875
+      }
+    },
+    {
+      "start_us": 2456613863744.724,
+      "end_us": 2456613897283.636,
+      "wall_us": 33538.912109375,
+      "partitions_us": {
+        "transformer_layers": 31598.7578125,
+        "vocabulary_head": 763.84375,
+        "logits_sampling": 32.80029296875,
+        "unclassified_gpu": 29.50244140625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1114.0078125
+      }
+    },
+    {
+      "start_us": 2456613897283.636,
+      "end_us": 2456613930835.604,
+      "wall_us": 33551.9677734375,
+      "partitions_us": {
+        "transformer_layers": 31586.06005859375,
+        "vocabulary_head": 762.97998046875,
+        "logits_sampling": 32.79931640625,
+        "unclassified_gpu": 30.4326171875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1139.69580078125
+      }
+    },
+    {
+      "start_us": 2456613930835.604,
+      "end_us": 2456613964387.892,
+      "wall_us": 33552.2880859375,
+      "partitions_us": {
+        "transformer_layers": 31606.73486328125,
+        "vocabulary_head": 763.42822265625,
+        "logits_sampling": 33.05615234375,
+        "unclassified_gpu": 30.81494140625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1118.25390625
+      }
+    },
+    {
+      "start_us": 2456613964387.892,
+      "end_us": 2456613997946.132,
+      "wall_us": 33558.23974609375,
+      "partitions_us": {
+        "transformer_layers": 31611.541015625,
+        "vocabulary_head": 762.53173828125,
+        "logits_sampling": 31.0390625,
+        "unclassified_gpu": 29.02490234375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1124.10302734375
+      }
+    },
+    {
+      "start_us": 2456613997946.132,
+      "end_us": 2456614031523.252,
+      "wall_us": 33577.1201171875,
+      "partitions_us": {
+        "transformer_layers": 31604.10107421875,
+        "vocabulary_head": 764.4521484375,
+        "logits_sampling": 33.43994140625,
+        "unclassified_gpu": 29.05712890625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1146.06982421875
+      }
+    },
+    {
+      "start_us": 2456614031523.252,
+      "end_us": 2456614065099.38,
+      "wall_us": 33576.1279296875,
+      "partitions_us": {
+        "transformer_layers": 31602.6689453125,
+        "vocabulary_head": 764.9619140625,
+        "logits_sampling": 31.51953125,
+        "unclassified_gpu": 27.68017578125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1149.29736328125
+      }
+    },
+    {
+      "start_us": 2456614065099.38,
+      "end_us": 2456614098656.436,
+      "wall_us": 33557.05615234375,
+      "partitions_us": {
+        "transformer_layers": 31605.2509765625,
+        "vocabulary_head": 765.08984375,
+        "logits_sampling": 33.1513671875,
+        "unclassified_gpu": 30.08203125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1123.48193359375
+      }
+    },
+    {
+      "start_us": 2456614098656.436,
+      "end_us": 2456614132215.797,
+      "wall_us": 33559.36083984375,
+      "partitions_us": {
+        "transformer_layers": 31591.98876953125,
+        "vocabulary_head": 763.970703125,
+        "logits_sampling": 31.48681640625,
+        "unclassified_gpu": 30.49560546875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1141.4189453125
+      }
+    },
+    {
+      "start_us": 2456614132215.797,
+      "end_us": 2456614165757.268,
+      "wall_us": 33541.47119140625,
+      "partitions_us": {
+        "transformer_layers": 31585.20361328125,
+        "vocabulary_head": 762.72412109375,
+        "logits_sampling": 33.1201171875,
+        "unclassified_gpu": 34.34033203125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1126.0830078125
+      }
+    },
+    {
+      "start_us": 2456614165757.268,
+      "end_us": 2456614199296.468,
+      "wall_us": 33539.19970703125,
+      "partitions_us": {
+        "transformer_layers": 31573.08837890625,
+        "vocabulary_head": 763.779296875,
+        "logits_sampling": 32.0322265625,
+        "unclassified_gpu": 28.607421875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1141.6923828125
+      }
+    },
+    {
+      "start_us": 2456614199296.468,
+      "end_us": 2456614232825.78,
+      "wall_us": 33529.31201171875,
+      "partitions_us": {
+        "transformer_layers": 31588.61376953125,
+        "vocabulary_head": 763.65185546875,
+        "logits_sampling": 32.8642578125,
+        "unclassified_gpu": 30.49560546875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1113.6865234375
+      }
+    },
+    {
+      "start_us": 2456614232825.78,
+      "end_us": 2456614266379.348,
+      "wall_us": 33553.568359375,
+      "partitions_us": {
+        "transformer_layers": 31580.93896484375,
+        "vocabulary_head": 762.3076171875,
+        "logits_sampling": 30.94384765625,
+        "unclassified_gpu": 30.9755859375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1148.40234375
+      }
+    },
+    {
+      "start_us": 2456614266379.348,
+      "end_us": 2456614299982.644,
+      "wall_us": 33603.2958984375,
+      "partitions_us": {
+        "transformer_layers": 31631.392578125,
+        "vocabulary_head": 762.85302734375,
+        "logits_sampling": 33.2490234375,
+        "unclassified_gpu": 29.27978515625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1146.521484375
+      }
+    },
+    {
+      "start_us": 2456614299982.644,
+      "end_us": 2456614333564.981,
+      "wall_us": 33582.3369140625,
+      "partitions_us": {
+        "transformer_layers": 31615.6591796875,
+        "vocabulary_head": 764.7392578125,
+        "logits_sampling": 31.74462890625,
+        "unclassified_gpu": 30.9111328125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1139.28271484375
+      }
+    },
+    {
+      "start_us": 2456614333564.981,
+      "end_us": 2456614367134.773,
+      "wall_us": 33569.7919921875,
+      "partitions_us": {
+        "transformer_layers": 31622.0263671875,
+        "vocabulary_head": 765.85888671875,
+        "logits_sampling": 33.7314453125,
+        "unclassified_gpu": 28.70947265625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1119.4658203125
+      }
+    },
+    {
+      "start_us": 2456614367134.773,
+      "end_us": 2456614400729.653,
+      "wall_us": 33594.8798828125,
+      "partitions_us": {
+        "transformer_layers": 31611.29638671875,
+        "vocabulary_head": 763.7470703125,
+        "logits_sampling": 31.169921875,
+        "unclassified_gpu": 28.318359375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1160.34814453125
+      }
+    },
+    {
+      "start_us": 2456614400729.653,
+      "end_us": 2456614434301.269,
+      "wall_us": 33571.6162109375,
+      "partitions_us": {
+        "transformer_layers": 31602.31494140625,
+        "vocabulary_head": 764.8359375,
+        "logits_sampling": 33.25146484375,
+        "unclassified_gpu": 28.12890625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1143.0849609375
+      }
+    },
+    {
+      "start_us": 2456614434301.269,
+      "end_us": 2456614467927.957,
+      "wall_us": 33626.68798828125,
+      "partitions_us": {
+        "transformer_layers": 31680.88232421875,
+        "vocabulary_head": 761.3798828125,
+        "logits_sampling": 32.12841796875,
+        "unclassified_gpu": 31.1669921875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1121.13037109375
+      }
+    },
+    {
+      "start_us": 2456614467927.957,
+      "end_us": 2456614501522.613,
+      "wall_us": 33594.65576171875,
+      "partitions_us": {
+        "transformer_layers": 31612.4736328125,
+        "vocabulary_head": 766.52978515625,
+        "logits_sampling": 33.24755859375,
+        "unclassified_gpu": 28.76708984375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1153.6376953125
+      }
+    },
+    {
+      "start_us": 2456614501522.613,
+      "end_us": 2456614535135.414,
+      "wall_us": 33612.80126953125,
+      "partitions_us": {
+        "transformer_layers": 31637.96337890625,
+        "vocabulary_head": 762.72314453125,
+        "logits_sampling": 31.61376953125,
+        "unclassified_gpu": 27.65087890625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1152.85009765625
+      }
+    },
+    {
+      "start_us": 2456614535135.414,
+      "end_us": 2456614568685.014,
+      "wall_us": 33549.60009765625,
+      "partitions_us": {
+        "transformer_layers": 31579.69091796875,
+        "vocabulary_head": 764.130859375,
+        "logits_sampling": 33.1533203125,
+        "unclassified_gpu": 30.33447265625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1142.29052734375
+      }
+    },
+    {
+      "start_us": 2456614568685.014,
+      "end_us": 2456614602238.518,
+      "wall_us": 33553.50390625,
+      "partitions_us": {
+        "transformer_layers": 31609.6162109375,
+        "vocabulary_head": 763.1708984375,
+        "logits_sampling": 31.87451171875,
+        "unclassified_gpu": 29.7294921875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1119.11279296875
+      }
+    },
+    {
+      "start_us": 2456614602238.518,
+      "end_us": 2456614635779.862,
+      "wall_us": 33541.34375,
+      "partitions_us": {
+        "transformer_layers": 31570.982421875,
+        "vocabulary_head": 761.44287109375,
+        "logits_sampling": 33.15283203125,
+        "unclassified_gpu": 28.89599609375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1146.86962890625
+      }
+    },
+    {
+      "start_us": 2456614635779.862,
+      "end_us": 2456614669218.709,
+      "wall_us": 33438.84716796875,
+      "partitions_us": {
+        "transformer_layers": 31483.11962890625,
+        "vocabulary_head": 764.1962890625,
+        "logits_sampling": 31.103515625,
+        "unclassified_gpu": 29.50439453125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1130.92333984375
+      }
+    },
+    {
+      "start_us": 2456614669218.709,
+      "end_us": 2456614702765.205,
+      "wall_us": 33546.49609375,
+      "partitions_us": {
+        "transformer_layers": 31593.97216796875,
+        "vocabulary_head": 763.39599609375,
+        "logits_sampling": 33.15234375,
+        "unclassified_gpu": 35.1357421875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1120.83984375
+      }
+    },
+    {
+      "start_us": 2456614702765.205,
+      "end_us": 2456614736293.077,
+      "wall_us": 33527.8720703125,
+      "partitions_us": {
+        "transformer_layers": 31586.2294921875,
+        "vocabulary_head": 762.6923828125,
+        "logits_sampling": 31.83935546875,
+        "unclassified_gpu": 29.02490234375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1118.0859375
+      }
+    },
+    {
+      "start_us": 2456614736293.077,
+      "end_us": 2456614769863.541,
+      "wall_us": 33570.4638671875,
+      "partitions_us": {
+        "transformer_layers": 31590.32421875,
+        "vocabulary_head": 763.68408203125,
+        "logits_sampling": 32.83203125,
+        "unclassified_gpu": 30.015625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1153.60791015625
+      }
+    },
+    {
+      "start_us": 2456614769863.541,
+      "end_us": 2456614803392.021,
+      "wall_us": 33528.47998046875,
+      "partitions_us": {
+        "transformer_layers": 31587.36669921875,
+        "vocabulary_head": 763.04296875,
+        "logits_sampling": 35.0390625,
+        "unclassified_gpu": 28.0654296875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1114.9658203125
+      }
+    },
+    {
+      "start_us": 2456614803392.021,
+      "end_us": 2456614836947.253,
+      "wall_us": 33555.23193359375,
+      "partitions_us": {
+        "transformer_layers": 31603.80322265625,
+        "vocabulary_head": 764.99609375,
+        "logits_sampling": 32.6103515625,
+        "unclassified_gpu": 31.55029296875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1122.27197265625
+      }
+    },
+    {
+      "start_us": 2456614836947.253,
+      "end_us": 2456614870565.653,
+      "wall_us": 33618.39990234375,
+      "partitions_us": {
+        "transformer_layers": 31671.62548828125,
+        "vocabulary_head": 763.61962890625,
+        "logits_sampling": 31.9677734375,
+        "unclassified_gpu": 30.20849609375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1120.978515625
+      }
+    },
+    {
+      "start_us": 2456614870565.653,
+      "end_us": 2456614904170.261,
+      "wall_us": 33604.6083984375,
+      "partitions_us": {
+        "transformer_layers": 31636.5,
+        "vocabulary_head": 763.171875,
+        "logits_sampling": 32.9599609375,
+        "unclassified_gpu": 29.2802734375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1142.6962890625
+      }
+    },
+    {
+      "start_us": 2456614904170.261,
+      "end_us": 2456614937760.885,
+      "wall_us": 33590.62353515625,
+      "partitions_us": {
+        "transformer_layers": 31656.65185546875,
+        "vocabulary_head": 762.81982421875,
+        "logits_sampling": 30.9453125,
+        "unclassified_gpu": 27.3603515625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1112.84619140625
+      }
+    },
+    {
+      "start_us": 2456614937760.885,
+      "end_us": 2456614971314.389,
+      "wall_us": 33553.50439453125,
+      "partitions_us": {
+        "transformer_layers": 31572.1875,
+        "vocabulary_head": 765.60400390625,
+        "logits_sampling": 32.83056640625,
+        "unclassified_gpu": 28.255859375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1154.62646484375
+      }
+    },
+    {
+      "start_us": 2456614971314.389,
+      "end_us": 2456615004855.893,
+      "wall_us": 33541.50390625,
+      "partitions_us": {
+        "transformer_layers": 31570.1142578125,
+        "vocabulary_head": 765.345703125,
+        "logits_sampling": 31.48876953125,
+        "unclassified_gpu": 29.5673828125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1144.98779296875
+      }
+    },
+    {
+      "start_us": 2456615004855.893,
+      "end_us": 2456615038390.005,
+      "wall_us": 33534.11181640625,
+      "partitions_us": {
+        "transformer_layers": 31592.9521484375,
+        "vocabulary_head": 763.970703125,
+        "logits_sampling": 33.27978515625,
+        "unclassified_gpu": 27.876953125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1116.0322265625
+      }
+    },
+    {
+      "start_us": 2456615038390.005,
+      "end_us": 2456615071935.285,
+      "wall_us": 33545.2802734375,
+      "partitions_us": {
+        "transformer_layers": 31577.02783203125,
+        "vocabulary_head": 762.244140625,
+        "logits_sampling": 30.8154296875,
+        "unclassified_gpu": 30.591796875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1144.60107421875
+      }
+    },
+    {
+      "start_us": 2456615071935.285,
+      "end_us": 2456615105494.005,
+      "wall_us": 33558.7197265625,
+      "partitions_us": {
+        "transformer_layers": 31613.58984375,
+        "vocabulary_head": 762.97900390625,
+        "logits_sampling": 32.60791015625,
+        "unclassified_gpu": 29.3759765625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1120.1669921875
+      }
+    },
+    {
+      "start_us": 2456615105494.005,
+      "end_us": 2456615139033.909,
+      "wall_us": 33539.904296875,
+      "partitions_us": {
+        "transformer_layers": 31598.6611328125,
+        "vocabulary_head": 763.171875,
+        "logits_sampling": 31.3603515625,
+        "unclassified_gpu": 30.400390625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1116.310546875
+      }
+    },
+    {
+      "start_us": 2456615139033.909,
+      "end_us": 2456615172619.478,
+      "wall_us": 33585.56884765625,
+      "partitions_us": {
+        "transformer_layers": 31611.61572265625,
+        "vocabulary_head": 764.1005859375,
+        "logits_sampling": 32.86328125,
+        "unclassified_gpu": 29.44140625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1147.5478515625
+      }
+    },
+    {
+      "start_us": 2456615172619.478,
+      "end_us": 2456615206169.302,
+      "wall_us": 33549.82373046875,
+      "partitions_us": {
+        "transformer_layers": 31597.07958984375,
+        "vocabulary_head": 763.36279296875,
+        "logits_sampling": 30.7841796875,
+        "unclassified_gpu": 31.4873046875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1127.10986328125
+      }
+    },
+    {
+      "start_us": 2456615206169.302,
+      "end_us": 2456615239747.125,
+      "wall_us": 33577.8232421875,
+      "partitions_us": {
+        "transformer_layers": 31592.36279296875,
+        "vocabulary_head": 763.4267578125,
+        "logits_sampling": 35.8701171875,
+        "unclassified_gpu": 33.56787109375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1152.595703125
+      }
+    },
+    {
+      "start_us": 2456615239747.125,
+      "end_us": 2456615273332.566,
+      "wall_us": 33585.44091796875,
+      "partitions_us": {
+        "transformer_layers": 31652.72900390625,
+        "vocabulary_head": 765.06005859375,
+        "logits_sampling": 31.35791015625,
+        "unclassified_gpu": 29.50537109375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1106.78857421875
+      }
+    },
+    {
+      "start_us": 2456615273332.566,
+      "end_us": 2456615306932.982,
+      "wall_us": 33600.416015625,
+      "partitions_us": {
+        "transformer_layers": 31629.28125,
+        "vocabulary_head": 763.3310546875,
+        "logits_sampling": 32.6083984375,
+        "unclassified_gpu": 29.630859375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1145.564453125
+      }
+    },
+    {
+      "start_us": 2456615306932.982,
+      "end_us": 2456615340519.542,
+      "wall_us": 33586.56005859375,
+      "partitions_us": {
+        "transformer_layers": 31650.33935546875,
+        "vocabulary_head": 762.3720703125,
+        "logits_sampling": 31.6162109375,
+        "unclassified_gpu": 30.9443359375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1111.2880859375
+      }
+    },
+    {
+      "start_us": 2456615340519.542,
+      "end_us": 2456615374071.286,
+      "wall_us": 33551.744140625,
+      "partitions_us": {
+        "transformer_layers": 31593.56396484375,
+        "vocabulary_head": 763.42822265625,
+        "logits_sampling": 33.1201171875,
+        "unclassified_gpu": 27.5849609375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1134.046875
+      }
+    },
+    {
+      "start_us": 2456615374071.286,
+      "end_us": 2456615407617.494,
+      "wall_us": 33546.2080078125,
+      "partitions_us": {
+        "transformer_layers": 31601.875,
+        "vocabulary_head": 762.97998046875,
+        "logits_sampling": 31.6162109375,
+        "unclassified_gpu": 27.52001953125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1122.216796875
+      }
+    },
+    {
+      "start_us": 2456615407617.494,
+      "end_us": 2456615441164.918,
+      "wall_us": 33547.423828125,
+      "partitions_us": {
+        "transformer_layers": 31568.4111328125,
+        "vocabulary_head": 763.49072265625,
+        "logits_sampling": 33.34521484375,
+        "unclassified_gpu": 28.76806640625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1153.40869140625
+      }
+    },
+    {
+      "start_us": 2456615441164.918,
+      "end_us": 2456615474711.702,
+      "wall_us": 33546.7841796875,
+      "partitions_us": {
+        "transformer_layers": 31581.19873046875,
+        "vocabulary_head": 762.85205078125,
+        "logits_sampling": 30.7841796875,
+        "unclassified_gpu": 28.0322265625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1143.9169921875
+      }
+    },
+    {
+      "start_us": 2456615474711.702,
+      "end_us": 2456615508270.806,
+      "wall_us": 33559.10400390625,
+      "partitions_us": {
+        "transformer_layers": 31609.81591796875,
+        "vocabulary_head": 762.59619140625,
+        "logits_sampling": 33.279296875,
+        "unclassified_gpu": 30.7509765625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1122.66162109375
+      }
+    },
+    {
+      "start_us": 2456615508270.806,
+      "end_us": 2456615541838.806,
+      "wall_us": 33568.0,
+      "partitions_us": {
+        "transformer_layers": 31589.6533203125,
+        "vocabulary_head": 764.13232421875,
+        "logits_sampling": 32.09619140625,
+        "unclassified_gpu": 30.62451171875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1151.49365234375
+      }
+    },
+    {
+      "start_us": 2456615541838.806,
+      "end_us": 2456615575428.886,
+      "wall_us": 33590.080078125,
+      "partitions_us": {
+        "transformer_layers": 31614.56201171875,
+        "vocabulary_head": 764.22802734375,
+        "logits_sampling": 35.87158203125,
+        "unclassified_gpu": 29.21533203125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1146.203125
+      }
+    },
+    {
+      "start_us": 2456615575428.886,
+      "end_us": 2456615609000.022,
+      "wall_us": 33571.1357421875,
+      "partitions_us": {
+        "transformer_layers": 31596.3876953125,
+        "vocabulary_head": 764.7080078125,
+        "logits_sampling": 31.48828125,
+        "unclassified_gpu": 31.29443359375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1147.25732421875
+      }
+    },
+    {
+      "start_us": 2456615609000.022,
+      "end_us": 2456615642556.854,
+      "wall_us": 33556.83203125,
+      "partitions_us": {
+        "transformer_layers": 31617.36376953125,
+        "vocabulary_head": 764.89990234375,
+        "logits_sampling": 32.576171875,
+        "unclassified_gpu": 30.49609375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1111.49609375
+      }
+    },
+    {
+      "start_us": 2456615642556.854,
+      "end_us": 2456615676089.238,
+      "wall_us": 33532.3837890625,
+      "partitions_us": {
+        "transformer_layers": 31569.595703125,
+        "vocabulary_head": 763.36376953125,
+        "logits_sampling": 31.29638671875,
+        "unclassified_gpu": 30.23974609375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1137.88818359375
+      }
+    },
+    {
+      "start_us": 2456615676089.238,
+      "end_us": 2456615709625.462,
+      "wall_us": 33536.22412109375,
+      "partitions_us": {
+        "transformer_layers": 31587.5390625,
+        "vocabulary_head": 764.67578125,
+        "logits_sampling": 33.6640625,
+        "unclassified_gpu": 28.609375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1121.73583984375
+      }
+    },
+    {
+      "start_us": 2456615709625.462,
+      "end_us": 2456615743044.533,
+      "wall_us": 33419.0712890625,
+      "partitions_us": {
+        "transformer_layers": 31472.74072265625,
+        "vocabulary_head": 764.0048828125,
+        "logits_sampling": 30.8798828125,
+        "unclassified_gpu": 28.25537109375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1123.1904296875
+      }
+    },
+    {
+      "start_us": 2456615743044.533,
+      "end_us": 2456615776567.573,
+      "wall_us": 33523.0400390625,
+      "partitions_us": {
+        "transformer_layers": 31571.81103515625,
+        "vocabulary_head": 763.171875,
+        "logits_sampling": 33.15185546875,
+        "unclassified_gpu": 34.814453125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1120.0908203125
+      }
+    },
+    {
+      "start_us": 2456615776567.573,
+      "end_us": 2456615810120.757,
+      "wall_us": 33553.18359375,
+      "partitions_us": {
+        "transformer_layers": 31579.6396484375,
+        "vocabulary_head": 762.81982421875,
+        "logits_sampling": 33.47216796875,
+        "unclassified_gpu": 28.8330078125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1148.4189453125
+      }
+    },
+    {
+      "start_us": 2456615810120.757,
+      "end_us": 2456615843664.213,
+      "wall_us": 33543.4560546875,
+      "partitions_us": {
+        "transformer_layers": 31597.15576171875,
+        "vocabulary_head": 763.20361328125,
+        "logits_sampling": 32.9599609375,
+        "unclassified_gpu": 29.1513671875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1120.9853515625
+      }
+    },
+    {
+      "start_us": 2456615843664.213,
+      "end_us": 2456615877188.949,
+      "wall_us": 33524.736328125,
+      "partitions_us": {
+        "transformer_layers": 31576.67626953125,
+        "vocabulary_head": 765.60400390625,
+        "logits_sampling": 31.45556640625,
+        "unclassified_gpu": 29.6650390625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1121.33544921875
+      }
+    },
+    {
+      "start_us": 2456615877188.949,
+      "end_us": 2456615910762.549,
+      "wall_us": 33573.599609375,
+      "partitions_us": {
+        "transformer_layers": 31624.32275390625,
+        "vocabulary_head": 762.94775390625,
+        "logits_sampling": 33.53515625,
+        "unclassified_gpu": 29.5048828125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1123.2890625
+      }
+    },
+    {
+      "start_us": 2456615910762.549,
+      "end_us": 2456615944321.813,
+      "wall_us": 33559.26416015625,
+      "partitions_us": {
+        "transformer_layers": 31593.03125,
+        "vocabulary_head": 762.3720703125,
+        "logits_sampling": 31.74365234375,
+        "unclassified_gpu": 29.248046875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1142.869140625
+      }
+    },
+    {
+      "start_us": 2456615944321.813,
+      "end_us": 2456615977844.629,
+      "wall_us": 33522.81591796875,
+      "partitions_us": {
+        "transformer_layers": 31580.57958984375,
+        "vocabulary_head": 764.22802734375,
+        "logits_sampling": 32.7041015625,
+        "unclassified_gpu": 31.2314453125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1114.07275390625
+      }
+    },
+    {
+      "start_us": 2456615977844.629,
+      "end_us": 2456616011412.437,
+      "wall_us": 33567.80810546875,
+      "partitions_us": {
+        "transformer_layers": 31592.0400390625,
+        "vocabulary_head": 764.45166015625,
+        "logits_sampling": 33.9189453125,
+        "unclassified_gpu": 29.376953125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1148.0205078125
+      }
+    },
+    {
+      "start_us": 2456616011412.437,
+      "end_us": 2456616044992.789,
+      "wall_us": 33580.35205078125,
+      "partitions_us": {
+        "transformer_layers": 31603.9150390625,
+        "vocabulary_head": 763.93994140625,
+        "logits_sampling": 33.43994140625,
+        "unclassified_gpu": 30.8466796875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1148.21044921875
+      }
+    },
+    {
+      "start_us": 2456616044992.789,
+      "end_us": 2456616078596.789,
+      "wall_us": 33604.0,
+      "partitions_us": {
+        "transformer_layers": 31635.58447265625,
+        "vocabulary_head": 764.61279296875,
+        "logits_sampling": 33.1201171875,
+        "unclassified_gpu": 29.2490234375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1141.43359375
+      }
+    },
+    {
+      "start_us": 2456616078596.789,
+      "end_us": 2456616112235.03,
+      "wall_us": 33638.24072265625,
+      "partitions_us": {
+        "transformer_layers": 31685.9150390625,
+        "vocabulary_head": 764.130859375,
+        "logits_sampling": 35.873046875,
+        "unclassified_gpu": 29.02587890625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1123.2958984375
+      }
+    },
+    {
+      "start_us": 2456616112235.03,
+      "end_us": 2456616145868.79,
+      "wall_us": 33633.76025390625,
+      "partitions_us": {
+        "transformer_layers": 31648.3935546875,
+        "vocabulary_head": 764.099609375,
+        "logits_sampling": 30.78466796875,
+        "unclassified_gpu": 32.99169921875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1157.49072265625
+      }
+    },
+    {
+      "start_us": 2456616145868.79,
+      "end_us": 2456616179442.806,
+      "wall_us": 33574.01611328125,
+      "partitions_us": {
+        "transformer_layers": 31599.84619140625,
+        "vocabulary_head": 764.67626953125,
+        "logits_sampling": 33.24755859375,
+        "unclassified_gpu": 29.21484375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1147.03125
+      }
+    },
+    {
+      "start_us": 2456616179442.806,
+      "end_us": 2456616212965.59,
+      "wall_us": 33522.78369140625,
+      "partitions_us": {
+        "transformer_layers": 31583.75830078125,
+        "vocabulary_head": 765.763671875,
+        "logits_sampling": 31.6484375,
+        "unclassified_gpu": 30.0478515625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1111.5654296875
+      }
+    },
+    {
+      "start_us": 2456616212965.59,
+      "end_us": 2456616246520.534,
+      "wall_us": 33554.9443359375,
+      "partitions_us": {
+        "transformer_layers": 31578.4658203125,
+        "vocabulary_head": 764.32421875,
+        "logits_sampling": 32.8310546875,
+        "unclassified_gpu": 28.1923828125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1151.130859375
+      }
+    },
+    {
+      "start_us": 2456616246520.534,
+      "end_us": 2456616280089.686,
+      "wall_us": 33569.15185546875,
+      "partitions_us": {
+        "transformer_layers": 31602.2763671875,
+        "vocabulary_head": 763.33203125,
+        "logits_sampling": 31.3916015625,
+        "unclassified_gpu": 29.6953125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1142.45654296875
+      }
+    },
+    {
+      "start_us": 2456616280089.686,
+      "end_us": 2456616313636.342,
+      "wall_us": 33546.65576171875,
+      "partitions_us": {
+        "transformer_layers": 31574.2626953125,
+        "vocabulary_head": 764.9638671875,
+        "logits_sampling": 32.92822265625,
+        "unclassified_gpu": 35.3583984375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1139.142578125
+      }
+    },
+    {
+      "start_us": 2456616313636.342,
+      "end_us": 2456616347190.806,
+      "wall_us": 33554.46435546875,
+      "partitions_us": {
+        "transformer_layers": 31610.2939453125,
+        "vocabulary_head": 765.02783203125,
+        "logits_sampling": 33.0556640625,
+        "unclassified_gpu": 29.56884765625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1116.51806640625
+      }
+    },
+    {
+      "start_us": 2456616347190.806,
+      "end_us": 2456616380756.79,
+      "wall_us": 33565.98388671875,
+      "partitions_us": {
+        "transformer_layers": 31590.7177734375,
+        "vocabulary_head": 763.81201171875,
+        "logits_sampling": 32.9921875,
+        "unclassified_gpu": 28.73681640625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1149.72509765625
+      }
+    },
+    {
+      "start_us": 2456616380756.79,
+      "end_us": 2456616414309.526,
+      "wall_us": 33552.73583984375,
+      "partitions_us": {
+        "transformer_layers": 31592.51953125,
+        "vocabulary_head": 762.59619140625,
+        "logits_sampling": 30.943359375,
+        "unclassified_gpu": 28.73583984375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1137.94091796875
+      }
+    },
+    {
+      "start_us": 2456616414309.526,
+      "end_us": 2456616447875.254,
+      "wall_us": 33565.72802734375,
+      "partitions_us": {
+        "transformer_layers": 31616.400390625,
+        "vocabulary_head": 764.32373046875,
+        "logits_sampling": 33.759765625,
+        "unclassified_gpu": 29.6318359375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1121.6123046875
+      }
+    },
+    {
+      "start_us": 2456616447875.254,
+      "end_us": 2456616481483.543,
+      "wall_us": 33608.2890625,
+      "partitions_us": {
+        "transformer_layers": 31637.140625,
+        "vocabulary_head": 763.619140625,
+        "logits_sampling": 31.58447265625,
+        "unclassified_gpu": 30.46435546875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1145.48046875
+      }
+    },
+    {
+      "start_us": 2456616481483.543,
+      "end_us": 2456616515099.287,
+      "wall_us": 33615.744140625,
+      "partitions_us": {
+        "transformer_layers": 31645.50244140625,
+        "vocabulary_head": 763.1708984375,
+        "logits_sampling": 32.64013671875,
+        "unclassified_gpu": 28.64453125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1145.7861328125
+      }
+    },
+    {
+      "start_us": 2456616515099.287,
+      "end_us": 2456616548688.087,
+      "wall_us": 33588.7998046875,
+      "partitions_us": {
+        "transformer_layers": 31645.8623046875,
+        "vocabulary_head": 763.84423828125,
+        "logits_sampling": 31.201171875,
+        "unclassified_gpu": 30.20751953125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1117.6845703125
+      }
+    },
+    {
+      "start_us": 2456616548688.087,
+      "end_us": 2456616582234.135,
+      "wall_us": 33546.0478515625,
+      "partitions_us": {
+        "transformer_layers": 31574.255859375,
+        "vocabulary_head": 764.35595703125,
+        "logits_sampling": 32.7998046875,
+        "unclassified_gpu": 29.0234375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1145.61279296875
+      }
+    },
+    {
+      "start_us": 2456616582234.135,
+      "end_us": 2456616615771.831,
+      "wall_us": 33537.6962890625,
+      "partitions_us": {
+        "transformer_layers": 31566.095703125,
+        "vocabulary_head": 765.283203125,
+        "logits_sampling": 32.6376953125,
+        "unclassified_gpu": 27.80810546875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1145.87158203125
+      }
+    },
+    {
+      "start_us": 2456616615771.831,
+      "end_us": 2456616649335.895,
+      "wall_us": 33564.06396484375,
+      "partitions_us": {
+        "transformer_layers": 31595.31982421875,
+        "vocabulary_head": 764.068359375,
+        "logits_sampling": 33.08935546875,
+        "unclassified_gpu": 30.3662109375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1141.22021484375
+      }
+    },
+    {
+      "start_us": 2456616649335.895,
+      "end_us": 2456616682876.247,
+      "wall_us": 33540.35205078125,
+      "partitions_us": {
+        "transformer_layers": 31607.38427734375,
+        "vocabulary_head": 762.78759765625,
+        "logits_sampling": 31.20166015625,
+        "unclassified_gpu": 29.69580078125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1109.28271484375
+      }
+    },
+    {
+      "start_us": 2456616682876.247,
+      "end_us": 2456616716425.746,
+      "wall_us": 33549.4990234375,
+      "partitions_us": {
+        "transformer_layers": 31585.17333984375,
+        "vocabulary_head": 764.2578125,
+        "logits_sampling": 33.28076171875,
+        "unclassified_gpu": 29.18408203125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1137.60302734375
+      }
+    },
+    {
+      "start_us": 2456616716425.746,
+      "end_us": 2456616749971.67,
+      "wall_us": 33545.923828125,
+      "partitions_us": {
+        "transformer_layers": 31588.65087890625,
+        "vocabulary_head": 765.763671875,
+        "logits_sampling": 31.23193359375,
+        "unclassified_gpu": 28.2568359375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1132.0205078125
+      }
+    },
+    {
+      "start_us": 2456616749971.67,
+      "end_us": 2456616783535.995,
+      "wall_us": 33564.3251953125,
+      "partitions_us": {
+        "transformer_layers": 31622.02099609375,
+        "vocabulary_head": 762.24365234375,
+        "logits_sampling": 32.927734375,
+        "unclassified_gpu": 29.6650390625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1117.4677734375
+      }
+    },
+    {
+      "start_us": 2456616783535.995,
+      "end_us": 2456616816990.367,
+      "wall_us": 33454.3720703125,
+      "partitions_us": {
+        "transformer_layers": 31478.51318359375,
+        "vocabulary_head": 761.923828125,
+        "logits_sampling": 31.52001953125,
+        "unclassified_gpu": 28.8642578125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1153.55078125
+      }
+    },
+    {
+      "start_us": 2456616816990.367,
+      "end_us": 2456616850574.756,
+      "wall_us": 33584.388671875,
+      "partitions_us": {
+        "transformer_layers": 31598.77099609375,
+        "vocabulary_head": 763.4599609375,
+        "logits_sampling": 32.671875,
+        "unclassified_gpu": 35.04052734375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1154.4453125
+      }
+    },
+    {
+      "start_us": 2456616850574.756,
+      "end_us": 2456616884129.512,
+      "wall_us": 33554.75634765625,
+      "partitions_us": {
+        "transformer_layers": 31607.69140625,
+        "vocabulary_head": 764.2919921875,
+        "logits_sampling": 31.36279296875,
+        "unclassified_gpu": 27.36083984375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1124.04931640625
+      }
+    },
+    {
+      "start_us": 2456616884129.512,
+      "end_us": 2456616917689.357,
+      "wall_us": 33559.8447265625,
+      "partitions_us": {
+        "transformer_layers": 31611.0927734375,
+        "vocabulary_head": 764.0361328125,
+        "logits_sampling": 33.34375,
+        "unclassified_gpu": 27.6796875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1123.6923828125
+      }
+    },
+    {
+      "start_us": 2456616917689.357,
+      "end_us": 2456616951260.69,
+      "wall_us": 33571.3330078125,
+      "partitions_us": {
+        "transformer_layers": 31614.72705078125,
+        "vocabulary_head": 764.1318359375,
+        "logits_sampling": 31.2646484375,
+        "unclassified_gpu": 29.2177734375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1131.99169921875
+      }
+    },
+    {
+      "start_us": 2456616951260.69,
+      "end_us": 2456616984805.878,
+      "wall_us": 33545.18798828125,
+      "partitions_us": {
+        "transformer_layers": 31576.31494140625,
+        "vocabulary_head": 765.60400390625,
+        "logits_sampling": 32.57568359375,
+        "unclassified_gpu": 29.0859375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1141.607421875
+      }
+    },
+    {
+      "start_us": 2456616984805.878,
+      "end_us": 2456617018355.643,
+      "wall_us": 33549.76513671875,
+      "partitions_us": {
+        "transformer_layers": 31603.0419921875,
+        "vocabulary_head": 766.97998046875,
+        "logits_sampling": 32.9599609375,
+        "unclassified_gpu": 28.12841796875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1118.65478515625
+      }
+    },
+    {
+      "start_us": 2456617018355.643,
+      "end_us": 2456617051915.648,
+      "wall_us": 33560.0048828125,
+      "partitions_us": {
+        "transformer_layers": 31585.087890625,
+        "vocabulary_head": 764.03466796875,
+        "logits_sampling": 32.6396484375,
+        "unclassified_gpu": 30.3369140625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1147.90576171875
+      }
+    },
+    {
+      "start_us": 2456617051915.648,
+      "end_us": 2456617085492.42,
+      "wall_us": 33576.77197265625,
+      "partitions_us": {
+        "transformer_layers": 31610.701171875,
+        "vocabulary_head": 763.298828125,
+        "logits_sampling": 30.91259765625,
+        "unclassified_gpu": 28.79931640625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1143.06005859375
+      }
+    },
+    {
+      "start_us": 2456617085492.42,
+      "end_us": 2456617119063.817,
+      "wall_us": 33571.39697265625,
+      "partitions_us": {
+        "transformer_layers": 31600.3056640625,
+        "vocabulary_head": 763.77978515625,
+        "logits_sampling": 32.86474609375,
+        "unclassified_gpu": 27.4580078125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1146.98876953125
+      }
+    },
+    {
+      "start_us": 2456617119063.817,
+      "end_us": 2456617152644.462,
+      "wall_us": 33580.64501953125,
+      "partitions_us": {
+        "transformer_layers": 31626.3505859375,
+        "vocabulary_head": 764.67578125,
+        "logits_sampling": 32.447265625,
+        "unclassified_gpu": 30.52734375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1126.64404296875
+      }
+    },
+    {
+      "start_us": 2456617152644.462,
+      "end_us": 2456617186227.571,
+      "wall_us": 33583.10888671875,
+      "partitions_us": {
+        "transformer_layers": 31602.26416015625,
+        "vocabulary_head": 763.81201171875,
+        "logits_sampling": 33.1533203125,
+        "unclassified_gpu": 29.34375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1154.53564453125
+      }
+    },
+    {
+      "start_us": 2456617186227.571,
+      "end_us": 2456617219821.111,
+      "wall_us": 33593.5400390625,
+      "partitions_us": {
+        "transformer_layers": 31621.48095703125,
+        "vocabulary_head": 763.13916015625,
+        "logits_sampling": 31.0078125,
+        "unclassified_gpu": 29.37841796875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1148.53369140625
+      }
+    },
+    {
+      "start_us": 2456617219821.111,
+      "end_us": 2456617253412.412,
+      "wall_us": 33591.30126953125,
+      "partitions_us": {
+        "transformer_layers": 31642.18603515625,
+        "vocabulary_head": 762.66015625,
+        "logits_sampling": 32.7998046875,
+        "unclassified_gpu": 30.68701171875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1122.96826171875
+      }
+    },
+    {
+      "start_us": 2456617253412.412,
+      "end_us": 2456617286971.521,
+      "wall_us": 33559.10888671875,
+      "partitions_us": {
+        "transformer_layers": 31590.98779296875,
+        "vocabulary_head": 764.32373046875,
+        "logits_sampling": 31.263671875,
+        "unclassified_gpu": 29.853515625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1142.68017578125
+      }
+    },
+    {
+      "start_us": 2456617286971.521,
+      "end_us": 2456617320550.47,
+      "wall_us": 33578.94921875,
+      "partitions_us": {
+        "transformer_layers": 31605.36181640625,
+        "vocabulary_head": 764.48291015625,
+        "logits_sampling": 33.6982421875,
+        "unclassified_gpu": 28.16259765625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1147.24365234375
+      }
+    },
+    {
+      "start_us": 2456617320550.47,
+      "end_us": 2456617354110.634,
+      "wall_us": 33560.16357421875,
+      "partitions_us": {
+        "transformer_layers": 31585.12109375,
+        "vocabulary_head": 764.22802734375,
+        "logits_sampling": 31.0400390625,
+        "unclassified_gpu": 30.46435546875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1149.31005859375
+      }
+    },
+    {
+      "start_us": 2456617354110.634,
+      "end_us": 2456617387647.151,
+      "wall_us": 33536.51708984375,
+      "partitions_us": {
+        "transformer_layers": 31592.904296875,
+        "vocabulary_head": 762.88427734375,
+        "logits_sampling": 32.736328125,
+        "unclassified_gpu": 35.361328125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1112.630859375
+      }
+    },
+    {
+      "start_us": 2456617387647.151,
+      "end_us": 2456617421236.596,
+      "wall_us": 33589.4453125,
+      "partitions_us": {
+        "transformer_layers": 31617.736328125,
+        "vocabulary_head": 764.73876953125,
+        "logits_sampling": 32.2880859375,
+        "unclassified_gpu": 30.30517578125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1144.376953125
+      }
+    },
+    {
+      "start_us": 2456617421236.596,
+      "end_us": 2456617454831.065,
+      "wall_us": 33594.46875,
+      "partitions_us": {
+        "transformer_layers": 31620.1171875,
+        "vocabulary_head": 764.80419921875,
+        "logits_sampling": 33.3125,
+        "unclassified_gpu": 29.7587890625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1146.47607421875
+      }
+    },
+    {
+      "start_us": 2456617454831.065,
+      "end_us": 2456617488391.069,
+      "wall_us": 33560.00390625,
+      "partitions_us": {
+        "transformer_layers": 31616.69140625,
+        "vocabulary_head": 762.56396484375,
+        "logits_sampling": 30.9755859375,
+        "unclassified_gpu": 30.3046875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1119.46826171875
+      }
+    },
+    {
+      "start_us": 2456617488391.069,
+      "end_us": 2456617521965.314,
+      "wall_us": 33574.2451171875,
+      "partitions_us": {
+        "transformer_layers": 31598.2236328125,
+        "vocabulary_head": 763.39599609375,
+        "logits_sampling": 33.21484375,
+        "unclassified_gpu": 29.24755859375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1150.1630859375
+      }
+    },
+    {
+      "start_us": 2456617521965.314,
+      "end_us": 2456617555568.391,
+      "wall_us": 33603.0771484375,
+      "partitions_us": {
+        "transformer_layers": 31630.568359375,
+        "vocabulary_head": 762.43505859375,
+        "logits_sampling": 31.6796875,
+        "unclassified_gpu": 30.3359375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1148.05810546875
+      }
+    },
+    {
+      "start_us": 2456617555568.391,
+      "end_us": 2456617589132.619,
+      "wall_us": 33564.22802734375,
+      "partitions_us": {
+        "transformer_layers": 31625.9677734375,
+        "vocabulary_head": 763.68310546875,
+        "logits_sampling": 33.6337890625,
+        "unclassified_gpu": 28.51416015625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1112.42919921875
+      }
+    },
+    {
+      "start_us": 2456617589132.619,
+      "end_us": 2456617622717.648,
+      "wall_us": 33585.02880859375,
+      "partitions_us": {
+        "transformer_layers": 31618.0048828125,
+        "vocabulary_head": 763.01171875,
+        "logits_sampling": 30.8154296875,
+        "unclassified_gpu": 28.35400390625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1144.8427734375
+      }
+    },
+    {
+      "start_us": 2456617622717.648,
+      "end_us": 2456617656354.357,
+      "wall_us": 33636.708984375,
+      "partitions_us": {
+        "transformer_layers": 31659.24658203125,
+        "vocabulary_head": 762.85205078125,
+        "logits_sampling": 32.86376953125,
+        "unclassified_gpu": 28.8642578125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1152.88232421875
+      }
+    },
+    {
+      "start_us": 2456617656354.357,
+      "end_us": 2456617689956.026,
+      "wall_us": 33601.6689453125,
+      "partitions_us": {
+        "transformer_layers": 31635.052734375,
+        "vocabulary_head": 764.64404296875,
+        "logits_sampling": 31.32763671875,
+        "unclassified_gpu": 31.32666015625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1139.31787109375
+      }
+    },
+    {
+      "start_us": 2456617689956.026,
+      "end_us": 2456617723578.719,
+      "wall_us": 33622.693359375,
+      "partitions_us": {
+        "transformer_layers": 31684.84033203125,
+        "vocabulary_head": 760.64404296875,
+        "logits_sampling": 32.4794921875,
+        "unclassified_gpu": 28.8330078125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1115.896484375
+      }
+    },
+    {
+      "start_us": 2456617723578.719,
+      "end_us": 2456617757190.82,
+      "wall_us": 33612.1005859375,
+      "partitions_us": {
+        "transformer_layers": 31638.703125,
+        "vocabulary_head": 765.0908203125,
+        "logits_sampling": 32.16015625,
+        "unclassified_gpu": 31.13427734375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1145.01220703125
+      }
+    },
+    {
+      "start_us": 2456617757190.82,
+      "end_us": 2456617790746.825,
+      "wall_us": 33556.00537109375,
+      "partitions_us": {
+        "transformer_layers": 31608.10302734375,
+        "vocabulary_head": 764.80322265625,
+        "logits_sampling": 32.8671875,
+        "unclassified_gpu": 28.67333984375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1121.55859375
+      }
+    },
+    {
+      "start_us": 2456617790746.825,
+      "end_us": 2456617824320.045,
+      "wall_us": 33573.2197265625,
+      "partitions_us": {
+        "transformer_layers": 31625.15625,
+        "vocabulary_head": 763.33203125,
+        "logits_sampling": 32.2568359375,
+        "unclassified_gpu": 31.71240234375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1120.76220703125
+      }
+    },
+    {
+      "start_us": 2456617824320.045,
+      "end_us": 2456617857886.674,
+      "wall_us": 33566.62890625,
+      "partitions_us": {
+        "transformer_layers": 31590.287109375,
+        "vocabulary_head": 764.77197265625,
+        "logits_sampling": 33.087890625,
+        "unclassified_gpu": 28.6728515625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1149.80908203125
+      }
+    },
+    {
+      "start_us": 2456617857886.674,
+      "end_us": 2456617891367.222,
+      "wall_us": 33480.54833984375,
+      "partitions_us": {
+        "transformer_layers": 31511.02197265625,
+        "vocabulary_head": 764.9638671875,
+        "logits_sampling": 31.19970703125,
+        "unclassified_gpu": 28.47900390625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1144.8837890625
+      }
+    },
+    {
+      "start_us": 2456617891367.222,
+      "end_us": 2456617924915.963,
+      "wall_us": 33548.74072265625,
+      "partitions_us": {
+        "transformer_layers": 31595.72900390625,
+        "vocabulary_head": 763.8759765625,
+        "logits_sampling": 33.27978515625,
+        "unclassified_gpu": 34.6611328125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1121.19482421875
+      }
+    },
+    {
+      "start_us": 2456617924915.963,
+      "end_us": 2456617958489.631,
+      "wall_us": 33573.66796875,
+      "partitions_us": {
+        "transformer_layers": 31630.78369140625,
+        "vocabulary_head": 764.19384765625,
+        "logits_sampling": 32.38427734375,
+        "unclassified_gpu": 29.1494140625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1117.15673828125
+      }
+    },
+    {
+      "start_us": 2456617958489.631,
+      "end_us": 2456617992050.308,
+      "wall_us": 33560.67724609375,
+      "partitions_us": {
+        "transformer_layers": 31620.0224609375,
+        "vocabulary_head": 760.77197265625,
+        "logits_sampling": 32.57568359375,
+        "unclassified_gpu": 29.02880859375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1118.2783203125
+      }
+    },
+    {
+      "start_us": 2456617992050.308,
+      "end_us": 2456618025617.897,
+      "wall_us": 33567.5888671875,
+      "partitions_us": {
+        "transformer_layers": 31602.76416015625,
+        "vocabulary_head": 764.00390625,
+        "logits_sampling": 30.84814453125,
+        "unclassified_gpu": 29.919921875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1140.052734375
+      }
+    },
+    {
+      "start_us": 2456618025617.897,
+      "end_us": 2456618059166.029,
+      "wall_us": 33548.1318359375,
+      "partitions_us": {
+        "transformer_layers": 31608.12158203125,
+        "vocabulary_head": 763.556640625,
+        "logits_sampling": 33.0869140625,
+        "unclassified_gpu": 31.134765625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1112.23193359375
+      }
+    },
+    {
+      "start_us": 2456618059166.029,
+      "end_us": 2456618092742.194,
+      "wall_us": 33576.1650390625,
+      "partitions_us": {
+        "transformer_layers": 31601.57958984375,
+        "vocabulary_head": 764.03564453125,
+        "logits_sampling": 31.6796875,
+        "unclassified_gpu": 29.69482421875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1149.17529296875
+      }
+    },
+    {
+      "start_us": 2456618092742.194,
+      "end_us": 2456618126312.151,
+      "wall_us": 33569.95703125,
+      "partitions_us": {
+        "transformer_layers": 31601.775390625,
+        "vocabulary_head": 764.1640625,
+        "logits_sampling": 33.087890625,
+        "unclassified_gpu": 28.73828125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1142.19140625
+      }
+    },
+    {
+      "start_us": 2456618126312.151,
+      "end_us": 2456618159876.252,
+      "wall_us": 33564.10107421875,
+      "partitions_us": {
+        "transformer_layers": 31598.181640625,
+        "vocabulary_head": 764.67578125,
+        "logits_sampling": 31.5830078125,
+        "unclassified_gpu": 28.5458984375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1141.11474609375
+      }
+    },
+    {
+      "start_us": 2456618159876.252,
+      "end_us": 2456618193420.448,
+      "wall_us": 33544.1962890625,
+      "partitions_us": {
+        "transformer_layers": 31601.7431640625,
+        "vocabulary_head": 763.427734375,
+        "logits_sampling": 32.92724609375,
+        "unclassified_gpu": 31.20068359375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1114.8974609375
+      }
+    },
+    {
+      "start_us": 2456618193420.448,
+      "end_us": 2456618226995.813,
+      "wall_us": 33575.36474609375,
+      "partitions_us": {
+        "transformer_layers": 31599.39013671875,
+        "vocabulary_head": 761.3798828125,
+        "logits_sampling": 31.77685546875,
+        "unclassified_gpu": 29.953125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1152.86474609375
+      }
+    },
+    {
+      "start_us": 2456618226995.813,
+      "end_us": 2456618260599.37,
+      "wall_us": 33603.55712890625,
+      "partitions_us": {
+        "transformer_layers": 31630.6767578125,
+        "vocabulary_head": 765.21923828125,
+        "logits_sampling": 32.9619140625,
+        "unclassified_gpu": 29.18505859375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1145.51416015625
+      }
+    },
+    {
+      "start_us": 2456618260599.37,
+      "end_us": 2456618294158.862,
+      "wall_us": 33559.49169921875,
+      "partitions_us": {
+        "transformer_layers": 31617.1689453125,
+        "vocabulary_head": 764.4833984375,
+        "logits_sampling": 31.486328125,
+        "unclassified_gpu": 30.97509765625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1115.3779296875
+      }
+    },
+    {
+      "start_us": 2456618294158.862,
+      "end_us": 2456618327751.155,
+      "wall_us": 33592.29296875,
+      "partitions_us": {
+        "transformer_layers": 31615.646484375,
+        "vocabulary_head": 764.580078125,
+        "logits_sampling": 33.34375,
+        "unclassified_gpu": 30.8828125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1147.83984375
+      }
+    },
+    {
+      "start_us": 2456618327751.155,
+      "end_us": 2456618361324.632,
+      "wall_us": 33573.47705078125,
+      "partitions_us": {
+        "transformer_layers": 31604.38330078125,
+        "vocabulary_head": 762.97998046875,
+        "logits_sampling": 31.6796875,
+        "unclassified_gpu": 28.06396484375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1146.3701171875
+      }
+    },
+    {
+      "start_us": 2456618361324.632,
+      "end_us": 2456618394885.885,
+      "wall_us": 33561.2529296875,
+      "partitions_us": {
+        "transformer_layers": 31593.82080078125,
+        "vocabulary_head": 762.9150390625,
+        "logits_sampling": 33.1220703125,
+        "unclassified_gpu": 27.26416015625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1144.130859375
+      }
+    },
+    {
+      "start_us": 2456618394885.885,
+      "end_us": 2456618428458.305,
+      "wall_us": 33572.42041015625,
+      "partitions_us": {
+        "transformer_layers": 31628.89111328125,
+        "vocabulary_head": 765.5400390625,
+        "logits_sampling": 30.94384765625,
+        "unclassified_gpu": 32.28564453125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1114.759765625
+      }
+    },
+    {
+      "start_us": 2456618428458.305,
+      "end_us": 2456618462096.774,
+      "wall_us": 33638.46875,
+      "partitions_us": {
+        "transformer_layers": 31657.60400390625,
+        "vocabulary_head": 764.93212890625,
+        "logits_sampling": 33.34375,
+        "unclassified_gpu": 33.50390625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1149.0849609375
+      }
+    },
+    {
+      "start_us": 2456618462096.774,
+      "end_us": 2456618495725.58,
+      "wall_us": 33628.80615234375,
+      "partitions_us": {
+        "transformer_layers": 31658.80419921875,
+        "vocabulary_head": 762.43603515625,
+        "logits_sampling": 31.87255859375,
+        "unclassified_gpu": 28.3544921875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1147.3388671875
+      }
+    },
+    {
+      "start_us": 2456618495725.58,
+      "end_us": 2456618529395.473,
+      "wall_us": 33669.89306640625,
+      "partitions_us": {
+        "transformer_layers": 31719.25927734375,
+        "vocabulary_head": 763.841796875,
+        "logits_sampling": 33.92041015625,
+        "unclassified_gpu": 27.16845703125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1125.703125
+      }
+    },
+    {
+      "start_us": 2456618529395.473,
+      "end_us": 2456618562981.077,
+      "wall_us": 33585.60400390625,
+      "partitions_us": {
+        "transformer_layers": 31606.91943359375,
+        "vocabulary_head": 764.73974609375,
+        "logits_sampling": 31.1357421875,
+        "unclassified_gpu": 29.94921875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1152.85986328125
+      }
+    },
+    {
+      "start_us": 2456618562981.077,
+      "end_us": 2456618596557.594,
+      "wall_us": 33576.51708984375,
+      "partitions_us": {
+        "transformer_layers": 31607.119140625,
+        "vocabulary_head": 760.61181640625,
+        "logits_sampling": 33.82421875,
+        "unclassified_gpu": 28.66845703125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1146.29345703125
+      }
+    },
+    {
+      "start_us": 2456618596557.594,
+      "end_us": 2456618630097.791,
+      "wall_us": 33540.19677734375,
+      "partitions_us": {
+        "transformer_layers": 31599.591796875,
+        "vocabulary_head": 763.0419921875,
+        "logits_sampling": 31.61767578125,
+        "unclassified_gpu": 29.4716796875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1116.4736328125
+      }
+    },
+    {
+      "start_us": 2456618630097.791,
+      "end_us": 2456618663682.915,
+      "wall_us": 33585.1240234375,
+      "partitions_us": {
+        "transformer_layers": 31602.6552734375,
+        "vocabulary_head": 763.42578125,
+        "logits_sampling": 34.04833984375,
+        "unclassified_gpu": 29.85595703125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1155.138671875
+      }
+    },
+    {
+      "start_us": 2456618663682.915,
+      "end_us": 2456618697257.0,
+      "wall_us": 33574.0849609375,
+      "partitions_us": {
+        "transformer_layers": 31607.20703125,
+        "vocabulary_head": 763.20361328125,
+        "logits_sampling": 31.48779296875,
+        "unclassified_gpu": 28.8330078125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1143.353515625
+      }
+    },
+    {
+      "start_us": 2456618697257.0,
+      "end_us": 2456618730838.701,
+      "wall_us": 33581.701171875,
+      "partitions_us": {
+        "transformer_layers": 31609.87744140625,
+        "vocabulary_head": 764.32421875,
+        "logits_sampling": 33.43994140625,
+        "unclassified_gpu": 28.8310546875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1145.228515625
+      }
+    },
+    {
+      "start_us": 2456618730838.701,
+      "end_us": 2456618764395.378,
+      "wall_us": 33556.6767578125,
+      "partitions_us": {
+        "transformer_layers": 31611.4033203125,
+        "vocabulary_head": 763.93994140625,
+        "logits_sampling": 31.93408203125,
+        "unclassified_gpu": 28.4169921875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1120.982421875
+      }
+    },
+    {
+      "start_us": 2456618764395.378,
+      "end_us": 2456618797968.278,
+      "wall_us": 33572.89990234375,
+      "partitions_us": {
+        "transformer_layers": 31605.73974609375,
+        "vocabulary_head": 761.9560546875,
+        "logits_sampling": 32.73583984375,
+        "unclassified_gpu": 29.98486328125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1142.4833984375
+      }
+    },
+    {
+      "start_us": 2456618797968.278,
+      "end_us": 2456618831523.227,
+      "wall_us": 33554.94921875,
+      "partitions_us": {
+        "transformer_layers": 31612.18408203125,
+        "vocabulary_head": 762.916015625,
+        "logits_sampling": 31.55224609375,
+        "unclassified_gpu": 28.193359375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1120.103515625
+      }
+    },
+    {
+      "start_us": 2456618831523.227,
+      "end_us": 2456618865166.656,
+      "wall_us": 33643.4287109375,
+      "partitions_us": {
+        "transformer_layers": 31692.78173828125,
+        "vocabulary_head": 762.6279296875,
+        "logits_sampling": 32.671875,
+        "unclassified_gpu": 28.03125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1127.31591796875
+      }
+    },
+    {
+      "start_us": 2456618865166.656,
+      "end_us": 2456618898794.533,
+      "wall_us": 33627.87744140625,
+      "partitions_us": {
+        "transformer_layers": 31646.27734375,
+        "vocabulary_head": 765.572265625,
+        "logits_sampling": 31.55224609375,
+        "unclassified_gpu": 28.48095703125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1155.99462890625
+      }
+    },
+    {
+      "start_us": 2456618898794.533,
+      "end_us": 2456618932449.866,
+      "wall_us": 33655.3330078125,
+      "partitions_us": {
+        "transformer_layers": 31685.8232421875,
+        "vocabulary_head": 761.85986328125,
+        "logits_sampling": 32.83203125,
+        "unclassified_gpu": 30.81591796875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1144.001953125
+      }
+    },
+    {
+      "start_us": 2456618932449.866,
+      "end_us": 2456618965888.622,
+      "wall_us": 33438.755859375,
+      "partitions_us": {
+        "transformer_layers": 31489.13525390625,
+        "vocabulary_head": 764.22802734375,
+        "logits_sampling": 31.328125,
+        "unclassified_gpu": 28.671875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1125.392578125
+      }
+    },
+    {
+      "start_us": 2456618965888.622,
+      "end_us": 2456618999432.019,
+      "wall_us": 33543.39697265625,
+      "partitions_us": {
+        "transformer_layers": 31582.21923828125,
+        "vocabulary_head": 763.2041015625,
+        "logits_sampling": 32.50830078125,
+        "unclassified_gpu": 35.3271484375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1130.13818359375
+      }
+    },
+    {
+      "start_us": 2456618999432.019,
+      "end_us": 2456619032965.943,
+      "wall_us": 33533.923828125,
+      "partitions_us": {
+        "transformer_layers": 31591.04150390625,
+        "vocabulary_head": 763.587890625,
+        "logits_sampling": 31.6806640625,
+        "unclassified_gpu": 31.1669921875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1116.44677734375
+      }
+    },
+    {
+      "start_us": 2456619032965.943,
+      "end_us": 2456619066560.7,
+      "wall_us": 33594.75732421875,
+      "partitions_us": {
+        "transformer_layers": 31620.55322265625,
+        "vocabulary_head": 764.5478515625,
+        "logits_sampling": 33.47265625,
+        "unclassified_gpu": 30.080078125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1146.103515625
+      }
+    },
+    {
+      "start_us": 2456619066560.7,
+      "end_us": 2456619100125.633,
+      "wall_us": 33564.9326171875,
+      "partitions_us": {
+        "transformer_layers": 31624.40478515625,
+        "vocabulary_head": 763.0439453125,
+        "logits_sampling": 31.2001953125,
+        "unclassified_gpu": 30.7841796875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1115.49951171875
+      }
+    },
+    {
+      "start_us": 2456619100125.633,
+      "end_us": 2456619133714.085,
+      "wall_us": 33588.4521484375,
+      "partitions_us": {
+        "transformer_layers": 31616.95849609375,
+        "vocabulary_head": 765.15380859375,
+        "logits_sampling": 32.671875,
+        "unclassified_gpu": 29.3125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1144.35546875
+      }
+    },
+    {
+      "start_us": 2456619133714.085,
+      "end_us": 2456619167287.658,
+      "wall_us": 33573.5732421875,
+      "partitions_us": {
+        "transformer_layers": 31606.4921875,
+        "vocabulary_head": 762.916015625,
+        "logits_sampling": 31.52001953125,
+        "unclassified_gpu": 28.9912109375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1143.65380859375
+      }
+    },
+    {
+      "start_us": 2456619167287.658,
+      "end_us": 2456619200856.239,
+      "wall_us": 33568.58056640625,
+      "partitions_us": {
+        "transformer_layers": 31601.853515625,
+        "vocabulary_head": 764.1318359375,
+        "logits_sampling": 33.18310546875,
+        "unclassified_gpu": 28.8310546875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1140.5810546875
+      }
+    },
+    {
+      "start_us": 2456619200856.239,
+      "end_us": 2456619234424.915,
+      "wall_us": 33568.67626953125,
+      "partitions_us": {
+        "transformer_layers": 31624.34814453125,
+        "vocabulary_head": 764.259765625,
+        "logits_sampling": 31.16845703125,
+        "unclassified_gpu": 28.9619140625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1119.93798828125
+      }
+    },
+    {
+      "start_us": 2456619234424.915,
+      "end_us": 2456619268074.585,
+      "wall_us": 33649.669921875,
+      "partitions_us": {
+        "transformer_layers": 31671.54638671875,
+        "vocabulary_head": 764.06689453125,
+        "logits_sampling": 33.056640625,
+        "unclassified_gpu": 30.017578125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1150.982421875
+      }
+    },
+    {
+      "start_us": 2456619268074.585,
+      "end_us": 2456619301706.686,
+      "wall_us": 33632.10107421875,
+      "partitions_us": {
+        "transformer_layers": 31662.716796875,
+        "vocabulary_head": 763.36328125,
+        "logits_sampling": 31.93798828125,
+        "unclassified_gpu": 29.79150390625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1144.29150390625
+      }
+    },
+    {
+      "start_us": 2456619301706.686,
+      "end_us": 2456619335322.338,
+      "wall_us": 33615.65185546875,
+      "partitions_us": {
+        "transformer_layers": 31666.28515625,
+        "vocabulary_head": 765.44287109375,
+        "logits_sampling": 33.21728515625,
+        "unclassified_gpu": 30.109375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1120.59716796875
+      }
+    },
+    {
+      "start_us": 2456619335322.338,
+      "end_us": 2456619368884.647,
+      "wall_us": 33562.30908203125,
+      "partitions_us": {
+        "transformer_layers": 31590.025390625,
+        "vocabulary_head": 764.419921875,
+        "logits_sampling": 31.0712890625,
+        "unclassified_gpu": 29.60205078125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1147.1904296875
+      }
+    },
+    {
+      "start_us": 2456619368884.647,
+      "end_us": 2456619402463.628,
+      "wall_us": 33578.98095703125,
+      "partitions_us": {
+        "transformer_layers": 31606.8310546875,
+        "vocabulary_head": 762.88427734375,
+        "logits_sampling": 33.7919921875,
+        "unclassified_gpu": 29.56982421875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1145.90380859375
+      }
+    },
+    {
+      "start_us": 2456619402463.628,
+      "end_us": 2456619436002.801,
+      "wall_us": 33539.1728515625,
+      "partitions_us": {
+        "transformer_layers": 31572.037109375,
+        "vocabulary_head": 765.37890625,
+        "logits_sampling": 32.09814453125,
+        "unclassified_gpu": 26.8818359375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1142.77685546875
+      }
+    },
+    {
+      "start_us": 2456619436002.801,
+      "end_us": 2456619469558.965,
+      "wall_us": 33556.1640625,
+      "partitions_us": {
+        "transformer_layers": 31618.80810546875,
+        "vocabulary_head": 764.1318359375,
+        "logits_sampling": 32.607421875,
+        "unclassified_gpu": 27.71044921875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1112.90625
+      }
+    },
+    {
+      "start_us": 2456619469558.965,
+      "end_us": 2456619503099.13,
+      "wall_us": 33540.1650390625,
+      "partitions_us": {
+        "transformer_layers": 31577.35986328125,
+        "vocabulary_head": 761.794921875,
+        "logits_sampling": 31.39111328125,
+        "unclassified_gpu": 27.4892578125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1142.1298828125
+      }
+    },
+    {
+      "start_us": 2456619503099.13,
+      "end_us": 2456619536688.127,
+      "wall_us": 33588.9970703125,
+      "partitions_us": {
+        "transformer_layers": 31612.2470703125,
+        "vocabulary_head": 764.130859375,
+        "logits_sampling": 33.0869140625,
+        "unclassified_gpu": 35.96728515625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1143.56494140625
+      }
+    },
+    {
+      "start_us": 2456619536688.127,
+      "end_us": 2456619570246.563,
+      "wall_us": 33558.43603515625,
+      "partitions_us": {
+        "transformer_layers": 31614.76171875,
+        "vocabulary_head": 764.3876953125,
+        "logits_sampling": 31.615234375,
+        "unclassified_gpu": 29.9521484375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1117.71923828125
+      }
+    },
+    {
+      "start_us": 2456619570246.563,
+      "end_us": 2456619603832.456,
+      "wall_us": 33585.89306640625,
+      "partitions_us": {
+        "transformer_layers": 31610.53515625,
+        "vocabulary_head": 763.0439453125,
+        "logits_sampling": 33.15185546875,
+        "unclassified_gpu": 27.93359375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1151.228515625
+      }
+    },
+    {
+      "start_us": 2456619603832.456,
+      "end_us": 2456619637406.637,
+      "wall_us": 33574.18115234375,
+      "partitions_us": {
+        "transformer_layers": 31609.08837890625,
+        "vocabulary_head": 763.20263671875,
+        "logits_sampling": 31.07080078125,
+        "unclassified_gpu": 29.4404296875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1141.37890625
+      }
+    },
+    {
+      "start_us": 2456619637406.637,
+      "end_us": 2456619671010.802,
+      "wall_us": 33604.16455078125,
+      "partitions_us": {
+        "transformer_layers": 31659.7529296875,
+        "vocabulary_head": 763.779296875,
+        "logits_sampling": 33.33935546875,
+        "unclassified_gpu": 29.56884765625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1117.72412109375
+      }
+    },
+    {
+      "start_us": 2456619671010.802,
+      "end_us": 2456619704648.471,
+      "wall_us": 33637.66943359375,
+      "partitions_us": {
+        "transformer_layers": 31667.48095703125,
+        "vocabulary_head": 764.06591796875,
+        "logits_sampling": 31.71435546875,
+        "unclassified_gpu": 29.34521484375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1145.06298828125
+      }
+    },
+    {
+      "start_us": 2456619704648.471,
+      "end_us": 2456619738264.923,
+      "wall_us": 33616.45166015625,
+      "partitions_us": {
+        "transformer_layers": 31643.8349609375,
+        "vocabulary_head": 763.044921875,
+        "logits_sampling": 32.7353515625,
+        "unclassified_gpu": 29.08740234375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1147.7490234375
+      }
+    },
+    {
+      "start_us": 2456619738264.923,
+      "end_us": 2456619771841.728,
+      "wall_us": 33576.80517578125,
+      "partitions_us": {
+        "transformer_layers": 31605.3984375,
+        "vocabulary_head": 765.6357421875,
+        "logits_sampling": 31.00830078125,
+        "unclassified_gpu": 30.6240234375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1144.138671875
+      }
+    },
+    {
+      "start_us": 2456619771841.728,
+      "end_us": 2456619805399.493,
+      "wall_us": 33557.76513671875,
+      "partitions_us": {
+        "transformer_layers": 31620.81591796875,
+        "vocabulary_head": 764.8037109375,
+        "logits_sampling": 32.83203125,
+        "unclassified_gpu": 29.9853515625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1109.328125
+      }
+    },
+    {
+      "start_us": 2456619805399.493,
+      "end_us": 2456619838956.618,
+      "wall_us": 33557.125,
+      "partitions_us": {
+        "transformer_layers": 31592.451171875,
+        "vocabulary_head": 765.3798828125,
+        "logits_sampling": 31.1669921875,
+        "unclassified_gpu": 28.48095703125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1139.64599609375
+      }
+    },
+    {
+      "start_us": 2456619838956.618,
+      "end_us": 2456619872524.526,
+      "wall_us": 33567.90771484375,
+      "partitions_us": {
+        "transformer_layers": 31622.73486328125,
+        "vocabulary_head": 764.77197265625,
+        "logits_sampling": 34.5908203125,
+        "unclassified_gpu": 29.79296875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1116.01708984375
+      }
+    },
+    {
+      "start_us": 2456619872524.526,
+      "end_us": 2456619906094.451,
+      "wall_us": 33569.92529296875,
+      "partitions_us": {
+        "transformer_layers": 31624.7412109375,
+        "vocabulary_head": 762.27587890625,
+        "logits_sampling": 31.1357421875,
+        "unclassified_gpu": 30.7841796875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1120.98828125
+      }
+    },
+    {
+      "start_us": 2456619906094.451,
+      "end_us": 2456619939684.472,
+      "wall_us": 33590.02099609375,
+      "partitions_us": {
+        "transformer_layers": 31616.01416015625,
+        "vocabulary_head": 764.89990234375,
+        "logits_sampling": 32.962890625,
+        "unclassified_gpu": 29.630859375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1146.51318359375
+      }
+    },
+    {
+      "start_us": 2456619939684.472,
+      "end_us": 2456619973287.165,
+      "wall_us": 33602.69287109375,
+      "partitions_us": {
+        "transformer_layers": 31626.16845703125,
+        "vocabulary_head": 763.77880859375,
+        "logits_sampling": 32.2236328125,
+        "unclassified_gpu": 31.0712890625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1149.45068359375
+      }
+    },
+    {
+      "start_us": 2456619973287.165,
+      "end_us": 2456620006859.393,
+      "wall_us": 33572.22802734375,
+      "partitions_us": {
+        "transformer_layers": 31629.3671875,
+        "vocabulary_head": 763.10791015625,
+        "logits_sampling": 32.767578125,
+        "unclassified_gpu": 30.240234375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1116.7451171875
+      }
+    },
+    {
+      "start_us": 2456620006859.393,
+      "end_us": 2456620040304.646,
+      "wall_us": 33445.2529296875,
+      "partitions_us": {
+        "transformer_layers": 31477.7734375,
+        "vocabulary_head": 761.41015625,
+        "logits_sampling": 30.814453125,
+        "unclassified_gpu": 29.0908203125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1146.1640625
+      }
+    },
+    {
+      "start_us": 2456620040304.646,
+      "end_us": 2456620073929.579,
+      "wall_us": 33624.93310546875,
+      "partitions_us": {
+        "transformer_layers": 31662.46142578125,
+        "vocabulary_head": 765.02685546875,
+        "logits_sampling": 33.21533203125,
+        "unclassified_gpu": 36.0009765625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1128.228515625
+      }
+    },
+    {
+      "start_us": 2456620073929.579,
+      "end_us": 2456620107555.919,
+      "wall_us": 33626.33984375,
+      "partitions_us": {
+        "transformer_layers": 31662.23095703125,
+        "vocabulary_head": 764.48388671875,
+        "logits_sampling": 31.9033203125,
+        "unclassified_gpu": 27.71142578125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1140.01025390625
+      }
+    },
+    {
+      "start_us": 2456620107555.919,
+      "end_us": 2456620141144.724,
+      "wall_us": 33588.80517578125,
+      "partitions_us": {
+        "transformer_layers": 31653.5087890625,
+        "vocabulary_head": 763.33203125,
+        "logits_sampling": 32.7041015625,
+        "unclassified_gpu": 29.6650390625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1109.59521484375
+      }
+    },
+    {
+      "start_us": 2456620141144.724,
+      "end_us": 2456620174695.161,
+      "wall_us": 33550.43701171875,
+      "partitions_us": {
+        "transformer_layers": 31579.0439453125,
+        "vocabulary_head": 763.23583984375,
+        "logits_sampling": 31.36083984375,
+        "unclassified_gpu": 27.9677734375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1148.82861328125
+      }
+    },
+    {
+      "start_us": 2456620174695.161,
+      "end_us": 2456620208280.702,
+      "wall_us": 33585.541015625,
+      "partitions_us": {
+        "transformer_layers": 31617.3232421875,
+        "vocabulary_head": 764.86767578125,
+        "logits_sampling": 33.21484375,
+        "unclassified_gpu": 27.80810546875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1142.3271484375
+      }
+    },
+    {
+      "start_us": 2456620208280.702,
+      "end_us": 2456620241843.458,
+      "wall_us": 33562.755859375,
+      "partitions_us": {
+        "transformer_layers": 31601.2646484375,
+        "vocabulary_head": 764.51611328125,
+        "logits_sampling": 31.583984375,
+        "unclassified_gpu": 27.29638671875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1138.0947265625
+      }
+    },
+    {
+      "start_us": 2456620241843.458,
+      "end_us": 2456620275408.967,
+      "wall_us": 33565.5087890625,
+      "partitions_us": {
+        "transformer_layers": 31614.75732421875,
+        "vocabulary_head": 763.10791015625,
+        "logits_sampling": 32.48046875,
+        "unclassified_gpu": 27.74560546875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1127.41748046875
+      }
+    },
+    {
+      "start_us": 2456620275408.967,
+      "end_us": 2456620309006.316,
+      "wall_us": 33597.34912109375,
+      "partitions_us": {
+        "transformer_layers": 31617.38671875,
+        "vocabulary_head": 763.5869140625,
+        "logits_sampling": 31.7099609375,
+        "unclassified_gpu": 29.15234375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1155.51318359375
+      }
+    },
+    {
+      "start_us": 2456620309006.316,
+      "end_us": 2456620342603.984,
+      "wall_us": 33597.66796875,
+      "partitions_us": {
+        "transformer_layers": 31625.927734375,
+        "vocabulary_head": 764.86962890625,
+        "logits_sampling": 33.05810546875,
+        "unclassified_gpu": 29.02392578125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1144.78857421875
+      }
+    },
+    {
+      "start_us": 2456620342603.984,
+      "end_us": 2456620376154.056,
+      "wall_us": 33550.072265625,
+      "partitions_us": {
+        "transformer_layers": 31602.36865234375,
+        "vocabulary_head": 765.1240234375,
+        "logits_sampling": 32.80029296875,
+        "unclassified_gpu": 28.384765625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1121.39453125
+      }
+    },
+    {
+      "start_us": 2456620376154.056,
+      "end_us": 2456620409691.731,
+      "wall_us": 33537.6748046875,
+      "partitions_us": {
+        "transformer_layers": 31562.89697265625,
+        "vocabulary_head": 763.68408203125,
+        "logits_sampling": 33.0888671875,
+        "unclassified_gpu": 28.51220703125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1149.49267578125
+      }
+    },
+    {
+      "start_us": 2456620409691.731,
+      "end_us": 2456620443251.454,
+      "wall_us": 33559.72314453125,
+      "partitions_us": {
+        "transformer_layers": 31592.7919921875,
+        "vocabulary_head": 763.07568359375,
+        "logits_sampling": 31.48974609375,
+        "unclassified_gpu": 29.24853515625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1143.1171875
+      }
+    },
+    {
+      "start_us": 2456620443251.454,
+      "end_us": 2456620476826.794,
+      "wall_us": 33575.33984375,
+      "partitions_us": {
+        "transformer_layers": 31608.728515625,
+        "vocabulary_head": 762.9169921875,
+        "logits_sampling": 33.30859375,
+        "unclassified_gpu": 28.451171875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1141.9345703125
+      }
+    },
+    {
+      "start_us": 2456620476826.794,
+      "end_us": 2456620510405.461,
+      "wall_us": 33578.6669921875,
+      "partitions_us": {
+        "transformer_layers": 31637.77001953125,
+        "vocabulary_head": 767.138671875,
+        "logits_sampling": 31.6162109375,
+        "unclassified_gpu": 28.51123046875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1113.630859375
+      }
+    },
+    {
+      "start_us": 2456620510405.461,
+      "end_us": 2456620543989.728,
+      "wall_us": 33584.26708984375,
+      "partitions_us": {
+        "transformer_layers": 31616.06201171875,
+        "vocabulary_head": 762.97998046875,
+        "logits_sampling": 33.2158203125,
+        "unclassified_gpu": 27.00830078125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1145.0009765625
+      }
+    },
+    {
+      "start_us": 2456620543989.728,
+      "end_us": 2456620577528.075,
+      "wall_us": 33538.34716796875,
+      "partitions_us": {
+        "transformer_layers": 31586.13427734375,
+        "vocabulary_head": 762.5,
+        "logits_sampling": 31.1357421875,
+        "unclassified_gpu": 30.88037109375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1127.69677734375
+      }
+    },
+    {
+      "start_us": 2456620577528.075,
+      "end_us": 2456620611071.926,
+      "wall_us": 33543.8505859375,
+      "partitions_us": {
+        "transformer_layers": 31589.97509765625,
+        "vocabulary_head": 762.8837890625,
+        "logits_sampling": 33.40771484375,
+        "unclassified_gpu": 34.3056640625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1123.2783203125
+      }
+    },
+    {
+      "start_us": 2456620611071.926,
+      "end_us": 2456620644592.321,
+      "wall_us": 33520.39501953125,
+      "partitions_us": {
+        "transformer_layers": 31575.818359375,
+        "vocabulary_head": 763.42822265625,
+        "logits_sampling": 31.90380859375,
+        "unclassified_gpu": 28.1005859375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1121.14404296875
+      }
+    },
+    {
+      "start_us": 2456620644592.321,
+      "end_us": 2456620678210.221,
+      "wall_us": 33617.900390625,
+      "partitions_us": {
+        "transformer_layers": 31639.70556640625,
+        "vocabulary_head": 763.8759765625,
+        "logits_sampling": 32.83349609375,
+        "unclassified_gpu": 28.95849609375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1152.52685546875
+      }
+    },
+    {
+      "start_us": 2456620678210.221,
+      "end_us": 2456620711768.92,
+      "wall_us": 33558.69873046875,
+      "partitions_us": {
+        "transformer_layers": 31612.23388671875,
+        "vocabulary_head": 764.67578125,
+        "logits_sampling": 31.45654296875,
+        "unclassified_gpu": 29.5986328125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1120.73388671875
+      }
+    },
+    {
+      "start_us": 2456620711768.92,
+      "end_us": 2456620745348.515,
+      "wall_us": 33579.59521484375,
+      "partitions_us": {
+        "transformer_layers": 31628.41845703125,
+        "vocabulary_head": 765.63623046875,
+        "logits_sampling": 33.34375,
+        "unclassified_gpu": 29.697265625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1122.49951171875
+      }
+    },
+    {
+      "start_us": 2456620745348.515,
+      "end_us": 2456620778935.726,
+      "wall_us": 33587.2109375,
+      "partitions_us": {
+        "transformer_layers": 31642.521484375,
+        "vocabulary_head": 762.97900390625,
+        "logits_sampling": 32.095703125,
+        "unclassified_gpu": 28.16015625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1121.45458984375
+      }
+    },
+    {
+      "start_us": 2456620778935.726,
+      "end_us": 2456620812513.562,
+      "wall_us": 33577.8359375,
+      "partitions_us": {
+        "transformer_layers": 31615.73193359375,
+        "vocabulary_head": 764.22802734375,
+        "logits_sampling": 32.51025390625,
+        "unclassified_gpu": 28.64111328125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1136.724609375
+      }
+    },
+    {
+      "start_us": 2456620812513.562,
+      "end_us": 2456620846097.989,
+      "wall_us": 33584.4267578125,
+      "partitions_us": {
+        "transformer_layers": 31650.06494140625,
+        "vocabulary_head": 761.7958984375,
+        "logits_sampling": 30.87939453125,
+        "unclassified_gpu": 26.94384765625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1114.74267578125
+      }
+    },
+    {
+      "start_us": 2456620846097.989,
+      "end_us": 2456620879718.288,
+      "wall_us": 33620.29931640625,
+      "partitions_us": {
+        "transformer_layers": 31645.51416015625,
+        "vocabulary_head": 763.07666015625,
+        "logits_sampling": 33.248046875,
+        "unclassified_gpu": 29.2177734375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1149.24267578125
+      }
+    },
+    {
+      "start_us": 2456620879718.288,
+      "end_us": 2456620913327.004,
+      "wall_us": 33608.7158203125,
+      "partitions_us": {
+        "transformer_layers": 31640.82666015625,
+        "vocabulary_head": 763.26806640625,
+        "logits_sampling": 31.2001953125,
+        "unclassified_gpu": 27.5205078125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1145.900390625
+      }
+    },
+    {
+      "start_us": 2456620913327.004,
+      "end_us": 2456620946928.167,
+      "wall_us": 33601.1630859375,
+      "partitions_us": {
+        "transformer_layers": 31661.30615234375,
+        "vocabulary_head": 764.068359375,
+        "logits_sampling": 33.599609375,
+        "unclassified_gpu": 27.4248046875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1114.76416015625
+      }
+    },
+    {
+      "start_us": 2456620946928.167,
+      "end_us": 2456620980488.211,
+      "wall_us": 33560.0439453125,
+      "partitions_us": {
+        "transformer_layers": 31588.466796875,
+        "vocabulary_head": 762.94677734375,
+        "logits_sampling": 31.74951171875,
+        "unclassified_gpu": 29.12109375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1147.759765625
+      }
+    },
+    {
+      "start_us": 2456620980488.211,
+      "end_us": 2456621014035.326,
+      "wall_us": 33547.115234375,
+      "partitions_us": {
+        "transformer_layers": 31605.04345703125,
+        "vocabulary_head": 762.7236328125,
+        "logits_sampling": 33.0869140625,
+        "unclassified_gpu": 28.513671875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1117.74755859375
+      }
+    },
+    {
+      "start_us": 2456621014035.326,
+      "end_us": 2456621047586.921,
+      "wall_us": 33551.5947265625,
+      "partitions_us": {
+        "transformer_layers": 31611.82568359375,
+        "vocabulary_head": 763.42578125,
+        "logits_sampling": 31.96728515625,
+        "unclassified_gpu": 27.26416015625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1117.11181640625
+      }
+    },
+    {
+      "start_us": 2456621047586.921,
+      "end_us": 2456621081188.436,
+      "wall_us": 33601.51513671875,
+      "partitions_us": {
+        "transformer_layers": 31623.5068359375,
+        "vocabulary_head": 763.8759765625,
+        "logits_sampling": 33.439453125,
+        "unclassified_gpu": 27.29638671875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1153.396484375
+      }
+    },
+    {
+      "start_us": 2456621081188.436,
+      "end_us": 2456621114620.735,
+      "wall_us": 33432.298828125,
+      "partitions_us": {
+        "transformer_layers": 31484.5087890625,
+        "vocabulary_head": 764.16259765625,
+        "logits_sampling": 31.07373046875,
+        "unclassified_gpu": 28.95947265625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1123.59423828125
+      }
+    },
+    {
+      "start_us": 2456621114620.735,
+      "end_us": 2456621148200.81,
+      "wall_us": 33580.0751953125,
+      "partitions_us": {
+        "transformer_layers": 31597.287109375,
+        "vocabulary_head": 765.44384765625,
+        "logits_sampling": 32.4482421875,
+        "unclassified_gpu": 35.13525390625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1149.7607421875
+      }
+    },
+    {
+      "start_us": 2456621148200.81,
+      "end_us": 2456621181750.517,
+      "wall_us": 33549.70703125,
+      "partitions_us": {
+        "transformer_layers": 31608.693359375,
+        "vocabulary_head": 765.31591796875,
+        "logits_sampling": 31.64794921875,
+        "unclassified_gpu": 29.3125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1114.7373046875
+      }
+    },
+    {
+      "start_us": 2456621181750.517,
+      "end_us": 2456621215314.272,
+      "wall_us": 33563.7548828125,
+      "partitions_us": {
+        "transformer_layers": 31599.03076171875,
+        "vocabulary_head": 764.2919921875,
+        "logits_sampling": 32.8642578125,
+        "unclassified_gpu": 28.96044921875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1138.607421875
+      }
+    },
+    {
+      "start_us": 2456621215314.272,
+      "end_us": 2456621248907.276,
+      "wall_us": 33593.00390625,
+      "partitions_us": {
+        "transformer_layers": 31655.56640625,
+        "vocabulary_head": 763.26806640625,
+        "logits_sampling": 31.16943359375,
+        "unclassified_gpu": 30.52783203125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1112.47216796875
+      }
+    },
+    {
+      "start_us": 2456621248907.276,
+      "end_us": 2456621282544.375,
+      "wall_us": 33637.09912109375,
+      "partitions_us": {
+        "transformer_layers": 31668.921875,
+        "vocabulary_head": 763.77978515625,
+        "logits_sampling": 32.79931640625,
+        "unclassified_gpu": 28.41552734375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1143.1826171875
+      }
+    },
+    {
+      "start_us": 2456621282544.375,
+      "end_us": 2456621316209.827,
+      "wall_us": 33665.4521484375,
+      "partitions_us": {
+        "transformer_layers": 31716.76806640625,
+        "vocabulary_head": 763.2998046875,
+        "logits_sampling": 31.74169921875,
+        "unclassified_gpu": 28.70556640625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1124.93701171875
+      }
+    },
+    {
+      "start_us": 2456621316209.827,
+      "end_us": 2456621349797.422,
+      "wall_us": 33587.5947265625,
+      "partitions_us": {
+        "transformer_layers": 31609.2373046875,
+        "vocabulary_head": 765.091796875,
+        "logits_sampling": 32.70361328125,
+        "unclassified_gpu": 30.04833984375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1150.513671875
+      }
+    },
+    {
+      "start_us": 2456621349797.422,
+      "end_us": 2456621383364.537,
+      "wall_us": 33567.115234375,
+      "partitions_us": {
+        "transformer_layers": 31592.966796875,
+        "vocabulary_head": 765.572265625,
+        "logits_sampling": 31.00732421875,
+        "unclassified_gpu": 30.4306640625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1147.13818359375
+      }
+    },
+    {
+      "start_us": 2456621383364.537,
+      "end_us": 2456621416900.389,
+      "wall_us": 33535.85205078125,
+      "partitions_us": {
+        "transformer_layers": 31589.1103515625,
+        "vocabulary_head": 763.23583984375,
+        "logits_sampling": 33.3125,
+        "unclassified_gpu": 29.7001953125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1120.4931640625
+      }
+    },
+    {
+      "start_us": 2456621416900.389,
+      "end_us": 2456621450459.151,
+      "wall_us": 33558.76171875,
+      "partitions_us": {
+        "transformer_layers": 31578.52978515625,
+        "vocabulary_head": 765.8583984375,
+        "logits_sampling": 32.57421875,
+        "unclassified_gpu": 28.9267578125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1152.87255859375
+      }
+    },
+    {
+      "start_us": 2456621450459.151,
+      "end_us": 2456621484053.147,
+      "wall_us": 33593.99609375,
+      "partitions_us": {
+        "transformer_layers": 31612.4326171875,
+        "vocabulary_head": 761.47607421875,
+        "logits_sampling": 33.27978515625,
+        "unclassified_gpu": 31.10595703125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1155.70166015625
+      }
+    },
+    {
+      "start_us": 2456621484053.147,
+      "end_us": 2456621517632.326,
+      "wall_us": 33579.17919921875,
+      "partitions_us": {
+        "transformer_layers": 31596.95751953125,
+        "vocabulary_head": 765.47607421875,
+        "logits_sampling": 31.2314453125,
+        "unclassified_gpu": 29.0546875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1156.45947265625
+      }
+    },
+    {
+      "start_us": 2456621517632.326,
+      "end_us": 2456621551205.297,
+      "wall_us": 33572.970703125,
+      "partitions_us": {
+        "transformer_layers": 31629.36376953125,
+        "vocabulary_head": 765.5400390625,
+        "logits_sampling": 32.70263671875,
+        "unclassified_gpu": 29.72705078125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1115.63720703125
+      }
+    },
+    {
+      "start_us": 2456621551205.297,
+      "end_us": 2456621584798.393,
+      "wall_us": 33593.09619140625,
+      "partitions_us": {
+        "transformer_layers": 31622.93359375,
+        "vocabulary_head": 762.7880859375,
+        "logits_sampling": 32.06494140625,
+        "unclassified_gpu": 29.60546875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1145.7041015625
+      }
+    },
+    {
+      "start_us": 2456621584798.393,
+      "end_us": 2456621618380.035,
+      "wall_us": 33581.64208984375,
+      "partitions_us": {
+        "transformer_layers": 31628.306640625,
+        "vocabulary_head": 766.78564453125,
+        "logits_sampling": 32.99267578125,
+        "unclassified_gpu": 30.46484375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1123.09228515625
+      }
+    },
+    {
+      "start_us": 2456621618380.035,
+      "end_us": 2456621651951.692,
+      "wall_us": 33571.65673828125,
+      "partitions_us": {
+        "transformer_layers": 31624.2841796875,
+        "vocabulary_head": 764.99560546875,
+        "logits_sampling": 30.97607421875,
+        "unclassified_gpu": 30.43115234375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1120.9697265625
+      }
+    },
+    {
+      "start_us": 2456621651951.692,
+      "end_us": 2456621685522.486,
+      "wall_us": 33570.7939453125,
+      "partitions_us": {
+        "transformer_layers": 31611.54541015625,
+        "vocabulary_head": 763.81201171875,
+        "logits_sampling": 32.67138671875,
+        "unclassified_gpu": 34.43359375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1128.33154296875
+      }
+    },
+    {
+      "start_us": 2456621685522.486,
+      "end_us": 2456621719108.48,
+      "wall_us": 33585.994140625,
+      "partitions_us": {
+        "transformer_layers": 31607.1669921875,
+        "vocabulary_head": 764.7060546875,
+        "logits_sampling": 31.9375,
+        "unclassified_gpu": 29.69775390625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1152.48583984375
+      }
+    },
+    {
+      "start_us": 2456621719108.48,
+      "end_us": 2456621752660.841,
+      "wall_us": 33552.36083984375,
+      "partitions_us": {
+        "transformer_layers": 31610.0078125,
+        "vocabulary_head": 763.77978515625,
+        "logits_sampling": 33.087890625,
+        "unclassified_gpu": 27.74462890625,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1117.74072265625
+      }
+    },
+    {
+      "start_us": 2456621752660.841,
+      "end_us": 2456621786211.187,
+      "wall_us": 33550.34619140625,
+      "partitions_us": {
+        "transformer_layers": 31602.53271484375,
+        "vocabulary_head": 763.52392578125,
+        "logits_sampling": 31.16845703125,
+        "unclassified_gpu": 30.3671875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1122.75390625
+      }
+    },
+    {
+      "start_us": 2456621786211.187,
+      "end_us": 2456621819765.021,
+      "wall_us": 33553.833984375,
+      "partitions_us": {
+        "transformer_layers": 31604.3232421875,
+        "vocabulary_head": 762.7236328125,
+        "logits_sampling": 33.4091796875,
+        "unclassified_gpu": 30.4638671875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1122.9140625
+      }
+    },
+    {
+      "start_us": 2456621819765.021,
+      "end_us": 2456621853328.806,
+      "wall_us": 33563.78515625,
+      "partitions_us": {
+        "transformer_layers": 31598.826171875,
+        "vocabulary_head": 762.916015625,
+        "logits_sampling": 31.52001953125,
+        "unclassified_gpu": 30.142578125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1140.38037109375
+      }
+    },
+    {
+      "start_us": 2456621853328.806,
+      "end_us": 2456621886904.4,
+      "wall_us": 33575.59375,
+      "partitions_us": {
+        "transformer_layers": 31634.81689453125,
+        "vocabulary_head": 763.39599609375,
+        "logits_sampling": 32.70556640625,
+        "unclassified_gpu": 28.2880859375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1116.38720703125
+      }
+    },
+    {
+      "start_us": 2456621886904.4,
+      "end_us": 2456621920481.018,
+      "wall_us": 33576.6181640625,
+      "partitions_us": {
+        "transformer_layers": 31607.4775390625,
+        "vocabulary_head": 762.65869140625,
+        "logits_sampling": 31.3291015625,
+        "unclassified_gpu": 30.1748046875,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1144.97802734375
+      }
+    },
+    {
+      "start_us": 2456621920481.018,
+      "end_us": 2456621954085.251,
+      "wall_us": 33604.23291015625,
+      "partitions_us": {
+        "transformer_layers": 31639.42919921875,
+        "vocabulary_head": 764.1640625,
+        "logits_sampling": 32.9287109375,
+        "unclassified_gpu": 31.1689453125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1136.5419921875
+      }
+    },
+    {
+      "start_us": 2456621954085.251,
+      "end_us": 2456621987662.797,
+      "wall_us": 33577.5458984375,
+      "partitions_us": {
+        "transformer_layers": 31607.50537109375,
+        "vocabulary_head": 765.18798828125,
+        "logits_sampling": 32.3525390625,
+        "unclassified_gpu": 29.72802734375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1142.77197265625
+      }
+    },
+    {
+      "start_us": 2456621987662.797,
+      "end_us": 2456622021224.823,
+      "wall_us": 33562.0263671875,
+      "partitions_us": {
+        "transformer_layers": 31615.2021484375,
+        "vocabulary_head": 764.06591796875,
+        "logits_sampling": 32.80224609375,
+        "unclassified_gpu": 30.39990234375,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1119.55615234375
+      }
+    },
+    {
+      "start_us": 2456622021224.823,
+      "end_us": 2456622054857.024,
+      "wall_us": 33632.20068359375,
+      "partitions_us": {
+        "transformer_layers": 31650.689453125,
+        "vocabulary_head": 764.03564453125,
+        "logits_sampling": 31.38916015625,
+        "unclassified_gpu": 28.8330078125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1157.25341796875
+      }
+    },
+    {
+      "start_us": 2456622054857.024,
+      "end_us": 2456622087688.297,
+      "wall_us": 32831.27294921875,
+      "partitions_us": {
+        "transformer_layers": 31684.09228515625,
+        "vocabulary_head": 0.0,
+        "logits_sampling": 0.0,
+        "unclassified_gpu": 21.98486328125,
+        "gpu_category_overlap": 0.0,
+        "no_gpu_activity": 1125.19580078125
+      }
+    }
+  ],
+  "activity_names": [
+    {
+      "category": "transformer_layers",
+      "name": "kernel_unified_attention",
+      "events": 15300,
+      "summed_activity_us": 3213918.5478515625
+    },
+    {
+      "category": "transformer_layers",
+      "name": "nvjet_sm90_tst_192x8_64x8_2x1_v_bz_TNT",
+      "events": 15300,
+      "summed_activity_us": 1963662.8291015625
+    },
+    {
+      "category": "transformer_layers",
+      "name": "nvjet_sm90_tst_384x8_64x4_2x1_v_bz_splitK_TNT",
+      "events": 30600,
+      "summed_activity_us": 1514469.9580078125
+    },
+    {
+      "category": "transformer_layers",
+      "name": "nvjet_sm90_tst_128x8_64x12_2x1_v_bz_splitK_TNT",
+      "events": 12750,
+      "summed_activity_us": 642030.1611328125
+    },
+    {
+      "category": "vocabulary_head",
+      "name": "nvjet_sm90_tst_384x8_64x4_2x1_v_bz_TNT",
+      "events": 254,
+      "summed_activity_us": 193794.35986328125
+    },
+    {
+      "category": "transformer_layers",
+      "name": "nvjet_sm90_tst_192x8_64x8_2x1_v_bz_splitK_TNT",
+      "events": 2550,
+      "summed_activity_us": 161742.0810546875
+    },
+    {
+      "category": "transformer_layers",
+      "name": "triton_red_fused_add_mul_rms_norm_2",
+      "events": 15300,
+      "summed_activity_us": 118045.2275390625
+    },
+    {
+      "category": "transformer_layers",
+      "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, __nv_bfloat16, float, __nv_bfloat16, false, float, __nv_bfloat16, __nv_bfloat16, true, false, false, false>(cublasLt::cublasSplitKParams<float>, float const*, __nv_bfloat16 const*, float*, __nv_bfloat16*, float const*, float const*, __nv_bfloat16 const*, float const*, __nv_bfloat16*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+      "events": 45900,
+      "summed_activity_us": 115067.703125
+    },
+    {
+      "category": "transformer_layers",
+      "name": "triton_red_fused_add_rms_norm_0",
+      "events": 15300,
+      "summed_activity_us": 113628.998046875
+    },
+    {
+      "category": "transformer_layers",
+      "name": "reduce_segments",
+      "events": 15300,
+      "summed_activity_us": 52619.7998046875
+    },
+    {
+      "category": "transformer_layers",
+      "name": "triton_poi_fused_gelu_mul_slice_1",
+      "events": 15300,
+      "summed_activity_us": 31212.38818359375
+    },
+    {
+      "category": "transformer_layers",
+      "name": "triton_red_fused_add_cat_index_select_mul_rms_norm_split_split_with_sizes_sub_unsqueeze_view_3",
+      "events": 15045,
+      "summed_activity_us": 30559.66796875
+    },
+    {
+      "category": "transformer_layers",
+      "name": "triton_red_fused_add_cat_index_select_mul_rms_norm_split_split_with_sizes_sub_unsqueeze_view_4",
+      "events": 15045,
+      "summed_activity_us": 29356.7060546875
+    },
+    {
+      "category": "transformer_layers",
+      "name": "Memset (Device)",
+      "events": 30600,
+      "summed_activity_us": 29018.23828125
+    },
+    {
+      "category": "transformer_layers",
+      "name": "reshape_and_cache_kernel_flash",
+      "events": 15300,
+      "summed_activity_us": 23846.28662109375
+    },
+    {
+      "category": "transformer_layers",
+      "name": "triton_red_fused_rms_norm_split_with_sizes_view_5",
+      "events": 15045,
+      "summed_activity_us": 18332.275390625
+    },
+    {
+      "category": "logits_sampling",
+      "name": "_gumbel_sample_kernel",
+      "events": 254,
+      "summed_activity_us": 3693.05224609375
+    },
+    {
+      "category": "unclassified_gpu",
+      "name": "_gather_block_tables_kernel",
+      "events": 255,
+      "summed_activity_us": 1813.443359375
+    },
+    {
+      "category": "unclassified_gpu",
+      "name": "Memcpy DtoH (Device -> Pinned)",
+      "events": 509,
+      "summed_activity_us": 1210.63720703125
+    },
+    {
+      "category": "transformer_layers",
+      "name": "triton_red_fused__to_copy_embedding_mul_rms_norm_0",
+      "events": 255,
+      "summed_activity_us": 1048.93701171875
+    },
+    {
+      "category": "logits_sampling",
+      "name": "void at::native::reduce_kernel<512, 1, at::native::ReduceOp<float, at::native::ArgMaxOps<float>, unsigned int, long, 4, 4> >(at::native::ReduceOp<float, at::native::ArgMaxOps<float>, unsigned int, long, 4, 4>)",
+      "events": 254,
+      "summed_activity_us": 986.65625
+    },
+    {
+      "category": "unclassified_gpu",
+      "name": "void at::native::index_elementwise_kernel<128, 4, at::native::gpu_index_kernel<at::native::index_kernel_impl<at::native::OpaqueType<2> >(at::TensorIteratorBase&, c10::ArrayRef<long>, c10::ArrayRef<long>)::{lambda(char*, char const*, long)#1}>(at::TensorIteratorBase&, c10::ArrayRef<long>, c10::ArrayRef<long>, at::native::index_kernel_impl<at::native::OpaqueType<2> >(at::TensorIteratorBase&, c10::ArrayRef<long>, c10::ArrayRef<long>)::{lambda(char*, char const*, long)#1} const&, bool)::{lambda(int)#1}>(long, at::native::gpu_index_kernel<at::native::index_kernel_impl<at::native::OpaqueType<2> >(at::TensorIteratorBase&, c10::ArrayRef<long>, c10::ArrayRef<long>)::{lambda(char*, char const*, long)#1}>(at::TensorIteratorBase&, c10::ArrayRef<long>, c10::ArrayRef<long>, at::native::index_kernel_impl<at::native::OpaqueType<2> >(at::TensorIteratorBase&, c10::ArrayRef<long>, c10::ArrayRef<long>)::{lambda(char*, char const*, long)#1} const&, bool)::{lambda(int)#1})",
+      "events": 254,
+      "summed_activity_us": 979.0419921875
+    },
+    {
+      "category": "unclassified_gpu",
+      "name": "_post_update_kernel",
+      "events": 254,
+      "summed_activity_us": 942.08544921875
+    },
+    {
+      "category": "unclassified_gpu",
+      "name": "_combine_sampled_and_draft_tokens_kernel",
+      "events": 255,
+      "summed_activity_us": 720.85107421875
+    },
+    {
+      "category": "unclassified_gpu",
+      "name": "_compute_slot_mappings_kernel",
+      "events": 255,
+      "summed_activity_us": 718.2119140625
+    },
+    {
+      "category": "logits_sampling",
+      "name": "_get_num_sampled_and_rejected_kernel",
+      "events": 254,
+      "summed_activity_us": 706.81884765625
+    },
+    {
+      "category": "unclassified_gpu",
+      "name": "Memcpy HtoD (Pinned -> Device)",
+      "events": 526,
+      "summed_activity_us": 665.87353515625
+    },
+    {
+      "category": "logits_sampling",
+      "name": "void at::native::index_elementwise_kernel<128, 4, at::native::gpu_index_kernel<at::native::index_kernel_impl<at::native::OpaqueType<8> >(at::TensorIteratorBase&, c10::ArrayRef<long>, c10::ArrayRef<long>)::{lambda(char*, char const*, long)#1}>(at::TensorIteratorBase&, c10::ArrayRef<long>, c10::ArrayRef<long>, at::native::index_kernel_impl<at::native::OpaqueType<8> >(at::TensorIteratorBase&, c10::ArrayRef<long>, c10::ArrayRef<long>)::{lambda(char*, char const*, long)#1} const&, bool)::{lambda(int)#1}>(long, at::native::gpu_index_kernel<at::native::index_kernel_impl<at::native::OpaqueType<8> >(at::TensorIteratorBase&, c10::ArrayRef<long>, c10::ArrayRef<long>)::{lambda(char*, char const*, long)#1}>(at::TensorIteratorBase&, c10::ArrayRef<long>, c10::ArrayRef<long>, at::native::index_kernel_impl<at::native::OpaqueType<8> >(at::TensorIteratorBase&, c10::ArrayRef<long>, c10::ArrayRef<long>)::{lambda(char*, char const*, long)#1} const&, bool)::{lambda(int)#1})",
+      "events": 254,
+      "summed_activity_us": 552.2470703125
+    },
+    {
+      "category": "transformer_layers",
+      "name": "triton_red_fused_add_cat_index_select_mul_rms_norm_split_split_with_sizes_sub_unsqueeze_view_1",
+      "events": 255,
+      "summed_activity_us": 502.17578125
+    },
+    {
+      "category": "logits_sampling",
+      "name": "void at::native::index_elementwise_kernel<128, 4, at::native::gpu_index_kernel<at::native::index_kernel_impl<at::native::OpaqueType<4> >(at::TensorIteratorBase&, c10::ArrayRef<long>, c10::ArrayRef<long>)::{lambda(char*, char const*, long)#1}>(at::TensorIteratorBase&, c10::ArrayRef<long>, c10::ArrayRef<long>, at::native::index_kernel_impl<at::native::OpaqueType<4> >(at::TensorIteratorBase&, c10::ArrayRef<long>, c10::ArrayRef<long>)::{lambda(char*, char const*, long)#1} const&, bool)::{lambda(int)#1}>(long, at::native::gpu_index_kernel<at::native::index_kernel_impl<at::native::OpaqueType<4> >(at::TensorIteratorBase&, c10::ArrayRef<long>, c10::ArrayRef<long>)::{lambda(char*, char const*, long)#1}>(at::TensorIteratorBase&, c10::ArrayRef<long>, c10::ArrayRef<long>, at::native::index_kernel_impl<at::native::OpaqueType<4> >(at::TensorIteratorBase&, c10::ArrayRef<long>, c10::ArrayRef<long>)::{lambda(char*, char const*, long)#1} const&, bool)::{lambda(int)#1})",
+      "events": 254,
+      "summed_activity_us": 477.4033203125
+    },
+    {
+      "category": "logits_sampling",
+      "name": "void at::native::_scatter_gather_elementwise_kernel<128, 8, at::native::_cuda_scatter_gather_internal_kernel<false, at::native::OpaqueType<8>, long>::operator()<at::native::TensorAssign>(at::TensorIterator&, long, long, long, at::native::TensorAssign const&)::{lambda(int)#1}>(int, at::native::_cuda_scatter_gather_internal_kernel<false, at::native::OpaqueType<8>, long>::operator()<at::native::TensorAssign>(at::TensorIterator&, long, long, long, at::native::TensorAssign const&)::{lambda(int)#1})",
+      "events": 254,
+      "summed_activity_us": 459.68212890625
+    },
+    {
+      "category": "transformer_layers",
+      "name": "triton_red_fused_add_cat_index_select_mul_rms_norm_split_split_with_sizes_sub_unsqueeze_view_2",
+      "events": 255,
+      "summed_activity_us": 450.53564453125
+    },
+    {
+      "category": "logits_sampling",
+      "name": "void at::native::vectorized_elementwise_kernel<8, at::native::BUnaryFunctor<c10::BFloat16, c10::BFloat16, c10::BFloat16, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 2ul> >(int, at::native::BUnaryFunctor<c10::BFloat16, c10::BFloat16, c10::BFloat16, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 2ul>)",
+      "events": 254,
+      "summed_activity_us": 414.2705078125
+    },
+    {
+      "category": "logits_sampling",
+      "name": "void at::native::vectorized_elementwise_kernel<8, at::native::tanh_kernel_cuda(at::TensorIteratorBase&)::{lambda()#2}::operator()() const::{lambda()#4}::operator()() const::{lambda(c10::BFloat16)#1}, std::array<char*, 2ul> >(int, at::native::tanh_kernel_cuda(at::TensorIteratorBase&)::{lambda()#2}::operator()() const::{lambda()#4}::operator()() const::{lambda(c10::BFloat16)#1}, std::array<char*, 2ul>)",
+      "events": 254,
+      "summed_activity_us": 399.0390625
+    },
+    {
+      "category": "transformer_layers",
+      "name": "memcpy32_post",
+      "events": 255,
+      "summed_activity_us": 324.6650390625
+    },
+    {
+      "category": "logits_sampling",
+      "name": "void at::native::vectorized_elementwise_kernel<8, at::native::AUnaryFunctor<c10::BFloat16, c10::BFloat16, c10::BFloat16, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 2ul> >(int, at::native::AUnaryFunctor<c10::BFloat16, c10::BFloat16, c10::BFloat16, at::native::binary_internal::MulFunctor<float> >, std::array<char*, 2ul>)",
+      "events": 254,
+      "summed_activity_us": 324.15625
+    },
+    {
+      "category": "unclassified_gpu",
+      "name": "_prepare_pos_seq_lens_kernel",
+      "events": 255,
+      "summed_activity_us": 314.43994140625
+    },
+    {
+      "category": "transformer_layers",
+      "name": "triton_red_fused_rms_norm_split_with_sizes_view_3",
+      "events": 255,
+      "summed_activity_us": 314.39306640625
+    },
+    {
+      "category": "unclassified_gpu",
+      "name": "void at::native::vectorized_elementwise_kernel<8, at::native::FillFunctor<bool>, std::array<char*, 1ul> >(int, at::native::FillFunctor<bool>, std::array<char*, 1ul>)",
+      "events": 255,
+      "summed_activity_us": 228.54052734375
+    },
+    {
+      "category": "vocabulary_head",
+      "name": "Memset (Device)",
+      "events": 254,
+      "summed_activity_us": 215.33251953125
+    },
+    {
+      "category": "unclassified_gpu",
+      "name": "void at::native::vectorized_elementwise_kernel<4, at::native::FillFunctor<int>, std::array<char*, 1ul> >(int, at::native::FillFunctor<int>, std::array<char*, 1ul>)",
+      "events": 255,
+      "summed_activity_us": 210.6669921875
+    },
+    {
+      "category": "logits_sampling",
+      "name": "void at::native::vectorized_elementwise_kernel<4, at::native::FillFunctor<int>, std::array<char*, 1ul> >(int, at::native::FillFunctor<int>, std::array<char*, 1ul>)",
+      "events": 254,
+      "summed_activity_us": 209.28564453125
+    },
+    {
+      "category": "unclassified_gpu",
+      "name": "void (anonymous namespace)::elementwise_kernel_with_index<int, at::native::arange_cuda_out(c10::Scalar const&, c10::Scalar const&, c10::Scalar const&, at::Tensor&)::{lambda()#1}::operator()() const::{lambda()#3}::operator()() const::{lambda(long)#1}>(int, at::native::arange_cuda_out(c10::Scalar const&, c10::Scalar const&, c10::Scalar const&, at::Tensor&)::{lambda()#1}::operator()() const::{lambda()#3}::operator()() const::{lambda(long)#1}, function_traits<at::native::arange_cuda_out(c10::Scalar const&, c10::Scalar const&, c10::Scalar const&, at::Tensor&)::{lambda()#1}::operator()() const::{lambda()#3}::operator()() const::{lambda(long)#1}>::result_type*)",
+      "events": 255,
+      "summed_activity_us": 198.810546875
+    },
+    {
+      "category": "unclassified_gpu",
+      "name": "_apply_write_kernel",
+      "events": 16,
+      "summed_activity_us": 85.6611328125
+    }
+  ],
+  "pending_components": [
+    "Audit selected boundaries against prefill/decode evidence",
+    "Audit semantic assignments against kernel and correlation evidence",
+    "CPU scheduling attribution and CPU/GPU overlap",
+    "Frontend streaming and cross-process clock alignment",
+    "Instrumentation overhead and graph/eager interpretation"
+  ],
+  "note": "GPU activity is unioned in trace-clock microseconds; concurrent distinct categories are explicit overlap; no_gpu_activity does not identify its CPU cause; summed activity durations are non-additive diagnostics",
+  "mode": "graphs",
+  "context": 100000,
+  "case": {
+    "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-t6-graphs-100000-result.json",
+    "bytes": 5167,
+    "sha256": "38abcd5036c938cadf5c7263d448db56bc8732b9c0a1c2254701508fb0eccd2b"
+  },
+  "selection": {
+    "path": "/tmp/lpx-gpu/t6-graphs-100000-selection.json",
+    "bytes": 4765275,
+    "sha256": "eb9e79b336bde7cedd37fb0032880d2f846a970fffdb52f758c620a56babbf97"
+  },
+  "trace": {
+    "path": "/tmp/lpx-gpu/t6-traces-graphs-1793313147110287746/t6-graphs-100000-1793313379197096839_rank0.1793313662296678114.pt.trace.json.gz",
+    "bytes": 35617752,
+    "sha256": "6c22e7779c75c04818fcb8eaba38f43c875e3f7cdc80ad28e046901ad747b8f3"
+  },
+  "profiled_output": {
+    "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-t6-graphs-100000-1793313379197096839-profiled.jsonl",
+    "bytes": 18991,
+    "sha256": "ca3fe4f548f6cadb6783bb9472b2cd713e0a9e53dda3d667c387eff3945f9602"
+  },
+  "control_timing": {
+    "control_stream_step_us": 32653.599933666344,
+    "profiled_stream_step_us": 33146.17698391278,
+    "profiled_over_control": 1.0150849232932073,
+    "control_completion_tokens": 256,
+    "profiled_completion_tokens": 256,
+    "identical_tokens": true,
+    "first_different_token": null,
+    "note": "Client delivery interval per decode token; includes buffering and profiler overhead; not a GPU kernel-time breakdown"
+  }
+}

@@ -1,6 +1,6 @@
 # Progress on reproducing the AA Gemma 4 31B LPX results
 
-Record date: 2026-10-26.
+Record date: 2026-10-30.
 This page summarizes the work to reproduce the Artificial Analysis (AA) Gemma 4 31B results on NVIDIA Groq 3 LPX (LP30) hardware with TokenSim.
 Each section links to the detailed record that holds the method, the expectations recorded before each run and the complete results.
 The [final summary](lpx-aa-final-summary.md) states the outcome of the work in one page.
@@ -43,7 +43,7 @@ All results use the bundled [fidelity configuration](../experiments/lpx/fidelity
 | Token ratio | [Token-ratio record](lpx-token-ratio.md) | Gemma 4 31B's own writing outputs give 1.031 to 1.048 tokens per `o200k_base` token, which cuts the TP32/PP8 extra time from 14 to 25 µs to about 1 to 16 µs; ratios of 1.053 to 1.090, seen on reasoning-heavy text, remove it |
 | Cross-tray latency | [Tray-latency record](lpx-tray-latency.md) | The TP32/PP8 step grows by about 25 µs per 0.1 µs of cross-tray latency; 0.81 to 0.85 µs instead of the assumed 0.75 µs matches both AA values without extra time at one token per AA token, about 0.80 to 0.85 µs at the 1.006 tokens per AA token of AA-like book answers, and about 0.73 to 0.77 µs at another model's reasoning ratio of 1.073 |
 | GroqRack Llama-2-7B check | [GroqRack validation](groqrack-llama2-7b-validation.md) | A measured 2.98 to 3.05 ms per token on 72 known first-generation cards exceeds the simulated forward by 2.70 to 2.83 ms; adding that per-token host cost to the 70B check gives 264 to 286 tokens per second, inside GroqCloud's 241 to 300 |
-| GPU smoke measurements | [GPU measurements](lpx-gpu-measurements.md) | The H20 plain 10K document turn loops to the token limit without an answer; ten coding requests produce 12 completed turns; MTP measurements and the document-loop investigation are in progress |
+| GPU measurements | [GPU measurements](lpx-gpu-measurements.md) | All planned MTP priorities and n-gram comparisons complete; document equivalent acceptance is 0.720–0.814 and coding without thinking is 0.896–0.931; 23 thinking turns hit the output cap; original serving failures and the missed coding-equality expectation remain recorded |
 
 ## DCP
 
@@ -194,11 +194,30 @@ One possibility is one TP32/PP8 build with about 13 to 21 µs of unmodeled time 
 The remaining uncertainty sits in the source of that time, such as the LP30 cross-tray collective latency, and in whether the AA run drafted, and the match does not identify NVIDIA's deployment.
 
 GPU measurement setup is recorded in the [GPU measurements record](lpx-gpu-measurements.md).
-The H20 environment, exact input hashes, sequential streaming client and LP30 pricing analysis are available; inference measurements are in progress and do not yet change the conclusions in this page.
-The plain 10K document smoke request loops at temperature zero, including an eager-mode control, so representative document acceptance still needs a successful generation check.
+The H20 environment, exact input hashes, sequential streaming client and LP30 pricing analysis are available; the priority-1 BF16 measurements, FP8 comparison and full plain coding control are complete.
+The original plain 10K document smoke request loops at temperature zero, including eager, mixed-attention and V1-runner controls.
 T0 MTP smoke checks are complete and match five of ten greedy coding request pairs, missing the preregistered nine-pair minimum.
-The BF16 K=3 priority sweep is running, and its completed 10K document turns also hit the output cap in repetitive reasoning.
+The BF16 K=3 priority sweep was interrupted for a native Transformers crosscheck after its completed 10K turns and an active 100K turn entered repetitive reasoning.
 Acceptance on those failed outputs does not establish ordinary prose acceptance; the GPU record retains every turn and reports repetition and completion diagnostics.
+Native Transformers and vLLM with Triton attention both complete the same greedy document request without repetition.
+Triton is a post-observation serving-profile choice; its full-cap MTP K=3 document control also finishes without repetition, and its separate coding comparison matches six of ten request pairs.
+The Triton K=3/K=7 priority sweep completes all 288 requests and 306 turns, without replacing the original results or expectations.
+All turns stop normally without empty answers or repetition flags.
+At K=3, document-group equivalent acceptance is 0.746 to 0.785, while coding without thinking gives 0.913.
+The paired 100K-minus-10K acceptance difference is -0.011240 for quotes and -0.007673 for summary.
+Pricing the measured K=3/K=7 acceptance on LP30 makes the 10K speed at least 84.1% too fast at both drafter costs, and no common extra time of 25 µs or less fits both AA context speeds.
+The measurement supports that result for the specified public BF16 checkpoint, prompts and released drafter; the published deployment used a different model build and FP8 weights, and its drafter is not stated.
+FP8 target weights with a BF16 assistant and KV cache reduce combined document equivalent acceptance by 0.008278; all four group changes have magnitude below 0.03 and all 64 turns complete normally without quality flags.
+The H20 K=3 coding P80/median is 1.065741, while the completed 89-turn plain control gives 1.005874, satisfying both speed-spread expectations.
+The LP30 plain coding median is 3,764.52 TPS, 21.03% below NVIDIA's 4,767 TPS, while all measured K=3/K=7 MTP medians exceed it.
+The [completed follow-up measurements](lpx-gpu-followup-results.md) cover all 912 queued requests and 984 turns, preserving the completed priority-1 artifacts.
+The complete n-gram comparison differs from lookup replay by +0.000278 for coding and -0.000205 for documents, both below the 0.03 expectation.
+All MTP priorities are measured; 23 thinking turns reach the output cap without final answers and remain included in the reported acceptance and speed.
+Coding without thinking exceeds every same-K document group by at least 0.117012 across K=1/3/5/7.
+All four draft lengths price at least 72.2616% above AA's 10K speed; no common extra-time interval includes 25 microseconds or less.
+The [T6 collection](lpx-gpu-measurements.md#queued-t6-profile-collection) completed both graph cases and recovered eager 10K traces after a profiler-stop timeout.
+The [completed profiling report](lpx-gpu-profile-results.md) covers graph and eager execution at both contexts, with a separate vocabulary projection near 761 microseconds per step and explicit host/streaming overlap.
+Eager profiling increases client step times by roughly 95–96%, so the measured gaps do not establish uninstrumented serving overhead or a transferable LP30 constant.
 
 ## Open work
 
@@ -207,7 +226,7 @@ Acceptance on those failed outputs does not establish ordinary prose acceptance;
 | LP30 cross-tray collective latency | Measure an all-reduce across two LP30 trays; the TP32 match holds for about 0.80 to 0.85 µs at the 1.006 Gemma tokens per `o200k_base` token of AA-like outputs |
 | LP30 operand bandwidth | Establish whether LP30's matrix-unit operand bandwidth is below its 150 TB/s SRAM bandwidth, as GroqChip v1's 20 TB/s is below its 80 TB/s |
 | LP30 FP8 attention path | Establish whether KV conversion runs on the vector unit, which decides whether a larger attention group helps |
-| Gemma 4 31B measurements on GPUs | Investigate the plain 10K repetition loop and measure full-set acceptance, coding spread and decode costs following the [GPU TODO](lpx-gpu-gemma-todo.md) |
+| GPU study publication | Review and commit the completed measurement artifacts and reports; preserve serving-path failures, capped thinking turns and profiling attribution limits |
 | AA drafting status | Establish whether the AA run drafted, from AA's prompts, its per-request speed spread or a statement of the deployment's settings; lookup acceptance measured on AA-like book answers would make the AA values too fast without 26 to 99 µs of extra time |
 | Lift the 16-row forward limit | Test longer drafts and heavier background traffic in one forward |
 

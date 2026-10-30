@@ -1,7 +1,10 @@
 # TODO: measure Gemma 4 31B on a GPU machine for the LPX study
 
-Record date: 2026-10-28.
-Status: in progress; see the [GPU measurements record](lpx-gpu-measurements.md) for environment setup, implemented tools and pending measurements.
+Record date: 2026-10-30.
+Status: T0–T6 measurements and exploratory analyses are complete under the separately recorded Triton profiles; commit and publication remain pending.
+The [completed follow-up results](lpx-gpu-followup-results.md) cover all MTP priorities, context pairs, n-gram comparisons and coding spreads, including 23 capped thinking turns without final answers.
+The [T6 profiling report](lpx-gpu-profile-results.md) covers both contexts and execution modes, with explicit residual activity and instrumentation limits.
+The prior monitor delivered a failure continuation, but that session encountered an application error; work resumed in a new session at the user's request.
 
 This page is a work plan for an agent on a machine with NVIDIA GPUs.
 It runs the public Gemma 4 31B checkpoint with its released multi-token prediction (MTP) drafter and measures what the LPX study could only borrow from other models: Gemma's own drafter acceptance, its dependence on context length, the per-request speed spread it causes and the fixed costs of a real decode step.
@@ -200,45 +203,81 @@ Run each set at concurrency 1 on the MTP server.
 | 3 | `speed-cc16k`, 40 prompts | Off | 3, 7 |
 | 3 | `speed-coding` | Off and on | 1, 5 |
 
-- [ ] Write the turn records to `experiments/lpx/gpu-mtp-outputs.jsonl` without prompts.
-- [ ] Write `experiments/lpx/gpu-mtp-acceptance.json` with, for each set, context, question style, thinking mode and `K`: the turn count, mean `tau`, equivalent acceptance, per-position acceptance and the per-turn rows `[decode_tokens, counts]`, where `counts` has `K + 1` entries and only the last, the number of drafts, is nonzero because MTP verifies `K + 1` rows in every step.
+- [x] Complete priority 1 under the separate Triton profile: 64 document requests and 80 coding prompts at each of K=3 and K=7.
+
+The [Triton acceptance artifact](../experiments/lpx/gpu-triton-mtp-acceptance.json) contains 288 requests and 306 turns, including nine follow-up coding turns per configuration.
+All turns stop normally without empty answers or repetition flags.
+The original serving-profile results remain separate.
+The [combined analysis](../experiments/lpx/gpu-triton-followup-remaining-mtp-acceptance.json) also completes priorities 2 and 3, retaining all quality flags.
+
+- [x] Write prompt-free turn records, using separate `gpu-triton-mtp-k*-outputs.jsonl` and `gpu-triton-followup-mtp-k*-outputs.jsonl` files to preserve each run's identity.
+- [x] Write `experiments/lpx/gpu-triton-followup-remaining-mtp-acceptance.json` with, for each set, context, question style, thinking mode and `K`: the turn count, mean `tau`, equivalent acceptance, per-position acceptance and the per-turn rows `[decode_tokens, counts]`, where `counts` has `K + 1` entries and only the last, the number of drafts, is nonzero because MTP verifies `K + 1` rows in every step.
   That row format is the one [`lookup_speeds`](../scripts/analyze_lpx_coding_spread.py) and the API-outputs analysis read.
 
 ### T2: acceptance at 10K and 100K
 
-- [ ] From the T1 `aa-docs` turns, pair each book's 10K and 100K turns per question style and `K`, as `paired_acceptance` in [`scripts/analyze_lpx_api_outputs.py`](../scripts/analyze_lpx_api_outputs.py) does for lookup, and report the mean difference and the number of books whose acceptance is higher at 100K.
-- [ ] Report the acceptance of the thinking and the answer parts separately where the counters allow it; if they do not, report the combined value only and say so.
+- [x] From the available T1 `aa-docs` turns at K=3 and K=7, pair each book's 10K and 100K turns per question style and `K`, as `paired_acceptance` in [`scripts/analyze_lpx_api_outputs.py`](../scripts/analyze_lpx_api_outputs.py) does for lookup, and report the mean difference and the number of books whose acceptance is higher at 100K.
+- [x] Report the acceptance of the thinking and the answer parts separately where the counters allow it; if they do not, report the combined value only and say so.
+
+The [completed pairing](lpx-gpu-measurements.md#completed-triton-priority-1-results) covers all 16 books for both styles at K=3 and K=7.
+Counters support combined thinking and answer acceptance only.
+The [completed follow-up pairing](lpx-gpu-followup-results.md#paired-context-comparison) adds K=1 and K=5 for both styles and all 16 books.
 
 ### T3: FP8 weights
 
 AA's deployment ran FP8 weights.
 
-- [ ] Repeat the priority-1 `aa-docs` row at `K = 3` with FP8 target weights, for example with `--quantization fp8`, and record the precision of the drafter and the KV cache.
-- [ ] If vLLM rejects MTP with FP8 weights, record the error and skip the task.
+- [x] Repeat the priority-1 `aa-docs` row at `K = 3` with FP8 target weights, for example with `--quantization fp8`, and record the precision of the drafter and the KV cache.
+- [x] Check whether vLLM rejects MTP with FP8 weights and record the outcome; skip the task if rejected.
+
+The installed vLLM accepts FP8 target weights with the BF16 assistant and KV cache, and all 64 document turns complete normally without quality flags.
+The [completed comparison](lpx-gpu-measurements.md#completed-fp8-comparison) gives combined FP8 minus BF16 equivalent acceptance of -0.008278, with all four group differences below 0.03 in magnitude.
 
 ### T4: vLLM n-gram drafting against the lookup replay
 
 The lookup records replay an n-gram drafter on fixed outputs; this task checks the replay against a running drafter.
 
-- [ ] Run the priority-1 `aa-docs` and `speed-coding` rows on the n-gram server at `K = 7`, with `prompt_lookup_min = 1` and `prompt_lookup_max = 3`.
-- [ ] Export the same turns and replay them with `scripts/measure_lpx_lookup_acceptance.py` at `n_min = 1` and `K = 7`, and compare committed tokens per step turn by turn.
-- [ ] Describe any difference in matching rules between vLLM and the replay, from the vLLM source, before interpreting the comparison.
+- [x] Run the priority-1 `aa-docs` and `speed-coding` rows on the n-gram server at `K = 7`, with `prompt_lookup_min = 1` and `prompt_lookup_max = 3`.
+- [x] Export the same turns and replay them with `scripts/measure_lpx_lookup_acceptance.py` at `n_min = 1` and `K = 7`, and compare committed tokens per step turn by turn.
+- [x] Describe any difference in matching rules between vLLM and the replay, from the vLLM source, before interpreting the comparison.
+
+The active T4 run pins V2: native and replay matching both prefer the longest n-gram and most recent occurrence, but V2 pads unavailable draft slots with the last sampled token.
+The V1 CPU implementation prefers the earliest occurrence.
+The [source audit](../experiments/lpx/gpu-triton-followup-ngram-source-audit.json) and [measurement record](lpx-gpu-measurements.md#acceptance-and-lp30-pricing) retain these distinctions and the tokenization differences.
+The [completed coding comparison](lpx-gpu-measurements.md#completed-n-gram-coding-comparison) covers all 80 requests and 89 turns, with native equivalent acceptance 0.360232 and replay 0.359954.
+Their difference of 0.000278 is below 0.03.
+The [full comparison](lpx-gpu-followup-results.md#native-n-gram-versus-replay) also completes all 64 document turns, with a difference of -0.000205.
 
 ### T5: per-request speed spread at concurrency 1
 
-- [ ] From the `speed-coding` turns of T1 and of one plain run of the same prompts, compute the median, the 80th percentile (P80) and the maximum of `output_tps` per configuration, and the P80/median and maximum/median ratios.
-- [ ] Price the same turns on LP30, as in [Pricing on LP30](#pricing-on-lp30), and report the same ratios.
-- [ ] Compare both with NVIDIA's SPEED-Bench coding ratios of 1.158 (P80) and 1.464 (maximum), and state that the GPU ratios include GPU step times and the LP30 ratios include only the measured acceptance.
+The [coding spread comparison](lpx-gpu-measurements.md#coding-speed-spread) covers all 89 turns for plain decoding and priority-1 K=3/K=7 MTP, including LP30 pricing at both drafter costs.
+H20 P80/median is 1.005874 for plain and 1.065741 for K=3, satisfying expectation 8.
+The [follow-up coding tables](lpx-gpu-followup-results.md#coding-speed-spreads) complete all remaining T1 coding configurations at both drafter prices.
+
+- [x] From the `speed-coding` turns of T1 and of one plain run of the same prompts, compute the median, the 80th percentile (P80) and the maximum of `output_tps` per configuration, and the P80/median and maximum/median ratios.
+- [x] Price the same turns on LP30, as in [Pricing on LP30](#pricing-on-lp30), and report the same ratios.
+- [x] Compare both with NVIDIA's SPEED-Bench coding ratios of 1.158 (P80) and 1.464 (maximum), and state that the GPU ratios include GPU step times and the LP30 ratios include only the measured acceptance.
 
 ### T6: fixed costs of a decode step
 
 This task is exploratory and has no expectation.
 It sizes the per-step costs that the LP30 cost model may omit, on a real serving stack.
+The [profiling preflight](../experiments/lpx/gpu-t6-preflight.json) confirms Nsight Systems 2025.6.3 and the installed vLLM PyTorch-profiler configuration and endpoints.
+The endpoints require profiling to be enabled at server startup, so this task needs a separate plain server after acquiring the GPU lock.
+The [T6 runner](../scripts/run_lpx_gpu_profile.py) is queued after the full follow-up sweep, with separate queue and GPU locks.
+It collects four profiled cases, four unprofiled controls and two warmups, keeping traces outside the repository.
+Both graph cases and the eager 10K case have been collected; the latter was recovered from valid traces after its profiler-stop request timed out.
+The missing eager 100K case completes with optional CUDA summary-table generation disabled.
+All four cases have GPU partitions and separate, clock-aligned host/streaming audits in the [profiling report](lpx-gpu-profile-results.md).
+Follow the [trace-analysis workflow](lpx-gpu-trace-analysis.md) after collection, including explicit prefill/decode boundaries, overlap-aware GPU categories and separate CPU/streaming interpretation.
 
-- [ ] On the plain server, run one 10K and one 100K `aa-docs` prompt with `max_tokens` of 256 under the PyTorch profiler or Nsight Systems.
-- [ ] Split the mean decode step into transformer layers, the language-model head over the 262,144-token vocabulary, logits processing and sampling, CPU scheduling and gaps between kernels, and output streaming, in microseconds and as fractions of the step.
-- [ ] Repeat with `--enforce-eager` to show the effect of CUDA graphs on the gaps.
-- [ ] Record that GPU host costs do not transfer to LP30 directly and serve only as a size reference for the per-step cost audit.
+- [x] On the plain server, run one 10K and one 100K `aa-docs` prompt with `max_tokens` of 256 under the PyTorch profiler or Nsight Systems.
+- [x] Report mean decode costs and fractions for model forward, the 262,144-token vocabulary head, logits/sampling, gaps and unclassified GPU activity, with separate overlapping CPU scheduling and output-streaming scope measurements.
+- [x] Repeat with `--enforce-eager` to show the effect of execution mode on the gaps, retaining paired unprofiled controls and instrumentation-overhead caveats.
+- [x] Record that GPU host costs do not transfer to LP30 directly and serve only as a size reference for the per-step cost audit.
+
+Inclusive CPU and streaming scopes overlap GPU execution and cannot form additional additive rows of the GPU partition.
+The report leaves causal attribution of uninstrumented host costs unresolved instead of equating all GPU gaps with scheduling.
 
 ### T7: TokenSim on the same GPU (optional)
 
@@ -299,8 +338,11 @@ None of these results identifies NVIDIA's build, drafter or settings.
 
 ## Recording
 
-- [ ] Write `docs/lpx-gpu-measurements.md` with the environment, commands, input hashes, each expectation's outcome, result tables, the differences table above and an interpretation limited to what the data shows.
+- [x] Write `docs/lpx-gpu-measurements.md` with the environment, commands, input hashes, each expectation's outcome, result tables, the differences table above and an interpretation limited to what the data shows.
 - [ ] Commit the outputs and analyses as `experiments/lpx/gpu-*.json` and `experiments/lpx/gpu-*.jsonl`.
-- [ ] Add a row to the outcome table, the current position and the commit table of the [progress summary](lpx-aa-reproduction-progress.md), and update its open work.
-- [ ] Update the [final summary](lpx-aa-final-summary.md) only where a result changes a stated conclusion.
-- [ ] Tick the boxes in this page and change its status line.
+- [x] Update the outcome table, current position and open work of the [progress summary](lpx-aa-reproduction-progress.md).
+- [ ] Add the publication commit to the progress summary's commit table after committing the results.
+- [x] Update the [final summary](lpx-aa-final-summary.md) only where a result changes a stated conclusion.
+- [x] Tick the boxes in this page and change its status line.
+
+The resumed session makes no commit or push; existing outputs and uncommitted work remain in place.

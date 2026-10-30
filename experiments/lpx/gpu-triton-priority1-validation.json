@@ -1,0 +1,59 @@
+{
+  "requests_sha256": "7abb2f93587b01649c27e262e041afe96dd68cc055908d80f35610b5de9506ae",
+  "configurations": [
+    {
+      "K": 3,
+      "outputs": "experiments/lpx/gpu-triton-mtp-k3-outputs.jsonl",
+      "sha256": "0da0fd4c272163e83ebb3f2d2d76e2179d28b34856420b05830d61f58ce15371",
+      "requests": 144,
+      "turns": 153,
+      "exact_input_coverage": true,
+      "uncapped": true,
+      "all_quality_checks_pass": true,
+      "counter_identity_residual_counts": {
+        "-2": 45,
+        "-1": 60,
+        "0": 33,
+        "-3": 15
+      },
+      "unproposed_token_counts": {
+        "0": 153
+      },
+      "preemptions": 0,
+      "terminal_residuals_within_bounds": true,
+      "emitted_steps_equal_drafts_plus_prefill": true
+    },
+    {
+      "K": 7,
+      "outputs": "experiments/lpx/gpu-triton-mtp-k7-outputs.jsonl",
+      "sha256": "679fafb4a37660fb40ea9d36f33a999b9abb5074fc18f5e29c2d9672090237c6",
+      "requests": 144,
+      "turns": 153,
+      "exact_input_coverage": true,
+      "uncapped": true,
+      "all_quality_checks_pass": true,
+      "counter_identity_residual_counts": {
+        "-1": 31,
+        "-2": 72,
+        "0": 13,
+        "-3": 37
+      },
+      "unproposed_token_counts": {
+        "0": 153
+      },
+      "preemptions": 0,
+      "terminal_residuals_within_bounds": true,
+      "emitted_steps_equal_drafts_plus_prefill": true
+    }
+  ],
+  "analysis_byte_identical": true,
+  "analysis_sha256": "38ca7e5bef08257329383c5afd11fc2d9842f7a31f2b0924b2e3a74e6439f5fc",
+  "collection_status": {
+    "stage": "priority1",
+    "profile": "triton",
+    "pid": 333143,
+    "status": "complete",
+    "started_unix": 1793179583.2418463,
+    "finished_unix": 1793204049.7956805
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "seed": 1,
+  "device": "cpu",
+  "input_dtype": "bfloat16",
+  "reference": "Transformers Gemma4RMSNorm",
+  "comparison": "vLLM native IR rms_norm, with stock BF16 or promoted FP32 weights",
+  "results": [
+    {
+      "hidden_size": 256,
+      "stock_bf16_weight": {
+        "different_elements": 4254,
+        "elements": 16384,
+        "maximum_absolute_error": 0.0625,
+        "mean_absolute_error": 0.000910602044314146
+      },
+      "fp32_weight": {
+        "different_elements": 0,
+        "elements": 16384,
+        "maximum_absolute_error": 0.0,
+        "mean_absolute_error": 0.0
+      }
+    },
+    {
+      "hidden_size": 512,
+      "stock_bf16_weight": {
+        "different_elements": 8203,
+        "elements": 32768,
+        "maximum_absolute_error": 0.0625,
+        "mean_absolute_error": 0.0009028430795297027
+      },
+      "fp32_weight": {
+        "different_elements": 0,
+        "elements": 32768,
+        "maximum_absolute_error": 0.0,
+        "mean_absolute_error": 0.0
+      }
+    },
+    {
+      "hidden_size": 5376,
+      "stock_bf16_weight": {
+        "different_elements": 82612,
+        "elements": 344064,
+        "maximum_absolute_error": 0.0625,
+        "mean_absolute_error": 0.0008381707011722028
+      },
+      "fp32_weight": {
+        "different_elements": 0,
+        "elements": 344064,
+        "maximum_absolute_error": 0.0,
+        "mean_absolute_error": 0.0
+      }
+    }
+  ]
+}

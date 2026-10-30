@@ -1,0 +1,15 @@
+{
+  "pid": 333143,
+  "argv": [
+    "/tmp/lpx-gpu/repo-venv/bin/python",
+    "scripts/run_lpx_gpu_study.py",
+    "--work-dir",
+    "/tmp/lpx-gpu",
+    "--profile",
+    "triton",
+    "--stage",
+    "priority1"
+  ],
+  "started_unix": 1793179583.1924498,
+  "decision": "Resume priority-1 collection under the post-observation Triton profile after full-cap plain and MTP K3 document controls completed without repetition; retain all original failures and separate T0 results"
+}

@@ -1,0 +1,21 @@
+{
+  "pid": 671608,
+  "argv": [
+    "/tmp/lpx-gpu/repo-venv/bin/python",
+    "-u",
+    "scripts/monitor_lpx_gpu_study.py",
+    "--thread",
+    "01a18579-9220-7181-9ca7-7cbb06025439",
+    "--work-dir",
+    "/tmp/lpx-gpu",
+    "--codex",
+    "/home/tiger/.local/bin/codex",
+    "--poll-seconds",
+    "60"
+  ],
+  "thread": "01a18579-9220-7181-9ca7-7cbb06025439",
+  "cwd": "/opt/tiger/rh2/rh2/init/TokenSim",
+  "log": "/tmp/lpx-gpu/codex-monitor.log",
+  "state": "/tmp/lpx-gpu/codex-monitor-state.json",
+  "started_unix": 1793243091.074947
+}

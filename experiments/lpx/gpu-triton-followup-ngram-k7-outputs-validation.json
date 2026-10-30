@@ -1,0 +1,13 @@
+{
+  "outputs": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-followup-ngram-k7-outputs.jsonl",
+  "sha256": "5fe31891f7753fa46feba3a96c8b4034e64470b23d2b851fdbbe2b0bd7b8c7ba",
+  "requests": 144,
+  "turns": 153,
+  "exact_input_coverage": true,
+  "finish_reasons": {
+    "stop": 153
+  },
+  "empty_answers": 0,
+  "repetition_flags": 0,
+  "note": "All completed measurement turns retained, including quality flags"
+}

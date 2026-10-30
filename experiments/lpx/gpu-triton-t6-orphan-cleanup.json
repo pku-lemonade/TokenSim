@@ -1,0 +1,7 @@
+{
+  "pid": 1248070,
+  "signal": "SIGKILL",
+  "ownership_check": "Exact recorded command suffix and process-group identity",
+  "reason": "Original eager profiler timeout left the HTTP frontend waiting on an aborted background task after GPU worker shutdown",
+  "cleaned_unix": 1793324113.650518
+}

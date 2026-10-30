@@ -1,0 +1,29 @@
+{
+  "pid": 308639,
+  "argv": [
+    "/tmp/lpx-gpu/repo-venv/bin/python",
+    "scripts/generate_lpx_gpu_outputs.py",
+    "--requests",
+    "/tmp/lpx-gpu/inputs/requests.jsonl",
+    "--outputs",
+    "experiments/lpx/gpu-triton-diagnostic.jsonl",
+    "--environment",
+    "experiments/lpx/gpu-environment.json",
+    "--method",
+    "plain",
+    "--run-label",
+    "t0-triton-diagnostic",
+    "--set",
+    "aa-docs",
+    "--thinking",
+    "on",
+    "--context",
+    "10000",
+    "--limit",
+    "1",
+    "--max-tokens",
+    "2048"
+  ],
+  "started_unix": 1793178427.5395103,
+  "startup_guard_note": "Initial guard expected a different log phrase; observed AttentionBackendEnum.TRITON_ATTN confirms the requested backend"
+}

@@ -1,0 +1,107 @@
+{
+  "mode": "graphs",
+  "context": 100000,
+  "case": {
+    "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-t6-graphs-100000-result.json",
+    "bytes": 5167,
+    "sha256": "38abcd5036c938cadf5c7263d448db56bc8732b9c0a1c2254701508fb0eccd2b"
+  },
+  "partition": {
+    "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-t6-graphs-100000-gpu-partition.json",
+    "bytes": 121194,
+    "sha256": "f7e5f5b436ec506aafde814dffdfae336a38c93e132001e90adc0b684c61da96"
+  },
+  "worker_trace": {
+    "path": "/tmp/lpx-gpu/t6-traces-graphs-1793313147110287746/t6-graphs-100000-1793313379197096839_rank0.1793313662296678114.pt.trace.json.gz",
+    "bytes": 35617752,
+    "sha256": "6c22e7779c75c04818fcb8eaba38f43c875e3f7cdc80ad28e046901ad747b8f3"
+  },
+  "frontend_trace": {
+    "path": "/tmp/lpx-gpu/t6-traces-graphs-1793313147110287746/t6-graphs-100000-1793313379197096839_g340-cd51-5b00-704e-e74e-42b5-7b51_1246704.async_llm.1793313654896010180.pt.trace.json.gz",
+    "bytes": 4758398,
+    "sha256": "46e8ae223728870f95b5fd08eca770212a9baad53d0c279c9af6fccbe02fb522"
+  },
+  "worker_clock": {
+    "host_name": "g340-cd51-5b00-704e-e74e-42b5-7b51",
+    "baseTimeNanoseconds": 1790857026000000000,
+    "vllm_version": "0.32.0",
+    "schemaVersion": 1
+  },
+  "frontend_clock": {
+    "host_name": "g340-cd51-5b00-704e-e74e-42b5-7b51",
+    "baseTimeNanoseconds": 1790857026000000000,
+    "vllm_version": "0.32.0",
+    "schemaVersion": 1
+  },
+  "frontend_to_worker_offset_us": 0.0,
+  "clock_basis": "Same-host PyTorch Chrome traces encode timestamps relative to baseTimeNanoseconds; frontend timestamps are translated by the difference in recorded bases. Both processes are on the same host and vLLM version. No network or remote-host clock is aligned.",
+  "selected_wall_us": 8559303.699707031,
+  "decode_steps": 255,
+  "groups": {
+    "worker_scheduler": {
+      "scope_names": {
+        "vllm/v1/core/sched/scheduler.py(591): schedule": 270,
+        "vllm/v1/core/sched/scheduler.py(2026): update_from_output": 270
+      },
+      "scope_union_us": 157370.3740234375,
+      "overlap_gpu_busy_us": 150941.0185546875,
+      "overlap_no_gpu_activity_us": 6429.35546875,
+      "mean_scope_us_per_decode_step": 617.1387216605392,
+      "mean_gap_overlap_us_per_decode_step": 25.213158700980394,
+      "scope_fraction_of_decode_wall": 0.018385885060816804
+    },
+    "worker_execute": {
+      "scope_names": {
+        "vllm/v1/worker/gpu/model_runner.py(1718): execute_model": 270
+      },
+      "scope_union_us": 875755.462890625,
+      "overlap_gpu_busy_us": 846423.6860351562,
+      "overlap_no_gpu_activity_us": 29331.77685546875,
+      "mean_scope_us_per_decode_step": 3434.3351485906865,
+      "mean_gap_overlap_us_per_decode_step": 115.02657590379901,
+      "scope_fraction_of_decode_wall": 0.102316203936145
+    },
+    "frontend_output_processing": {
+      "scope_names": {
+        "vllm/v1/engine/output_processor.py(681): process_outputs": 256
+      },
+      "scope_union_us": 117738.3720703125,
+      "overlap_gpu_busy_us": 113525.64013671875,
+      "overlap_no_gpu_activity_us": 4212.73193359375,
+      "mean_scope_us_per_decode_step": 461.7191061580882,
+      "mean_gap_overlap_us_per_decode_step": 16.520517386642158,
+      "scope_fraction_of_decode_wall": 0.01375560164716932
+    },
+    "frontend_stream_response": {
+      "scope_names": {
+        "starlette/responses.py(253): stream_response": 1,
+        "starlette/responses.py(255): stream_response": 254
+      },
+      "scope_union_us": 94040.86767578125,
+      "overlap_gpu_busy_us": 91135.35400390625,
+      "overlap_no_gpu_activity_us": 2905.513671875,
+      "mean_scope_us_per_decode_step": 368.7877163756127,
+      "mean_gap_overlap_us_per_decode_step": 11.394171262254902,
+      "scope_fraction_of_decode_wall": 0.010986976391432412
+    },
+    "frontend_http_send": {
+      "scope_names": {
+        "uvicorn/protocols/http/httptools_impl.py(463): send": 265
+      },
+      "scope_union_us": 17069.06787109375,
+      "overlap_gpu_busy_us": 16680.2412109375,
+      "overlap_no_gpu_activity_us": 388.82666015625,
+      "mean_scope_us_per_decode_step": 66.93752106311274,
+      "mean_gap_overlap_us_per_decode_step": 1.5248104319852942,
+      "scope_fraction_of_decode_wall": 0.001994212201125425
+    }
+  },
+  "final_stream_scope_end_minus_final_gpu_us": 11418.26904296875,
+  "stream_resume_scopes_starting_after_decode_start": 254,
+  "note": "Inclusive Python scope wall occupancy, not CPU self-time or causal critical-path cost. Nested frontend send and stream scopes overlap and must not be added. Worker execute includes model dispatch, launch and waits; scheduler scope overlap with GPU gaps does not prove those gaps were caused by scheduling. HTTP send does not measure remote client receipt.",
+  "generator": {
+    "path": "/tmp/lpx-gpu/audit-host.py",
+    "bytes": 6494,
+    "sha256": "912ef8c4308d80f05e9349055075bc8a8001f4a19a883f906235e203d5ea9258"
+  }
+}

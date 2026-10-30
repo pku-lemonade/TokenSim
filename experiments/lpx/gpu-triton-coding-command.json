@@ -1,0 +1,25 @@
+{
+  "pid": 320147,
+  "argv": [
+    "/tmp/lpx-gpu/repo-venv/bin/python",
+    "scripts/generate_lpx_gpu_outputs.py",
+    "--requests",
+    "/tmp/lpx-gpu/inputs/requests.jsonl",
+    "--outputs",
+    "experiments/lpx/gpu-triton-plain-coding-smoke.jsonl",
+    "--environment",
+    "experiments/lpx/gpu-environment.json",
+    "--method",
+    "plain",
+    "--run-label",
+    "t0-triton-plain-coding",
+    "--set",
+    "speed-coding",
+    "--thinking",
+    "off",
+    "--limit",
+    "10"
+  ],
+  "started_unix": 1793178883.7259395,
+  "server_command": "gpu-server-triton-command.json"
+}

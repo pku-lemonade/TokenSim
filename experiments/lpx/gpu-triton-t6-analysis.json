@@ -1,0 +1,195 @@
+{
+  "status": "complete",
+  "analysis_scope": "Observed decode GPU partition and overlapping host/streaming scope audit, with explicit attribution limits",
+  "cases": [
+    {
+      "mode": "graphs",
+      "context": 10000,
+      "artifacts": {
+        "case": {
+          "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-t6-graphs-10000-result.json",
+          "bytes": 5153,
+          "sha256": "967858993d6430ebf4a53cd794a678d2f97c3b0c78c58e8264e27254334d0ca0"
+        },
+        "gpu_partition": {
+          "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-t6-graphs-10000-gpu-partition.json",
+          "bytes": 121241,
+          "sha256": "1c300206f4cc057d790a170c60a0608f6f3dc4ba66beb90376bde7b2919365d9"
+        },
+        "selection_audit": {
+          "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-t6-graphs-10000-selection-audit.json",
+          "bytes": 3113,
+          "sha256": "0f5c875eb675120c9f967b0636c876fa0e65c96fe6739b9b6f742a1e17a68231"
+        },
+        "host_audit": {
+          "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-t6-graphs-10000-host-audit.json",
+          "bytes": 4943,
+          "sha256": "c2d58922ac3266b9ddfc55d8894972a079e15c2277d3a2aa9e569612063212c0"
+        }
+      },
+      "byte_identical_gpu_recheck": {
+        "path": "/tmp/lpx-gpu/t6-graphs-10000-partition-recheck.json",
+        "bytes": 121241,
+        "sha256": "1c300206f4cc057d790a170c60a0608f6f3dc4ba66beb90376bde7b2919365d9"
+      },
+      "mean_step_us": 24659.01560393689,
+      "timing": {
+        "control_stream_step_us": 24101.306169348605,
+        "profiled_stream_step_us": 24603.898596822044,
+        "profiled_over_control": 1.0208533273649967,
+        "control_completion_tokens": 256,
+        "profiled_completion_tokens": 256,
+        "identical_tokens": true,
+        "first_different_token": null,
+        "note": "Client delivery interval per decode token; includes buffering and profiler overhead; not a GPU kernel-time breakdown"
+      }
+    },
+    {
+      "mode": "graphs",
+      "context": 100000,
+      "artifacts": {
+        "case": {
+          "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-t6-graphs-100000-result.json",
+          "bytes": 5167,
+          "sha256": "38abcd5036c938cadf5c7263d448db56bc8732b9c0a1c2254701508fb0eccd2b"
+        },
+        "gpu_partition": {
+          "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-t6-graphs-100000-gpu-partition.json",
+          "bytes": 121194,
+          "sha256": "f7e5f5b436ec506aafde814dffdfae336a38c93e132001e90adc0b684c61da96"
+        },
+        "selection_audit": {
+          "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-t6-graphs-100000-selection-audit.json",
+          "bytes": 3113,
+          "sha256": "35fe70f24367a924953d0b0299c98a20dc812052646737c57451212baa16bd84"
+        },
+        "host_audit": {
+          "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-t6-graphs-100000-host-audit.json",
+          "bytes": 4951,
+          "sha256": "6c99ee079e05869dacb35a84f3d9464789b64796849dc34d8fee1a8a344a967b"
+        }
+      },
+      "byte_identical_gpu_recheck": {
+        "path": "/tmp/lpx-gpu/t6-graphs-100000-partition-recheck.json",
+        "bytes": 121194,
+        "sha256": "f7e5f5b436ec506aafde814dffdfae336a38c93e132001e90adc0b684c61da96"
+      },
+      "mean_step_us": 33565.8968615962,
+      "timing": {
+        "control_stream_step_us": 32653.599933666344,
+        "profiled_stream_step_us": 33146.17698391278,
+        "profiled_over_control": 1.0150849232932073,
+        "control_completion_tokens": 256,
+        "profiled_completion_tokens": 256,
+        "identical_tokens": true,
+        "first_different_token": null,
+        "note": "Client delivery interval per decode token; includes buffering and profiler overhead; not a GPU kernel-time breakdown"
+      }
+    },
+    {
+      "mode": "eager",
+      "context": 10000,
+      "artifacts": {
+        "case": {
+          "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-t6-eager-10000-result.json",
+          "bytes": 5501,
+          "sha256": "ed193a87d78f3c681eb2498e0652bbca55dc4cb402ea55215c0424c0c1d79635"
+        },
+        "gpu_partition": {
+          "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-t6-eager-10000-gpu-partition.json",
+          "bytes": 123608,
+          "sha256": "9ad3e971d40e865094e799cdec3893c377e9609e06c2d80fcd652e429d9df59a"
+        },
+        "selection_audit": {
+          "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-t6-eager-10000-selection-audit.json",
+          "bytes": 3111,
+          "sha256": "fb8577eeeeb4e98a61e09c462a185ebc15b1624e492bc8f910517d0ce274bbdc"
+        },
+        "host_audit": {
+          "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-t6-eager-10000-host-audit.json",
+          "bytes": 4919,
+          "sha256": "910061e9f1de992e292a8785131bddaf1ff8e44079284fc347a0a81a3aa6c01f"
+        }
+      },
+      "byte_identical_gpu_recheck": {
+        "path": "/tmp/lpx-gpu/t6-eager-10000-partition-recheck.json",
+        "bytes": 123608,
+        "sha256": "9ad3e971d40e865094e799cdec3893c377e9609e06c2d80fcd652e429d9df59a"
+      },
+      "mean_step_us": 88884.27243221508,
+      "timing": {
+        "control_stream_step_us": 45183.876354028194,
+        "profiled_stream_step_us": 88738.81860544869,
+        "profiled_over_control": 1.963948774783187,
+        "control_completion_tokens": 256,
+        "profiled_completion_tokens": 256,
+        "identical_tokens": true,
+        "first_different_token": null,
+        "note": "Client delivery interval per decode token; includes buffering and profiler overhead; not a GPU kernel-time breakdown"
+      }
+    },
+    {
+      "mode": "eager",
+      "context": 100000,
+      "artifacts": {
+        "case": {
+          "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-t6-eager-100000-result.json",
+          "bytes": 4985,
+          "sha256": "74794b48f03e441c5bf3908ed392daf6da5add0b285db03e43452808304707a0"
+        },
+        "gpu_partition": {
+          "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-t6-eager-100000-gpu-partition.json",
+          "bytes": 123482,
+          "sha256": "bd3ce0f3388db3682e7468cd3bfd3b9bc8de0da3138992aec325096062d4e073"
+        },
+        "selection_audit": {
+          "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-t6-eager-100000-selection-audit.json",
+          "bytes": 3113,
+          "sha256": "3fd72618626cc04467d0ab8caafa5132e8ce09f340143a93caf91a8c564b0dc4"
+        },
+        "host_audit": {
+          "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-t6-eager-100000-host-audit.json",
+          "bytes": 4941,
+          "sha256": "cfd1b5497ba0241733e0654011e2348a7a69be83030640258ea3d8ed3b841513"
+        }
+      },
+      "byte_identical_gpu_recheck": {
+        "path": "/tmp/lpx-gpu/t6-eager-100000-partition-recheck.json",
+        "bytes": 123482,
+        "sha256": "bd3ce0f3388db3682e7468cd3bfd3b9bc8de0da3138992aec325096062d4e073"
+      },
+      "mean_step_us": 87798.17095013786,
+      "timing": {
+        "control_stream_step_us": 44870.624640116504,
+        "profiled_stream_step_us": 87278.84463527623,
+        "profiled_over_control": 1.9451221224418775,
+        "control_completion_tokens": 256,
+        "profiled_completion_tokens": 256,
+        "identical_tokens": true,
+        "first_different_token": null,
+        "note": "Client delivery interval per decode token; includes buffering and profiler overhead; not a GPU kernel-time breakdown"
+      }
+    }
+  ],
+  "validation": {
+    "decode_steps": 1020,
+    "gpu_partitions_balance": true,
+    "host_overlap_partitions_balance": true,
+    "byte_identical_gpu_rechecks": 4,
+    "host_interval_synthetic_checks": 100,
+    "unit_tests": 759,
+    "unit_test_log": {
+      "path": "/tmp/lpx-gpu/resumed-unit-tests.log",
+      "bytes": 2996,
+      "sha256": "7bd91253c5d573c3461463f23485dbd9b0a607cd8a12fdc7813f332bca8d7bc6"
+    }
+  },
+  "limitations": [
+    "Single control/profile pair per case; no repeat-run confidence intervals",
+    "Eager profiling increases streamed step time by roughly 95\u201396 percent",
+    "Inclusive Python scopes include waiting and overlap GPU activity; they are not additive CPU self-times",
+    "Eager 100K profiler emitted a Python replay-stack warning",
+    "Unclassified GPU activity and causally unresolved gaps remain explicit",
+    "GPU host costs and vocabulary-head latency do not directly transfer to LP30"
+  ]
+}

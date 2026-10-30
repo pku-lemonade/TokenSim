@@ -1,0 +1,20 @@
+{
+  "checked_unix": 1793261025.1595953,
+  "validated_artifacts": [
+    "experiments/lpx/gpu-triton-fp8-mtp-k3-outputs-validation.json",
+    "experiments/lpx/gpu-triton-mtp-k3-outputs-validation.json",
+    "experiments/lpx/gpu-triton-fp8-comparison.json",
+    "experiments/lpx/gpu-triton-followup-plain-k0-outputs-validation.json"
+  ],
+  "plain_analysis_byte_identical": true,
+  "prior_priority1_hashes_unchanged": true,
+  "sources": {
+    "experiments/lpx/gpu-triton-mtp-k3-outputs.jsonl": "0da0fd4c272163e83ebb3f2d2d76e2179d28b34856420b05830d61f58ce15371",
+    "experiments/lpx/gpu-triton-mtp-k7-outputs.jsonl": "679fafb4a37660fb40ea9d36f33a999b9abb5074fc18f5e29c2d9672090237c6",
+    "experiments/lpx/gpu-triton-followup-plain-k0-outputs.jsonl": "fc514037fea5605b2a128be8ef4e88d0f8263d5ab4795854f2cf2639278cdf98",
+    "experiments/lpx/gpu-triton-fp8-mtp-k3-outputs.jsonl": "cc997de8bdeeda904b5925fe9928a57c4bfec95d99a840cb67610372cf5a2471",
+    "experiments/lpx/gpu-triton-fp8-comparison.json": "661b7eb3f1cb26e1be28eff84ed90eb532b618c85fd9f97b805dd82e61d1dc0e",
+    "experiments/lpx/gpu-triton-followup-plain-acceptance.json": "e6d56e9b04a6124982c260e11294139b67cce93a918fd3634a4f327277be2e20"
+  },
+  "note": "Read-only recomputation of completed FP8 and plain controls; active n-gram and queued profiling are excluded"
+}

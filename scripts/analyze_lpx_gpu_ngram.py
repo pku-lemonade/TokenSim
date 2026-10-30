@@ -46,6 +46,25 @@ def validate_server_command(command):
         or any(speculative.get(key) != value for key, value in expected.items())
     ):
         raise WorkloadValidationError("Recorded server does not match T4 settings")
+    runner = command.get("environment", {}).get("VLLM_USE_V2_MODEL_RUNNER")
+    return {"0": "v1-cpu", "1": "v2-gpu"}.get(runner, "unknown")
+
+
+def matching_rules(implementation):
+    if implementation == "v1-cpu":
+        return [
+            "vLLM V1 CPU selects the earliest match; replay selects the most recent match"
+        ]
+    if implementation == "v2-gpu":
+        return [
+            "vLLM V2 GPU and replay select the longest n-gram and then the most recent match",
+            "vLLM V2 GPU fills missing draft slots with the last sampled token; replay uses variable proposal lengths",
+        ]
+    if implementation == "unknown":
+        return [
+            "recorded runner setting does not identify the native matching implementation"
+        ]
+    raise WorkloadValidationError("Unknown n-gram implementation")
 
 
 def compare_turn(turn, exported, tokenizer, draft_length):
@@ -85,7 +104,8 @@ def compare_turn(turn, exported, tokenizer, draft_length):
     )
 
 
-def compare(outputs, exported_rows, tokenizer):
+def compare(outputs, exported_rows, tokenizer, implementation="unknown"):
+    rules = matching_rules(implementation)
     configurations = {json.dumps(row["config"], sort_keys=True) for row in outputs}
     if len(configurations) != 1:
         raise WorkloadValidationError("Compare one nonempty n-gram configuration")
@@ -148,8 +168,9 @@ def compare(outputs, exported_rows, tokenizer):
         config=config,
         minimum_ngram=1,
         maximum_ngram=3,
+        native_implementation=implementation,
         differences=[
-            "vLLM selects the earliest match; replay selects the most recent match",
+            *rules,
             "replay tokenizes exported text without the server chat-template tokens",
             "combined replay inserts two newlines between reasoning and answer",
             "native tau excludes the prefill token; replay counts all replay output tokens",
@@ -176,7 +197,7 @@ def main(argv=None):
     )
     args = parser.parse_args(argv)
     server_command = args.server_command.read_bytes()
-    validate_server_command(json.loads(server_command))
+    implementation = validate_server_command(json.loads(server_command))
     from tokenizers import Tokenizer
 
     files, rows = [], []
@@ -188,6 +209,7 @@ def main(argv=None):
         read_outputs(args.outputs),
         rows,
         Tokenizer.from_file(str(args.gemma_tokenizer)),
+        implementation=implementation,
     )
     result["export_files"] = files
     result["server_command_sha256"] = hashlib.sha256(server_command).hexdigest()

@@ -1,0 +1,3798 @@
+{
+  "layout": "tp32-pp8-kvp8",
+  "attention_mfu": 0.5,
+  "token_ratio": 1.006,
+  "results": [
+    {
+      "data": "aa-docs-think-100k-quotes",
+      "config": {
+        "K": 3,
+        "drafter_precision": "bf16",
+        "environment_sha256": "6d011ff07ab7c6ec1f331aac36db968b38c4ec39c2147eb86ba069da9f861ac7",
+        "kv_precision": "bf16",
+        "max_tokens_override": null,
+        "method": "mtp",
+        "metrics_schema": 2,
+        "metrics_settle_seconds": 6,
+        "model": "google/gemma-4-31B-it",
+        "requests_sha256": "7abb2f93587b01649c27e262e041afe96dd68cc055908d80f35610b5de9506ae",
+        "return_token_ids": true,
+        "run_label": "t1-triton-fp8-mtp-k3",
+        "seed": 1,
+        "weight_precision": "fp8"
+      },
+      "turn_count": 16,
+      "gpu_speed": {
+        "turn_count": 16,
+        "median_tps": 23.683761868319237,
+        "p80_tps": 24.251323729710826,
+        "maximum_tps": 25.56452259231169,
+        "p80_ratio": 1.0239641769980297,
+        "maximum_ratio": 1.0794114015522283
+      },
+      "untimed_turns": 0,
+      "prompt": "full",
+      "draft_tokens": 3,
+      "quality": {
+        "length_limited_turns": 0,
+        "empty_answer_turns": 0,
+        "repetition_flagged_turns": 0,
+        "threshold_note": "128-token periodic span, periods 1 to 8; chosen after T0 and extended after the T1 two-token loop, no turns excluded"
+      },
+      "tau": 2.7731303098382636,
+      "pooled_tau": 2.7706022550187916,
+      "per_position_acceptance": {
+        "0": 0.7752772939774498,
+        "1": 0.5721422678522321,
+        "2": 0.4240993674947291
+      },
+      "turns": [
+        {
+          "id": "aa-docs/pg1228/100k/quotes",
+          "turn": 0,
+          "meta": {
+            "book": "pg1228",
+            "title": "On the Origin of Species By Means of Natural Selection",
+            "context": 100000,
+            "style": "quotes",
+            "document_tokens": 99938
+          },
+          "prompt_tokens": 99998,
+          "decode_tokens": 3518,
+          "tau": 2.8624898291293737,
+          "equivalent_acceptance": 0.7798945981995535,
+          "counter_identity_residual": -2,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7851912123677787,
+            "1": 0.5988608624898292,
+            "2": 0.48006509357200977
+          },
+          "per_row": [
+            3518,
+            [
+              0,
+              0,
+              0,
+              1229
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.0494458653026428,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1230,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg1260/100k/quotes",
+          "turn": 0,
+          "meta": {
+            "book": "pg1260",
+            "title": "Jane Eyre: An Autobiography",
+            "context": 100000,
+            "style": "quotes",
+            "document_tokens": 99938
+          },
+          "prompt_tokens": 99997,
+          "decode_tokens": 3300,
+          "tau": 2.6463512429831595,
+          "equivalent_acceptance": 0.7286272042273689,
+          "counter_identity_residual": -2,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7506014434643143,
+            "1": 0.5284683239775461,
+            "2": 0.3688853247794707
+          },
+          "per_row": [
+            3300,
+            [
+              0,
+              0,
+              0,
+              1247
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.03574674341108755,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1248,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg1342/100k/quotes",
+          "turn": 0,
+          "meta": {
+            "book": "pg1342",
+            "title": "Pride and Prejudice",
+            "context": 100000,
+            "style": "quotes",
+            "document_tokens": 99938
+          },
+          "prompt_tokens": 99997,
+          "decode_tokens": 3843,
+          "tau": 2.725531914893617,
+          "equivalent_acceptance": 0.7478847481586204,
+          "counter_identity_residual": -2,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7673758865248227,
+            "1": 0.5581560283687943,
+            "2": 0.4014184397163121
+          },
+          "per_row": [
+            3843,
+            [
+              0,
+              0,
+              0,
+              1410
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.04266389177939646,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 4,
+            "periodic_token_period": 2,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1411,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg1399/100k/quotes",
+          "turn": 0,
+          "meta": {
+            "book": "pg1399",
+            "title": "Anna Karenina",
+            "context": 100000,
+            "style": "quotes",
+            "document_tokens": 99938
+          },
+          "prompt_tokens": 99998,
+          "decode_tokens": 3926,
+          "tau": 2.661694915254237,
+          "equivalent_acceptance": 0.7324045770322145,
+          "counter_identity_residual": 0,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7613559322033898,
+            "1": 0.5274576271186441,
+            "2": 0.3728813559322034
+          },
+          "per_row": [
+            3926,
+            [
+              0,
+              0,
+              0,
+              1475
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.04863763687293099,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 10,
+            "periodic_token_period": 5,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1476,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg1400/100k/quotes",
+          "turn": 0,
+          "meta": {
+            "book": "pg1400",
+            "title": "Great Expectations",
+            "context": 100000,
+            "style": "quotes",
+            "document_tokens": 99938
+          },
+          "prompt_tokens": 99998,
+          "decode_tokens": 3680,
+          "tau": 2.748319641523525,
+          "equivalent_acceptance": 0.7533214925049041,
+          "counter_identity_residual": -2,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7692307692307693,
+            "1": 0.5690814040328603,
+            "2": 0.41150112023898433
+          },
+          "per_row": [
+            3680,
+            [
+              0,
+              0,
+              0,
+              1339
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.04428144525944037,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1340,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg1404/100k/quotes",
+          "turn": 0,
+          "meta": {
+            "book": "pg1404",
+            "title": "The Federalist Papers",
+            "context": 100000,
+            "style": "quotes",
+            "document_tokens": 99938
+          },
+          "prompt_tokens": 99998,
+          "decode_tokens": 4590,
+          "tau": 2.8421052631578947,
+          "equivalent_acceptance": 0.7752288011678303,
+          "counter_identity_residual": -2,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7832817337461301,
+            "1": 0.5956656346749226,
+            "2": 0.46439628482972134
+          },
+          "per_row": [
+            4590,
+            [
+              0,
+              0,
+              0,
+              1615
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.06817686778479634,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1616,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg145/100k/quotes",
+          "turn": 0,
+          "meta": {
+            "book": "pg145",
+            "title": "Middlemarch",
+            "context": 100000,
+            "style": "quotes",
+            "document_tokens": 99938
+          },
+          "prompt_tokens": 99998,
+          "decode_tokens": 3854,
+          "tau": 2.7236749116607775,
+          "equivalent_acceptance": 0.747439671349339,
+          "counter_identity_residual": -2,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7759717314487633,
+            "1": 0.5561837455830388,
+            "2": 0.39293286219081275
+          },
+          "per_row": [
+            3854,
+            [
+              0,
+              0,
+              0,
+              1415
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.035538261997405965,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 8,
+            "periodic_token_period": 4,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1416,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg1497/100k/quotes",
+          "turn": 0,
+          "meta": {
+            "book": "pg1497",
+            "title": "The Republic",
+            "context": 100000,
+            "style": "quotes",
+            "document_tokens": 99938
+          },
+          "prompt_tokens": 99997,
+          "decode_tokens": 3851,
+          "tau": 2.8007272727272725,
+          "equivalent_acceptance": 0.765654211346412,
+          "counter_identity_residual": 0,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.792,
+            "1": 0.5796363636363636,
+            "2": 0.4290909090909091
+          },
+          "per_row": [
+            3851,
+            [
+              0,
+              0,
+              0,
+              1375
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.08982346832814123,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1376,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg205/100k/quotes",
+          "turn": 0,
+          "meta": {
+            "book": "pg205",
+            "title": "Walden, and On The Duty Of Civil Disobedience",
+            "context": 100000,
+            "style": "quotes",
+            "document_tokens": 99938
+          },
+          "prompt_tokens": 99998,
+          "decode_tokens": 3906,
+          "tau": 2.782051282051282,
+          "equivalent_acceptance": 0.7612861771018105,
+          "counter_identity_residual": -2,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7706552706552706,
+            "1": 0.5847578347578347,
+            "2": 0.42806267806267806
+          },
+          "per_row": [
+            3906,
+            [
+              0,
+              0,
+              0,
+              1404
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.052725876631686715,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 4,
+            "periodic_token_period": 2,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1405,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg2701/100k/quotes",
+          "turn": 0,
+          "meta": {
+            "book": "pg2701",
+            "title": "Moby Dick; Or, The Whale",
+            "context": 100000,
+            "style": "quotes",
+            "document_tokens": 99938
+          },
+          "prompt_tokens": 99998,
+          "decode_tokens": 3527,
+          "tau": 2.7881422924901185,
+          "equivalent_acceptance": 0.7627140031584287,
+          "counter_identity_residual": -2,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.8,
+            "1": 0.5723320158102767,
+            "2": 0.41739130434782606
+          },
+          "per_row": [
+            3527,
+            [
+              0,
+              0,
+              0,
+              1265
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.05413832199546485,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1266,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg3207/100k/quotes",
+          "turn": 0,
+          "meta": {
+            "book": "pg3207",
+            "title": "Leviathan",
+            "context": 100000,
+            "style": "quotes",
+            "document_tokens": 99938
+          },
+          "prompt_tokens": 99998,
+          "decode_tokens": 3416,
+          "tau": 2.8730025231286795,
+          "equivalent_acceptance": 0.7822879292894258,
+          "counter_identity_residual": -1,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7863751051303617,
+            "1": 0.6148023549201009,
+            "2": 0.4726661059714045
+          },
+          "per_row": [
+            3416,
+            [
+              0,
+              0,
+              0,
+              1189
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.046532045654082525,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1190,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg3300/100k/quotes",
+          "turn": 0,
+          "meta": {
+            "book": "pg3300",
+            "title": "An Inquiry into the Nature and Causes of the Wealth of Nations",
+            "context": 100000,
+            "style": "quotes",
+            "document_tokens": 99938
+          },
+          "prompt_tokens": 99998,
+          "decode_tokens": 3678,
+          "tau": 2.9853896103896105,
+          "equivalent_acceptance": 0.807346397656806,
+          "counter_identity_residual": 0,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.8092532467532467,
+            "1": 0.6461038961038961,
+            "2": 0.5300324675324676
+          },
+          "per_row": [
+            3678,
+            [
+              0,
+              0,
+              0,
+              1232
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.062245175319380265,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1233,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg345/100k/quotes",
+          "turn": 0,
+          "meta": {
+            "book": "pg345",
+            "title": "Dracula",
+            "context": 100000,
+            "style": "quotes",
+            "document_tokens": 99938
+          },
+          "prompt_tokens": 99997,
+          "decode_tokens": 3762,
+          "tau": 2.6530324400564176,
+          "equivalent_acceptance": 0.7302747675855623,
+          "counter_identity_residual": 0,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7440056417489421,
+            "1": 0.5352609308885754,
+            "2": 0.37376586741889983
+          },
+          "per_row": [
+            3762,
+            [
+              0,
+              0,
+              0,
+              1418
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.06431039064576136,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 4,
+            "periodic_token_period": 2,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1419,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg4280/100k/quotes",
+          "turn": 0,
+          "meta": {
+            "book": "pg4280",
+            "title": "The Critique of Pure Reason",
+            "context": 100000,
+            "style": "quotes",
+            "document_tokens": 99938
+          },
+          "prompt_tokens": 99998,
+          "decode_tokens": 3849,
+          "tau": 2.815654718361375,
+          "equivalent_acceptance": 0.7691245472457753,
+          "counter_identity_residual": -1,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7812728602779809,
+            "1": 0.5888807607900512,
+            "2": 0.44623262618873444
+          },
+          "per_row": [
+            3849,
+            [
+              0,
+              0,
+              0,
+              1367
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.05610389610389611,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1368,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg944/100k/quotes",
+          "turn": 0,
+          "meta": {
+            "book": "pg944",
+            "title": "The Voyage of the Beagle",
+            "context": 100000,
+            "style": "quotes",
+            "document_tokens": 99938
+          },
+          "prompt_tokens": 99997,
+          "decode_tokens": 3765,
+          "tau": 2.74617067833698,
+          "equivalent_acceptance": 0.7528107415546472,
+          "counter_identity_residual": -2,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7687819110138585,
+            "1": 0.5667396061269147,
+            "2": 0.41210795040116704
+          },
+          "per_row": [
+            3765,
+            [
+              0,
+              0,
+              0,
+              1371
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.06027615507169411,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1372,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg98/100k/quotes",
+          "turn": 0,
+          "meta": {
+            "book": "pg98",
+            "title": "A Tale of Two Cities",
+            "context": 100000,
+            "style": "quotes",
+            "document_tokens": 99938
+          },
+          "prompt_tokens": 99998,
+          "decode_tokens": 3984,
+          "tau": 2.7157464212678937,
+          "equivalent_acceptance": 0.7455359390438858,
+          "counter_identity_residual": 0,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7661895023858214,
+            "1": 0.5466939331970007,
+            "2": 0.40286298568507156
+          },
+          "per_row": [
+            3984,
+            [
+              0,
+              0,
+              0,
+              1467
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.07151819322459223,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1468,
+          "preemptions": 0
+        }
+      ],
+      "per_row": [
+        [
+          3518,
+          [
+            0,
+            0,
+            0,
+            1229
+          ]
+        ],
+        [
+          3300,
+          [
+            0,
+            0,
+            0,
+            1247
+          ]
+        ],
+        [
+          3843,
+          [
+            0,
+            0,
+            0,
+            1410
+          ]
+        ],
+        [
+          3926,
+          [
+            0,
+            0,
+            0,
+            1475
+          ]
+        ],
+        [
+          3680,
+          [
+            0,
+            0,
+            0,
+            1339
+          ]
+        ],
+        [
+          4590,
+          [
+            0,
+            0,
+            0,
+            1615
+          ]
+        ],
+        [
+          3854,
+          [
+            0,
+            0,
+            0,
+            1415
+          ]
+        ],
+        [
+          3851,
+          [
+            0,
+            0,
+            0,
+            1375
+          ]
+        ],
+        [
+          3906,
+          [
+            0,
+            0,
+            0,
+            1404
+          ]
+        ],
+        [
+          3527,
+          [
+            0,
+            0,
+            0,
+            1265
+          ]
+        ],
+        [
+          3416,
+          [
+            0,
+            0,
+            0,
+            1189
+          ]
+        ],
+        [
+          3678,
+          [
+            0,
+            0,
+            0,
+            1232
+          ]
+        ],
+        [
+          3762,
+          [
+            0,
+            0,
+            0,
+            1418
+          ]
+        ],
+        [
+          3849,
+          [
+            0,
+            0,
+            0,
+            1367
+          ]
+        ],
+        [
+          3765,
+          [
+            0,
+            0,
+            0,
+            1371
+          ]
+        ],
+        [
+          3984,
+          [
+            0,
+            0,
+            0,
+            1467
+          ]
+        ]
+      ],
+      "equivalent_acceptance": 0.7591892763629362
+    },
+    {
+      "data": "aa-docs-think-100k-summary",
+      "config": {
+        "K": 3,
+        "drafter_precision": "bf16",
+        "environment_sha256": "6d011ff07ab7c6ec1f331aac36db968b38c4ec39c2147eb86ba069da9f861ac7",
+        "kv_precision": "bf16",
+        "max_tokens_override": null,
+        "method": "mtp",
+        "metrics_schema": 2,
+        "metrics_settle_seconds": 6,
+        "model": "google/gemma-4-31B-it",
+        "requests_sha256": "7abb2f93587b01649c27e262e041afe96dd68cc055908d80f35610b5de9506ae",
+        "return_token_ids": true,
+        "run_label": "t1-triton-fp8-mtp-k3",
+        "seed": 1,
+        "weight_precision": "fp8"
+      },
+      "turn_count": 16,
+      "gpu_speed": {
+        "turn_count": 16,
+        "median_tps": 23.129410467205716,
+        "p80_tps": 23.63397974250634,
+        "maximum_tps": 24.362670794640653,
+        "p80_ratio": 1.021815051274914,
+        "maximum_ratio": 1.0533200069748223
+      },
+      "untimed_turns": 0,
+      "prompt": "full",
+      "draft_tokens": 3,
+      "quality": {
+        "length_limited_turns": 0,
+        "empty_answer_turns": 0,
+        "repetition_flagged_turns": 0,
+        "threshold_note": "128-token periodic span, periods 1 to 8; chosen after T0 and extended after the T1 two-token loop, no turns excluded"
+      },
+      "tau": 2.6997241066252724,
+      "pooled_tau": 2.6987493440615706,
+      "per_position_acceptance": {
+        "0": 0.7672293160748644,
+        "1": 0.5488455483645268,
+        "2": 0.3834616057372748
+      },
+      "turns": [
+        {
+          "id": "aa-docs/pg1228/100k/summary",
+          "turn": 0,
+          "meta": {
+            "book": "pg1228",
+            "title": "On the Origin of Species By Means of Natural Selection",
+            "context": 100000,
+            "style": "summary",
+            "document_tokens": 99948
+          },
+          "prompt_tokens": 99998,
+          "decode_tokens": 3625,
+          "tau": 2.7545592705167175,
+          "equivalent_acceptance": 0.7548021996721457,
+          "counter_identity_residual": -2,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7864741641337386,
+            "1": 0.5645896656534954,
+            "2": 0.40501519756838905
+          },
+          "per_row": [
+            3625,
+            [
+              0,
+              0,
+              0,
+              1316
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.03998896856039713,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1317,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg1260/100k/summary",
+          "turn": 0,
+          "meta": {
+            "book": "pg1260",
+            "title": "Jane Eyre: An Autobiography",
+            "context": 100000,
+            "style": "summary",
+            "document_tokens": 99948
+          },
+          "prompt_tokens": 99998,
+          "decode_tokens": 3367,
+          "tau": 2.572192513368984,
+          "equivalent_acceptance": 0.7100461578974797,
+          "counter_identity_residual": 0,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7524828113063408,
+            "1": 0.4935064935064935,
+            "2": 0.32620320855614976
+          },
+          "per_row": [
+            3367,
+            [
+              0,
+              0,
+              0,
+              1309
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.040380047505938245,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 8,
+            "periodic_token_period": 4,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1310,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg1342/100k/summary",
+          "turn": 0,
+          "meta": {
+            "book": "pg1342",
+            "title": "Pride and Prejudice",
+            "context": 100000,
+            "style": "summary",
+            "document_tokens": 99948
+          },
+          "prompt_tokens": 99997,
+          "decode_tokens": 3890,
+          "tau": 2.707028531663187,
+          "equivalent_acceptance": 0.7434361289922815,
+          "counter_identity_residual": -2,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7717466945024356,
+            "1": 0.5421016005567154,
+            "2": 0.3945720250521921
+          },
+          "per_row": [
+            3890,
+            [
+              0,
+              0,
+              0,
+              1437
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.047802621434078645,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1438,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg1399/100k/summary",
+          "turn": 0,
+          "meta": {
+            "book": "pg1399",
+            "title": "Anna Karenina",
+            "context": 100000,
+            "style": "summary",
+            "document_tokens": 99948
+          },
+          "prompt_tokens": 99998,
+          "decode_tokens": 4202,
+          "tau": 2.5842558425584254,
+          "equivalent_acceptance": 0.7131062259606973,
+          "counter_identity_residual": -2,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7435424354243543,
+            "1": 0.5129151291512916,
+            "2": 0.3290282902829028
+          },
+          "per_row": [
+            4202,
+            [
+              0,
+              0,
+              0,
+              1626
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.044967880085653104,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1627,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg1400/100k/summary",
+          "turn": 0,
+          "meta": {
+            "book": "pg1400",
+            "title": "Great Expectations",
+            "context": 100000,
+            "style": "summary",
+            "document_tokens": 99948
+          },
+          "prompt_tokens": 99998,
+          "decode_tokens": 3552,
+          "tau": 2.6547085201793723,
+          "equivalent_acceptance": 0.7306874152937206,
+          "counter_identity_residual": -1,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.749626307922272,
+            "1": 0.5351270553064275,
+            "2": 0.37070254110612855
+          },
+          "per_row": [
+            3552,
+            [
+              0,
+              0,
+              0,
+              1338
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.049817056009006475,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1339,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg1404/100k/summary",
+          "turn": 0,
+          "meta": {
+            "book": "pg1404",
+            "title": "The Federalist Papers",
+            "context": 100000,
+            "style": "summary",
+            "document_tokens": 99948
+          },
+          "prompt_tokens": 99998,
+          "decode_tokens": 3992,
+          "tau": 2.7027758970886935,
+          "equivalent_acceptance": 0.7424093313759321,
+          "counter_identity_residual": -1,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7569397427217333,
+            "1": 0.5477318889641164,
+            "2": 0.3987813134732566
+          },
+          "per_row": [
+            3992,
+            [
+              0,
+              0,
+              0,
+              1477
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.05108940646130729,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1478,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg145/100k/summary",
+          "turn": 0,
+          "meta": {
+            "book": "pg145",
+            "title": "Middlemarch",
+            "context": 100000,
+            "style": "summary",
+            "document_tokens": 99948
+          },
+          "prompt_tokens": 99998,
+          "decode_tokens": 4142,
+          "tau": 2.658536585365854,
+          "equivalent_acceptance": 0.7316288755568441,
+          "counter_identity_residual": 0,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7573812580231065,
+            "1": 0.5288831835686778,
+            "2": 0.3722721437740693
+          },
+          "per_row": [
+            4142,
+            [
+              0,
+              0,
+              0,
+              1558
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.036929761042722664,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1559,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg1497/100k/summary",
+          "turn": 0,
+          "meta": {
+            "book": "pg1497",
+            "title": "The Republic",
+            "context": 100000,
+            "style": "summary",
+            "document_tokens": 99948
+          },
+          "prompt_tokens": 99998,
+          "decode_tokens": 3843,
+          "tau": 2.776734104046243,
+          "equivalent_acceptance": 0.7600371753934347,
+          "counter_identity_residual": -2,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7861271676300579,
+            "1": 0.5852601156069365,
+            "2": 0.4067919075144509
+          },
+          "per_row": [
+            3843,
+            [
+              0,
+              0,
+              0,
+              1384
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.051508844953173774,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1385,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg205/100k/summary",
+          "turn": 0,
+          "meta": {
+            "book": "pg205",
+            "title": "Walden, and On The Duty Of Civil Disobedience",
+            "context": 100000,
+            "style": "summary",
+            "document_tokens": 99948
+          },
+          "prompt_tokens": 99998,
+          "decode_tokens": 3547,
+          "tau": 2.6529543754674645,
+          "equivalent_acceptance": 0.7302555417101,
+          "counter_identity_residual": -2,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7509349289454001,
+            "1": 0.5325355272999253,
+            "2": 0.3709798055347794
+          },
+          "per_row": [
+            3547,
+            [
+              0,
+              0,
+              0,
+              1337
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.06341600901916573,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 4,
+            "periodic_token_period": 2,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1338,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg2701/100k/summary",
+          "turn": 0,
+          "meta": {
+            "book": "pg2701",
+            "title": "Moby Dick; Or, The Whale",
+            "context": 100000,
+            "style": "summary",
+            "document_tokens": 99948
+          },
+          "prompt_tokens": 99998,
+          "decode_tokens": 3902,
+          "tau": 2.709722222222222,
+          "equivalent_acceptance": 0.7440856707841241,
+          "counter_identity_residual": -1,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7743055555555556,
+            "1": 0.5472222222222223,
+            "2": 0.3888888888888889
+          },
+          "per_row": [
+            3902,
+            [
+              0,
+              0,
+              0,
+              1440
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.0517550602100948,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 4,
+            "periodic_token_period": 2,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1441,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg3207/100k/summary",
+          "turn": 0,
+          "meta": {
+            "book": "pg3207",
+            "title": "Leviathan",
+            "context": 100000,
+            "style": "summary",
+            "document_tokens": 99948
+          },
+          "prompt_tokens": 99998,
+          "decode_tokens": 4239,
+          "tau": 2.7669712793733683,
+          "equivalent_acceptance": 0.7577376087648071,
+          "counter_identity_residual": -2,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.779373368146214,
+            "1": 0.577023498694517,
+            "2": 0.4118798955613577
+          },
+          "per_row": [
+            4239,
+            [
+              0,
+              0,
+              0,
+              1532
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.048820754716981135,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1533,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg3300/100k/summary",
+          "turn": 0,
+          "meta": {
+            "book": "pg3300",
+            "title": "An Inquiry into the Nature and Causes of the Wealth of Nations",
+            "context": 100000,
+            "style": "summary",
+            "document_tokens": 99948
+          },
+          "prompt_tokens": 99997,
+          "decode_tokens": 4089,
+          "tau": 2.8141775636613904,
+          "equivalent_acceptance": 0.7687819609347863,
+          "counter_identity_residual": 0,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7887130075705437,
+            "1": 0.5946317962835512,
+            "2": 0.43083275980729524
+          },
+          "per_row": [
+            4089,
+            [
+              0,
+              0,
+              0,
+              1453
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.05427872860635697,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1454,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg345/100k/summary",
+          "turn": 0,
+          "meta": {
+            "book": "pg345",
+            "title": "Dracula",
+            "context": 100000,
+            "style": "summary",
+            "document_tokens": 99948
+          },
+          "prompt_tokens": 99996,
+          "decode_tokens": 3749,
+          "tau": 2.647598870056497,
+          "equivalent_acceptance": 0.7289351896850689,
+          "counter_identity_residual": -2,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7464689265536724,
+            "1": 0.5388418079096046,
+            "2": 0.3637005649717514
+          },
+          "per_row": [
+            3749,
+            [
+              0,
+              0,
+              0,
+              1416
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.0504,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 6,
+            "periodic_token_period": 3,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1417,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg4280/100k/summary",
+          "turn": 0,
+          "meta": {
+            "book": "pg4280",
+            "title": "The Critique of Pure Reason",
+            "context": 100000,
+            "style": "summary",
+            "document_tokens": 99948
+          },
+          "prompt_tokens": 99998,
+          "decode_tokens": 3692,
+          "tau": 2.8443759630200307,
+          "equivalent_acceptance": 0.7757501861512099,
+          "counter_identity_residual": -1,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.8066255778120185,
+            "1": 0.5993836671802774,
+            "2": 0.4391371340523883
+          },
+          "per_row": [
+            3692,
+            [
+              0,
+              0,
+              0,
+              1298
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.048740861088545896,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1299,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg944/100k/summary",
+          "turn": 0,
+          "meta": {
+            "book": "pg944",
+            "title": "The Voyage of the Beagle",
+            "context": 100000,
+            "style": "summary",
+            "document_tokens": 99948
+          },
+          "prompt_tokens": 99997,
+          "decode_tokens": 4106,
+          "tau": 2.697766097240473,
+          "equivalent_acceptance": 0.741197602898299,
+          "counter_identity_residual": 0,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7660972404730617,
+            "1": 0.557161629434954,
+            "2": 0.3745072273324573
+          },
+          "per_row": [
+            4106,
+            [
+              0,
+              0,
+              0,
+              1522
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.0679327976625274,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1523,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg98/100k/summary",
+          "turn": 0,
+          "meta": {
+            "book": "pg98",
+            "title": "A Tale of Two Cities",
+            "context": 100000,
+            "style": "summary",
+            "document_tokens": 99948
+          },
+          "prompt_tokens": 99998,
+          "decode_tokens": 3778,
+          "tau": 2.6512280701754385,
+          "equivalent_acceptance": 0.7298302358501383,
+          "counter_identity_residual": 0,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7642105263157895,
+            "1": 0.5284210526315789,
+            "2": 0.3585964912280702
+          },
+          "per_row": [
+            3778,
+            [
+              0,
+              0,
+              0,
+              1425
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.05583487695157449,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1426,
+          "preemptions": 0
+        }
+      ],
+      "per_row": [
+        [
+          3625,
+          [
+            0,
+            0,
+            0,
+            1316
+          ]
+        ],
+        [
+          3367,
+          [
+            0,
+            0,
+            0,
+            1309
+          ]
+        ],
+        [
+          3890,
+          [
+            0,
+            0,
+            0,
+            1437
+          ]
+        ],
+        [
+          4202,
+          [
+            0,
+            0,
+            0,
+            1626
+          ]
+        ],
+        [
+          3552,
+          [
+            0,
+            0,
+            0,
+            1338
+          ]
+        ],
+        [
+          3992,
+          [
+            0,
+            0,
+            0,
+            1477
+          ]
+        ],
+        [
+          4142,
+          [
+            0,
+            0,
+            0,
+            1558
+          ]
+        ],
+        [
+          3843,
+          [
+            0,
+            0,
+            0,
+            1384
+          ]
+        ],
+        [
+          3547,
+          [
+            0,
+            0,
+            0,
+            1337
+          ]
+        ],
+        [
+          3902,
+          [
+            0,
+            0,
+            0,
+            1440
+          ]
+        ],
+        [
+          4239,
+          [
+            0,
+            0,
+            0,
+            1532
+          ]
+        ],
+        [
+          4089,
+          [
+            0,
+            0,
+            0,
+            1453
+          ]
+        ],
+        [
+          3749,
+          [
+            0,
+            0,
+            0,
+            1416
+          ]
+        ],
+        [
+          3692,
+          [
+            0,
+            0,
+            0,
+            1298
+          ]
+        ],
+        [
+          4106,
+          [
+            0,
+            0,
+            0,
+            1522
+          ]
+        ],
+        [
+          3778,
+          [
+            0,
+            0,
+            0,
+            1425
+          ]
+        ]
+      ],
+      "equivalent_acceptance": 0.741671462588732
+    },
+    {
+      "data": "aa-docs-think-10k-quotes",
+      "config": {
+        "K": 3,
+        "drafter_precision": "bf16",
+        "environment_sha256": "6d011ff07ab7c6ec1f331aac36db968b38c4ec39c2147eb86ba069da9f861ac7",
+        "kv_precision": "bf16",
+        "max_tokens_override": null,
+        "method": "mtp",
+        "metrics_schema": 2,
+        "metrics_settle_seconds": 6,
+        "model": "google/gemma-4-31B-it",
+        "requests_sha256": "7abb2f93587b01649c27e262e041afe96dd68cc055908d80f35610b5de9506ae",
+        "return_token_ids": true,
+        "run_label": "t1-triton-fp8-mtp-k3",
+        "seed": 1,
+        "weight_precision": "fp8"
+      },
+      "turn_count": 16,
+      "gpu_speed": {
+        "turn_count": 16,
+        "median_tps": 91.70802602280105,
+        "p80_tps": 92.56321114098789,
+        "maximum_tps": 93.65328580065953,
+        "p80_ratio": 1.0093250847856459,
+        "maximum_ratio": 1.0212114453033243
+      },
+      "untimed_turns": 0,
+      "prompt": "full",
+      "draft_tokens": 3,
+      "quality": {
+        "length_limited_turns": 0,
+        "empty_answer_turns": 0,
+        "repetition_flagged_turns": 0,
+        "threshold_note": "128-token periodic span, periods 1 to 8; chosen after T0 and extended after the T1 two-token loop, no turns excluded"
+      },
+      "tau": 2.851140209430109,
+      "pooled_tau": 2.8499611889868044,
+      "per_position_acceptance": {
+        "0": 0.7937537098762614,
+        "1": 0.5997899639285877,
+        "2": 0.4574676955390165
+      },
+      "turns": [
+        {
+          "id": "aa-docs/pg1228/10k/quotes",
+          "turn": 0,
+          "meta": {
+            "book": "pg1228",
+            "title": "On the Origin of Species By Means of Natural Selection",
+            "context": 10000,
+            "style": "quotes",
+            "document_tokens": 9938
+          },
+          "prompt_tokens": 9998,
+          "decode_tokens": 3824,
+          "tau": 2.894776684330053,
+          "equivalent_acceptance": 0.7872175313632084,
+          "counter_identity_residual": -2,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.8031794095382286,
+            "1": 0.6169568508705526,
+            "2": 0.4761544284632854
+          },
+          "per_row": [
+            3824,
+            [
+              0,
+              0,
+              0,
+              1321
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.04967320261437908,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1322,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg1260/10k/quotes",
+          "turn": 0,
+          "meta": {
+            "book": "pg1260",
+            "title": "Jane Eyre: An Autobiography",
+            "context": 10000,
+            "style": "quotes",
+            "document_tokens": 9938
+          },
+          "prompt_tokens": 9998,
+          "decode_tokens": 3801,
+          "tau": 2.8408071748878925,
+          "equivalent_acceptance": 0.7749305549568946,
+          "counter_identity_residual": -2,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.796711509715994,
+            "1": 0.5994020926756353,
+            "2": 0.4461883408071749
+          },
+          "per_row": [
+            3801,
+            [
+              0,
+              0,
+              0,
+              1338
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.0486586007364545,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1339,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg1342/10k/quotes",
+          "turn": 0,
+          "meta": {
+            "book": "pg1342",
+            "title": "Pride and Prejudice",
+            "context": 10000,
+            "style": "quotes",
+            "document_tokens": 9938
+          },
+          "prompt_tokens": 9997,
+          "decode_tokens": 3702,
+          "tau": 2.865325077399381,
+          "equivalent_acceptance": 0.7805409331223734,
+          "counter_identity_residual": -2,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7995356037151703,
+            "1": 0.6153250773993808,
+            "2": 0.4520123839009288
+          },
+          "per_row": [
+            3702,
+            [
+              0,
+              0,
+              0,
+              1292
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.045368620037807186,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1293,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg1399/10k/quotes",
+          "turn": 0,
+          "meta": {
+            "book": "pg1399",
+            "title": "Anna Karenina",
+            "context": 10000,
+            "style": "quotes",
+            "document_tokens": 9938
+          },
+          "prompt_tokens": 9998,
+          "decode_tokens": 3943,
+          "tau": 2.7554157931516423,
+          "equivalent_acceptance": 0.7550051937616198,
+          "counter_identity_residual": -2,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7728860936408106,
+            "1": 0.5625436757512229,
+            "2": 0.42138364779874216
+          },
+          "per_row": [
+            3943,
+            [
+              0,
+              0,
+              0,
+              1431
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.0486815415821501,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1432,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg1400/10k/quotes",
+          "turn": 0,
+          "meta": {
+            "book": "pg1400",
+            "title": "Great Expectations",
+            "context": 10000,
+            "style": "quotes",
+            "document_tokens": 9938
+          },
+          "prompt_tokens": 9998,
+          "decode_tokens": 3978,
+          "tau": 2.779874213836478,
+          "equivalent_acceptance": 0.7607750759346281,
+          "counter_identity_residual": -1,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7742837176799441,
+            "1": 0.56743535988819,
+            "2": 0.4388539482879106
+          },
+          "per_row": [
+            3978,
+            [
+              0,
+              0,
+              0,
+              1431
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.05478763508419201,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1432,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg1404/10k/quotes",
+          "turn": 0,
+          "meta": {
+            "book": "pg1404",
+            "title": "The Federalist Papers",
+            "context": 10000,
+            "style": "quotes",
+            "document_tokens": 9938
+          },
+          "prompt_tokens": 9998,
+          "decode_tokens": 4395,
+          "tau": 2.848347375243033,
+          "equivalent_acceptance": 0.7766610820258877,
+          "counter_identity_residual": -1,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.8029812054439404,
+            "1": 0.594296824368114,
+            "2": 0.45171743357096567
+          },
+          "per_row": [
+            4395,
+            [
+              0,
+              0,
+              0,
+              1543
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.04617834394904458,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1544,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg145/10k/quotes",
+          "turn": 0,
+          "meta": {
+            "book": "pg145",
+            "title": "Middlemarch",
+            "context": 10000,
+            "style": "quotes",
+            "document_tokens": 9938
+          },
+          "prompt_tokens": 9998,
+          "decode_tokens": 3918,
+          "tau": 2.8248017303532804,
+          "equivalent_acceptance": 0.7712419531192813,
+          "counter_identity_residual": -1,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7901946647440519,
+            "1": 0.5861571737563086,
+            "2": 0.44917087238644554
+          },
+          "per_row": [
+            3918,
+            [
+              0,
+              0,
+              0,
+              1387
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.04082674151569278,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1388,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg1497/10k/quotes",
+          "turn": 0,
+          "meta": {
+            "book": "pg1497",
+            "title": "The Republic",
+            "context": 10000,
+            "style": "quotes",
+            "document_tokens": 9938
+          },
+          "prompt_tokens": 9998,
+          "decode_tokens": 3987,
+          "tau": 2.880780346820809,
+          "equivalent_acceptance": 0.7840530451238206,
+          "counter_identity_residual": -1,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7904624277456648,
+            "1": 0.6054913294797688,
+            "2": 0.48554913294797686
+          },
+          "per_row": [
+            3987,
+            [
+              0,
+              0,
+              0,
+              1384
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.07071213640922769,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1385,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg205/10k/quotes",
+          "turn": 0,
+          "meta": {
+            "book": "pg205",
+            "title": "Walden, and On The Duty Of Civil Disobedience",
+            "context": 10000,
+            "style": "quotes",
+            "document_tokens": 9938
+          },
+          "prompt_tokens": 9998,
+          "decode_tokens": 3674,
+          "tau": 2.783333333333333,
+          "equivalent_acceptance": 0.7615869706395613,
+          "counter_identity_residual": -1,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7757575757575758,
+            "1": 0.5833333333333334,
+            "2": 0.425
+          },
+          "per_row": [
+            3674,
+            [
+              0,
+              0,
+              0,
+              1320
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.05170068027210884,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1321,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg2701/10k/quotes",
+          "turn": 0,
+          "meta": {
+            "book": "pg2701",
+            "title": "Moby Dick; Or, The Whale",
+            "context": 10000,
+            "style": "quotes",
+            "document_tokens": 9938
+          },
+          "prompt_tokens": 9998,
+          "decode_tokens": 3856,
+          "tau": 2.8862275449101795,
+          "equivalent_acceptance": 0.7852864308041976,
+          "counter_identity_residual": -1,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.8158682634730539,
+            "1": 0.6100299401197605,
+            "2": 0.46107784431137727
+          },
+          "per_row": [
+            3856,
+            [
+              0,
+              0,
+              0,
+              1336
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.060928182525278714,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 4,
+            "periodic_token_period": 2,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1337,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg3207/10k/quotes",
+          "turn": 0,
+          "meta": {
+            "book": "pg3207",
+            "title": "Leviathan",
+            "context": 10000,
+            "style": "quotes",
+            "document_tokens": 9938
+          },
+          "prompt_tokens": 9998,
+          "decode_tokens": 4100,
+          "tau": 2.7815468113975577,
+          "equivalent_acceptance": 0.761167780481596,
+          "counter_identity_residual": -3,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.776797829036635,
+            "1": 0.5705563093622795,
+            "2": 0.4362279511533243
+          },
+          "per_row": [
+            4100,
+            [
+              0,
+              0,
+              0,
+              1474
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.052426237503048034,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1475,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg3300/10k/quotes",
+          "turn": 0,
+          "meta": {
+            "book": "pg3300",
+            "title": "An Inquiry into the Nature and Causes of the Wealth of Nations",
+            "context": 10000,
+            "style": "quotes",
+            "document_tokens": 9938
+          },
+          "prompt_tokens": 9998,
+          "decode_tokens": 3533,
+          "tau": 2.884081632653061,
+          "equivalent_acceptance": 0.7848008168862806,
+          "counter_identity_residual": 0,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7885714285714286,
+            "1": 0.6114285714285714,
+            "2": 0.4840816326530612
+          },
+          "per_row": [
+            3533,
+            [
+              0,
+              0,
+              0,
+              1225
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.05857385398981324,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1226,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg345/10k/quotes",
+          "turn": 0,
+          "meta": {
+            "book": "pg345",
+            "title": "Dracula",
+            "context": 10000,
+            "style": "quotes",
+            "document_tokens": 9938
+          },
+          "prompt_tokens": 9997,
+          "decode_tokens": 3817,
+          "tau": 2.872084273890143,
+          "equivalent_acceptance": 0.7820792268234265,
+          "counter_identity_residual": -2,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7960872836719338,
+            "1": 0.6162528216704289,
+            "2": 0.4612490594431904
+          },
+          "per_row": [
+            3817,
+            [
+              0,
+              0,
+              0,
+              1329
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.07019381875327396,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 8,
+            "periodic_token_period": 4,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1330,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg4280/10k/quotes",
+          "turn": 0,
+          "meta": {
+            "book": "pg4280",
+            "title": "The Critique of Pure Reason",
+            "context": 10000,
+            "style": "quotes",
+            "document_tokens": 9938
+          },
+          "prompt_tokens": 9998,
+          "decode_tokens": 3957,
+          "tau": 2.9202952029520297,
+          "equivalent_acceptance": 0.7929483374760649,
+          "counter_identity_residual": -1,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.8095940959409594,
+            "1": 0.625830258302583,
+            "2": 0.48560885608856086
+          },
+          "per_row": [
+            3957,
+            [
+              0,
+              0,
+              0,
+              1355
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.05507832238504295,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1356,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg944/10k/quotes",
+          "turn": 0,
+          "meta": {
+            "book": "pg944",
+            "title": "The Voyage of the Beagle",
+            "context": 10000,
+            "style": "quotes",
+            "document_tokens": 9938
+          },
+          "prompt_tokens": 9997,
+          "decode_tokens": 4052,
+          "tau": 2.8963545389563974,
+          "equivalent_acceptance": 0.7875733234797526,
+          "counter_identity_residual": -1,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.806290207290922,
+            "1": 0.6147248034310222,
+            "2": 0.4760543245175125
+          },
+          "per_row": [
+            4052,
+            [
+              0,
+              0,
+              0,
+              1399
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.05748828028620775,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 4,
+            "periodic_token_period": 2,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1400,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg98/10k/quotes",
+          "turn": 0,
+          "meta": {
+            "book": "pg98",
+            "title": "A Tale of Two Cities",
+            "context": 10000,
+            "style": "quotes",
+            "document_tokens": 9938
+          },
+          "prompt_tokens": 9998,
+          "decode_tokens": 3880,
+          "tau": 2.904191616766467,
+          "equivalent_acceptance": 0.7893376768709688,
+          "counter_identity_residual": -2,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.8031437125748503,
+            "1": 0.6264970059880239,
+            "2": 0.47604790419161674
+          },
+          "per_row": [
+            3880,
+            [
+              0,
+              0,
+              0,
+              1336
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.07266168513269776,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1337,
+          "preemptions": 0
+        }
+      ],
+      "per_row": [
+        [
+          3824,
+          [
+            0,
+            0,
+            0,
+            1321
+          ]
+        ],
+        [
+          3801,
+          [
+            0,
+            0,
+            0,
+            1338
+          ]
+        ],
+        [
+          3702,
+          [
+            0,
+            0,
+            0,
+            1292
+          ]
+        ],
+        [
+          3943,
+          [
+            0,
+            0,
+            0,
+            1431
+          ]
+        ],
+        [
+          3978,
+          [
+            0,
+            0,
+            0,
+            1431
+          ]
+        ],
+        [
+          4395,
+          [
+            0,
+            0,
+            0,
+            1543
+          ]
+        ],
+        [
+          3918,
+          [
+            0,
+            0,
+            0,
+            1387
+          ]
+        ],
+        [
+          3987,
+          [
+            0,
+            0,
+            0,
+            1384
+          ]
+        ],
+        [
+          3674,
+          [
+            0,
+            0,
+            0,
+            1320
+          ]
+        ],
+        [
+          3856,
+          [
+            0,
+            0,
+            0,
+            1336
+          ]
+        ],
+        [
+          4100,
+          [
+            0,
+            0,
+            0,
+            1474
+          ]
+        ],
+        [
+          3533,
+          [
+            0,
+            0,
+            0,
+            1225
+          ]
+        ],
+        [
+          3817,
+          [
+            0,
+            0,
+            0,
+            1329
+          ]
+        ],
+        [
+          3957,
+          [
+            0,
+            0,
+            0,
+            1355
+          ]
+        ],
+        [
+          4052,
+          [
+            0,
+            0,
+            0,
+            1399
+          ]
+        ],
+        [
+          3880,
+          [
+            0,
+            0,
+            0,
+            1336
+          ]
+        ]
+      ],
+      "equivalent_acceptance": 0.7773008977200744
+    },
+    {
+      "data": "aa-docs-think-10k-summary",
+      "config": {
+        "K": 3,
+        "drafter_precision": "bf16",
+        "environment_sha256": "6d011ff07ab7c6ec1f331aac36db968b38c4ec39c2147eb86ba069da9f861ac7",
+        "kv_precision": "bf16",
+        "max_tokens_override": null,
+        "method": "mtp",
+        "metrics_schema": 2,
+        "metrics_settle_seconds": 6,
+        "model": "google/gemma-4-31B-it",
+        "requests_sha256": "7abb2f93587b01649c27e262e041afe96dd68cc055908d80f35610b5de9506ae",
+        "return_token_ids": true,
+        "run_label": "t1-triton-fp8-mtp-k3",
+        "seed": 1,
+        "weight_precision": "fp8"
+      },
+      "turn_count": 16,
+      "gpu_speed": {
+        "turn_count": 16,
+        "median_tps": 86.63120813439258,
+        "p80_tps": 88.23563508501705,
+        "maximum_tps": 91.77031726544516,
+        "p80_ratio": 1.0185201959568138,
+        "maximum_ratio": 1.059321683741039
+      },
+      "untimed_turns": 0,
+      "prompt": "full",
+      "draft_tokens": 3,
+      "quality": {
+        "length_limited_turns": 0,
+        "empty_answer_turns": 0,
+        "repetition_flagged_turns": 0,
+        "threshold_note": "128-token periodic span, periods 1 to 8; chosen after T0 and extended after the T1 two-token loop, no turns excluded"
+      },
+      "tau": 2.7196978982515816,
+      "pooled_tau": 2.7184908411555635,
+      "per_position_acceptance": {
+        "0": 0.7722591816276314,
+        "1": 0.5527203134967648,
+        "2": 0.394285974665087
+      },
+      "turns": [
+        {
+          "id": "aa-docs/pg1228/10k/summary",
+          "turn": 0,
+          "meta": {
+            "book": "pg1228",
+            "title": "On the Origin of Species By Means of Natural Selection",
+            "context": 10000,
+            "style": "summary",
+            "document_tokens": 9948
+          },
+          "prompt_tokens": 9998,
+          "decode_tokens": 3390,
+          "tau": 2.738287560581583,
+          "equivalent_acceptance": 0.7509336660627217,
+          "counter_identity_residual": -1,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.778675282714055,
+            "1": 0.5630048465266559,
+            "2": 0.3974151857835218
+          },
+          "per_row": [
+            3390,
+            [
+              0,
+              0,
+              0,
+              1238
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.04629902683574167,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1239,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg1260/10k/summary",
+          "turn": 0,
+          "meta": {
+            "book": "pg1260",
+            "title": "Jane Eyre: An Autobiography",
+            "context": 10000,
+            "style": "summary",
+            "document_tokens": 9948
+          },
+          "prompt_tokens": 9998,
+          "decode_tokens": 3655,
+          "tau": 2.654320987654321,
+          "equivalent_acceptance": 0.7305920293088806,
+          "counter_identity_residual": -1,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7523602033405955,
+            "1": 0.5315904139433552,
+            "2": 0.3710965867828613
+          },
+          "per_row": [
+            3655,
+            [
+              0,
+              0,
+              0,
+              1377
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.041028446389496716,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1378,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg1342/10k/summary",
+          "turn": 0,
+          "meta": {
+            "book": "pg1342",
+            "title": "Pride and Prejudice",
+            "context": 10000,
+            "style": "summary",
+            "document_tokens": 9948
+          },
+          "prompt_tokens": 9997,
+          "decode_tokens": 3632,
+          "tau": 2.698365527488856,
+          "equivalent_acceptance": 0.7413427087990325,
+          "counter_identity_residual": -1,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7659732540861813,
+            "1": 0.5349182763744428,
+            "2": 0.39821693907875183
+          },
+          "per_row": [
+            3632,
+            [
+              0,
+              0,
+              0,
+              1346
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.047619047619047616,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1347,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg1399/10k/summary",
+          "turn": 0,
+          "meta": {
+            "book": "pg1399",
+            "title": "Anna Karenina",
+            "context": 10000,
+            "style": "summary",
+            "document_tokens": 9948
+          },
+          "prompt_tokens": 9998,
+          "decode_tokens": 4036,
+          "tau": 2.6448230668414157,
+          "equivalent_acceptance": 0.7282497598112958,
+          "counter_identity_residual": -1,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7509829619921363,
+            "1": 0.528178243774574,
+            "2": 0.36631716906946266
+          },
+          "per_row": [
+            4036,
+            [
+              0,
+              0,
+              0,
+              1526
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.04384443893980679,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1527,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg1400/10k/summary",
+          "turn": 0,
+          "meta": {
+            "book": "pg1400",
+            "title": "Great Expectations",
+            "context": 10000,
+            "style": "summary",
+            "document_tokens": 9948
+          },
+          "prompt_tokens": 9998,
+          "decode_tokens": 3809,
+          "tau": 2.6196698762035764,
+          "equivalent_acceptance": 0.7220046978116219,
+          "counter_identity_residual": 0,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7448418156808804,
+            "1": 0.5213204951856947,
+            "2": 0.3535075653370014
+          },
+          "per_row": [
+            3809,
+            [
+              0,
+              0,
+              0,
+              1454
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.06325459317585302,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1455,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg1404/10k/summary",
+          "turn": 0,
+          "meta": {
+            "book": "pg1404",
+            "title": "The Federalist Papers",
+            "context": 10000,
+            "style": "summary",
+            "document_tokens": 9948
+          },
+          "prompt_tokens": 9998,
+          "decode_tokens": 3987,
+          "tau": 2.6957403651115617,
+          "equivalent_acceptance": 0.7407069844075398,
+          "counter_identity_residual": -2,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7694388100067613,
+            "1": 0.5483434753211629,
+            "2": 0.3793103448275862
+          },
+          "per_row": [
+            3987,
+            [
+              0,
+              0,
+              0,
+              1479
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.051654964894684054,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1480,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg145/10k/summary",
+          "turn": 0,
+          "meta": {
+            "book": "pg145",
+            "title": "Middlemarch",
+            "context": 10000,
+            "style": "summary",
+            "document_tokens": 9948
+          },
+          "prompt_tokens": 9998,
+          "decode_tokens": 3797,
+          "tau": 2.651536312849162,
+          "equivalent_acceptance": 0.7299061977435171,
+          "counter_identity_residual": -1,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7597765363128491,
+            "1": 0.5258379888268156,
+            "2": 0.36662011173184356
+          },
+          "per_row": [
+            3797,
+            [
+              0,
+              0,
+              0,
+              1432
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.04344391785150079,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1433,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg1497/10k/summary",
+          "turn": 0,
+          "meta": {
+            "book": "pg1497",
+            "title": "The Republic",
+            "context": 10000,
+            "style": "summary",
+            "document_tokens": 9948
+          },
+          "prompt_tokens": 9998,
+          "decode_tokens": 4001,
+          "tau": 2.882564841498559,
+          "equivalent_acceptance": 0.7844573551423224,
+          "counter_identity_residual": -1,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.8134005763688761,
+            "1": 0.6066282420749279,
+            "2": 0.46325648414985593
+          },
+          "per_row": [
+            4001,
+            [
+              0,
+              0,
+              0,
+              1388
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.047726136931534234,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1389,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg205/10k/summary",
+          "turn": 0,
+          "meta": {
+            "book": "pg205",
+            "title": "Walden, and On The Duty Of Civil Disobedience",
+            "context": 10000,
+            "style": "summary",
+            "document_tokens": 9948
+          },
+          "prompt_tokens": 9998,
+          "decode_tokens": 3627,
+          "tau": 2.702682563338301,
+          "equivalent_acceptance": 0.7423867775165585,
+          "counter_identity_residual": -2,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7622950819672131,
+            "1": 0.5506706408345753,
+            "2": 0.39120715350223545
+          },
+          "per_row": [
+            3627,
+            [
+              0,
+              0,
+              0,
+              1342
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.052094818081587654,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1343,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg2701/10k/summary",
+          "turn": 0,
+          "meta": {
+            "book": "pg2701",
+            "title": "Moby Dick; Or, The Whale",
+            "context": 10000,
+            "style": "summary",
+            "document_tokens": 9948
+          },
+          "prompt_tokens": 9998,
+          "decode_tokens": 3605,
+          "tau": 2.6703703703703705,
+          "equivalent_acceptance": 0.7345304659726144,
+          "counter_identity_residual": -1,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7688888888888888,
+            "1": 0.5214814814814814,
+            "2": 0.38074074074074077
+          },
+          "per_row": [
+            3605,
+            [
+              0,
+              0,
+              0,
+              1350
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.06017748197448697,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 4,
+            "periodic_token_period": 2,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1351,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg3207/10k/summary",
+          "turn": 0,
+          "meta": {
+            "book": "pg3207",
+            "title": "Leviathan",
+            "context": 10000,
+            "style": "summary",
+            "document_tokens": 9948
+          },
+          "prompt_tokens": 9997,
+          "decode_tokens": 3763,
+          "tau": 2.762848751835536,
+          "equivalent_acceptance": 0.7567641180070503,
+          "counter_identity_residual": -1,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.775330396475771,
+            "1": 0.5719530102790015,
+            "2": 0.41629955947136565
+          },
+          "per_row": [
+            3763,
+            [
+              0,
+              0,
+              0,
+              1362
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.0475557917109458,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1363,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg3300/10k/summary",
+          "turn": 0,
+          "meta": {
+            "book": "pg3300",
+            "title": "An Inquiry into the Nature and Causes of the Wealth of Nations",
+            "context": 10000,
+            "style": "summary",
+            "document_tokens": 9948
+          },
+          "prompt_tokens": 9998,
+          "decode_tokens": 3376,
+          "tau": 2.738037307380373,
+          "equivalent_acceptance": 0.7508739878650057,
+          "counter_identity_residual": 0,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7891321978913219,
+            "1": 0.5563665855636658,
+            "2": 0.39253852392538524
+          },
+          "per_row": [
+            3376,
+            [
+              0,
+              0,
+              0,
+              1233
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.0568551969203435,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1234,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg345/10k/summary",
+          "turn": 0,
+          "meta": {
+            "book": "pg345",
+            "title": "Dracula",
+            "context": 10000,
+            "style": "summary",
+            "document_tokens": 9948
+          },
+          "prompt_tokens": 9997,
+          "decode_tokens": 3489,
+          "tau": 2.7004643962848296,
+          "equivalent_acceptance": 0.7418505295400994,
+          "counter_identity_residual": -1,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7561919504643962,
+            "1": 0.5472136222910217,
+            "2": 0.3978328173374613
+          },
+          "per_row": [
+            3489,
+            [
+              0,
+              0,
+              0,
+              1292
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.062177650429799426,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1293,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg4280/10k/summary",
+          "turn": 0,
+          "meta": {
+            "book": "pg4280",
+            "title": "The Critique of Pure Reason",
+            "context": 10000,
+            "style": "summary",
+            "document_tokens": 9948
+          },
+          "prompt_tokens": 9998,
+          "decode_tokens": 3864,
+          "tau": 2.8664688427299705,
+          "equivalent_acceptance": 0.7808014906143024,
+          "counter_identity_residual": 0,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.8160237388724035,
+            "1": 0.6097922848664689,
+            "2": 0.4406528189910979
+          },
+          "per_row": [
+            3864,
+            [
+              0,
+              0,
+              0,
+              1348
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.05252263906856404,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1349,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg944/10k/summary",
+          "turn": 0,
+          "meta": {
+            "book": "pg944",
+            "title": "The Voyage of the Beagle",
+            "context": 10000,
+            "style": "summary",
+            "document_tokens": 9948
+          },
+          "prompt_tokens": 9997,
+          "decode_tokens": 3940,
+          "tau": 2.7864214992927865,
+          "equivalent_acceptance": 0.7623109410928035,
+          "counter_identity_residual": -2,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7828854314002829,
+            "1": 0.5770862800565771,
+            "2": 0.42786421499292787
+          },
+          "per_row": [
+            3940,
+            [
+              0,
+              0,
+              0,
+              1414
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.043897487947221515,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 3,
+            "periodic_token_period": 1,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1415,
+          "preemptions": 0
+        },
+        {
+          "id": "aa-docs/pg98/10k/summary",
+          "turn": 0,
+          "meta": {
+            "book": "pg98",
+            "title": "A Tale of Two Cities",
+            "context": 10000,
+            "style": "summary",
+            "document_tokens": 9948
+          },
+          "prompt_tokens": 9998,
+          "decode_tokens": 3689,
+          "tau": 2.7025641025641027,
+          "equivalent_acceptance": 0.7423581506343044,
+          "counter_identity_residual": -2,
+          "unproposed_tokens": 0,
+          "per_position_acceptance": {
+            "0": 0.7758241758241758,
+            "1": 0.5553113553113553,
+            "2": 0.3728937728937729
+          },
+          "per_row": [
+            3689,
+            [
+              0,
+              0,
+              0,
+              1365
+            ]
+          ],
+          "quality": {
+            "empty_answer": false,
+            "finish_reason": "stop",
+            "dominant_token_share": 0.05989159891598916,
+            "longest_identical_token_run": 3,
+            "longest_periodic_token_span": 4,
+            "periodic_token_period": 2,
+            "periodic_search_max_period": 8,
+            "repetition_flag": false
+          },
+          "emitted_steps": 1366,
+          "preemptions": 0
+        }
+      ],
+      "per_row": [
+        [
+          3390,
+          [
+            0,
+            0,
+            0,
+            1238
+          ]
+        ],
+        [
+          3655,
+          [
+            0,
+            0,
+            0,
+            1377
+          ]
+        ],
+        [
+          3632,
+          [
+            0,
+            0,
+            0,
+            1346
+          ]
+        ],
+        [
+          4036,
+          [
+            0,
+            0,
+            0,
+            1526
+          ]
+        ],
+        [
+          3809,
+          [
+            0,
+            0,
+            0,
+            1454
+          ]
+        ],
+        [
+          3987,
+          [
+            0,
+            0,
+            0,
+            1479
+          ]
+        ],
+        [
+          3797,
+          [
+            0,
+            0,
+            0,
+            1432
+          ]
+        ],
+        [
+          4001,
+          [
+            0,
+            0,
+            0,
+            1388
+          ]
+        ],
+        [
+          3627,
+          [
+            0,
+            0,
+            0,
+            1342
+          ]
+        ],
+        [
+          3605,
+          [
+            0,
+            0,
+            0,
+            1350
+          ]
+        ],
+        [
+          3763,
+          [
+            0,
+            0,
+            0,
+            1362
+          ]
+        ],
+        [
+          3376,
+          [
+            0,
+            0,
+            0,
+            1233
+          ]
+        ],
+        [
+          3489,
+          [
+            0,
+            0,
+            0,
+            1292
+          ]
+        ],
+        [
+          3864,
+          [
+            0,
+            0,
+            0,
+            1348
+          ]
+        ],
+        [
+          3940,
+          [
+            0,
+            0,
+            0,
+            1414
+          ]
+        ],
+        [
+          3689,
+          [
+            0,
+            0,
+            0,
+            1365
+          ]
+        ]
+      ],
+      "equivalent_acceptance": 0.7464854441383395
+    }
+  ],
+  "paired": [
+    {
+      "config": {
+        "K": 3,
+        "drafter_precision": "bf16",
+        "environment_sha256": "6d011ff07ab7c6ec1f331aac36db968b38c4ec39c2147eb86ba069da9f861ac7",
+        "kv_precision": "bf16",
+        "max_tokens_override": null,
+        "method": "mtp",
+        "metrics_schema": 2,
+        "metrics_settle_seconds": 6,
+        "model": "google/gemma-4-31B-it",
+        "requests_sha256": "7abb2f93587b01649c27e262e041afe96dd68cc055908d80f35610b5de9506ae",
+        "return_token_ids": true,
+        "run_label": "t1-triton-fp8-mtp-k3",
+        "seed": 1,
+        "weight_precision": "fp8"
+      },
+      "style": "quotes",
+      "paired_books": 16,
+      "differences": {
+        "pg1228": -0.007322933163654843,
+        "pg1260": -0.04630335072952563,
+        "pg1342": -0.032656184963753,
+        "pg1399": -0.022600616729405276,
+        "pg1400": -0.00745358342972402,
+        "pg1404": -0.0014322808580573554,
+        "pg145": -0.02380228176994237,
+        "pg1497": -0.018398833777408585,
+        "pg205": -0.00030079353775080975,
+        "pg2701": -0.022572427645768833,
+        "pg3207": 0.021120148807829864,
+        "pg3300": 0.022545580770525486,
+        "pg345": -0.05180445923786414,
+        "pg4280": -0.023823790230289577,
+        "pg944": -0.034762581925105396,
+        "pg98": -0.043801737827082965
+      },
+      "mean_difference": -0.01833563289043609,
+      "higher_at_100k": 2,
+      "only_10k": [],
+      "only_100k": [],
+      "parts": "combined thinking and answer; counters do not separate them"
+    },
+    {
+      "config": {
+        "K": 3,
+        "drafter_precision": "bf16",
+        "environment_sha256": "6d011ff07ab7c6ec1f331aac36db968b38c4ec39c2147eb86ba069da9f861ac7",
+        "kv_precision": "bf16",
+        "max_tokens_override": null,
+        "method": "mtp",
+        "metrics_schema": 2,
+        "metrics_settle_seconds": 6,
+        "model": "google/gemma-4-31B-it",
+        "requests_sha256": "7abb2f93587b01649c27e262e041afe96dd68cc055908d80f35610b5de9506ae",
+        "return_token_ids": true,
+        "run_label": "t1-triton-fp8-mtp-k3",
+        "seed": 1,
+        "weight_precision": "fp8"
+      },
+      "style": "summary",
+      "paired_books": 16,
+      "differences": {
+        "pg1228": 0.003868533609423963,
+        "pg1260": -0.02054587141140085,
+        "pg1342": 0.002093420193248985,
+        "pg1399": -0.015143533850598523,
+        "pg1400": 0.0086827174820987,
+        "pg1404": 0.001702346968392332,
+        "pg145": 0.0017226778133270226,
+        "pg1497": -0.02442017974888766,
+        "pg205": -0.012131235806458474,
+        "pg2701": 0.009555204811509732,
+        "pg3207": 0.0009734907577567675,
+        "pg3300": 0.017907973069780647,
+        "pg345": -0.012915339855030572,
+        "pg4280": -0.005051304463092432,
+        "pg944": -0.02111333819450456,
+        "pg98": -0.01252791478416615
+      },
+      "mean_difference": -0.004833897088037567,
+      "higher_at_100k": 8,
+      "only_10k": [],
+      "only_100k": [],
+      "parts": "combined thinking and answer; counters do not separate them"
+    }
+  ],
+  "aa": [
+    {
+      "config": {
+        "K": 3,
+        "drafter_precision": "bf16",
+        "environment_sha256": "6d011ff07ab7c6ec1f331aac36db968b38c4ec39c2147eb86ba069da9f861ac7",
+        "kv_precision": "bf16",
+        "max_tokens_override": null,
+        "method": "mtp",
+        "metrics_schema": 2,
+        "metrics_settle_seconds": 6,
+        "model": "google/gemma-4-31B-it",
+        "requests_sha256": "7abb2f93587b01649c27e262e041afe96dd68cc055908d80f35610b5de9506ae",
+        "return_token_ids": true,
+        "run_label": "t1-triton-fp8-mtp-k3",
+        "seed": 1,
+        "weight_precision": "fp8"
+      },
+      "style": "quotes",
+      "drafter": "mtp-0.05",
+      "acceptance": {
+        "aa_10k": 0.7773008977200744,
+        "aa_100k": 0.7591892763629362
+      },
+      "tau": {
+        "aa_10k": 2.851140209430109,
+        "aa_100k": 2.7731303098382636
+      },
+      "step_us": {
+        "aa_10k": 342.22460512889035,
+        "aa_100k": 370.58984754243164
+      },
+      "aa_tps": {
+        "aa_10k": 8281.506807438394,
+        "aa_100k": 7438.387164481509
+      },
+      "error": {
+        "aa_10k": 1.4487010075217013,
+        "aa_100k": 1.1679939272752868
+      },
+      "extra_us": [
+        455.8760952309479,
+        475.13282507005914
+      ]
+    },
+    {
+      "config": {
+        "K": 3,
+        "drafter_precision": "bf16",
+        "environment_sha256": "6d011ff07ab7c6ec1f331aac36db968b38c4ec39c2147eb86ba069da9f861ac7",
+        "kv_precision": "bf16",
+        "max_tokens_override": null,
+        "method": "mtp",
+        "metrics_schema": 2,
+        "metrics_settle_seconds": 6,
+        "model": "google/gemma-4-31B-it",
+        "requests_sha256": "7abb2f93587b01649c27e262e041afe96dd68cc055908d80f35610b5de9506ae",
+        "return_token_ids": true,
+        "run_label": "t1-triton-fp8-mtp-k3",
+        "seed": 1,
+        "weight_precision": "fp8"
+      },
+      "style": "quotes",
+      "drafter": "mtp-0.10",
+      "acceptance": {
+        "aa_10k": 0.7773008977200744,
+        "aa_100k": 0.7591892763629362
+      },
+      "tau": {
+        "aa_10k": 2.851140209430109,
+        "aa_100k": 2.7731303098382636
+      },
+      "step_us": {
+        "aa_10k": 382.31329038307814,
+        "aa_100k": 410.67853279661944
+      },
+      "aa_tps": {
+        "aa_10k": 7413.122871580051,
+        "aa_100k": 6712.283562705556
+      },
+      "error": {
+        "aa_10k": 1.191934616079258,
+        "aa_100k": 0.9563636148952364
+      },
+      "extra_us": [
+        415.7874099767601,
+        435.04413981587135
+      ]
+    },
+    {
+      "config": {
+        "K": 3,
+        "drafter_precision": "bf16",
+        "environment_sha256": "6d011ff07ab7c6ec1f331aac36db968b38c4ec39c2147eb86ba069da9f861ac7",
+        "kv_precision": "bf16",
+        "max_tokens_override": null,
+        "method": "mtp",
+        "metrics_schema": 2,
+        "metrics_settle_seconds": 6,
+        "model": "google/gemma-4-31B-it",
+        "requests_sha256": "7abb2f93587b01649c27e262e041afe96dd68cc055908d80f35610b5de9506ae",
+        "return_token_ids": true,
+        "run_label": "t1-triton-fp8-mtp-k3",
+        "seed": 1,
+        "weight_precision": "fp8"
+      },
+      "style": "summary",
+      "drafter": "mtp-0.05",
+      "acceptance": {
+        "aa_10k": 0.7464854441383395,
+        "aa_100k": 0.741671462588732
+      },
+      "tau": {
+        "aa_10k": 2.7196978982515816,
+        "aa_100k": 2.6997241066252724
+      },
+      "step_us": {
+        "aa_10k": 342.22460512889035,
+        "aa_100k": 370.58984754243164
+      },
+      "aa_tps": {
+        "aa_10k": 7899.715553816397,
+        "aa_100k": 7241.489183223397
+      },
+      "error": {
+        "aa_10k": 1.335811813665404,
+        "aa_100k": 1.1106059991907307
+      },
+      "extra_us": [
+        419.08232400162393,
+        452.74610557571003
+      ]
+    },
+    {
+      "config": {
+        "K": 3,
+        "drafter_precision": "bf16",
+        "environment_sha256": "6d011ff07ab7c6ec1f331aac36db968b38c4ec39c2147eb86ba069da9f861ac7",
+        "kv_precision": "bf16",
+        "max_tokens_override": null,
+        "method": "mtp",
+        "metrics_schema": 2,
+        "metrics_settle_seconds": 6,
+        "model": "google/gemma-4-31B-it",
+        "requests_sha256": "7abb2f93587b01649c27e262e041afe96dd68cc055908d80f35610b5de9506ae",
+        "return_token_ids": true,
+        "run_label": "t1-triton-fp8-mtp-k3",
+        "seed": 1,
+        "weight_precision": "fp8"
+      },
+      "style": "summary",
+      "drafter": "mtp-0.10",
+      "acceptance": {
+        "aa_10k": 0.7464854441383395,
+        "aa_100k": 0.741671462588732
+      },
+      "tau": {
+        "aa_10k": 2.7196978982515816,
+        "aa_100k": 2.6997241066252724
+      },
+      "step_us": {
+        "aa_10k": 382.31329038307814,
+        "aa_100k": 410.67853279661944
+      },
+      "aa_tps": {
+        "aa_10k": 7071.365563374696,
+        "aa_100k": 6534.605921853574
+      },
+      "error": {
+        "aa_10k": 1.0908827804183017,
+        "aa_100k": 0.9045776513709047
+      },
+      "extra_us": [
+        378.99363874743614,
+        412.65742032152224
+      ]
+    }
+  ],
+  "coding": []
+}

@@ -7,17 +7,188 @@ from unittest.mock import patch
 
 from TokenSim.errors import WorkloadValidationError
 from scripts.run_lpx_gpu_study import (
+    artifact,
     collect,
     owns_server,
     priority_one,
     pricing_ratio,
     server_command,
+    server_matches,
     smoke_tests,
     stop_server,
+    validate_document_control,
 )
 
 
 class GpuRunnerTest(unittest.TestCase):
+    def test_document_gate_requires_completed_uncapped_nonrepeating_mtp(self):
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            row = dict(
+                config=dict(method="mtp", K=3, max_tokens_override=None),
+                turns=[
+                    dict(content="answer", finish_reason="stop", token_ids=[1, 2, 3])
+                ],
+            )
+            with patch("scripts.run_lpx_gpu_study.ARTIFACTS", work):
+                validate_document_control("original")
+                with self.assertRaises(WorkloadValidationError):
+                    validate_document_control("triton")
+                path = work / "gpu-triton-mtp-k3-smoke.jsonl"
+                path.write_text(json.dumps(row) + "\n")
+                validate_document_control("triton")
+                for field, value in (
+                    ("finish_reason", "length"),
+                    ("content", ""),
+                    ("token_ids", [1] * 128),
+                ):
+                    changed = json.loads(json.dumps(row))
+                    changed["turns"][0][field] = value
+                    path.write_text(json.dumps(changed) + "\n")
+                    with self.assertRaises(WorkloadValidationError):
+                        validate_document_control("triton")
+                row["config"]["max_tokens_override"] = 512
+                path.write_text(json.dumps(row) + "\n")
+                with self.assertRaises(WorkloadValidationError):
+                    validate_document_control("triton")
+
+    def test_profile_paths_and_labels_are_separate(self):
+        self.assertNotEqual(
+            artifact("outputs.jsonl"), artifact("outputs.jsonl", "triton")
+        )
+        with self.assertRaises(WorkloadValidationError):
+            artifact("outputs.jsonl", "unknown")
+        with patch("scripts.run_lpx_gpu_study.run_script") as run:
+            collect(Path("/tmp/work"), 3, "aa-docs", profile="triton")
+        arguments = run.call_args.args
+        self.assertIn("t1-triton-mtp-k3", arguments)
+        self.assertIn(artifact("mtp-k3-outputs.jsonl", "triton"), arguments)
+
+    def test_server_reuse_requires_command_and_environment_match(self):
+        state = dict(
+            pid=os.getpid(), argv=["vllm"], environment={"HF_HUB_OFFLINE": "1"}
+        )
+        with (
+            patch("scripts.run_lpx_gpu_study.owns_server", return_value=True),
+            patch(
+                "scripts.run_lpx_gpu_study.Path.read_bytes",
+                return_value=b"HF_HUB_OFFLINE=1\0",
+            ),
+        ):
+            self.assertTrue(server_matches(state, ["vllm"], state["environment"]))
+            self.assertFalse(
+                server_matches(
+                    state,
+                    ["vllm", "--attention-config", "triton"],
+                    state["environment"],
+                )
+            )
+            self.assertFalse(server_matches(state, ["vllm"], {"HF_HUB_OFFLINE": "0"}))
+        with (
+            patch("scripts.run_lpx_gpu_study.owns_server", return_value=True),
+            patch(
+                "scripts.run_lpx_gpu_study.Path.read_bytes",
+                return_value=b"HF_HUB_OFFLINE=0\0",
+            ),
+        ):
+            self.assertFalse(server_matches(state, ["vllm"], state["environment"]))
+
+    def test_triton_prerequisites_do_not_reuse_original_results(self):
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            (work / "gpu-runtime-estimates.json").touch()
+            (work / "gpu-smoke-comparison.json").touch()
+            with patch("scripts.run_lpx_gpu_study.ARTIFACTS", work):
+                with self.assertRaises(WorkloadValidationError):
+                    priority_one(work, profile="triton")
+
+    def test_triton_smoke_propagates_profile_to_servers_and_artifacts(self):
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            (work / "gpu-triton-plain-coding-smoke.jsonl").write_text("{}\n" * 10)
+            with (
+                patch("scripts.run_lpx_gpu_study.ARTIFACTS", work),
+                patch("scripts.run_lpx_gpu_study.start_server") as start,
+                patch("scripts.run_lpx_gpu_study.collect") as measured,
+                patch("scripts.run_lpx_gpu_study.run_script") as analyze,
+            ):
+                smoke_tests(work, profile="triton")
+            self.assertEqual([call.args[1] for call in start.call_args_list], [1, 3])
+            for call in start.call_args_list + measured.call_args_list:
+                self.assertEqual(call.kwargs["profile"], "triton")
+            self.assertEqual(measured.call_args.args[1:], (3, "aa-docs"))
+            self.assertNotIn("max_tokens", measured.call_args.kwargs)
+            paths = [
+                value for value in analyze.call_args.args if isinstance(value, Path)
+            ]
+            self.assertTrue(
+                all(
+                    "gpu-triton-" in path.name
+                    for path in paths
+                    if path.suffix == ".jsonl"
+                )
+            )
+            self.assertIn(work / "gpu-triton-smoke-comparison.json", paths)
+
+    def test_warmup_tags_prevent_reusing_a_previous_server_warmup(self):
+        with patch("scripts.run_lpx_gpu_study.run_script") as run:
+            paths = []
+            for tag in (100, 200):
+                collect(
+                    Path("/tmp/work"),
+                    3,
+                    "aa-docs",
+                    limit=1,
+                    max_tokens=128,
+                    phase="warmup",
+                    warmup_tag=tag,
+                )
+                arguments = run.call_args.args
+                paths.append(arguments[arguments.index("--outputs") + 1])
+            self.assertNotEqual(*paths)
+            with self.assertRaises(WorkloadValidationError):
+                collect(Path("/tmp/work"), 3, "aa-docs", warmup_tag=100)
+            with self.assertRaises(WorkloadValidationError):
+                collect(
+                    Path("/tmp/work"),
+                    3,
+                    "aa-docs",
+                    phase="warmup",
+                    warmup_tag="../escape",
+                )
+
+    def test_priority_sweep_collects_both_coding_configurations_before_documents(self):
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            (work / "gpu-runtime-estimates.json").touch()
+            (work / "gpu-smoke-comparison.json").touch()
+            with (
+                patch("scripts.run_lpx_gpu_study.ARTIFACTS", work),
+                patch("scripts.run_lpx_gpu_study.start_server"),
+                patch("scripts.run_lpx_gpu_study.stop_server"),
+                patch("scripts.run_lpx_gpu_study.collect") as measured,
+                patch("scripts.run_lpx_gpu_study.run_script"),
+                patch(
+                    "scripts.run_lpx_gpu_study.measure_ratio",
+                    return_value=dict(gemma_tokens=1006, o200k_tokens=1000),
+                ),
+            ):
+                priority_one(work)
+            datasets = [
+                (call.args[1], call.args[2])
+                for call in measured.call_args_list
+                if call.kwargs.get("phase") != "warmup"
+            ]
+            self.assertEqual(
+                datasets,
+                [
+                    (3, "speed-coding"),
+                    (7, "speed-coding"),
+                    (3, "aa-docs"),
+                    (7, "aa-docs"),
+                ],
+            )
+
     def test_token_ratio_uses_pooled_counts_and_recorded_threshold(self):
         self.assertEqual(
             pricing_ratio([dict(gemma_tokens=1006, o200k_tokens=1000)]), 1.006

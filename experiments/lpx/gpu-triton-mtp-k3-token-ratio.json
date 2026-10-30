@@ -1,0 +1,93 @@
+{
+  "gemma_tokenizer_sha256": "cc8d3a0ce36466ccc1278bf987df5f71db1719b9ca6b4118264f45cb627bfe0f",
+  "tiktoken_encoding": "o200k_base",
+  "categories": {
+    "aa-output": {
+      "gemma_tokens": 243490,
+      "o200k_tokens": 242360,
+      "gemma_per_o200k": 1.004662485558673
+    }
+  },
+  "files": [
+    {
+      "category": "aa-output",
+      "file": "aa-docs-think-100k-quotes.json",
+      "part": "thinking",
+      "sha256": "00a7d7698f2ebd38d88b20a7fdda26df236bc5ad916edffdb7596634dae7c720",
+      "characters": 85688,
+      "gemma_tokens": 21020,
+      "o200k_tokens": 20430,
+      "gemma_per_o200k": 1.028879099363681
+    },
+    {
+      "category": "aa-output",
+      "file": "aa-docs-think-100k-quotes.json",
+      "part": "answer",
+      "sha256": "00a7d7698f2ebd38d88b20a7fdda26df236bc5ad916edffdb7596634dae7c720",
+      "characters": 184854,
+      "gemma_tokens": 38953,
+      "o200k_tokens": 39157,
+      "gemma_per_o200k": 0.994790203539597
+    },
+    {
+      "category": "aa-output",
+      "file": "aa-docs-think-100k-summary.json",
+      "part": "thinking",
+      "sha256": "add1870017a7d66e285b3e9fa47316bd4a9e741d6c1c4c9a8bfd95c18f2456bf",
+      "characters": 80647,
+      "gemma_tokens": 20268,
+      "o200k_tokens": 19819,
+      "gemma_per_o200k": 1.022655028003431
+    },
+    {
+      "category": "aa-output",
+      "file": "aa-docs-think-100k-summary.json",
+      "part": "answer",
+      "sha256": "add1870017a7d66e285b3e9fa47316bd4a9e741d6c1c4c9a8bfd95c18f2456bf",
+      "characters": 194459,
+      "gemma_tokens": 41215,
+      "o200k_tokens": 41424,
+      "gemma_per_o200k": 0.9949546156817304
+    },
+    {
+      "category": "aa-output",
+      "file": "aa-docs-think-10k-quotes.json",
+      "part": "thinking",
+      "sha256": "e320d9a80b4d6fe5342b90807697acabdf20b5d0f8f73d32ac60f9451e29c217",
+      "characters": 90138,
+      "gemma_tokens": 21557,
+      "o200k_tokens": 21026,
+      "gemma_per_o200k": 1.0252544468752973
+    },
+    {
+      "category": "aa-output",
+      "file": "aa-docs-think-10k-quotes.json",
+      "part": "answer",
+      "sha256": "e320d9a80b4d6fe5342b90807697acabdf20b5d0f8f73d32ac60f9451e29c217",
+      "characters": 200279,
+      "gemma_tokens": 42003,
+      "o200k_tokens": 42338,
+      "gemma_per_o200k": 0.9920874864188199
+    },
+    {
+      "category": "aa-output",
+      "file": "aa-docs-think-10k-summary.json",
+      "part": "thinking",
+      "sha256": "6e988d983920cb5cada80a9fc689c9375f245ce10e1ea98e6445cb01721fb86f",
+      "characters": 75876,
+      "gemma_tokens": 18670,
+      "o200k_tokens": 18152,
+      "gemma_per_o200k": 1.0285368003525783
+    },
+    {
+      "category": "aa-output",
+      "file": "aa-docs-think-10k-summary.json",
+      "part": "answer",
+      "sha256": "6e988d983920cb5cada80a9fc689c9375f245ce10e1ea98e6445cb01721fb86f",
+      "characters": 189498,
+      "gemma_tokens": 39804,
+      "o200k_tokens": 40014,
+      "gemma_per_o200k": 0.9947518368571
+    }
+  ]
+}

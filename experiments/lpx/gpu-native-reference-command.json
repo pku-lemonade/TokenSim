@@ -1,0 +1,21 @@
+{
+  "pid": 284586,
+  "argv": [
+    "/tmp/lpx-gpu/server-venv/bin/python",
+    "scripts/check_lpx_gpu_reference.py",
+    "--requests",
+    "/tmp/lpx-gpu/inputs/requests.jsonl",
+    "--checkpoint",
+    "/tmp/lpx-gpu/hf/models--google--gemma-4-31B-it/snapshots/842da3794eaa0b77d5f08bae87a17459d91ff475",
+    "--request-id",
+    "aa-docs/pg1228/10k/summary",
+    "--prompt-check",
+    "experiments/lpx/gpu-reference-prompt-check.json",
+    "--output",
+    "experiments/lpx/gpu-transformers-diagnostic.json",
+    "--max-tokens",
+    "16384"
+  ],
+  "started_unix": 1793177445.6299493,
+  "log": "/tmp/lpx-gpu/native-reference.log"
+}

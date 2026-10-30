@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "/tmp/lpx-gpu/repo-venv/bin/python",
+    "scripts/run_lpx_gpu_profile.py",
+    "--work-dir",
+    "/tmp/lpx-gpu"
+  ],
+  "recovery": {
+    "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-t6-eager-10000-result.json",
+    "bytes": 5501,
+    "sha256": "ed193a87d78f3c681eb2498e0652bbca55dc4cb402ea55215c0424c0c1d79635"
+  },
+  "note": "Reuses three hash-verified cases; collects only eager 100K with CUDA summary-table generation disabled, retaining CPU/CUDA activity, stacks and shapes."
+}

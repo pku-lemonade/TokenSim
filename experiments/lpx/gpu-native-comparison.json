@@ -1,0 +1,35 @@
+{
+  "native_source": "gpu-transformers-diagnostic.json",
+  "completion_tokens": 3933,
+  "finish_reason": "stop",
+  "answer_whitespace_words": 2002,
+  "reasoning_characters": 5863,
+  "answer_characters": 12975,
+  "quality": {
+    "empty_answer": null,
+    "finish_reason": "stop",
+    "dominant_token_share": 0.04780066107297229,
+    "longest_identical_token_run": 3,
+    "longest_periodic_token_span": 3,
+    "periodic_token_period": 1,
+    "periodic_search_max_period": 8,
+    "repetition_flag": false
+  },
+  "comparisons": [
+    {
+      "source": "gpu-plain-smoke.jsonl",
+      "shared_tokens": 3933,
+      "first_different_token_position": 19
+    },
+    {
+      "source": "gpu-eager-diagnostic.jsonl",
+      "shared_tokens": 512,
+      "first_different_token_position": 19
+    },
+    {
+      "source": "gpu-fa3-full-diagnostic.jsonl",
+      "shared_tokens": 3933,
+      "first_different_token_position": 19
+    }
+  ]
+}

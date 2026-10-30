@@ -1,0 +1,49 @@
+{
+  "status": "preflight-only; no profiling executed",
+  "nsight_version": "NVIDIA Nsight Systems version 2025.6.3.541-256337736014v0",
+  "source_hashes": {
+    "/tmp/lpx-gpu/server-venv/lib/python3.11/site-packages/vllm/config/profiler.py": "9f747a3f2d1e7c7c0eee8f62c24172d59f1d8a2001b8f5f296a1041501db7220",
+    "/tmp/lpx-gpu/server-venv/lib/python3.11/site-packages/vllm/entrypoints/serve/profile/api_router.py": "acaacf07cf881eee9a1fe289f9e3cd9c16f42cfd5755aa8304e9ced25711753c"
+  },
+  "profiler_config": {
+    "profiler": "torch",
+    "torch_profiler_dir": "/tmp/lpx-gpu/t6-traces",
+    "torch_profiler_activities": [
+      "CPU",
+      "CUDA"
+    ],
+    "torch_profiler_with_stack": true,
+    "torch_profiler_record_shapes": true,
+    "torch_profiler_with_memory": false,
+    "detailed_trace_annotation": true,
+    "ignore_frontend": false
+  },
+  "endpoints": [
+    "POST /start_profile",
+    "POST /stop_profile"
+  ],
+  "startup_requirement": "Profile routes are attached only when profiler_config.profiler is enabled; use a separate plain server after acquiring runner.lock",
+  "requested_runs": [
+    {
+      "context": 10000,
+      "max_tokens": 256,
+      "enforce_eager": false
+    },
+    {
+      "context": 100000,
+      "max_tokens": 256,
+      "enforce_eager": false
+    },
+    {
+      "context": 10000,
+      "max_tokens": 256,
+      "enforce_eager": true
+    },
+    {
+      "context": 100000,
+      "max_tokens": 256,
+      "enforce_eager": true
+    }
+  ],
+  "interpretation": "Separate prefill from decode, attribute kernels using traces and tensor shapes, report instrumentation overhead and unclassified time; GPU host costs do not directly transfer to LP30"
+}

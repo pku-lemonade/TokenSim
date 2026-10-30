@@ -1,6 +1,6 @@
 # Gemma 4 31B on LPX: final summary of the AA reproduction
 
-Record date: 2026-10-27.
+Record date: 2026-10-30.
 This record states the outcome of the work to reproduce the Artificial Analysis (AA) speeds of Gemma 4 31B on NVIDIA Groq 3 LPX in TokenSim.
 The [progress summary](lpx-aa-reproduction-progress.md) links every experiment record behind it.
 
@@ -38,6 +38,9 @@ The [tray-latency record](lpx-tray-latency.md) shows that a cross-tray collectiv
 
 The [article-condition speculation record](lpx-article-speculative.md) finds matches on the same layout without unmodeled time only at per-position acceptances of 0.006 to 0.335.
 Gemma's multi-token prediction (MTP) drafter class reaches 0.57 to 0.68 on prose.
+The subsequent [public-checkpoint GPU measurements](lpx-gpu-followup-results.md) give document equivalent acceptance of 0.720 to 0.814 across draft lengths 1, 3, 5 and 7 with the released Gemma 4 assistant.
+Pricing those measured means on the same LP30 layout makes every 10K result at least 72.26% too fast, and no common extra-time interval contains 25 microseconds or less.
+These measurements strengthen the acceptance-based mismatch for the specified public checkpoint and book prompts; they do not identify the published model build or drafter.
 
 NVIDIA also reports a SPEED-Bench coding median of 4,767 TPS, an 80th percentile of 5,520 TPS and a maximum of 6,981 TPS, and a coding example of 10,996 TPS, under the same deployment name.
 Plain decoding on the closest setup is 22% to 29% too slow for the coding median and runs every request at nearly the same speed, while NVIDIA's 80th percentile is 1.158 times the median, as the [coding-spread record](lpx-coding-spread.md) shows.

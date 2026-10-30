@@ -1,0 +1,28 @@
+{
+  "native_implementation": "v2-gpu",
+  "requested_environment": {
+    "VLLM_USE_V2_MODEL_RUNNER": "1"
+  },
+  "source_hashes": {
+    "/tmp/lpx-gpu/server-venv/lib/python3.11/site-packages/vllm/v1/worker/gpu/spec_decode/__init__.py": "9a94048ba5c0d0c29b7e84250fe418b650059c6ca6a410bfa3fc0efa09d932ac",
+    "/tmp/lpx-gpu/server-venv/lib/python3.11/site-packages/vllm/v1/worker/gpu/spec_decode/ngram/speculator.py": "036b07d38462a55a76fea0bd0a64e08c0a6fb2c7074b02a5bf79f3654805d4b9",
+    "/tmp/lpx-gpu/server-venv/lib/python3.11/site-packages/vllm/v1/spec_decode/ngram_proposer.py": "b7c0a80715b946ca57f4946dddbf9c6b256b1eaff5e872c55ccf841d9a6db7c5",
+    "scripts/measure_lpx_lookup_acceptance.py": "e039fdab9a3c1c35cf8a39ddb01845ce52e4e54bb2f0cd49518af2f0ddd099b1"
+  },
+  "native_rules": [
+    "V2 dispatcher routes method ngram to NgramGPUSpeculator",
+    "scan score encodes n*(max_model_len+1)+position+1; maximum selects longest then rightmost match",
+    "missing proposal slots use last sampled token and are verified as ordinary drafts"
+  ],
+  "replay_rules": [
+    "longest n-gram then most recent match",
+    "proposal length can be shorter than K and can be zero"
+  ],
+  "other_differences": [
+    "server chat-template and control tokens differ from text retokenization",
+    "combined replay adds two newlines between thinking and answer",
+    "replay includes its first output token; native decode excludes prefill",
+    "multi-turn exported prompts flatten earlier conversation history"
+  ],
+  "counter_validation": "fresh full plain run plus existing Triton MTP control; no preemptions; emitted_steps equals completion tokens for plain and drafts+1 for MTP"
+}

@@ -1,0 +1,30 @@
+{
+  "pid": 705673,
+  "argv": [
+    "/tmp/lpx-gpu/repo-venv/bin/python",
+    "-u",
+    "scripts/monitor_lpx_gpu_study.py",
+    "--thread",
+    "01a18579-9220-7181-9ca7-7cbb06025439",
+    "--work-dir",
+    "/tmp/lpx-gpu",
+    "--codex",
+    "/home/tiger/.local/bin/codex",
+    "--watch",
+    "fp8=/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-fp8-status.json",
+    "--watch",
+    "followup=/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-followup-status.json",
+    "--watch",
+    "t6=/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-t6-status.json",
+    "--poll-seconds",
+    "60",
+    "--rearm"
+  ],
+  "thread": "01a18579-9220-7181-9ca7-7cbb06025439",
+  "cwd": "/opt/tiger/rh2/rh2/init/TokenSim",
+  "log": "/tmp/lpx-gpu/codex-monitor-t6.log",
+  "state": "/tmp/lpx-gpu/codex-monitor-state.json",
+  "previous_state": "/tmp/lpx-gpu/codex-monitor-state-before-t6-1793246559469910011.json",
+  "replaces_pid": 671608,
+  "started_unix": 1793246559.4710622
+}

@@ -1,0 +1,16 @@
+{
+  "pid": 633425,
+  "argv": [
+    "/tmp/lpx-gpu/repo-venv/bin/python",
+    "-u",
+    "scripts/run_lpx_gpu_followup.py",
+    "--work-dir",
+    "/tmp/lpx-gpu",
+    "--stage",
+    "all",
+    "--after-fp8"
+  ],
+  "cwd": "/opt/tiger/rh2/rh2/init/TokenSim",
+  "log": "/tmp/lpx-gpu/triton-followup.log",
+  "started_unix": 1793241705.6162567
+}

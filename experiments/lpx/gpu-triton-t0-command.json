@@ -1,0 +1,15 @@
+{
+  "pid": 325620,
+  "argv": [
+    "/tmp/lpx-gpu/repo-venv/bin/python",
+    "scripts/run_lpx_gpu_study.py",
+    "--work-dir",
+    "/tmp/lpx-gpu",
+    "--profile",
+    "triton",
+    "--stage",
+    "t0-mtp"
+  ],
+  "started_unix": 1793179079.6277356,
+  "purpose": "Post-observation Triton profile: K1 counters, K3 coding and full-cap document validation before any priority sweep"
+}

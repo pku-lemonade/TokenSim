@@ -1,0 +1,120 @@
+{
+  "configurations": [
+    {
+      "stage": "plain",
+      "method": "plain",
+      "K": 0,
+      "selections": [
+        {
+          "set": "speed-coding",
+          "thinking": "off"
+        }
+      ],
+      "requests": 80,
+      "turns": 89
+    },
+    {
+      "stage": "ngram",
+      "method": "ngram",
+      "K": 7,
+      "selections": [
+        {
+          "set": "speed-coding",
+          "thinking": "off"
+        },
+        {
+          "set": "aa-docs",
+          "thinking": "on"
+        }
+      ],
+      "requests": 144,
+      "turns": 153
+    },
+    {
+      "stage": "remaining-mtp",
+      "method": "mtp",
+      "K": 1,
+      "selections": [
+        {
+          "set": "speed-coding",
+          "thinking": "off"
+        },
+        {
+          "set": "speed-coding",
+          "thinking": "on"
+        },
+        {
+          "set": "aa-docs",
+          "thinking": "on"
+        }
+      ],
+      "requests": 224,
+      "turns": 242
+    },
+    {
+      "stage": "remaining-mtp",
+      "method": "mtp",
+      "K": 5,
+      "selections": [
+        {
+          "set": "speed-coding",
+          "thinking": "off"
+        },
+        {
+          "set": "speed-coding",
+          "thinking": "on"
+        },
+        {
+          "set": "aa-docs",
+          "thinking": "on"
+        }
+      ],
+      "requests": 224,
+      "turns": 242
+    },
+    {
+      "stage": "remaining-mtp",
+      "method": "mtp",
+      "K": 3,
+      "selections": [
+        {
+          "set": "speed-coding",
+          "thinking": "on"
+        },
+        {
+          "set": "speed-cc16k",
+          "thinking": "off"
+        }
+      ],
+      "requests": 120,
+      "turns": 129
+    },
+    {
+      "stage": "remaining-mtp",
+      "method": "mtp",
+      "K": 7,
+      "selections": [
+        {
+          "set": "speed-coding",
+          "thinking": "on"
+        },
+        {
+          "set": "speed-cc16k",
+          "thinking": "off"
+        }
+      ],
+      "requests": 120,
+      "turns": 129
+    }
+  ],
+  "requests_sha256": "7abb2f93587b01649c27e262e041afe96dd68cc055908d80f35610b5de9506ae",
+  "measurement_requests": 912,
+  "measurement_turns": 984,
+  "prerequisite": "FP8 status complete and shared GPU lock released",
+  "controls": "fresh 128-token warmup and healthy uncapped 10K document per configuration",
+  "output_prefix": "gpu-triton-followup-",
+  "schedule_note": "Plain controls precede T4 for engine-counter validation; lower-priority MTP follows T4; sequence chosen after priority-1 and FP8 control results",
+  "excluded": [
+    "T6 graph/eager decode profiling"
+  ]
+}

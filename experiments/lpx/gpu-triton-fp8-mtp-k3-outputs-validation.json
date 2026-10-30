@@ -1,0 +1,13 @@
+{
+  "outputs": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-fp8-mtp-k3-outputs.jsonl",
+  "sha256": "cc997de8bdeeda904b5925fe9928a57c4bfec95d99a840cb67610372cf5a2471",
+  "requests": 64,
+  "turns": 64,
+  "exact_input_coverage": true,
+  "finish_reasons": {
+    "stop": 64
+  },
+  "empty_answers": 0,
+  "repetition_flags": 0,
+  "note": "All completed measurement turns retained, including quality flags"
+}

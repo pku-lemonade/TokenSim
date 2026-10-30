@@ -1,0 +1,273 @@
+{
+  "diagnostics": {
+    "id": "aa-docs/pg1228/10k/summary",
+    "baseline_label": "t0-v1-plain-capped",
+    "comparison": "native token IDs over the shorter output; output caps may differ",
+    "runs": [
+      {
+        "config": {
+          "method": "plain",
+          "K": 0,
+          "weight_precision": "bf16",
+          "kv_precision": "bf16",
+          "drafter_precision": "bf16",
+          "model": "google/gemma-4-31B-it",
+          "run_label": "t0-v1-plain-capped",
+          "max_tokens_override": 512,
+          "metrics_settle_seconds": 6,
+          "metrics_schema": 2,
+          "requests_sha256": "7abb2f93587b01649c27e262e041afe96dd68cc055908d80f35610b5de9506ae",
+          "return_token_ids": true,
+          "environment_sha256": "6d011ff07ab7c6ec1f331aac36db968b38c4ec39c2147eb86ba069da9f861ac7",
+          "seed": 1
+        },
+        "completion_tokens": 512,
+        "ttft_s": 5.304890787228942,
+        "output_tps": 25.38732454546322,
+        "quality": {
+          "empty_answer": true,
+          "finish_reason": "length",
+          "dominant_token_share": 0.625,
+          "longest_identical_token_run": 317,
+          "longest_periodic_token_span": 317,
+          "periodic_token_period": 1,
+          "periodic_search_max_period": 8,
+          "repetition_flag": true
+        },
+        "shared_prefix_tokens": 512,
+        "first_different_prefix_position": null
+      },
+      {
+        "config": {
+          "method": "plain",
+          "K": 0,
+          "weight_precision": "bf16",
+          "kv_precision": "bf16",
+          "drafter_precision": "bf16",
+          "model": "google/gemma-4-31B-it",
+          "run_label": "t0-triton-diagnostic",
+          "max_tokens_override": 2048,
+          "metrics_settle_seconds": 6,
+          "metrics_schema": 2,
+          "requests_sha256": "7abb2f93587b01649c27e262e041afe96dd68cc055908d80f35610b5de9506ae",
+          "return_token_ids": true,
+          "environment_sha256": "6d011ff07ab7c6ec1f331aac36db968b38c4ec39c2147eb86ba069da9f861ac7",
+          "seed": 1
+        },
+        "completion_tokens": 2048,
+        "ttft_s": 5.991631090641022,
+        "output_tps": 41.149663495856835,
+        "quality": {
+          "empty_answer": false,
+          "finish_reason": "length",
+          "dominant_token_share": 0.0439453125,
+          "longest_identical_token_run": 3,
+          "longest_periodic_token_span": 3,
+          "periodic_token_period": 1,
+          "periodic_search_max_period": 8,
+          "repetition_flag": false
+        },
+        "shared_prefix_tokens": 512,
+        "first_different_prefix_position": 4
+      },
+      {
+        "config": {
+          "method": "plain",
+          "K": 0,
+          "weight_precision": "bf16",
+          "kv_precision": "bf16",
+          "drafter_precision": "bf16",
+          "model": "google/gemma-4-31B-it",
+          "run_label": "t0-triton-full-diagnostic",
+          "max_tokens_override": null,
+          "metrics_settle_seconds": 6,
+          "metrics_schema": 2,
+          "requests_sha256": "7abb2f93587b01649c27e262e041afe96dd68cc055908d80f35610b5de9506ae",
+          "return_token_ids": true,
+          "environment_sha256": "6d011ff07ab7c6ec1f331aac36db968b38c4ec39c2147eb86ba069da9f861ac7",
+          "seed": 1
+        },
+        "completion_tokens": 3736,
+        "ttft_s": 5.987243955954909,
+        "output_tps": 41.611719495691574,
+        "quality": {
+          "empty_answer": false,
+          "finish_reason": "stop",
+          "dominant_token_share": 0.04470021413276231,
+          "longest_identical_token_run": 3,
+          "longest_periodic_token_span": 3,
+          "periodic_token_period": 1,
+          "periodic_search_max_period": 8,
+          "repetition_flag": false
+        },
+        "shared_prefix_tokens": 512,
+        "first_different_prefix_position": 4
+      }
+    ]
+  },
+  "runtime": {
+    "measured_plain_tps": 41.611719495691574,
+    "smoke_request": "aa-docs/pg1228/10k/summary",
+    "method": "previous API output lengths divided by plain 10K GPU rate; no assumed speculative speedup",
+    "excludes": [
+      "prefill",
+      "server startup",
+      "profiling overhead",
+      "metrics settling"
+    ],
+    "analysis_only": [
+      "T2",
+      "T5 analysis"
+    ],
+    "optional_skipped": [
+      "T7: no H20 operator data"
+    ],
+    "tasks": [
+      {
+        "task": "T1 priority 1",
+        "set": "aa-docs",
+        "thinking": true,
+        "draft_lengths": [
+          3,
+          7
+        ],
+        "requests": 128,
+        "reference_decode_tokens": 484698,
+        "estimated_generation_hours": 3.235586872281825,
+        "generation_hours_if_all_outputs_hit_cap": 13.9986204301646
+      },
+      {
+        "task": "T1 priority 1",
+        "set": "speed-coding",
+        "thinking": false,
+        "draft_lengths": [
+          3,
+          7
+        ],
+        "requests": 160,
+        "reference_decode_tokens": 82490,
+        "estimated_generation_hours": 0.5506595057015455,
+        "generation_hours_if_all_outputs_hit_cap": 19.466831535697647
+      },
+      {
+        "task": "T1 priority 2",
+        "set": "speed-coding",
+        "thinking": true,
+        "draft_lengths": [
+          3,
+          7
+        ],
+        "requests": 160,
+        "reference_decode_tokens": 405684,
+        "estimated_generation_hours": 2.7081312996851232,
+        "generation_hours_if_all_outputs_hit_cap": 19.466831535697647
+      },
+      {
+        "task": "T1 priority 2",
+        "set": "aa-docs",
+        "thinking": true,
+        "draft_lengths": [
+          1,
+          5
+        ],
+        "requests": 128,
+        "reference_decode_tokens": 484698,
+        "estimated_generation_hours": 3.235586872281825,
+        "generation_hours_if_all_outputs_hit_cap": 13.9986204301646
+      },
+      {
+        "task": "T1 priority 3",
+        "set": "speed-cc16k",
+        "thinking": false,
+        "draft_lengths": [
+          3,
+          7
+        ],
+        "requests": 80,
+        "reference_decode_tokens": 54878,
+        "estimated_generation_hours": 0.36633643294810786,
+        "generation_hours_if_all_outputs_hit_cap": 2.186883914023837
+      },
+      {
+        "task": "T1 priority 3",
+        "set": "speed-coding",
+        "thinking": false,
+        "draft_lengths": [
+          1,
+          5
+        ],
+        "requests": 160,
+        "reference_decode_tokens": 82490,
+        "estimated_generation_hours": 0.5506595057015455,
+        "generation_hours_if_all_outputs_hit_cap": 19.466831535697647
+      },
+      {
+        "task": "T1 priority 3",
+        "set": "speed-coding",
+        "thinking": true,
+        "draft_lengths": [
+          1,
+          5
+        ],
+        "requests": 160,
+        "reference_decode_tokens": 405684,
+        "estimated_generation_hours": 2.7081312996851232,
+        "generation_hours_if_all_outputs_hit_cap": 19.466831535697647
+      },
+      {
+        "task": "T3 FP8",
+        "set": "aa-docs",
+        "thinking": true,
+        "draft_lengths": [
+          3
+        ],
+        "requests": 64,
+        "reference_decode_tokens": 242349,
+        "estimated_generation_hours": 1.6177934361409125,
+        "generation_hours_if_all_outputs_hit_cap": 6.9993102150823
+      },
+      {
+        "task": "T4 ngram",
+        "set": "aa-docs",
+        "thinking": true,
+        "draft_lengths": [
+          7
+        ],
+        "requests": 64,
+        "reference_decode_tokens": 242349,
+        "estimated_generation_hours": 1.6177934361409125,
+        "generation_hours_if_all_outputs_hit_cap": 6.9993102150823
+      },
+      {
+        "task": "T4 ngram",
+        "set": "speed-coding",
+        "thinking": false,
+        "draft_lengths": [
+          7
+        ],
+        "requests": 80,
+        "reference_decode_tokens": 41245,
+        "estimated_generation_hours": 0.27532975285077277,
+        "generation_hours_if_all_outputs_hit_cap": 9.733415767848824
+      },
+      {
+        "task": "T5 plain",
+        "set": "speed-coding",
+        "thinking": false,
+        "draft_lengths": [
+          0
+        ],
+        "requests": 80,
+        "reference_decode_tokens": 41245,
+        "estimated_generation_hours": 0.27532975285077277,
+        "generation_hours_if_all_outputs_hit_cap": 9.733415767848824
+      },
+      {
+        "task": "T6",
+        "requests": 4,
+        "reference_decode_tokens": 1020,
+        "estimated_generation_hours": 0.0068089792194881375
+      }
+    ]
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "sources": {
+    "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-mtp-k3-outputs.jsonl": "0da0fd4c272163e83ebb3f2d2d76e2179d28b34856420b05830d61f58ce15371",
+    "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-fp8-mtp-k3-outputs.jsonl": "cc997de8bdeeda904b5925fe9928a57c4bfec95d99a840cb67610372cf5a2471"
+  },
+  "groups": [
+    {
+      "data": "aa-docs-think-100k-quotes",
+      "turns": 16,
+      "bf16": 0.7735510973580084,
+      "fp8": 0.7591892763629362,
+      "difference": -0.014361820995072216,
+      "within_0_03": true,
+      "quality": {
+        "length_limited_turns": 0,
+        "empty_answer_turns": 0,
+        "repetition_flagged_turns": 0,
+        "threshold_note": "128-token periodic span, periods 1 to 8; chosen after T0 and extended after the T1 two-token loop, no turns excluded"
+      }
+    },
+    {
+      "data": "aa-docs-think-100k-summary",
+      "turns": 16,
+      "bf16": 0.745948321097438,
+      "fp8": 0.741671462588732,
+      "difference": -0.004276858508706072,
+      "within_0_03": true,
+      "quality": {
+        "length_limited_turns": 0,
+        "empty_answer_turns": 0,
+        "repetition_flagged_turns": 0,
+        "threshold_note": "128-token periodic span, periods 1 to 8; chosen after T0 and extended after the T1 two-token loop, no turns excluded"
+      }
+    },
+    {
+      "data": "aa-docs-think-10k-quotes",
+      "turns": 16,
+      "bf16": 0.784690834438232,
+      "fp8": 0.7773008977200744,
+      "difference": -0.007389936718157575,
+      "within_0_03": true,
+      "quality": {
+        "length_limited_turns": 0,
+        "empty_answer_turns": 0,
+        "repetition_flagged_turns": 0,
+        "threshold_note": "128-token periodic span, periods 1 to 8; chosen after T0 and extended after the T1 two-token loop, no turns excluded"
+      }
+    },
+    {
+      "data": "aa-docs-think-10k-summary",
+      "turns": 16,
+      "bf16": 0.7534194870525275,
+      "fp8": 0.7464854441383395,
+      "difference": -0.006934042914187977,
+      "within_0_03": true,
+      "quality": {
+        "length_limited_turns": 0,
+        "empty_answer_turns": 0,
+        "repetition_flagged_turns": 0,
+        "threshold_note": "128-token periodic span, periods 1 to 8; chosen after T0 and extended after the T1 two-token loop, no turns excluded"
+      }
+    }
+  ],
+  "combined": {
+    "bf16": 0.764586414196837,
+    "fp8": 0.756308900937811,
+    "difference": -0.008277513259026037,
+    "within_0_03": true
+  },
+  "note": "BF16 assistant and KV cache; FP8 target; all turns retained; quality flags must accompany interpretation"
+}

@@ -1,0 +1,14 @@
+{
+  "outputs": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-followup-mtp-k5-outputs.jsonl",
+  "sha256": "2e90f697f0e5c1899a87cf206fa1d7e89e45db9f433e0b1c64e514a826760a3a",
+  "requests": 224,
+  "turns": 242,
+  "exact_input_coverage": true,
+  "finish_reasons": {
+    "stop": 235,
+    "length": 7
+  },
+  "empty_answers": 7,
+  "repetition_flags": 0,
+  "note": "All completed measurement turns retained, including quality flags"
+}

@@ -1,0 +1,14 @@
+{
+  "pid": 705529,
+  "argv": [
+    "/tmp/lpx-gpu/repo-venv/bin/python",
+    "-u",
+    "scripts/run_lpx_gpu_profile.py",
+    "--work-dir",
+    "/tmp/lpx-gpu",
+    "--after-followup"
+  ],
+  "cwd": "/opt/tiger/rh2/rh2/init/TokenSim",
+  "log": "/tmp/lpx-gpu/triton-t6.log",
+  "started_unix": 1793246546.440265
+}

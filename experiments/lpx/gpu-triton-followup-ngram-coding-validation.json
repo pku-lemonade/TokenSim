@@ -1,0 +1,20 @@
+{
+  "outputs": "/tmp/lpx-gpu/ngram-coding-completed-1793264625237063031.jsonl",
+  "sha256": "9c02b6c76ddee5aa9d57f15ca4aef9a6946dae07a699f3116cae211b2e9de7e0",
+  "requests": 80,
+  "turns": 89,
+  "exact_input_coverage": true,
+  "finish_reasons": {
+    "stop": 89
+  },
+  "empty_answers": 0,
+  "repetition_flags": 0,
+  "note": "All completed measurement turns retained, including quality flags",
+  "source": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-followup-ngram-k7-outputs.jsonl",
+  "selection": {
+    "set": "speed-coding",
+    "thinking": false
+  },
+  "captured_unix": 1793264625.3813589,
+  "scope": "Complete coding set only; document collection and full T4 comparison remain pending"
+}

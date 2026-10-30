@@ -1,0 +1,37 @@
+{
+  "cpu_decode_annotations": 255,
+  "gpu_decode_annotations": 255,
+  "full_graph_launches": 255,
+  "assigned_events": {
+    "transformer_layers": 275910,
+    "vocabulary_head": 508,
+    "logits_sampling": 2540
+  },
+  "unclassified_activity_counts": {
+    "Memcpy DtoH (Device -> Pinned)": 509,
+    "void at::native::vectorized_elementwise_kernel<8, at::native::FillFunctor<bool>, std::array<char*, 1ul> >(int, at::native::FillFunctor<bool>, std::array<char*, 1ul>)": 255,
+    "Memcpy HtoD (Pinned -> Device)": 526,
+    "void (anonymous namespace)::elementwise_kernel_with_index<int, at::native::arange_cuda_out(c10::Scalar const&, c10::Scalar const&, c10::Scalar const&, at::Tensor&)::{lambda()#1}::operator()() const::{lambda()#3}::operator()() const::{lambda(long)#1}>(int, at::native::arange_cuda_out(c10::Scalar const&, c10::Scalar const&, c10::Scalar const&, at::Tensor&)::{lambda()#1}::operator()() const::{lambda()#3}::operator()() const::{lambda(long)#1}, function_traits<at::native::arange_cuda_out(c10::Scalar const&, c10::Scalar const&, c10::Scalar const&, at::Tensor&)::{lambda()#1}::operator()() const::{lambda()#3}::operator()() const::{lambda(long)#1}>::result_type*)": 255,
+    "void at::native::vectorized_elementwise_kernel<4, at::native::FillFunctor<int>, std::array<char*, 1ul> >(int, at::native::FillFunctor<int>, std::array<char*, 1ul>)": 255,
+    "_prepare_pos_seq_lens_kernel": 255,
+    "_combine_sampled_and_draft_tokens_kernel": 255,
+    "_gather_block_tables_kernel": 255,
+    "_compute_slot_mappings_kernel": 255,
+    "void at::native::index_elementwise_kernel<128, 4, at::native::gpu_index_kernel<at::native::index_kernel_impl<at::native::OpaqueType<2> >(at::TensorIteratorBase&, c10::ArrayRef<long>, c10::ArrayRef<long>)::{lambda(char*, char const*, long)#1}>(at::TensorIteratorBase&, c10::ArrayRef<long>, c10::ArrayRef<long>, at::native::index_kernel_impl<at::native::OpaqueType<2> >(at::TensorIteratorBase&, c10::ArrayRef<long>, c10::ArrayRef<long>)::{lambda(char*, char const*, long)#1} const&, bool)::{lambda(int)#1}>(long, at::native::gpu_index_kernel<at::native::index_kernel_impl<at::native::OpaqueType<2> >(at::TensorIteratorBase&, c10::ArrayRef<long>, c10::ArrayRef<long>)::{lambda(char*, char const*, long)#1}>(at::TensorIteratorBase&, c10::ArrayRef<long>, c10::ArrayRef<long>, at::native::index_kernel_impl<at::native::OpaqueType<2> >(at::TensorIteratorBase&, c10::ArrayRef<long>, c10::ArrayRef<long>)::{lambda(char*, char const*, long)#1} const&, bool)::{lambda(int)#1})": 254,
+    "_post_update_kernel": 254,
+    "_apply_write_kernel": 16
+  },
+  "first_gpu_start": 2456613528384.597,
+  "final_gpu_end": 2456622087688.297,
+  "final_gpu_scope_end": 2456622087688.297,
+  "source": {
+    "path": "/tmp/lpx-gpu/server-venv/lib/python3.11/site-packages/vllm/v1/worker/gpu/model_runner.py",
+    "bytes": 108371,
+    "sha256": "5240fe8d62d403e466a4aa07a28fb7af5c0f1e9b9c3bb08c4003185bde461f87"
+  },
+  "selection_generator": {
+    "path": "/tmp/lpx-gpu/select-decode.py",
+    "bytes": 7436,
+    "sha256": "7f2f1a74d1ea648e16275c5a02ea785ce34f3a8f89ebc9ef372df02844c4de5b"
+  }
+}
