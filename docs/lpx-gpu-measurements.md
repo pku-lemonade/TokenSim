@@ -711,6 +711,7 @@ The tooling and verified inputs are saved in local commit `fcf13ac`.
 The T0 results and sweep runner are saved in local commit `edab20d`.
 The periodic diagnostics, n-gram comparison and completed T1 rows are saved in local commit `bca4d8a`.
 Pushing those commits to `origin/lpx-context-parallel` returned HTTP 403 because the configured GitHub account does not have repository write permission.
+The commits were later merged with the upstream records in `76d09dc` on a machine with write permission and pushed to `origin/lpx-context-parallel` from there.
 
 ## Expectations
 

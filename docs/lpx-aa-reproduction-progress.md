@@ -1,6 +1,6 @@
 # Progress on reproducing the AA Gemma 4 31B LPX results
 
-Record date: 2026-10-30.
+Record date: 2026-10-26, updated 2026-10-30.
 This page summarizes the work to reproduce the Artificial Analysis (AA) Gemma 4 31B results on NVIDIA Groq 3 LPX (LP30) hardware with TokenSim.
 Each section links to the detailed record that holds the method, the expectations recorded before each run and the complete results.
 The [final summary](lpx-aa-final-summary.md) states the outcome of the work in one page.
@@ -44,10 +44,11 @@ All results use the bundled [fidelity configuration](../experiments/lpx/fidelity
 | Lookup acceptance on coding outputs | [Lookup-coding record](lpx-lookup-coding.md) | Lookup drafting on Gemma 4 31B coding outputs commits 1.19 to 1.92 tokens per step; 13 of 32 lookup settings place both AA values and the 4,767 TPS coding median within 5% with one shared 38 to 61 µs of unmodeled time per step, while plain decoding needs 14 to 25 µs and leaves the coding median 22% to 29% too slow |
 | Coding speed spread | [Coding-spread record](lpx-coding-spread.md) | NVIDIA's coding P80 and maximum are 1.158 and 1.464 times the median; plain decoding gives 1.000 and 1.001, and lookup drafting on Gemma coding outputs gives 1.04 to 1.09 and up to 1.53; NVIDIA does not state the load, and a coding run that served one request at a time most likely used drafting or another content-dependent mechanism |
 | Gemma outputs on SPEED-Bench and AA-like prompts | [API-outputs record](lpx-api-outputs.md) | The best of 16 lookup settings, chosen after the results, gives NVIDIA's SPEED-Bench coding median and P80 within 2% and maximum within 13% with 0 to 21 µs of extra time; answers to questions about 10K and 100K-token books give 1.006 Gemma tokens per `o200k_base` token and the same lookup acceptance at both contexts within 0.01; model build, thinking, drafter and AA's prompts differ from the published runs |
-| GPU measurements | [GPU measurements](lpx-gpu-measurements.md) | All planned MTP priorities and n-gram comparisons complete; document equivalent acceptance is 0.720–0.814 and coding without thinking is 0.896–0.931; 23 thinking turns hit the output cap; original serving failures and the missed coding-equality expectation remain recorded |
 | Per-step cost audit | [Step-cost audit](lpx-step-cost-audit.md) | The closest setup runs with the collective launch, the per-operator instruction floor and the per-step invocation at zero; a launch of 0.10 to 0.18 µs over 132 collectives or a floor of 0.012 to 0.023 µs over 1,036 kernel components supplies the 13 to 24 µs, while the 0.05 µs floor and 0.5 µs launch used elsewhere make the setup 8% to 28% too slow; the omitted token return between pipeline stages adds about 0.4 to 1.2 µs |
 | Published fixed costs | [Fixed-cost evidence](lpx-fixed-cost-evidence.md) | First-generation Groq data show no measurable collective launch beyond hop latency, no runtime instruction dispatch and about 0.28 µs of synchronization per spanning-tree level at each invocation, so the zeroed costs would supply about 1 to 2 µs; SHIP's production host collects each output and invokes the next step, a per-token cost without a published size that could supply the rest |
 | AA measurement noise | [Noise check](lpx-aa-noise-check.md) | A per-request spread of about 3% makes the 1.45% difference between two 50-request medians smaller than two standard errors; AA's shared public Gemma 4 31B endpoints vary by about 4% to 42% and are faster at 10K than at 1K on 6 of 11 endpoints, while no spread is published for the private LPX endpoint |
+| Gemma 4 31B on a GPU | [GPU measurements](lpx-gpu-measurements.md), [follow-up results](lpx-gpu-followup-results.md) | The public checkpoint with its released MTP assistant on one H20 gives document equivalent acceptance of 0.720 to 0.814 and coding acceptance of 0.896 to 0.932 at K = 1 to 7; priced on TP32/PP8 with `KVP = 8`, every setting makes the AA 10K value at least 72% too fast, and no extra time of 25 µs or less fits; acceptance at 100K is within 0.02 of 10K; vLLM's default attention path loops on a document request at temperature zero, so the measurements use Triton attention |
+| One extra time at measured MTP acceptance | [Joint-fit record](lpx-gpu-joint-fit.md) | MTP at K = 3 or 5 places both AA values and the 4,767 TPS coding median within 5% with one shared 387 to 576 µs of unmodeled time per step, 1.4 to 2.2 times the modeled plain step; it gives a coding P80/median of 1.03 to 1.09 against NVIDIA's 1.158 and a fastest 16K code-completion turn of 4,893 TPS against NVIDIA's 10,996 TPS example |
 
 ## DCP
 
@@ -189,59 +190,44 @@ At the 1.006 Gemma tokens per `o200k_base` token of Gemma 4 31B's answers to AA-
 The [token-ratio record](lpx-token-ratio.md) measures 1.031 to 1.048 on Gemma's WritingBench outputs, which would cut the need to about 1 to 16 µs; AA's prompts are unpublished, and the book answers are closer to AA's workload.
 The [step-cost audit](lpx-step-cost-audit.md) finds that the closest setup runs with the collective launch, the per-operator instruction floor and the per-step invocation at zero.
 A collective launch of 0.10 to 0.18 µs, an instruction floor of 0.012 to 0.023 µs per kernel component or a cross-tray latency of 0.80 to 0.85 µs instead of 0.75 µs, from the [tray-latency record](lpx-tray-latency.md), each supplies that time.
-The match therefore requires LP30's fixed costs to total at most about 24 µs per step.
+The plain-decoding match therefore requires LP30's fixed costs to total at most about 24 µs per step.
 The [fixed-cost evidence record](lpx-fixed-cost-evidence.md) finds that first-generation Groq data leave about 1 to 2 µs of that to collective launches, instruction dispatch and synchronization, and points to the host's per-token output collection and invocation, or a slightly longer cross-tray latency, as the remaining candidates.
 The [GroqRack Llama-2-7B check](groqrack-llama2-7b-validation.md) supports the multi-chip device model on first-generation hardware once a per-token host loop is added.
 
-Speculative decoding matches on the same layout only at AA acceptances of 0.006 to 0.335, below the published MTP acceptance on prose of 0.57 to 0.68, measured on Qwen3-Next.
-The completed [GPU measurements](lpx-gpu-followup-results.md) give document equivalent acceptance of 0.720 to 0.814 for the public Gemma 4 31B checkpoint and its released MTP assistant.
-Lookup drafting on the AA-like book answers makes the AA 10K value too fast unless each step takes 26 to 99 µs longer, and the book answers and the [lookup-context record](lpx-lookup-context.md) show that lookup acceptance does not rise with context.
-The AA values therefore fit best without effective drafting, which the published sources neither confirm nor exclude.
+Speculative decoding matches on the same layout without unmodeled time only at AA acceptances of 0.006 to 0.335.
+The [GPU measurements](lpx-gpu-followup-results.md) give the public Gemma 4 31B checkpoint with its released MTP assistant a document equivalent acceptance of 0.720 to 0.814 at K = 1 to 7, which makes the AA 10K value at least 72% too fast on this layout.
+Lookup drafting on the AA-like book answers makes it too fast unless each step takes 26 to 99 µs longer, and neither MTP nor lookup acceptance rises with context: the measured MTP acceptance at 100K is within 0.02 of 10K.
+With small unmodeled time, the AA values therefore fit only without effective drafting.
 
 NVIDIA's SPEED-Bench coding values need drafting on this layout if that run served one request at a time.
 Plain decoding is 22% to 29% too slow for the coding median, as the [lookup-coding record](lpx-lookup-coding.md) shows, and gives almost no per-request spread, as the [coding-spread record](lpx-coding-spread.md) shows; NVIDIA does not state that run's load.
 On Gemma's answers to SPEED-Bench's own coding prompts, the best of 16 lookup settings, chosen after the results, gives NVIDIA's median, P80 and maximum with 0 to 21 µs of extra time, which shows that lookup drafting can produce them without showing that NVIDIA used it.
-One possibility is one TP32/PP8 build with about 13 to 21 µs of unmodeled time per step in which the coding run drafted and the AA run did not; the model build, thinking mode, drafter and AA's prompts differ from the published runs, so the data does not establish it.
+The measured MTP acceptance on the same prompts makes the coding median too fast unless each step takes 85 to 850 µs longer, depending on K and the drafter cost.
+
+The data leave two explanations, and each leaves some published values unexplained:
+
+- Plain decoding on AA and lookup drafting on the coding run, with one shared 13 to 21 µs of unmodeled time per step. The best of 16 lookup settings, chosen after the results, gives the coding median and P80 within 2% and the maximum within 13%, and the coding run would then use a drafter weaker than Gemma's released assistant.
+- MTP at K = 3 or 5 on both runs with one shared 387 to 576 µs of unmodeled time per step, from the [joint-fit record](lpx-gpu-joint-fit.md). It fits the three medians and gives a coding P80/median of 1.03 to 1.09 against NVIDIA's 1.158.
+
+Neither reaches NVIDIA's 10,996 TPS code-completion example: lookup's fastest request reaches 9,785 TPS, and MTP with the shared extra time reaches 4,893 TPS.
+The two explanations differ by more than 350 µs per step, so a measured LP30 step time or host loop would decide between them.
+Published first-generation data leave about 1 to 2 µs to collective launches, instruction dispatch and synchronization and give no size for the host's per-token loop, which the [GroqRack check](groqrack-llama2-7b-validation.md) puts at 2.7 to 2.8 ms on first-generation hardware.
+The H20 profile in the [profiling report](lpx-gpu-profile-results.md) separates a decode step into model forward, a 761 µs vocabulary projection, sampling and gaps; its costs do not transfer to LP30.
 
 No setup gives AA's 1.45% higher speed at 100K, because every modeled cost grows with context or stays constant.
 The [noise check](lpx-aa-noise-check.md) shows that a per-request spread of about 3% would make that difference ordinary, and AA does not publish the spread.
 
-The remaining uncertainty sits in which fixed cost supplies the unmodeled time and in whether the AA run drafted, and the match does not identify NVIDIA's deployment.
-
-GPU measurement setup is recorded in the [GPU measurements record](lpx-gpu-measurements.md).
-The H20 environment, exact input hashes, sequential streaming client and LP30 pricing analysis are available; the priority-1 BF16 measurements, FP8 comparison and full plain coding control are complete.
-The original plain 10K document smoke request loops at temperature zero, including eager, mixed-attention and V1-runner controls.
-T0 MTP smoke checks are complete and match five of ten greedy coding request pairs, missing the preregistered nine-pair minimum.
-The BF16 K=3 priority sweep was interrupted for a native Transformers crosscheck after its completed 10K turns and an active 100K turn entered repetitive reasoning.
-Acceptance on those failed outputs does not establish ordinary prose acceptance; the GPU record retains every turn and reports repetition and completion diagnostics.
-Native Transformers and vLLM with Triton attention both complete the same greedy document request without repetition.
-Triton is a post-observation serving-profile choice; its full-cap MTP K=3 document control also finishes without repetition, and its separate coding comparison matches six of ten request pairs.
-The Triton K=3/K=7 priority sweep completes all 288 requests and 306 turns, without replacing the original results or expectations.
-All turns stop normally without empty answers or repetition flags.
-At K=3, document-group equivalent acceptance is 0.746 to 0.785, while coding without thinking gives 0.913.
-The paired 100K-minus-10K acceptance difference is -0.011240 for quotes and -0.007673 for summary.
-Pricing the measured K=3/K=7 acceptance on LP30 makes the 10K speed at least 84.1% too fast at both drafter costs, and no common extra time of 25 µs or less fits both AA context speeds.
-The measurement supports that result for the specified public BF16 checkpoint, prompts and released drafter; the published deployment used a different model build and FP8 weights, and its drafter is not stated.
-FP8 target weights with a BF16 assistant and KV cache reduce combined document equivalent acceptance by 0.008278; all four group changes have magnitude below 0.03 and all 64 turns complete normally without quality flags.
-The H20 K=3 coding P80/median is 1.065741, while the completed 89-turn plain control gives 1.005874, satisfying both speed-spread expectations.
-The LP30 plain coding median is 3,764.52 TPS, 21.03% below NVIDIA's 4,767 TPS, while all measured K=3/K=7 MTP medians exceed it.
-The [completed follow-up measurements](lpx-gpu-followup-results.md) cover all 912 queued requests and 984 turns, preserving the completed priority-1 artifacts.
-The complete n-gram comparison differs from lookup replay by +0.000278 for coding and -0.000205 for documents, both below the 0.03 expectation.
-All MTP priorities are measured; 23 thinking turns reach the output cap without final answers and remain included in the reported acceptance and speed.
-Coding without thinking exceeds every same-K document group by at least 0.117012 across K=1/3/5/7.
-All four draft lengths price at least 72.2616% above AA's 10K speed; no common extra-time interval includes 25 microseconds or less.
-The [T6 collection](lpx-gpu-measurements.md#queued-t6-profile-collection) completed both graph cases and recovered eager 10K traces after a profiler-stop timeout.
-The [completed profiling report](lpx-gpu-profile-results.md) covers graph and eager execution at both contexts, with a separate vocabulary projection near 761 microseconds per step and explicit host/streaming overlap.
-Eager profiling increases client step times by roughly 95–96%, so the measured gaps do not establish uninstrumented serving overhead or a transferable LP30 constant.
+The remaining uncertainty sits in the size of LP30's unmodeled cost per step and in whether the published runs drafted, and the matches do not identify NVIDIA's deployment.
+The GPU measurements use the public checkpoint in BF16 and FP8 on study prompts, with an explicit thinking setting and temperature zero, while the published runs used an unpublished build, drafter and prompts; the [GPU measurements record](lpx-gpu-measurements.md) lists each difference.
 
 ## Open work
 
 | Item | Purpose |
 | --- | --- |
-| LP30 fixed costs per step | Measure an all-reduce across two LP30 trays, LP30's collective launch and per-kernel costs, and the host's per-token output collection and invocation; at the 1.006 Gemma tokens per `o200k_base` token of AA-like outputs the TP32 match holds if together they add 13 to 24 µs per step, for example a cross-tray latency of 0.80 to 0.85 µs, a collective launch of 0.10 to 0.18 µs or an instruction floor of 0.012 to 0.023 µs |
+| LP30 fixed costs per step | Measure an all-reduce across two LP30 trays, LP30's collective launch and per-kernel costs, and the host's per-token output collection and invocation; 387 to 576 µs per step would support MTP on both published runs; at the 1.006 Gemma tokens per `o200k_base` token of AA-like outputs the TP32 match holds if together they add 13 to 24 µs per step, for example a cross-tray latency of 0.80 to 0.85 µs, a collective launch of 0.10 to 0.18 µs or an instruction floor of 0.012 to 0.023 µs |
 | LP30 operand bandwidth | Establish whether LP30's matrix-unit operand bandwidth is below its 150 TB/s SRAM bandwidth, as GroqChip v1's 20 TB/s is below its 80 TB/s |
 | LP30 FP8 attention path | Establish whether KV conversion runs on the vector unit, which decides whether a larger attention group helps |
-| AA drafting status and spread | Establish whether the AA run drafted, from AA's prompts, its per-request speed spread or a statement of the deployment's settings; lookup acceptance measured on AA-like book answers would make the AA values too fast without 26 to 99 µs of extra time, and a per-request spread of about 3% or more would make the 1.45% higher 100K speed ordinary |
+| AA drafting status and spread | Establish whether the AA run drafted, from AA's prompts, its per-request speed spread or a statement of the deployment's settings; lookup acceptance on AA-like book answers would make the AA values too fast without 26 to 99 µs of extra time and Gemma's released MTP assistant without about 195 to 576 µs, and a per-request spread of about 3% or more would make the 1.45% higher 100K speed ordinary |
 | Lift the 16-row forward limit | Test longer drafts and heavier background traffic in one forward; background traffic matters only for setups that the AA footnotes no longer support |
 
 ## Earlier records
@@ -276,7 +262,7 @@ These records come from the study phases of October 19 to 22, before the context
 
 ## Commits
 
-The work is on branch `lpx-context-parallel`, published at `origin/lpx-context-parallel`.
+The work is on local branch `lpx-experiment`, pushed to `origin/lpx-context-parallel`; the GPU commits were made on another machine and merged in `76d09dc`.
 
 | Commit | Content |
 | --- | --- |
@@ -315,3 +301,4 @@ The work is on branch `lpx-context-parallel`, published at `origin/lpx-context-p
 | `fcf13ac` | GPU collection and pricing tools, H20 environment and verified input hashes |
 | `edab20d`, `bca4d8a` | GPU smoke results, output-failure diagnostics and n-gram replay accounting |
 | `08d2dec` | Completed GPU T0–T6 measurements, follow-up analyses and decode profiling, including failed and capped turns and attribution limits |
+| `2147ee4`, `7901597` | One extra time per step at measured MTP acceptance |
