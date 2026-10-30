@@ -1,7 +1,7 @@
 # TODO: measure Gemma 4 31B on a GPU machine for the LPX study
 
 Record date: 2026-10-30.
-Status: T0–T6 measurements and exploratory analyses are complete under the separately recorded Triton profiles; commit and publication remain pending.
+Status: T0–T6 measurements and exploratory analyses are complete under the separately recorded Triton profiles; results and analyses are committed in `08d2dec`.
 The [completed follow-up results](lpx-gpu-followup-results.md) cover all MTP priorities, context pairs, n-gram comparisons and coding spreads, including 23 capped thinking turns without final answers.
 The [T6 profiling report](lpx-gpu-profile-results.md) covers both contexts and execution modes, with explicit residual activity and instrumentation limits.
 The prior monitor delivered a failure continuation, but that session encountered an application error; work resumed in a new session at the user's request.
@@ -339,10 +339,11 @@ None of these results identifies NVIDIA's build, drafter or settings.
 ## Recording
 
 - [x] Write `docs/lpx-gpu-measurements.md` with the environment, commands, input hashes, each expectation's outcome, result tables, the differences table above and an interpretation limited to what the data shows.
-- [ ] Commit the outputs and analyses as `experiments/lpx/gpu-*.json` and `experiments/lpx/gpu-*.jsonl`.
+- [x] Commit the outputs and analyses as `experiments/lpx/gpu-*.json` and `experiments/lpx/gpu-*.jsonl`.
 - [x] Update the outcome table, current position and open work of the [progress summary](lpx-aa-reproduction-progress.md).
-- [ ] Add the publication commit to the progress summary's commit table after committing the results.
+- [x] Add the publication commit to the progress summary's commit table after committing the results.
 - [x] Update the [final summary](lpx-aa-final-summary.md) only where a result changes a stated conclusion.
 - [x] Tick the boxes in this page and change its status line.
 
-The resumed session makes no commit or push; existing outputs and uncommitted work remain in place.
+The [progress summary](lpx-aa-reproduction-progress.md#commits) records the publication commit.
+Generated outputs and analyses are committed without input prompts, model weights, credentials or raw profiler traces.

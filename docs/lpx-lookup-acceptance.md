@@ -1,7 +1,7 @@
 # Prompt-lookup acceptance on Gemma 4 31B outputs
 
 Record date: 2026-10-27.
-The [article-condition speculation record](lpx-article-speculative.md) found that lookup drafting on TP32/PP8 with decode context parallelism (DCP) of 8 reproduces both Artificial Analysis (AA) values, including the higher speed at 100K, if acceptance is higher at 100K than at 10K.
+The [article-condition speculation record](lpx-article-speculative.md) found that lookup drafting on TP32/PP8 with decode context parallelism (DCP) of 8 places both Artificial Analysis (AA) values within 5%, including the higher speed at 100K, if acceptance is higher at 100K than at 10K.
 At 1.036 Gemma tokens per `o200k_base` token, seven draft tokens need a per-position acceptance of about 0.19 at 10K and 0.30 at 100K, and five draft tokens need 0.13 and 0.23.
 This record measures lookup acceptance on Gemma 4 31B's own outputs.
 

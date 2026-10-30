@@ -2,7 +2,7 @@
 
 Record date: 2026-10-26.
 The [test-configuration record](lpx-aa-test-configuration.md) separates what public sources establish about the Artificial Analysis (AA) Gemma 4 31B measurement from what they leave open.
-This sweep keeps only setups consistent with those sources and asks which of them reproduce both AA speeds.
+This sweep keeps only setups consistent with those sources and asks which of them place both AA speeds within 5%.
 
 ## Conditions
 
@@ -83,7 +83,7 @@ All six expectations held.
 
 ## Interpretation
 
-Under the published conditions, one setup reproduces both AA speeds: TP32/PP8 on 256 chips with DCP 8, attention matrix efficiency of at least 0.30, and 14 to 25 µs of constant time per step that the model does not include.
+Under the published conditions, one setup places both AA speeds within 5%: TP32/PP8 on 256 chips with DCP 8, attention matrix efficiency of at least 0.30, and 14 to 25 µs of constant time per step that the model does not include.
 The extra time is 5% to 9% of the step.
 Without it, the 100K speed lies within 5% of the published value and the 10K speed is 10.6% too fast.
 The 25.2 µs bound on the increment from 10K to 100K excludes every other layout and every point at efficiency 0.10.

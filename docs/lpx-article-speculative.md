@@ -1,7 +1,7 @@
 # Speculative decoding under the published LPX test conditions
 
 Record date: 2026-10-26.
-The [article-condition sweep](lpx-article-sweep.md) found one batch-one layout that reproduces both Artificial Analysis (AA) Gemma 4 31B speeds without speculative decoding: TP32/PP8 with decode context parallelism (DCP) of 8, provided each step costs 14 to 25 µs more than modeled.
+The [article-condition sweep](lpx-article-sweep.md) found one batch-one layout that places both Artificial Analysis (AA) Gemma 4 31B speeds within 5% without speculative decoding: TP32/PP8 with decode context parallelism (DCP) of 8, provided each step costs 14 to 25 µs more than modeled.
 NVIDIA's articles, the AA footnotes and press reports neither state nor deny that the endpoint drafts tokens.
 This record adds chain speculative decoding to the same conditions and tests how the choice of drafter changes the result.
 
