@@ -1,0 +1,14 @@
+{
+  "outputs": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-cc302-plain-outputs.jsonl",
+  "sha256": "2b213b4e9e98998cb3119da0c1e9fe6e78cd06c9ddd01150fa28aae640fbde21",
+  "requests": 302,
+  "turns": 302,
+  "exact_input_coverage": true,
+  "finish_reasons": {
+    "stop": 301,
+    "length": 1
+  },
+  "empty_answers": 0,
+  "repetition_flags": 0,
+  "note": "All completed measurement turns retained, including quality flags"
+}

@@ -62,7 +62,11 @@ The published sources do not say whether either run drafted, and the data leave 
 
 Published first-generation data leave only about 1 to 2 µs to launches, dispatch and synchronization, and give no size for the host's per-token loop, which the GroqRack check puts at 2.7 to 2.8 ms on first-generation hardware, so neither explanation is excluded.
 AA's prompts may give a drafter less to copy than the books used here, and the AA build may differ from the SPEED-Bench build.
-Lookup acceptance does not reach the 10,996 TPS example on 16K code-completion prompts, where the fastest request reaches 9,785 TPS.
+The earlier 40 API code-completion answers give a lookup peak of 9,785 TPS.
+The [expanded H20 study](lpx-cc16k-peak.md#plain-output-replay-results) replays all 302 prompts and reaches 11,606 TPS at minimum n-gram 1 and K = 7 with 7 µs of extra time, and 11,735 TPS at minimum n-gram 2 with 6 µs.
+Each extra time is the upper end of that setting's coding-median window, so the replay supports the coding-median-and-example part of the lookup hypothesis.
+These windows do not overlap the earlier API fit's 13 to 21 µs range, and no H20 coding window reaches the 26 µs needed by the AA-like book answers.
+The native n-gram comparison and publication of the expanded study remain pending.
 The measured MTP acceptance exceeds it at K = 7 with no unmodeled time, at 12,647 to 15,255 TPS, which would make the AA values too fast if the AA run drafted with the same acceptance.
 
 ## Speed at 100K

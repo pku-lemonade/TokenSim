@@ -1,0 +1,803 @@
+{
+  "source": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-cc302-lookup-results.json",
+  "coding_median": 4767,
+  "example_tps": 10996,
+  "band": 0.05,
+  "results": [
+    {
+      "minimum_ngram": 1,
+      "draft_tokens": 1,
+      "coding_extra_us": [
+        0.0,
+        7.0
+      ],
+      "completion": [
+        {
+          "extra_us": 0.0,
+          "requests": 302,
+          "median_tps": 4853.311288077585,
+          "maximum_tps": 6364.017838397164,
+          "at_or_above_example": 0,
+          "mean_tau": 1.3551534060575798,
+          "maximum_tau": 1.7688442211055277
+        },
+        {
+          "extra_us": 13.0,
+          "requests": 302,
+          "median_tps": 4635.967611081605,
+          "maximum_tps": 6079.660474291416,
+          "at_or_above_example": 0,
+          "mean_tau": 1.3551534060575798,
+          "maximum_tau": 1.7688442211055277
+        },
+        {
+          "extra_us": 21.0,
+          "requests": 302,
+          "median_tps": 4511.6337740889885,
+          "maximum_tps": 5916.9638135198475,
+          "at_or_above_example": 0,
+          "mean_tau": 1.3551534060575798,
+          "maximum_tau": 1.7688442211055277
+        },
+        {
+          "extra_us": 26.0,
+          "requests": 302,
+          "median_tps": 4437.255954716173,
+          "maximum_tps": 5819.627582875094,
+          "at_or_above_example": 0,
+          "mean_tau": 1.3551534060575798,
+          "maximum_tau": 1.7688442211055277
+        },
+        {
+          "extra_us": 7.0,
+          "requests": 302,
+          "median_tps": 4733.810123190587,
+          "maximum_tps": 6207.678223331822,
+          "at_or_above_example": 0,
+          "mean_tau": 1.3551534060575798,
+          "maximum_tau": 1.7688442211055277
+        }
+      ],
+      "earlier_40": [
+        {
+          "extra_us": 0.0,
+          "requests": 40,
+          "median_tps": 4966.4055719036405,
+          "maximum_tps": 6364.017838397164,
+          "at_or_above_example": 0,
+          "mean_tau": 1.391469211795703,
+          "maximum_tau": 1.7688442211055277
+        },
+        {
+          "extra_us": 13.0,
+          "requests": 40,
+          "median_tps": 4743.620765829281,
+          "maximum_tps": 6079.660474291416,
+          "at_or_above_example": 0,
+          "mean_tau": 1.391469211795703,
+          "maximum_tau": 1.7688442211055277
+        },
+        {
+          "extra_us": 21.0,
+          "requests": 40,
+          "median_tps": 4616.190179435314,
+          "maximum_tps": 5916.9638135198475,
+          "at_or_above_example": 0,
+          "mean_tau": 1.391469211795703,
+          "maximum_tau": 1.7688442211055277
+        },
+        {
+          "extra_us": 26.0,
+          "requests": 40,
+          "median_tps": 4539.965385166454,
+          "maximum_tps": 5819.627582875094,
+          "at_or_above_example": 0,
+          "mean_tau": 1.391469211795703,
+          "maximum_tau": 1.7688442211055277
+        },
+        {
+          "extra_us": 7.0,
+          "requests": 40,
+          "median_tps": 4843.908354888004,
+          "maximum_tps": 6207.678223331822,
+          "at_or_above_example": 0,
+          "mean_tau": 1.391469211795703,
+          "maximum_tau": 1.7688442211055277
+        }
+      ]
+    },
+    {
+      "minimum_ngram": 1,
+      "draft_tokens": 3,
+      "coding_extra_us": [
+        0.0,
+        23.5
+      ],
+      "completion": [
+        {
+          "extra_us": 0.0,
+          "requests": 302,
+          "median_tps": 5278.559910947644,
+          "maximum_tps": 9418.720597655323,
+          "at_or_above_example": 0,
+          "mean_tau": 1.635287639361275,
+          "maximum_tau": 2.8444444444444446
+        },
+        {
+          "extra_us": 13.0,
+          "requests": 302,
+          "median_tps": 5058.939803281372,
+          "maximum_tps": 9030.010291418139,
+          "at_or_above_example": 0,
+          "mean_tau": 1.635287639361275,
+          "maximum_tau": 2.8444444444444446
+        },
+        {
+          "extra_us": 21.0,
+          "requests": 302,
+          "median_tps": 4932.645693400345,
+          "maximum_tps": 8806.356111160925,
+          "at_or_above_example": 0,
+          "mean_tau": 1.635287639361275,
+          "maximum_tau": 2.8444444444444446
+        },
+        {
+          "extra_us": 26.0,
+          "requests": 302,
+          "median_tps": 4856.864828280875,
+          "maximum_tps": 8672.112479024789,
+          "at_or_above_example": 0,
+          "mean_tau": 1.635287639361275,
+          "maximum_tau": 2.8444444444444446
+        },
+        {
+          "extra_us": 23.5,
+          "requests": 302,
+          "median_tps": 4894.461949008679,
+          "maximum_tps": 8738.718765008625,
+          "at_or_above_example": 0,
+          "mean_tau": 1.635287639361275,
+          "maximum_tau": 2.8444444444444446
+        }
+      ],
+      "earlier_40": [
+        {
+          "extra_us": 0.0,
+          "requests": 40,
+          "median_tps": 5563.897800348985,
+          "maximum_tps": 9418.720597655323,
+          "at_or_above_example": 0,
+          "mean_tau": 1.7173158605808976,
+          "maximum_tau": 2.8444444444444446
+        },
+        {
+          "extra_us": 13.0,
+          "requests": 40,
+          "median_tps": 5331.22967006563,
+          "maximum_tps": 9030.010291418139,
+          "at_or_above_example": 0,
+          "mean_tau": 1.7173158605808976,
+          "maximum_tau": 2.8444444444444446
+        },
+        {
+          "extra_us": 21.0,
+          "requests": 40,
+          "median_tps": 5197.478663165775,
+          "maximum_tps": 8806.356111160925,
+          "at_or_above_example": 0,
+          "mean_tau": 1.7173158605808976,
+          "maximum_tau": 2.8444444444444446
+        },
+        {
+          "extra_us": 26.0,
+          "requests": 40,
+          "median_tps": 5117.239679701001,
+          "maximum_tps": 8672.112479024789,
+          "at_or_above_example": 0,
+          "mean_tau": 1.7173158605808976,
+          "maximum_tau": 2.8444444444444446
+        },
+        {
+          "extra_us": 23.5,
+          "requests": 40,
+          "median_tps": 5157.047078392094,
+          "maximum_tps": 8738.718765008625,
+          "at_or_above_example": 0,
+          "mean_tau": 1.7173158605808976,
+          "maximum_tau": 2.8444444444444446
+        }
+      ]
+    },
+    {
+      "minimum_ngram": 1,
+      "draft_tokens": 5,
+      "coding_extra_us": [
+        0.0,
+        17.0
+      ],
+      "completion": [
+        {
+          "extra_us": 0.0,
+          "requests": 302,
+          "median_tps": 5149.681079099129,
+          "maximum_tps": 10506.866915198765,
+          "at_or_above_example": 0,
+          "mean_tau": 1.7433458991626605,
+          "maximum_tau": 3.4036281179138324
+        },
+        {
+          "extra_us": 13.0,
+          "requests": 302,
+          "median_tps": 4949.013821854618,
+          "maximum_tps": 10101.489187322772,
+          "at_or_above_example": 0,
+          "mean_tau": 1.7433458991626605,
+          "maximum_tau": 3.4036281179138324
+        },
+        {
+          "extra_us": 21.0,
+          "requests": 302,
+          "median_tps": 4833.117712905813,
+          "maximum_tps": 9867.213188007641,
+          "at_or_above_example": 0,
+          "mean_tau": 1.7433458991626605,
+          "maximum_tau": 3.4036281179138324
+        },
+        {
+          "extra_us": 26.0,
+          "requests": 302,
+          "median_tps": 4763.399467838397,
+          "maximum_tps": 9726.23012112143,
+          "at_or_above_example": 0,
+          "mean_tau": 1.7433458991626605,
+          "maximum_tau": 3.4036281179138324
+        },
+        {
+          "extra_us": 17.0,
+          "requests": 302,
+          "median_tps": 4890.379181983159,
+          "maximum_tps": 9982.976905981213,
+          "at_or_above_example": 0,
+          "mean_tau": 1.7433458991626605,
+          "maximum_tau": 3.4036281179138324
+        }
+      ],
+      "earlier_40": [
+        {
+          "extra_us": 0.0,
+          "requests": 40,
+          "median_tps": 5515.104511134053,
+          "maximum_tps": 10350.578019731709,
+          "at_or_above_example": 0,
+          "mean_tau": 1.8550633028009362,
+          "maximum_tau": 3.3764988009592325
+        },
+        {
+          "extra_us": 13.0,
+          "requests": 40,
+          "median_tps": 5300.166027251864,
+          "maximum_tps": 9953.903080791684,
+          "at_or_above_example": 0,
+          "mean_tau": 1.8550633028009362,
+          "maximum_tau": 3.3764988009592325
+        },
+        {
+          "extra_us": 21.0,
+          "requests": 40,
+          "median_tps": 5176.028433232526,
+          "maximum_tps": 9724.559425760803,
+          "at_or_above_example": 0,
+          "mean_tau": 1.8550633028009362,
+          "maximum_tau": 3.3764988009592325
+        },
+        {
+          "extra_us": 26.0,
+          "requests": 40,
+          "median_tps": 5101.3527856967885,
+          "maximum_tps": 9586.510230546912,
+          "at_or_above_example": 0,
+          "mean_tau": 1.8550633028009362,
+          "maximum_tau": 3.3764988009592325
+        },
+        {
+          "extra_us": 17.0,
+          "requests": 40,
+          "median_tps": 5237.361736155817,
+          "maximum_tps": 9837.894804555073,
+          "at_or_above_example": 0,
+          "mean_tau": 1.8550633028009362,
+          "maximum_tau": 3.3764988009592325
+        }
+      ]
+    },
+    {
+      "minimum_ngram": 1,
+      "draft_tokens": 7,
+      "coding_extra_us": [
+        0.0,
+        7.0
+      ],
+      "completion": [
+        {
+          "extra_us": 0.0,
+          "requests": 302,
+          "median_tps": 4926.342069870036,
+          "maximum_tps": 11840.787288302161,
+          "at_or_above_example": 1,
+          "mean_tau": 1.8021212462632619,
+          "maximum_tau": 4.08991825613079
+        },
+        {
+          "extra_us": 13.0,
+          "requests": 302,
+          "median_tps": 4746.030346288381,
+          "maximum_tps": 11411.305611280452,
+          "at_or_above_example": 1,
+          "mean_tau": 1.8021212462632619,
+          "maximum_tau": 4.08991825613079
+        },
+        {
+          "extra_us": 21.0,
+          "requests": 302,
+          "median_tps": 4641.365192614481,
+          "maximum_tps": 11162.156802760577,
+          "at_or_above_example": 1,
+          "mean_tau": 1.8021212462632619,
+          "maximum_tau": 4.08991825613079
+        },
+        {
+          "extra_us": 26.0,
+          "requests": 302,
+          "median_tps": 4578.262184285918,
+          "maximum_tps": 11011.88921015753,
+          "at_or_above_example": 1,
+          "mean_tau": 1.8021212462632619,
+          "maximum_tau": 4.08991825613079
+        },
+        {
+          "extra_us": 7.0,
+          "requests": 302,
+          "median_tps": 4827.620892473258,
+          "maximum_tps": 11605.590581240544,
+          "at_or_above_example": 1,
+          "mean_tau": 1.8021212462632619,
+          "maximum_tau": 4.08991825613079
+        }
+      ],
+      "earlier_40": [
+        {
+          "extra_us": 0.0,
+          "requests": 40,
+          "median_tps": 5370.577894831191,
+          "maximum_tps": 10966.488970886336,
+          "at_or_above_example": 0,
+          "mean_tau": 1.9328958074077984,
+          "maximum_tau": 3.8365122615803813
+        },
+        {
+          "extra_us": 13.0,
+          "requests": 40,
+          "median_tps": 5172.677466154012,
+          "maximum_tps": 10573.576093215253,
+          "at_or_above_example": 0,
+          "mean_tau": 1.9328958074077984,
+          "maximum_tau": 3.8365122615803813
+        },
+        {
+          "extra_us": 21.0,
+          "requests": 40,
+          "median_tps": 5057.981175919019,
+          "maximum_tps": 10345.475842604326,
+          "at_or_above_example": 0,
+          "mean_tau": 1.9328958074077984,
+          "maximum_tau": 3.8365122615803813
+        },
+        {
+          "extra_us": 26.0,
+          "requests": 40,
+          "median_tps": 4988.843659344948,
+          "maximum_tps": 10207.844317418716,
+          "at_or_above_example": 0,
+          "mean_tau": 1.9328958074077984,
+          "maximum_tau": 3.8365122615803813
+        },
+        {
+          "extra_us": 7.0,
+          "requests": 40,
+          "median_tps": 5262.172435467797,
+          "maximum_tps": 10751.363127453094,
+          "at_or_above_example": 0,
+          "mean_tau": 1.9328958074077984,
+          "maximum_tau": 3.8365122615803813
+        }
+      ]
+    },
+    {
+      "minimum_ngram": 2,
+      "draft_tokens": 1,
+      "coding_extra_us": null,
+      "completion": [
+        {
+          "extra_us": 0.0,
+          "requests": 302,
+          "median_tps": 4636.329647633012,
+          "maximum_tps": 6195.6315469354295,
+          "at_or_above_example": 0,
+          "mean_tau": 1.2909836088272166,
+          "maximum_tau": 1.7149817295980512
+        },
+        {
+          "extra_us": 13.0,
+          "requests": 302,
+          "median_tps": 4426.160258817394,
+          "maximum_tps": 5917.709451611566,
+          "at_or_above_example": 0,
+          "mean_tau": 1.2909836088272166,
+          "maximum_tau": 1.7149817295980512
+        },
+        {
+          "extra_us": 21.0,
+          "requests": 302,
+          "median_tps": 4306.039036101824,
+          "maximum_tps": 5758.740739965811,
+          "at_or_above_example": 0,
+          "mean_tau": 1.2909836088272166,
+          "maximum_tau": 1.7149817295980512
+        },
+        {
+          "extra_us": 26.0,
+          "requests": 302,
+          "median_tps": 4234.2189478659875,
+          "maximum_tps": 5663.65081532046,
+          "at_or_above_example": 0,
+          "mean_tau": 1.2909836088272166,
+          "maximum_tau": 1.7149817295980512
+        }
+      ],
+      "earlier_40": [
+        {
+          "extra_us": 0.0,
+          "requests": 40,
+          "median_tps": 4748.825411506285,
+          "maximum_tps": 6195.6315469354295,
+          "at_or_above_example": 0,
+          "mean_tau": 1.3241374766511336,
+          "maximum_tau": 1.7149817295980512
+        },
+        {
+          "extra_us": 13.0,
+          "requests": 40,
+          "median_tps": 4533.501841012139,
+          "maximum_tps": 5917.709451611566,
+          "at_or_above_example": 0,
+          "mean_tau": 1.3241374766511336,
+          "maximum_tau": 1.7149817295980512
+        },
+        {
+          "extra_us": 21.0,
+          "requests": 40,
+          "median_tps": 4410.437121640416,
+          "maximum_tps": 5758.740739965811,
+          "at_or_above_example": 0,
+          "mean_tau": 1.3241374766511336,
+          "maximum_tau": 1.7149817295980512
+        },
+        {
+          "extra_us": 26.0,
+          "requests": 40,
+          "median_tps": 4336.857941931727,
+          "maximum_tps": 5663.65081532046,
+          "at_or_above_example": 0,
+          "mean_tau": 1.3241374766511336,
+          "maximum_tau": 1.7149817295980512
+        }
+      ]
+    },
+    {
+      "minimum_ngram": 2,
+      "draft_tokens": 3,
+      "coding_extra_us": [
+        0.0,
+        6.0
+      ],
+      "completion": [
+        {
+          "extra_us": 0.0,
+          "requests": 302,
+          "median_tps": 5098.490113945099,
+          "maximum_tps": 9047.91520607031,
+          "at_or_above_example": 0,
+          "mean_tau": 1.512580478618001,
+          "maximum_tau": 2.67680608365019
+        },
+        {
+          "extra_us": 13.0,
+          "requests": 302,
+          "median_tps": 4874.949101603629,
+          "maximum_tps": 8667.071029459705,
+          "at_or_above_example": 0,
+          "mean_tau": 1.512580478618001,
+          "maximum_tau": 2.67680608365019
+        },
+        {
+          "extra_us": 21.0,
+          "requests": 302,
+          "median_tps": 4746.872895292725,
+          "maximum_tps": 8448.238638715216,
+          "at_or_above_example": 0,
+          "mean_tau": 1.512580478618001,
+          "maximum_tau": 2.67680608365019
+        },
+        {
+          "extra_us": 26.0,
+          "requests": 302,
+          "median_tps": 4670.187631824854,
+          "maximum_tps": 8316.992785241991,
+          "at_or_above_example": 0,
+          "mean_tau": 1.512580478618001,
+          "maximum_tau": 2.67680608365019
+        },
+        {
+          "extra_us": 6.0,
+          "requests": 302,
+          "median_tps": 4992.822560147333,
+          "maximum_tps": 8868.064679536146,
+          "at_or_above_example": 0,
+          "mean_tau": 1.512580478618001,
+          "maximum_tau": 2.67680608365019
+        }
+      ],
+      "earlier_40": [
+        {
+          "extra_us": 0.0,
+          "requests": 40,
+          "median_tps": 5333.211705491394,
+          "maximum_tps": 9047.91520607031,
+          "at_or_above_example": 0,
+          "mean_tau": 1.5897725135508698,
+          "maximum_tau": 2.67680608365019
+        },
+        {
+          "extra_us": 13.0,
+          "requests": 40,
+          "median_tps": 5099.999474712791,
+          "maximum_tps": 8667.071029459705,
+          "at_or_above_example": 0,
+          "mean_tau": 1.5897725135508698,
+          "maximum_tau": 2.67680608365019
+        },
+        {
+          "extra_us": 21.0,
+          "requests": 40,
+          "median_tps": 4966.356261761841,
+          "maximum_tps": 8448.238638715216,
+          "at_or_above_example": 0,
+          "mean_tau": 1.5897725135508698,
+          "maximum_tau": 2.67680608365019
+        },
+        {
+          "extra_us": 26.0,
+          "requests": 40,
+          "median_tps": 4886.328730398871,
+          "maximum_tps": 8316.992785241991,
+          "at_or_above_example": 0,
+          "mean_tau": 1.5897725135508698,
+          "maximum_tau": 2.67680608365019
+        },
+        {
+          "extra_us": 6.0,
+          "requests": 40,
+          "median_tps": 5222.979761425162,
+          "maximum_tps": 8868.064679536146,
+          "at_or_above_example": 0,
+          "mean_tau": 1.5897725135508698,
+          "maximum_tau": 2.67680608365019
+        }
+      ]
+    },
+    {
+      "minimum_ngram": 2,
+      "draft_tokens": 5,
+      "coding_extra_us": [
+        0.0,
+        6.0
+      ],
+      "completion": [
+        {
+          "extra_us": 0.0,
+          "requests": 302,
+          "median_tps": 5111.620479697695,
+          "maximum_tps": 10486.289016286015,
+          "at_or_above_example": 0,
+          "mean_tau": 1.5995156635202936,
+          "maximum_tau": 3.2916666666666665
+        },
+        {
+          "extra_us": 13.0,
+          "requests": 302,
+          "median_tps": 4896.330968108665,
+          "maximum_tps": 10069.277880725434,
+          "at_or_above_example": 0,
+          "mean_tau": 1.5995156635202936,
+          "maximum_tau": 3.2916666666666665
+        },
+        {
+          "extra_us": 21.0,
+          "requests": 302,
+          "median_tps": 4773.668884770353,
+          "maximum_tps": 9828.747119888088,
+          "at_or_above_example": 0,
+          "mean_tau": 1.5995156635202936,
+          "maximum_tau": 3.2916666666666665
+        },
+        {
+          "extra_us": 26.0,
+          "requests": 302,
+          "median_tps": 4700.829713720819,
+          "maximum_tps": 9684.16503004369,
+          "at_or_above_example": 0,
+          "mean_tau": 1.5995156635202936,
+          "maximum_tau": 3.2916666666666665
+        },
+        {
+          "extra_us": 6.0,
+          "requests": 302,
+          "median_tps": 5009.76765986076,
+          "maximum_tps": 10289.610839445942,
+          "at_or_above_example": 0,
+          "mean_tau": 1.5995156635202936,
+          "maximum_tau": 3.2916666666666665
+        }
+      ],
+      "earlier_40": [
+        {
+          "extra_us": 0.0,
+          "requests": 40,
+          "median_tps": 5385.384282246695,
+          "maximum_tps": 10008.776136333727,
+          "at_or_above_example": 0,
+          "mean_tau": 1.702299196896332,
+          "maximum_tau": 3.142857142857143
+        },
+        {
+          "extra_us": 13.0,
+          "requests": 40,
+          "median_tps": 5157.836285080964,
+          "maximum_tps": 9610.886052934513,
+          "at_or_above_example": 0,
+          "mean_tau": 1.702299196896332,
+          "maximum_tau": 3.142857142857143
+        },
+        {
+          "extra_us": 21.0,
+          "requests": 40,
+          "median_tps": 5027.122315447351,
+          "maximum_tps": 9381.37929938533,
+          "at_or_above_example": 0,
+          "mean_tau": 1.702299196896332,
+          "maximum_tau": 3.142857142857143
+        },
+        {
+          "extra_us": 26.0,
+          "requests": 40,
+          "median_tps": 4948.738083265987,
+          "maximum_tps": 9243.421951329017,
+          "at_or_above_example": 0,
+          "mean_tau": 1.702299196896332,
+          "maximum_tau": 3.142857142857143
+        },
+        {
+          "extra_us": 6.0,
+          "requests": 40,
+          "median_tps": 5277.917050180303,
+          "maximum_tps": 9821.117527107695,
+          "at_or_above_example": 0,
+          "mean_tau": 1.702299196896332,
+          "maximum_tau": 3.142857142857143
+        }
+      ]
+    },
+    {
+      "minimum_ngram": 2,
+      "draft_tokens": 7,
+      "coding_extra_us": [
+        0.0,
+        6.0
+      ],
+      "completion": [
+        {
+          "extra_us": 0.0,
+          "requests": 302,
+          "median_tps": 4999.934752594131,
+          "maximum_tps": 11949.170914936787,
+          "at_or_above_example": 1,
+          "mean_tau": 1.648362974472877,
+          "maximum_tau": 3.9293193717277486
+        },
+        {
+          "extra_us": 13.0,
+          "requests": 302,
+          "median_tps": 4795.3756115536435,
+          "maximum_tps": 11494.744952604173,
+          "at_or_above_example": 1,
+          "mean_tau": 1.648362974472877,
+          "maximum_tau": 3.9293193717277486
+        },
+        {
+          "extra_us": 21.0,
+          "requests": 302,
+          "median_tps": 4681.109905047408,
+          "maximum_tps": 11231.884869823245,
+          "at_or_above_example": 1,
+          "mean_tau": 1.648362974472877,
+          "maximum_tau": 3.9293193717277486
+        },
+        {
+          "extra_us": 26.0,
+          "requests": 302,
+          "median_tps": 4612.419753216427,
+          "maximum_tps": 11073.616259972472,
+          "at_or_above_example": 1,
+          "mean_tau": 1.648362974472877,
+          "maximum_tau": 3.9293193717277486
+        },
+        {
+          "extra_us": 6.0,
+          "requests": 302,
+          "median_tps": 4900.036350166143,
+          "maximum_tps": 11735.051187219224,
+          "at_or_above_example": 1,
+          "mean_tau": 1.648362974472877,
+          "maximum_tau": 3.9293193717277486
+        }
+      ],
+      "earlier_40": [
+        {
+          "extra_us": 0.0,
+          "requests": 40,
+          "median_tps": 5346.338193518915,
+          "maximum_tps": 10698.534373741359,
+          "at_or_above_example": 0,
+          "mean_tau": 1.767911515558364,
+          "maximum_tau": 3.5376884422110555
+        },
+        {
+          "extra_us": 13.0,
+          "requests": 40,
+          "median_tps": 5126.3547431938605,
+          "maximum_tps": 10293.841521607892,
+          "at_or_above_example": 0,
+          "mean_tau": 1.767911515558364,
+          "maximum_tau": 3.5376884422110555
+        },
+        {
+          "extra_us": 21.0,
+          "requests": 40,
+          "median_tps": 4999.756667087663,
+          "maximum_tps": 10059.671297104702,
+          "at_or_above_example": 0,
+          "mean_tau": 1.767911515558364,
+          "maximum_tau": 3.5376884422110555
+        },
+        {
+          "extra_us": 26.0,
+          "requests": 40,
+          "median_tps": 4923.760057129752,
+          "maximum_tps": 9918.649336485234,
+          "at_or_above_example": 0,
+          "mean_tau": 1.767911515558364,
+          "maximum_tau": 3.5376884422110555
+        },
+        {
+          "extra_us": 6.0,
+          "requests": 40,
+          "median_tps": 5242.5067383503665,
+          "maximum_tps": 10507.869528298335,
+          "at_or_above_example": 0,
+          "mean_tau": 1.767911515558364,
+          "maximum_tau": 3.5376884422110555
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "pid": 1585233,
+  "argv": [
+    "/tmp/lpx-gpu/repo-venv/bin/python",
+    "-u",
+    "scripts/run_lpx_gpu_cc302.py",
+    "--requests",
+    "/tmp/lpx-gpu/inputs/requests-cc302.jsonl",
+    "--stage",
+    "all"
+  ],
+  "log": "/tmp/lpx-gpu/cc302/collection.log",
+  "started_unix": 1793358750.3435895
+}

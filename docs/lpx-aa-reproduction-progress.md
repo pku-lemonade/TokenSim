@@ -49,6 +49,7 @@ All results use the bundled [fidelity configuration](../experiments/lpx/fidelity
 | AA measurement noise | [Noise check](lpx-aa-noise-check.md) | A per-request spread of about 3% makes the 1.45% difference between two 50-request medians smaller than two standard errors; AA's shared public Gemma 4 31B endpoints vary by about 4% to 42% and are faster at 10K than at 1K on 6 of 11 endpoints, while no spread is published for the private LPX endpoint |
 | Gemma 4 31B on a GPU | [GPU measurements](lpx-gpu-measurements.md), [follow-up results](lpx-gpu-followup-results.md) | The public checkpoint with its released MTP assistant on one H20 gives document equivalent acceptance of 0.720 to 0.814 and coding acceptance of 0.896 to 0.932 at K = 1 to 7; priced on TP32/PP8 with `KVP = 8`, every setting makes the AA 10K value at least 72% too fast, and no extra time of 25 µs or less fits; acceptance at 100K is within 0.02 of 10K; vLLM's default attention path loops on a document request at temperature zero, so the measurements use Triton attention |
 | One extra time at measured MTP acceptance | [Joint-fit record](lpx-gpu-joint-fit.md) | MTP at K = 3 or 5 places both AA values and the 4,767 TPS coding median within 5% with one shared 387 to 576 µs of unmodeled time per step, 1.4 to 2.2 times the modeled plain step; it gives a coding P80/median of 1.03 to 1.09 against NVIDIA's 1.158 and a fastest 16K code-completion turn of 4,893 TPS against NVIDIA's 10,996 TPS example |
+| Lookup peak on 302 completions | [Code-completion peak record](lpx-cc16k-peak.md#plain-output-replay-results) | Plain-output replay at K = 7 reaches 11,606 TPS at the 7 µs coding-window upper end for minimum n-gram 1 and 11,735 TPS at 6 µs for minimum n-gram 2; one added request exceeds 10,996 TPS, supporting the coding-median-and-example part of the lookup hypothesis; no coding window reaches 26 µs, and native comparison and publication remain pending |
 
 ## DCP
 
@@ -209,7 +210,11 @@ The data leave two explanations, and each leaves some published values unexplain
 - Plain decoding on AA and lookup drafting on the coding run, with one shared 13 to 21 µs of unmodeled time per step. The best of 16 lookup settings, chosen after the results, gives the coding median and P80 within 2% and the maximum within 13%, and the coding run would then use a drafter weaker than Gemma's released assistant.
 - MTP at K = 3 or 5 on both runs with one shared 387 to 576 µs of unmodeled time per step, from the [joint-fit record](lpx-gpu-joint-fit.md). It fits the three medians and gives a coding P80/median of 1.03 to 1.09 against NVIDIA's 1.158.
 
-Neither reaches NVIDIA's 10,996 TPS code-completion example: lookup's fastest request reaches 9,785 TPS, and MTP with the shared extra time reaches 4,893 TPS.
+The earlier 40 API answers give a lookup peak of 9,785 TPS, and MTP with the shared extra time reaches 4,893 TPS.
+The [302-prompt H20 replay](lpx-cc16k-peak.md#plain-output-replay-results) supplies an added request that reaches 11,606 TPS at minimum n-gram 1 and K = 7 with 7 µs of extra time, and 11,735 TPS at minimum n-gram 2 with 6 µs.
+Those are the upper ends of the respective H20 coding-median windows, so lookup can account for both the coding median and the example on the modeled layout.
+These windows are below the earlier API fit's shared 13 to 21 µs range; they do not establish one shared extra time for all the published values.
+The widest H20 coding window ends at 23.5 µs, still below the 26 µs required by the AA-like book answers, and the native n-gram comparison remains pending.
 The two explanations differ by more than 350 µs per step, so a measured LP30 step time or host loop would decide between them.
 Published first-generation data leave about 1 to 2 µs to collective launches, instruction dispatch and synchronization and give no size for the host's per-token loop, which the [GroqRack check](groqrack-llama2-7b-validation.md) puts at 2.7 to 2.8 ms on first-generation hardware.
 The H20 profile in the [profiling report](lpx-gpu-profile-results.md) separates a decode step into model forward, a 761 µs vocabulary projection, sampling and gaps; its costs do not transfer to LP30.
@@ -228,7 +233,7 @@ The GPU measurements use the public checkpoint in BF16 and FP8 on study prompts,
 | LP30 operand bandwidth | Establish whether LP30's matrix-unit operand bandwidth is below its 150 TB/s SRAM bandwidth, as GroqChip v1's 20 TB/s is below its 80 TB/s |
 | LP30 FP8 attention path | Establish whether KV conversion runs on the vector unit, which decides whether a larger attention group helps |
 | AA drafting status and spread | Establish whether the AA run drafted, from AA's prompts, its per-request speed spread or a statement of the deployment's settings; lookup acceptance on AA-like book answers would make the AA values too fast without 26 to 99 µs of extra time and Gemma's released MTP assistant without about 195 to 576 µs, and a per-request spread of about 3% or more would make the 1.45% higher 100K speed ordinary |
-| Code-completion peak | Test whether a lookup drafter reaches NVIDIA's 10,996 TPS example on all 302 SPEED-Bench code-completion prompts at the extra time the coding median allows, following the [code-completion peak plan](lpx-cc16k-peak.md) |
+| Code-completion native check and publication | Complete the native K = 7 comparison, final expectation reporting and publication for the [302-prompt study](lpx-cc16k-peak.md); plain replay supports the coding-median-and-example hypothesis, while the AA part remains unresolved |
 | Lift the 16-row forward limit | Test longer drafts and heavier background traffic in one forward; background traffic matters only for setups that the AA footnotes no longer support |
 
 ## Earlier records

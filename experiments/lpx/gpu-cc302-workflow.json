@@ -1,0 +1,52 @@
+{
+  "status": "running",
+  "stage": "C3-native-collection",
+  "pending_tasks": [
+    "C3",
+    "C4"
+  ],
+  "started_unix": 1793358621.7930946,
+  "task": "docs/lpx-cc16k-peak.md",
+  "completed_tasks": [
+    "C0",
+    "C1",
+    "C2"
+  ],
+  "collection_status": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-cc302-collection-status.json",
+  "timer_state": "/tmp/lpx-gpu/cc302/periodic-state.json",
+  "last_check": {
+    "checked_unix": 1793370127.979309,
+    "collector_status": "running",
+    "stage": "ngram-k7",
+    "plain_completed_requests": 302,
+    "plain_expected_requests": 302,
+    "plain_validation": "experiments/lpx/gpu-cc302-plain-outputs-validation.json",
+    "native_completed_requests": 4,
+    "native_expected_requests": 302,
+    "native_partial_finish_reasons": {
+      "stop": 4
+    },
+    "native_empty_answers": 0,
+    "native_repetition_flags": 0,
+    "native_median_decode_tps": 32.58436171445467,
+    "native_completed_counters_valid": true,
+    "timer_deliveries": 7,
+    "timer_next_due_unix": 1793371221.8449643,
+    "repository_tests_passed": 776,
+    "lookup_analysis_status": "complete",
+    "native_analysis_status": "waiting-for-native"
+  },
+  "analysis_entrypoint": "scripts/analyze_lpx_gpu_cc302.py",
+  "next_actions": [
+    "Inspect native collector and native-analysis waiter status and logs; do not start duplicate collectors or replay.",
+    "After native comparison completes, record expectation 7 and its accounting caveats, update final reporting and run checks.",
+    "Commit remaining results and successfully publish before marking the workflow complete."
+  ],
+  "input_context_audit": "experiments/lpx/gpu-cc302-input-contexts.json",
+  "lookup_analysis_status": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-cc302-lookup-analysis-status.json",
+  "native_analysis_status": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-cc302-native-analysis-status.json",
+  "publication": {
+    "status": "pending",
+    "preflight": "git push --dry-run timed out after a bounded 35-second retry; no publication confirmed"
+  }
+}

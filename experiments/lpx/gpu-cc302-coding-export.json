@@ -1,0 +1,8 @@
+{
+  "path": "/tmp/lpx-gpu/cc302/rows/coding/speed-coding-plain.json",
+  "sha256": "611292ce0e698342c9c9a9de49443c49b1f2636727e97f23b9e18b64f7c12b72",
+  "requests": 80,
+  "turns": 89,
+  "earlier_code_completion_ids": 40,
+  "prompt_containing_rows_outside_repository": true
+}

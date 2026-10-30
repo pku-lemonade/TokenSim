@@ -1,0 +1,20 @@
+{
+  "status": "verified",
+  "inputs": [
+    {
+      "path": "/tmp/lpx-gpu/inputs/requests.jsonl",
+      "sha256": "7abb2f93587b01649c27e262e041afe96dd68cc055908d80f35610b5de9506ae"
+    },
+    {
+      "path": "/tmp/lpx-gpu/inputs/requests-rebuilt.jsonl",
+      "sha256": "7abb2f93587b01649c27e262e041afe96dd68cc055908d80f35610b5de9506ae"
+    },
+    {
+      "path": "/tmp/lpx-gpu/inputs/requests-cc302.jsonl",
+      "sha256": "c4815c8625696784735a924c51a042f554c1f27e309539f87126c30c134b776a"
+    }
+  ],
+  "requests": 302,
+  "earlier_requests": 40,
+  "earlier_ids_included": true
+}

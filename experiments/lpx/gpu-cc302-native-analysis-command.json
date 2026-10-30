@@ -1,0 +1,12 @@
+{
+  "pid": 1607076,
+  "argv": [
+    "/tmp/lpx-gpu/repo-venv/bin/python",
+    "-u",
+    "-c",
+    "import os\nfrom pathlib import Path\nimport subprocess\nimport sys\nimport time\nfrom scripts.monitor_lpx_gpu_study import save\nfrom scripts.run_lpx_gpu_study import read_json\nroot = Path.cwd()\nstatus_path = root / \"experiments/lpx/gpu-cc302-native-analysis-status.json\"\nstate = dict(status=\"waiting-for-native\", pid=os.getpid(), started_unix=time.time())\nsave(status_path, state)\ntry:\n    while True:\n        worker = read_json(root / \"experiments/lpx/gpu-cc302-collection-status.json\")\n        if {\"plain\", \"ngram-k7\"} <= set(worker.get(\"completed\", [])):\n            break\n        if worker[\"status\"] == \"failed\" or not Path(f\"/proc/{worker['pid']}\").exists():\n            raise RuntimeError(\"Native collector stopped before validation completed\")\n        time.sleep(10)\n    state.update(status=\"running\", analysis_started_unix=time.time())\n    save(status_path, state)\n    subprocess.run([sys.executable, \"-u\", \"scripts/analyze_lpx_gpu_cc302.py\", \"--work-dir\", \"/tmp/lpx-gpu\", \"--requests\", \"/tmp/lpx-gpu/inputs/requests-cc302.jsonl\", \"--phase\", \"native\"], check=True)\n    state.update(status=\"complete\", finished_unix=time.time())\nexcept Exception as error:\n    state.update(status=\"failed\", error=str(error), finished_unix=time.time())\n    raise\nfinally:\n    save(status_path, state)\n"
+  ],
+  "log": "/tmp/lpx-gpu/cc302/native-analysis.log",
+  "started_unix": 1793370085.73345,
+  "purpose": "Wait for both validated collections, then run the CPU-only C3 native analysis without taking the GPU lock."
+}

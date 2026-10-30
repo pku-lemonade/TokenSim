@@ -144,13 +144,16 @@ def start_server(
     method="mtp",
     profiler_config=None,
     enforce_eager=False,
+    commands_path=None,
 ):
     base_name = (
         "gpu-server-plain-active-command.json"
         if profile == "original"
         else "gpu-server-triton-command.json"
     )
-    commands_path = artifact(f"{method}-server-commands.jsonl", profile)
+    commands_path = commands_path or artifact(
+        f"{method}-server-commands.jsonl", profile
+    )
     base = read_json(ARTIFACTS / base_name)
     if method == "ngram":
         base["environment"]["VLLM_USE_V2_MODEL_RUNNER"] = "1"

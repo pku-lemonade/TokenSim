@@ -1,0 +1,25 @@
+{
+  "pid": 1584292,
+  "argv": [
+    "/tmp/lpx-gpu/repo-venv/bin/python",
+    "-u",
+    "scripts/monitor_lpx_gpu_periodic.py",
+    "--workflow",
+    "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-cc302-workflow.json",
+    "--task",
+    "/opt/tiger/rh2/rh2/init/TokenSim/docs/lpx-cc16k-peak.md",
+    "--state",
+    "/tmp/lpx-gpu/cc302/periodic-state.json",
+    "--thread",
+    "01a18c06-9d7b-7971-a894-a413d645f829",
+    "--codex",
+    "/home/tiger/.local/bin/codex",
+    "--interval-seconds",
+    "1800",
+    "--initial-ping"
+  ],
+  "log": "/tmp/lpx-gpu/cc302/periodic.log",
+  "state": "/tmp/lpx-gpu/cc302/periodic-state.json",
+  "started_unix": 1793358621.7939658,
+  "interval_seconds": 1800
+}

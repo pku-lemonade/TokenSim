@@ -100,7 +100,7 @@ def continuation_message(event, paths):
     )
 
 
-def notify(codex, thread, event, paths):
+def notify(codex, thread, event, paths, message=None):
     return subprocess.run(
         [
             str(codex),
@@ -108,7 +108,7 @@ def notify(codex, thread, event, paths):
             "--thread",
             thread,
             "--message",
-            continuation_message(event, paths),
+            message if message is not None else continuation_message(event, paths),
         ],
         cwd=ROOT,
         stdin=subprocess.DEVNULL,

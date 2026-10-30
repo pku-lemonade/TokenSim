@@ -134,8 +134,10 @@ def validate_control(path, method, draft_length):
     validate_counters(rows, method, draft_length)
 
 
-def validate_outputs(work, path, selections, method, draft_length, precision="bf16"):
-    requests_path = work / "inputs/requests.jsonl"
+def validate_outputs(
+    work, path, selections, method, draft_length, precision="bf16", requests_path=None
+):
+    requests_path = requests_path or work / "inputs/requests.jsonl"
     digest = hashlib.sha256(requests_path.read_bytes()).hexdigest()
     expected = {
         row["id"]: row

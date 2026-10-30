@@ -1,7 +1,8 @@
 # Does a lookup drafter reach the 10,996 TPS code-completion example on all 302 prompts?
 
 Record date: 2026-10-30.
-Status: expectations and GPU work plan recorded; no measurement has run.
+Status: C0 input verification and C1 plain collection are complete; all 302 plain outputs passed validation.
+C2 replay is complete and the same GPU worker is collecting C3 native n-gram outputs; the native comparison, final reporting and publication remain pending.
 
 ## Question
 
@@ -65,7 +66,7 @@ Longer drafts need a new sweep with 9 to 16 rows.
 | --- | --- | --- |
 | Model build | Not stated for the example; AA used a private build | Public checkpoint `google/gemma-4-31B-it` in BF16 on one H20 |
 | Drafter and `K` | Not stated | Lookup replay at minimum n-gram 1 and 2 and `K` up to 7, and vLLM's n-gram drafter at `K = 7` |
-| Prompt | One unpublished prompt with a 16K input | SPEED-Bench's 302 code-completion prompts, of 18,253 to 21,286 Gemma tokens in the earlier sample |
+| Prompt | One unpublished prompt with a 16K input | SPEED-Bench's 302 code-completion prompts, of 18,071 to 21,421 raw Gemma tokens before the serving chat template |
 | Thinking and sampling | Not stated | Thinking off, temperature 0 |
 | Step times | Measured on LP30 | Simulated by TokenSim, with a constant extra time per step |
 
@@ -77,7 +78,7 @@ The native n-gram run takes less.
 
 ### C0: inputs
 
-- [ ] Rebuild both request files from the inputs of the GPU TODO and check their hashes.
+- [x] Rebuild both request files from the inputs of the GPU TODO and check their hashes.
 
 ```bash
 python -I scripts/build_lpx_api_prompts.py \
@@ -101,15 +102,15 @@ Check that every `speed-cc16k` ID of the first file appears in the second.
 
 ### C1: plain answers to the 302 prompts
 
-- [ ] Start the plain Triton server with the arguments of [`gpu-triton-followup-plain-k0-server-command.json`](../experiments/lpx/gpu-triton-followup-plain-k0-server-command.json).
-- [ ] Run [`scripts/generate_lpx_gpu_outputs.py`](../scripts/generate_lpx_gpu_outputs.py) with `--requests inputs/requests-cc302.jsonl`, `--set speed-cc16k`, `--thinking off`, `--method plain` and the run label `cc302-plain`.
-- [ ] Commit the outputs without prompts as `experiments/lpx/gpu-cc302-plain-outputs.jsonl`, with the server command and a validation record of coverage, finish reasons and repetition flags, as for the earlier GPU runs.
+- [x] Start the plain Triton server with the arguments of [`gpu-triton-followup-plain-k0-server-command.json`](../experiments/lpx/gpu-triton-followup-plain-k0-server-command.json).
+- [x] Run [`scripts/generate_lpx_gpu_outputs.py`](../scripts/generate_lpx_gpu_outputs.py) with `--requests inputs/requests-cc302.jsonl`, `--set speed-cc16k`, `--thinking off`, `--method plain` and the run label `cc302-plain`.
+- [x] Commit the outputs without prompts as `experiments/lpx/gpu-cc302-plain-outputs.jsonl`, with the server command and a validation record of coverage, finish reasons and repetition flags, as for the earlier GPU runs.
 
 ### C2: lookup replay
 
-- [ ] Export the rows of the 302 answers, outside the repository.
-- [ ] Write a second rows file that holds only the 40 earlier IDs.
-- [ ] Export the rows of the plain coding control without thinking, `gpu-triton-followup-plain-k0-outputs.jsonl`, joined with `inputs/requests.jsonl`.
+- [x] Export the rows of the 302 answers, outside the repository.
+- [x] Write a second rows file that holds only the 40 earlier IDs.
+- [x] Export the rows of the plain coding control without thinking, `gpu-triton-followup-plain-k0-outputs.jsonl`, joined with `inputs/requests.jsonl`.
 
 ```bash
 python -I scripts/measure_lpx_lookup_acceptance.py \
@@ -131,5 +132,220 @@ python -I scripts/analyze_lpx_cc16k_peak.py \
 ### C4: recording
 
 - [ ] Add a results section to this record: one table per setting with the coding window and the code-completion median, fastest request and count at or above 10,996 TPS at each priced extra time, the same for the 40 earlier prompts, and the outcome of each expectation.
-- [ ] Add a row to the outcome table of the [progress summary](lpx-aa-reproduction-progress.md) and update its current position.
+- [x] Add a row to the outcome table of the [progress summary](lpx-aa-reproduction-progress.md) and update its current position.
 - [ ] Run Black, the unit tests and `git diff --check`, commit and push.
+
+## Plain-output replay results
+
+The [plain-output validation](../experiments/lpx/gpu-cc302-plain-outputs-validation.json) covers all 302 requests: 301 stopped normally and one reached the prescribed 4,096-token limit.
+The capped request, `speed-cc16k/6eed5048a6c5445fbb5a19c19dbc64f4`, remains in every relevant calculation.
+No answer is empty and no output triggers the recorded repetition checks; these checks do not establish that the generated code is correct.
+The run generated 204,651 native tokens, averaging 677.65 per request, with a median measured H20 decode speed of 38.72 TPS.
+The throughputs below are simulated LP30 throughputs from replay, not measured H20 or LP30 serving speeds.
+
+The [lookup replay](../experiments/lpx/gpu-cc302-lookup-results.json) contains the coding control, all 302 completion answers and the exact earlier 40-answer subset.
+The [pricing artifact](../experiments/lpx/gpu-cc302-peak.json) retains full precision; the tables round TPS to the nearest integer and count threshold crossings before rounding.
+Coding windows use the existing 0.5 µs search grid and place the 89-turn, 80-request coding-control median within 5% of 4,767 TPS.
+All settings retain the prescribed nominal-16K step model despite the larger measured raw prompt lengths.
+The [identity artifact](../experiments/lpx/gpu-cc302-peak-identities.json) maps replay rows and all tied maxima to request IDs.
+
+### Fastest request identities
+
+| Alias | Request ID | Membership | Native output tokens | Finish reason |
+| --- | --- | --- | ---: | --- |
+| A | `speed-cc16k/793adb1086a5495abc418d940da8e8f9` | Earlier 40 and all 302 | 1,409 | stop |
+| B | `speed-cc16k/f1dfde2209794054a8cac4f790f21c57` | Additional 262 | 1,502 | stop |
+
+Both requests have turn index 0 and neither has an empty-answer or repetition flag.
+The fastest identity is unchanged across the priced extra times within each setting.
+
+### Minimum n-gram 1, K = 1
+
+Coding extra-time window: 0 to 7 µs.
+
+| Extra time (µs) | 302 median TPS | 302 fastest TPS (A) | 302 ≥10,996 | 40 median TPS | 40 fastest TPS (A) | 40 ≥10,996 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0 | 4,853 | 6,364 | 0 | 4,966 | 6,364 | 0 |
+| 13 | 4,636 | 6,080 | 0 | 4,744 | 6,080 | 0 |
+| 21 | 4,512 | 5,917 | 0 | 4,616 | 5,917 | 0 |
+| 26 | 4,437 | 5,820 | 0 | 4,540 | 5,820 | 0 |
+| 7 (window upper end) | 4,734 | 6,208 | 0 | 4,844 | 6,208 | 0 |
+
+### Minimum n-gram 1, K = 3
+
+Coding extra-time window: 0 to 23.5 µs.
+
+| Extra time (µs) | 302 median TPS | 302 fastest TPS (A) | 302 ≥10,996 | 40 median TPS | 40 fastest TPS (A) | 40 ≥10,996 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0 | 5,279 | 9,419 | 0 | 5,564 | 9,419 | 0 |
+| 13 | 5,059 | 9,030 | 0 | 5,331 | 9,030 | 0 |
+| 21 | 4,933 | 8,806 | 0 | 5,197 | 8,806 | 0 |
+| 26 | 4,857 | 8,672 | 0 | 5,117 | 8,672 | 0 |
+| 23.5 (window upper end) | 4,894 | 8,739 | 0 | 5,157 | 8,739 | 0 |
+
+### Minimum n-gram 1, K = 5
+
+Coding extra-time window: 0 to 17 µs.
+
+| Extra time (µs) | 302 median TPS | 302 fastest TPS (B) | 302 ≥10,996 | 40 median TPS | 40 fastest TPS (A) | 40 ≥10,996 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0 | 5,150 | 10,507 | 0 | 5,515 | 10,351 | 0 |
+| 13 | 4,949 | 10,101 | 0 | 5,300 | 9,954 | 0 |
+| 21 | 4,833 | 9,867 | 0 | 5,176 | 9,725 | 0 |
+| 26 | 4,763 | 9,726 | 0 | 5,101 | 9,587 | 0 |
+| 17 (window upper end) | 4,890 | 9,983 | 0 | 5,237 | 9,838 | 0 |
+
+### Minimum n-gram 1, K = 7
+
+Coding extra-time window: 0 to 7 µs.
+
+| Extra time (µs) | 302 median TPS | 302 fastest TPS (B) | 302 ≥10,996 | 40 median TPS | 40 fastest TPS (A) | 40 ≥10,996 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0 | 4,926 | 11,841 | 1 | 5,371 | 10,966 | 0 |
+| 13 | 4,746 | 11,411 | 1 | 5,173 | 10,574 | 0 |
+| 21 | 4,641 | 11,162 | 1 | 5,058 | 10,345 | 0 |
+| 26 | 4,578 | 11,012 | 1 | 4,989 | 10,208 | 0 |
+| 7 (window upper end) | 4,828 | 11,606 | 1 | 5,262 | 10,751 | 0 |
+
+### Minimum n-gram 2, K = 1
+
+Coding extra-time window: empty; this setting cannot support the joint coding-and-peak hypothesis.
+
+| Extra time (µs) | 302 median TPS | 302 fastest TPS (A) | 302 ≥10,996 | 40 median TPS | 40 fastest TPS (A) | 40 ≥10,996 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0 | 4,636 | 6,196 | 0 | 4,749 | 6,196 | 0 |
+| 13 | 4,426 | 5,918 | 0 | 4,534 | 5,918 | 0 |
+| 21 | 4,306 | 5,759 | 0 | 4,410 | 5,759 | 0 |
+| 26 | 4,234 | 5,664 | 0 | 4,337 | 5,664 | 0 |
+
+### Minimum n-gram 2, K = 3
+
+Coding extra-time window: 0 to 6 µs.
+
+| Extra time (µs) | 302 median TPS | 302 fastest TPS (A) | 302 ≥10,996 | 40 median TPS | 40 fastest TPS (A) | 40 ≥10,996 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0 | 5,098 | 9,048 | 0 | 5,333 | 9,048 | 0 |
+| 13 | 4,875 | 8,667 | 0 | 5,100 | 8,667 | 0 |
+| 21 | 4,747 | 8,448 | 0 | 4,966 | 8,448 | 0 |
+| 26 | 4,670 | 8,317 | 0 | 4,886 | 8,317 | 0 |
+| 6 (window upper end) | 4,993 | 8,868 | 0 | 5,223 | 8,868 | 0 |
+
+### Minimum n-gram 2, K = 5
+
+Coding extra-time window: 0 to 6 µs.
+
+| Extra time (µs) | 302 median TPS | 302 fastest TPS (B) | 302 ≥10,996 | 40 median TPS | 40 fastest TPS (A) | 40 ≥10,996 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0 | 5,112 | 10,486 | 0 | 5,385 | 10,009 | 0 |
+| 13 | 4,896 | 10,069 | 0 | 5,158 | 9,611 | 0 |
+| 21 | 4,774 | 9,829 | 0 | 5,027 | 9,381 | 0 |
+| 26 | 4,701 | 9,684 | 0 | 4,949 | 9,243 | 0 |
+| 6 (window upper end) | 5,010 | 10,290 | 0 | 5,278 | 9,821 | 0 |
+
+### Minimum n-gram 2, K = 7
+
+Coding extra-time window: 0 to 6 µs.
+
+| Extra time (µs) | 302 median TPS | 302 fastest TPS (B) | 302 ≥10,996 | 40 median TPS | 40 fastest TPS (A) | 40 ≥10,996 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0 | 5,000 | 11,949 | 1 | 5,346 | 10,699 | 0 |
+| 13 | 4,795 | 11,495 | 1 | 5,126 | 10,294 | 0 |
+| 21 | 4,681 | 11,232 | 1 | 5,000 | 10,060 | 0 |
+| 26 | 4,612 | 11,074 | 1 | 4,924 | 9,919 | 0 |
+| 6 (window upper end) | 4,900 | 11,735 | 1 | 5,243 | 10,508 | 0 |
+
+### Expectations and interpretation
+
+| Expectation | Outcome | Evidence |
+| --- | --- | --- |
+| 1: input hash and inclusion | Held | The expanded hash matches and all 40 earlier IDs are included among 302 unique completions |
+| 2: earlier-40 average tau of 1.7 to 2.2 | Held | Aggregate tau is 2.020054; arithmetic mean per-request tau is 1.932896, also inside the interval |
+| 3: all-302 average within 0.2 of earlier 40 | Held | Aggregate tau is 1.899691 versus 2.020054, a difference of 0.120363; arithmetic means are 1.802121 and 1.932896, a difference of 0.130775 |
+| 4: at least 5% faster and 9,785 to 11,500 TPS | Missed | At minimum n-gram 1 and K = 7, the peak rises 7.97% from 10,966.49 to 11,840.79 TPS, exceeding the predicted upper bound |
+| 5: no peak reaches 10,996 at a coding-window upper end | Missed | K = 7 reaches 11,605.59 TPS at 7 µs for minimum n-gram 1 and 11,735.05 TPS at 6 µs for minimum n-gram 2; each has one qualifying request |
+| 6: every coding window ends at 21 µs or less | Missed | Minimum n-gram 1 and K = 3 extends to 23.5 µs; no setting fits the coding median at 26 µs, so that narrower conclusion still holds |
+| 7: native equivalent acceptance within 0.03 of replay | Pending | Native K = 7 collection and its comparison are not yet complete |
+
+The aggregate and arithmetic definitions give the same outcomes for expectations 2 and 3.
+At minimum n-gram 1 and K = 7, request B commits 1,501 replay tokens in 367 steps, or 4.089918 tokens per step.
+Expanding the prompt set supplies a normally terminated request that supports the coding-median-and-example part of the lookup hypothesis on the modeled deployment.
+This result changes the earlier conclusion drawn from the 40 API answers; it does not establish which drafter NVIDIA used.
+The jointly supporting settings have coding windows of 0 to 7 µs and 0 to 6 µs, so neither shares the 13 to 21 µs range cited for the earlier API-output fit.
+Both K = 7 settings still exceed the example at 26 µs, but their coding medians no longer fit at that extra time.
+No setting fits the H20 coding median at the 26 µs needed by the AA-like book answers, and the AA part remains unresolved.
+The native comparison remains necessary to test whether this text replay approximates the serving implementation.
+The public checkpoint, BF16 outputs, prompt lengths, thinking setting and simulated step costs remain different from the unpublished LP30 deployment conditions.
+
+### Validation and publication status
+
+All 776 repository unit tests pass, Black reports all 530 Python files formatted, and `git diff --check` passes after the plain collection.
+The seven preregistered expectations are unchanged.
+A publication preflight using `git push --dry-run` did not complete; a bounded retry timed out after 35 seconds.
+This is not a successful publication, and C3, final C4 reporting and publication remain open.
+
+## Collection and recurring checks
+
+The [offline analysis command](../scripts/analyze_lpx_gpu_cc302.py) performs the prescribed exports and replay after the matching collection stages finish.
+It checks the input hashes and full output coverage before exporting, requires each earlier ID exactly once, and keeps prompt-containing rows outside the repository.
+It uses a separate analysis lock and does not acquire the GPU runner lock or launch inference.
+Run `--phase lookup` once plain collection finishes, including while native collection is active, and `--phase native` after both collections finish.
+The recorded lookup waiter has completed its replay.
+The [native analysis waiter](../experiments/lpx/gpu-cc302-native-analysis-command.json) is waiting for both collections to validate and will run `--phase native` automatically.
+Inspect its [status](../experiments/lpx/gpu-cc302-native-analysis-status.json) and external log before starting any additional analysis process.
+The native comparison verifies the earlier serving-source hashes and plain/MTP counter identities before reusing the T4 accounting interpretation.
+
+```bash
+/tmp/lpx-gpu/repo-venv/bin/python -u scripts/analyze_lpx_gpu_cc302.py \
+  --work-dir /tmp/lpx-gpu \
+  --requests /tmp/lpx-gpu/inputs/requests-cc302.jsonl \
+  --phase all
+```
+
+The analysis also writes `gpu-cc302-peak-identities.json`, preserving the exported row order and all tied fastest-request identities for each priced setting without including prompt text.
+The main pricing artifact retains the existing analyzer's output format and values.
+
+The historical 1.96 value cited in expectation 2 is the aggregate ratio of output tokens to replay steps: 1.962380203 in the [API replay artifact](../experiments/lpx/api-lookup-results.json).
+The arithmetic mean of the same 40 per-request ratios is 1.887417275.
+Expectations 2 and 3 use the aggregate ratio to retain the cited historical definition; results will also report the arithmetic mean and identify any differing expectation outcome.
+The existing pricing field `mean_tau` remains the arithmetic per-request mean.
+These aggregation definitions are recorded while C1 collection is active and before replaying the new code-completion answers.
+
+The [input audit](../experiments/lpx/gpu-cc302-inputs.json) verifies both recorded hashes, 302 unique code-completion requests and inclusion of all 40 earlier IDs.
+The [input-context audit](../experiments/lpx/gpu-cc302-input-contexts.json) counts raw user-prompt tokens without special tokens or the serving chat template.
+Across all 302 prompts the range is 18,071 to 21,421 tokens and the median is 19,559.5; the earlier 40 retain the previously reported range of 18,253 to 21,286 tokens.
+These counts describe the input coverage and do not change the prescribed nominal-16K LP30 pricing model.
+The original requests file remains unchanged; the default build is checked through a separate `requests-rebuilt.jsonl` file.
+The [coding export record](../experiments/lpx/gpu-cc302-coding-export.json) identifies the 80-request, 89-turn control export outside the repository.
+
+The [collector](../scripts/run_lpx_gpu_cc302.py) runs plain decoding and then native n-gram decoding under the existing `runner.lock`.
+It records new server commands separately from the earlier study, keeps warmups separate from uncapped measurements, validates all 302 outputs and releases its owned server after collection.
+Its `complete` status describes collection only; the full workflow remains open for replay, analysis, documentation and publication.
+
+```bash
+/tmp/lpx-gpu/repo-venv/bin/python -u scripts/run_lpx_gpu_cc302.py \
+  --work-dir /tmp/lpx-gpu \
+  --requests /tmp/lpx-gpu/inputs/requests-cc302.jsonl \
+  --stage all
+```
+
+The user requested status checks every 30 minutes until all tasks finish.
+The [periodic timer](../scripts/monitor_lpx_gpu_periodic.py) submits a message to this existing Codex task every 1,800 seconds, including while GPU collection is running.
+An immediate connection check successfully queued message `01a18c80-ed9e-7c11-b91a-6e46ecae9f9c` to task `01a18c06-9d7b-7971-a894-a413d645f829`.
+The [timer command record](../experiments/lpx/gpu-cc302-timer-command.json) records the detached process and its external state and log paths.
+The timer persists its deadline across restarts, rejects a second process on the same state file and retries known queue failures after 60 seconds.
+A timed-out submission is recorded as uncertain and is not immediately duplicated.
+
+```bash
+/tmp/lpx-gpu/repo-venv/bin/python -u scripts/monitor_lpx_gpu_periodic.py \
+  --workflow experiments/lpx/gpu-cc302-workflow.json \
+  --task docs/lpx-cc16k-peak.md \
+  --state /tmp/lpx-gpu/cc302/periodic-state.json \
+  --thread 01a18c06-9d7b-7971-a894-a413d645f829 \
+  --codex /home/tiger/.local/bin/codex \
+  --interval-seconds 1800
+```
+
+Inspect the existing timer before running that command; it resumes a stopped timer and must not accompany another live timer on the same state file.
+The timer stops only when `gpu-cc302-workflow.json` records the full workflow as `complete`, after C0 through C4 finish.
+Queue submission requires the host and Codex app server to remain available; a message queued during an active turn may execute after that turn finishes.
+The timer guarantees neither recovery after a host restart nor execution at an exact wall-clock instant.
