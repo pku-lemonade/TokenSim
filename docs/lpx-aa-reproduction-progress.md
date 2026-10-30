@@ -304,3 +304,4 @@ The work is on local branch `lpx-experiment`, pushed to `origin/lpx-context-para
 | `08d2dec` | Completed GPU T0–T6 measurements, follow-up analyses and decode profiling, including failed and capped turns and attribution limits |
 | `2147ee4`, `7901597` | One extra time per step at measured MTP acceptance |
 | `75f2e10` | GPU measurements and the joint MTP fit in the summaries |
+| `78ea6f1` | Expectations and GPU plan for the code-completion peak |
