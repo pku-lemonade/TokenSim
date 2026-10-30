@@ -1,0 +1,39 @@
+{
+  "source_audit": {
+    "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-followup-ngram-source-audit.json",
+    "bytes": 1674,
+    "sha256": "7c9a253aaf8b65928f106e36b88638b3ac71ecddebff7393084d3e230ecf95fd"
+  },
+  "sources": [
+    {
+      "path": "/tmp/lpx-gpu/server-venv/lib/python3.11/site-packages/vllm/v1/worker/gpu/spec_decode/__init__.py",
+      "bytes": 3135,
+      "sha256": "9a94048ba5c0d0c29b7e84250fe418b650059c6ca6a410bfa3fc0efa09d932ac"
+    },
+    {
+      "path": "/tmp/lpx-gpu/server-venv/lib/python3.11/site-packages/vllm/v1/worker/gpu/spec_decode/ngram/speculator.py",
+      "bytes": 9521,
+      "sha256": "036b07d38462a55a76fea0bd0a64e08c0a6fb2c7074b02a5bf79f3654805d4b9"
+    },
+    {
+      "path": "/tmp/lpx-gpu/server-venv/lib/python3.11/site-packages/vllm/v1/spec_decode/ngram_proposer.py",
+      "bytes": 11231,
+      "sha256": "b7c0a80715b946ca57f4946dddbf9c6b256b1eaff5e872c55ccf841d9a6db7c5"
+    },
+    {
+      "path": "/opt/tiger/rh2/rh2/init/TokenSim/scripts/measure_lpx_lookup_acceptance.py",
+      "bytes": 7507,
+      "sha256": "e039fdab9a3c1c35cf8a39ddb01845ce52e4e54bb2f0cd49518af2f0ddd099b1"
+    }
+  ],
+  "plain_control": {
+    "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-cc302-plain-outputs.jsonl",
+    "bytes": 14637039,
+    "sha256": "2b213b4e9e98998cb3119da0c1e9fe6e78cd06c9ddd01150fa28aae640fbde21"
+  },
+  "mtp_control": {
+    "path": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-triton-mtp-k3-smoke.jsonl",
+    "bytes": 121657,
+    "sha256": "81d6da8dbfc65e5059ca8219fa55b883ede11b3a546e240900876df883484671"
+  }
+}

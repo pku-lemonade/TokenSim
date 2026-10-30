@@ -1,5 +1,7 @@
 {
-  "status": "waiting-for-native",
+  "status": "complete",
   "pid": 1607076,
-  "started_unix": 1793370085.7819467
+  "started_unix": 1793370085.7819467,
+  "analysis_started_unix": 1793380406.0851612,
+  "finished_unix": 1793380424.6014762
 }

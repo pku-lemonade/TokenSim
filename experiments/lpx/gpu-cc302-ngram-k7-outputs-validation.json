@@ -1,0 +1,14 @@
+{
+  "outputs": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-cc302-ngram-k7-outputs.jsonl",
+  "sha256": "f978a1eda42c8ff465c15606c055b363885cebeaab427d0a1959bcaf4ec002be",
+  "requests": 302,
+  "turns": 302,
+  "exact_input_coverage": true,
+  "finish_reasons": {
+    "stop": 301,
+    "length": 1
+  },
+  "empty_answers": 0,
+  "repetition_flags": 0,
+  "note": "All completed measurement turns retained, including quality flags"
+}

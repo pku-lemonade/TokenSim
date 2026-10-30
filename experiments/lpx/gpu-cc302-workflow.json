@@ -1,8 +1,7 @@
 {
   "status": "running",
-  "stage": "C3-native-collection",
+  "stage": "C4-publication",
   "pending_tasks": [
-    "C3",
     "C4"
   ],
   "started_unix": 1793358621.7930946,
@@ -10,43 +9,120 @@
   "completed_tasks": [
     "C0",
     "C1",
-    "C2"
+    "C2",
+    "C3"
   ],
   "collection_status": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-cc302-collection-status.json",
   "timer_state": "/tmp/lpx-gpu/cc302/periodic-state.json",
   "last_check": {
-    "checked_unix": 1793370127.979309,
-    "collector_status": "running",
-    "stage": "ngram-k7",
+    "checked_unix": 1793380589.5900621,
+    "collector_status": "complete",
+    "stage": "C4-publication",
     "plain_completed_requests": 302,
     "plain_expected_requests": 302,
     "plain_validation": "experiments/lpx/gpu-cc302-plain-outputs-validation.json",
-    "native_completed_requests": 4,
+    "native_completed_requests": 302,
     "native_expected_requests": 302,
     "native_partial_finish_reasons": {
-      "stop": 4
+      "stop": 301,
+      "length": 1
     },
     "native_empty_answers": 0,
     "native_repetition_flags": 0,
-    "native_median_decode_tps": 32.58436171445467,
+    "native_median_decode_tps": 38.79128276526042,
     "native_completed_counters_valid": true,
-    "timer_deliveries": 7,
-    "timer_next_due_unix": 1793371221.8449643,
+    "timer_deliveries": 13,
+    "timer_next_due_unix": 1793382021.8449643,
     "repository_tests_passed": 776,
     "lookup_analysis_status": "complete",
-    "native_analysis_status": "waiting-for-native"
+    "native_analysis_status": "complete",
+    "priced_rows_revalidated": 78,
+    "native_completed_rows_valid": true,
+    "native_source_hashes_verified": 4,
+    "plain_output_hash_unchanged": true,
+    "native_server_error_markers": 0,
+    "repository_tests_last_run_unix": 1793378661.245428,
+    "publication_status": "failed",
+    "report_tables_verified": 8,
+    "report_priced_rows_verified": 78,
+    "gpu_released": true
   },
   "analysis_entrypoint": "scripts/analyze_lpx_gpu_cc302.py",
   "next_actions": [
-    "Inspect native collector and native-analysis waiter status and logs; do not start duplicate collectors or replay.",
-    "After native comparison completes, record expectation 7 and its accounting caveats, update final reporting and run checks.",
-    "Commit remaining results and successfully publish before marking the workflow complete."
+    "Commit the final native outputs, comparison, reporting and validation records; publish lpx-context-parallel with authorized Git credentials.",
+    "All collection and analysis are complete; do not launch duplicate collectors or replays.",
+    "Keep the 1800-second timer running until publication succeeds and every TODO is finished."
   ],
   "input_context_audit": "experiments/lpx/gpu-cc302-input-contexts.json",
   "lookup_analysis_status": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-cc302-lookup-analysis-status.json",
   "native_analysis_status": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-cc302-native-analysis-status.json",
   "publication": {
-    "status": "pending",
-    "preflight": "git push --dry-run timed out after a bounded 35-second retry; no publication confirmed"
+    "status": "failed",
+    "local_commit": "7540b49132cfd1ebfeb15f8a8bfce3ae1a73dbbe",
+    "command": [
+      "git",
+      "push",
+      "origin",
+      "HEAD:lpx-context-parallel"
+    ],
+    "timeout_seconds": 45,
+    "exit_status": 124,
+    "log": "/tmp/lpx-gpu/cc302/publication-retry-20261030-2241.log",
+    "result": "Push waited in the editor Git askpass helper and timed out; the target branch remains at 7388167.",
+    "remote_head": "738816768acd8d47665e11d1a6d2376243da36e6",
+    "remote_checked_after_push": true,
+    "checked_unix": 1793371380.0992045,
+    "requires": "Responsive credential helper with an account authorized to push to pku-lemonade/TokenSim."
+  },
+  "publication_attempts": [
+    {
+      "status": "unconfirmed",
+      "local_commit": "7540b49132cfd1ebfeb15f8a8bfce3ae1a73dbbe",
+      "command": [
+        "git",
+        "push",
+        "origin",
+        "HEAD:lpx-context-parallel"
+      ],
+      "timeout_seconds": 45,
+      "exit_status": 124,
+      "log": "/tmp/lpx-gpu/cc302/publication.log",
+      "result": "Timed out without server acknowledgment; remote publication is unconfirmed.",
+      "checked_unix": 1793370235.2227705
+    }
+  ],
+  "validation": {
+    "status": "passed",
+    "pid": 1621821,
+    "log": "/tmp/lpx-gpu/cc302/final-unit-tests.log",
+    "source_commit": "7540b49132cfd1ebfeb15f8a8bfce3ae1a73dbbe",
+    "black_check": "passed: 530 files",
+    "report_tables": "passed: all eight settings match 78 priced results",
+    "expectations_unchanged": true,
+    "documentation_links_valid": true,
+    "python_file_length_limits_valid": true,
+    "checked_unix": 1793380589.59008,
+    "unit_tests_passed": 776,
+    "finished_unix": 1793378661.245428,
+    "native_acceptance_records_verified": 302,
+    "native_set_means_verified": true,
+    "both_output_hashes_verified": true
+  },
+  "remaining_work": [
+    "commit_final_results",
+    "publication"
+  ],
+  "native_comparison": {
+    "path": "experiments/lpx/gpu-cc302-ngram-comparison.json",
+    "set": "speed-cc16k",
+    "turn_count": 302,
+    "native_mean_tau": 1.7951074775779725,
+    "replay_mean_tau": 1.7916378374517792,
+    "mean_tau_difference": 0.0034696401261933296,
+    "native_equivalent_acceptance": 0.443768125871968,
+    "replay_equivalent_acceptance": 0.44267453384464905,
+    "equivalent_acceptance_difference": 0.001093592027318957,
+    "mean_absolute_turn_acceptance_difference": 0.0012036669243094824,
+    "expectation_within_0_03": true
   }
 }

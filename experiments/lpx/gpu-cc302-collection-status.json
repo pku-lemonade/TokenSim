@@ -1,11 +1,14 @@
 {
-  "status": "running",
+  "status": "complete",
   "pid": 1585233,
   "started_unix": 1793358751.004819,
   "completed": [
-    "plain"
+    "plain",
+    "ngram-k7"
   ],
-  "analysis_status": "pending",
+  "analysis_status": "complete",
   "stage": "ngram-k7",
-  "outputs": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-cc302-ngram-k7-outputs.jsonl"
+  "outputs": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-cc302-ngram-k7-outputs.jsonl",
+  "finished_unix": 1793380405.4015074,
+  "gpu_released": true
 }

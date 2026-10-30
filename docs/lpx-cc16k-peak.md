@@ -1,8 +1,8 @@
 # Does a lookup drafter reach the 10,996 TPS code-completion example on all 302 prompts?
 
-Record date: 2026-10-30.
-Status: C0 input verification and C1 plain collection are complete; all 302 plain outputs passed validation.
-C2 replay is complete and the same GPU worker is collecting C3 native n-gram outputs; the native comparison, final reporting and publication remain pending.
+Record date: 2026-10-30, updated 2026-10-31.
+Status: C0 through C3 are complete; all 302 plain and 302 native n-gram outputs passed validation, and the collector released its GPU server.
+Lookup replay, the native comparison, results reporting and validation are complete; C4 publication remains pending.
 
 ## Question
 
@@ -127,11 +127,11 @@ python -I scripts/analyze_lpx_cc16k_peak.py \
 
 ### C3: native n-gram check
 
-- [ ] Start the n-gram server of task T4 at `K = 7` with the Triton profile, run the same 302 requests with `--method ngram --draft-tokens 7` and the run label `cc302-ngram-k7`, and compare its equivalent acceptance with the replay as [`scripts/analyze_lpx_gpu_ngram.py`](../scripts/analyze_lpx_gpu_ngram.py) does.
+- [x] Start the n-gram server of task T4 at `K = 7` with the Triton profile, run the same 302 requests with `--method ngram --draft-tokens 7` and the run label `cc302-ngram-k7`, and compare its equivalent acceptance with the replay as [`scripts/analyze_lpx_gpu_ngram.py`](../scripts/analyze_lpx_gpu_ngram.py) does.
 
 ### C4: recording
 
-- [ ] Add a results section to this record: one table per setting with the coding window and the code-completion median, fastest request and count at or above 10,996 TPS at each priced extra time, the same for the 40 earlier prompts, and the outcome of each expectation.
+- [x] Add a results section to this record: one table per setting with the coding window and the code-completion median, fastest request and count at or above 10,996 TPS at each priced extra time, the same for the 40 earlier prompts, and the outcome of each expectation.
 - [x] Add a row to the outcome table of the [progress summary](lpx-aa-reproduction-progress.md) and update its current position.
 - [ ] Run Black, the unit tests and `git diff --check`, commit and push.
 
@@ -254,6 +254,35 @@ Coding extra-time window: 0 to 6 µs.
 | 26 | 4,612 | 11,074 | 1 | 4,924 | 9,919 | 0 |
 | 6 (window upper end) | 4,900 | 11,735 | 1 | 5,243 | 10,508 | 0 |
 
+### Native n-gram comparison
+
+The [native-output validation](../experiments/lpx/gpu-cc302-ngram-k7-outputs-validation.json) covers all 302 requests: 301 stopped normally and one reached the prescribed 4,096-token limit.
+The capped request is the same ID as in plain decoding, `speed-cc16k/6eed5048a6c5445fbb5a19c19dbc64f4`, and remains in the comparison.
+No native answer is empty and no output triggers the recorded repetition checks.
+Native decoding generated 206,306 tokens, averaging 683.13 per request, with a median measured H20 decode speed of 38.79 TPS.
+The collector released its owned server after completing both runs.
+
+The [comparison artifact](../experiments/lpx/gpu-cc302-ngram-comparison.json) uses the V2 GPU n-gram implementation at `K = 7`, minimum n-gram 1 and maximum n-gram 3.
+It replays the native run's own exported combined text, preserving the earlier T4 comparison semantics; it does not compare native output against the separate plain-decoding answers used in C2.
+The [source and control audit](../experiments/lpx/gpu-cc302-ngram-source-audit.json) verifies the four previously recorded source hashes and the plain and MTP control counter checks.
+Each native request's tau is `(completion_tokens - 1) / (emitted_steps - 1)`, including decode steps with no proposal and excluding the prefill token and step.
+The table averages per-request tau and derives equivalent acceptance from that mean, as T4 does.
+This differs from the aggregate token-to-step ratio used for expectations 2 and 3.
+
+| Metric over 302 requests | Native | Replay of native answers | Native minus replay |
+| --- | ---: | ---: | ---: |
+| Arithmetic mean tau | 1.795107 | 1.791638 | +0.003470 |
+| Equivalent acceptance from mean tau | 0.443768 | 0.442675 | +0.001094 |
+
+The mean absolute per-request acceptance difference is 0.001204 and the maximum is 0.008676, on `speed-cc16k/cb3573b06c7e40d386cf49ac29fa72ac`.
+No individual request has an absolute acceptance difference of 0.03 or more.
+Expectation 7 holds at the prescribed set level.
+
+Both implementations select the longest n-gram and then the most recent match, but V2 fills missing draft slots with the last sampled token while replay uses variable proposal lengths.
+Replay tokenizes exported text without serving chat-template tokens or hidden generated control tokens, and the combined-text export retains two separator newlines even with thinking off.
+The comparison therefore supports approximate acceptance agreement for this configuration without establishing identical tokenization or per-request decoding paths.
+The minimum-n-gram-2 settings remain replay-only, and this check does not validate simulated LP30 step times or identify NVIDIA's unpublished drafter.
+
 ### Expectations and interpretation
 
 | Expectation | Outcome | Evidence |
@@ -264,7 +293,7 @@ Coding extra-time window: 0 to 6 µs.
 | 4: at least 5% faster and 9,785 to 11,500 TPS | Missed | At minimum n-gram 1 and K = 7, the peak rises 7.97% from 10,966.49 to 11,840.79 TPS, exceeding the predicted upper bound |
 | 5: no peak reaches 10,996 at a coding-window upper end | Missed | K = 7 reaches 11,605.59 TPS at 7 µs for minimum n-gram 1 and 11,735.05 TPS at 6 µs for minimum n-gram 2; each has one qualifying request |
 | 6: every coding window ends at 21 µs or less | Missed | Minimum n-gram 1 and K = 3 extends to 23.5 µs; no setting fits the coding median at 26 µs, so that narrower conclusion still holds |
-| 7: native equivalent acceptance within 0.03 of replay | Pending | Native K = 7 collection and its comparison are not yet complete |
+| 7: native equivalent acceptance within 0.03 of replay | Held | Native equivalent acceptance is 0.443768 versus 0.442675 for replay of its own answers, a difference of +0.001094 over all 302 requests |
 
 The aggregate and arithmetic definitions give the same outcomes for expectations 2 and 3.
 At minimum n-gram 1 and K = 7, request B commits 1,501 replay tokens in 367 steps, or 4.089918 tokens per step.
@@ -273,15 +302,21 @@ This result changes the earlier conclusion drawn from the 40 API answers; it doe
 The jointly supporting settings have coding windows of 0 to 7 µs and 0 to 6 µs, so neither shares the 13 to 21 µs range cited for the earlier API-output fit.
 Both K = 7 settings still exceed the example at 26 µs, but their coding medians no longer fit at that extra time.
 No setting fits the H20 coding median at the 26 µs needed by the AA-like book answers, and the AA part remains unresolved.
-The native comparison remains necessary to test whether this text replay approximates the serving implementation.
+The native comparison supports the text replay's acceptance approximation at minimum n-gram 1 and K = 7, with the accounting and tokenization differences recorded above.
 The public checkpoint, BF16 outputs, prompt lengths, thinking setting and simulated step costs remain different from the unpublished LP30 deployment conditions.
 
 ### Validation and publication status
 
-All 776 repository unit tests pass, Black reports all 530 Python files formatted, and `git diff --check` passes after the plain collection.
+The full unit-test rerun passes all 776 tests, Black reports all 530 Python files formatted, and `git diff --check` passes.
+All eight report tables were checked against the 78 priced results, and all 302 native acceptance records and set-level means were independently recomputed from the recorded counters.
 The seven preregistered expectations are unchanged.
 A publication preflight using `git push --dry-run` did not complete; a bounded retry timed out after 35 seconds.
-This is not a successful publication, and C3, final C4 reporting and publication remain open.
+Commit `7540b49` records C0 through C2, the available results and the running C3 workflow locally.
+The subsequent actual push to `lpx-context-parallel` timed out after 45 seconds with exit status 124 and no server acknowledgment; remote publication is unconfirmed.
+The 22:40 Shanghai check retried the push and observed it waiting in the editor's Git credential helper until another 45-second timeout.
+A public remote-branch read after that attempt still returned `7388167`, confirming that `7540b49` was not published to the target branch.
+Publication requires a responsive credential helper with authorized Git credentials; recurring checks continue after collection and analysis have finished.
+This is not a successful publication; C0 through C3 and the C4 reporting and validation are complete, while publication remains open.
 
 ## Collection and recurring checks
 
@@ -290,8 +325,8 @@ It checks the input hashes and full output coverage before exporting, requires e
 It uses a separate analysis lock and does not acquire the GPU runner lock or launch inference.
 Run `--phase lookup` once plain collection finishes, including while native collection is active, and `--phase native` after both collections finish.
 The recorded lookup waiter has completed its replay.
-The [native analysis waiter](../experiments/lpx/gpu-cc302-native-analysis-command.json) is waiting for both collections to validate and will run `--phase native` automatically.
-Inspect its [status](../experiments/lpx/gpu-cc302-native-analysis-status.json) and external log before starting any additional analysis process.
+The [native analysis waiter](../experiments/lpx/gpu-cc302-native-analysis-command.json) completed `--phase native` after both collections validated.
+Its [status](../experiments/lpx/gpu-cc302-native-analysis-status.json) records successful completion; inspect the existing artifacts before starting any additional analysis process.
 The native comparison verifies the earlier serving-source hashes and plain/MTP counter identities before reusing the T4 accounting interpretation.
 
 ```bash
@@ -318,7 +353,7 @@ The original requests file remains unchanged; the default build is checked throu
 The [coding export record](../experiments/lpx/gpu-cc302-coding-export.json) identifies the 80-request, 89-turn control export outside the repository.
 
 The [collector](../scripts/run_lpx_gpu_cc302.py) runs plain decoding and then native n-gram decoding under the existing `runner.lock`.
-It records new server commands separately from the earlier study, keeps warmups separate from uncapped measurements, validates all 302 outputs and releases its owned server after collection.
+It records new server commands separately from the earlier study, keeps warmups separate from measurements using the prescribed request limits, validates all 302 outputs and releases its owned server after collection.
 Its `complete` status describes collection only; the full workflow remains open for replay, analysis, documentation and publication.
 
 ```bash
