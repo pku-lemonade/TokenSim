@@ -6,6 +6,8 @@ The [completed follow-up results](lpx-gpu-followup-results.md) cover all MTP pri
 The [T6 profiling report](lpx-gpu-profile-results.md) covers both contexts and execution modes, with explicit residual activity and instrumentation limits.
 The prior monitor delivered a failure continuation, but that session encountered an application error; work resumed in a new session at the user's request.
 
+The [code-completion peak plan](lpx-cc16k-peak.md) adds tasks C0 to C4 for all 302 code-completion prompts, with its own expectations.
+
 This page is a work plan for an agent on a machine with NVIDIA GPUs.
 It runs the public Gemma 4 31B checkpoint with its released multi-token prediction (MTP) drafter and measures what the LPX study could only borrow from other models: Gemma's own drafter acceptance, its dependence on context length, the per-request speed spread it causes and the fixed costs of a real decode step.
 Each finished task updates the checkbox in this page.

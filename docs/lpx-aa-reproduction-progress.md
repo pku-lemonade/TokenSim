@@ -228,6 +228,7 @@ The GPU measurements use the public checkpoint in BF16 and FP8 on study prompts,
 | LP30 operand bandwidth | Establish whether LP30's matrix-unit operand bandwidth is below its 150 TB/s SRAM bandwidth, as GroqChip v1's 20 TB/s is below its 80 TB/s |
 | LP30 FP8 attention path | Establish whether KV conversion runs on the vector unit, which decides whether a larger attention group helps |
 | AA drafting status and spread | Establish whether the AA run drafted, from AA's prompts, its per-request speed spread or a statement of the deployment's settings; lookup acceptance on AA-like book answers would make the AA values too fast without 26 to 99 µs of extra time and Gemma's released MTP assistant without about 195 to 576 µs, and a per-request spread of about 3% or more would make the 1.45% higher 100K speed ordinary |
+| Code-completion peak | Test whether a lookup drafter reaches NVIDIA's 10,996 TPS example on all 302 SPEED-Bench code-completion prompts at the extra time the coding median allows, following the [code-completion peak plan](lpx-cc16k-peak.md) |
 | Lift the 16-row forward limit | Test longer drafts and heavier background traffic in one forward; background traffic matters only for setups that the AA footnotes no longer support |
 
 ## Earlier records

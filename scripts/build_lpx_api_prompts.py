@@ -125,6 +125,12 @@ def main(argv=None):
     parser.add_argument("--speed-16k", type=Path, required=True)
     parser.add_argument("--gutenberg", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument(
+        "--completions",
+        type=int,
+        default=COMPLETIONS,
+        help="Code-completion prompts to draw; 302 takes the whole 16K split",
+    )
     args = parser.parse_args(argv)
 
     from tokenizers import Tokenizer
@@ -132,7 +138,7 @@ def main(argv=None):
     tokenizer = Tokenizer.from_file(str(args.gemma_tokenizer))
     requests = [
         *speed_coding(args.speed_qualitative),
-        *speed_completion(args.speed_16k, COMPLETIONS),
+        *speed_completion(args.speed_16k, args.completions),
         *aa_documents(args.gutenberg, tokenizer),
     ]
     with args.output.open("w") as handle:
