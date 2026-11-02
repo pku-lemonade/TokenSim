@@ -17,17 +17,24 @@ from scripts.lpx.mfu_probe import MFUCase, runtime_for
 from scripts.lpx.native_search import memory_report, streaming_settings
 from scripts.lpx.partition import native_footprint, partition_solutions
 from scripts.lpx.program import LP30Program
+from scripts.lpx.pool_ops import column_shards, embedding, logits
 from scripts.lpx.replay_profiles import cached_profile, NativeProfile, save_profile
 from scripts.lpx.streaming import duration
 from scripts.run_lpx_context_parallel import environment, layout_for
 
 
-def transformer_setup(config, *, tp, queries, global_kv_layout="separate", batch=1):
+def transformer_setup(
+    config, *, tp, queries, global_kv_layout="separate", batch=1, logits_rows=None
+):
     """Keep the target communication budget while relocating boundary weights."""
     integer(tp, "transformer tensor width", minimum=1)
     integer(queries, "transformer verification queries", minimum=1)
     integer(batch, "transformer independent request batch", minimum=1)
     rows = batch * queries
+    if logits_rows is not None:
+        integer(logits_rows, "transformer output logits rows")
+        if logits_rows > rows:
+            raise ConfigurationError("transformer logits rows exceed hidden rows")
     config = deepcopy(config)
     _, full_model, _, _ = environment(config)
     full_model = replace(full_model, global_kv_layout=global_kv_layout)
@@ -35,6 +42,10 @@ def transformer_setup(config, *, tp, queries, global_kv_layout="separate", batch
     memory["prefill_chunk"] = rows
     # Keep the full target's conservative communication arena on every stage.
     original_workspace = 4 * rows * max(full_model.hidden_size, full_model.vocab_size)
+    if logits_rows is not None:
+        original_workspace = 4 * max(
+            rows * full_model.hidden_size, logits_rows * full_model.vocab_size
+        )
     proxy_workspace = 4 * rows * full_model.hidden_size
     memory["reserve_bytes"] += original_workspace - proxy_workspace
     hardware, _, _, _ = environment(config)
@@ -47,21 +58,27 @@ def transformer_setup(config, *, tp, queries, global_kv_layout="separate", batch
     return config, hardware, full_model, proxy
 
 
-def transformer_profile(
+def transformer_runtime(
     config,
     *,
     tp,
     kvp,
     pp,
     queries,
-    cache,
     resident=None,
     kv_parallel_layers="full_attention",
     global_kv_layout="separate",
     batch=1,
+    logits_rows=None,
 ):
+    base_reserve = config["memory"]["reserve_bytes"]
     config, hardware, full_model, proxy = transformer_setup(
-        config, tp=tp, queries=queries, global_kv_layout=global_kv_layout, batch=batch
+        config,
+        tp=tp,
+        queries=queries,
+        global_kv_layout=global_kv_layout,
+        batch=batch,
+        logits_rows=logits_rows,
     )
     if pp > full_model.num_layers:
         raise ConfigurationError("transformer stages exceed model layers")
@@ -82,7 +99,54 @@ def transformer_profile(
     counts = partition_solutions(scaled, pp)[pp]["layer_counts"]
     runtime = runtime_for(hardware, proxy, case, pp, counts)
     admission = memory_report(runtime, 102000, resident)
-    layout = layout_for(kvp, pp, tp)
+    return (
+        hardware,
+        full_model,
+        runtime,
+        dict(
+            config=config,
+            proxy_model=proxy.to_dict(),
+            resident_requests=resident,
+            layer_counts=counts,
+            memory=admission,
+            extra_communication_arena_per_chip=config["memory"]["reserve_bytes"]
+            - base_reserve,
+            scratch_query_rows=batch * queries,
+            **(
+                dict(
+                    independent_requests_per_forward=batch, queries_per_request=queries
+                )
+                if batch != 1
+                else {}
+            ),
+        ),
+    )
+
+
+def transformer_profile(
+    config,
+    *,
+    tp,
+    kvp,
+    pp,
+    queries,
+    cache,
+    resident=None,
+    kv_parallel_layers="full_attention",
+    global_kv_layout="separate",
+    batch=1,
+):
+    hardware, model, runtime, info = transformer_runtime(
+        config,
+        tp=tp,
+        kvp=kvp,
+        pp=pp,
+        queries=queries,
+        resident=resident,
+        kv_parallel_layers=kv_parallel_layers,
+        global_kv_layout=global_kv_layout,
+        batch=batch,
+    )
     profile = cached_profile(
         runtime,
         "mfu-search",
@@ -98,37 +162,11 @@ def transformer_profile(
         dp_rank=0,
         seed=42,
         sample=0,
-        streaming=streaming_settings(layout, launch_us=0),
+        streaming=streaming_settings(layout_for(kvp, pp, tp), launch_us=0),
     )
     profile = transformer_component(profile, tp=tp, cache=cache)
-    return (
-        hardware,
-        full_model,
-        profile,
-        dict(
-            config=config,
-            proxy_model=proxy.to_dict(),
-            resident_requests=resident,
-            layer_counts=counts,
-            memory=admission,
-            native_profile=profile.metadata,
-            extra_communication_arena_per_chip=4
-            * batch
-            * queries
-            * (
-                max(full_model.hidden_size, full_model.vocab_size)
-                - full_model.hidden_size
-            ),
-            scratch_query_rows=batch * queries,
-            **(
-                dict(
-                    independent_requests_per_forward=batch, queries_per_request=queries
-                )
-                if batch != 1
-                else {}
-            ),
-        ),
-    )
+    info["native_profile"] = profile.metadata
+    return hardware, model, profile, info
 
 
 def transformer_component(profile, *, tp, cache):
@@ -186,18 +224,13 @@ def transformer_component(profile, *, tp, cache):
     return result
 
 
-def column_shards(width, ranks):
-    integer(width, "pool column width", minimum=1)
-    integer(ranks, "pool ranks", minimum=1)
-    if ranks > width:
-        raise ConfigurationError("pool ranks exceed vocabulary entries")
-    base, extra = divmod(width, ranks)
-    return tuple(base + int(rank < extra) for rank in range(ranks))
-
-
-def pool_memory(model, ranks, queries, reserve=5_000_000):
+def pool_memory(model, ranks, queries, reserve=5_000_000, *, logits_rows=None):
     integer(queries, "pool query rows", minimum=1)
     integer(reserve, "pool reserve bytes")
+    if logits_rows is not None:
+        integer(logits_rows, "pool output logits rows")
+        if logits_rows > queries:
+            raise ConfigurationError("pool logits rows exceed hidden rows")
     if model.dtype not in {"fp8", "bf16", "fp16"} or model.activation_dtype != "bf16":
         raise ConfigurationError("I/O pool needs unpacked weights and BF16 activations")
     rows = []
@@ -206,8 +239,13 @@ def pool_memory(model, ranks, queries, reserve=5_000_000):
             int(columns * model.hidden_size * dtype_size_bytes(model.dtype))
             + 2 * model.hidden_size
         )
-        live = queries * (6 * columns + 8 * model.hidden_size + 256)
-        communication = queries * 4 * model.vocab_size
+        output = queries if logits_rows is None else logits_rows
+        live = output * 6 * columns + queries * (8 * model.hidden_size + 256)
+        communication = (
+            queries * 4 * model.vocab_size
+            if logits_rows is None
+            else (4 * max(output * model.vocab_size, queries * model.hidden_size))
+        )
         total = weights + live + communication + reserve
         rows.append(
             dict(
@@ -246,38 +284,8 @@ def pooled_program(
     launched = p.append((), host.resources, delay=host.delay, duration=host.duration)
     arena = "embedding-logits-pool/arena"
     acquired = p.acquire((launched,), arena)
-    embedded = []
     h = model.hidden_size
-    for chip in chips:
-        lookup = p.compute(
-            (acquired,),
-            chip,
-            "elementwise",
-            dict(
-                op_name=(
-                    f"cast_{model.dtype}_to_bf16"
-                    if model.dtype != "bf16"
-                    else "embedding_lookup"
-                ),
-                dtype="bf16",
-                num_tokens=queries,
-                hidden_size=h,
-            ),
-        )
-        embedded.append(
-            p.compute(
-                (lookup,),
-                chip,
-                "elementwise",
-                dict(
-                    op_name="other_residual",
-                    dtype="bf16",
-                    num_tokens=queries,
-                    hidden_size=h,
-                ),
-            )
-        )
-    ready = p.reduce(embedded, chips, queries * h * 2)
+    ready = embedding(p, (acquired,), chips, model, queries)
     entered = p.transfer(
         (ready,),
         [(chips[rank % pool_chips], rank, queries * h * 2) for rank in range(tp)],
@@ -292,43 +300,7 @@ def pooled_program(
             for rank, chip in enumerate(chips)
         ],
     )
-    selected = []
-    for chip, columns in zip(chips, column_shards(model.vocab_size, pool_chips)):
-        norm = p.compute(
-            (arrived,),
-            chip,
-            "elementwise",
-            dict(op_name="rmsnorm", dtype="bf16", num_tokens=queries, hidden_size=h),
-        )
-        logits = p.compute(
-            (norm,), chip, "gemm", dict(dtype=model.dtype, m=queries, n=columns, k=h)
-        )
-        capped = p.compute(
-            (logits,),
-            chip,
-            "elementwise",
-            dict(
-                op_name="other_residual",
-                dtype="bf16",
-                num_tokens=queries,
-                hidden_size=columns,
-                lpx_vector_operation="logit_softcap",
-            ),
-        )
-        selected.append(
-            p.compute(
-                (capped,),
-                chip,
-                "elementwise",
-                dict(
-                    op_name="argmax",
-                    dtype="bf16",
-                    num_tokens=queries,
-                    hidden_size=columns,
-                ),
-            )
-        )
-    completed = p.reduce(selected, chips, queries * 16, element_bytes=4)
+    completed = logits(p, (arrived,), chips, model, queries)
     p.release_at(output_acquired, completed)
     return p.profile(), dict(
         pool_chips=pool_chips,

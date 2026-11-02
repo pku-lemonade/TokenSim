@@ -138,10 +138,12 @@ def capture_profile(
     contexts=None,
     maximum_contexts=None,
     record_node_ids=False,
+    record_attention_keys=False,
 ):
     """Capture one forward; ``contexts`` gives each session its own context."""
     number(invocation_us, "LPX invocation_us", minimum=0)
     boolean(record_node_ids, "record native node IDs")
+    boolean(record_attention_keys, "record native attention keys")
     if contexts is None:
         contexts = maximum_contexts = (context,) * batch
     elif maximum_contexts is None:
@@ -200,6 +202,24 @@ def capture_profile(
             **(
                 {"native_node_ids": [event.node_id for event in service.trace.events]}
                 if record_node_ids
+                else {}
+            ),
+            **(
+                dict(
+                    attention_keys=[
+                        dict(
+                            index=i,
+                            node_id=event.node_id,
+                            layer_id=event.layer_id,
+                            local_shape=event.details["local_shape"],
+                            component=part,
+                        )
+                        for i, event in enumerate(service.trace.events)
+                        for part in event.details.get("components", ())
+                        if part["name"] == "attention_core"
+                    ]
+                )
+                if record_attention_keys
                 else {}
             ),
             host_capture_s=perf_counter() - started,
