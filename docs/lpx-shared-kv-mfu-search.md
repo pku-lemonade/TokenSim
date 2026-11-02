@@ -94,6 +94,33 @@ The assembled-key candidate has lower MFU despite admitting more requests.
 These comparisons demonstrate why storage-only scaling cannot predict the throughput benefit.
 The existing-format incumbent remains recorded separately because the new cache policy lacks a matching model-quality measurement.
 
+## Shared-cache assistant combination
+
+The combination uses the official BF16 assistant on two additional chips, K=3 proposals, three independent remote-attention slots and four target verification rows.
+All fourteen target requests pass native admission, with minimum transformer headroom 12,080,820 bytes.
+The total inventory is 165 chips, and the remote-attention reservations contribute 6,291,456 bytes per transformer chip.
+
+| Issue interval (us) | Warm-up / measured rounds | Verification rounds/s | Half-window change | MFU at assumed alpha=0.9 |
+| ---: | --- | ---: | ---: | ---: |
+| 27.535753 | 4 / 16 | 22,495.33 | -1.1940% | 4.92536% |
+| 45.0 | 8 / 32 | 21,179.11 | -0.3005% | 4.63717% |
+
+Here alpha is an assumed identical conditional acceptance probability, giving 3.439 committed tokens per round at K=3.
+The two runs change both pacing and measurement length, so their difference cannot be attributed to measurement length alone.
+The longer run still has nonzero drift and does not establish a maximum.
+
+Transporting the measured FP8-target/BF16-assistant GPU accepted lengths gives the following conditional estimates.
+Both rows retain mismatches for KV precision and global cache policy.
+
+| Replay | Quotes MFU | Summary MFU |
+| --- | ---: | ---: |
+| Initial 4 / 16 | 3.96807% | 3.86517% |
+| Paced 8 / 32 | 3.73590% | 3.63901% |
+
+These estimates use pooled committed tokens per verification round from the existing sixteen-book 100K document groups.
+The new cache representation has no matching acceptance or output-quality measurement.
+The supplied combination therefore remains an experimental transport and acceptance scenario.
+
 ## Numerical reference and regression controls
 
 The [CPU reference codec](../scripts/lpx/kv_codec.py) stores exactly 648 bytes per token and global KV head.

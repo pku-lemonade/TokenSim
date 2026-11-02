@@ -11440,7 +11440,7 @@
     "lpx_kv_phase_sweep.py": "38a5066dc16e264cac7fe92fdabe8c5c3ba141632c3292ac6fa372cc6315743c",
     "lpx_shared_kv_reference.py": "07ec183d9583c0daf1ab951153c0a1a5a84da39c2fad8e3f315e87866fd7668a",
     "lpx_shared_kv_admission.py": "8aee795a6f6a0d98c5d2e24a8c1a550efd6ceb64b4c5b502b6bca1354f8bcbf5",
-    "lpx_shared_kv_record.py": "f80868b77c4bd1f92bcd4e42ff54ea2adb914cf08d1537f91743b8078666dd5a"
+    "lpx_shared_kv_record.py": "271996b5735b4fc0d23296330ac6935fec640552d68bcf5235679970230b3f61"
   },
   "validation": {
     "black_version": "24.2.0",
@@ -11464,7 +11464,6 @@
     "targeted_log": "Terminal session 12769: 49 tests passed in 56.310 seconds.",
     "additional_acceptance_tests_passed": 3,
     "acceptance_and_mfu_targeted_tests_passed": 11,
-    "pre_commit_advisory_scan": "The commit hook reported a hardcoded-value scan timeout after 2 seconds; the commit succeeded. This advisory scan is not reported as passed.",
     "previous_full_suite": {
       "tests_run": 819,
       "failures": 1,
@@ -11486,7 +11485,13 @@
       "tests.af.config.test_kv_parallel_config"
     ],
     "new_shared_kv_tests_passed": 8,
-    "source_files_above_500_lines": []
+    "source_files_above_500_lines": [],
+    "previous_commit_advisory_scan": "The commit hook reported a hardcoded-value scan timeout after 2 seconds; the commit succeeded. This advisory scan is not reported as passed.",
+    "physical_shared_kv_code_commit": {
+      "commit": "4d724299063a358b62dcfbd6caecd014c55bef1f",
+      "committed_successfully": true,
+      "advisory_timeout_reported": false
+    }
   },
   "sources": [
     "https://developer.nvidia.com/blog/inside-nvidia-groq-3-lpx-the-low-latency-inference-accelerator-for-the-nvidia-vera-rubin-platform/",
@@ -115091,14 +115096,8 @@
     }
   ],
   "source_cpp_sha256": "8118adb459ae6870d4a441217e4b4bfdef54f6b5a5f7a4e93cc6787cdf70aa57",
-  "pending_experiments": [
-    {
-      "artifact": "outputs/lpx-maximum-mfu-20261103/shared-kv-assistant-k3-bf16-r3/replay-45.0us-w8-m32.json",
-      "status": "running",
-      "purpose": "Eight warm-up and 32 measured rounds at 45 us after a 1.194% measurement-half drift in the initial assistant run."
-    }
-  ],
-  "last_updated_utc": "2026-11-02 16:29:24 UTC",
+  "pending_experiments": [],
+  "last_updated_utc": "2026-11-02 16:36:46 UTC",
   "empirical_100k_gpu_acceptance": {
     "measurements": [
       {
@@ -122490,6 +122489,172 @@
           "relative_change": -0.011940086953137197
         },
         "scope": "Empirical GPU acceptance transported onto a fixed-context LP30 DAG. Precision mismatches and different execution kernels prevent treating this as measured LP30 throughput or matching-precision acceptance."
+      },
+      {
+        "program_artifact": "outputs/lpx-maximum-mfu-20261103/shared-kv-assistant-k3-bf16-r3/replay-45.0us-w8-m32.json",
+        "draft_tokens": 3,
+        "chips": 165,
+        "draft_dtype": "bf16",
+        "slots": 3,
+        "style": "quotes",
+        "acceptance_source": "/Users/bytedance/codes/TokenSim/experiments/lpx/gpu-triton-fp8-mtp-k3-outputs.jsonl",
+        "acceptance_sha256": "cc997de8bdeeda904b5925fe9928a57c4bfec95d99a840cb67610372cf5a2471",
+        "measured_turns": 16,
+        "modeled_precision": {
+          "weight_precision": "fp8",
+          "kv_precision": "fp8",
+          "drafter_precision": "bf16",
+          "global_kv_layout": "value_rope_fp8"
+        },
+        "measured_precision": {
+          "weight_precision": "fp8",
+          "kv_precision": "bf16",
+          "drafter_precision": "bf16",
+          "global_kv_layout": "unrecorded"
+        },
+        "precision_mismatches": [
+          "kv_precision",
+          "global_kv_layout"
+        ],
+        "all_quality_checks_passed": true,
+        "mean_tau": 2.773130309838263,
+        "pooled_tau": 2.7706022550187916,
+        "rounds_per_second": 21179.11341569798,
+        "aggregate_tps_from_turn_mean": 58732.44134857425,
+        "aggregate_tps_from_pooled_rounds": 58678.89938883156,
+        "mfu_percent_from_turn_mean": 3.739309384310363,
+        "mfu_percent_from_pooled_rounds": 3.7359005365267,
+        "convergence": {
+          "earlier_half_tps": 21211.02956533113,
+          "later_half_tps": 21147.293169958863,
+          "relative_change": -0.0030048704225297262
+        },
+        "scope": "Empirical GPU acceptance transported onto a fixed-context LP30 DAG. Precision mismatches and different execution kernels prevent treating this as measured LP30 throughput or matching-precision acceptance."
+      },
+      {
+        "program_artifact": "outputs/lpx-maximum-mfu-20261103/shared-kv-assistant-k3-bf16-r3/replay-45.0us-w8-m32.json",
+        "draft_tokens": 3,
+        "chips": 165,
+        "draft_dtype": "bf16",
+        "slots": 3,
+        "style": "summary",
+        "acceptance_source": "/Users/bytedance/codes/TokenSim/experiments/lpx/gpu-triton-fp8-mtp-k3-outputs.jsonl",
+        "acceptance_sha256": "cc997de8bdeeda904b5925fe9928a57c4bfec95d99a840cb67610372cf5a2471",
+        "measured_turns": 16,
+        "modeled_precision": {
+          "weight_precision": "fp8",
+          "kv_precision": "fp8",
+          "drafter_precision": "bf16",
+          "global_kv_layout": "value_rope_fp8"
+        },
+        "measured_precision": {
+          "weight_precision": "fp8",
+          "kv_precision": "bf16",
+          "drafter_precision": "bf16",
+          "global_kv_layout": "unrecorded"
+        },
+        "precision_mismatches": [
+          "kv_precision",
+          "global_kv_layout"
+        ],
+        "all_quality_checks_passed": true,
+        "mean_tau": 2.699724106625273,
+        "pooled_tau": 2.6987493440615706,
+        "rounds_per_second": 21179.11341569798,
+        "aggregate_tps_from_turn_mean": 57177.76304531056,
+        "aggregate_tps_from_pooled_rounds": 57157.11843842053,
+        "mfu_percent_from_turn_mean": 3.640327917926644,
+        "mfu_percent_from_pooled_rounds": 3.6390135408888993,
+        "convergence": {
+          "earlier_half_tps": 21211.02956533113,
+          "later_half_tps": 21147.293169958863,
+          "relative_change": -0.0030048704225297262
+        },
+        "scope": "Empirical GPU acceptance transported onto a fixed-context LP30 DAG. Precision mismatches and different execution kernels prevent treating this as measured LP30 throughput or matching-precision acceptance."
+      },
+      {
+        "program_artifact": "outputs/lpx-maximum-mfu-20261103/shared-kv-assistant-k3-bf16-r3/replay-45.0us-w8-m32.json",
+        "draft_tokens": 3,
+        "chips": 165,
+        "draft_dtype": "bf16",
+        "slots": 3,
+        "style": "quotes",
+        "acceptance_source": "/Users/bytedance/codes/TokenSim/experiments/lpx/gpu-triton-mtp-k3-outputs.jsonl",
+        "acceptance_sha256": "0da0fd4c272163e83ebb3f2d2d76e2179d28b34856420b05830d61f58ce15371",
+        "measured_turns": 16,
+        "modeled_precision": {
+          "weight_precision": "fp8",
+          "kv_precision": "fp8",
+          "drafter_precision": "bf16",
+          "global_kv_layout": "value_rope_fp8"
+        },
+        "measured_precision": {
+          "weight_precision": "bf16",
+          "kv_precision": "bf16",
+          "drafter_precision": "bf16",
+          "global_kv_layout": "unrecorded"
+        },
+        "precision_mismatches": [
+          "weight_precision",
+          "kv_precision",
+          "global_kv_layout"
+        ],
+        "all_quality_checks_passed": true,
+        "mean_tau": 2.834810909008404,
+        "pooled_tau": 2.830904889894846,
+        "rounds_per_second": 21179.11341569798,
+        "aggregate_tps_from_turn_mean": 60038.781753946874,
+        "aggregate_tps_from_pooled_rounds": 59956.05573213694,
+        "mfu_percent_from_turn_mean": 3.822479959630441,
+        "mfu_percent_from_pooled_rounds": 3.8172130546188705,
+        "convergence": {
+          "earlier_half_tps": 21211.02956533113,
+          "later_half_tps": 21147.293169958863,
+          "relative_change": -0.0030048704225297262
+        },
+        "scope": "Empirical GPU acceptance transported onto a fixed-context LP30 DAG. Precision mismatches and different execution kernels prevent treating this as measured LP30 throughput or matching-precision acceptance."
+      },
+      {
+        "program_artifact": "outputs/lpx-maximum-mfu-20261103/shared-kv-assistant-k3-bf16-r3/replay-45.0us-w8-m32.json",
+        "draft_tokens": 3,
+        "chips": 165,
+        "draft_dtype": "bf16",
+        "slots": 3,
+        "style": "summary",
+        "acceptance_source": "/Users/bytedance/codes/TokenSim/experiments/lpx/gpu-triton-mtp-k3-outputs.jsonl",
+        "acceptance_sha256": "0da0fd4c272163e83ebb3f2d2d76e2179d28b34856420b05830d61f58ce15371",
+        "measured_turns": 16,
+        "modeled_precision": {
+          "weight_precision": "fp8",
+          "kv_precision": "fp8",
+          "drafter_precision": "bf16",
+          "global_kv_layout": "value_rope_fp8"
+        },
+        "measured_precision": {
+          "weight_precision": "bf16",
+          "kv_precision": "bf16",
+          "drafter_precision": "bf16",
+          "global_kv_layout": "unrecorded"
+        },
+        "precision_mismatches": [
+          "weight_precision",
+          "kv_precision",
+          "global_kv_layout"
+        ],
+        "all_quality_checks_passed": true,
+        "mean_tau": 2.717461880414019,
+        "pooled_tau": 2.7191517561298872,
+        "rounds_per_second": 21179.11341569798,
+        "aggregate_tps_from_turn_mean": 57553.43336812441,
+        "aggregate_tps_from_pooled_rounds": 57589.22343756921,
+        "mfu_percent_from_turn_mean": 3.664245663064593,
+        "mfu_percent_from_pooled_rounds": 3.6665243039565287,
+        "convergence": {
+          "earlier_half_tps": 21211.02956533113,
+          "later_half_tps": 21147.293169958863,
+          "relative_change": -0.0030048704225297262
+        },
+        "scope": "Empirical GPU acceptance transported onto a fixed-context LP30 DAG. Precision mismatches and different execution kernels prevent treating this as measured LP30 throughput or matching-precision acceptance."
       }
     ],
     "scope": "Raw 100K document counters and quality checks are recomputed without exclusions. Turn-mean and pooled-round acceptance are both retained. All-device LP30 projections remain conditional on precision and kernel transport."
@@ -126742,7 +126907,7 @@
     "after_artifact": "outputs/lpx-maximum-mfu-20261102/changed-set-regression-after.json",
     "scope": "One local frozen three-program replay comparison; host timing is not a calibrated general speedup. Every completion and resource statistic agrees exactly."
   },
-  "milestone_commit": "30a21d970a7805a1ef4e3e047f0d4687867c67cd",
+  "milestone_commit": "4d724299063a358b62dcfbd6caecd014c55bef1f",
   "experimental_shared_global_kv": {
     "name": "value_rope_fp8",
     "kernel_options": [
@@ -131722,6 +131887,1411 @@
           },
           "scope": "Conditional greedy draft/verify replay with explicit assistant weights, scratch, remote KV-owner attention and feedback copies. IID acceptance scenarios are not 100K workload measurements. Physical bank placement, native target-stage lifetimes and compiler execution remain unverified."
         }
+      },
+      {
+        "artifact": "outputs/lpx-maximum-mfu-20261103/shared-kv-assistant-k3-bf16-r3/replay-45.0us-w8-m32.json",
+        "result": {
+          "source_cpp_sha256": "8118adb459ae6870d4a441217e4b4bfdef54f6b5a5f7a4e93cc6787cdf70aa57",
+          "config": {
+            "operator": {
+              "activation_dtype": "bf16",
+              "vector_ops_per_s": 20000000000000.0,
+              "exp_ops_per_s": 1000000000000.0,
+              "shuffle_bytes_per_s": 10000000000000.0,
+              "vector_efficiency": 0.5,
+              "shuffle_efficiency": 0.8,
+              "vector_bytes": 320,
+              "attention_tile_keys": 256,
+              "fill_drain_us": 0.05,
+              "schedule": "tiled",
+              "shared_kv_kernel": "split_dot"
+            },
+            "memory": {
+              "prefill_chunk": 16,
+              "maximum_context": 102000,
+              "attention_tile_keys": 256,
+              "tile_buffers": 2,
+              "reserve_bytes": 11291456
+            },
+            "fabric": {
+              "local_chips": 16,
+              "middle_chips": 128,
+              "rack_chips": 256,
+              "local_us": 0.35,
+              "middle_us": 0.75,
+              "rack_us": 1.15,
+              "inter_rack_us": null,
+              "ports_per_chip": 96,
+              "lanes_per_peer": 6,
+              "p2p_lanes": 6,
+              "lane_bytes_per_s": 14000000000.0,
+              "injection_bytes_per_s": 1344000000000.0,
+              "efficiency": 1.0,
+              "reduction_ops_per_s": 10000000000000.0,
+              "routes": []
+            },
+            "token_units": {
+              "native_per_aa_input": 1.0,
+              "native_per_aa_output": 1.0,
+              "source": "Unmeasured identity assumption; no representative AA text corpus or downloaded Gemma tokenizer is bundled.",
+              "measured": false,
+              "corpus_sha256": null,
+              "tokenizer": null,
+              "revision": null
+            },
+            "compute": {
+              "gemm_mfu": 0.3,
+              "attention_mfu": 0.5,
+              "memory_efficiency": 0.9
+            },
+            "description": "Illustrative public-mechanism accounting; unknown LP30 unit rates, routes and scratch policy remain sensitivity assumptions."
+          },
+          "layout": {
+            "tp": 16,
+            "kvp": 4,
+            "pp": 10,
+            "pool_chips": 3
+          },
+          "chips": 165,
+          "draft_tp": 2,
+          "draft_dtype": "bf16",
+          "draft_tokens": 3,
+          "slots": 3,
+          "native_transformer": {
+            "config": {
+              "operator": {
+                "activation_dtype": "bf16",
+                "vector_ops_per_s": 20000000000000.0,
+                "exp_ops_per_s": 1000000000000.0,
+                "shuffle_bytes_per_s": 10000000000000.0,
+                "vector_efficiency": 0.5,
+                "shuffle_efficiency": 0.8,
+                "vector_bytes": 320,
+                "attention_tile_keys": 256,
+                "fill_drain_us": 0.05,
+                "schedule": "tiled",
+                "shared_kv_kernel": "split_dot"
+              },
+              "memory": {
+                "prefill_chunk": 4,
+                "maximum_context": 102000,
+                "attention_tile_keys": 256,
+                "tile_buffers": 2,
+                "reserve_bytes": 15399744
+              },
+              "fabric": {
+                "local_chips": 16,
+                "middle_chips": 128,
+                "rack_chips": 256,
+                "local_us": 0.35,
+                "middle_us": 0.75,
+                "rack_us": 1.15,
+                "inter_rack_us": null,
+                "ports_per_chip": 96,
+                "lanes_per_peer": 6,
+                "p2p_lanes": 6,
+                "lane_bytes_per_s": 14000000000.0,
+                "injection_bytes_per_s": 1344000000000.0,
+                "efficiency": 1.0,
+                "reduction_ops_per_s": 10000000000000.0,
+                "routes": []
+              },
+              "token_units": {
+                "native_per_aa_input": 1.0,
+                "native_per_aa_output": 1.0,
+                "source": "Unmeasured identity assumption; no representative AA text corpus or downloaded Gemma tokenizer is bundled.",
+                "measured": false,
+                "corpus_sha256": null,
+                "tokenizer": null,
+                "revision": null
+              },
+              "compute": {
+                "gemm_mfu": 0.3,
+                "attention_mfu": 0.5,
+                "memory_efficiency": 0.9
+              },
+              "description": "Illustrative public-mechanism accounting; unknown LP30 unit rates, routes and scratch policy remain sensitivity assumptions."
+            },
+            "proxy_model": {
+              "model_id": "gemma-4-31b-text-transformer-io-proxy",
+              "display_name": "Gemma 4 31B text architecture",
+              "aliases": [],
+              "hidden_size": 5376,
+              "intermediate_size": 21504,
+              "num_layers": 60,
+              "num_attention_heads": 32,
+              "num_key_value_heads": 16,
+              "head_dim": 256,
+              "kv_cache_dim": null,
+              "vocab_size": 16,
+              "max_position_embeddings": 262144,
+              "sliding_window": 0,
+              "attention_windows": [
+                1024,
+                1024,
+                1024,
+                1024,
+                1024,
+                0,
+                1024,
+                1024,
+                1024,
+                1024,
+                1024,
+                0,
+                1024,
+                1024,
+                1024,
+                1024,
+                1024,
+                0,
+                1024,
+                1024,
+                1024,
+                1024,
+                1024,
+                0,
+                1024,
+                1024,
+                1024,
+                1024,
+                1024,
+                0,
+                1024,
+                1024,
+                1024,
+                1024,
+                1024,
+                0,
+                1024,
+                1024,
+                1024,
+                1024,
+                1024,
+                0,
+                1024,
+                1024,
+                1024,
+                1024,
+                1024,
+                0,
+                1024,
+                1024,
+                1024,
+                1024,
+                1024,
+                0,
+                1024,
+                1024,
+                1024,
+                1024,
+                1024,
+                0
+              ],
+              "tie_word_embeddings": true,
+              "qk_norm": true,
+              "attention_geometries": [
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 512,
+                  "num_key_value_heads": 4,
+                  "k_eq_v": true
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 512,
+                  "num_key_value_heads": 4,
+                  "k_eq_v": true
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 512,
+                  "num_key_value_heads": 4,
+                  "k_eq_v": true
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 512,
+                  "num_key_value_heads": 4,
+                  "k_eq_v": true
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 512,
+                  "num_key_value_heads": 4,
+                  "k_eq_v": true
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 512,
+                  "num_key_value_heads": 4,
+                  "k_eq_v": true
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 512,
+                  "num_key_value_heads": 4,
+                  "k_eq_v": true
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 512,
+                  "num_key_value_heads": 4,
+                  "k_eq_v": true
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 512,
+                  "num_key_value_heads": 4,
+                  "k_eq_v": true
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 256,
+                  "num_key_value_heads": 16,
+                  "k_eq_v": false
+                },
+                {
+                  "head_dim": 512,
+                  "num_key_value_heads": 4,
+                  "k_eq_v": true
+                }
+              ],
+              "activation": "geglu",
+              "dtype": "fp8",
+              "activation_dtype": "bf16",
+              "kv_cache_dtype": "fp8",
+              "global_kv_layout": "value_rope_fp8",
+              "is_moe": false,
+              "moe": {
+                "is_moe_model": false,
+                "num_experts": 0,
+                "num_experts_per_tok": 1,
+                "moe_intermediate_size": null,
+                "num_shared_experts": 0,
+                "num_moe_layers": 0,
+                "first_k_dense_replace": 0,
+                "moe_layer_freq": 1,
+                "interleave_moe_layer_step": 1,
+                "routing": {
+                  "distribution": "uniform",
+                  "hot_experts": null,
+                  "hot_expert_fraction": 0.5,
+                  "uniform_selection": "cyclic"
+                },
+                "hidden_size": null,
+                "intermediate_size": null,
+                "num_attention_heads": null,
+                "num_key_value_heads": null
+              },
+              "sources": {
+                "google-config": {
+                  "grade": "A",
+                  "reference": "https://huggingface.co/google/gemma-4-31B-it/blob/842da3794eaa0b77d5f08bae87a17459d91ff475/config.json",
+                  "notes": "Text model only; vision encoder excluded. BF16 is checkpoint precision; AA serving precision is undisclosed."
+                },
+                "transformers-implementation": {
+                  "grade": "A",
+                  "reference": "https://github.com/huggingface/transformers/blob/e0eb2810ac1b2caf6d082f247d8d37162ecf67a0/src/transformers/models/gemma4/modeling_gemma4.py",
+                  "notes": "Global K/V projections share weights; transformed K and V caches remain separate. Per-layer scalar and logit softcap costs are excluded analytical approximations."
+                }
+              },
+              "total_params": 29286849536,
+              "attention_type": "gqa",
+              "mla_dimensions": null,
+              "architecture": "gemma4_text",
+              "operator_dtypes": {},
+              "components": null,
+              "operator_modules": {},
+              "layers": [
+                {
+                  "layer_id": 0,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 1,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 2,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 3,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 4,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 5,
+                  "attention_kind": "gqa",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 6,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 7,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 8,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 9,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 10,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 11,
+                  "attention_kind": "gqa",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 12,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 13,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 14,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 15,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 16,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 17,
+                  "attention_kind": "gqa",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 18,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 19,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 20,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 21,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 22,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 23,
+                  "attention_kind": "gqa",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 24,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 25,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 26,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 27,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 28,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 29,
+                  "attention_kind": "gqa",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 30,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 31,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 32,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 33,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 34,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 35,
+                  "attention_kind": "gqa",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 36,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 37,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 38,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 39,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 40,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 41,
+                  "attention_kind": "gqa",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 42,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 43,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 44,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 45,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 46,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 47,
+                  "attention_kind": "gqa",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 48,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 49,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 50,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 51,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 52,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 53,
+                  "attention_kind": "gqa",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 54,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 55,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 56,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 57,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 58,
+                  "attention_kind": "sliding",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                },
+                {
+                  "layer_id": 59,
+                  "attention_kind": "gqa",
+                  "compress_ratio": 1,
+                  "moe_routing": "none",
+                  "is_mtp": false
+                }
+              ]
+            },
+            "resident_requests": 14,
+            "layer_counts": [
+              6,
+              6,
+              6,
+              6,
+              6,
+              6,
+              6,
+              6,
+              6,
+              6
+            ],
+            "memory": {
+              "maximum_context": 102000,
+              "peak_rank": {
+                "physical": "mfu-search-a:0",
+                "capacity_bytes": 500000000,
+                "weights_bytes": 201630464,
+                "buffers_bytes": 18216268,
+                "buffer_breakdown": {
+                  "communication_workspace": 86016,
+                  "colocated_dense_residual": 43008,
+                  "lp30_live_scratch": 2415104,
+                  "lp30_unallocated_reserve": 15399744,
+                  "lp30_auxiliary_weights": 272396
+                },
+                "kv_bytes": 268072448,
+                "total_bytes": 487919180
+              },
+              "minimum_headroom_bytes": 12080820,
+              "ranks": 160,
+              "scope": "Weights, protocol buffers, LP30 live scratch/reserve and 14 resident KV leases.",
+              "resident_requests": 14
+            },
+            "native_profile": {
+              "phase": "decode",
+              "batch": 1,
+              "queries": 4,
+              "context": 101000,
+              "contexts": [
+                101000
+              ],
+              "emit_logits": false,
+              "dp_rank": 0,
+              "seed": 42,
+              "sample": 0,
+              "source_sha256": "fc59bc94c65c3b17bc9fffc9c37fe45dcadf80c19c0eaa619879d7e6bdc69410",
+              "host_capture_s": 0.4569569170707837,
+              "native_duration_s": 0.001455402342733137,
+              "native_events": 4322,
+              "streaming": {
+                "config": {
+                  "vector_bytes": 320,
+                  "overlap": true,
+                  "early_output": true,
+                  "collective_launch_us": 0
+                },
+                "catalog_collectives": 161,
+                "streaming_collectives": 120,
+                "output_vectors": 16200,
+                "producer_nodes": 1920,
+                "producer_service_s": 0.0011929339220663995,
+                "startup_service_s": 9.600000000000191e-05,
+                "streamable_work_s": 0.00021781611276993008,
+                "injected_bytes_per_endpoint_sum": 9676800.0,
+                "nodes": 363176,
+                "assumptions": [
+                  "Uniform final-GEMM output production; operator startup is unchanged.",
+                  "One collective launch begins after every rank produces its leading vector.",
+                  "Direct reduce-scatter and all-gather share endpoint injection resources.",
+                  "Flight latency releases injection; whole-buffer consumers wait for all vectors.",
+                  "Compute arbitration may occur at vector boundaries between concurrent jobs.",
+                  "Vector boundaries and per-rank output schedules are analytical assumptions.",
+                  "No overlap across earlier attention/FFN operators or across model layers."
+                ],
+                "fabric": {
+                  "config": {
+                    "local_chips": 16,
+                    "middle_chips": 128,
+                    "rack_chips": 256,
+                    "local_us": 0.35,
+                    "middle_us": 0.75,
+                    "rack_us": 1.15,
+                    "inter_rack_us": null,
+                    "ports_per_chip": 96,
+                    "lanes_per_peer": 6,
+                    "p2p_lanes": 6,
+                    "lane_bytes_per_s": 14000000000.0,
+                    "injection_bytes_per_s": 1344000000000.0,
+                    "efficiency": 1.0,
+                    "reduction_ops_per_s": 10000000000000.0,
+                    "routes": []
+                  },
+                  "counters": {
+                    "reduction_operations_per_endpoint": 2439360.0,
+                    "vector_rounds": 16201,
+                    "whole_collectives": 41,
+                    "pipeline_handoffs": 144
+                  },
+                  "status": "Synthetic per-port routes and scoped propagation; physical LPX wiring and scheduling are unverified.",
+                  "inter_rack_propagation": "Unspecified; legacy broad-scope propagation applies across rack boundaries."
+                }
+              },
+              "modeled_duration_s": 0.00027086802180477783,
+              "service": "mfu-search",
+              "model_id": "gemma-4-31b-text-transformer-io-proxy",
+              "parent_profile": {
+                "input_sha256": "6bace837a57decef76825fdf28ef98dbb5874083891552018ea2de8802a17201",
+                "node_body_sha256": "0a0332345168fe66f66ac94860fd08df38c8331fa4d10f1c7a9130e813136804"
+              },
+              "elided_boundary_nodes": [
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+                17,
+                4322,
+                4323,
+                4324,
+                4325,
+                4326,
+                4327
+              ],
+              "component_scope": "Transformer layers with external embedded input and no final normalization or logits; dummy boundary weights remain conservatively charged.",
+              "input_sha256": "01e0d037fa57a8cca0b1cce5f8db3420d72634de1a489362fd97f32addd45f92",
+              "node_body_sha256": "95a8096928830b20e949bada74d3d9f5ac56e690ec63439c41d1976843c09258"
+            },
+            "extra_communication_arena_per_chip": 4108288,
+            "scratch_query_rows": 4
+          },
+          "assistant_spec": {
+            "hidden": 1024,
+            "intermediate": 8192,
+            "backbone": 5376,
+            "vocab": 262144,
+            "heads": 32,
+            "dims": [
+              256,
+              256,
+              256,
+              512
+            ],
+            "windows": [
+              1024,
+              1024,
+              1024,
+              0
+            ],
+            "kv_heads": [
+              16,
+              16,
+              16,
+              4
+            ]
+          },
+          "parameters": {
+            "tied_embedding_lm_head": 268435456,
+            "attention_q_and_o": 83886080,
+            "ffn": 100663296,
+            "pre_projection": 11010048,
+            "post_projection": 5505024,
+            "layer_norms": 16384,
+            "final_norm": 1024,
+            "query_norms": 1280,
+            "layer_scalars": 4
+          },
+          "assistant_config_sha256": "d09487c1083a334a97545f204dd41ab1a40b0438bdead19558f0e1357e26d66a",
+          "memory": {
+            "assistant_memory": [
+              {
+                "rank": 0,
+                "weights_bytes": 469537288,
+                "live_per_slot_bytes": 989184,
+                "communication_per_slot_bytes": 1048576,
+                "slots": 3,
+                "persistent_feedback_bytes": 150528,
+                "reserve_bytes": 5000000,
+                "total_bytes": 480801096,
+                "headroom_bytes": 19198904
+              },
+              {
+                "rank": 1,
+                "weights_bytes": 469537288,
+                "live_per_slot_bytes": 989184,
+                "communication_per_slot_bytes": 1048576,
+                "slots": 3,
+                "persistent_feedback_bytes": 150528,
+                "reserve_bytes": 5000000,
+                "total_bytes": 480801096,
+                "headroom_bytes": 19198904
+              }
+            ],
+            "target_head": {
+              "pool_chips": 3,
+              "pool_memory": [
+                {
+                  "rank": 0,
+                  "weights_bytes": 469776384,
+                  "live_bytes": 2270224,
+                  "communication_bytes": 4194304,
+                  "reserve_bytes": 5000000,
+                  "total_bytes": 481240912,
+                  "headroom_bytes": 18759088
+                },
+                {
+                  "rank": 1,
+                  "weights_bytes": 469771008,
+                  "live_bytes": 2270200,
+                  "communication_bytes": 4194304,
+                  "reserve_bytes": 5000000,
+                  "total_bytes": 481235512,
+                  "headroom_bytes": 18764488
+                },
+                {
+                  "rank": 2,
+                  "weights_bytes": 469771008,
+                  "live_bytes": 2270200,
+                  "communication_bytes": 4194304,
+                  "reserve_bytes": 5000000,
+                  "total_bytes": 481235512,
+                  "headroom_bytes": 18764488
+                }
+              ],
+              "target_useful_work": {
+                "linear": 61392027648,
+                "attention": 67869081600,
+                "total": 129261109248
+              },
+              "protocol": "Shared tied embedding/LM-head weights with greedy distributed selection; native boundary costs are replaced explicitly and dummy boundary weights remain charged."
+            },
+            "shared_kv_scope": "Three local assistant layers use target layer 58; the global assistant layer uses target layer 59. All cache reads and attention execute at existing native cache owners.",
+            "remote_scratch_per_transformer_chip": 6291456,
+            "feedback": "All verifier hidden rows are copied to the drafter, one accepted row is retained per request, and greedy draft/target token comparison is priced as vector selection.",
+            "precision": "Matrix weights use the selected draft dtype; norms, activations and shared target KV retain BF16/BF16/FP8 respectively."
+          },
+          "programs": [
+            {
+              "program_sha256": "1f61dfae763e3bb249f578b29861ca8fd9e3f8941c7ef56f64476a2e829158bc",
+              "modeled_duration_s": 0.00038168370092886677,
+              "operators": {
+                "elementwise": 278,
+                "gemm": 114,
+                "generation_attention": 192
+              },
+              "scope": "Explicit synthetic operator composition with analytical LP30 costs; compiler and physical bank placement unverified.",
+              "input_sha256": "fb4eaeeeedc90c067d84d4bdb50c4037c0ff823dd143fe25f7aebfee4741d806",
+              "node_body_sha256": "11fffa70ae2317da65d76b6c18fb221e0efa4fc5426ce043442c187df84537ac"
+            },
+            {
+              "program_sha256": "85ee0b6380cbbb24bb7450618bd4c9423529ba8c475a50c1ce2737218280d672",
+              "modeled_duration_s": 0.00038168370092886677,
+              "operators": {
+                "elementwise": 278,
+                "gemm": 114,
+                "generation_attention": 192
+              },
+              "scope": "Explicit synthetic operator composition with analytical LP30 costs; compiler and physical bank placement unverified.",
+              "input_sha256": "f6e0270a912d2cc4dc5dafbe45f84fa02a96e2075e59042dec058d24c4a9154f",
+              "node_body_sha256": "c2181cb746660fcecae0e86a28542df9db0af05dd562ded4302f90db7b0e7a42"
+            },
+            {
+              "program_sha256": "6614a7e7f42bc326023e97cd1f5ca9205df1753f0b55a4d997ca7f8c8703ed08",
+              "modeled_duration_s": 0.00038168370092886677,
+              "operators": {
+                "elementwise": 278,
+                "gemm": 114,
+                "generation_attention": 192
+              },
+              "scope": "Explicit synthetic operator composition with analytical LP30 costs; compiler and physical bank placement unverified.",
+              "input_sha256": "2145b9fb0ec9e48f894a74dcae3791d89781f95d9411b72c29f2702bb2897a06",
+              "node_body_sha256": "e50ff098aacfc98b4eed02dd5f788eea81ea4b315182cd24700aa6f4c881bab1"
+            }
+          ],
+          "round_replay": {
+            "resident_requests": 14,
+            "batch": 1,
+            "cohorts": 14,
+            "warmup_completions": 112,
+            "measured_completions": 448,
+            "measured_tokens": 448,
+            "measured_seconds": 0.02115291566775132,
+            "aggregate_tps": 21179.11341569798,
+            "mean_per_request_tps": 1512.7938154069984,
+            "per_cohort_completions": {
+              "8": 35,
+              "13": 31,
+              "12": 32,
+              "0": 31,
+              "3": 31,
+              "1": 31,
+              "11": 34,
+              "2": 34,
+              "4": 31,
+              "7": 31,
+              "6": 31,
+              "9": 31,
+              "5": 34,
+              "10": 31
+            },
+            "per_cohort_per_request_tps": {
+              "0": 1465.51900867553,
+              "1": 1465.51900867553,
+              "2": 1607.343428869936,
+              "3": 1465.51900867553,
+              "4": 1465.51900867553,
+              "5": 1607.343428869936,
+              "6": 1465.51900867553,
+              "7": 1465.51900867553,
+              "8": 1654.6182356014046,
+              "9": 1465.51900867553,
+              "10": 1465.51900867553,
+              "11": 1607.343428869936,
+              "12": 1512.7938154069986,
+              "13": 1465.51900867553
+            },
+            "mean_tpot_s": 0.0006636905502517525,
+            "p50_tpot_s": 0.0006609014847509791,
+            "p99_tpot_s": 0.0008647747416079474,
+            "initial_spacing_s": 4.4999999999999996e-05,
+            "issue_interval_s": 4.4999999999999996e-05,
+            "convergence": {
+              "earlier_half_tps": 21211.02956533113,
+              "later_half_tps": 21147.293169958863,
+              "relative_change": -0.0030048704225297262
+            },
+            "scope": "Fixed-context operator-DAG replay; compiler scheduling and buffer lifetime safety unverified.",
+            "programs": 3,
+            "program_assignment": {
+              "0": 0,
+              "1": 1,
+              "2": 2,
+              "3": 0,
+              "4": 1,
+              "5": 2,
+              "6": 0,
+              "7": 1,
+              "8": 2,
+              "9": 0,
+              "10": 1,
+              "11": 2,
+              "12": 0,
+              "13": 1
+            }
+          },
+          "scenarios": [
+            {
+              "alpha": 0,
+              "expected_committed": 1.0,
+              "aggregate_tps": 21179.11341569798,
+              "per_request_tps": 1512.7938154069984,
+              "mfu_percent": 1.3484073831815173
+            },
+            {
+              "alpha": 0.25,
+              "expected_committed": 1.328125,
+              "aggregate_tps": 28128.510005223878,
+              "per_request_tps": 2009.1792860874198,
+              "mfu_percent": 1.7908535557879528
+            },
+            {
+              "alpha": 0.5,
+              "expected_committed": 1.875,
+              "aggregate_tps": 39710.83765443371,
+              "per_request_tps": 2836.488403888122,
+              "mfu_percent": 2.528263843465345
+            },
+            {
+              "alpha": 0.7,
+              "expected_committed": 2.5329999999999995,
+              "aggregate_tps": 53646.69428196297,
+              "per_request_tps": 3831.906734425926,
+              "mfu_percent": 3.415515901598783
+            },
+            {
+              "alpha": 0.8,
+              "expected_committed": 2.9520000000000004,
+              "aggregate_tps": 62520.74280314044,
+              "per_request_tps": 4465.767343081459,
+              "mfu_percent": 3.9804985951518397
+            },
+            {
+              "alpha": 0.9,
+              "expected_committed": 3.4390000000000005,
+              "aggregate_tps": 72834.97103658535,
+              "per_request_tps": 5202.497931184668,
+              "mfu_percent": 4.637172990761239
+            },
+            {
+              "alpha": 0.95,
+              "expected_committed": 3.7098749999999994,
+              "aggregate_tps": 78571.86338306252,
+              "per_request_tps": 5612.275955933038,
+              "mfu_percent": 5.00242284068053
+            },
+            {
+              "alpha": 1,
+              "expected_committed": 4.0,
+              "aggregate_tps": 84716.45366279192,
+              "per_request_tps": 6051.175261627994,
+              "mfu_percent": 5.393629532726069
+            }
+          ],
+          "useful_work_per_committed_token": {
+            "linear": 61392027648,
+            "attention": 67869081600,
+            "total": 129261109248
+          },
+          "single_program_bounds": {
+            "aggregate_tps": 31645.741106834903,
+            "latency_limited_tps": 36706.63488528,
+            "resource_limited_tps": 31645.741106834903,
+            "critical_path_s": 0.00038140243701866125,
+            "busiest_resource": "mfu-search/worker:144",
+            "resource_seconds_per_forward": 3.159982876128688e-05,
+            "scope": "Necessary steady-throughput bound for this fixed DAG; not an attainable schedule or global hardware bound."
+          },
+          "scope": "Conditional greedy draft/verify replay with explicit assistant weights, scratch, remote KV-owner attention and feedback copies. IID acceptance scenarios are not 100K workload measurements. Physical bank placement, native target-stage lifetimes and compiler execution remain unverified."
+        }
       }
     ],
     "acceptance_projections": [
@@ -131890,6 +133460,172 @@
           "relative_change": -0.011940086953137197
         },
         "scope": "Empirical GPU acceptance transported onto a fixed-context LP30 DAG. Precision mismatches and different execution kernels prevent treating this as measured LP30 throughput or matching-precision acceptance."
+      },
+      {
+        "program_artifact": "outputs/lpx-maximum-mfu-20261103/shared-kv-assistant-k3-bf16-r3/replay-45.0us-w8-m32.json",
+        "draft_tokens": 3,
+        "chips": 165,
+        "draft_dtype": "bf16",
+        "slots": 3,
+        "style": "quotes",
+        "acceptance_source": "/Users/bytedance/codes/TokenSim/experiments/lpx/gpu-triton-fp8-mtp-k3-outputs.jsonl",
+        "acceptance_sha256": "cc997de8bdeeda904b5925fe9928a57c4bfec95d99a840cb67610372cf5a2471",
+        "measured_turns": 16,
+        "modeled_precision": {
+          "weight_precision": "fp8",
+          "kv_precision": "fp8",
+          "drafter_precision": "bf16",
+          "global_kv_layout": "value_rope_fp8"
+        },
+        "measured_precision": {
+          "weight_precision": "fp8",
+          "kv_precision": "bf16",
+          "drafter_precision": "bf16",
+          "global_kv_layout": "unrecorded"
+        },
+        "precision_mismatches": [
+          "kv_precision",
+          "global_kv_layout"
+        ],
+        "all_quality_checks_passed": true,
+        "mean_tau": 2.773130309838263,
+        "pooled_tau": 2.7706022550187916,
+        "rounds_per_second": 21179.11341569798,
+        "aggregate_tps_from_turn_mean": 58732.44134857425,
+        "aggregate_tps_from_pooled_rounds": 58678.89938883156,
+        "mfu_percent_from_turn_mean": 3.739309384310363,
+        "mfu_percent_from_pooled_rounds": 3.7359005365267,
+        "convergence": {
+          "earlier_half_tps": 21211.02956533113,
+          "later_half_tps": 21147.293169958863,
+          "relative_change": -0.0030048704225297262
+        },
+        "scope": "Empirical GPU acceptance transported onto a fixed-context LP30 DAG. Precision mismatches and different execution kernels prevent treating this as measured LP30 throughput or matching-precision acceptance."
+      },
+      {
+        "program_artifact": "outputs/lpx-maximum-mfu-20261103/shared-kv-assistant-k3-bf16-r3/replay-45.0us-w8-m32.json",
+        "draft_tokens": 3,
+        "chips": 165,
+        "draft_dtype": "bf16",
+        "slots": 3,
+        "style": "summary",
+        "acceptance_source": "/Users/bytedance/codes/TokenSim/experiments/lpx/gpu-triton-fp8-mtp-k3-outputs.jsonl",
+        "acceptance_sha256": "cc997de8bdeeda904b5925fe9928a57c4bfec95d99a840cb67610372cf5a2471",
+        "measured_turns": 16,
+        "modeled_precision": {
+          "weight_precision": "fp8",
+          "kv_precision": "fp8",
+          "drafter_precision": "bf16",
+          "global_kv_layout": "value_rope_fp8"
+        },
+        "measured_precision": {
+          "weight_precision": "fp8",
+          "kv_precision": "bf16",
+          "drafter_precision": "bf16",
+          "global_kv_layout": "unrecorded"
+        },
+        "precision_mismatches": [
+          "kv_precision",
+          "global_kv_layout"
+        ],
+        "all_quality_checks_passed": true,
+        "mean_tau": 2.699724106625273,
+        "pooled_tau": 2.6987493440615706,
+        "rounds_per_second": 21179.11341569798,
+        "aggregate_tps_from_turn_mean": 57177.76304531056,
+        "aggregate_tps_from_pooled_rounds": 57157.11843842053,
+        "mfu_percent_from_turn_mean": 3.640327917926644,
+        "mfu_percent_from_pooled_rounds": 3.6390135408888993,
+        "convergence": {
+          "earlier_half_tps": 21211.02956533113,
+          "later_half_tps": 21147.293169958863,
+          "relative_change": -0.0030048704225297262
+        },
+        "scope": "Empirical GPU acceptance transported onto a fixed-context LP30 DAG. Precision mismatches and different execution kernels prevent treating this as measured LP30 throughput or matching-precision acceptance."
+      },
+      {
+        "program_artifact": "outputs/lpx-maximum-mfu-20261103/shared-kv-assistant-k3-bf16-r3/replay-45.0us-w8-m32.json",
+        "draft_tokens": 3,
+        "chips": 165,
+        "draft_dtype": "bf16",
+        "slots": 3,
+        "style": "quotes",
+        "acceptance_source": "/Users/bytedance/codes/TokenSim/experiments/lpx/gpu-triton-mtp-k3-outputs.jsonl",
+        "acceptance_sha256": "0da0fd4c272163e83ebb3f2d2d76e2179d28b34856420b05830d61f58ce15371",
+        "measured_turns": 16,
+        "modeled_precision": {
+          "weight_precision": "fp8",
+          "kv_precision": "fp8",
+          "drafter_precision": "bf16",
+          "global_kv_layout": "value_rope_fp8"
+        },
+        "measured_precision": {
+          "weight_precision": "bf16",
+          "kv_precision": "bf16",
+          "drafter_precision": "bf16",
+          "global_kv_layout": "unrecorded"
+        },
+        "precision_mismatches": [
+          "weight_precision",
+          "kv_precision",
+          "global_kv_layout"
+        ],
+        "all_quality_checks_passed": true,
+        "mean_tau": 2.834810909008404,
+        "pooled_tau": 2.830904889894846,
+        "rounds_per_second": 21179.11341569798,
+        "aggregate_tps_from_turn_mean": 60038.781753946874,
+        "aggregate_tps_from_pooled_rounds": 59956.05573213694,
+        "mfu_percent_from_turn_mean": 3.822479959630441,
+        "mfu_percent_from_pooled_rounds": 3.8172130546188705,
+        "convergence": {
+          "earlier_half_tps": 21211.02956533113,
+          "later_half_tps": 21147.293169958863,
+          "relative_change": -0.0030048704225297262
+        },
+        "scope": "Empirical GPU acceptance transported onto a fixed-context LP30 DAG. Precision mismatches and different execution kernels prevent treating this as measured LP30 throughput or matching-precision acceptance."
+      },
+      {
+        "program_artifact": "outputs/lpx-maximum-mfu-20261103/shared-kv-assistant-k3-bf16-r3/replay-45.0us-w8-m32.json",
+        "draft_tokens": 3,
+        "chips": 165,
+        "draft_dtype": "bf16",
+        "slots": 3,
+        "style": "summary",
+        "acceptance_source": "/Users/bytedance/codes/TokenSim/experiments/lpx/gpu-triton-mtp-k3-outputs.jsonl",
+        "acceptance_sha256": "0da0fd4c272163e83ebb3f2d2d76e2179d28b34856420b05830d61f58ce15371",
+        "measured_turns": 16,
+        "modeled_precision": {
+          "weight_precision": "fp8",
+          "kv_precision": "fp8",
+          "drafter_precision": "bf16",
+          "global_kv_layout": "value_rope_fp8"
+        },
+        "measured_precision": {
+          "weight_precision": "bf16",
+          "kv_precision": "bf16",
+          "drafter_precision": "bf16",
+          "global_kv_layout": "unrecorded"
+        },
+        "precision_mismatches": [
+          "weight_precision",
+          "kv_precision",
+          "global_kv_layout"
+        ],
+        "all_quality_checks_passed": true,
+        "mean_tau": 2.717461880414019,
+        "pooled_tau": 2.7191517561298872,
+        "rounds_per_second": 21179.11341569798,
+        "aggregate_tps_from_turn_mean": 57553.43336812441,
+        "aggregate_tps_from_pooled_rounds": 57589.22343756921,
+        "mfu_percent_from_turn_mean": 3.664245663064593,
+        "mfu_percent_from_pooled_rounds": 3.6665243039565287,
+        "convergence": {
+          "earlier_half_tps": 21211.02956533113,
+          "later_half_tps": 21147.293169958863,
+          "relative_change": -0.0030048704225297262
+        },
+        "scope": "Empirical GPU acceptance transported onto a fixed-context LP30 DAG. Precision mismatches and different execution kernels prevent treating this as measured LP30 throughput or matching-precision acceptance."
       }
     ]
   },
@@ -131909,5 +133645,6 @@
     "global_optimum_certified": false,
     "matching_quality_verified": false,
     "scope": "Best within these two reconstruction kernels and fifteen supplied phase probes; existing-format incumbent stays separate."
-  }
+  },
+  "previous_milestone_commit": "30a21d970a7805a1ef4e3e047f0d4687867c67cd"
 }

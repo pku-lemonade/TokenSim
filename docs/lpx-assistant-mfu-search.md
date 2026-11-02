@@ -157,6 +157,12 @@ Those results motivate acceptance experiments and do not supply 100K LP30 accept
 Its per-position values describe accepted-prefix survival; adding them to one yields mean committed length.
 Treating them as independent conditional probabilities and multiplying them would misread that table.
 
+The [experimental global-cache format](lpx-shared-kv-mfu-search.md) also supports remote cache-owner attention with explicit scale, reconstruction and independent scratch costs.
+Its BF16 K=3 three-slot combination admits fourteen requests on 165 chips.
+The initial replay reaches 22,495.3 rounds/s with -1.194% half-window change, while an eight-warm-up/32-measured replay paced at 45 us reaches 21,179.1 rounds/s with -0.3005% change.
+Transporting FP8-target GPU accepted lengths onto the paced replay gives 3.73590% quotes MFU and 3.63901% summary MFU, with both KV-precision and global-cache-policy mismatches retained.
+The new format has no matching output-quality or acceptance measurement.
+
 ## Reproduction
 
 The default assistant configuration is the bundled pinned file.
