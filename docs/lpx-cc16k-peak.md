@@ -1,8 +1,7 @@
 # Does a lookup drafter reach the 10,996 TPS code-completion example on all 302 prompts?
 
 Record date: 2026-10-30, updated 2026-10-31.
-Status: C0 through C3 are complete; all 302 plain and 302 native n-gram outputs passed validation, and the collector released its GPU server.
-Lookup replay, the native comparison, results reporting and validation are complete; C4 publication remains pending.
+Status: C0 through C4 are complete; all 302 plain and 302 native n-gram outputs passed validation, and the results are published on `lpx-context-parallel`.
 
 ## Question
 
@@ -133,7 +132,7 @@ python -I scripts/analyze_lpx_cc16k_peak.py \
 
 - [x] Add a results section to this record: one table per setting with the coding window and the code-completion median, fastest request and count at or above 10,996 TPS at each priced extra time, the same for the 40 earlier prompts, and the outcome of each expectation.
 - [x] Add a row to the outcome table of the [progress summary](lpx-aa-reproduction-progress.md) and update its current position.
-- [ ] Run Black, the unit tests and `git diff --check`, commit and push.
+- [x] Run Black, the unit tests and `git diff --check`, commit and push.
 
 ## Plain-output replay results
 
@@ -302,6 +301,8 @@ This result changes the earlier conclusion drawn from the 40 API answers; it doe
 The jointly supporting settings have coding windows of 0 to 7 µs and 0 to 6 µs, so neither shares the 13 to 21 µs range cited for the earlier API-output fit.
 Both K = 7 settings still exceed the example at 26 µs, but their coding medians no longer fit at that extra time.
 No setting fits the H20 coding median at the 26 µs needed by the AA-like book answers, and the AA part remains unresolved.
+At the two settings that reach the example, minimum n-gram 1 or 2 with `K = 7`, no extra time places both AA values within 5% on the [AA-like book answers](lpx-api-outputs.md), as [`api-aa-answer-alone-analysis.json`](../experiments/lpx/api-aa-answer-alone-analysis.json) records, and plain decoding needs at least 15.8 µs.
+One deployment with one of these settings would therefore need AA prompts on which lookup accepts less than on the book answers.
 The native comparison supports the text replay's acceptance approximation at minimum n-gram 1 and K = 7, with the accounting and tokenization differences recorded above.
 The public checkpoint, BF16 outputs, prompt lengths, thinking setting and simulated step costs remain different from the unpublished LP30 deployment conditions.
 
@@ -310,22 +311,8 @@ The public checkpoint, BF16 outputs, prompt lengths, thinking setting and simula
 The full unit-test rerun passes all 776 tests, Black reports all 530 Python files formatted, and `git diff --check` passes.
 All eight report tables were checked against the 78 priced results, and all 302 native acceptance records and set-level means were independently recomputed from the recorded counters.
 The seven preregistered expectations are unchanged.
-A publication preflight using `git push --dry-run` did not complete; a bounded retry timed out after 35 seconds.
-Commit `7540b49` records C0 through C2, the available results and the running C3 workflow locally.
-The subsequent actual push to `lpx-context-parallel` timed out after 45 seconds with exit status 124 and no server acknowledgment; remote publication is unconfirmed.
-The 2026-10-30 22:40 Shanghai check retried the push and observed it waiting in the editor's Git credential helper until another 45-second timeout.
-A public remote-branch read after that attempt still returned `7388167`, confirming that `7540b49` was not published to the target branch.
-Publication requires a responsive credential helper with authorized Git credentials; recurring checks continue after collection and analysis have finished.
-Commit `1439744` records the complete native outputs, comparison and final results reporting locally.
-The final-results push on 2026-10-31 also waited in the editor's Git credential helper and timed out after 90 seconds with exit status 124.
-The subsequent remote-branch check still returned `7388167`; neither study commit is published to the target branch.
-The 2026-11-02 resumption committed the outstanding publication records as `fa90435` before continuing work.
-A noninteractive push preflight on that date exited with status 128 because Git could not obtain a GitHub username; disabling the editor askpass prompt avoided the earlier hang.
-The remote branch still returned `7388167`, and both 302-row output files retained their recorded SHA-256 hashes.
-The resumed validation run passed all 776 tests in 202.983 seconds, with all 530 Python files unchanged by Black and a clean diff check.
-The 2026-11-02 10:11 Shanghai preflight using the configured credential path authenticated as `jayfeather9`, but GitHub denied write access to `pku-lemonade/TokenSim` with HTTP 403.
-Publication requires repository write permission for that account or authentication as another authorized account; the remote branch remains at `7388167`.
-This is not a successful publication; C0 through C3 and the C4 reporting and validation are complete, while publication remains open.
+The GPU machine committed the study as `7540b49` and `1439744` but could not push them: its credential helper timed out, and its configured account lacks write access to the repository.
+The commits were pushed from another machine after an independent check, which reproduced `gpu-cc302-peak.json` from the committed lookup replay with identical values and passed all 776 unit tests, Black and `git diff --check`.
 
 ## Collection and recurring checks
 
