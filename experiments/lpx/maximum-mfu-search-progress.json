@@ -2,7 +2,7 @@
   "record_date": "2026-11-02",
   "goal": "Find the highest useful MFU for Gemma 4 31B serving with a 100K input; explore inventories beyond 256 LP30 chips.",
   "maximum_certified": false,
-  "status": "Search in progress. Non-speculative incumbent is 3.03914%. Long replay with four FP8-assistant slots reaches a conditional 4.94906% at IID alpha=0.9. Existing audited 100K GPU acceptance was recovered from repository raw counters; closest-precision BF16-assistant transports give approximately 3.70\u20133.82% with a BF16-to-FP8 KV mismatch. Shared global-cache geometry increases optimistic resident counts but codec costs, quality and native admission remain unimplemented. No global optimum is certified.",
+  "status": "Search in progress; no global optimum is certified. Non-speculative incumbent is 3.03914%. Long FP8-assistant replay gives conditional 4.94906% at IID alpha=0.9. Existing audited 100K GPU document acceptance gives closest-precision BF16-assistant transports of approximately 3.70\u20133.82%, with a BF16-to-FP8 KV mismatch. Four-slot BF16 K=3 and K=5 controls complete without improving the supplied incumbent transport. Shared-cache storage geometry remains an optimistic screen without codec timing, quality or native admission.",
   "shared_timing_config": {
     "operator": {
       "activation_dtype": "bf16",
@@ -11457,7 +11457,8 @@
     "log": "/private/tmp/tokensim-mfu-unittest-final-io.log",
     "targeted_log": "/private/tmp/tokensim-mfu-targeted-assistant.log",
     "additional_acceptance_tests_passed": 3,
-    "acceptance_and_mfu_targeted_tests_passed": 11
+    "acceptance_and_mfu_targeted_tests_passed": 11,
+    "pre_commit_advisory_scan": "The commit hook reported a hardcoded-value scan timeout after 2 seconds; the commit succeeded. This advisory scan is not reported as passed."
   },
   "sources": [
     "https://developer.nvidia.com/blog/inside-nvidia-groq-3-lpx-the-low-latency-inference-accelerator-for-the-nvidia-vera-rubin-platform/",
@@ -114097,6 +114098,204 @@
         }
       ],
       "scope": "Conditional greedy draft/verify replay with explicit assistant weights, scratch, remote KV-owner attention and feedback copies. IID acceptance scenarios are not 100K workload measurements. Physical bank placement, native target-stage lifetimes and compiler execution remain unverified."
+    },
+    {
+      "artifact": "outputs/lpx-maximum-mfu-20261102/assistant-k3-bf16-tp2-s4-43us/result.json",
+      "artifact_sha256": "f79da15fa51727def0974e514c96a2f64a3c6c75d9e0cd10813fa986f2899d2b",
+      "chips": 165,
+      "draft_tokens": 3,
+      "draft_tp": 2,
+      "draft_dtype": "bf16",
+      "slots": 4,
+      "resident_requests": 9,
+      "rounds_per_s": 21246.2673337347,
+      "convergence": {
+        "earlier_half_tps": 21446.761900057012,
+        "later_half_tps": 21049.486685726908,
+        "relative_change": -0.018523785370557433
+      },
+      "isolated_s": 0.00037267477152037415,
+      "minimum_assistant_headroom_bytes": 17214904,
+      "minimum_transformer_headroom_bytes": 24183988,
+      "break_even_expected_committed": 2.246750986228317,
+      "break_even_iid_alpha": 0.621184419549893,
+      "scenarios": [
+        {
+          "alpha": 0,
+          "expected_committed": 1.0,
+          "aggregate_tps": 21246.2673337347,
+          "per_request_tps": 2360.6963704149666,
+          "mfu_percent": 1.3526828614375226
+        },
+        {
+          "alpha": 0.25,
+          "expected_committed": 1.328125,
+          "aggregate_tps": 28217.6988026164,
+          "per_request_tps": 3135.2998669573776,
+          "mfu_percent": 1.7965319253467096
+        },
+        {
+          "alpha": 0.5,
+          "expected_committed": 1.875,
+          "aggregate_tps": 39836.75125075256,
+          "per_request_tps": 4426.305694528062,
+          "mfu_percent": 2.5362803651953545
+        },
+        {
+          "alpha": 0.7,
+          "expected_committed": 2.5329999999999995,
+          "aggregate_tps": 53816.79515634999,
+          "per_request_tps": 5979.643906261109,
+          "mfu_percent": 3.4263456880212435
+        },
+        {
+          "alpha": 0.8,
+          "expected_committed": 2.9520000000000004,
+          "aggregate_tps": 62718.981169184844,
+          "per_request_tps": 6968.775685464982,
+          "mfu_percent": 3.9931198069635667
+        },
+        {
+          "alpha": 0.9,
+          "expected_committed": 3.4390000000000005,
+          "aggregate_tps": 73065.91336071365,
+          "per_request_tps": 8118.434817857072,
+          "mfu_percent": 4.65187636048364
+        },
+        {
+          "alpha": 0.95,
+          "expected_committed": 3.7098749999999994,
+          "aggregate_tps": 78820.99602473901,
+          "per_request_tps": 8757.888447193223,
+          "mfu_percent": 5.018284330575528
+        },
+        {
+          "alpha": 1,
+          "expected_committed": 4.0,
+          "aggregate_tps": 84985.0693349388,
+          "per_request_tps": 9442.785481659866,
+          "mfu_percent": 5.41073144575009
+        }
+      ],
+      "native_component": "e751f3d6f1500238765d7e85cf10eb01443b876cc4ed5efcaca31e7128d55e91",
+      "programs": [
+        {
+          "input_sha256": "f26a1ee2182c2f01b96844070b144dd6cdc4daac01cf01e2b718d2eb9400bc49",
+          "node_body_sha256": "73bdbda56b0307fedc43ef460318746a3df74fafee14639dfa96499ac8547f67"
+        },
+        {
+          "input_sha256": "4ae0c1a4eb688ddcad75da6002673028aec83b5448999fd347bd39d439b3fa2e",
+          "node_body_sha256": "55f87f95f26c3e5ca23f195536731b6b35ebeb91c55df78cbe551abdae4f5b08"
+        },
+        {
+          "input_sha256": "177bcb77cdcad4207957a739c72b260cf5e676fb414b8cd3fa71ac2de21315b3",
+          "node_body_sha256": "29254eb98750eeeb163f7d4e2c9a9871769f7ed0b603e37cbe77eaefbbc162da"
+        },
+        {
+          "input_sha256": "429b5a225535757b7e3c334484569abc4658ea3b44496f96a565e6ebdbec8d05",
+          "node_body_sha256": "204b3db1f3bbf62f7f72da8555aab66b571aaa03372310f772dce3396d469b42"
+        }
+      ],
+      "scope": "Conditional greedy draft/verify replay with explicit assistant weights, scratch, remote KV-owner attention and feedback copies. IID acceptance scenarios are not 100K workload measurements. Physical bank placement, native target-stage lifetimes and compiler execution remain unverified."
+    },
+    {
+      "artifact": "outputs/lpx-maximum-mfu-20261102/assistant-k5-bf16-tp2-s4/result.json",
+      "artifact_sha256": "540c064a018670b69656ae221fbec3aa4b403d996912b2bd554d2b806df3d0b1",
+      "chips": 165,
+      "draft_tokens": 5,
+      "draft_tp": 2,
+      "draft_dtype": "bf16",
+      "slots": 4,
+      "resident_requests": 9,
+      "rounds_per_s": 14872.368330776175,
+      "convergence": {
+        "earlier_half_tps": 14908.511141577732,
+        "later_half_tps": 14836.400338712718,
+        "relative_change": -0.004836888283492491
+      },
+      "isolated_s": 0.000494707897212516,
+      "minimum_assistant_headroom_bytes": 17214904,
+      "minimum_transformer_headroom_bytes": 21929908,
+      "break_even_expected_committed": 3.2096483239295663,
+      "break_even_iid_alpha": 0.7393169952075394,
+      "scenarios": [
+        {
+          "alpha": 0,
+          "expected_committed": 1.0,
+          "aggregate_tps": 14872.368330776175,
+          "per_request_tps": 1652.4853700862416,
+          "mfu_percent": 0.9468768058888396
+        },
+        {
+          "alpha": 0.25,
+          "expected_committed": 1.3330078125,
+          "aggregate_tps": 19824.983175302226,
+          "per_request_tps": 2202.775908366914,
+          "mfu_percent": 1.262194179724869
+        },
+        {
+          "alpha": 0.5,
+          "expected_committed": 1.96875,
+          "aggregate_tps": 29279.975151215593,
+          "per_request_tps": 3253.330572357288,
+          "mfu_percent": 1.8641637115936527
+        },
+        {
+          "alpha": 0.7,
+          "expected_committed": 2.9411699999999996,
+          "aggregate_tps": 43742.163563428956,
+          "per_request_tps": 4860.24039593655,
+          "mfu_percent": 2.784925655176078
+        },
+        {
+          "alpha": 0.8,
+          "expected_committed": 3.68928,
+          "aggregate_tps": 54868.331035365925,
+          "per_request_tps": 6096.481226151769,
+          "mfu_percent": 3.493293662429578
+        },
+        {
+          "alpha": 0.9,
+          "expected_committed": 4.68559,
+          "aggregate_tps": 69685.82032700154,
+          "per_request_tps": 7742.868925222393,
+          "mfu_percent": 4.436676492904688
+        },
+        {
+          "alpha": 0.95,
+          "expected_committed": 5.298162187499999,
+          "aggregate_tps": 78796.21952869081,
+          "per_request_tps": 8755.135503187867,
+          "mfu_percent": 5.016706889181027
+        },
+        {
+          "alpha": 1,
+          "expected_committed": 6.0,
+          "aggregate_tps": 89234.20998465705,
+          "per_request_tps": 9914.91222051745,
+          "mfu_percent": 5.681260835333038
+        }
+      ],
+      "native_component": "e7094cce5fe45a6b8d9fb64924ad752c059bf2ffc470f751d51935e9c830baac",
+      "programs": [
+        {
+          "input_sha256": "da652a1e4f43085f257fcc11268b6c94061742449060b147b291b027c4728be1",
+          "node_body_sha256": "4ebc787cfc967c07426e58de71068c0ae1b6773a66c1dd47e1c8864096db8c35"
+        },
+        {
+          "input_sha256": "6c1078a2dfe0b370065e9fedbd2c8bbe22430722324049f9582332e52604ba34",
+          "node_body_sha256": "d6b33032678aa207df3c8c4fce5b8abd1dd0937e5f0e43f1c101da7bffae6ecf"
+        },
+        {
+          "input_sha256": "44059bb12cc6d516c0f23f5d1cdfadec6ed78b4317c7f01489330986b3bf26aa",
+          "node_body_sha256": "df56ce83e5a88a7b35a381dc3064e50b2b38e787c8e5fad58f743df3421a10ac"
+        },
+        {
+          "input_sha256": "13d181e5bafbe9ae828becd387951cbabb22302e3cdf82156f0e4ec96020fd63",
+          "node_body_sha256": "18464c30cb2d339a9c76a7b7834d8e8bf72bb9770bdc2d356d3a8fdf215d7e84"
+        }
+      ],
+      "scope": "Conditional greedy draft/verify replay with explicit assistant weights, scratch, remote KV-owner attention and feedback copies. IID acceptance scenarios are not 100K workload measurements. Physical bank placement, native target-stage lifetimes and compiler execution remain unverified."
     }
   ],
   "assistant_acceptance_source": {
@@ -114864,17 +115063,8 @@
     }
   ],
   "source_cpp_sha256": "8118adb459ae6870d4a441217e4b4bfdef54f6b5a5f7a4e93cc6787cdf70aa57",
-  "pending_experiments": [
-    {
-      "log": "/private/tmp/lpx-assistant-k3-bf16-s4.log",
-      "description": "BF16 K=3, four scratch slots, nine requests and 43 us pacing."
-    },
-    {
-      "log": "/private/tmp/lpx-assistant-k5-bf16.log",
-      "description": "BF16 K=5 with four scratch slots and nine requests."
-    }
-  ],
-  "last_updated_utc": "2026-11-02 15:07:55 UTC",
+  "pending_experiments": [],
+  "last_updated_utc": "2026-11-02 15:49:13 UTC",
   "empirical_100k_gpu_acceptance": {
     "measurements": [
       {
@@ -121632,6 +121822,238 @@
         "scope": "Empirical GPU acceptance transported onto a fixed-context LP30 DAG. Precision mismatches and different execution kernels prevent treating this as measured LP30 throughput or matching-precision acceptance."
       },
       {
+        "program_artifact": "outputs/lpx-maximum-mfu-20261102/assistant-k3-bf16-tp2-s4-43us/result.json",
+        "draft_tokens": 3,
+        "chips": 165,
+        "draft_dtype": "bf16",
+        "slots": 4,
+        "style": "quotes",
+        "acceptance_source": "/Users/bytedance/codes/TokenSim/experiments/lpx/gpu-triton-fp8-mtp-k3-outputs.jsonl",
+        "acceptance_sha256": "cc997de8bdeeda904b5925fe9928a57c4bfec95d99a840cb67610372cf5a2471",
+        "measured_turns": 16,
+        "modeled_precision": {
+          "weight_precision": "fp8",
+          "kv_precision": "fp8",
+          "drafter_precision": "bf16"
+        },
+        "measured_precision": {
+          "weight_precision": "fp8",
+          "kv_precision": "bf16",
+          "drafter_precision": "bf16"
+        },
+        "precision_mismatches": [
+          "kv_precision"
+        ],
+        "all_quality_checks_passed": true,
+        "mean_tau": 2.773130309838263,
+        "pooled_tau": 2.7706022550187916,
+        "rounds_per_second": 21246.2673337347,
+        "aggregate_tps_from_turn_mean": 58918.66791410628,
+        "aggregate_tps_from_pooled_rounds": 58864.95618557745,
+        "mfu_percent_from_turn_mean": 3.751165842651145,
+        "mfu_percent_from_pooled_rounds": 3.7477461862240715,
+        "convergence": {
+          "earlier_half_tps": 21446.761900057012,
+          "later_half_tps": 21049.486685726908,
+          "relative_change": -0.018523785370557433
+        },
+        "scope": "Empirical GPU acceptance transported onto a fixed-context LP30 DAG. Precision mismatches and different execution kernels prevent treating this as measured LP30 throughput or matching-precision acceptance."
+      },
+      {
+        "program_artifact": "outputs/lpx-maximum-mfu-20261102/assistant-k3-bf16-tp2-s4-43us/result.json",
+        "draft_tokens": 3,
+        "chips": 165,
+        "draft_dtype": "bf16",
+        "slots": 4,
+        "style": "summary",
+        "acceptance_source": "/Users/bytedance/codes/TokenSim/experiments/lpx/gpu-triton-fp8-mtp-k3-outputs.jsonl",
+        "acceptance_sha256": "cc997de8bdeeda904b5925fe9928a57c4bfec95d99a840cb67610372cf5a2471",
+        "measured_turns": 16,
+        "modeled_precision": {
+          "weight_precision": "fp8",
+          "kv_precision": "fp8",
+          "drafter_precision": "bf16"
+        },
+        "measured_precision": {
+          "weight_precision": "fp8",
+          "kv_precision": "bf16",
+          "drafter_precision": "bf16"
+        },
+        "precision_mismatches": [
+          "kv_precision"
+        ],
+        "all_quality_checks_passed": true,
+        "mean_tau": 2.699724106625273,
+        "pooled_tau": 2.6987493440615706,
+        "rounds_per_second": 21246.2673337347,
+        "aggregate_tps_from_turn_mean": 57359.060096688634,
+        "aggregate_tps_from_pooled_rounds": 57338.3500306733,
+        "mfu_percent_from_turn_mean": 3.651870529641733,
+        "mfu_percent_from_pooled_rounds": 3.6505519850278425,
+        "convergence": {
+          "earlier_half_tps": 21446.761900057012,
+          "later_half_tps": 21049.486685726908,
+          "relative_change": -0.018523785370557433
+        },
+        "scope": "Empirical GPU acceptance transported onto a fixed-context LP30 DAG. Precision mismatches and different execution kernels prevent treating this as measured LP30 throughput or matching-precision acceptance."
+      },
+      {
+        "program_artifact": "outputs/lpx-maximum-mfu-20261102/assistant-k3-bf16-tp2-s4-43us/result.json",
+        "draft_tokens": 3,
+        "chips": 165,
+        "draft_dtype": "bf16",
+        "slots": 4,
+        "style": "quotes",
+        "acceptance_source": "/Users/bytedance/codes/TokenSim/experiments/lpx/gpu-triton-mtp-k3-outputs.jsonl",
+        "acceptance_sha256": "0da0fd4c272163e83ebb3f2d2d76e2179d28b34856420b05830d61f58ce15371",
+        "measured_turns": 16,
+        "modeled_precision": {
+          "weight_precision": "fp8",
+          "kv_precision": "fp8",
+          "drafter_precision": "bf16"
+        },
+        "measured_precision": {
+          "weight_precision": "bf16",
+          "kv_precision": "bf16",
+          "drafter_precision": "bf16"
+        },
+        "precision_mismatches": [
+          "weight_precision",
+          "kv_precision"
+        ],
+        "all_quality_checks_passed": true,
+        "mean_tau": 2.834810909008404,
+        "pooled_tau": 2.830904889894846,
+        "rounds_per_second": 21246.2673337347,
+        "aggregate_tps_from_turn_mean": 60229.150413380026,
+        "aggregate_tps_from_pooled_rounds": 60146.162087082696,
+        "mfu_percent_from_turn_mean": 3.834600132031792,
+        "mfu_percent_from_pooled_rounds": 3.8293165269204352,
+        "convergence": {
+          "earlier_half_tps": 21446.761900057012,
+          "later_half_tps": 21049.486685726908,
+          "relative_change": -0.018523785370557433
+        },
+        "scope": "Empirical GPU acceptance transported onto a fixed-context LP30 DAG. Precision mismatches and different execution kernels prevent treating this as measured LP30 throughput or matching-precision acceptance."
+      },
+      {
+        "program_artifact": "outputs/lpx-maximum-mfu-20261102/assistant-k3-bf16-tp2-s4-43us/result.json",
+        "draft_tokens": 3,
+        "chips": 165,
+        "draft_dtype": "bf16",
+        "slots": 4,
+        "style": "summary",
+        "acceptance_source": "/Users/bytedance/codes/TokenSim/experiments/lpx/gpu-triton-mtp-k3-outputs.jsonl",
+        "acceptance_sha256": "0da0fd4c272163e83ebb3f2d2d76e2179d28b34856420b05830d61f58ce15371",
+        "measured_turns": 16,
+        "modeled_precision": {
+          "weight_precision": "fp8",
+          "kv_precision": "fp8",
+          "drafter_precision": "bf16"
+        },
+        "measured_precision": {
+          "weight_precision": "bf16",
+          "kv_precision": "bf16",
+          "drafter_precision": "bf16"
+        },
+        "precision_mismatches": [
+          "weight_precision",
+          "kv_precision"
+        ],
+        "all_quality_checks_passed": true,
+        "mean_tau": 2.717461880414019,
+        "pooled_tau": 2.7191517561298872,
+        "rounds_per_second": 21246.2673337347,
+        "aggregate_tps_from_turn_mean": 57735.92158050965,
+        "aggregate_tps_from_pooled_rounds": 57771.82513172977,
+        "mfu_percent_from_turn_mean": 3.6758641122458258,
+        "mfu_percent_from_pooled_rounds": 3.67814997816464,
+        "convergence": {
+          "earlier_half_tps": 21446.761900057012,
+          "later_half_tps": 21049.486685726908,
+          "relative_change": -0.018523785370557433
+        },
+        "scope": "Empirical GPU acceptance transported onto a fixed-context LP30 DAG. Precision mismatches and different execution kernels prevent treating this as measured LP30 throughput or matching-precision acceptance."
+      },
+      {
+        "program_artifact": "outputs/lpx-maximum-mfu-20261102/assistant-k5-bf16-tp2-s4/result.json",
+        "draft_tokens": 5,
+        "chips": 165,
+        "draft_dtype": "bf16",
+        "slots": 4,
+        "style": "quotes",
+        "acceptance_source": "/Users/bytedance/codes/TokenSim/experiments/lpx/gpu-triton-followup-mtp-k5-outputs.jsonl",
+        "acceptance_sha256": "2e90f697f0e5c1899a87cf206fa1d7e89e45db9f433e0b1c64e514a826760a3a",
+        "measured_turns": 16,
+        "modeled_precision": {
+          "weight_precision": "fp8",
+          "kv_precision": "fp8",
+          "drafter_precision": "bf16"
+        },
+        "measured_precision": {
+          "weight_precision": "bf16",
+          "kv_precision": "bf16",
+          "drafter_precision": "bf16"
+        },
+        "precision_mismatches": [
+          "weight_precision",
+          "kv_precision"
+        ],
+        "all_quality_checks_passed": true,
+        "mean_tau": 3.323801377642562,
+        "pooled_tau": 3.3183322303110523,
+        "rounds_per_second": 14872.368330776175,
+        "aggregate_tps_from_turn_mean": 49432.79834664146,
+        "aggregate_tps_from_pooled_rounds": 49351.45917307197,
+        "mfu_percent_from_turn_mean": 3.147230431871114,
+        "mfu_percent_from_pooled_rounds": 3.142051823114918,
+        "convergence": {
+          "earlier_half_tps": 14908.511141577732,
+          "later_half_tps": 14836.400338712718,
+          "relative_change": -0.004836888283492491
+        },
+        "scope": "Empirical GPU acceptance transported onto a fixed-context LP30 DAG. Precision mismatches and different execution kernels prevent treating this as measured LP30 throughput or matching-precision acceptance."
+      },
+      {
+        "program_artifact": "outputs/lpx-maximum-mfu-20261102/assistant-k5-bf16-tp2-s4/result.json",
+        "draft_tokens": 5,
+        "chips": 165,
+        "draft_dtype": "bf16",
+        "slots": 4,
+        "style": "summary",
+        "acceptance_source": "/Users/bytedance/codes/TokenSim/experiments/lpx/gpu-triton-followup-mtp-k5-outputs.jsonl",
+        "acceptance_sha256": "2e90f697f0e5c1899a87cf206fa1d7e89e45db9f433e0b1c64e514a826760a3a",
+        "measured_turns": 16,
+        "modeled_precision": {
+          "weight_precision": "fp8",
+          "kv_precision": "fp8",
+          "drafter_precision": "bf16"
+        },
+        "measured_precision": {
+          "weight_precision": "bf16",
+          "kv_precision": "bf16",
+          "drafter_precision": "bf16"
+        },
+        "precision_mismatches": [
+          "weight_precision",
+          "kv_precision"
+        ],
+        "all_quality_checks_passed": true,
+        "mean_tau": 3.159522702983601,
+        "pooled_tau": 3.1593092172491315,
+        "rounds_per_second": 14872.368330776175,
+        "aggregate_tps_from_turn_mean": 46989.58538822165,
+        "aggregate_tps_from_pooled_rounds": 46986.41034974525,
+        "mfu_percent_from_turn_mean": 2.991678765134385,
+        "mfu_percent_from_pooled_rounds": 2.9914766204440273,
+        "convergence": {
+          "earlier_half_tps": 14908.511141577732,
+          "later_half_tps": 14836.400338712718,
+          "relative_change": -0.004836888283492491
+        },
+        "scope": "Empirical GPU acceptance transported onto a fixed-context LP30 DAG. Precision mismatches and different execution kernels prevent treating this as measured LP30 throughput or matching-precision acceptance."
+      },
+      {
         "program_artifact": "outputs/lpx-maximum-mfu-20261102/assistant-k3-fp8-tp1-s4-42us/replay-42.0us-w8-m32.json",
         "draft_tokens": 3,
         "chips": 164,
@@ -126117,5 +126539,6 @@
     "before_artifact": "outputs/lpx-maximum-mfu-20261102/changed-set-regression-before.json",
     "after_artifact": "outputs/lpx-maximum-mfu-20261102/changed-set-regression-after.json",
     "scope": "One local frozen three-program replay comparison; host timing is not a calibrated general speedup. Every completion and resource statistic agrees exactly."
-  }
+  },
+  "milestone_commit": "30a21d970a7805a1ef4e3e047f0d4687867c67cd"
 }

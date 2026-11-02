@@ -372,3 +372,4 @@ The reporting dependency is installed, and all four reporting tests pass.
 The two platform-dependent checks remain unresolved on this macOS host.
 The run includes the generalized remote-attention workspace validation.
 The failing GPU monitor/runner source and tests match the branch's committed versions.
+The commit hook's advisory hardcoded-value scan times out after two seconds.

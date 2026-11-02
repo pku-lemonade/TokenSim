@@ -144,6 +144,13 @@ The higher 4.95% FP8-assistant figure uses alpha=0.9 and additionally changes as
 The empirical document results do not establish that assumption.
 FP8-assistant acceptance, FP8-KV acceptance and full request scheduling remain validation requirements.
 
+Two additional four-slot BF16 controls finish after the milestone commit.
+K=3 at a 43 us issue interval reaches 21,246.3 rounds/s with -1.852% half-window change.
+Transporting the measured FP8-target K=3 lengths gives 3.74775% MFU for quotes and 3.65055% for summaries, with the KV-precision mismatch retained.
+K=5 at its default 55.517220 us interval reaches 14,872.4 rounds/s with -0.484% change.
+Its available BF16-target accepted lengths give 3.14205% and 2.99148% MFU, with both target-weight and KV-precision mismatches.
+These controls do not improve the supplied empirical-acceptance transport comparison.
+
 The [vLLM, AMD and Embedded LLM primary report](https://vllm.ai/blog/2026-08-23-speculative-decoding-amd-gpus) records Gemma 31B assistant mean committed lengths from 1.91 to 1.96 at K=1 and from 3.39 to 3.70 at K=3 across its listed tasks.
 Its example Gemma serving commands use a 32,768-token maximum model length on different hardware and software.
 Those results motivate acceptance experiments and do not supply 100K LP30 acceptance.
