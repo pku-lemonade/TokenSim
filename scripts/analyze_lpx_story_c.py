@@ -63,9 +63,9 @@ def extra_grid(upper):
     return [x / 2 for x in range(int(upper * 2) + 1)]
 
 
-def shared_window(speed_at, upper):
-    """Extra times in [0, upper] at which both AA speeds lie in the band."""
-    fits = [e for e in extra_grid(upper) if in_band(speed_at(e))]
+def shared_window(speed_at, upper, lower=0.0):
+    """Extra times in [lower, upper] at which both AA speeds lie in the band."""
+    fits = [e for e in extra_grid(upper) if e >= lower and in_band(speed_at(e))]
     return [min(fits), max(fits)] if fits else None
 
 
@@ -74,7 +74,7 @@ def tau(row):
     return tokens / sum(counts)
 
 
-def books(per_context, verify, ratio, upper):
+def books(per_context, verify, ratio, upper, lower=0.0, draft_tokens=DRAFT_TOKENS):
     """Per-book windows, ordered from the book that copies least."""
     results = []
     for i, (low, high) in enumerate(zip(per_context["aa_10k"], per_context["aa_100k"])):
@@ -83,7 +83,7 @@ def books(per_context, verify, ratio, upper):
             dict(
                 book=i,
                 copy_share=statistics.mean(
-                    equivalent_acceptance(tau(r), DRAFT_TOKENS) for r in pair.values()
+                    equivalent_acceptance(tau(r), draft_tokens) for r in pair.values()
                 ),
                 tau={k: tau(r) for k, r in pair.items()},
                 aa_tps_at_zero={
@@ -94,13 +94,14 @@ def books(per_context, verify, ratio, upper):
                         k: aa_speed(r, verify, k, e, ratio) for k, r in pair.items()
                     },
                     upper,
+                    lower,
                 ),
             )
         )
     return sorted(results, key=lambda b: b["copy_share"])
 
 
-def subsets(per_context, ordered, verify, ratio, upper):
+def subsets(per_context, ordered, verify, ratio, upper, lower=0.0):
     results = []
     for size in SUBSET_SIZES:
         chosen = [b["book"] for b in ordered[:size]]
@@ -117,7 +118,7 @@ def subsets(per_context, ordered, verify, ratio, upper):
             dict(
                 books=size,
                 aa_tps_at_zero=medians(0.0),
-                extra_us=shared_window(medians, upper),
+                extra_us=shared_window(medians, upper, lower),
             )
         )
     return results
