@@ -6,7 +6,6 @@
 #include <limits>
 #include <memory>
 #include <queue>
-#include <set>
 #include <stdexcept>
 #include <string>
 #include <tuple>
@@ -14,7 +13,7 @@
 #include <vector>
 
 struct NodeSpec {
-    int dep_begin, dep_count, res_begin, res_count, rank, primary;
+    int dep_begin, dep_count, res_begin, res_count, rank, primary, release_after;
     double delay, duration, occupancy;
 };
 struct Completion { long long id; double ready, start, end, released; };
@@ -22,6 +21,7 @@ struct Profile {
     std::vector<NodeSpec> nodes;
     std::vector<int> deps, resources;
     std::vector<std::vector<int>> children;
+    std::vector<std::vector<int>> releases;
 };
 struct State { int left; double ready = 0, start = 0; };
 struct Job {
@@ -66,7 +66,8 @@ public:
     std::vector<Resource> resources;
     std::unordered_map<long long, Job> jobs;
     std::priority_queue<Event, std::vector<Event>, std::greater<Event>> events;
-    std::set<int> changed;
+    std::vector<int> changed;
+    std::vector<bool> dirty;
     double now = 0, begin = NAN, end = INFINITY;
     long long serial = 0, next_job = 0;
     bool arbitration_pending = false;
@@ -83,6 +84,9 @@ public:
             schedule(now, 3);
         }
     }
+    void mark_changed(int key) {
+        if (!dirty[key]) { dirty[key] = true; changed.push_back(key); }
+    }
     int add_profile(const NodeSpec* nodes, int count, const int* deps,
                     int dep_count, const int* keys, int key_count) {
         if (count <= 0 || dep_count < 0 || key_count < 0)
@@ -92,6 +96,7 @@ public:
         if (dep_count) profile.deps.assign(deps, deps + dep_count);
         if (key_count) profile.resources.assign(keys, keys + key_count);
         profile.children.resize(count);
+        profile.releases.resize(count);
         for (int i = 0; i < count; ++i) {
             const auto& node = nodes[i];
             if (node.dep_begin < 0 || node.dep_count < 0 ||
@@ -101,7 +106,10 @@ public:
                 !std::isfinite(node.duration) || !std::isfinite(node.occupancy) ||
                 !std::isfinite(node.delay) || node.duration < 0 || node.delay < 0 ||
                 node.occupancy < 0 || node.occupancy > node.duration ||
-                node.primary < -1 || node.primary >= (int)resources.size())
+                node.primary < -1 || node.primary >= (int)resources.size() ||
+                node.release_after < -1 || node.release_after >= count ||
+                node.release_after == i ||
+                (node.release_after >= 0 && (!node.res_count || node.duration || node.occupancy)))
                 throw std::runtime_error("invalid node profile");
             for (int j = 0; j < node.dep_count; ++j) {
                 int parent = deps[node.dep_begin + j];
@@ -122,6 +130,18 @@ public:
             for (int child : profile.children[ready[i]])
                 if (!--incoming[child]) ready.push_back(child);
         if ((int)ready.size() != count) throw std::runtime_error("cyclic profile");
+        for (int i = 0; i < count; ++i) {
+            int target = nodes[i].release_after;
+            if (target < 0) continue;
+            std::vector<bool> reached(count);
+            std::vector<int> pending{i};
+            reached[i] = true;
+            for (size_t j = 0; j < pending.size(); ++j)
+                for (int child : profile.children[pending[j]])
+                    if (!reached[child]) { reached[child] = true; pending.push_back(child); }
+            if (!reached[target]) throw std::runtime_error("lifetime release must descend from acquisition");
+            profile.releases[target].push_back(i);
+        }
         profiles.push_back(std::move(profile));
         return profiles.size() - 1;
     }
@@ -155,14 +175,30 @@ public:
             resource.owned = true;
             resource.queue.pop();
         }
-        if (spec.res_count) schedule(now + spec.occupancy, 0, job.id, request.node);
+        if (spec.res_count && spec.release_after < 0)
+            schedule(now + spec.occupancy, 0, job.id, request.node);
         schedule(now + spec.duration, 2, job.id, request.node);
+    }
+    void release(Job& job, int node) {
+        const auto& profile = profiles[job.profile];
+        const auto& spec = profile.nodes[node];
+        double busy = overlap(job.states[node].start, now);
+        for (int j = 0; j < spec.res_count; ++j) {
+            int key = profile.resources[spec.res_begin + j];
+            auto& resource = resources[key];
+            resource.owned = false; resource.busy += busy;
+            if (busy > 0) ++resource.operations;
+            mark_changed(key);
+        }
+        job.released = std::max(job.released, now); wake();
     }
     void arbitrate() {
         arbitration_pending = false;
         std::vector<Request> candidates;
-        for (int key : changed)
+        for (int key : changed) {
+            dirty[key] = false;
             if (!resources[key].queue.empty()) candidates.push_back(resources[key].queue.top());
+        }
         changed.clear();
         std::sort(candidates.begin(), candidates.end(), std::greater<Request>());
         std::reverse(candidates.begin(), candidates.end());
@@ -199,21 +235,14 @@ public:
                 else {
                     for (int j = 0; j < spec.res_count; ++j) {
                         int key = profile.resources[spec.res_begin + j];
-                        resources[key].queue.push(request); changed.insert(key);
+                        resources[key].queue.push(request); mark_changed(key);
                     }
                     wake();
                 }
             } else if (event.kind == 0) {
-                double busy = overlap(state.start, now);
-                for (int j = 0; j < spec.res_count; ++j) {
-                    int key = profile.resources[spec.res_begin + j];
-                    auto& resource = resources[key];
-                    resource.owned = false; resource.busy += busy;
-                    if (busy > 0) ++resource.operations;
-                    changed.insert(key);
-                }
-                job.released = std::max(job.released, now); wake();
+                release(job, event.node);
             } else {
+                for (int acquired : profile.releases[event.node]) release(job, acquired);
                 for (int child : profile.children[event.node]) {
                     auto& next = job.states[child];
                     next.ready = std::max(next.ready, now);
@@ -234,7 +263,10 @@ extern "C" {
 int ts_node_size() { return sizeof(NodeSpec); }
 Engine* ts_create() { return new Engine(); }
 void ts_destroy(Engine* engine) { delete engine; }
-int ts_resource(Engine* engine) { engine->resources.emplace_back(); return engine->resources.size() - 1; }
+int ts_resource(Engine* engine) {
+    engine->resources.emplace_back(); engine->dirty.push_back(false);
+    return engine->resources.size() - 1;
+}
 void ts_window(Engine* engine, double start, double end) { engine->begin = start; engine->end = end; }
 const char* ts_error(Engine* engine) { return engine->error.c_str(); }
 int ts_add(Engine* engine, const NodeSpec* nodes, int count, const int* deps, int dep_count, const int* keys, int key_count) {

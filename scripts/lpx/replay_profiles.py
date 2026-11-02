@@ -20,7 +20,7 @@ import numpy as np
 from TokenSim.af.serving.service import AFService
 from TokenSim.af.serving.timing import namespace_resource
 from TokenSim.af.trace.occupancy import occupied_until
-from TokenSim.config.validation import number
+from TokenSim.config.validation import boolean, number
 from TokenSim.errors import ConfigurationError, SimulationStateError
 from scripts.lpx.replay_engine import ReplayKernel, ReplayNode
 
@@ -55,8 +55,9 @@ class NativeProfile:
         kernel = ReplayKernel()
         try:
             expected = self.metadata.get(
-                "modeled_duration_s", self.metadata["native_duration_s"]
+                "modeled_duration_s", self.metadata.get("native_duration_s")
             )
+            number(expected, "profile expected duration")
             profile = kernel.add(self.nodes)
             kernel.submit(profile, 0)
             result = kernel.advance()
@@ -136,9 +137,11 @@ def capture_profile(
     invocation_us=0.0,
     contexts=None,
     maximum_contexts=None,
+    record_node_ids=False,
 ):
     """Capture one forward; ``contexts`` gives each session its own context."""
     number(invocation_us, "LPX invocation_us", minimum=0)
+    boolean(record_node_ids, "record native node IDs")
     if contexts is None:
         contexts = maximum_contexts = (context,) * batch
     elif maximum_contexts is None:
@@ -194,6 +197,11 @@ def capture_profile(
             seed=seed,
             sample=sample,
             source_sha256=source_identity(),
+            **(
+                {"native_node_ids": [event.node_id for event in service.trace.events]}
+                if record_node_ids
+                else {}
+            ),
             host_capture_s=perf_counter() - started,
         ),
     )
@@ -268,45 +276,57 @@ def cached_profile(runtime, namespace, cache, **settings):
             result.verify()
             return result
         result = capture_profile(runtime, namespace, **settings)
-        data = [
-            [
-                node.predecessors,
-                node.resources,
-                node.primary,
-                node.delay,
-                node.duration,
-                node.occupancy,
-                node.rank,
-            ]
-            for node in result.nodes
-        ]
-        body_hash = hashlib.sha256(
-            json.dumps(data, separators=(",", ":")).encode()
-        ).hexdigest()
         result = NativeProfile(
             result.nodes,
             {
                 **result.metadata,
                 "service": namespace,
                 "model_id": runtime.model.model_id,
-                "input_sha256": key,
-                "node_body_sha256": body_hash,
             },
         )
-        saved = dict(
-            input_sha256=key,
-            body_sha256=body_hash,
-            nodes=data,
-            metadata=result.metadata,
-        )
-        with tempfile.NamedTemporaryFile(
-            dir=cache, suffix=".gz", delete=False
-        ) as temporary:
-            name = temporary.name
-        try:
-            with gzip.open(name, "wt", compresslevel=3) as stream:
-                json.dump(saved, stream, separators=(",", ":"), allow_nan=False)
-            os.replace(name, path)
-        finally:
-            Path(name).unlink(missing_ok=True)
-        return result
+        return save_profile(path, result, identity)
+
+
+def node_rows(nodes):
+    return [
+        [
+            node.predecessors,
+            node.resources,
+            node.primary,
+            node.delay,
+            node.duration,
+            node.occupancy,
+            node.rank,
+            *([node.release_after] if node.release_after is not None else []),
+        ]
+        for node in nodes
+    ]
+
+
+def save_profile(path, profile, identity):
+    """Atomically retain a reconstructable native or composed program snapshot."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    key = hashlib.sha256(
+        json.dumps(identity, sort_keys=True, allow_nan=False).encode()
+    ).hexdigest()
+    data = node_rows(profile.nodes)
+    body = hashlib.sha256(json.dumps(data, separators=(",", ":")).encode()).hexdigest()
+    result = NativeProfile(
+        profile.nodes,
+        {**profile.metadata, "input_sha256": key, "node_body_sha256": body},
+    )
+    saved = dict(
+        input_sha256=key, body_sha256=body, nodes=data, metadata=result.metadata
+    )
+    with tempfile.NamedTemporaryFile(
+        dir=path.parent, suffix=".gz", delete=False
+    ) as temporary:
+        name = temporary.name
+    try:
+        with gzip.open(name, "wt", compresslevel=3) as stream:
+            json.dump(saved, stream, separators=(",", ":"), allow_nan=False)
+        os.replace(name, path)
+    finally:
+        Path(name).unlink(missing_ok=True)
+    return result

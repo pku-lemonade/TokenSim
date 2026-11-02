@@ -144,6 +144,21 @@ class UnitAccountingTest(unittest.TestCase):
 
 
 class FabricOracleTest(unittest.TestCase):
+    def test_inter_rack_sensitivity_preserves_within_rack_scopes(self):
+        legacy = LP30Fabric()
+        explicit = replace(legacy, inter_rack_us=4.0)
+        for endpoints in ((0, 15), (15, 16), (127, 128)):
+            self.assertEqual(
+                legacy.propagation_s(endpoints), explicit.propagation_s(endpoints)
+            )
+        self.assertAlmostEqual(legacy.propagation_s((255, 256)), 1.15e-6)
+        self.assertAlmostEqual(explicit.propagation_s((255, 256)), 4e-6)
+        routed = replace(explicit, routes=({"source": 0, "target": 1, "via": [256]},))
+        self.assertAlmostEqual(routed.phase([(0, 1, 320)], 6)[2], 8e-6)
+        for changes in ({"rack_chips": 64}, {"inter_rack_us": 1.0}):
+            with self.assertRaises(ConfigurationError):
+                replace(legacy, **changes)
+
     def test_routes_cannot_borrow_unallocated_chips(self):
         builder = SimpleNamespace(worker_indices={"rank0": 0, "rank1": 1})
         fabric = FabricRefinement(

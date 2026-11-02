@@ -16,9 +16,11 @@ from TokenSim.errors import ConfigurationError
 class LP30Fabric:
     local_chips: int = 16
     middle_chips: int = 128
+    rack_chips: int = 256
     local_us: float = 0.35
     middle_us: float = 0.75
     rack_us: float = 1.15
+    inter_rack_us: float | None = None
     ports_per_chip: int = 96
     lanes_per_peer: int = 6
     p2p_lanes: int = 6
@@ -32,6 +34,7 @@ class LP30Fabric:
         for name in (
             "local_chips",
             "middle_chips",
+            "rack_chips",
             "ports_per_chip",
             "lanes_per_peer",
             "p2p_lanes",
@@ -39,12 +42,16 @@ class LP30Fabric:
             integer(getattr(self, name), f"LP30 fabric {name}", minimum=1)
         if self.middle_chips < self.local_chips:
             raise ConfigurationError("LP30 propagation scopes must be nested")
+        if self.rack_chips < self.middle_chips:
+            raise ConfigurationError("LP30 rack scope must contain middle scope")
         if max(self.lanes_per_peer, self.p2p_lanes) > self.ports_per_chip:
             raise ConfigurationError("LP30 lane bundle exceeds chip ports")
         for name in ("local_us", "middle_us", "rack_us"):
             number(getattr(self, name), f"LP30 fabric {name}", minimum=0)
         if not self.local_us <= self.middle_us <= self.rack_us:
             raise ConfigurationError("LP30 propagation must increase with scope")
+        if self.inter_rack_us is not None:
+            number(self.inter_rack_us, "LP30 inter_rack_us", minimum=self.rack_us)
         for name in (
             "lane_bytes_per_s",
             "injection_bytes_per_s",
@@ -73,6 +80,11 @@ class LP30Fabric:
         if len(set(chips)) <= 1:
             return 0.0
         low, high = min(chips), max(chips)
+        if (
+            self.inter_rack_us is not None
+            and low // self.rack_chips != high // self.rack_chips
+        ):
+            return self.inter_rack_us * 1e-6
         if low // self.local_chips == high // self.local_chips:
             return self.local_us * 1e-6
         if low // self.middle_chips == high // self.middle_chips:
@@ -236,4 +248,9 @@ class FabricRefinement:
             config=asdict(self.policy),
             counters=dict(self.counts),
             status="Synthetic per-port routes and scoped propagation; physical LPX wiring and scheduling are unverified.",
+            inter_rack_propagation=(
+                "Explicit uncalibrated sensitivity assumption."
+                if self.policy.inter_rack_us is not None
+                else "Unspecified; legacy broad-scope propagation applies across rack boundaries."
+            ),
         )

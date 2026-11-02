@@ -886,3 +886,10 @@ The [256-chip batch and pipeline MFU study](lpx-batch-concurrency-mfu.md) compar
 At the representative 101K decode context, the capacity partition admits all four counts and gives 18,765.6 aggregate TPS at 0.7701% MFU for batch 11.
 The same partition gives approximately 32,267.3 aggregate TPS at 1.3241% MFU for 11 requests with microbatch one, subject to unverified compiler scheduling and buffer lifetime assumptions.
 The record separates total resident requests from microbatch size, documents default-partition SRAM rejections and retains measurement-window variation and MFU definitions.
+
+## Maximum-MFU search progress
+
+The [100K Gemma 4 31B MFU search](lpx-maximum-mfu-search.md) extends the inventory, layout, partition and issue-schedule search beyond the TP32/PP8 comparison.
+It records observed candidates, fixed-DAG bounds, memory coverage, public hardware evidence and the outstanding requirements for a global optimality claim.
+The separate embedding/LM-head placement reaches a conditional non-speculative 3.03914% MFU on 163 LP30 chips.
+The [shared-KV assistant study](lpx-assistant-mfu-search.md) adds draft weights, remote cache-owner attention, verification and feedback costs with explicit acceptance scenarios.

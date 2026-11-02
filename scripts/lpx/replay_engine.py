@@ -26,6 +26,7 @@ class NodeSpec(ct.Structure):
             "res_count",
             "rank",
             "primary",
+            "release_after",
         )
     ] + [(name, ct.c_double) for name in ("delay", "duration", "occupancy")]
 
@@ -128,6 +129,7 @@ class ReplayNode:
     duration: float
     occupancy: float
     rank: int = 0
+    release_after: int | None = None
 
     def __post_init__(self):
         for value in self.predecessors:
@@ -136,6 +138,12 @@ class ReplayNode:
         number(self.delay, "replay readiness delay")
         number(self.duration, "replay duration")
         number(self.occupancy, "replay occupancy", maximum=self.duration)
+        if self.release_after is not None:
+            integer(self.release_after, "replay lifetime release node")
+            if not self.resources or self.duration or self.occupancy:
+                raise ConfigurationError(
+                    "lifetime acquisition needs resources and zero service duration"
+                )
         if any(not isinstance(key, str) or not key for key in self.resources):
             raise ConfigurationError("replay resources require nonempty names")
 
@@ -170,6 +178,7 @@ class ReplayKernel:
                     len(node.resources),
                     node.rank,
                     -1 if node.primary is None else self.resource(node.primary),
+                    -1 if node.release_after is None else node.release_after,
                     node.delay,
                     node.duration,
                     node.occupancy,

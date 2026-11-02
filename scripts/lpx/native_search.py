@@ -66,18 +66,20 @@ def build_runtime(
     )
 
 
-def memory_report(runtime, maximum_context):
+def memory_report(runtime, maximum_context, resident_requests=1):
+    integer(resident_requests, "memory report resident requests", minimum=1)
     if maximum_context > runtime.model.max_position_embeddings:
         raise ConfigurationError("search exceeds the model context limit")
     memory = ResidentKV(runtime.plan)
     owner = next(iter(runtime.plan.request_owners))
-    memory.admit(
-        0,
-        owner.domain,
-        owner.instance,
-        maximum_context=maximum_context,
-        current_context=0,
-    )
+    for request in range(resident_requests):
+        memory.admit(
+            request,
+            owner.domain,
+            owner.instance,
+            maximum_context=maximum_context,
+            current_context=0,
+        )
     rows = [
         dict(
             physical=state.physical_identity,
@@ -92,7 +94,7 @@ def memory_report(runtime, maximum_context):
         )
         for state in runtime.plan.physical_states
     ]
-    return dict(
+    result = dict(
         maximum_context=maximum_context,
         peak_rank=max(rows, key=lambda r: r["total_bytes"]),
         minimum_headroom_bytes=min(
@@ -106,6 +108,12 @@ def memory_report(runtime, maximum_context):
             else "Native decode weights, protocol buffers and one resident KV lease; prefill workspace excluded."
         ),
     )
+    if resident_requests != 1:
+        result["resident_requests"] = resident_requests
+        result["scope"] = result["scope"].replace(
+            "one resident KV lease", f"{resident_requests} resident KV leases"
+        )
+    return result
 
 
 def streaming_settings(layout, launch_us=0.5):
