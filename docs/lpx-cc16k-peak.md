@@ -313,9 +313,12 @@ The seven preregistered expectations are unchanged.
 A publication preflight using `git push --dry-run` did not complete; a bounded retry timed out after 35 seconds.
 Commit `7540b49` records C0 through C2, the available results and the running C3 workflow locally.
 The subsequent actual push to `lpx-context-parallel` timed out after 45 seconds with exit status 124 and no server acknowledgment; remote publication is unconfirmed.
-The 22:40 Shanghai check retried the push and observed it waiting in the editor's Git credential helper until another 45-second timeout.
+The 2026-10-30 22:40 Shanghai check retried the push and observed it waiting in the editor's Git credential helper until another 45-second timeout.
 A public remote-branch read after that attempt still returned `7388167`, confirming that `7540b49` was not published to the target branch.
 Publication requires a responsive credential helper with authorized Git credentials; recurring checks continue after collection and analysis have finished.
+Commit `1439744` records the complete native outputs, comparison and final results reporting locally.
+The final-results push on 2026-10-31 also waited in the editor's Git credential helper and timed out after 90 seconds with exit status 124.
+The subsequent remote-branch check still returned `7388167`; neither study commit is published to the target branch.
 This is not a successful publication; C0 through C3 and the C4 reporting and validation are complete, while publication remains open.
 
 ## Collection and recurring checks
