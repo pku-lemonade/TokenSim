@@ -15,7 +15,7 @@
   "collection_status": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-cc302-collection-status.json",
   "timer_state": "/tmp/lpx-gpu/cc302/periodic-state.json",
   "last_check": {
-    "checked_unix": 1793430651,
+    "checked_unix": 1793585424,
     "collector_status": "complete",
     "stage": "C4-publication",
     "plain_completed_requests": 302,
@@ -31,8 +31,9 @@
     "native_repetition_flags": 0,
     "native_median_decode_tps": 38.79128276526042,
     "native_completed_counters_valid": true,
-    "timer_deliveries": 41,
-    "timer_next_due_unix": 1793432421.8449643,
+    "timer_deliveries": 127,
+    "timer_next_due_unix": 1793587221.8449643,
+    "timer_thread": "01a19a00-a82b-7bb1-b373-ff0394c84652",
     "repository_tests_passed": 776,
     "lookup_analysis_status": "complete",
     "native_analysis_status": "complete",
@@ -41,13 +42,14 @@
     "native_source_hashes_verified": 4,
     "plain_output_hash_unchanged": true,
     "native_server_error_markers": 0,
-    "repository_tests_last_run_unix": 1793378661.245428,
+    "repository_tests_last_run_unix": 1793585424,
+    "repository_tests_log": "/tmp/lpx-gpu/cc302/resume-tests-20261102.log",
     "publication_status": "failed",
     "report_tables_verified": 8,
     "report_priced_rows_verified": 78,
     "gpu_released": true,
     "both_output_hashes_verified": true,
-    "publication_preflight_exit_status": 124,
+    "publication_preflight_exit_status": 128,
     "remote_head": "738816768acd8d47665e11d1a6d2376243da36e6"
   },
   "analysis_entrypoint": "scripts/analyze_lpx_gpu_cc302.py",
@@ -79,19 +81,23 @@
     "requires": "Responsive credential helper with an account authorized to push to pku-lemonade/TokenSim.",
     "last_preflight": {
       "command": [
+        "env",
+        "GIT_TERMINAL_PROMPT=0",
+        "GIT_ASKPASS=/bin/false",
+        "SSH_ASKPASS=/bin/false",
         "git",
         "push",
         "--dry-run",
         "origin",
         "HEAD:lpx-context-parallel"
       ],
-      "timeout_seconds": 15,
-      "exit_status": 124,
-      "log": "/tmp/lpx-gpu/cc302/publication-preflight-20261031-1510.log",
-      "checked_unix": 1793430651,
-      "result": "Credential/publication preflight timed out; no new push was performed."
+      "timeout_seconds": 25,
+      "exit_status": 128,
+      "log": "/tmp/lpx-gpu/cc302/publication-preflight-20261102.log",
+      "checked_unix": 1793585290,
+      "result": "Noninteractive preflight failed because Git could not obtain a GitHub username; no new push was performed."
     },
-    "remote_checked_unix": 1793430651
+    "remote_checked_unix": 1793585290
   },
   "publication_attempts": [
     {
@@ -161,5 +167,6 @@
     "mean_absolute_turn_acceptance_difference": 0.0012036669243094824,
     "expectation_within_0_03": true
   },
-  "local_results_commit": "1439744852514652bac9cbe3bcfe4fe07d13ad10"
+  "local_results_commit": "1439744852514652bac9cbe3bcfe4fe07d13ad10",
+  "resume_checkpoint_commit": "fa90435e1842c1207eb86e8110c1b10efd856a07"
 }

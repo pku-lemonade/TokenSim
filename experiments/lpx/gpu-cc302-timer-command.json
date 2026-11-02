@@ -1,5 +1,5 @@
 {
-  "pid": 1584292,
+  "pid": 1980400,
   "argv": [
     "/tmp/lpx-gpu/repo-venv/bin/python",
     "-u",
@@ -11,15 +11,16 @@
     "--state",
     "/tmp/lpx-gpu/cc302/periodic-state.json",
     "--thread",
-    "01a18c06-9d7b-7971-a894-a413d645f829",
+    "01a19a00-a82b-7bb1-b373-ff0394c84652",
     "--codex",
     "/home/tiger/.local/bin/codex",
     "--interval-seconds",
-    "1800",
-    "--initial-ping"
+    "1800"
   ],
   "log": "/tmp/lpx-gpu/cc302/periodic.log",
   "state": "/tmp/lpx-gpu/cc302/periodic-state.json",
-  "started_unix": 1793358621.7939658,
+  "started_unix": 1793585290,
+  "previous_thread": "01a18c06-9d7b-7971-a894-a413d645f829",
+  "previous_state": "/tmp/lpx-gpu/cc302/periodic-state-before-resume-20261102.json",
   "interval_seconds": 1800
 }

@@ -319,6 +319,10 @@ Publication requires a responsive credential helper with authorized Git credenti
 Commit `1439744` records the complete native outputs, comparison and final results reporting locally.
 The final-results push on 2026-10-31 also waited in the editor's Git credential helper and timed out after 90 seconds with exit status 124.
 The subsequent remote-branch check still returned `7388167`; neither study commit is published to the target branch.
+The 2026-11-02 resumption committed the outstanding publication records as `fa90435` before continuing work.
+A noninteractive push preflight on that date exited with status 128 because Git could not obtain a GitHub username; disabling the editor askpass prompt avoided the earlier hang.
+The remote branch still returned `7388167`, and both 302-row output files retained their recorded SHA-256 hashes.
+The resumed validation run passed all 776 tests in 202.983 seconds, with all 530 Python files unchanged by Black and a clean diff check.
 This is not a successful publication; C0 through C3 and the C4 reporting and validation are complete, while publication remains open.
 
 ## Collection and recurring checks
@@ -369,6 +373,9 @@ Its `complete` status describes collection only; the full workflow remains open 
 The user requested status checks every 30 minutes until all tasks finish.
 The [periodic timer](../scripts/monitor_lpx_gpu_periodic.py) submits a message to this existing Codex task every 1,800 seconds, including while GPU collection is running.
 An immediate connection check successfully queued message `01a18c80-ed9e-7c11-b91a-6e46ecae9f9c` to task `01a18c06-9d7b-7971-a894-a413d645f829`.
+On 2026-11-02, the existing timer was stopped and restarted for resumed task `01a19a00-a82b-7bb1-b373-ff0394c84652`, preserving its 1,800-second deadline and 126 prior deliveries.
+The previous timer state is preserved outside the repository as `/tmp/lpx-gpu/cc302/periodic-state-before-resume-20261102.json`.
+The resumed timer successfully queued message `01a19a05-9f0c-7362-b413-7625950c6406` to the resumed task at 10:10 Shanghai time, bringing its total to 127 deliveries.
 The [timer command record](../experiments/lpx/gpu-cc302-timer-command.json) records the detached process and its external state and log paths.
 The timer persists its deadline across restarts, rejects a second process on the same state file and retries known queue failures after 60 seconds.
 A timed-out submission is recorded as uncertain and is not immediately duplicated.
@@ -378,7 +385,7 @@ A timed-out submission is recorded as uncertain and is not immediately duplicate
   --workflow experiments/lpx/gpu-cc302-workflow.json \
   --task docs/lpx-cc16k-peak.md \
   --state /tmp/lpx-gpu/cc302/periodic-state.json \
-  --thread 01a18c06-9d7b-7971-a894-a413d645f829 \
+  --thread 01a19a00-a82b-7bb1-b373-ff0394c84652 \
   --codex /home/tiger/.local/bin/codex \
   --interval-seconds 1800
 ```
