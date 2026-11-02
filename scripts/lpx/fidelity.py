@@ -32,6 +32,8 @@ def validate(raw):
                 if not isinstance(raw[name], dict):
                     raise ConfigurationError(f"LP30 {name} requires an object")
                 result[name] = asdict(cls(**raw[name]))
+                if name == "operator" and "shared_kv_kernel" not in raw[name]:
+                    result[name].pop("shared_kv_kernel", None)
         compute = raw.get("compute", {})
         if not isinstance(compute, dict) or set(compute) - {
             "gemm_mfu",

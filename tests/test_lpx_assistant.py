@@ -86,6 +86,16 @@ class AssistantTest(unittest.TestCase):
             remote_workspace(self.spec, tp=16, kvp=4, tile_keys=256), 1048576
         )
         self.assertEqual(
+            remote_workspace(
+                self.spec,
+                tp=16,
+                kvp=4,
+                tile_keys=256,
+                global_kv_layout="value_rope_fp8",
+            ),
+            2 * 1048576,
+        )
+        self.assertEqual(
             remote_workspace(self.spec, tp=16, kvp=16, tile_keys=256), 4 * 1048576
         )
         with self.assertRaises(ConfigurationError):

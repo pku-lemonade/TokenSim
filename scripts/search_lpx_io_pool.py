@@ -11,6 +11,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from TokenSim.config.validation import integer, number
+from TokenSim.config.kv_storage import GLOBAL_KV_LAYOUTS
 from TokenSim.errors import ConfigurationError
 from scripts.lpx.fidelity import load
 from scripts.lpx.io_pool import pooled_program, transformer_profile
@@ -33,6 +34,10 @@ def main(argv=None):
     parser.add_argument("--pp", type=int, default=10)
     parser.add_argument("--pool-chips", type=int, default=3)
     parser.add_argument("--resident-requests", type=int)
+    parser.add_argument(
+        "--global-kv-layout", choices=GLOBAL_KV_LAYOUTS, default="separate"
+    )
+    parser.add_argument("--shared-kv-kernel", choices=("assemble", "split_dot"))
     parser.add_argument("--issue-us", type=float)
     parser.add_argument("--warmup-rounds", type=int, default=8)
     parser.add_argument("--measured-rounds", type=int, default=32)
@@ -44,6 +49,8 @@ def main(argv=None):
         build_cache()
         config = article_config(load(args.config))
         config["compute"]["attention_mfu"] = 0.5
+        if args.shared_kv_kernel is not None:
+            config["operator"]["shared_kv_kernel"] = args.shared_kv_kernel
         hardware, model, transformer, admission = transformer_profile(
             config,
             tp=args.tp,
@@ -52,6 +59,7 @@ def main(argv=None):
             queries=1,
             cache=args.output / "profiles",
             resident=args.resident_requests,
+            global_kv_layout=args.global_kv_layout,
         )
         profile, pool = pooled_program(
             hardware,
@@ -120,6 +128,10 @@ def main(argv=None):
             ).hexdigest(),
             scope="Single-token greedy decode with separate shared embedding/LM-head storage, explicit native boundary replacement, arena lifetimes and uncalibrated operator/routes; physical bank placement and compiler execution unverified.",
         )
+        if args.global_kv_layout != "separate":
+            result[
+                "scope"
+            ] += " Experimental value-plus-rotary-key FP8 storage uses two FP32 scales per KV head and token; model quality and matching-cache 100K acceptance are unverified."
         write_json(args.output / "result.json", result)
         print(
             json.dumps(

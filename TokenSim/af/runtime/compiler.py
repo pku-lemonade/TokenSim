@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from TokenSim.config.kv_storage import selected_layout
+
 from typing import Any
 
 from TokenSim.af.runtime.kv_sequence import validate_kv_parallel_domain
@@ -171,6 +173,7 @@ def compile_af_runtime_plan(
             ),
             head_dim=model.attention_geometry(layer_id).head_dim,
             k_eq_v=model.attention_geometry(layer_id).k_eq_v,
+            kv_cache_layout=selected_layout(model, layer_id),
             dense_intermediate_size=intermediate,
             routed_intermediate_size=moe_intermediate,
             shared_intermediate_size=(

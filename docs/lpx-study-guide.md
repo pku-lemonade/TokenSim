@@ -893,3 +893,5 @@ The [100K Gemma 4 31B MFU search](lpx-maximum-mfu-search.md) extends the invento
 It records observed candidates, fixed-DAG bounds, memory coverage, public hardware evidence and the outstanding requirements for a global optimality claim.
 The separate embedding/LM-head placement reaches a conditional non-speculative 3.03914% MFU on 163 LP30 chips.
 The [shared-KV assistant study](lpx-assistant-mfu-search.md) adds draft weights, remote cache-owner attention, verification and feedback costs with explicit acceptance scenarios.
+The [experimental global-cache representation study](lpx-shared-kv-mfu-search.md) adds physical FP8 scale bytes, native admission and two priced reconstruction kernels.
+Its conditional MFU results remain separate from the existing-format incumbent pending model-quality validation.

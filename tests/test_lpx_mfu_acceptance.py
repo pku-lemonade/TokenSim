@@ -54,6 +54,15 @@ class MeasuredAcceptanceTest(unittest.TestCase):
         self.assertEqual(result["precision_mismatches"], ["kv_precision"])
         self.assertEqual(result["aggregate_tps_from_turn_mean"], 25)
         self.assertAlmostEqual(result["mfu_percent_from_pooled_rounds"], 2 / 3)
+        shared = deepcopy(program)
+        shared["native_transformer"]["proxy_model"][
+            "global_kv_layout"
+        ] = "value_rope_fp8"
+        projected = project(shared, measured, 1e6)
+        self.assertIn("global_kv_layout", projected["precision_mismatches"])
+        self.assertEqual(
+            projected["measured_precision"]["global_kv_layout"], "unrecorded"
+        )
         with self.assertRaises(WorkloadValidationError):
             project(
                 program, {**measured, "config": {**measured["config"], "K": 1}}, 1e6

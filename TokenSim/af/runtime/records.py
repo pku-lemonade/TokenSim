@@ -138,6 +138,7 @@ class AFLayerRuntime:
     tie_word_embeddings: bool = True
     attention_window: int = 0
     k_eq_v: bool = False
+    kv_cache_layout: str = "separate"
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -154,6 +155,11 @@ class AFLayerRuntime:
             "num_kv_heads": self.num_kv_heads,
             "head_dim": self.head_dim,
             **({"k_eq_v": True} if self.k_eq_v else {}),
+            **(
+                {"kv_cache_layout": self.kv_cache_layout}
+                if self.kv_cache_layout != "separate"
+                else {}
+            ),
             "dense_intermediate_size": self.dense_intermediate_size,
             "routed_intermediate_size": self.routed_intermediate_size,
             "shared_intermediate_size": self.shared_intermediate_size,

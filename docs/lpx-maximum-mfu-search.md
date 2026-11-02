@@ -1,14 +1,15 @@
 # Search for maximum MFU at 100K context
 
-Progress date: 2026-11-02.
+Progress date: 2026-11-03.
 The objective is to maximize useful model FLOP utilization (MFU) when serving Gemma 4 31B with a 100,000-token input.
 The search includes inventories beyond 256 LP30 chips.
 Observed throughput, memory admission, model bounds and hardware evidence have separate meanings in this record.
 The search remains open.
-The latest non-speculative decode probe reaches 3.03914% MFU on 163 chips with ten resident requests.
+The existing-format non-speculative decode incumbent reaches 3.03914% MFU on 163 chips with ten resident requests.
 It places transformer layers on 160 chips and the tied embedding and language-model (LM) head on three additional chips.
 Assistant-aware draft and verification replays provide conditional acceptance scenarios and explicit transports of the repository's measured 100K GPU acceptance.
 The measured GPU KV and assistant precision differ from some LP30 configurations.
+An experimental shared global-cache format reaches 3.41960% conditional decode MFU with fourteen resident requests; matching model quality remains unverified.
 The 5 MB per-chip safety reserve remains enabled.
 
 ## Metric and workload
@@ -282,6 +283,10 @@ The same check gives a counterexample to bitwise equivalence after independently
 It uses random vectors, not Gemma weights or a quality benchmark.
 A shared representation therefore needs a defined quantization policy, reconstruction work and measured quality before it can join the observed incumbent comparison.
 
+The [experimental shared-KV study](lpx-shared-kv-mfu-search.md) charges physical scale bytes, native allocation and reconstruction work for a different global-cache representation.
+Its split-dot candidate reaches 3.41960% conditional decode MFU on 163 chips with fourteen resident requests.
+Matching-cache model quality remains unverified, so the existing-format incumbent stays separate.
+
 The [Open-TQ-Metal paper](https://arxiv.org/abs/2604.16957) studies fused compressed-domain attention with Gemma 4 31B among its models.
 Its Apple Silicon results motivate a separate KV representation study; they do not calibrate LP30 conversion costs or establish 100K quality equivalence for this workload.
 
@@ -365,9 +370,9 @@ Profile caches and full node timing traces remain under the ignored `outputs` di
 
 ## Validation status
 
-Black 24.2.0 formatting and its check pass for all 553 Python files in the required project paths.
-All 56 targeted MFU, fidelity and native-search tests pass, including seven partition-bound tests and explicit lifetime, I/O-pool and assistant-structure oracles.
-The latest full-suite run executes 819 tests, with an unchanged macOS path-resolution assertion failure and an unchanged GPU-runner test requiring Linux `/proc` and `nvidia-smi`.
+Black 24.2.0 formatting and its check pass for all 558 Python files in the required project paths.
+All 49 directly related shared-KV, MFU, fidelity, I/O-pool, assistant and context-parallel tests pass in the targeted run.
+The latest full-suite run executes 827 tests, with an unchanged macOS path-resolution assertion failure and an unchanged GPU-runner test requiring Linux `/proc` and `nvidia-smi`.
 The reporting dependency is installed, and all four reporting tests pass.
 The two platform-dependent checks remain unresolved on this macOS host.
 The run includes the generalized remote-attention workspace validation.

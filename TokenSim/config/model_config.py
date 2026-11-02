@@ -40,6 +40,7 @@ class ModelSpec(AttentionModelMixin):
     dtype: str = "fp16"
     activation_dtype: str | None = None
     kv_cache_dtype: str = "fp16"
+    global_kv_layout: str = "separate"
     sliding_window: int = 0
     attention_windows: tuple[int, ...] = ()
     tie_word_embeddings: bool = False
@@ -128,6 +129,9 @@ class ModelSpec(AttentionModelMixin):
             normalize_dtype(self.activation_dtype or self.dtype),
         )
         object.__setattr__(self, "kv_cache_dtype", normalize_dtype(self.kv_cache_dtype))
+        from TokenSim.config.kv_storage import validate_global_kv_layout
+
+        validate_global_kv_layout(self)
         object.__setattr__(
             self,
             "operator_dtypes",
@@ -387,6 +391,7 @@ class ModelSpec(AttentionModelMixin):
                 else None
             ),
             kv_cache_dtype=str(raw.get("kv_cache_dtype", raw.get("dtype", "fp16"))),
+            global_kv_layout=raw.get("global_kv_layout", "separate"),
             sliding_window=int(raw.get("sliding_window", 0) or 0),
             attention_windows=raw.get("attention_windows", ()),
             tie_word_embeddings=bool(raw.get("tie_word_embeddings", False)),
@@ -443,6 +448,11 @@ class ModelSpec(AttentionModelMixin):
             "dtype": self.dtype,
             "activation_dtype": self.activation_dtype,
             "kv_cache_dtype": self.kv_cache_dtype,
+            **(
+                {"global_kv_layout": self.global_kv_layout}
+                if self.global_kv_layout != "separate"
+                else {}
+            ),
             "is_moe": self.is_moe,
             "moe": self.moe.to_dict(),
             "sources": {key: dict(value) for key, value in self.sources.items()},

@@ -4,6 +4,8 @@ from collections import Counter
 import json
 
 from TokenSim.af.providers.compute import prefill_components
+from TokenSim.config.kv_storage import attention_storage_key
+from TokenSim.errors import ConfigurationError
 
 
 def attention_core(
@@ -18,6 +20,19 @@ def attention_core(
         "head_dim": model.attention_geometry(query.layer_id).head_dim,
         "window_size": model.attention_window(query.layer_id),
     }
+    storage = attention_storage_key(model, query.layer_id)
+    if storage and (
+        resolver.device.device_id != "groq_lp30"
+        or "lpx_pipeline" not in resolver.device.analytical
+    ):
+        raise ConfigurationError(
+            "shared global KV requires the LP30 analytical pipeline"
+        )
+    if storage and resolver.package is not None:
+        raise ConfigurationError(
+            "shared global KV needs analytical_only operator resolution"
+        )
+    common.update(storage)
     lengths = tuple(query.context_lengths if lengths is None else lengths)
     lengths = lengths or (1,) * tokens
     if any(type(length) is not int or length < 1 for length in lengths):

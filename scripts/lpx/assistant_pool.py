@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 
 from TokenSim.af.runtime.kv_sequence import visible_tokens
+from TokenSim.config.kv_storage import GLOBAL_KV_LAYOUTS, extra_workspace
 from TokenSim.config.validation import integer
 from TokenSim.dtypes import dtype_size_bytes
 from TokenSim.errors import ConfigurationError
@@ -191,12 +192,14 @@ def intersections(source_widths, destination_widths):
     return result
 
 
-def remote_workspace(spec, *, tp, kvp, tile_keys):
+def remote_workspace(spec, *, tp, kvp, tile_keys, global_kv_layout="separate"):
     """Round a cache-owner tile/convert/score/output envelope to whole MiB."""
     for value, name in ((tp, "TP"), (kvp, "DCP"), (tile_keys, "key tile")):
         integer(value, f"assistant remote {name}", minimum=1)
     if tp % kvp:
         raise ConfigurationError("assistant remote DCP must divide TP")
+    if global_kv_layout not in GLOBAL_KV_LAYOUTS:
+        raise ConfigurationError("invalid assistant shared KV storage layout")
     maximum = 0
     for dim, window, kv in zip(spec.dims, spec.windows, spec.kv_heads):
         attention_tp = tp if window else tp // kvp
@@ -207,13 +210,22 @@ def remote_workspace(spec, *, tp, kvp, tile_keys):
         heads, local_kv = spec.heads // attention_tp, kv // attention_tp
         # FP8 K/V tiles plus BF16 converted tiles, paired FP32 score rows,
         # query buffers and paired FP32 partial output/LSE buffers.
-        maximum = max(
-            maximum,
+        envelope = (
             6 * tile_keys * local_kv * dim
             + 8 * tile_keys * heads
             + 4 * heads * dim
-            + 8 * heads * (dim + 1),
+            + 8 * heads * (dim + 1)
         )
+        if not window and global_kv_layout != "separate":
+            envelope += extra_workspace(
+                head_dim=dim,
+                kv_heads=local_kv,
+                query_heads=heads,
+                queries=1,
+                tile_keys=tile_keys,
+                buffers=2,
+            )
+        maximum = max(maximum, envelope)
     unit = 1048576
     return max(unit, (maximum + unit - 1) // unit * unit)
 
@@ -237,7 +249,17 @@ def gemm(program, parents, chip, dtype, n, k):
     return program.compute(parents, chip, "gemm", dict(dtype=dtype, m=1, n=n, k=k))
 
 
-def remote_attention(program, parents, *, spec, layer, draft_chips, target_chips, kvp):
+def remote_attention(
+    program,
+    parents,
+    *,
+    spec,
+    layer,
+    draft_chips,
+    target_chips,
+    kvp,
+    global_kv_layout="separate",
+):
     """Run QK/softmax/AV at the existing target cache owners, then merge at draft TP."""
     dim, window = spec.dims[layer], spec.windows[layer]
     target_tp, draft_tp = len(target_chips), len(draft_chips)
@@ -277,6 +299,11 @@ def remote_attention(program, parents, *, spec, layer, draft_chips, target_chips
                     window_size=0,
                     batch_size=1,
                     context_len=keys,
+                    **(
+                        {"kv_cache_layout": global_kv_layout}
+                        if not window and global_kv_layout != "separate"
+                        else {}
+                    ),
                 ),
             )
         )
@@ -322,6 +349,7 @@ def draft_step(
     kvp,
     launch_resource,
     launch_seconds,
+    global_kv_layout="separate",
 ):
     """One exact full-vocabulary greedy proposal, excluding acceptance assumptions."""
     h, backbone, width = spec.hidden, spec.backbone, len(draft_chips)
@@ -374,6 +402,7 @@ def draft_step(
             draft_chips=draft_chips,
             target_chips=target_chips,
             kvp=kvp,
+            global_kv_layout=global_kv_layout,
         )
         projected = [
             gemm(program, (attended,), chip, dtype, h, local_heads * dim)

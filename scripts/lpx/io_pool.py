@@ -22,12 +22,13 @@ from scripts.lpx.streaming import duration
 from scripts.run_lpx_context_parallel import environment, layout_for
 
 
-def transformer_setup(config, *, tp, queries):
+def transformer_setup(config, *, tp, queries, global_kv_layout="separate"):
     """Keep the target communication budget while relocating boundary weights."""
     integer(tp, "transformer tensor width", minimum=1)
     integer(queries, "transformer verification queries", minimum=1)
     config = deepcopy(config)
     _, full_model, _, _ = environment(config)
+    full_model = replace(full_model, global_kv_layout=global_kv_layout)
     memory = config["memory"]
     memory["prefill_chunk"] = queries
     # Keep the full target's conservative communication arena on every stage.
@@ -56,9 +57,10 @@ def transformer_profile(
     cache,
     resident=None,
     kv_parallel_layers="full_attention",
+    global_kv_layout="separate",
 ):
     config, hardware, full_model, proxy = transformer_setup(
-        config, tp=tp, queries=queries
+        config, tp=tp, queries=queries, global_kv_layout=global_kv_layout
     )
     if pp > full_model.num_layers:
         raise ConfigurationError("transformer stages exceed model layers")

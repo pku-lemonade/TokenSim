@@ -12,6 +12,10 @@ from TokenSim.dtypes import dtype_size_bytes
 from TokenSim.errors import ConfigurationError
 from TokenSim.operator_data.analytical.base import AnalyticalEstimate, Calibration
 from TokenSim.operator_data.workload import work_for_table
+from TokenSim.operator_data.analytical.kv_storage import (
+    shared_attention_work,
+    query_scale_seconds,
+)
 
 
 @dataclass(frozen=True)
@@ -26,6 +30,7 @@ class LP30Pipeline:
     attention_tile_keys: int = 256
     fill_drain_us: float = 0.05
     schedule: str = "tiled"
+    shared_kv_kernel: str = "assemble"
 
     def __post_init__(self):
         dtype_size_bytes(self.activation_dtype, role="activation_dtype")
@@ -38,6 +43,10 @@ class LP30Pipeline:
         number(self.fill_drain_us, "LP30 fill/drain", minimum=0)
         if self.schedule not in {"tiled", "serialized"}:
             raise ConfigurationError("LP30 schedule must be tiled or serialized")
+        if self.shared_kv_kernel not in {"assemble", "split_dot"}:
+            raise ConfigurationError(
+                "LP30 shared_kv_kernel must be assemble or split_dot"
+            )
 
 
 def _rounded(elements, element_bytes, vector_bytes):
@@ -52,8 +61,9 @@ def _attention_units(table, key, work, policy):
     rows = int(key["batch_size"]) * heads * queries
     # max, subtract, sum, normalize and scale; exponentials have a separate rate.
     scalar_ops = 5 * pairs
-    cache_elements = work.kv_bytes / dtype_size_bytes(
-        key["kv_cache_dtype"], role="kv_cache_dtype"
+    cache_elements = work.details.get("shared_kv", {}).get(
+        "cache_payload_elements",
+        work.kv_bytes / dtype_size_bytes(key["kv_cache_dtype"], role="kv_cache_dtype"),
     )
     conversions = cache_elements if key["kv_cache_dtype"] != key["attn_dtype"] else 0
     mean_keys = pairs / max(rows, 1)
@@ -70,6 +80,7 @@ def estimate_lp30(table, key, device, calibration=None):
     work = work_for_table(table, key)
     matrix_ops, vector_ops, exps, shuffle, tiles = 0.0, 0.0, 0.0, 0.0, 1
     conversions = 0.0
+    shared = None
     dtype = str(key.get("attn_dtype", key.get("dtype", "bf16")))
     efficiency = float(params.get("gemm_mfu", 0.8))
     if table in {"gemm", "grouped_gemm"}:
@@ -100,11 +111,15 @@ def estimate_lp30(table, key, device, calibration=None):
         "context_attention",
         "ragged_generation_attention",
     }:
+        work, shared = shared_attention_work(key, work, kernel=policy.shared_kv_kernel)
         matrix_ops = work.flops
         efficiency = float(params.get("attention_mfu", 0.6))
         vector_ops, exps, shuffle, tiles, conversions = _attention_units(
             table, key, work, policy
         )
+        if shared is not None:
+            vector_ops += shared["extra_vector_operations"]
+            shuffle += shared["extra_shuffle_bytes"]
     elif table == "elementwise":
         vector_ops = work.flops
         if key["op_name"] in {"swiglu", "gelu", "geglu"}:
@@ -154,9 +169,20 @@ def estimate_lp30(table, key, device, calibration=None):
             + (sum(services.values()) - max(services.values())) / tiles
         )
     overhead = float(params.get("kernel_launch_us", 0.2)) + policy.fill_drain_us
+    prefix_s = query_scale_seconds(
+        shared,
+        policy,
+        device.on_chip_bandwidth_bytes_per_s.value,
+        float(params.get("memory_efficiency", 0.9)),
+    )
+    service_s += prefix_s
     calibration = calibration or Calibration()
     details = dict(
-        policy=asdict(policy),
+        policy={
+            key: value
+            for key, value in asdict(policy).items()
+            if shared is not None or key != "shared_kv_kernel"
+        },
         unit_service_us={name: value * 1e6 for name, value in services.items()},
         vector_operations=vector_ops,
         exponential_operations=exps,
@@ -166,6 +192,8 @@ def estimate_lp30(table, key, device, calibration=None):
         fits_on_chip=work.weight_bytes <= device.on_chip_memory_bytes.value,
         status="Uncalibrated LP30 unit-throughput and pipeline assumptions.",
     )
+    if shared is not None:
+        details.update(shared_kv=shared, shared_kv_prefix_us=prefix_s * 1e6)
     work = replace(work, details={**work.details, **details})
     compute_us = max(0.0, service_s * 1e6)
     return AnalyticalEstimate(

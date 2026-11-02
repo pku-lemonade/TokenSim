@@ -36,6 +36,10 @@ class CacheConfig:
         self.block_size: int = block_size
         self.device = device
         self.model_spec = model
+        if model.global_kv_layout != "separate":
+            raise ConfigurationError(
+                "experimental global KV layouts require native AF cache admission"
+            )
         self.model: str = model.model_id
         self.parallel_config = parallel_config or ParallelConfig.default()
         self.rank_info = rank_info or ParallelRankInfo()

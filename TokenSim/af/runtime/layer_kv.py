@@ -4,9 +4,13 @@ from dataclasses import replace
 
 from TokenSim.af.runtime.kv_sequence import layer_kv_parallel_size
 from TokenSim.af.runtime.topology import kv_head_partitions
+from TokenSim.config.kv_storage import shared_head_bytes
+from TokenSim.errors import ConfigurationError
 
 
-def _layer_partitions(layer, tp, block_size, dtype_size, kvp, append_block):
+def _layer_partitions(
+    layer, tp, block_size, dtype_size, kvp, append_block, head_bytes=None
+):
     """Shard KV heads over ``tp / kvp`` and positions over ``kvp`` ranks."""
     tpa = tp // kvp
     heads = kv_head_partitions(
@@ -17,6 +21,15 @@ def _layer_partitions(layer, tp, block_size, dtype_size, kvp, append_block):
         block_size=block_size,
         dtype_size_bytes=dtype_size,
     )
+    if head_bytes is not None:
+        heads = tuple(
+            replace(
+                part,
+                bytes_per_token=len(part.global_head_ids) * head_bytes,
+                bytes_per_block=len(part.global_head_ids) * head_bytes * block_size,
+            )
+            for part in heads
+        )
     if kvp == 1:
         return heads
     # A logical block of block_size positions leaves ceil(block_size / kvp) here.
@@ -43,6 +56,19 @@ def layer_kv_partitions(
     kv_parallel_layers="full_attention",
     kv_append_block=16,
 ):
+    head_bytes_by_layer = {}
+    for layer in layers:
+        if layer.kv_cache_layout == "separate":
+            continue
+        if (
+            layer.kv_cache_layout != "value_rope_fp8"
+            or dtype_size != 1
+            or layer.attention_window
+            or not layer.k_eq_v
+            or layer.mla
+        ):
+            raise ConfigurationError("invalid native shared KV storage geometry")
+        head_bytes_by_layer[layer.layer_id] = shared_head_bytes(layer.head_dim)
     first = layers[0]
     geometries = {(l.num_kv_heads, l.head_dim) for l in layers}
     kvps = {
@@ -51,7 +77,7 @@ def layer_kv_partitions(
         )
         for layer in layers
     }
-    if len(geometries) == 1 and set(kvps.values()) == {1}:
+    if not head_bytes_by_layer and len(geometries) == 1 and set(kvps.values()) == {1}:
         return kv_head_partitions(
             num_kv_heads=first.num_kv_heads,
             tensor_parallel_size=tp,
@@ -71,6 +97,7 @@ def layer_kv_partitions(
                 dtype_size,
                 kvps[layer.layer_id],
                 kv_append_block,
+                head_bytes_by_layer.get(layer.layer_id),
             ),
         )
         for layer in layers

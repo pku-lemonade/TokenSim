@@ -139,7 +139,9 @@ def project(program, measured, peak_per_chip):
         kv_precision=proxy["kv_cache_dtype"],
         drafter_precision=program["draft_dtype"],
     )
-    mismatches = [key for key, value in modeled.items() if actual[key] != value]
+    if proxy.get("global_kv_layout", "separate") != "separate":
+        modeled["global_kv_layout"] = proxy["global_kv_layout"]
+    mismatches = [key for key, value in modeled.items() if actual.get(key) != value]
     rounds = program["round_replay"]["aggregate_tps"]
     work = program["useful_work_per_committed_token"]["total"]
     peak = program["chips"] * peak_per_chip
@@ -153,7 +155,7 @@ def project(program, measured, peak_per_chip):
         acceptance_sha256=measured["sha256"],
         measured_turns=measured["turns"],
         modeled_precision=modeled,
-        measured_precision={key: actual[key] for key in modeled},
+        measured_precision={key: actual.get(key, "unrecorded") for key in modeled},
         precision_mismatches=mismatches,
         all_quality_checks_passed=measured["all_quality_checks_passed"],
         mean_tau=measured["mean_tau"],

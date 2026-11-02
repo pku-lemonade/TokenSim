@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from TokenSim.config.validation import integer
 from TokenSim.dtypes import dtype_size_bytes
 from TokenSim.errors import ConfigurationError
+from TokenSim.config.kv_storage import selected_layout, extra_workspace
 
 
 @dataclass(frozen=True)
@@ -70,6 +71,24 @@ def workspace_components(components, model, raw):
                 else 0
             )
             attention = max(attention, qkv + scores + online + cache_tile + combine)
+            if selected_layout(model, component.layer_id) != "separate":
+                # Reserve the assembled-key envelope for both kernel choices.
+                attention = max(
+                    attention,
+                    qkv
+                    + scores
+                    + online
+                    + cache_tile
+                    + combine
+                    + extra_workspace(
+                        head_dim=shape["head_dim"],
+                        kv_heads=shape["kv_heads_local"],
+                        query_heads=shape["q_heads_local"],
+                        queries=tokens,
+                        tile_keys=tile,
+                        buffers=policy.tile_buffers,
+                    ),
+                )
         elif component.category == "dense_ffn":
             hidden, width = shape["hidden_size"], shape["local_intermediate_size"]
             # Gate/up and activation outputs coexist with down-projection inputs.
