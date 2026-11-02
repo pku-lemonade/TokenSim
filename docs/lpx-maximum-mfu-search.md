@@ -258,7 +258,10 @@ The [SubQuadratic Disaggregation (SQD) paper](https://arxiv.org/abs/2609.13134) 
 That ownership pattern is directly relevant to Gemma's mixed attention layers.
 The [resident sliding-KV bound](lpx-sqd-residency-bounds.md) now couples native GPU execution latency to LP30 cache capacity and counts every allocated GPU and LP30 in the MFU denominator.
 Its 2,304 explicit cases and unbounded-batch tail exclude the complete-global-attention protocols against the experimental shared-cache incumbent under the declared native costs.
-Core-only B200 ownership remains open with a 3.63581% optimistic bound at up to 256 total cards and requires explicit placement, activation transfers and concurrent replay.
+The core-only B200 resource relaxation gives a 3.63581% optimistic bound at up to 256 total cards with detailed placement, activation transfers and concurrent replay costs relaxed.
+The [concurrent global-core prototype](lpx-global-core-serving.md) adds those costs with native-ledger capacity projection and request-specific activation slots.
+Its 203-accelerator point reaches 2.90028% MFU over 7,424 measured outputs and remains below the existing-format incumbent.
+This result constrains the tested whole-buffer protocol and leaves finer streaming, other ownership and GPU cache/context-parallel schemes open.
 
 The [pinned Gemma configuration](https://huggingface.co/google/gemma-4-31B-it/raw/842da3794eaa0b77d5f08bae87a17459d91ff475/config.json) specifies shared global K/V projections and a 0.25 partial rotary factor.
 The [reference attention implementation](https://raw.githubusercontent.com/huggingface/transformers/e0eb2810ac1b2caf6d082f247d8d37162ecf67a0/src/transformers/models/gemma4/modeling_gemma4.py) applies different normalization and rotary operations to the two projected states.

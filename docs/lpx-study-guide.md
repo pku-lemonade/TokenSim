@@ -893,6 +893,7 @@ The [100K Gemma 4 31B MFU search](lpx-maximum-mfu-search.md) extends the invento
 The [complete-request MFU study](lpx-complete-serving-mfu.md) includes causal prompt chunks, terminal-only prompt logits, bounded PP activation buffers and complete 100K/2K request lifecycles under a separate metric.
 The [stage-buffer and bandwidth study](lpx-stage-buffer-search.md) checks explicit arena lifetimes, 323-chip decode schedules and a conditional GPU-attention HBM bound.
 The [GPU/sliding-KV residency bound](lpx-sqd-residency-bounds.md) couples GPU execution latency to retained LP30 cache capacity, searches 2,304 native ownership cases and bounds every larger independent batch.
+The [concurrent GPU global-core prototype](lpx-global-core-serving.md) adds explicit request slots, shared cross-device uplinks and operator arena lifetimes, retaining a longer 2.90028% MFU point on 203 accelerators.
 It records observed candidates, fixed-DAG bounds, memory coverage, public hardware evidence and the outstanding requirements for a global optimality claim.
 The separate embedding/LM-head placement reaches a conditional non-speculative 3.03914% MFU on 163 LP30 chips.
 The [shared-KV assistant study](lpx-assistant-mfu-search.md) adds draft weights, remote cache-owner attention, verification and feedback costs with explicit acceptance scenarios.
