@@ -11447,7 +11447,7 @@
     "lpx_shared_family_replay.py": "492c6ac206e7b2a3ee35588a7fdc66ebc4a12dd37aa55a58f1121022d0a157ec",
     "lpx_shared_schedule_screen.py": "ed17d0404452c4eec7bd31ab489a60d04fc1397c81d31196c3b1c12cb5b441a1",
     "lpx_io_batch_bounds.py": "563b4b64872fa2faaa7c392b1e96364e5494786d43bb91a11d4efcbdaec803e5",
-    "lpx_compact_progress.py": "a24bad9af24ed19cbd9994642b54066f16f5f21792562646bfa80f7f28f97cae"
+    "lpx_compact_progress.py": "9588cb1f305ea3211f5b20cf79c0160012ac068f542959f2c30e788d384f2ab5"
   },
   "validation": {
     "black_version": "24.2.0",
@@ -11510,7 +11510,12 @@
       ],
       "host_seconds": 192.018
     },
-    "new_compact_workspace_and_batch_tests_passed": 8
+    "new_compact_workspace_and_batch_tests_passed": 8,
+    "compact_workspace_and_batch_code_commit": {
+      "commit": "331ab1ffd7b10b3f00740cb5207a01811fe48263",
+      "committed_successfully": true,
+      "advisory_timeout_reported": false
+    }
   },
   "sources": [
     "https://developer.nvidia.com/blog/inside-nvidia-groq-3-lpx-the-low-latency-inference-accelerator-for-the-nvidia-vera-rubin-platform/",
@@ -115116,7 +115121,7 @@
   ],
   "source_cpp_sha256": "8118adb459ae6870d4a441217e4b4bfdef54f6b5a5f7a4e93cc6787cdf70aa57",
   "pending_experiments": [],
-  "last_updated_utc": "2026-11-02 17:35:45 UTC",
+  "last_updated_utc": "2026-11-02 17:36:47 UTC",
   "empirical_100k_gpu_acceptance": {
     "measurements": [
       {
@@ -126926,7 +126931,7 @@
     "after_artifact": "outputs/lpx-maximum-mfu-20261102/changed-set-regression-after.json",
     "scope": "One local frozen three-program replay comparison; host timing is not a calibrated general speedup. Every completion and resource statistic agrees exactly."
   },
-  "milestone_commit": "4d724299063a358b62dcfbd6caecd014c55bef1f",
+  "milestone_commit": "331ab1ffd7b10b3f00740cb5207a01811fe48263",
   "experimental_shared_global_kv": {
     "name": "value_rope_fp8",
     "kernel_options": [
@@ -224004,5 +224009,9 @@
       "Complete prefill-plus-decode serving: separate prompt matrix work and terminal-only logits, admit phase-specific chunk scratch, and include arrivals and request completion.",
       "Heterogeneous stages, fabric/host-memory paths and mixed GPU/LP30 execution with a consistent denominator."
     ]
-  }
+  },
+  "prior_code_milestones": [
+    "30a21d970a7805a1ef4e3e047f0d4687867c67cd",
+    "4d724299063a358b62dcfbd6caecd014c55bef1f"
+  ]
 }
