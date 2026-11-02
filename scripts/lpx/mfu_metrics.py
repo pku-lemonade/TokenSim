@@ -2,7 +2,7 @@
 
 from collections import Counter, deque
 
-from TokenSim.config.validation import integer
+from TokenSim.config.validation import boolean, integer
 from TokenSim.errors import ConfigurationError
 
 
@@ -31,36 +31,78 @@ def useful_matrix_flops(model, context):
     return dict(linear=linear, attention=attention, total=linear + attention)
 
 
-def critical_path_seconds(nodes):
-    """Relax resource contention while retaining every declared dependency."""
+def dependency_order(nodes):
+    """Validate dependencies and return one deterministic topological order."""
     if not nodes:
         raise ConfigurationError("MFU bound requires a nonempty DAG")
     children = [[] for _ in nodes]
     incoming = [len(node.predecessors) for node in nodes]
     ready = deque(i for i, degree in enumerate(incoming) if not degree)
-    starts = [node.delay for node in nodes]
-    ends = [0.0] * len(nodes)
     for index, node in enumerate(nodes):
         for parent in node.predecessors:
             if parent < 0 or parent >= len(nodes):
                 raise ConfigurationError("MFU bound has an invalid predecessor")
             children[parent].append(index)
-    visited = 0
+    order = []
     while ready:
         index = ready.popleft()
-        visited += 1
-        ends[index] = starts[index] + nodes[index].duration
+        order.append(index)
         for child in children[index]:
-            starts[child] = max(starts[child], ends[index] + nodes[child].delay)
             incoming[child] -= 1
             if not incoming[child]:
                 ready.append(child)
-    if visited != len(nodes):
+    if len(order) != len(nodes):
         raise ConfigurationError("MFU bound requires an acyclic DAG")
+    return order
+
+
+def critical_path_seconds(nodes):
+    """Relax resource contention while retaining every declared dependency."""
+    ends = [0.0] * len(nodes)
+    for index in dependency_order(nodes):
+        node = nodes[index]
+        ready = max((ends[p] for p in node.predecessors), default=0.0)
+        ends[index] = ready + node.delay + node.duration
     return max(ends)
 
 
-def throughput_bounds(nodes, *, resident_requests, batch):
+def resource_demands(nodes, *, include_lifetimes=False):
+    """Lower bounds on exclusive resource time per profile invocation.
+
+    A lifetime acquisition holds resources through its release descendant.
+    Its dependency path supplies a minimum hold time, excluding its own
+    readiness delay and external ancestors that may finish before acquisition.
+    Contention may extend the hold. Different program mixes need their own
+    resource-demand aggregation before converting demand into throughput.
+    """
+    boolean(include_lifetimes, "MFU bound lifetime accounting")
+    order = dependency_order(nodes) if include_lifetimes else None
+    positions = {index: i for i, index in enumerate(order or ())}
+    demand = Counter()
+    for index, node in enumerate(nodes):
+        if len(set(node.resources)) != len(node.resources):
+            raise ConfigurationError("MFU demand has duplicate resources")
+        service = node.occupancy
+        if include_lifetimes and node.release_after is not None:
+            target = node.release_after
+            if target >= len(nodes) or positions[target] <= positions[index]:
+                raise ConfigurationError("MFU lifetime release must descend")
+            ends = {index: node.duration}
+            for child in order[positions[index] + 1 : positions[target] + 1]:
+                parents = [ends[p] for p in nodes[child].predecessors if p in ends]
+                if parents:
+                    ends[child] = (
+                        max(parents) + nodes[child].delay + nodes[child].duration
+                    )
+            if target not in ends:
+                raise ConfigurationError("MFU lifetime release must descend")
+            service = ends[target]
+        for resource in node.resources:
+            demand[resource] += service
+    return demand
+
+
+def throughput_bounds(nodes, *, resident_requests, batch, include_lifetimes=False):
     """Necessary steady-throughput limits for identical fixed-width cohorts.
 
     These limits constrain the specified DAG and physical resource model.
@@ -70,10 +112,7 @@ def throughput_bounds(nodes, *, resident_requests, batch):
     integer(batch, "bound batch size", minimum=1)
     if resident_requests % batch:
         raise ConfigurationError("MFU bound requires complete identical cohorts")
-    demand = Counter()
-    for node in nodes:
-        for resource in node.resources:
-            demand[resource] += node.occupancy
+    demand = resource_demands(nodes, include_lifetimes=include_lifetimes)
     critical_path = critical_path_seconds(nodes)
     if critical_path <= 0:
         raise ConfigurationError("MFU bound requires positive DAG latency")
@@ -81,7 +120,7 @@ def throughput_bounds(nodes, *, resident_requests, batch):
     service = demand[busiest] if busiest else 0
     latency_limit = resident_requests / critical_path
     resource_limit = batch / service if service else None
-    return dict(
+    result = dict(
         aggregate_tps=min(latency_limit, resource_limit or latency_limit),
         latency_limited_tps=latency_limit,
         resource_limited_tps=resource_limit,
@@ -90,3 +129,6 @@ def throughput_bounds(nodes, *, resident_requests, batch):
         resource_seconds_per_forward=service,
         scope="Necessary steady-throughput bound for this fixed DAG; not an attainable schedule or global hardware bound.",
     )
+    if include_lifetimes:
+        result["includes_minimum_lifetime_holds"] = True
+    return result

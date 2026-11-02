@@ -19,6 +19,8 @@ def replay_cohorts(
     initial_spacing_s=0.0,
     issue_interval_s=0.0,
     additional_profiles=(),
+    program_assignment=None,
+    initial_offsets_s=None,
 ):
     integer(resident_requests, "replay resident requests", minimum=1)
     integer(batch, "replay batch size", minimum=1)
@@ -29,18 +31,41 @@ def replay_cohorts(
     if resident_requests % batch:
         raise ConfigurationError("MFU replay requires complete fixed-width cohorts")
     cohorts = resident_requests // batch
+    profiles = (profile, *additional_profiles)
+    assignment = (
+        tuple(client % len(profiles) for client in range(cohorts))
+        if program_assignment is None
+        else tuple(program_assignment)
+    )
+    if len(assignment) != cohorts:
+        raise ConfigurationError("MFU assignment must cover every cohort")
+    for index in assignment:
+        integer(index, "MFU assigned program")
+        if index >= len(profiles):
+            raise ConfigurationError("MFU assigned program is unavailable")
+    offsets = (
+        tuple(client * initial_spacing_s for client in range(cohorts))
+        if initial_offsets_s is None
+        else tuple(initial_offsets_s)
+    )
+    if len(offsets) != cohorts or (initial_offsets_s is not None and initial_spacing_s):
+        raise ConfigurationError(
+            "MFU offsets require one value per cohort and zero spacing"
+        )
+    for offset in offsets:
+        number(offset, "MFU initial cohort offset")
     kernel = ReplayKernel()
     try:
-        identifiers = [
-            kernel.add(item.nodes) for item in (profile, *additional_profiles)
-        ]
+        identifiers = [kernel.add(item.nodes) for item in profiles]
         pending = {
-            kernel.submit(
-                identifiers[client % len(identifiers)], client * initial_spacing_s
-            ): client
+            kernel.submit(identifiers[assignment[client]], offsets[client]): client
             for client in range(cohorts)
         }
-        next_issue = cohorts * initial_spacing_s
+        next_issue = (
+            cohorts * initial_spacing_s
+            if initial_offsets_s is None
+            else max(offsets) + issue_interval_s
+        )
         previous = dict.fromkeys(range(cohorts), 0.0)
         count = Counter()
         intervals = []
@@ -64,9 +89,7 @@ def replay_cohorts(
                 middle = done.end
             issue_at = max(done.end, next_issue) if issue_interval_s else done.end
             next_issue = issue_at + issue_interval_s
-            pending[kernel.submit(identifiers[client % len(identifiers)], issue_at)] = (
-                client
-            )
+            pending[kernel.submit(identifiers[assignment[client]], issue_at)] = client
         elapsed = done.end - started
         tokens = measured_count * batch
         earlier = half_count * batch / (middle - started)
@@ -97,11 +120,13 @@ def replay_cohorts(
             ),
             scope="Fixed-context operator-DAG replay; compiler scheduling and buffer lifetime safety unverified.",
         )
-        if len(identifiers) > 1:
+        if len(identifiers) > 1 or program_assignment is not None:
             result["programs"] = len(identifiers)
             result["program_assignment"] = {
-                client: client % len(identifiers) for client in range(cohorts)
+                client: assignment[client] for client in range(cohorts)
             }
+        if initial_offsets_s is not None:
+            result["initial_offsets_s"] = list(offsets)
         return result
     finally:
         kernel.close()

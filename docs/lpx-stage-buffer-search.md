@@ -98,6 +98,72 @@ The fixed-program relaxed bound is 3.97520%, so the experiment does not establis
 The earlier experimental 3.41960% result remains higher, while this prototype supplies an explicit admitted scratch and buffer arrangement for a nearby point.
 The prototype remains a research artifact and does not establish executable LP30 support or matching cache quality.
 
+## Lifetime bounds and additional placement controls
+
+The [MFU bound helpers](../scripts/lpx/mfu_metrics.py) now optionally account for minimum arena hold time with `include_lifetimes=True`.
+The longest dependency path from an acquisition through its release supplies a lower bound on exclusive resource occupation.
+An acquisition's own readiness delay and external ancestors are excluded because they can occur before it holds the resource.
+Contention can extend the actual hold.
+The default bound convention remains unchanged.
+Three frozen native-program references reproduce every default bound field exactly after the helper refactor.
+
+An analytic test uses two units of compute, five units of propagation and three more units of compute under one arena.
+The arena's minimum hold is ten units even though its acquisition has zero declared service.
+The lifetime-aware resource bound is one completion per ten units, and a native replay confirms serialization through the release.
+Additional tests cover parallel paths, external ancestors, forward-index dependencies and invalid release targets.
+Multiple slot-specific program variants require resource aggregation over their allowed completion mix.
+A bound for one variant cannot be applied directly to a deployment using several independent arena names.
+The paired-program mixed analysis retains a 3.97520% relaxed upper bound and does not close its gap to observed throughput.
+
+The [closed-loop replay helper](../scripts/lpx/mfu_replay.py) also accepts an explicit `program_assignment` and `initial_offsets_s`.
+The assignment has one valid program index per cohort and remains unchanged when that cohort receives token feedback.
+Explicit offsets require one nonnegative value per cohort and zero `initial_spacing_s`.
+The existing round-robin assignment and evenly spaced default remain unchanged.
+A frozen eight-warm-up, 32-measured-round replay reproduces the complete historical result JSON exactly under those defaults.
+
+Twelve supplied cases vary paired-slot assignments, global issue intervals and initial phases.
+Issue intervals span 17 through 19 us for the alternating assignment.
+Additional cases use contiguous slot groups, a seeded shuffled assignment and nonuniform phase offsets.
+The random generator uses seed 42, and every supplied assignment and offset is retained in the experiment record.
+The highest displayed result remains 3.41007%.
+Some blocked and shuffled short screens vary by approximately 1.7% between measurement halves and remain convergence screens.
+Moving the unchanged 4 us host submission before boundary-arena acquisition does not improve the supplied two- or three-slot results.
+Allowing source computation before successor-slot acquisition also leaves the supplied results unchanged.
+Outgoing transfers still wait for the successor slot, and source active storage remains live through transfer completion in that control.
+
+Additional paired-buffer points preserve their original layer cuts and recompile with the enlarged workspace reserve.
+PP12 rejects the previous 17-request lease count after reserving the extra workspace and admits 16 requests.
+PP15 retains 19 requests.
+
+| PP | Chips | Admitted requests | Minimum SRAM headroom | Relaxed MFU bound | Best short screen |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 12 | 195 | 16 | 19,665,334 bytes | 3.76667% | 2.98869% |
+| 15 | 243 | 19 | 3,749,304 bytes | 3.54611% | 2.75251% |
+
+These points do not improve the experimental incumbent.
+Their fixed cuts and sampled phases leave other partitions and schedules open.
+A finite diagnostic enables resource counters from time zero and drains all pending work after the measurement.
+Its busiest incoming-slot arena has approximately 83.7% occupation over the complete run.
+Observed waiting time and occupation diagnose this schedule and do not certify a global bottleneck.
+
+## Fixed-slot allocator sensitivity
+
+The generic native compiler removes 1% of raw KV blocks through `DEFAULT_KV_WATERMARK`.
+This allocator policy is separate from the physical 500 MB SRAM capacity and the configured 5 MB per-chip safety reserve.
+An explicit sensitivity recompiles the same native plan with watermark zero while preserving block rounding, all weights, doubled live workspace and the 5 MB safety reserve.
+The default 1% policy rejects the supplied lease count in both cases below.
+The zero-watermark plans pass native lease admission and the physical memory ledger.
+
+| KV format | Chips | Requests | Additional workspace reserve | Minimum physical headroom | Best short MFU screen |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Separate FP8 K/V | 163 | 10 | 1,651,328 bytes/chip | 1,370,548 bytes/chip | 3.02868% |
+| Experimental shared global cache | 163 | 15 | 2,190,464 bytes/chip | 447,156 bytes/chip | 3.38006% |
+
+The shared-cache screen has approximately 0.11% variation between its two measurement halves.
+Neither sensitivity improves the corresponding default-policy incumbent.
+The fixed-slot allocator remains a separate hypothesis that needs physical placement and compiler validation.
+The 15-request result demonstrates why raw SRAM fit, native allocator admission and achieved throughput need separate evidence.
+
 ## Conditional GPU-attention bandwidth bound
 
 The search also considers attention on graphics processing units (GPUs) and feed-forward networks (FFNs) on LP30.
@@ -131,6 +197,31 @@ The Rubin row lies below the existing-format LP30 decode incumbent under this fu
 The H100 and B200 rows remain above the incumbent and need additional bounds or simulations.
 The bound does not cover persistent on-chip KV, shared prefixes, compressed or reconstructed cache, GPU FFN execution, other hardware roles or different efficiency assumptions.
 The table is a conditional model result and does not establish a general physical ceiling for heterogeneous serving.
+
+The [SubQuadratic Disaggregation paper](https://arxiv.org/abs/2609.13134) describes a different ownership pattern: global attention on DRAM devices, with sliding-window attention and FFNs on SRAM devices.
+That pattern falls outside the preceding all-attention-on-GPU bound.
+For the repository's target model, its GPU global-KV payload is 4,136,960,000 bytes per committed token at context 101,000.
+Keeping sliding-window attention, all FFNs and the boundary matrix work on LP30 requires at least 57,648,611,328 FP8 matrix FLOPs and 1,677,721,600 BF16 attention FLOPs per token.
+With the same efficiency and peak conventions, the role-specific relaxation becomes:
+
+```text
+MFU <= useful_target_FLOPs
+       / (global_KV_bytes * GPU_FP8_peak / GPU_HBM_bandwidth
+          + LP30_linear_FLOPs / 0.30
+          + LP30_sliding_attention_FLOPs / 0.25)
+```
+
+| Global-attention GPU | Conditional ownership-specific MFU bound |
+| --- | ---: |
+| Rubin | 3.25632% |
+| H100 SXM | 4.89406% |
+| B200 SXM | 4.94008% |
+
+These upper bounds remain above the existing-format LP30 incumbent.
+The Rubin all-attention result therefore does not exclude global-only disaggregation.
+The ownership-specific relaxation still omits GPU arithmetic, weights and other traffic, capacity placement, synchronization and communication.
+It requires one complete separate-format global KV payload from HBM for every committed token.
+The source paper motivates this ownership search and does not calibrate these numbers or establish their attainability on LP30.
 
 ## Remaining work
 
