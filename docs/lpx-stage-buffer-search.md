@@ -223,6 +223,13 @@ The ownership-specific relaxation still omits GPU arithmetic, weights and other 
 It requires one complete separate-format global KV payload from HBM for every committed token.
 The source paper motivates this ownership search and does not calibrate these numbers or establish their attainability on LP30.
 
+## Follow-up validation
+
+The lifetime-and-phase follow-up passes 23 focused tests.
+Its full suite runs 851 tests with 849 passes and the same two macOS baseline failures involving `/tmp` normalization and Linux/NVIDIA process facilities.
+All 571 Python files pass the pinned Black check.
+The current validated code reproduces the frozen default replay result exactly and preserves the three supplied default bound records.
+
 ## Remaining work
 
 The remaining search includes finer activation-buffer lifetimes, other partitions and arena assignments, mixed prefill/decode matrix batches, heterogeneous widths, and additional GPU/LP30 role splits.
