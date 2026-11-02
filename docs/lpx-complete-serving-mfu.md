@@ -120,6 +120,7 @@ Latency values are modeled and include the finite cohort's queueing behavior.
 | 164 | 16 / 10 / 4 | 512 | 8 | 1 | 15.22529% | 6,428.0 | 2,059.808 | 214.703 |
 | 84 | 8 / 10 / 2 | 512 | 1 | 1 | 9.02510% | 1,951.6 | 500.919 | 262.064 |
 | 164 | 8 / 20 / 2 | 512 | 6 | 1 | 12.62279% | 5,329.2 | 1,710.317 | 270.748 |
+| 164 | 32 / 5 / 8 | 512 | 6 | 1 | 10.51047% | 4,437.4 | 2,043.997 | 330.231 |
 
 The wider chunk trades a larger boundary pool and fewer KV slots for fewer collective and launch operations per prompt.
 The result depends on that tradeoff, the partition and the complete request mix.
@@ -145,6 +146,11 @@ python scripts/search_lpx_serving_mfu.py \
 ```
 
 `result.json` records configuration, admission, program identities, context reservations, request timings, resource statistics, useful work and complete-request MFU.
+Resource-statistics collection is enabled from simulation time zero.
+The initial timing captures omitted that statistics window.
+Frozen-graph replays of the TP16/PP10 and TP32/PP5 chunk-512 configurations retain identical completion times, request timings, output TPS and operation counts while collecting corrected resource statistics.
+Their necessary fixed-work resource-demand MFU bounds are 19.97179% and 16.50624%, respectively.
+These bounds constrain the captured programs and do not establish attainable schedules or exclude different kernels and partitions.
 The driver fixes attention efficiency to 0.50 consistently with the decode search.
 `--context-bands` controls prompt reservation granularity.
 `--cycles` controls the number of complete requests served sequentially by each client.

@@ -123,6 +123,8 @@ class ServingPipelineTest(unittest.TestCase):
         self.assertEqual(result["ttft_mean_s"], 11)
         self.assertEqual(result["tpot_mean_s"], 8)
         self.assertEqual(result["measured_inter_token_intervals"], 1)
+        self.assertEqual(result["resource_stats"]["stage:0"]["busy_s"], 6)
+        self.assertEqual(result["resource_stats"]["stage:1"]["busy_s"], 6)
 
     def test_multiple_clients_cycles_and_partial_tail_preserve_every_token(self):
         w = ServingWorkload(inputs=5, outputs=3, chunk=2, clients=2, cycles=2)

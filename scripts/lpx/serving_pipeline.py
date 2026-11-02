@@ -194,6 +194,7 @@ class ServingPipeline:
 
     def run(self):
         try:
+            self.kernel.window(0)
             self.dispatch()
             while self.pending:
                 done = self.kernel.advance()
