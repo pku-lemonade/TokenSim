@@ -16,7 +16,11 @@ from TokenSim.errors import ConfigurationError, SimulationStateError
 from scripts.lpx.fidelity import load
 from scripts.lpx.serving_bank import NativeServingBank
 from scripts.lpx.serving_metrics import serving_work
-from scripts.lpx.serving_pipeline import ServingPipeline, ServingWorkload
+from scripts.lpx.serving_pipeline import (
+    ServingPipeline,
+    ServingSchedule,
+    ServingWorkload,
+)
 from scripts.run_lpx_article_sweep import article_config
 from scripts.search_lpx_mfu import build_cache
 from scripts.search_lpx_native import write_json
@@ -38,6 +42,8 @@ def main(argv=None):
     parser.add_argument("--clients", type=int, default=1)
     parser.add_argument("--cycles", type=int, default=1)
     parser.add_argument("--context-bands", type=int, default=4)
+    parser.add_argument("--prefill-quantum", type=int, default=1)
+    parser.add_argument("--decode-priority", action="store_true")
     parser.add_argument(
         "--global-kv-layout", choices=GLOBAL_KV_LAYOUTS, default="separate"
     )
@@ -50,6 +56,7 @@ def main(argv=None):
         workload = ServingWorkload(
             args.inputs, args.outputs, args.chunk, args.clients, args.cycles
         )
+        schedule = ServingSchedule(args.prefill_quantum, args.decode_priority)
         bank = NativeServingBank(
             config,
             workload,
@@ -74,7 +81,7 @@ def main(argv=None):
             ),
             flush=True,
         )
-        replay = ServingPipeline(bank, workload).run()
+        replay = ServingPipeline(bank, workload, schedule).run()
         work = serving_work(bank.model, inputs=args.inputs, outputs=args.outputs)
         peak = (
             bank.chips * bank.hardware.device("groq_lp30").peak_compute_for("fp8").value
@@ -82,6 +89,7 @@ def main(argv=None):
         result = dict(
             config=config,
             workload=asdict(workload),
+            schedule=asdict(schedule),
             bank=bank.describe(),
             work_per_request=work,
             replay=replay,

@@ -142,6 +142,48 @@ The sum includes stage entry copies, boundary work and every prompt and decode i
 It agrees with all collected occupied-resource counters for the two instrumented frozen-profile controls within numerical tolerance.
 The sum relaxes dependencies, propagation and scheduling constraints and does not establish that the upper bound is attainable.
 
+## Context and request-scheduling controls
+
+Frozen transformer graphs separate prompt context granularity from the number of consecutive requests per client.
+The allocation, admission, chunk width, target precision and useful-work ledger remain fixed at TP16/PP10/context width four, 164 chips, eight clients and chunk 512.
+
+| Context bands | Requests per client | End-to-end MFU | Whole-request output TPS | Mean TTFT (ms) | Maximum token gap (ms) |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 4 | 1 | 15.22529% | 6,428.0 | 2,059.808 | 3.510 |
+| 4 | 2 | 15.19663% | 6,415.9 | 2,062.997 | 23.418 |
+| 16 | 1 | 15.86469% | 6,697.9 | 1,959.489 | 3.510 |
+| 16 | 2 | 15.80238% | 6,671.6 | 1,967.402 | 23.418 |
+
+Finer context bands reduce conservative attention reservations in both finite horizons.
+The improvement comes from tighter timing approximation under the same workload.
+Request replacement reduces measured throughput slightly in both supplied controls.
+The one-cohort value of 15.86469% is the highest supplied finite complete-request value and does not establish sustained-serving throughput.
+More request cycles and explicit arrival processes remain open.
+
+The input scheduler exposes a prompt rotation quantum measured in chunks.
+Quantum one rotates the prompt input queue after every chunk.
+Quantum 196 covers a complete 100K prompt at chunk width 512, including its partial tail.
+Optional decode priority chooses the earliest waiting decode task before waiting prompt tasks.
+Every stage remains nonpreemptive and retains the same active and incoming buffer limits.
+These controls order complete single-request chunks.
+Mixed-request matrix and attention fusion remains outside them.
+
+| Prefill quantum | Decode priority | End-to-end MFU | Output TPS | Mean TTFT (ms) | Mean TPOT (us) | Maximum token gap (ms) |
+| ---: | --- | ---: | ---: | ---: | ---: | ---: |
+| 1 | Disabled | 15.86469% | 6,697.9 | 1,959.489 | 214.703 | 3.510 |
+| 16 | Enabled | 15.35629% | 6,483.3 | 2,001.148 | 233.224 | 16.757 |
+| 196 | Disabled | 15.58727% | 6,580.8 | 1,130.596 | 650.624 | 1,746.324 |
+| 196 | Enabled | 9.59072% | 4,049.1 | 1,595.638 | 1,162.093 | 15.935 |
+
+Every row uses 16 context bands and one request per client.
+All four rows execute identical operator counts and occupied physical-resource work.
+The maximum busy-time difference across corresponding counters is below 8e-12 seconds.
+The default scheduler reproduces the previous frozen one-cohort control's completion time, request timings, output TPS and operation counts exactly.
+The supplied input-order changes do not improve MFU.
+The complete-prompt policy without decode priority reduces mean TTFT while introducing a long generation stall.
+Uniform mixed batching remains a separate research direction supported by the [Sarathi-Serve study](https://arxiv.org/abs/2403.02310).
+Its GPU performance results do not calibrate LP30 scheduling or establish compiler support for these controls.
+
 ## Additional resident-prefix decode probes
 
 Two shared-cache probes extend the existing decode search under its original fixed-context metric and one-row scratch policy.
@@ -180,10 +222,14 @@ These bounds constrain the captured programs and do not establish attainable sch
 The driver fixes attention efficiency to 0.50 consistently with the decode search.
 `--context-bands` controls prompt reservation granularity.
 `--cycles` controls the number of complete requests served sequentially by each client.
+`--prefill-quantum` sets the positive prompt-input rotation quantum in chunks and defaults to one.
+`--decode-priority` gives waiting generated-token forwards priority over waiting prompt chunks at the pipeline input.
+Boundary output copies and greedy selection retain their existing priority.
+Both options preserve the SRAM admission and stage-buffer policy.
 `--global-kv-layout` also permits the experimental shared representation; the timing table uses `separate`.
 The CLI rejects nonpositive workload dimensions, invalid parallel dimensions, insufficient SRAM and requests extending beyond context 102,000.
 
 The new tests cover exact causal work, chunk-independent credit, terminal-only logits, bounded PP wavefront timing, request replacement, partial prompt tails, one-output requests, resource conservation, cross-stage lifetime rejection and a nonmonotonic context reservation.
 The existing-format and experimental strided-cache decode programs each retain all 96,574 original node rows exactly after the boundary-helper refactor.
-The final full-suite run executes 844 tests with 842 passes and the same two macOS-specific baseline failures involving `/tmp` normalization and missing Linux/NVIDIA process facilities.
+The input-policy full-suite run executes 846 tests with 844 passes and the same two macOS-specific baseline failures involving `/tmp` normalization and missing Linux/NVIDIA process facilities.
 All 570 Python files pass the pinned Black formatter check.

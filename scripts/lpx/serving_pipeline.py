@@ -1,9 +1,9 @@
 """Finite complete-request replay with bounded pipeline activation buffers."""
 
 from collections import Counter, deque
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
-from TokenSim.config.validation import integer
+from TokenSim.config.validation import boolean, integer
 from TokenSim.errors import ConfigurationError, SimulationStateError
 from scripts.lpx.replay_engine import ReplayKernel
 from scripts.lpx.serving_metrics import latency_metrics
@@ -20,6 +20,16 @@ class ServingWorkload:
     def __post_init__(self):
         for name in ("inputs", "outputs", "chunk", "clients", "cycles"):
             integer(getattr(self, name), f"serving {name}", minimum=1)
+
+
+@dataclass(frozen=True)
+class ServingSchedule:
+    prefill_quantum: int = 1
+    decode_priority: bool = False
+
+    def __post_init__(self):
+        integer(self.prefill_quantum, "prefill scheduling quantum", minimum=1)
+        boolean(self.decode_priority, "serving decode priority")
 
 
 @dataclass(frozen=True)
@@ -44,8 +54,11 @@ class ServingPipeline:
     its output until the logits pool completes the hidden-state transfer.
     """
 
-    def __init__(self, bank, workload):
+    def __init__(self, bank, workload, schedule=None):
         self.bank, self.workload = bank, workload
+        if schedule is not None and not isinstance(schedule, ServingSchedule):
+            raise ConfigurationError("serving schedule requires ServingSchedule")
+        self.schedule = schedule or ServingSchedule()
         self.kernel = ReplayKernel()
         self.profiles = {}
         self.pending = {}
@@ -87,6 +100,16 @@ class ServingPipeline:
         self.pending[identifier] = (kind, task, stage)
         self.counters[kind] += 1
 
+    def next_input(self):
+        if not self.schedule.decode_priority:
+            return self.input.popleft()
+        index = next(
+            (i for i, task in enumerate(self.input) if task.phase == "decode"), 0
+        )
+        task = self.input[index]
+        del self.input[index]
+        return task
+
     def dispatch(self):
         # Output priority prevents token feedback from waiting behind all prompts.
         if self.io is None and self.wait_head is not None:
@@ -95,7 +118,7 @@ class ServingPipeline:
             self.io = task
             self.submit("head_copy", task, self.pp - 1)
         elif self.io is None and self.input and not self.reserved[0]:
-            task = self.input.popleft()
+            task = self.next_input()
             if task.offset == 0:
                 self.starts.setdefault((task.client, task.cycle), self.now)
                 self.bank.admit(task.client, task.cycle)
@@ -124,7 +147,12 @@ class ServingPipeline:
             self.io = None
             self.arrived[0] = task
             if task.phase == "prefill" and not task.logits:
-                self.input.append(self.prefill(task.client, task.cycle, task.context))
+                next_task = self.prefill(task.client, task.cycle, task.context)
+                chunk_index = task.offset // self.workload.chunk
+                if (chunk_index + 1) % self.schedule.prefill_quantum:
+                    self.input.appendleft(next_task)
+                else:
+                    self.input.append(next_task)
         elif kind == "entry":
             self.reserved[stage] = False
             self.submit("body", task, stage)
@@ -229,6 +257,7 @@ class ServingPipeline:
                 decode_forwards=requests * (w.outputs - 1),
                 output_tps=requests * w.outputs / self.now,
                 requests_per_s=requests / self.now,
+                schedule=asdict(self.schedule),
                 **latency_metrics(self.tokens, self.requests),
                 counters=dict(self.counters),
                 maximum_reserved_input_slots=self.max_pending,

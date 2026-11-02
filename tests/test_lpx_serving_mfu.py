@@ -15,7 +15,11 @@ from scripts.lpx.profile_stages import split_stages
 from scripts.lpx.replay_engine import ReplayNode
 from scripts.lpx.replay_profiles import NativeProfile
 from scripts.lpx.serving_metrics import forward_work, key_pairs, serving_work
-from scripts.lpx.serving_pipeline import ServingPipeline, ServingWorkload
+from scripts.lpx.serving_pipeline import (
+    ServingPipeline,
+    ServingSchedule,
+    ServingWorkload,
+)
 from scripts.run_lpx_article_sweep import article_config
 
 
@@ -110,6 +114,33 @@ class ServingMetricsTest(unittest.TestCase):
 
 
 class ServingPipelineTest(unittest.TestCase):
+    def test_prefill_quantum_changes_request_phasing_and_conserves_resource_work(self):
+        workload = ServingWorkload(inputs=12, outputs=4, chunk=2, clients=2)
+        results = [
+            ServingPipeline(ToyBank(), workload, policy).run()
+            for policy in (ServingSchedule(), ServingSchedule(6, True))
+        ]
+        clocks = [
+            next(r for r in result["request_timings"] if r["client"] == 0)[
+                "first_output"
+            ]
+            for result in results
+        ]
+        self.assertLess(clocks[1], clocks[0])
+        self.assertEqual(results[0]["counters"], results[1]["counters"])
+        for name, stat in results[0]["resource_stats"].items():
+            self.assertEqual(
+                stat["busy_s"], results[1]["resource_stats"][name]["busy_s"]
+            )
+        for result in results:
+            self.assertEqual(result["requests"], 2)
+            self.assertEqual(result["maximum_reserved_input_slots"], [1, 1])
+
+    def test_schedule_rejects_invalid_quantum_and_nonboolean_priority(self):
+        for args in ((0, False), (True, False), (1, "yes")):
+            with self.assertRaises(ConfigurationError):
+                ServingSchedule(*args)
+
     def test_two_stage_prompt_wavefront_has_analytic_completion_clock(self):
         result = ServingPipeline(
             ToyBank(), ServingWorkload(inputs=4, outputs=2, chunk=2)
