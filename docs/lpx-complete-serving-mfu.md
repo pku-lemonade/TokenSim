@@ -134,7 +134,7 @@ The maximum inter-token gap is 23.418 ms, while the 99th-percentile gap is 213.8
 The experiment imposes no inter-token latency service-level objective.
 The refinement changes context granularity and request replacement together; their individual effects require separate controls.
 It retains 10,440,372 bytes of minimum transformer SRAM headroom and 109,113,280 bytes of boundary-pool headroom.
-This result is the highest observed complete-request MFU in the supplied probes.
+The controlled one-cohort and two-cycle results are reported below.
 The resident-prefix decode ranking remains unchanged.
 
 An independent sum of occupied resource time over every profile invocation bounds the refined fixed workload at 21.08620% MFU.

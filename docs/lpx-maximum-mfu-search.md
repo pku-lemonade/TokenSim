@@ -13,7 +13,9 @@ An experimental shared global-cache format reaches 3.41960% conditional decode M
 The 5 MB per-chip safety reserve remains enabled.
 The [complete-request serving study](lpx-complete-serving-mfu.md) adds a separate MFU metric for a 100K prompt followed by 2K outputs, with explicit PP activation buffers and request completion.
 Its prompt work is included in the numerator and its measurements remain separate from the resident-prefix decode ranking.
-The highest supplied complete-request replay reaches 15.80238% on 164 chips with eight clients and two requests per client; its fixed-work resource-demand bound is 21.08620%.
+The two-cycle complete-request replay reaches 15.80238% on 164 chips with eight clients and two requests per client; its fixed-work resource-demand bound is 21.08620%.
+Separate frozen controls reach 15.86469% for one request per client and isolate the effect of conservative context bands from request replacement.
+The [explicit stage-buffer study](lpx-stage-buffer-search.md) retains a nearby experimental decode point at 3.41007% with admitted additional scratch and paired active/incoming arenas.
 
 ## Metric and workload
 
