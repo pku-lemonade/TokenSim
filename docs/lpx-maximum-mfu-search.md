@@ -286,6 +286,10 @@ A shared representation therefore needs a defined quantization policy, reconstru
 The [experimental shared-KV study](lpx-shared-kv-mfu-search.md) charges physical scale bytes, native allocation and reconstruction work for a different global-cache representation.
 Its split-dot candidate reaches 3.41960% conditional decode MFU on 163 chips with fourteen resident requests.
 Matching-cache model quality remains unverified, so the existing-format incumbent stays separate.
+The follow-up checks 108 workspace-specific capacity frontiers and 35 native timing references, projecting onto 1,664 pipeline points.
+Thirty supplied batch-one family envelopes are below the experimental candidate; five families retain 24 relaxed points above it.
+Explicit assembly and packed-dot workspaces admit fifteen requests at TP16/DCP4/PP10, while their timed controls reach 2.57137% and 2.71947% MFU.
+The same follow-up bounds every independent batch width from two through nine for the existing-format TP16/DCP4/PP10 placement below its incumbent.
 
 The [Open-TQ-Metal paper](https://arxiv.org/abs/2604.16957) studies fused compressed-domain attention with Gemma 4 31B among its models.
 Its Apple Silicon results motivate a separate KV representation study; they do not calibrate LP30 conversion costs or establish 100K quality equivalence for this workload.
@@ -370,12 +374,13 @@ Profile caches and full node timing traces remain under the ignored `outputs` di
 
 ## Validation status
 
-Black 24.2.0 formatting and its check pass for all 558 Python files in the required project paths.
-All 49 directly related shared-KV, MFU, fidelity, I/O-pool, assistant and context-parallel tests pass in the targeted run.
-The latest full-suite run executes 827 tests, with an unchanged macOS path-resolution assertion failure and an unchanged GPU-runner test requiring Linux `/proc` and `nvidia-smi`.
+Black 24.2.0 formatting and its check pass for all 562 Python files in the required project paths.
+All 46 focused shared-KV, workspace, independent-batch, fidelity, I/O-pool, assistant and acceptance tests pass in the targeted run.
+The latest full-suite run executes 835 tests, with an unchanged macOS path-resolution assertion failure and an unchanged GPU-runner test requiring Linux `/proc` and `nvidia-smi`.
 The reporting dependency is installed, and all four reporting tests pass.
 The two platform-dependent checks remain unresolved on this macOS host.
 The run includes the generalized remote-attention workspace validation.
 The failing GPU monitor/runner source and tests match the branch's committed versions.
+Both the existing-cache and strided shared-cache regression controls reproduce all 96,574 saved node rows exactly.
 An earlier code milestone's commit hook reported an advisory hardcoded-value scan timeout after two seconds.
 The physical shared-KV code milestone commits successfully without that advisory message.

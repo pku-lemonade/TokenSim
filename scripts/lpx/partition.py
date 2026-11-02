@@ -160,9 +160,16 @@ def native_footprint(runtime, maximum_context):
                 return 0
             from TokenSim.af.runtime.lpx_memory import workspace_components
 
-            return dict(workspace_components(components, model, memory_policy))[
-                "lp30_auxiliary_weights"
-            ]
+            return dict(
+                workspace_components(
+                    components,
+                    model,
+                    memory_policy,
+                    kernel=runtime.hardware.device(binding.hardware)
+                    .analytical.get("lpx_pipeline", {})
+                    .get("shared_kv_kernel", "assemble"),
+                )
+            )["lp30_auxiliary_weights"]
 
         owned = stage_layer_range(
             layers,

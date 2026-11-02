@@ -34,6 +34,8 @@ def validate(raw):
                 result[name] = asdict(cls(**raw[name]))
                 if name == "operator" and "shared_kv_kernel" not in raw[name]:
                     result[name].pop("shared_kv_kernel", None)
+                if name == "memory" and "shared_kv_workspace" not in raw[name]:
+                    result[name].pop("shared_kv_workspace", None)
         compute = raw.get("compute", {})
         if not isinstance(compute, dict) or set(compute) - {
             "gemm_mfu",
@@ -55,6 +57,13 @@ def validate(raw):
         raise ConfigurationError("LP30 operator and memory attention tiles must agree")
     if "description" in raw:
         result["description"] = str(raw["description"])
+    workspace = result.get("memory", {}).get("shared_kv_workspace", "conservative")
+    if workspace != "conservative" and workspace != result.get("operator", {}).get(
+        "shared_kv_kernel", "assemble"
+    ):
+        raise ConfigurationError(
+            "compact KV workspace must match the LP30 reconstruction kernel"
+        )
     return result
 
 

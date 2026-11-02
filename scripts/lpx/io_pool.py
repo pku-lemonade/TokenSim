@@ -22,20 +22,20 @@ from scripts.lpx.streaming import duration
 from scripts.run_lpx_context_parallel import environment, layout_for
 
 
-def transformer_setup(config, *, tp, queries, global_kv_layout="separate"):
+def transformer_setup(config, *, tp, queries, global_kv_layout="separate", batch=1):
     """Keep the target communication budget while relocating boundary weights."""
     integer(tp, "transformer tensor width", minimum=1)
     integer(queries, "transformer verification queries", minimum=1)
+    integer(batch, "transformer independent request batch", minimum=1)
+    rows = batch * queries
     config = deepcopy(config)
     _, full_model, _, _ = environment(config)
     full_model = replace(full_model, global_kv_layout=global_kv_layout)
     memory = config["memory"]
-    memory["prefill_chunk"] = queries
+    memory["prefill_chunk"] = rows
     # Keep the full target's conservative communication arena on every stage.
-    original_workspace = (
-        4 * queries * max(full_model.hidden_size, full_model.vocab_size)
-    )
-    proxy_workspace = 4 * queries * full_model.hidden_size
+    original_workspace = 4 * rows * max(full_model.hidden_size, full_model.vocab_size)
+    proxy_workspace = 4 * rows * full_model.hidden_size
     memory["reserve_bytes"] += original_workspace - proxy_workspace
     hardware, _, _, _ = environment(config)
     proxy = replace(
@@ -58,19 +58,22 @@ def transformer_profile(
     resident=None,
     kv_parallel_layers="full_attention",
     global_kv_layout="separate",
+    batch=1,
 ):
     config, hardware, full_model, proxy = transformer_setup(
-        config, tp=tp, queries=queries, global_kv_layout=global_kv_layout
+        config, tp=tp, queries=queries, global_kv_layout=global_kv_layout, batch=batch
     )
     if pp > full_model.num_layers:
         raise ConfigurationError("transformer stages exceed model layers")
-    case = MFUCase(tp, kvp, pp, batch=queries, kv_parallel_layers=kv_parallel_layers)
+    case = MFUCase(
+        tp, kvp, pp, batch=batch * queries, kv_parallel_layers=kv_parallel_layers
+    )
     seed = runtime_for(hardware, proxy, case, proxy.num_layers)
     footprint = native_footprint(seed, 102000)
     screen = ResidentCapacity(footprint).frontier(256, pp)
     maximum = screen["maximum_resident_by_pp"].get(pp, 0)
-    resident = maximum if resident is None else resident
-    if not resident or resident > maximum:
+    resident = maximum // batch * batch if resident is None else resident
+    if not resident or resident > maximum or resident % batch:
         raise ConfigurationError("transformer proxy has insufficient resident KV")
     scaled = replace(
         footprint,
@@ -84,14 +87,14 @@ def transformer_profile(
         runtime,
         "mfu-search",
         cache,
-        batch=1,
+        batch=batch,
         queries=queries,
         phase="decode",
         emit_logits=False,
         record_node_ids=True,
         context=101000,
-        contexts=(101000,),
-        maximum_contexts=(102000,),
+        contexts=(101000,) * batch,
+        maximum_contexts=(102000,) * batch,
         dp_rank=0,
         seed=42,
         sample=0,
@@ -110,12 +113,20 @@ def transformer_profile(
             memory=admission,
             native_profile=profile.metadata,
             extra_communication_arena_per_chip=4
+            * batch
             * queries
             * (
                 max(full_model.hidden_size, full_model.vocab_size)
                 - full_model.hidden_size
             ),
-            scratch_query_rows=queries,
+            scratch_query_rows=batch * queries,
+            **(
+                dict(
+                    independent_requests_per_forward=batch, queries_per_request=queries
+                )
+                if batch != 1
+                else {}
+            ),
         ),
     )
 
@@ -214,7 +225,12 @@ def pool_memory(model, ranks, queries, reserve=5_000_000):
     return rows
 
 
-def pooled_program(hardware, model, transformer, *, tp, pp, pool_chips, queries=1):
+def pooled_program(
+    hardware, model, transformer, *, tp, pp, pool_chips, queries=1, batch=1
+):
+    integer(batch, "pool independent request batch", minimum=1)
+    integer(queries, "pool queries per request", minimum=1)
+    queries *= batch
     transformer_chips = tp * pp
     chips = tuple(range(transformer_chips, transformer_chips + pool_chips))
     admission = pool_memory(model, pool_chips, queries)

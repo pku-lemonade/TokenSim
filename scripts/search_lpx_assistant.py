@@ -12,7 +12,11 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from TokenSim.config.validation import integer, number
-from TokenSim.config.kv_storage import GLOBAL_KV_LAYOUTS
+from TokenSim.config.kv_storage import (
+    GLOBAL_KV_LAYOUTS,
+    SHARED_KV_KERNELS,
+    SHARED_KV_WORKSPACES,
+)
 from TokenSim.errors import ConfigurationError
 from scripts.lpx.assistant_pool import (
     AssistantSpec,
@@ -130,6 +134,12 @@ def compose(
             .analytical["lpx_pipeline"]
             .get("attention_tile_keys", 256),
             global_kv_layout=target.global_kv_layout,
+            shared_kv_kernel=hardware.device("groq_lp30")
+            .analytical["lpx_pipeline"]
+            .get("shared_kv_kernel", "assemble"),
+            shared_kv_workspace=hardware.device("groq_lp30")
+            .analytical["lpx_memory"]
+            .get("shared_kv_workspace", "conservative"),
         ),
         feedback="All verifier hidden rows are copied to the drafter, one accepted row is retained per request, and greedy draft/target token comparison is priced as vector selection.",
         precision="Matrix weights use the selected draft dtype; norms, activations and shared target KV retain BF16/BF16/FP8 respectively.",
@@ -159,7 +169,8 @@ def main(argv=None):
     parser.add_argument(
         "--global-kv-layout", choices=GLOBAL_KV_LAYOUTS, default="separate"
     )
-    parser.add_argument("--shared-kv-kernel", choices=("assemble", "split_dot"))
+    parser.add_argument("--shared-kv-kernel", choices=SHARED_KV_KERNELS)
+    parser.add_argument("--shared-kv-workspace", choices=SHARED_KV_WORKSPACES)
     parser.add_argument("--issue-us", type=float)
     parser.add_argument("--warmup-rounds", type=int, default=4)
     parser.add_argument("--measured-rounds", type=int, default=16)
@@ -182,6 +193,8 @@ def main(argv=None):
         config["compute"]["attention_mfu"] = 0.5
         if args.shared_kv_kernel is not None:
             config["operator"]["shared_kv_kernel"] = args.shared_kv_kernel
+        if args.shared_kv_workspace is not None:
+            config["memory"]["shared_kv_workspace"] = args.shared_kv_workspace
         hardware, target, _, _ = environment(config)
         target = replace(target, global_kv_layout=args.global_kv_layout)
         raw = json.loads(args.assistant_config.read_text())
@@ -195,6 +208,12 @@ def main(argv=None):
             .analytical["lpx_pipeline"]
             .get("attention_tile_keys", 256),
             global_kv_layout=args.global_kv_layout,
+            shared_kv_kernel=hardware.device("groq_lp30")
+            .analytical["lpx_pipeline"]
+            .get("shared_kv_kernel", "assemble"),
+            shared_kv_workspace=hardware.device("groq_lp30")
+            .analytical["lpx_memory"]
+            .get("shared_kv_workspace", "conservative"),
         )
         hardware, target, transformer, admission = transformer_profile(
             config,

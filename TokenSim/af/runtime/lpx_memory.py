@@ -5,7 +5,12 @@ from dataclasses import dataclass
 from TokenSim.config.validation import integer
 from TokenSim.dtypes import dtype_size_bytes
 from TokenSim.errors import ConfigurationError
-from TokenSim.config.kv_storage import selected_layout, extra_workspace
+from TokenSim.config.kv_storage import (
+    selected_layout,
+    extra_workspace,
+    shared_workspace_components,
+    SHARED_KV_WORKSPACES,
+)
 
 
 @dataclass(frozen=True)
@@ -15,6 +20,7 @@ class LP30Memory:
     attention_tile_keys: int = 256
     tile_buffers: int = 2
     reserve_bytes: int = 5_000_000
+    shared_kv_workspace: str = "conservative"
 
     def __post_init__(self):
         for name in (
@@ -25,12 +31,20 @@ class LP30Memory:
         ):
             integer(getattr(self, name), f"LP30 memory {name}", minimum=1)
         integer(self.reserve_bytes, "LP30 memory reserve_bytes")
+        if self.shared_kv_workspace not in SHARED_KV_WORKSPACES:
+            raise ConfigurationError("invalid LP30 shared_kv_workspace")
         if self.prefill_chunk > self.maximum_context:
             raise ConfigurationError("LP30 prefill chunk exceeds maximum context")
 
 
-def workspace_components(components, model, raw):
+def workspace_components(components, model, raw, *, kernel=None):
     policy = LP30Memory(**raw)
+    if policy.shared_kv_workspace != "conservative" and (
+        model.global_kv_layout == "separate" or kernel != policy.shared_kv_workspace
+    ):
+        raise ConfigurationError(
+            "compact KV workspace must match the selected shared-KV kernel"
+        )
     tokens = policy.prefill_chunk
     activation_bytes = dtype_size_bytes(model.activation_dtype, role="activation_dtype")
     cache_bytes = dtype_size_bytes(model.kv_cache_dtype, role="kv_cache_dtype")
@@ -70,25 +84,22 @@ def workspace_components(components, model, raw):
                 if kvp > 1
                 else 0
             )
-            attention = max(attention, qkv + scores + online + cache_tile + combine)
+            required = qkv + scores + online + cache_tile + combine
             if selected_layout(model, component.layer_id) != "separate":
-                # Reserve the assembled-key envelope for both kernel choices.
-                attention = max(
-                    attention,
-                    qkv
-                    + scores
-                    + online
-                    + cache_tile
-                    + combine
-                    + extra_workspace(
-                        head_dim=shape["head_dim"],
-                        kv_heads=shape["kv_heads_local"],
-                        query_heads=shape["q_heads_local"],
-                        queries=tokens,
-                        tile_keys=tile,
-                        buffers=policy.tile_buffers,
-                    ),
+                geometry = dict(
+                    head_dim=shape["head_dim"],
+                    kv_heads=shape["kv_heads_local"],
+                    query_heads=shape["q_heads_local"],
+                    queries=tokens,
+                    tile_keys=tile,
+                    buffers=policy.tile_buffers,
                 )
+                if policy.shared_kv_workspace == "conservative":
+                    required += extra_workspace(**geometry)
+                else:
+                    tiles = shared_workspace_components(kernel=kernel, **geometry)
+                    required = qkv + scores + online + combine + sum(tiles.values())
+            attention = max(attention, required)
         elif component.category == "dense_ffn":
             hidden, width = shape["hidden_size"], shape["local_intermediate_size"]
             # Gate/up and activation outputs coexist with down-projection inputs.

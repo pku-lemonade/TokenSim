@@ -377,7 +377,14 @@ def _compile_physical_states(
         if hardware_conf.device_id == "groq_lp30" and policy is not None:
             from TokenSim.af.runtime.lpx_memory import workspace_components
 
-            buffers += workspace_components(components, model, policy)
+            buffers += workspace_components(
+                components,
+                model,
+                policy,
+                kernel=hardware_conf.analytical.get("lpx_pipeline", {}).get(
+                    "shared_kv_kernel", "assemble"
+                ),
+            )
         required_bytes = model_bytes + sum(size for _, size in buffers)
         if required_bytes >= capacity_bytes:
             domains_and_ranks = ",".join(

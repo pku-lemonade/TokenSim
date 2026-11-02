@@ -4,6 +4,8 @@ from TokenSim.config.validation import integer
 from TokenSim.errors import ConfigurationError
 
 GLOBAL_KV_LAYOUTS = ("separate", "value_rope_fp8")
+SHARED_KV_KERNELS = ("assemble", "split_dot", "split_dot_packed")
+SHARED_KV_WORKSPACES = ("conservative", "assemble", "split_dot_packed")
 
 
 def rotary_indices(head_dim):
@@ -82,4 +84,39 @@ def extra_workspace(*, head_dim, kv_heads, query_heads, queries, tile_keys, buff
         + queries * query_heads * head_dim * 2
         + buffers * tile_keys * kv_heads * 8
         + queries * kv_heads * (head_dim + head_dim // 4) * 4
+    )
+
+
+def shared_workspace_components(
+    *, kernel, head_dim, kv_heads, query_heads, queries, tile_keys, buffers
+):
+    """Explicit tile storage with query folding in its existing Q allocation.
+
+    The split kernel packs the nonrotary columns into a contiguous key tile.
+    Its second score tile remains live until the partial scores are summed.
+    """
+    if kernel not in {"assemble", "split_dot_packed"}:
+        raise ConfigurationError(
+            "compact shared KV workspace needs an explicit tile kernel"
+        )
+    for name, value in (
+        ("KV heads", kv_heads),
+        ("query heads", query_heads),
+        ("queries", queries),
+        ("tile keys", tile_keys),
+        ("buffers", buffers),
+    ):
+        integer(value, f"shared workspace {name}", minimum=1)
+    rotary = len(rotary_indices(head_dim))
+    vectors = buffers * tile_keys * kv_heads
+    return dict(
+        physical_cache_tiles=vectors * shared_head_bytes(head_dim),
+        decoded_value_and_rotary_tiles=vectors * (head_dim + rotary) * 2,
+        key_tiles=vectors
+        * (head_dim if kernel == "assemble" else head_dim - rotary)
+        * 2,
+        partial_score_tile=(
+            queries * query_heads * tile_keys * 4 if kernel == "split_dot_packed" else 0
+        ),
+        append_quantization=queries * kv_heads * (4 * (head_dim + rotary) + 8),
     )

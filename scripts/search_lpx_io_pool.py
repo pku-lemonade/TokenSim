@@ -11,7 +11,11 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from TokenSim.config.validation import integer, number
-from TokenSim.config.kv_storage import GLOBAL_KV_LAYOUTS
+from TokenSim.config.kv_storage import (
+    GLOBAL_KV_LAYOUTS,
+    SHARED_KV_KERNELS,
+    SHARED_KV_WORKSPACES,
+)
 from TokenSim.errors import ConfigurationError
 from scripts.lpx.fidelity import load
 from scripts.lpx.io_pool import pooled_program, transformer_profile
@@ -34,16 +38,19 @@ def main(argv=None):
     parser.add_argument("--pp", type=int, default=10)
     parser.add_argument("--pool-chips", type=int, default=3)
     parser.add_argument("--resident-requests", type=int)
+    parser.add_argument("--batch", type=int, default=1)
+    parser.add_argument("--mode", choices=("replay", "bound"), default="replay")
     parser.add_argument(
         "--global-kv-layout", choices=GLOBAL_KV_LAYOUTS, default="separate"
     )
-    parser.add_argument("--shared-kv-kernel", choices=("assemble", "split_dot"))
+    parser.add_argument("--shared-kv-kernel", choices=SHARED_KV_KERNELS)
+    parser.add_argument("--shared-kv-workspace", choices=SHARED_KV_WORKSPACES)
     parser.add_argument("--issue-us", type=float)
     parser.add_argument("--warmup-rounds", type=int, default=8)
     parser.add_argument("--measured-rounds", type=int, default=32)
     args = parser.parse_args(argv)
     try:
-        for name in ("tp", "kvp", "pp", "pool_chips", "warmup_rounds"):
+        for name in ("tp", "kvp", "pp", "pool_chips", "warmup_rounds", "batch"):
             integer(getattr(args, name), name, minimum=1)
         integer(args.measured_rounds, "measured rounds", minimum=2)
         build_cache()
@@ -51,6 +58,8 @@ def main(argv=None):
         config["compute"]["attention_mfu"] = 0.5
         if args.shared_kv_kernel is not None:
             config["operator"]["shared_kv_kernel"] = args.shared_kv_kernel
+        if args.shared_kv_workspace is not None:
+            config["memory"]["shared_kv_workspace"] = args.shared_kv_workspace
         hardware, model, transformer, admission = transformer_profile(
             config,
             tp=args.tp,
@@ -60,6 +69,7 @@ def main(argv=None):
             cache=args.output / "profiles",
             resident=args.resident_requests,
             global_kv_layout=args.global_kv_layout,
+            batch=args.batch,
         )
         profile, pool = pooled_program(
             hardware,
@@ -68,6 +78,7 @@ def main(argv=None):
             tp=args.tp,
             pp=args.pp,
             pool_chips=args.pool_chips,
+            batch=args.batch,
         )
         profile = save_profile(
             args.output / "program.json.gz",
@@ -82,7 +93,9 @@ def main(argv=None):
         issue_s = (
             args.issue_us * 1e-6
             if args.issue_us is not None
-            else profile.metadata["modeled_duration_s"] / resident * 1.01
+            else profile.metadata["modeled_duration_s"]
+            / (resident // args.batch)
+            * 1.01
         )
         number(issue_s, "pool issue interval", positive=True)
         print(
@@ -96,18 +109,25 @@ def main(argv=None):
             ),
             flush=True,
         )
-        replay = replay_cohorts(
-            profile,
-            resident_requests=resident,
-            initial_spacing_s=issue_s,
-            issue_interval_s=issue_s,
-            warmup_rounds=args.warmup_rounds,
-            measured_rounds=args.measured_rounds,
+        replay = (
+            replay_cohorts(
+                profile,
+                resident_requests=resident,
+                initial_spacing_s=issue_s,
+                issue_interval_s=issue_s,
+                warmup_rounds=args.warmup_rounds,
+                measured_rounds=args.measured_rounds,
+                batch=args.batch,
+            )
+            if args.mode == "replay"
+            else None
         )
         chips = args.tp * args.pp + args.pool_chips
         peak = hardware.device("groq_lp30").peak_compute_for("fp8").value * chips
         work = pool["target_useful_work"]["total"]
-        bounds = throughput_bounds(profile.nodes, resident_requests=resident, batch=1)
+        bounds = throughput_bounds(
+            profile.nodes, resident_requests=resident, batch=args.batch
+        )
         result = dict(
             config=config,
             layout=dict(
@@ -118,7 +138,12 @@ def main(argv=None):
             pool=pool,
             program=profile.metadata,
             replay=replay,
-            mfu_percent=100 * replay["aggregate_tps"] * work / peak,
+            **(
+                dict(mfu_percent=100 * replay["aggregate_tps"] * work / peak)
+                if replay is not None
+                else dict(status="bounded")
+            ),
+            **(dict(batch=args.batch) if args.batch != 1 else {}),
             bounds={
                 **bounds,
                 "mfu_percent": 100 * bounds["aggregate_tps"] * work / peak,
@@ -128,6 +153,10 @@ def main(argv=None):
             ).hexdigest(),
             scope="Single-token greedy decode with separate shared embedding/LM-head storage, explicit native boundary replacement, arena lifetimes and uncalibrated operator/routes; physical bank placement and compiler execution unverified.",
         )
+        if args.batch != 1:
+            result[
+                "scope"
+            ] += " Each batch row owns an independent request and KV lease; all rows generate one committed token per forward."
         if args.global_kv_layout != "separate":
             result[
                 "scope"
@@ -138,8 +167,8 @@ def main(argv=None):
                 dict(
                     chips=chips,
                     resident=resident,
-                    mfu_percent=result["mfu_percent"],
-                    tps=replay["aggregate_tps"],
+                    mfu_percent=result.get("mfu_percent"),
+                    tps=replay["aggregate_tps"] if replay is not None else None,
                     bound_mfu_percent=result["bounds"]["mfu_percent"],
                 )
             ),

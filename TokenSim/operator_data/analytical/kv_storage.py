@@ -34,9 +34,11 @@ def shared_attention_work(key, work, *, kernel):
     pairs = work.flops / (4 * dim)
     if kernel == "assemble":
         shuffle += read * dim * 4  # BF16 source reads and assembled-K writes.
-    elif kernel == "split_dot":
+    elif kernel in {"split_dot", "split_dot_packed"}:
         extra_vector += pairs  # Sum the rotary and nonrotary score matrices.
         shuffle += pairs * 8  # Read and write FP32 partial scores.
+        if kernel == "split_dot_packed":
+            shuffle += read * (dim - rotary) * 4  # BF16 gather reads and packed writes.
     else:
         raise ConfigurationError("unknown LP30 shared KV kernel")
     extra = dict(
@@ -50,7 +52,7 @@ def shared_attention_work(key, work, *, kernel):
         extra_vector_operations=extra_vector,
         extra_shuffle_bytes=shuffle,
         query_scale_elements=queries * int(key["num_heads"]) * (dim - rotary),
-        split_dot_extra_fill=kernel == "split_dot",
+        split_dot_extra_fill=kernel in {"split_dot", "split_dot_packed"},
     )
     # Matrix FLOPs are unchanged; cache traffic includes both FP32 scales.
     return (

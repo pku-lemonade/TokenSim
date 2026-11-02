@@ -98,12 +98,17 @@ class PackedKV:
             )
         )
 
-    def decode(self):
-        values = _decode(self.value_codes, self.value_scales)
-        keys = values.copy()
-        keys[..., rotary_indices(values.shape[-1])] = _decode(
-            self.rotary_key_codes, self.rotary_key_scales
+    def decode_parts(self):
+        """Decode V and active K without assembling a complete key vector."""
+        return (
+            _decode(self.value_codes, self.value_scales),
+            _decode(self.rotary_key_codes, self.rotary_key_scales),
         )
+
+    def decode(self):
+        values, rotary = self.decode_parts()
+        keys = values.copy()
+        keys[..., rotary_indices(values.shape[-1])] = rotary
         return keys, values
 
 

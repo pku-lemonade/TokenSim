@@ -8,6 +8,7 @@ from dataclasses import asdict, dataclass, replace
 import math
 
 from TokenSim.config.validation import integer, number
+from TokenSim.config.kv_storage import SHARED_KV_KERNELS
 from TokenSim.dtypes import dtype_size_bytes
 from TokenSim.errors import ConfigurationError
 from TokenSim.operator_data.analytical.base import AnalyticalEstimate, Calibration
@@ -43,9 +44,9 @@ class LP30Pipeline:
         number(self.fill_drain_us, "LP30 fill/drain", minimum=0)
         if self.schedule not in {"tiled", "serialized"}:
             raise ConfigurationError("LP30 schedule must be tiled or serialized")
-        if self.shared_kv_kernel not in {"assemble", "split_dot"}:
+        if self.shared_kv_kernel not in SHARED_KV_KERNELS:
             raise ConfigurationError(
-                "LP30 shared_kv_kernel must be assemble or split_dot"
+                f"LP30 shared_kv_kernel must be one of {SHARED_KV_KERNELS}"
             )
 
 

@@ -3,11 +3,11 @@
 from dataclasses import dataclass
 
 from TokenSim.af.runtime.kv_sequence import visible_tokens
-from TokenSim.config.kv_storage import GLOBAL_KV_LAYOUTS, extra_workspace
 from TokenSim.config.validation import integer
 from TokenSim.dtypes import dtype_size_bytes
 from TokenSim.errors import ConfigurationError
 from scripts.lpx.io_pool import column_shards
+from scripts.lpx.assistant_workspace import remote_workspace
 
 
 @dataclass(frozen=True)
@@ -190,44 +190,6 @@ def intersections(source_widths, destination_widths):
     if sum(source_widths) != sum(destination_widths):
         raise ConfigurationError("assistant query/output head intervals differ")
     return result
-
-
-def remote_workspace(spec, *, tp, kvp, tile_keys, global_kv_layout="separate"):
-    """Round a cache-owner tile/convert/score/output envelope to whole MiB."""
-    for value, name in ((tp, "TP"), (kvp, "DCP"), (tile_keys, "key tile")):
-        integer(value, f"assistant remote {name}", minimum=1)
-    if tp % kvp:
-        raise ConfigurationError("assistant remote DCP must divide TP")
-    if global_kv_layout not in GLOBAL_KV_LAYOUTS:
-        raise ConfigurationError("invalid assistant shared KV storage layout")
-    maximum = 0
-    for dim, window, kv in zip(spec.dims, spec.windows, spec.kv_heads):
-        attention_tp = tp if window else tp // kvp
-        if spec.heads % attention_tp or kv % attention_tp:
-            raise ConfigurationError(
-                "assistant remote cache head shards are indivisible"
-            )
-        heads, local_kv = spec.heads // attention_tp, kv // attention_tp
-        # FP8 K/V tiles plus BF16 converted tiles, paired FP32 score rows,
-        # query buffers and paired FP32 partial output/LSE buffers.
-        envelope = (
-            6 * tile_keys * local_kv * dim
-            + 8 * tile_keys * heads
-            + 4 * heads * dim
-            + 8 * heads * (dim + 1)
-        )
-        if not window and global_kv_layout != "separate":
-            envelope += extra_workspace(
-                head_dim=dim,
-                kv_heads=local_kv,
-                query_heads=heads,
-                queries=1,
-                tile_keys=tile_keys,
-                buffers=2,
-            )
-        maximum = max(maximum, envelope)
-    unit = 1048576
-    return max(unit, (maximum + unit - 1) // unit * unit)
 
 
 def element(program, parents, chip, operation, tokens, width, **extra):
