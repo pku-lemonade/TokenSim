@@ -324,4 +324,4 @@ The work is on local branch `lpx-experiment`, pushed to `origin/lpx-context-para
 | `f68bfec` | Independent check of the 302-prompt results and AA at the example's drafter setting |
 | `a387f3a` | Self-contained comprehensive summary |
 | `d13f810`, `6d1d581` | Expectations and results of the two story C checks |
-| `a278b67`, `4f3136c` | Expectations and results of the LP30 attention-cost sensitivity, with AA's published prompt methodology |
+| `a278b67`, `4f3136c`, `4b324fb` | Expectations and results of the LP30 attention-cost sensitivity, with AA's published prompt methodology |

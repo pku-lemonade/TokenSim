@@ -947,7 +947,7 @@ A measured 8-row verification step at 10K and 100K would also decide whether sto
 | `f68bfec`, `d835c7c` | Independent check of the 302-prompt results and AA at the example's drafter setting |
 | `a387f3a`, `1da3aee` | This comprehensive summary |
 | `d13f810`, `6d1d581` | Expectations and results of the two story C checks |
-| `a278b67`, `4f3136c` | AA's prompt methodology, and expectations and results of the sensitivity to LP30 attention costs |
+| `a278b67`, `4f3136c`, `4b324fb` | AA's prompt methodology, and expectations and results of the sensitivity to LP30 attention costs |
 
 ## 28. Glossary
 
