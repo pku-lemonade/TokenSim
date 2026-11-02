@@ -313,3 +313,4 @@ The work is on local branch `lpx-experiment`, pushed to `origin/lpx-context-para
 | `75f2e10` | GPU measurements and the joint MTP fit in the summaries |
 | `78ea6f1` | Expectations and GPU plan for the code-completion peak |
 | `7540b49`, `1439744`, `fa90435`, `0514637`, `d3e8cb3` | Code-completion peak on all 302 prompts: H20 outputs, lookup replay, native n-gram check and publication attempts from the GPU machine |
+| `f68bfec` | Independent check of the 302-prompt results and AA at the example's drafter setting |
