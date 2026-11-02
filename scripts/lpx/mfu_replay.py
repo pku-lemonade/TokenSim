@@ -32,22 +32,28 @@ def replay_cohorts(
         raise ConfigurationError("MFU replay requires complete fixed-width cohorts")
     cohorts = resident_requests // batch
     profiles = (profile, *additional_profiles)
-    assignment = (
-        tuple(client % len(profiles) for client in range(cohorts))
-        if program_assignment is None
-        else tuple(program_assignment)
-    )
+    try:
+        assignment = (
+            tuple(client % len(profiles) for client in range(cohorts))
+            if program_assignment is None
+            else tuple(program_assignment)
+        )
+    except TypeError as exc:
+        raise ConfigurationError("MFU assignment requires an iterable") from exc
     if len(assignment) != cohorts:
         raise ConfigurationError("MFU assignment must cover every cohort")
     for index in assignment:
         integer(index, "MFU assigned program")
         if index >= len(profiles):
             raise ConfigurationError("MFU assigned program is unavailable")
-    offsets = (
-        tuple(client * initial_spacing_s for client in range(cohorts))
-        if initial_offsets_s is None
-        else tuple(initial_offsets_s)
-    )
+    try:
+        offsets = (
+            tuple(client * initial_spacing_s for client in range(cohorts))
+            if initial_offsets_s is None
+            else tuple(initial_offsets_s)
+        )
+    except TypeError as exc:
+        raise ConfigurationError("MFU offsets require an iterable") from exc
     if len(offsets) != cohorts or (initial_offsets_s is not None and initial_spacing_s):
         raise ConfigurationError(
             "MFU offsets require one value per cohort and zero spacing"

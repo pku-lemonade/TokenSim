@@ -27,10 +27,12 @@ class LifetimeBoundsTest(unittest.TestCase):
         self.assertEqual(result["program_assignment"], {0: 1, 1: 1})
         self.assertEqual(result["initial_offsets_s"], [0, 0.5])
         for options in (
+            dict(program_assignment=False),
             dict(program_assignment=(0,)),
             dict(program_assignment=(0, 2)),
             dict(program_assignment=(True, 0)),
             dict(initial_offsets_s=(0, -1)),
+            dict(initial_offsets_s=1),
             dict(initial_offsets_s=(0,)),
             dict(initial_offsets_s=(0, 1), initial_spacing_s=1),
         ):
