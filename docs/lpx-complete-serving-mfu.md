@@ -124,7 +124,33 @@ Latency values are modeled and include the finite cohort's queueing behavior.
 
 The wider chunk trades a larger boundary pool and fewer KV slots for fewer collective and launch operations per prompt.
 The result depends on that tradeoff, the partition and the complete request mix.
-The search still needs broader timing coverage, tighter context bands, request replacement, mixed prefill/decode batches, heterogeneous stages and physical validation.
+Further search includes additional partitions, independent context-band and request-replacement controls, mixed prefill/decode batches, heterogeneous stages and physical validation.
+
+A refinement uses 16 context bands and two consecutive requests per client on the 164-chip TP16/PP10/context-width-four allocation with chunk 512 and eight clients.
+It completes 16 requests, 1,600,000 input tokens, 32,000 output tokens and 31,984 autoregressive decode forwards in 4.796426477 modeled seconds.
+Its end-to-end MFU is 15.80238%, and whole-request output throughput is 6,671.6 TPS.
+Mean TTFT is 1,967.402 ms, and mean TPOT is 215.478 us.
+The maximum inter-token gap is 23.418 ms, while the 99th-percentile gap is 213.887 us.
+The experiment imposes no inter-token latency service-level objective.
+The refinement changes context granularity and request replacement together; their individual effects require separate controls.
+It retains 10,440,372 bytes of minimum transformer SRAM headroom and 109,113,280 bytes of boundary-pool headroom.
+This result is the highest observed complete-request MFU in the supplied probes.
+The resident-prefix decode ranking remains unchanged.
+
+An independent sum of occupied resource time over every profile invocation bounds the refined fixed workload at 21.08620% MFU.
+The sum includes stage entry copies, boundary work and every prompt and decode invocation.
+It agrees with all collected occupied-resource counters for the two instrumented frozen-profile controls within numerical tolerance.
+The sum relaxes dependencies, propagation and scheduling constraints and does not establish that the upper bound is attainable.
+
+## Additional resident-prefix decode probes
+
+Two shared-cache probes extend the existing decode search under its original fixed-context metric and one-row scratch policy.
+Both use TP16, full-attention context width four, the strided shared-KV kernel and three boundary chips.
+PP11 admits 14 requests on 179 chips, with a fixed-DAG bound of 3.61429% and a best short phase screen of 3.11848%.
+PP13 admits 17 requests on 211 chips, with a fixed-DAG bound of 3.69464% and a best short phase screen of 0.80940%.
+Each point checks three issue intervals with two warm-up rounds and eight measured rounds.
+Their poor schedules leave the broader phase and partition search open.
+They do not improve the experimental decode incumbent of 3.41960% or certify the remaining relaxed envelope.
 
 ## Reproduction and validation
 
