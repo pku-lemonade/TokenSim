@@ -1,6 +1,6 @@
 # Reproducing the AA Gemma 4 31B LPX speeds: comprehensive summary
 
-Record date: 2026-11-01, updated the same day with the story C checks.
+Record date: 2026-11-01, updated the same day with the story C checks and on 2026-11-02 with AA's published prompt methodology and the sensitivity to LP30 attention costs.
 
 This record describes, in one self-contained document, the whole effort to reproduce the Artificial Analysis (AA) output speeds of Gemma 4 31B on NVIDIA Groq 3 LPX hardware with the TokenSim simulator.
 It covers every experiment that was run, the result of each, the expectations that held or missed, the corrections made along the way, and our interpretation of where the evidence stands.
@@ -54,6 +54,12 @@ Each published value is the median of 50 requests.
 Both AA chart footnotes read: "NVIDIA Groq 3 LPX: median of 50 sequential client requests (concurrency 1) to the updated private, pre-release Gemma4-31B-LPX deployment via Google Cloud PSC".
 PSC is Google Cloud's Private Service Connect.
 Both charts are labelled "As of Aug 21, 2026".
+
+AA's performance methodology page describes the prompts of its public benchmark.
+It states that "every test run uses a unique prompt that we generate at the time of the test", that prompts "combine a range of long-form input content (e.g., articles)", and that tasks include explanation and summarization, question and answer generation, comparative analysis, translation and visual artifact generation.
+The 10K workload asks for at least 1,500 answer tokens and the 100K workload for at least 2,000.
+The page notes that speculative decoding makes output speeds vary with the type of output.
+It does not name the article sources or the generation method, and it does not say whether the 100K prompts share the task mix of the 10K prompts.
 
 The 100K speed is 1.45% higher than the 10K speed.
 Attention over a longer context cannot be cheaper in a fixed setup, so this rise is either measurement variation or a sign that the two workloads ran differently.
@@ -676,7 +682,7 @@ The checks below tested that suggestion on the measured answers and did not supp
 
 Two checks with seven recorded expectations then tested story C's weak points using data already collected.
 
-The first priced every book answer at K = 7, at both minimum n-gram settings, in both data sets (thinking and answer at a token ratio of 1.0055, and the answer alone at 0.9950).
+The book check priced every book answer at K = 7, at both minimum n-gram settings, in both data sets (thinking and answer at a token ratio of 1.0055, and the answer alone at 0.9950).
 A book fits when its 10K and 100K answers both lie within 5% of the AA values at one extra time up to 7 µs at minimum n-gram 1 or 6 µs at minimum n-gram 2.
 Books were also sorted by copy share, the mean equivalent acceptance of their two answers, and the medians of the 4, 8 and 16 books that copy least were tested the same way.
 
@@ -702,7 +708,7 @@ At minimum n-gram 2 it proposes less often and the 10K answers are 10% to 16% to
 The drafter also proposes more often at 100K than at 10K, because a longer context holds more matches, while the committed tokens per step barely change.
 The one fitting book ranks 12th of 16 by copy share and fits only at 7.0 µs, because its 100K answer commits 1.34 tokens per step against 1.22 at 10K.
 
-The second check drew 2,000 sets of 80 of the 89 H20 coding turns, with replacement and a fixed seed, and placed NVIDIA's ratios among them.
+The coding-spread check drew 2,000 sets of 80 of the 89 H20 coding turns, with replacement and a fixed seed, and placed NVIDIA's ratios among them.
 
 | Setting | Extra time | P80/median, 5th–95th percentile | Maximum/median, 5th–95th percentile | Sets at or below NVIDIA's maximum/median |
 | --- | ---: | --- | --- | ---: |
@@ -722,19 +728,49 @@ On average the measured answers show no such gap, and neither does Gemma's MTP d
 Story C therefore needs AA's 100K prompts to lead to answers that copy more from their context than its 10K prompts do, the same condition every earlier fit to the faster 100K speed needed.
 The coding spread, by contrast, does not count against story C.
 
+### Sensitivity to the assumed LP30 attention costs
+
+Story C's AA failure comes from how much an 8-row verification step grows from 10K to 100K, and none of the LP30 attention rates behind that growth is measured.
+In the LP30 cost model, one row of attention is bound by the vector unit, which converts the FP8 cache to BF16 and computes the exponentials, while 8 rows are bound by the matrix unit at efficiency 0.5.
+
+A further experiment, with seven expectations recorded before it ran, captured verification steps of 1 to 8 rows on the closest setup under four sets of LP30 rates, and added an analytical bound in which every row count grows with context like one row.
+It recomputed the plain AA window, story A's window, the coding window of every lookup setting, the fastest of the 302 code-completion requests at each window's upper end, the book pairs that fit both AA values inside the coding window, and a joint condition: one extra time inside the coding window that reaches 10,996 TPS on a code-completion request and places the median of all 16 books of one question style within 5% of both AA values.
+
+| Variant | Rates | 1-row increment | 8-row increment | Story A window, answer alone | Story C at AA |
+| --- | --- | ---: | ---: | --- | --- |
+| Baseline | Matrix efficiency 0.5, exponentials 10¹² per s, vector 0.5, shuffle 0.8 | 14.2 µs | 48.2 µs | 15.8–23.5 µs | no fit |
+| Matrix | Matrix efficiency 1.0 | 14.2 µs | 32.6 µs | 15.8–24.0 µs | no fit |
+| Exponential | Exponentials 4 × 10¹² per s | 12.8 µs | 48.1 µs | 16.1–24.0 µs | no fit |
+| Fast units | All of the above at peak, vector and shuffle 1.0 | 6.4 µs | 24.1 µs | 18.7–28.5 µs | fits at 7.0–10.0 µs, minimum n-gram 1, summary answers alone |
+| Row-independent bound | 8 rows grow like 1 row | 14.2 µs | 14.2 µs | 15.8–24.0 µs | fits at 0–8.0 µs, the same setting |
+
+The baseline reproduced the committed steps exactly.
+Three of seven expectations held.
+The misses: the faster exponential rate shortened the one-row increment by 1.4 µs, because the vector unit also runs the exponentials; the fast-units variant shortened the one-row 10K step by 3.0 µs, below the expected 5 to 20 µs; and, most important, story C met the joint condition under the fast-units variant, where no simulated variant was expected to allow it, with 6 fitting pairs against the expected at most 2.
+
+The fast-units fit is marginal.
+At 7 to 10 µs the 16-book median of the summary answers without thinking lies at +4.0% to +4.9% at 10K and −4.2% to −5.0% at 100K, and the simulated 100K speed stays 7% below the 10K speed.
+The quotation answers and the answers with thinking fit under no variant, and no lookup setting other than minimum n-gram 1 at K = 7 meets the joint condition, because the others do not reach the example.
+
+A scan added after these results kept the baseline 10K steps and scaled the extra growth of multi-row steps from none to the full baseline.
+Story C fits only when the 8-row increment is at most about 25 µs, half the modeled 48 µs; full matrix efficiency alone gives 32.6 µs.
+
+Story C's AA end therefore needs one of two conditions: AA's 100K answers copying about 0.1 tokens per step more than its 10K answers at the modeled costs, or LP30 multi-row attention at 100K about twice as fast as modeled together with AA answers like summaries without thinking.
+Story A keeps a window under every variant, and where story C fits, story A still needs more extra time, so a measured host loop would still separate them.
+
 ## 21. Where the evidence stands
 
 Three stories now remain, all on TP32/PP8 with DCP 8 on 256 LP30 chips at attention efficiency 0.5.
 
 | | A: plain decoding on AA, lookup on coding | B: Gemma's MTP on both runs | C: lookup at K = 7 on every run |
 | --- | --- | --- | --- |
-| Unmodeled time per step | 13–21 µs | 387–576 µs | at most 6–7 µs |
-| Both AA values | fit | fit | only if AA's 100K answers copy about 0.1 tokens per step more than its 10K answers; low-copy book answers do not fit |
+| Unmodeled time per step | 13–21 µs | 387–576 µs | at most 6–7 µs at the modeled attention costs |
+| Both AA values | fit | fit | at the modeled attention costs, only if AA's 100K answers copy about 0.1 tokens per step more than its 10K answers; with 8-row growth from 10K to 100K of at most about 25 µs, marginally on summary answers without thinking |
 | Coding median | fits, best of 16 settings chosen after the results | fits | fits |
 | Coding spread | NVIDIA's P80 and maximum ratios inside the 5th–95th percentiles of sets of 80 | too narrow | NVIDIA's P80 and maximum ratios inside the 5th–95th percentiles of sets of 80 |
 | 10,996 TPS example | not reached; best 8,806 of 302 at 21 µs | not reached; 4,893 | reached by one request in 302 |
 | Drafter | weaker than Gemma's MTP, on coding only | Gemma's released MTP | lookup, on every run |
-| Weakest point | two drafting behaviours in one deployment | an unmodeled cost larger than the modeled step | a copy gap between AA's two prompt sets that the data do not show, and a peak resting on one request |
+| Weakest point | two drafting behaviours in one deployment | an unmodeled cost larger than the modeled step | a copy gap between AA's two prompt sets that the data do not show, or multi-row attention at 100K twice as fast as modeled; a peak resting on one request |
 
 Results we consider reasonably firm:
 
@@ -750,7 +786,7 @@ Results we consider weak:
 - The SPEED-Bench coding fit, chosen as the best of 16 settings after the results.
 - The picture that the coding run drafted and the AA run did not.
 - Story C's example, which rests on one request in 302.
-- Story C's AA end, which needs AA's 100K answers to copy more than its 10K answers.
+- Story C's AA end, which needs AA's 100K answers to copy more than its 10K answers, or LP30 multi-row attention at 100K about twice as fast as modeled, and then fits only near the band's edges.
 - Every acceptance fitted in the early sweeps.
 
 ## 22. Our assessment
@@ -771,11 +807,14 @@ Story B uses the drafter Google ships, which makes it natural for a production d
 Story C uses one mechanism for all three kinds of content, reaches the example and gives NVIDIA's coding spread as an ordinary outcome, and it needs the smallest fixed time of the three.
 Its AA end does not come from prompts that copy little, as we had expected: at K = 7 the verification of 8 rows costs much more at 100K than at 10K, so the AA pair fits only if AA's 100K answers copy more than its 10K answers.
 No measurement here shows that on average, so the AA end of story C has moved from untested to unsupported by the data we have, though AA's own prompts could still show it.
+The attention-cost sensitivity check adds another route: if LP30 verifies 8 rows at 100K with about half the modeled attention growth, the summary answers without thinking fit both AA values, though only near the band's edges.
+We read this as making story C's AA end depend on one unmeasured hardware number, not as support for it, because the simulated rates that reach it put every attention unit at its peak.
 We find story C the most economical explanation of the coding numbers, and story A the most economical explanation of the AA numbers, and the two cannot both describe one deployment with one drafter setting unless the AA run drafted differently.
 
 We do not think the data identify NVIDIA's deployment.
 The model build, thinking mode, drafter, sampling and AA's prompts are unknown or differ in every proxy experiment, and the LP30 rates are assumptions.
 The three stories need at most 7 µs, 13 to 21 µs and 387 to 576 µs of extra time per step, so one measured LP30 decode step or host loop would separate them.
+A measured 8-row verification step at 10K and 100K would also decide whether story C's AA end needs a copy gap.
 
 ## 23. Corrections made along the way
 
@@ -801,6 +840,9 @@ The three stories need at most 7 µs, 13 to 21 µs and 387 to 576 µs of extra t
   An earlier summary gave 195 to 510 µs for the AA window under MTP; the correct range over 14 of 16 settings is 195 to 576 µs.
 - **The AA condition of story C.**
   This record originally concluded that story C needs AA prompts that copy less than the book answers; the checks of section 20 found that less copying does not help and that story C needs more copying at 100K than at 10K.
+- **Story C under other attention costs.**
+  We expected no simulated LP30 attention cost to let story C fit AA; with every unit at its peak rate it fits marginally on summary answers without thinking.
+  We also expected a faster exponential rate to leave the one-row increment unchanged, but the vector unit runs the exponentials, and we expected the fast-units variant to shorten the one-row step by 5 to 20 µs, but it shortened it by 3.0 µs.
 - **The coding maximum under story C.**
   The 89-turn maximum/median of 1.885 to 1.95 initially looked too wide for NVIDIA's 1.464; in sets of 80 turns NVIDIA's value is an ordinary outcome.
 - **The code-completion peak.**
@@ -814,6 +856,7 @@ The three stories need at most 7 µs, 13 to 21 µs and 387 to 576 µs of extra t
   Acceptances in the early sweeps were solved for, and background loads were chosen to match.
 - **Uncalibrated LP30 rates.**
   Every unit rate and efficiency, the 0.05 µs fill-and-drain time and the fabric latencies are assumptions; no LP30 operator cost was compared with hardware.
+  Story C's AA end depends on the multi-row attention rates, as section 20 shows.
 - **FP8 KV conversion on the vector unit.**
   The larger-attention-group result depends on it; if LP30 feeds FP8 directly to its matrix unit, the cost structure changes.
 - **The DCP partition.**
@@ -834,7 +877,7 @@ The three stories need at most 7 µs, 13 to 21 µs and 387 to 576 µs of extra t
 | Question | Test |
 | --- | --- |
 | How much time does an LP30 step carry beyond the modeled forward? | Measure one LP30 decode step or the host's per-token loop; the three stories need at most 7 µs, 13 to 21 µs and 387 to 576 µs |
-| Does story C hold at AA's end? | Obtain AA's 10K and 100K prompts and measure whether the 100K answers copy about 0.1 tokens per step more than the 10K answers; the book answers that copy least do not fit |
+| Does story C hold at AA's end? | Obtain AA's 10K and 100K prompts and measure whether the 100K answers copy about 0.1 tokens per step more than the 10K answers; or measure an 8-row LP30 verification step at 10K and 100K, where growth of at most about 25 µs lets summary answers without thinking fit |
 | Does the collective latency between trays match the assumption? | Measure one all-reduce across two LP30 trays; the match holds for about 0.73 to 0.85 µs depending on the token ratio |
 | Is the faster 100K speed noise? | Obtain AA's per-request speeds for the LPX endpoint; a spread of about 3% or more makes it ordinary, and a wide spread also points to drafting |
 | Which build, thinking mode and drafter did each run use? | A statement of the deployment's settings for the AA and SPEED-Bench runs |
@@ -875,6 +918,7 @@ The three stories need at most 7 µs, 13 to 21 µs and 387 to 576 µs of extra t
 | 8 | none | lookup at K = 7 on book answers | TP32/PP8 | No extra time fits both AA values |
 | 8 | none | lookup at K = 7 on each book answer and on low-copy subsets | TP32/PP8 | 1 of 64 book pairs fits, through more copying at 100K; no low-copy subset fits |
 | 8 | none | lookup at K = 3 and 7 on sets of 80 coding turns | TP32/PP8 | NVIDIA's P80 and maximum ratios inside the 5th–95th percentiles for stories A and C |
+| 8 | none | lookup at K = 1–7 under four sets of LP30 attention rates and a row-independent bound | TP32/PP8 | Story C fits AA only with every unit at its peak rate or under the bound, near the band's edges; story A keeps a window under all |
 | attention on Rubin GPUs | none | none | Rubin and LPX, older cost model | No match: best 2,463 / 2,162 TPS |
 
 ## 27. Commit history
@@ -903,6 +947,7 @@ The three stories need at most 7 µs, 13 to 21 µs and 387 to 576 µs of extra t
 | `f68bfec`, `d835c7c` | Independent check of the 302-prompt results and AA at the example's drafter setting |
 | `a387f3a`, `1da3aee` | This comprehensive summary |
 | `d13f810`, `6d1d581` | Expectations and results of the two story C checks |
+| `a278b67`, `4f3136c` | AA's prompt methodology, and expectations and results of the sensitivity to LP30 attention costs |
 
 ## 28. Glossary
 

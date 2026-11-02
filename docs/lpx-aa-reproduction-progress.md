@@ -1,6 +1,6 @@
 # Progress on reproducing the AA Gemma 4 31B LPX results
 
-Record date: 2026-10-26, updated 2026-11-01.
+Record date: 2026-10-26, updated 2026-11-02.
 This page summarizes the work to reproduce the Artificial Analysis (AA) Gemma 4 31B results on NVIDIA Groq 3 LPX (LP30) hardware with TokenSim.
 Each section links to the detailed record that holds the method, the expectations recorded before each run and the complete results.
 The [final summary](lpx-aa-final-summary.md) states the outcome of the work in one page.
@@ -52,6 +52,7 @@ All results use the bundled [fidelity configuration](../experiments/lpx/fidelity
 | One extra time at measured MTP acceptance | [Joint-fit record](lpx-gpu-joint-fit.md) | MTP at K = 3 or 5 places both AA values and the 4,767 TPS coding median within 5% with one shared 387 to 576 µs of unmodeled time per step, 1.4 to 2.2 times the modeled plain step; it gives a coding P80/median of 1.03 to 1.09 against NVIDIA's 1.158 and a fastest 16K code-completion turn of 4,893 TPS against NVIDIA's 10,996 TPS example |
 | Lookup peak on 302 completions | [Code-completion peak record](lpx-cc16k-peak.md#plain-output-replay-results) | Plain-output replay at K = 7 reaches 11,606 TPS at the 7 µs coding-window upper end for minimum n-gram 1 and 11,735 TPS at 6 µs for minimum n-gram 2; one added request exceeds 10,996 TPS, supporting the coding-median-and-example part of the lookup hypothesis; no coding window reaches 26 µs; native equivalent acceptance differs from replay of its own 302 answers by +0.001094, within 0.03; at these two settings no extra time fits both AA values on the AA-like book answers |
 | One lookup drafter on every run | [Story C checks](lpx-story-c-checks.md) | At `K = 7` with at most 6 to 7 µs, the book answers that copy least do not fit both AA values: at minimum n-gram 1 the 100K answers are 6% to 13% too slow, and at minimum n-gram 2 the 10K answers are 10% to 16% too fast; the one fitting book commits 1.34 tokens per step at 100K against 1.22 at 10K; in sets of 80 coding turns, NVIDIA's P80/median and maximum/median lie between the 5th and 95th percentiles under both story C settings and story A's setting |
+| LP30 attention costs | [Attention-sensitivity record](lpx-attention-sensitivity.md) | With full attention matrix efficiency, a fourfold exponential rate or every LP30 unit at its peak rate, the 8-row 100K-minus-10K increment is 32.6, 48.1 or 24.1 µs against the assumed 48.2 µs; story C fits both AA values only with every unit at its peak rate, through the median of the 16 summary answers without thinking at 7 to 10 µs, at +4.0% to +4.9% for 10K and −4.2% to −5.0% for 100K; a scan added after the results puts the threshold at an increment of about 25 µs; story A keeps a window of at least 7.7 µs under every variant |
 
 ## DCP
 
@@ -219,6 +220,8 @@ These windows are below the earlier API fit's shared 13 to 21 µs range; they do
 The widest H20 coding window ends at 23.5 µs, still below the 26 µs required by the AA-like book answers.
 At the two `K = 7` settings that reach the example, no extra time fits both AA values on the book answers, and plain decoding needs at least 15.8 µs.
 The [story C checks](lpx-story-c-checks.md) show that answers copying less do not help: the AA values fit at this setting only when the 100K answers commit about 0.1 more tokens per step than the 10K answers, which the measured data do not show on average.
+The [attention-sensitivity record](lpx-attention-sensitivity.md) shows that this condition depends on the assumed LP30 attention costs: if the 8-row verification step grows by at most about 25 µs from 10K to 100K, half the modeled growth, the summary answers without thinking fit both AA values near the band's edges.
+In the simulation that growth needs every LP30 attention unit at its peak rate; full attention matrix efficiency alone leaves 32.6 µs and no fit.
 In sets of 80 coding turns the same setting gives NVIDIA's coding spread as an ordinary outcome.
 The native K = 7 check at minimum n-gram 1 gives equivalent acceptance of 0.443768 versus 0.442675 for replay of its own 302 answers, a difference of +0.001094 that supports the replay approximation for this configuration.
 The two explanations differ by more than 350 µs per step, so a measured LP30 step time or host loop would decide between them.
@@ -238,8 +241,9 @@ The GPU measurements use the public checkpoint in BF16 and FP8 on study prompts,
 | LP30 fixed costs per step | Measure an all-reduce across two LP30 trays, LP30's collective launch and per-kernel costs, and the host's per-token output collection and invocation; 387 to 576 µs per step would support MTP on both published runs; at the 1.006 Gemma tokens per `o200k_base` token of AA-like outputs the TP32 match holds if together they add 13 to 24 µs per step, for example a cross-tray latency of 0.80 to 0.85 µs, a collective launch of 0.10 to 0.18 µs or an instruction floor of 0.012 to 0.023 µs |
 | LP30 operand bandwidth | Establish whether LP30's matrix-unit operand bandwidth is below its 150 TB/s SRAM bandwidth, as GroqChip v1's 20 TB/s is below its 80 TB/s |
 | LP30 FP8 attention path | Establish whether KV conversion runs on the vector unit, which decides whether a larger attention group helps |
+| LP30 multi-row attention at long context | Measure how much an 8-row verification step grows from 10K to 100K; at most about 25 µs, half the modeled 48 µs, lets lookup at `K = 7` fit both AA values on summary answers without thinking, after the [attention-sensitivity record](lpx-attention-sensitivity.md) |
 | AA drafting status and spread | Establish whether the AA run drafted, from AA's prompts, its per-request speed spread or a statement of the deployment's settings; lookup acceptance on AA-like book answers would make the AA values too fast without 26 to 99 µs of extra time and Gemma's released MTP assistant without about 195 to 576 µs, and a per-request spread of about 3% or more would make the 1.45% higher 100K speed ordinary |
-| AA at the example's drafter setting | Establish whether AA's 100K prompts lead to answers that copy more from their context than its 10K prompts do, which lookup at `K = 7` with at most 7 µs needs after the [story C checks](lpx-story-c-checks.md); this needs AA's prompts |
+| AA at the example's drafter setting | Establish whether AA's 100K prompts lead to answers that copy more from their context than its 10K prompts do, which lookup at `K = 7` with at most 7 µs needs at the modeled attention costs after the [story C checks](lpx-story-c-checks.md); AA's methodology says each test uses a prompt generated at test time from long-form content such as articles, with summarization, question-answering, comparison, translation and visual-artifact tasks, and names neither the sources nor whether the 100K prompts share the 10K task mix, so this needs AA's prompts |
 | Lift the 16-row forward limit | Test longer drafts and heavier background traffic in one forward; background traffic matters only for setups that the AA footnotes no longer support |
 
 ## Earlier records
@@ -320,3 +324,4 @@ The work is on local branch `lpx-experiment`, pushed to `origin/lpx-context-para
 | `f68bfec` | Independent check of the 302-prompt results and AA at the example's drafter setting |
 | `a387f3a` | Self-contained comprehensive summary |
 | `d13f810`, `6d1d581` | Expectations and results of the two story C checks |
+| `a278b67`, `4f3136c` | Expectations and results of the LP30 attention-cost sensitivity, with AA's published prompt methodology |

@@ -1,6 +1,6 @@
 # Gemma 4 31B on LPX: final summary of the AA reproduction
 
-Record date: 2026-10-27, updated 2026-11-01.
+Record date: 2026-10-27, updated 2026-11-02.
 This record states the outcome of the work to reproduce the Artificial Analysis (AA) speeds of Gemma 4 31B on NVIDIA Groq 3 LPX in TokenSim.
 The [progress summary](lpx-aa-reproduction-progress.md) links every experiment record behind it.
 
@@ -62,6 +62,7 @@ The published sources do not say whether either run drafted, and the data leave 
 
 Published first-generation data leave only about 1 to 2 µs to launches, dispatch and synchronization, and give no size for the host's per-token loop, which the GroqRack check puts at 2.7 to 2.8 ms on first-generation hardware, so neither explanation is excluded.
 AA's prompts may give a drafter less to copy than the books used here, and the AA build may differ from the SPEED-Bench build.
+AA's methodology says each test uses a prompt generated at test time from long-form content such as articles, with summarization, question-answering, comparison, translation and visual-artifact tasks, and names neither the sources nor whether the 100K prompts share the 10K task mix.
 The earlier 40 API code-completion answers give a lookup peak of 9,785 TPS.
 The [expanded H20 study](lpx-cc16k-peak.md#plain-output-replay-results) replays all 302 prompts and reaches 11,606 TPS at minimum n-gram 1 and K = 7 with 7 µs of extra time, and 11,735 TPS at minimum n-gram 2 with 6 µs.
 Each extra time is the upper end of that setting's coding-median window, so the replay supports the coding-median-and-example part of the lookup hypothesis.
@@ -70,6 +71,7 @@ The native K = 7 check at minimum n-gram 1 gives equivalent acceptance of 0.4437
 This supports the replay approximation for this configuration without validating LP30 step times or identifying NVIDIA's drafter.
 At these two `K = 7` settings no extra time fits both AA values on the AA-like book answers, and plain decoding needs at least 15.8 µs.
 The [story C checks](lpx-story-c-checks.md) find that the answers copying least fit no better: one deployment with either setting needs AA's 100K answers to commit about 0.1 more tokens per step than its 10K answers, which the measured data do not show on average, while NVIDIA's coding spread is an ordinary outcome in sets of 80 turns.
+The [attention-sensitivity record](lpx-attention-sensitivity.md) finds that this need depends on the modeled LP30 attention costs: if an 8-row verification step grows by at most about 25 µs from 10K to 100K, half the modeled 48 µs, the summary answers without thinking fit both AA values near the band's edges, which in the simulation needs every LP30 attention unit at its peak rate.
 The measured MTP acceptance exceeds it at K = 7 with no unmodeled time, at 12,647 to 15,255 TPS, which would make the AA values too fast if the AA run drafted with the same acceptance.
 
 ## Speed at 100K
