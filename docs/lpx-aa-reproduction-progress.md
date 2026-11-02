@@ -319,4 +319,4 @@ The work is on local branch `lpx-experiment`, pushed to `origin/lpx-context-para
 | `7540b49`, `1439744`, `fa90435`, `0514637`, `d3e8cb3` | Code-completion peak on all 302 prompts: H20 outputs, lookup replay, native n-gram check and publication attempts from the GPU machine |
 | `f68bfec` | Independent check of the 302-prompt results and AA at the example's drafter setting |
 | `a387f3a` | Self-contained comprehensive summary |
-| `d13f810` | Expectations for the two story C checks |
+| `d13f810`, `6d1d581` | Expectations and results of the two story C checks |

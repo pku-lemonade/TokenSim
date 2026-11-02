@@ -902,7 +902,7 @@ The three stories need at most 7 µs, 13 to 21 µs and 387 to 576 µs of extra t
 | `7540b49`, `1439744`, `fa90435`, `0514637`, `d3e8cb3` | The 302-prompt study on the GPU machine |
 | `f68bfec`, `d835c7c` | Independent check of the 302-prompt results and AA at the example's drafter setting |
 | `a387f3a`, `1da3aee` | This comprehensive summary |
-| `d13f810` and the following commit | Expectations and results of the two story C checks |
+| `d13f810`, `6d1d581` | Expectations and results of the two story C checks |
 
 ## 28. Glossary
 
