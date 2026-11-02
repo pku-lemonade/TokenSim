@@ -1,9 +1,10 @@
 # Progress on reproducing the AA Gemma 4 31B LPX results
 
-Record date: 2026-10-26, updated 2026-10-31.
+Record date: 2026-10-26, updated 2026-11-01.
 This page summarizes the work to reproduce the Artificial Analysis (AA) Gemma 4 31B results on NVIDIA Groq 3 LPX (LP30) hardware with TokenSim.
 Each section links to the detailed record that holds the method, the expectations recorded before each run and the complete results.
 The [final summary](lpx-aa-final-summary.md) states the outcome of the work in one page.
+The [comprehensive summary](lpx-aa-comprehensive-summary.md) describes every experiment, result and interpretation in one self-contained record.
 
 ## Goal
 
@@ -314,3 +315,4 @@ The work is on local branch `lpx-experiment`, pushed to `origin/lpx-context-para
 | `78ea6f1` | Expectations and GPU plan for the code-completion peak |
 | `7540b49`, `1439744`, `fa90435`, `0514637`, `d3e8cb3` | Code-completion peak on all 302 prompts: H20 outputs, lookup replay, native n-gram check and publication attempts from the GPU machine |
 | `f68bfec` | Independent check of the 302-prompt results and AA at the example's drafter setting |
+| `a387f3a` | Self-contained comprehensive summary |
