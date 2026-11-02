@@ -323,6 +323,8 @@ The 2026-11-02 resumption committed the outstanding publication records as `fa90
 A noninteractive push preflight on that date exited with status 128 because Git could not obtain a GitHub username; disabling the editor askpass prompt avoided the earlier hang.
 The remote branch still returned `7388167`, and both 302-row output files retained their recorded SHA-256 hashes.
 The resumed validation run passed all 776 tests in 202.983 seconds, with all 530 Python files unchanged by Black and a clean diff check.
+The 2026-11-02 10:11 Shanghai preflight using the configured credential path authenticated as `jayfeather9`, but GitHub denied write access to `pku-lemonade/TokenSim` with HTTP 403.
+Publication requires repository write permission for that account or authentication as another authorized account; the remote branch remains at `7388167`.
 This is not a successful publication; C0 through C3 and the C4 reporting and validation are complete, while publication remains open.
 
 ## Collection and recurring checks

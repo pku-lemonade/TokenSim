@@ -15,7 +15,7 @@
   "collection_status": "/opt/tiger/rh2/rh2/init/TokenSim/experiments/lpx/gpu-cc302-collection-status.json",
   "timer_state": "/tmp/lpx-gpu/cc302/periodic-state.json",
   "last_check": {
-    "checked_unix": 1793585424,
+    "checked_unix": 1793585463,
     "collector_status": "complete",
     "stage": "C4-publication",
     "plain_completed_requests": 302,
@@ -54,7 +54,7 @@
   },
   "analysis_entrypoint": "scripts/analyze_lpx_gpu_cc302.py",
   "next_actions": [
-    "Publication is the only unfinished task; restore responsive Git authentication with write access to pku-lemonade/TokenSim.",
+    "Publication is the only unfinished task; GitHub denies write access to authenticated account jayfeather9. Grant that account repository write access or authenticate as another authorized account.",
     "After authentication is available, commit any updated status records, push lpx-context-parallel and verify that the remote contains the final results before marking C4 and the workflow complete.",
     "Collection, replay, native comparison, reporting and tests are complete and the GPU is released; do not launch duplicate collectors or analysis.",
     "Keep the 1800-second timer running until every TODO, including publication, is finished."
@@ -83,21 +83,21 @@
       "command": [
         "env",
         "GIT_TERMINAL_PROMPT=0",
-        "GIT_ASKPASS=/bin/false",
-        "SSH_ASKPASS=/bin/false",
         "git",
         "push",
         "--dry-run",
         "origin",
         "HEAD:lpx-context-parallel"
       ],
-      "timeout_seconds": 25,
+      "timeout_seconds": 15,
       "exit_status": 128,
-      "log": "/tmp/lpx-gpu/cc302/publication-preflight-20261102.log",
-      "checked_unix": 1793585290,
-      "result": "Noninteractive preflight failed because Git could not obtain a GitHub username; no new push was performed."
+      "log": "/tmp/lpx-gpu/cc302/publication-preflight-20261102-1011.log",
+      "checked_unix": 1793585463,
+      "authenticated_account": "jayfeather9",
+      "http_status": 403,
+      "result": "GitHub denied repository write access to authenticated account jayfeather9; no new push was performed."
     },
-    "remote_checked_unix": 1793585290
+    "remote_checked_unix": 1793585463
   },
   "publication_attempts": [
     {
