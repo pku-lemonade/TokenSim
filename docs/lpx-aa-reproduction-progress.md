@@ -51,6 +51,7 @@ All results use the bundled [fidelity configuration](../experiments/lpx/fidelity
 | Gemma 4 31B on a GPU | [GPU measurements](lpx-gpu-measurements.md), [follow-up results](lpx-gpu-followup-results.md) | The public checkpoint with its released MTP assistant on one H20 gives document equivalent acceptance of 0.720 to 0.814 and coding acceptance of 0.896 to 0.932 at K = 1 to 7; priced on TP32/PP8 with `KVP = 8`, every setting makes the AA 10K value at least 72% too fast, and no extra time of 25 µs or less fits; acceptance at 100K is within 0.02 of 10K; vLLM's default attention path loops on a document request at temperature zero, so the measurements use Triton attention |
 | One extra time at measured MTP acceptance | [Joint-fit record](lpx-gpu-joint-fit.md) | MTP at K = 3 or 5 places both AA values and the 4,767 TPS coding median within 5% with one shared 387 to 576 µs of unmodeled time per step, 1.4 to 2.2 times the modeled plain step; it gives a coding P80/median of 1.03 to 1.09 against NVIDIA's 1.158 and a fastest 16K code-completion turn of 4,893 TPS against NVIDIA's 10,996 TPS example |
 | Lookup peak on 302 completions | [Code-completion peak record](lpx-cc16k-peak.md#plain-output-replay-results) | Plain-output replay at K = 7 reaches 11,606 TPS at the 7 µs coding-window upper end for minimum n-gram 1 and 11,735 TPS at 6 µs for minimum n-gram 2; one added request exceeds 10,996 TPS, supporting the coding-median-and-example part of the lookup hypothesis; no coding window reaches 26 µs; native equivalent acceptance differs from replay of its own 302 answers by +0.001094, within 0.03; at these two settings no extra time fits both AA values on the AA-like book answers |
+| One lookup drafter on every run | [Story C checks](lpx-story-c-checks.md) | At `K = 7` with at most 6 to 7 µs, the book answers that copy least do not fit both AA values: at minimum n-gram 1 the 100K answers are 6% to 13% too slow, and at minimum n-gram 2 the 10K answers are 10% to 16% too fast; the one fitting book commits 1.34 tokens per step at 100K against 1.22 at 10K; in sets of 80 coding turns, NVIDIA's P80/median and maximum/median lie between the 5th and 95th percentiles under both story C settings and story A's setting |
 
 ## DCP
 
@@ -216,7 +217,9 @@ The [302-prompt H20 replay](lpx-cc16k-peak.md#plain-output-replay-results) suppl
 Those are the upper ends of the respective H20 coding-median windows, so lookup can account for both the coding median and the example on the modeled layout.
 These windows are below the earlier API fit's shared 13 to 21 µs range; they do not establish one shared extra time for all the published values.
 The widest H20 coding window ends at 23.5 µs, still below the 26 µs required by the AA-like book answers.
-At the two `K = 7` settings that reach the example, no extra time fits both AA values on the book answers, and plain decoding needs at least 15.8 µs, so one such deployment would need AA prompts on which lookup accepts less than on the books.
+At the two `K = 7` settings that reach the example, no extra time fits both AA values on the book answers, and plain decoding needs at least 15.8 µs.
+The [story C checks](lpx-story-c-checks.md) show that answers copying less do not help: the AA values fit at this setting only when the 100K answers commit about 0.1 more tokens per step than the 10K answers, which the measured data do not show on average.
+In sets of 80 coding turns the same setting gives NVIDIA's coding spread as an ordinary outcome.
 The native K = 7 check at minimum n-gram 1 gives equivalent acceptance of 0.443768 versus 0.442675 for replay of its own 302 answers, a difference of +0.001094 that supports the replay approximation for this configuration.
 The two explanations differ by more than 350 µs per step, so a measured LP30 step time or host loop would decide between them.
 Published first-generation data leave about 1 to 2 µs to collective launches, instruction dispatch and synchronization and give no size for the host's per-token loop, which the [GroqRack check](groqrack-llama2-7b-validation.md) puts at 2.7 to 2.8 ms on first-generation hardware.
@@ -236,7 +239,7 @@ The GPU measurements use the public checkpoint in BF16 and FP8 on study prompts,
 | LP30 operand bandwidth | Establish whether LP30's matrix-unit operand bandwidth is below its 150 TB/s SRAM bandwidth, as GroqChip v1's 20 TB/s is below its 80 TB/s |
 | LP30 FP8 attention path | Establish whether KV conversion runs on the vector unit, which decides whether a larger attention group helps |
 | AA drafting status and spread | Establish whether the AA run drafted, from AA's prompts, its per-request speed spread or a statement of the deployment's settings; lookup acceptance on AA-like book answers would make the AA values too fast without 26 to 99 µs of extra time and Gemma's released MTP assistant without about 195 to 576 µs, and a per-request spread of about 3% or more would make the 1.45% higher 100K speed ordinary |
-| AA at the example's drafter setting | Establish whether AA-like prompts with less copying than the books fit both AA values at the 0 to 7 µs that lookup at `K = 7` leaves after the [302-prompt study](lpx-cc16k-peak.md) |
+| AA at the example's drafter setting | Establish whether AA's 100K prompts lead to answers that copy more from their context than its 10K prompts do, which lookup at `K = 7` with at most 7 µs needs after the [story C checks](lpx-story-c-checks.md); this needs AA's prompts |
 | Lift the 16-row forward limit | Test longer drafts and heavier background traffic in one forward; background traffic matters only for setups that the AA footnotes no longer support |
 
 ## Earlier records
@@ -316,3 +319,4 @@ The work is on local branch `lpx-experiment`, pushed to `origin/lpx-context-para
 | `7540b49`, `1439744`, `fa90435`, `0514637`, `d3e8cb3` | Code-completion peak on all 302 prompts: H20 outputs, lookup replay, native n-gram check and publication attempts from the GPU machine |
 | `f68bfec` | Independent check of the 302-prompt results and AA at the example's drafter setting |
 | `a387f3a` | Self-contained comprehensive summary |
+| `d13f810` | Expectations for the two story C checks |

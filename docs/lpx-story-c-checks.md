@@ -1,7 +1,8 @@
 # Two checks of one lookup drafter on every run
 
 Record date: 2026-11-01.
-Status: expectations recorded; no check has run.
+Status: both checks ran on 2026-11-01; results below.
+The expectations were committed as `d13f810` before either check ran.
 
 ## Question
 
@@ -72,3 +73,86 @@ Both checks reuse the step model of the earlier records: verification steps of 1
 | Drafter and `K` | Not stated | Lookup replay at `K = 7`, and `K = 3` for comparison |
 | Coding request count | Not stated | Sets of 80 turns drawn from 89 |
 | Step times | Measured on LP30 | Simulated by TokenSim, with a constant extra time |
+
+## Results
+
+[`scripts/analyze_lpx_story_c.py`](../scripts/analyze_lpx_story_c.py) wrote [`story-c-checks.json`](../experiments/lpx/story-c-checks.json), which holds every book, subset and coding draw.
+
+### Check 1: the book answers
+
+Books whose 10K and 100K answers both fit at one extra time up to the coding window's upper end, out of 16:
+
+| Data set | Minimum n-gram | Upper extra time | Summary books fitting | Quotation books fitting | Low-copy subsets with a window |
+| --- | ---: | ---: | ---: | ---: | --- |
+| Thinking and answer | 1 | 7 µs | 1 | 0 | none of 4, 8 or 16 |
+| Thinking and answer | 2 | 6 µs | 0 | 0 | none |
+| Answer alone | 1 | 7 µs | 0 | 0 | none |
+| Answer alone | 2 | 6 µs | 0 | 0 | none |
+
+AA errors with no extra time for the 4 summary answers that copy least, and the share of steps on which the drafter proposes tokens:
+
+| Data set | Minimum n-gram | Tokens per step, 10K and 100K | AA 10K error | AA 100K error | Steps with a draft over all 16 books, 10K and 100K |
+| --- | ---: | --- | --- | --- | --- |
+| Thinking and answer | 1 | 1.23–1.26 | +8.6% to +11.5% | −6.1% to −7.5% | 78.9% and 87.7% |
+| Thinking and answer | 2 | 1.15–1.17 | +14.9% to +16.0% | +0.6% to +1.9% | 32.7% and 43.7% |
+| Answer alone | 1 | 1.14–1.17 | +2.5% to +4.6% | −12.0% to −13.4% | 77.2% and 86.9% |
+| Answer alone | 2 | 1.08–1.10 | +9.8% to +11.6% | −2.5% to −4.5% | 30.8% and 42.4% |
+
+The extra time slows both contexts, so it cannot repair an error with opposite signs at the two contexts.
+At minimum n-gram 1, the drafter proposes on most steps, and an 8-row step costs 353.5 µs at 10K and 401.6 µs at 100K, so the 100K answers are too slow while the 10K answers are close or too fast.
+At minimum n-gram 2, the drafter proposes less often, the steps stay closer to the one-row step, and the 10K answers are 10% to 16% too fast even at the lowest copy shares.
+The drafter also proposes more often at 100K than at 10K, because a longer context holds more matches, while the tokens committed per step stay nearly the same.
+
+The one book that fits, book 5 at minimum n-gram 1 with thinking and answer, ranks 12th of 16 by copy share.
+It fits only at 7.0 µs, the edge of the allowed range, because its 100K answer commits 1.34 tokens per step against 1.22 at 10K.
+Its fit comes from more copying at 100K than at 10K, the same per-workload acceptance gap that the earlier fits to all four published numbers required.
+
+### Check 2: the coding spread in sets of 80
+
+| Setting | Extra time | Median TPS, 89 turns | P80/median, 89 turns | P80/median, 5th–95th percentile | Maximum/median, 89 turns | Maximum/median, 5th–95th percentile | Sets at or below NVIDIA's maximum/median |
+| --- | ---: | ---: | ---: | --- | ---: | --- | ---: |
+| Story C, minimum n-gram 1, `K = 7` | 7 µs | 4,531 | 1.195 | 1.111–1.264 | 1.950 | 1.425–1.999 | 15.6% |
+| Story C, minimum n-gram 2, `K = 7` | 6 µs | 4,533 | 1.154 | 1.110–1.240 | 1.885 | 1.431–1.964 | 14.8% |
+| Story A, minimum n-gram 1, `K = 3` | 13 µs | 4,686 | 1.155 | 1.103–1.194 | 1.601 | 1.294–1.627 | 41.0% |
+| Story A, minimum n-gram 1, `K = 3` | 21 µs | 4,567 | 1.155 | 1.102–1.197 | 1.602 | 1.292–1.627 | 41.3% |
+
+NVIDIA's P80/median of 1.158 and maximum/median of 1.464 lie between the 5th and 95th percentiles at all four settings.
+Under story C, about one set of 80 turns in seven gives a maximum/median at or below NVIDIA's.
+The 89-turn maximum is one request that copies heavily, and a set of 80 drawn with replacement leaves it out about 40% of the time.
+
+### Comparison with the expectations
+
+| Expectation | Outcome | Evidence |
+| --- | --- | --- |
+| 1: no book fits at minimum n-gram 1 | Missed | One summary book fits with thinking and answer, at 7.0 µs only |
+| 2: at most 4 pairs fit at minimum n-gram 2, and no quotation answer | Held | No pair fits in either data set |
+| 3: every fitting book commits at most 1.085 tokens per step at 10K | Missed | The fitting book commits 1.22 at 10K and 1.34 at 100K |
+| 4: the 8 lowest-copy summary answers have no window at minimum n-gram 2 | Held | No window in either data set; their 10K medians are 10.4% and 15.4% too fast |
+| 5: NVIDIA's maximum/median lies below the 5th percentile under story C | Missed | It lies at the 15th percentile at both story C settings |
+| 6: NVIDIA's P80/median lies between the 5th and 95th percentiles under story C | Held | 1.158 lies inside 1.111–1.264 and 1.110–1.240 |
+| 7: NVIDIA's maximum/median lies between the 5th and 95th percentiles under story A | Held | 1.464 lies inside 1.294–1.627 at both extra times |
+
+## Interpretation
+
+The coding spread does not count against story C.
+At sets of 80 turns, both NVIDIA ratios are ordinary outcomes of the H20 coding answers under story C, as they are under story A.
+The wide 89-turn maximum computed after the 302-prompt results came from one heavily copying turn and does not distinguish the stories.
+
+The AA end of story C does not come from answers that copy little.
+Among the measured book answers, those that copy least fit worse than average at minimum n-gram 2 and give opposite errors at the two contexts at minimum n-gram 1.
+At minimum n-gram 2, answers that copy even less would draft less and approach plain decoding, which needs at least 15.8 µs on the answers alone, above the 6 µs story C allows.
+At minimum n-gram 1, they would still draft on most steps, because single-token matches are nearly always available, and would commit fewer tokens, which slows both contexts while 100K is already too slow.
+The exploratory bound of the comprehensive summary, which allowed a fit with 11% to 39% of steps drafting and at most about 1.085 tokens per step, assumed drafts of 7 tokens or none; the measured answers draft on 31% to 88% of steps with mixed lengths and do not reach that region.
+
+At `K = 7` with at most 7 µs, the AA values fit only when the 100K answers commit more tokens per step than the 10K answers, as for book 5.
+On average the book answers show no such gap: the paired acceptance difference between 100K and 10K is about zero, and Gemma's own MTP drafter shows the same.
+Story C therefore needs AA's 100K prompts to lead to answers that copy more from their context than its 10K prompts do, by about 0.1 tokens per step.
+This is the same condition that every earlier fit to the faster 100K speed needed, and the measured data do not show it on average.
+
+Story C remains the only story that reaches the 10,996 TPS example with the coding median and an ordinary coding spread, while its AA end rests on a content difference between AA's two prompt sets that no measurement here supports.
+Story A fits AA without that condition and keeps an ordinary coding spread, but misses the example.
+A measured LP30 step time or host loop would still separate the stories, since they need at most 7 µs, 13 to 21 µs and 387 to 576 µs of extra time per step.
+
+## Validation
+
+The unit tests in [`tests/test_lpx_story_c.py`](../tests/test_lpx_story_c.py) cover the per-step pricing, the extra-time window, the ordering by copy share and the sampled percentiles.

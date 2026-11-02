@@ -1,6 +1,6 @@
 # Gemma 4 31B on LPX: final summary of the AA reproduction
 
-Record date: 2026-10-27, updated 2026-10-31.
+Record date: 2026-10-27, updated 2026-11-01.
 This record states the outcome of the work to reproduce the Artificial Analysis (AA) speeds of Gemma 4 31B on NVIDIA Groq 3 LPX in TokenSim.
 The [progress summary](lpx-aa-reproduction-progress.md) links every experiment record behind it.
 
@@ -68,7 +68,8 @@ Each extra time is the upper end of that setting's coding-median window, so the 
 These windows do not overlap the earlier API fit's 13 to 21 µs range, and no H20 coding window reaches the 26 µs needed by the AA-like book answers.
 The native K = 7 check at minimum n-gram 1 gives equivalent acceptance of 0.443768 versus 0.442675 for replay of its own 302 answers, a difference of +0.001094 within the recorded 0.03 expectation.
 This supports the replay approximation for this configuration without validating LP30 step times or identifying NVIDIA's drafter.
-At these two `K = 7` settings no extra time fits both AA values on the AA-like book answers, and plain decoding needs at least 15.8 µs, so one deployment with either setting would need AA prompts on which lookup accepts less than on the books.
+At these two `K = 7` settings no extra time fits both AA values on the AA-like book answers, and plain decoding needs at least 15.8 µs.
+The [story C checks](lpx-story-c-checks.md) find that the answers copying least fit no better: one deployment with either setting needs AA's 100K answers to commit about 0.1 more tokens per step than its 10K answers, which the measured data do not show on average, while NVIDIA's coding spread is an ordinary outcome in sets of 80 turns.
 The measured MTP acceptance exceeds it at K = 7 with no unmodeled time, at 12,647 to 15,255 TPS, which would make the AA values too fast if the AA run drafted with the same acceptance.
 
 ## Speed at 100K

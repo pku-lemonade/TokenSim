@@ -302,7 +302,7 @@ The jointly supporting settings have coding windows of 0 to 7 µs and 0 to 6 µs
 Both K = 7 settings still exceed the example at 26 µs, but their coding medians no longer fit at that extra time.
 No setting fits the H20 coding median at the 26 µs needed by the AA-like book answers, and the AA part remains unresolved.
 At the two settings that reach the example, minimum n-gram 1 or 2 with `K = 7`, no extra time places both AA values within 5% on the [AA-like book answers](lpx-api-outputs.md), as [`api-aa-answer-alone-analysis.json`](../experiments/lpx/api-aa-answer-alone-analysis.json) records, and plain decoding needs at least 15.8 µs.
-One deployment with one of these settings would therefore need AA prompts on which lookup accepts less than on the book answers.
+The [story C checks](lpx-story-c-checks.md) later found that the book answers copying least fit no better, so one deployment with one of these settings needs AA's 100K answers to copy more than its 10K answers.
 The native comparison supports the text replay's acceptance approximation at minimum n-gram 1 and K = 7, with the accounting and tokenization differences recorded above.
 The public checkpoint, BF16 outputs, prompt lengths, thinking setting and simulated step costs remain different from the unpublished LP30 deployment conditions.
 

@@ -1,6 +1,6 @@
 # Reproducing the AA Gemma 4 31B LPX speeds: comprehensive summary
 
-Record date: 2026-11-01.
+Record date: 2026-11-01, updated the same day with the story C checks.
 
 This record describes, in one self-contained document, the whole effort to reproduce the Artificial Analysis (AA) output speeds of Gemma 4 31B on NVIDIA Groq 3 LPX hardware with the TokenSim simulator.
 It covers every experiment that was run, the result of each, the expectations that held or missed, the corrections made along the way, and our interpretation of where the evidence stands.
@@ -669,8 +669,58 @@ At minimum n-gram 2 and K = 7, the 10K speed is about 12% too fast.
 An exploratory bound, computed after the results and not recorded as a separate experiment, simplifies drafting to a full 7-token draft or none on each step.
 With at most 7 µs of extra time, both AA values fit only if 11% to 39% of steps carry a draft and the steps commit at most about 1.085 tokens on average.
 At a similar equivalent draft rate of about 31%, the book summaries at minimum n-gram 2 commit 1.104 tokens per step, while the bound allows about 1.03 to 1.055.
-AA's prompts would therefore need roughly half as many accepted tokens per step as the book summaries, while still triggering drafts that are mostly rejected.
-AA does not publish its prompts, so this end of the third reading is untested.
+This suggested that AA's prompts would need roughly half as many accepted tokens per step as the book summaries, while still triggering drafts that are mostly rejected.
+The checks below tested that suggestion on the measured answers and did not support it.
+
+### Checks of the AA end and the coding spread
+
+Two checks with seven recorded expectations then tested story C's weak points using data already collected.
+
+The first priced every book answer at K = 7, at both minimum n-gram settings, in both data sets (thinking and answer at a token ratio of 1.0055, and the answer alone at 0.9950).
+A book fits when its 10K and 100K answers both lie within 5% of the AA values at one extra time up to 7 µs at minimum n-gram 1 or 6 µs at minimum n-gram 2.
+Books were also sorted by copy share, the mean equivalent acceptance of their two answers, and the medians of the 4, 8 and 16 books that copy least were tested the same way.
+
+| Data set | Minimum n-gram | Summary books fitting | Quotation books fitting | Low-copy subsets with a window |
+| --- | ---: | ---: | ---: | --- |
+| Thinking and answer | 1 | 1 of 16 | 0 of 16 | none |
+| Thinking and answer | 2 | 0 | 0 | none |
+| Answer alone | 1 | 0 | 0 | none |
+| Answer alone | 2 | 0 | 0 | none |
+
+For the 4 summary answers that copy least, with no extra time:
+
+| Data set | Minimum n-gram | Tokens per step | AA 10K error | AA 100K error | Steps with a draft over all books, 10K and 100K |
+| --- | ---: | --- | --- | --- | --- |
+| Thinking and answer | 1 | 1.23–1.26 | +8.6% to +11.5% | −6.1% to −7.5% | 78.9% and 87.7% |
+| Thinking and answer | 2 | 1.15–1.17 | +14.9% to +16.0% | +0.6% to +1.9% | 32.7% and 43.7% |
+| Answer alone | 1 | 1.14–1.17 | +2.5% to +4.6% | −12.0% to −13.4% | 77.2% and 86.9% |
+| Answer alone | 2 | 1.08–1.10 | +9.8% to +11.6% | −2.5% to −4.5% | 30.8% and 42.4% |
+
+An extra time slows both contexts, so it cannot repair errors of opposite sign.
+At minimum n-gram 1 the drafter proposes on most steps, and the costly 8-row steps make 100K too slow.
+At minimum n-gram 2 it proposes less often and the 10K answers are 10% to 16% too fast even at the lowest copy shares; answers copying still less would approach plain decoding, which needs at least 15.8 µs.
+The drafter also proposes more often at 100K than at 10K, because a longer context holds more matches, while the committed tokens per step barely change.
+The one fitting book ranks 12th of 16 by copy share and fits only at 7.0 µs, because its 100K answer commits 1.34 tokens per step against 1.22 at 10K.
+
+The second check drew 2,000 sets of 80 of the 89 H20 coding turns, with replacement and a fixed seed, and placed NVIDIA's ratios among them.
+
+| Setting | Extra time | P80/median, 5th–95th percentile | Maximum/median, 5th–95th percentile | Sets at or below NVIDIA's maximum/median |
+| --- | ---: | --- | --- | ---: |
+| Story C, minimum n-gram 1, K = 7 | 7 µs | 1.111–1.264 | 1.425–1.999 | 15.6% |
+| Story C, minimum n-gram 2, K = 7 | 6 µs | 1.110–1.240 | 1.431–1.964 | 14.8% |
+| Story A, minimum n-gram 1, K = 3 | 13 µs | 1.103–1.194 | 1.294–1.627 | 41.0% |
+| Story A, minimum n-gram 1, K = 3 | 21 µs | 1.102–1.197 | 1.292–1.627 | 41.3% |
+
+NVIDIA's 1.158 and 1.464 lie inside every range, so the wide 89-turn maximum computed earlier came from one heavily copying turn, which a set of 80 omits about 40% of the time.
+
+Four of seven expectations held.
+The misses were one fitting book at minimum n-gram 1, where none was expected; that book committing 1.22 tokens per step at 10K, above the expected 1.085; and NVIDIA's maximum/median lying at the 15th percentile under story C instead of below the 5th.
+
+These checks change the AA condition of story C.
+Answers that copy little do not fit; at K = 7 with at most 7 µs the AA values fit only when the 100K answers commit about 0.1 more tokens per step than the 10K answers, as for the one fitting book.
+On average the measured answers show no such gap, and neither does Gemma's MTP drafter.
+Story C therefore needs AA's 100K prompts to lead to answers that copy more from their context than its 10K prompts do, the same condition every earlier fit to the faster 100K speed needed.
+The coding spread, by contrast, does not count against story C.
 
 ## 21. Where the evidence stands
 
@@ -679,12 +729,12 @@ Three stories now remain, all on TP32/PP8 with DCP 8 on 256 LP30 chips at attent
 | | A: plain decoding on AA, lookup on coding | B: Gemma's MTP on both runs | C: lookup at K = 7 on every run |
 | --- | --- | --- | --- |
 | Unmodeled time per step | 13–21 µs | 387–576 µs | at most 6–7 µs |
-| Both AA values | fit | fit | not on the book answers; needs prompts with about half the accepted tokens |
+| Both AA values | fit | fit | only if AA's 100K answers copy about 0.1 tokens per step more than its 10K answers; low-copy book answers do not fit |
 | Coding median | fits, best of 16 settings chosen after the results | fits | fits |
-| Coding spread | median and P80 within 2% for that setting | too narrow | P80/median 1.154–1.195, close to 1.158; maximum/median 1.885–1.95, wider than 1.464 |
+| Coding spread | NVIDIA's P80 and maximum ratios inside the 5th–95th percentiles of sets of 80 | too narrow | NVIDIA's P80 and maximum ratios inside the 5th–95th percentiles of sets of 80 |
 | 10,996 TPS example | not reached; best 8,806 of 302 at 21 µs | not reached; 4,893 | reached by one request in 302 |
 | Drafter | weaker than Gemma's MTP, on coding only | Gemma's released MTP | lookup, on every run |
-| Weakest point | two drafting behaviours in one deployment | an unmodeled cost larger than the modeled step | AA's prompts and a peak resting on one request |
+| Weakest point | two drafting behaviours in one deployment | an unmodeled cost larger than the modeled step | a copy gap between AA's two prompt sets that the data do not show, and a peak resting on one request |
 
 Results we consider reasonably firm:
 
@@ -700,6 +750,7 @@ Results we consider weak:
 - The SPEED-Bench coding fit, chosen as the best of 16 settings after the results.
 - The picture that the coding run drafted and the AA run did not.
 - Story C's example, which rests on one request in 302.
+- Story C's AA end, which needs AA's 100K answers to copy more than its 10K answers.
 - Every acceptance fitted in the early sweeps.
 
 ## 22. Our assessment
@@ -717,8 +768,10 @@ This tension produced the three stories.
 
 Story A needs the least unexplained time and fits AA directly, but it requires the AA run and the coding run to differ in drafting, which one named deployment makes awkward unless AA measured a different build or configuration.
 Story B uses the drafter Google ships, which makes it natural for a production deployment, but it needs an unmodeled cost larger than the whole modeled step, it spreads coding speeds too little, and it misses the example; it survives only because the host loop on LPX has no published size.
-Story C uses one mechanism for all three kinds of content, reaches the example and gives a coding P80/median close to NVIDIA's, though its coding maximum spreads wider than NVIDIA's, and it needs the smallest fixed time of the three and AA prompts on which the drafter proposes yet rarely succeeds.
-We find story C the most economical explanation of the coding numbers, and we find its AA end the least supported part of it.
+Story C uses one mechanism for all three kinds of content, reaches the example and gives NVIDIA's coding spread as an ordinary outcome, and it needs the smallest fixed time of the three.
+Its AA end does not come from prompts that copy little, as we had expected: at K = 7 the verification of 8 rows costs much more at 100K than at 10K, so the AA pair fits only if AA's 100K answers copy more than its 10K answers.
+No measurement here shows that on average, so the AA end of story C has moved from untested to unsupported by the data we have, though AA's own prompts could still show it.
+We find story C the most economical explanation of the coding numbers, and story A the most economical explanation of the AA numbers, and the two cannot both describe one deployment with one drafter setting unless the AA run drafted differently.
 
 We do not think the data identify NVIDIA's deployment.
 The model build, thinking mode, drafter, sampling and AA's prompts are unknown or differ in every proxy experiment, and the LP30 rates are assumptions.
@@ -746,6 +799,10 @@ The three stories need at most 7 µs, 13 to 21 µs and 387 to 576 µs of extra t
   The original write-up called the best-of-16 SPEED-Bench fit a match of NVIDIA's run and said the coding run most likely drafted; both are now stated as weak evidence and conditional on the unstated load.
 - **AA window range under MTP.**
   An earlier summary gave 195 to 510 µs for the AA window under MTP; the correct range over 14 of 16 settings is 195 to 576 µs.
+- **The AA condition of story C.**
+  This record originally concluded that story C needs AA prompts that copy less than the book answers; the checks of section 20 found that less copying does not help and that story C needs more copying at 100K than at 10K.
+- **The coding maximum under story C.**
+  The 89-turn maximum/median of 1.885 to 1.95 initially looked too wide for NVIDIA's 1.464; in sets of 80 turns NVIDIA's value is an ordinary outcome.
 - **The code-completion peak.**
   The earlier conclusion that lookup cannot reach the example, drawn from 40 prompts, was revised by the 302-prompt study.
 - **Terminology.**
@@ -777,7 +834,7 @@ The three stories need at most 7 µs, 13 to 21 µs and 387 to 576 µs of extra t
 | Question | Test |
 | --- | --- |
 | How much time does an LP30 step carry beyond the modeled forward? | Measure one LP30 decode step or the host's per-token loop; the three stories need at most 7 µs, 13 to 21 µs and 387 to 576 µs |
-| Does story C hold at AA's end? | Split the book answers by how much each copies from its book and test whether low-copy answers fit both AA values at K = 7 with at most 7 µs; better, obtain AA's prompts |
+| Does story C hold at AA's end? | Obtain AA's 10K and 100K prompts and measure whether the 100K answers copy about 0.1 tokens per step more than the 10K answers; the book answers that copy least do not fit |
 | Does the collective latency between trays match the assumption? | Measure one all-reduce across two LP30 trays; the match holds for about 0.73 to 0.85 µs depending on the token ratio |
 | Is the faster 100K speed noise? | Obtain AA's per-request speeds for the LPX endpoint; a spread of about 3% or more makes it ordinary, and a wide spread also points to drafting |
 | Which build, thinking mode and drafter did each run use? | A statement of the deployment's settings for the AA and SPEED-Bench runs |
@@ -816,6 +873,8 @@ The three stories need at most 7 µs, 13 to 21 µs and 387 to 576 µs of extra t
 | 8 | none | Gemma MTP on AA and coding together | TP32/PP8 | Shared 387–576 µs at K = 3 or 5; spread too narrow; example missed |
 | 8 | none | lookup on all 302 code-completion answers | TP32/PP8 | K = 7 reaches 11,606–11,735 TPS at 6–7 µs with the coding median inside 5% |
 | 8 | none | lookup at K = 7 on book answers | TP32/PP8 | No extra time fits both AA values |
+| 8 | none | lookup at K = 7 on each book answer and on low-copy subsets | TP32/PP8 | 1 of 64 book pairs fits, through more copying at 100K; no low-copy subset fits |
+| 8 | none | lookup at K = 3 and 7 on sets of 80 coding turns | TP32/PP8 | NVIDIA's P80 and maximum ratios inside the 5th–95th percentiles for stories A and C |
 | attention on Rubin GPUs | none | none | Rubin and LPX, older cost model | No match: best 2,463 / 2,162 TPS |
 
 ## 27. Commit history
@@ -842,6 +901,8 @@ The three stories need at most 7 µs, 13 to 21 µs and 387 to 576 µs of extra t
 | `78ea6f1`, `7388167` | Expectations and plan for the 302-prompt code-completion study |
 | `7540b49`, `1439744`, `fa90435`, `0514637`, `d3e8cb3` | The 302-prompt study on the GPU machine |
 | `f68bfec`, `d835c7c` | Independent check of the 302-prompt results and AA at the example's drafter setting |
+| `a387f3a`, `1da3aee` | This comprehensive summary |
+| `d13f810` and the following commit | Expectations and results of the two story C checks |
 
 ## 28. Glossary
 
