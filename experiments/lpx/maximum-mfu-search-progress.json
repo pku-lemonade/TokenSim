@@ -2,7 +2,7 @@
   "record_date": "2026-11-03",
   "goal": "Find the highest useful MFU for Gemma 4 31B serving with a 100K input; explore inventories beyond 256 LP30 chips.",
   "maximum_certified": false,
-  "status": "Search active. Default-policy resident decode incumbents remain 3.03914% existing cache and 3.41960% experimental shared cache; explicit paired stage arenas retain a stable nearby 3.41007% point. Twelve additional phase/program-assignment cases and host/reservation-order controls do not improve it. Additional workspace reduces the PP12 admitted count from 17 to 16. Zero generic KV watermark with the 5MB reserve preserved admits 10 separate-cache or 15 shared-cache requests under doubled workspace but does not improve the corresponding incumbent. Global-only GPU attention remains open: conditional Rubin/H100/B200 SQD bounds are 3.25632/4.89406/4.94008%. Global optimality, sustained serving, quality and physical/compiler execution remain unverified.",
+  "status": "Search active. Resident decode incumbents remain 3.03914% existing cache and 3.41960% experimental shared cache. A latency-coupled sliding-KV bound covers 2304 native GPU ownership cases and all larger batches. Complete-global-attention H100/B200/Rubin bounds are 2.69076/3.08312/2.39722% at arbitrary inventory under native costs; B200 falls below the existing-format incumbent through 1024 total cards. B200 core-only ownership remains open with a 3.63581% bound at up to 256 total cards. GPU context parallelism, persistent weight caching, KV offload, explicit mixed-device scheduling, sustained serving, model quality and physical/compiler validation remain open.",
   "shared_timing_config": {
     "operator": {
       "activation_dtype": "bf16",
@@ -126995,7 +126995,7 @@
     "after_artifact": "outputs/lpx-maximum-mfu-20261102/changed-set-regression-after.json",
     "scope": "One local frozen three-program replay comparison; host timing is not a calibrated general speedup. Every completion and resource statistic agrees exactly."
   },
-  "milestone_commit": "19f83bee67b644d5587926877ea50b7969fd3f73",
+  "milestone_commit": "1dfa86ee6dff71d7b172e979e2b2d37247c35f9c",
   "experimental_shared_global_kv": {
     "name": "value_rope_fp8",
     "kernel_options": [
@@ -133734,7 +133734,7 @@
     "matching_quality_verified": false,
     "scope": "Best within these two reconstruction kernels and fifteen supplied phase probes; existing-format incumbent stays separate."
   },
-  "previous_milestone_commit": "83cf223bb0c6ac395d0f419b8d9707211e2e15b5",
+  "previous_milestone_commit": "19f83bee67b644d5587926877ea50b7969fd3f73",
   "shared_kv_workspace_and_batch_search": {
     "parent_commit": "39b77d7",
     "native_source_sha256": "53ca1eccb65aacc282227fd3938cc8651807151de748146f6958654cd4de117e",
@@ -224082,7 +224082,8 @@
     "65c1b726f0eafc6e1e73f8895dce546761a68910",
     "83cf223bb0c6ac395d0f419b8d9707211e2e15b5",
     "651cc627c781ad9cd1923f020ab2c7fd00c5fd5f",
-    "19f83bee67b644d5587926877ea50b7969fd3f73"
+    "19f83bee67b644d5587926877ea50b7969fd3f73",
+    "1dfa86ee6dff71d7b172e979e2b2d37247c35f9c"
   ],
   "complete_serving_search": {
     "code_commit": "65c1b726f0eafc6e1e73f8895dce546761a68910",
@@ -302997,5 +302998,368 @@
       "Finer per-operator scratch lifetimes, communication layouts and allocator policy with executable compiler and physical-bank evidence.",
       "Prefill/decode fusion, sustained complete-serving horizons and matching experimental-cache model quality."
     ]
+  },
+  "gpu_sqd_residency_bounds": {
+    "goal_turn_classification": "progress",
+    "base_commit": "1cb7829339b156736a0f98d06056dbf319065518",
+    "source_sha256": "041bf28bf4fe06bc9d2be60e7adea1f432bac5dbd27344bd68a38ce3a92478bb",
+    "driver_sha256": "66f5ee34f4fb5d71466ea7a55e8226a3e27be1af0ff1d86f6d501a9d7697a02b",
+    "portable_result": "experiments/lpx/sqd-residency-bounds.json.gz",
+    "portable_result_sha256": "eb7d8871d28ac27ecc3dc5af91fbdf4cbd85586f58880832443b6d20c3a644fd",
+    "documentation": "docs/lpx-sqd-residency-bounds.md",
+    "explicit_cases": 2304,
+    "batch_tail_certificates": 36,
+    "batch_tail_maximum_mfu_percent": 1.4875787870769615,
+    "sliding_kv_payload_bytes_per_resident_request": 419430400,
+    "inventory_limits": [
+      256,
+      512,
+      1024,
+      2048
+    ],
+    "best_explicit_bounds": {
+      "h100_sxm/global_attention": {
+        "device": "h100_sxm",
+        "gpu_tp": 4,
+        "batch": 2,
+        "role": "global_attention",
+        "mfu_bound_percent": 2.6907599204311725,
+        "gpu_path_s": 0.0009627046709853389
+      },
+      "h100_sxm/global_core": {
+        "device": "h100_sxm",
+        "gpu_tp": 4,
+        "batch": 1,
+        "role": "global_core",
+        "mfu_bound_percent": 3.7256810425037403,
+        "gpu_path_s": 0.00038774510739856806
+      },
+      "b200_sxm/global_attention": {
+        "device": "b200_sxm",
+        "gpu_tp": 4,
+        "batch": 3,
+        "role": "global_attention",
+        "mfu_bound_percent": 3.0831244674953284,
+        "gpu_path_s": 0.0005961919406307978
+      },
+      "b200_sxm/global_core": {
+        "device": "b200_sxm",
+        "gpu_tp": 4,
+        "batch": 1,
+        "role": "global_core",
+        "mfu_bound_percent": 3.9529517846683166,
+        "gpu_path_s": 0.00016992436363636368
+      },
+      "rubin/global_attention": {
+        "device": "rubin",
+        "gpu_tp": 4,
+        "batch": 7,
+        "role": "global_attention",
+        "mfu_bound_percent": 2.397219613264055,
+        "gpu_path_s": 0.0004887629131652661
+      },
+      "rubin/global_core": {
+        "device": "rubin",
+        "gpu_tp": 4,
+        "batch": 3,
+        "role": "global_core",
+        "mfu_bound_percent": 2.7532574852141236,
+        "gpu_path_s": 0.0001921496470588235
+      }
+    },
+    "best_finite_bounds": {
+      "h100_sxm/global_attention/256": {
+        "gpu_tp": 4,
+        "batch": 2,
+        "mfu_bound_percent": 2.2249177669670024,
+        "aggregate_tps_bound": 72255.05180909795,
+        "gpu_cards": 140,
+        "lp_cards": 116,
+        "resident_request_relaxation": 69.56027587890625
+      },
+      "h100_sxm/global_attention/512": {
+        "gpu_tp": 4,
+        "batch": 2,
+        "mfu_bound_percent": 2.470735155572008,
+        "aggregate_tps_bound": 166198.42493985017,
+        "gpu_cards": 320,
+        "lp_cards": 192,
+        "resident_request_relaxation": 160.1593359375
+      },
+      "h100_sxm/global_attention/1024": {
+        "gpu_tp": 4,
+        "batch": 2,
+        "mfu_bound_percent": 2.582524624930662,
+        "aggregate_tps_bound": 353171.65299718163,
+        "gpu_cards": 680,
+        "lp_cards": 343,
+        "resident_request_relaxation": 340.16536315917966
+      },
+      "h100_sxm/global_attention/2048": {
+        "gpu_tp": 4,
+        "batch": 2,
+        "mfu_bound_percent": 2.637068764202175,
+        "aggregate_tps_bound": 727118.1091118444,
+        "gpu_cards": 1400,
+        "lp_cards": 645,
+        "resident_request_relaxation": 700.1774176025391
+      },
+      "h100_sxm/global_core/256": {
+        "gpu_tp": 4,
+        "batch": 1,
+        "mfu_bound_percent": 3.0759117891033987,
+        "aggregate_tps_bound": 103160.55376782226,
+        "gpu_cards": 160,
+        "lp_cards": 95,
+        "resident_request_relaxation": 40.063825073242185
+      },
+      "h100_sxm/global_core/512": {
+        "gpu_tp": 4,
+        "batch": 1,
+        "mfu_bound_percent": 3.4128682442966585,
+        "aggregate_tps_bound": 239848.28751018678,
+        "gpu_cards": 372,
+        "lp_cards": 140,
+        "resident_request_relaxation": 93.70800537109375
+      },
+      "h100_sxm/global_core/1024": {
+        "gpu_tp": 4,
+        "batch": 1,
+        "mfu_bound_percent": 3.572098242599409,
+        "aggregate_tps_bound": 510644.7411507202,
+        "gpu_cards": 792,
+        "lp_cards": 228,
+        "resident_request_relaxation": 198.61218017578125
+      },
+      "h100_sxm/global_core/2048": {
+        "gpu_tp": 4,
+        "batch": 1,
+        "mfu_bound_percent": 3.6497499955401107,
+        "aggregate_tps_bound": 1047079.620743396,
+        "gpu_cards": 1624,
+        "lp_cards": 402,
+        "resident_request_relaxation": 406.0363439941406
+      },
+      "b200_sxm/global_attention/256": {
+        "gpu_tp": 4,
+        "batch": 3,
+        "mfu_bound_percent": 2.7682631137771456,
+        "aggregate_tps_bound": 150958.09565083348,
+        "gpu_cards": 120,
+        "lp_cards": 134,
+        "resident_request_relaxation": 91.01794799804688
+      },
+      "b200_sxm/global_attention/512": {
+        "gpu_tp": 4,
+        "batch": 3,
+        "mfu_bound_percent": 2.9381894101416193,
+        "aggregate_tps_bound": 347203.61999691697,
+        "gpu_cards": 276,
+        "lp_cards": 232,
+        "resident_request_relaxation": 207.8430517578125
+      },
+      "b200_sxm/global_attention/1024": {
+        "gpu_tp": 4,
+        "batch": 3,
+        "mfu_bound_percent": 3.0139227928271435,
+        "aggregate_tps_bound": 744521.0423319663,
+        "gpu_cards": 592,
+        "lp_cards": 430,
+        "resident_request_relaxation": 443.87744506835935
+      },
+      "b200_sxm/global_attention/2048": {
+        "gpu_tp": 4,
+        "batch": 3,
+        "mfu_bound_percent": 3.049217114223218,
+        "aggregate_tps_bound": 1529708.7025951124,
+        "gpu_cards": 1216,
+        "lp_cards": 823,
+        "resident_request_relaxation": 912.3699530029297
+      },
+      "b200_sxm/global_core/256": {
+        "gpu_tp": 4,
+        "batch": 1,
+        "mfu_bound_percent": 3.6358125776372785,
+        "aggregate_tps_bound": 235398.85125360583,
+        "gpu_cards": 160,
+        "lp_cards": 95,
+        "resident_request_relaxation": 40.063825073242185
+      },
+      "b200_sxm/global_core/512": {
+        "gpu_tp": 4,
+        "batch": 1,
+        "mfu_bound_percent": 3.8317837479010937,
+        "aggregate_tps_bound": 547302.3291646335,
+        "gpu_cards": 372,
+        "lp_cards": 140,
+        "resident_request_relaxation": 93.70800537109375
+      },
+      "b200_sxm/global_core/1024": {
+        "gpu_tp": 4,
+        "batch": 1,
+        "mfu_bound_percent": 3.917709738219616,
+        "aggregate_tps_bound": 1165224.3137053489,
+        "gpu_cards": 792,
+        "lp_cards": 228,
+        "resident_request_relaxation": 198.61218017578125
+      },
+      "b200_sxm/global_core/2048": {
+        "gpu_tp": 4,
+        "batch": 1,
+        "mfu_bound_percent": 3.952949170664344,
+        "aggregate_tps_bound": 2171554.4028145135,
+        "gpu_cards": 1476,
+        "lp_cards": 373,
+        "resident_request_relaxation": 371.46565002441406
+      },
+      "rubin/global_attention/256": {
+        "gpu_tp": 4,
+        "batch": 6,
+        "mfu_bound_percent": 2.2905312759302485,
+        "aggregate_tps_bound": 296245.5646147259,
+        "gpu_cards": 84,
+        "lp_cards": 164,
+        "resident_request_relaxation": 126.78073486328125
+      },
+      "rubin/global_attention/512": {
+        "gpu_tp": 4,
+        "batch": 7,
+        "mfu_bound_percent": 2.3500981661594174,
+        "aggregate_tps_bound": 658806.1232279334,
+        "gpu_cards": 184,
+        "lp_cards": 328,
+        "resident_request_relaxation": 322.2839697265625
+      },
+      "rubin/global_attention/1024": {
+        "gpu_tp": 4,
+        "batch": 7,
+        "mfu_bound_percent": 2.374436507953219,
+        "aggregate_tps_bound": 1389221.6076762944,
+        "gpu_cards": 388,
+        "lp_cards": 628,
+        "resident_request_relaxation": 679.9118383789063
+      },
+      "rubin/global_attention/2048": {
+        "gpu_tp": 4,
+        "batch": 7,
+        "mfu_bound_percent": 2.3863004940020263,
+        "aggregate_tps_bound": 2878696.3210611874,
+        "gpu_cards": 804,
+        "lp_cards": 1238,
+        "resident_request_relaxation": 1407.0885046386718
+      },
+      "rubin/global_core/256": {
+        "gpu_tp": 2,
+        "batch": 1,
+        "mfu_bound_percent": 2.7018895203173785,
+        "aggregate_tps_bound": 528087.9440019688,
+        "gpu_cards": 136,
+        "lp_cards": 119,
+        "resident_request_relaxation": 68.67405456542969
+      },
+      "rubin/global_core/512": {
+        "gpu_tp": 2,
+        "batch": 1,
+        "mfu_bound_percent": 2.739494060390034,
+        "aggregate_tps_bound": 1180431.8748279302,
+        "gpu_cards": 304,
+        "lp_cards": 203,
+        "resident_request_relaxation": 168.80985778808594
+      },
+      "rubin/global_core/1024": {
+        "gpu_tp": 4,
+        "batch": 3,
+        "mfu_bound_percent": 2.741447598000916,
+        "aggregate_tps_bound": 2279473.351652389,
+        "gpu_cards": 584,
+        "lp_cards": 429,
+        "resident_request_relaxation": 438.22285217285156
+      },
+      "rubin/global_core/2048": {
+        "gpu_tp": 4,
+        "batch": 3,
+        "mfu_bound_percent": 2.7515143001050513,
+        "aggregate_tps_bound": 4730687.846237492,
+        "gpu_cards": 1212,
+        "lp_cards": 824,
+        "resident_request_relaxation": 909.0995458984376
+      }
+    },
+    "repeat_validation": {
+      "case_rows_exact": true,
+      "batch_tails_exact": true,
+      "all_winners_exact": true,
+      "native_witnesses_exact": true,
+      "deterministic_gzip_roundtrip_exact": true,
+      "source_and_driver_identity_match": true,
+      "finite_allocation_constraints_checked": 9216,
+      "default_replay_json_exact": true
+    },
+    "validation": {
+      "focused_tests": 11,
+      "focused_passed": 11,
+      "full_tests": 862,
+      "full_passed": 860,
+      "full_failures": 1,
+      "full_errors": 1,
+      "known_failures": [
+        "tests.test_lpx_gpu_monitor.GpuMonitorTest.test_watch_paths_require_unique_names",
+        "tests.test_lpx_gpu_runner.GpuRunnerTest.test_stop_refuses_foreign_process"
+      ],
+      "full_log": "/private/tmp/lpx-sqd-full-tests-final.log",
+      "full_seconds": 108.168,
+      "black_files": 574
+    },
+    "sources": [
+      {
+        "url": "https://arxiv.org/abs/2609.13134",
+        "checked_date": "2026-11-03",
+        "role": "Ownership motivation; no cost calibration."
+      },
+      {
+        "url": "https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/l2-cache-control.html",
+        "checked_date": "2026-11-03",
+        "role": "Persisting L2 access mechanism; target capacity and throughput not verified."
+      }
+    ],
+    "scope": "Resident independent decode, separate FP8 KV, BF16 attention, native GPU whole-operator costs and exclusive worker service; all attention communication, LP30 placement and buffer costs relaxed. No GPU context parallelism, cache sharing, KV offload or alternate GPU kernels.",
+    "excluded_from_native_cost_scope": [
+      "GPU context parallelism",
+      "GPU persistent weight residency",
+      "shared KV representations and prefix sharing",
+      "sliding-KV offload",
+      "alternate or overlapping GPU kernels",
+      "speculative decoding"
+    ],
+    "next_experiments": [
+      "Construct bounded and capacity-admitted B200 global-core ownership with LP30 QKV and output projections, explicit activation transfers, and concurrent feedback.",
+      "Test layer-specific GPU weight reuse with queried persistence limits and a priced L2/DRAM path.",
+      "Explore GPU KV context parallelism and LP30 sliding-KV offload with explicit communication and buffer lifetimes."
+    ],
+    "maximum_certified": false,
+    "default_replay_regression": {
+      "path": "outputs/lpx-maximum-mfu-20261103/shared-kv-paired-phase-search/post-validation-default-regression.json",
+      "source_sha256": "041bf28bf4fe06bc9d2be60e7adea1f432bac5dbd27344bd68a38ce3a92478bb",
+      "mfu_percent": 3.410066841016449,
+      "per_client_completions": {
+        "0": 32,
+        "1": 32,
+        "2": 32,
+        "3": 32,
+        "4": 32,
+        "5": 32,
+        "6": 32,
+        "7": 32,
+        "8": 32,
+        "9": 32,
+        "10": 32,
+        "11": 32,
+        "12": 32,
+        "13": 32
+      },
+      "measured_tokens": 448,
+      "relative_half_window_drift": 1.0746958878371515e-13
+    },
+    "implementation_commit": "1dfa86ee6dff71d7b172e979e2b2d37247c35f9c"
   }
 }
