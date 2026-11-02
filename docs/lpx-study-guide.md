@@ -879,3 +879,10 @@ The LPX streaming refinement now accepts decode forwards with several query toke
 Batch-one speculation cannot match the AA pair, because shared acceptance cancels from the 100K-to-10K step-time ratio, which stays at or above 1.154.
 One-token drafting with seven background requests under `KVP = 4` matches both AA values within 5% at an acceptance of 0.51 to 0.74 on 128 or 256 chips.
 The 10,996 TPS coding example needs at least two draft tokens, so the AA match and the coding example need different draft lengths within the tested 16-row forward limit.
+
+## November 2, 2026 batch and pipeline concurrency record
+
+The [256-chip batch and pipeline MFU study](lpx-batch-concurrency-mfu.md) compares batches of 1, 8, 9 and 11 requests with the same resident request counts served as single-request microbatches on TP32/PP8/DCP8.
+At the representative 101K decode context, the capacity partition admits all four counts and gives 18,765.6 aggregate TPS at 0.7701% MFU for batch 11.
+The same partition gives approximately 32,267.3 aggregate TPS at 1.3241% MFU for 11 requests with microbatch one, subject to unverified compiler scheduling and buffer lifetime assumptions.
+The record separates total resident requests from microbatch size, documents default-partition SRAM rejections and retains measurement-window variation and MFU definitions.

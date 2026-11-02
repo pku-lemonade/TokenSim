@@ -1,0 +1,1320 @@
+{
+  "source_sha256": "6a8f1dbc0155aceded7708d9e10f1144c5048eb20064b927de00f9502ee0a7bc",
+  "assumptions": {
+    "layout": {
+      "a_device": "groq_lp30",
+      "f_device": "groq_lp30",
+      "a_tp": 4,
+      "a_cp": 8,
+      "a_pp": 8,
+      "f_tp": 32,
+      "f_ep": 1,
+      "f_pp": 8,
+      "colocated": true,
+      "a_collective_algorithm": "ring",
+      "f_collective_algorithm": "ring"
+    },
+    "input_tokens": 100000,
+    "output_tokens": 2000,
+    "representative_decode_context": 101000,
+    "maximum_reserved_context": 102000,
+    "independent_prefixes": true,
+    "weight_dtype": "fp8",
+    "kv_dtype": "fp8",
+    "activation_dtype": "bf16",
+    "speculative_decoding": false,
+    "external_memory_offload": false,
+    "attention_mfu": 0.5,
+    "config": {
+      "operator": {
+        "activation_dtype": "bf16",
+        "vector_ops_per_s": 20000000000000.0,
+        "exp_ops_per_s": 1000000000000.0,
+        "shuffle_bytes_per_s": 10000000000000.0,
+        "vector_efficiency": 0.5,
+        "shuffle_efficiency": 0.8,
+        "vector_bytes": 320,
+        "attention_tile_keys": 256,
+        "fill_drain_us": 0.05,
+        "schedule": "tiled"
+      },
+      "memory": {
+        "prefill_chunk": 16,
+        "maximum_context": 102000,
+        "attention_tile_keys": 256,
+        "tile_buffers": 2,
+        "reserve_bytes": 5000000
+      },
+      "fabric": {
+        "local_chips": 16,
+        "middle_chips": 128,
+        "local_us": 0.35,
+        "middle_us": 0.75,
+        "rack_us": 1.15,
+        "ports_per_chip": 96,
+        "lanes_per_peer": 6,
+        "p2p_lanes": 6,
+        "lane_bytes_per_s": 14000000000.0,
+        "injection_bytes_per_s": 1344000000000.0,
+        "efficiency": 1.0,
+        "reduction_ops_per_s": 10000000000000.0,
+        "routes": []
+      },
+      "token_units": {
+        "native_per_aa_input": 1.0,
+        "native_per_aa_output": 1.0,
+        "source": "Unmeasured identity assumption; no representative AA text corpus or downloaded Gemma tokenizer is bundled.",
+        "measured": false,
+        "corpus_sha256": null,
+        "tokenizer": null,
+        "revision": null
+      },
+      "compute": {
+        "gemm_mfu": 0.3,
+        "attention_mfu": 0.5,
+        "memory_efficiency": 0.9
+      },
+      "description": "Illustrative public-mechanism accounting; unknown LP30 unit rates, routes and scratch policy remain sensitivity assumptions."
+    },
+    "layer_counts": {
+      "default": null,
+      "capacity": [
+        6,
+        7,
+        8,
+        8,
+        7,
+        11,
+        7,
+        6
+      ]
+    },
+    "useful_linear_flops_per_token": 61392099328,
+    "useful_attention_flops_per_token": 67869081600,
+    "useful_total_flops_per_token": 129261180928,
+    "rack_fp8_peak_flops_per_s": 3.15e+17,
+    "mfu_definition": "Useful linear plus QK/AV FLOPs divided by uniform FP8 rack peak.",
+    "precision_normalized_mfu": "BF16 QK/AV work uses assumed half-FP8 peak; other work uses FP8 peak.",
+    "method": "Frozen 101K context native operator DAGs; all resources shared across closed-loop cohort jobs.",
+    "exclusions": [
+      "Prefill",
+      "token sampling/control latency",
+      "external I/O",
+      "end-to-end hardware calibration",
+      "compiler proof of multi-request schedule/buffer lifetimes"
+    ]
+  },
+  "points": [
+    {
+      "status": "ok",
+      "mode": "one_cohort_true_batch",
+      "partition": "default",
+      "step_us": 281.4561415856472,
+      "memory": {
+        "resident": 1,
+        "total_bytes": 48577171200,
+        "peak_chip": {
+          "identity": "batch-probe-a:224",
+          "weights": 202486272,
+          "buffers": 9032014,
+          "kv": 28737536,
+          "total": 240255822,
+          "capacity": 500000000
+        },
+        "minimum_headroom_bytes": 259744178
+      },
+      "profile": {
+        "phase": "decode",
+        "batch": 1,
+        "queries": 1,
+        "context": 101000,
+        "contexts": [
+          101000
+        ],
+        "emit_logits": true,
+        "dp_rank": 0,
+        "seed": 42,
+        "sample": 0,
+        "source_sha256": "6a8f1dbc0155aceded7708d9e10f1144c5048eb20064b927de00f9502ee0a7bc",
+        "host_capture_s": 0.8519308330724016,
+        "native_duration_s": 0.002731624727833275,
+        "native_events": 8515,
+        "streaming": {
+          "config": {
+            "vector_bytes": 320,
+            "overlap": false,
+            "early_output": true,
+            "collective_launch_us": 0
+          },
+          "catalog_collectives": 162,
+          "streaming_collectives": 0,
+          "output_vectors": 0,
+          "producer_nodes": 0,
+          "producer_service_s": 0.0,
+          "startup_service_s": 0.0,
+          "streamable_work_s": 0.0,
+          "injected_bytes_per_endpoint_sum": 0.0,
+          "nodes": 9812,
+          "assumptions": [
+            "Uniform final-GEMM output production; operator startup is unchanged.",
+            "One collective launch begins after every rank produces its leading vector.",
+            "Direct reduce-scatter and all-gather share endpoint injection resources.",
+            "Flight latency releases injection; whole-buffer consumers wait for all vectors.",
+            "Compute arbitration may occur at vector boundaries between concurrent jobs.",
+            "Vector boundaries and per-rank output schedules are analytical assumptions.",
+            "No overlap across earlier attention/FFN operators or across model layers."
+          ],
+          "fabric": {
+            "config": {
+              "local_chips": 16,
+              "middle_chips": 128,
+              "local_us": 0.35,
+              "middle_us": 0.75,
+              "rack_us": 1.15,
+              "ports_per_chip": 96,
+              "lanes_per_peer": 6,
+              "p2p_lanes": 6,
+              "lane_bytes_per_s": 14000000000.0,
+              "injection_bytes_per_s": 1344000000000.0,
+              "efficiency": 1.0,
+              "reduction_ops_per_s": 10000000000000.0,
+              "routes": []
+            },
+            "counters": {
+              "reduction_operations_per_endpoint": 630168.0,
+              "vector_rounds": 121,
+              "whole_collectives": 162,
+              "pipeline_handoffs": 224
+            },
+            "status": "Synthetic per-port routes and scoped propagation; physical LPX wiring and scheduling are unverified."
+          }
+        },
+        "modeled_duration_s": 0.00028145614158564715,
+        "service": "batch-probe",
+        "model_id": "gemma-4-31b-text",
+        "input_sha256": "2a829ef11fa3e53b4a8429ffb7e19fb1e6599745185abf1763ef950978fca143",
+        "node_body_sha256": "944f0b2dd1e9c56c9f8486ca99ac5a8442932553d4c924ec220dc73d088439d9"
+      },
+      "refined_nodes": 9812,
+      "cohorts": 1,
+      "microbatch": 1,
+      "resident_requests": 1,
+      "warmup_completions": 8,
+      "measured_completions": 64,
+      "measured_tokens": 64,
+      "measured_seconds": 0.01801319306148169,
+      "aggregate_tps": 3552.951427409818,
+      "per_request_tps": 3552.951427409818,
+      "mean_tpot_us": 281.45614158565144,
+      "p50_tpot_us": 281.4561415856679,
+      "p99_tpot_us": 281.4561415857113,
+      "per_cohort_completions": {
+        "0": 64
+      },
+      "convergence": {
+        "first_half_tps": 3552.951427409466,
+        "second_half_tps": 3552.9514274101693,
+        "relative_change": 1.9806378759312793e-13
+      },
+      "mfu_percent": 0.14579641183708456,
+      "precision_normalized_mfu_percent": 0.22234738020143804,
+      "linear_only_mfu_percent": 0.06924544347273108,
+      "host_seconds": 5.263029875000939
+    },
+    {
+      "status": "ok",
+      "mode": "one_cohort_true_batch",
+      "partition": "default",
+      "step_us": 493.88931929714596,
+      "memory": {
+        "resident": 8,
+        "total_bytes": 85592952576,
+        "peak_chip": {
+          "identity": "batch-probe-a:224",
+          "weights": 202486272,
+          "buffers": 16447310,
+          "kv": 229900288,
+          "total": 448833870,
+          "capacity": 500000000
+        },
+        "minimum_headroom_bytes": 51166130
+      },
+      "profile": {
+        "phase": "decode",
+        "batch": 8,
+        "queries": 1,
+        "context": 101000,
+        "contexts": [
+          101000,
+          101000,
+          101000,
+          101000,
+          101000,
+          101000,
+          101000,
+          101000
+        ],
+        "emit_logits": true,
+        "dp_rank": 0,
+        "seed": 42,
+        "sample": 0,
+        "source_sha256": "6a8f1dbc0155aceded7708d9e10f1144c5048eb20064b927de00f9502ee0a7bc",
+        "host_capture_s": 1.0537017089081928,
+        "native_duration_s": 0.002937538009278103,
+        "native_events": 8515,
+        "streaming": {
+          "config": {
+            "vector_bytes": 320,
+            "overlap": false,
+            "early_output": true,
+            "collective_launch_us": 0
+          },
+          "catalog_collectives": 162,
+          "streaming_collectives": 0,
+          "output_vectors": 0,
+          "producer_nodes": 0,
+          "producer_service_s": 0.0,
+          "startup_service_s": 0.0,
+          "streamable_work_s": 0.0,
+          "injected_bytes_per_endpoint_sum": 0.0,
+          "nodes": 9812,
+          "assumptions": [
+            "Uniform final-GEMM output production; operator startup is unchanged.",
+            "One collective launch begins after every rank produces its leading vector.",
+            "Direct reduce-scatter and all-gather share endpoint injection resources.",
+            "Flight latency releases injection; whole-buffer consumers wait for all vectors.",
+            "Compute arbitration may occur at vector boundaries between concurrent jobs.",
+            "Vector boundaries and per-rank output schedules are analytical assumptions.",
+            "No overlap across earlier attention/FFN operators or across model layers."
+          ],
+          "fabric": {
+            "config": {
+              "local_chips": 16,
+              "middle_chips": 128,
+              "local_us": 0.35,
+              "middle_us": 0.75,
+              "rack_us": 1.15,
+              "ports_per_chip": 96,
+              "lanes_per_peer": 6,
+              "p2p_lanes": 6,
+              "lane_bytes_per_s": 14000000000.0,
+              "injection_bytes_per_s": 1344000000000.0,
+              "efficiency": 1.0,
+              "reduction_ops_per_s": 10000000000000.0,
+              "routes": []
+            },
+            "counters": {
+              "reduction_operations_per_endpoint": 5041344.0,
+              "vector_rounds": 121,
+              "whole_collectives": 162,
+              "pipeline_handoffs": 224
+            },
+            "status": "Synthetic per-port routes and scoped propagation; physical LPX wiring and scheduling are unverified."
+          }
+        },
+        "modeled_duration_s": 0.000493889319297146,
+        "service": "batch-probe",
+        "model_id": "gemma-4-31b-text",
+        "input_sha256": "1722ea441ba662aa3bf94c88eb36c7b113226d250739459d1a9488820fc0894f",
+        "node_body_sha256": "2542de95d5a90beeace4afcc2f035d251c01f8ea0a919b58422d43dac515285e"
+      },
+      "refined_nodes": 9812,
+      "cohorts": 1,
+      "microbatch": 8,
+      "resident_requests": 8,
+      "warmup_completions": 8,
+      "measured_completions": 64,
+      "measured_tokens": 512,
+      "measured_seconds": 0.03160891643503523,
+      "aggregate_tps": 16197.961137082848,
+      "per_request_tps": 2024.745142135356,
+      "mean_tpot_us": 493.88931929742546,
+      "p50_tpot_us": 493.8893192975198,
+      "p99_tpot_us": 493.88931929778,
+      "per_cohort_completions": {
+        "0": 64
+      },
+      "convergence": {
+        "first_half_tps": 16197.961137088274,
+        "second_half_tps": 16197.961137077418,
+        "relative_change": -6.70241639966207e-13
+      },
+      "mfu_percent": 0.6646881222873583,
+      "precision_normalized_mfu_percent": 1.0136851845623756,
+      "linear_only_mfu_percent": 0.31569106001234093,
+      "host_seconds": 4.13795095810201
+    },
+    {
+      "status": "ok",
+      "mode": "one_cohort_true_batch",
+      "partition": "default",
+      "step_us": 524.6507131261378,
+      "memory": {
+        "resident": 9,
+        "total_bytes": 90880921344,
+        "peak_chip": {
+          "identity": "batch-probe-a:224",
+          "weights": 202486272,
+          "buffers": 17506638,
+          "kv": 258637824,
+          "total": 478630734,
+          "capacity": 500000000
+        },
+        "minimum_headroom_bytes": 21369266
+      },
+      "profile": {
+        "phase": "decode",
+        "batch": 9,
+        "queries": 1,
+        "context": 101000,
+        "contexts": [
+          101000,
+          101000,
+          101000,
+          101000,
+          101000,
+          101000,
+          101000,
+          101000,
+          101000
+        ],
+        "emit_logits": true,
+        "dp_rank": 0,
+        "seed": 42,
+        "sample": 0,
+        "source_sha256": "6a8f1dbc0155aceded7708d9e10f1144c5048eb20064b927de00f9502ee0a7bc",
+        "host_capture_s": 0.9878383750328794,
+        "native_duration_s": 0.002967367989354709,
+        "native_events": 8515,
+        "streaming": {
+          "config": {
+            "vector_bytes": 320,
+            "overlap": false,
+            "early_output": true,
+            "collective_launch_us": 0
+          },
+          "catalog_collectives": 162,
+          "streaming_collectives": 0,
+          "output_vectors": 0,
+          "producer_nodes": 0,
+          "producer_service_s": 0.0,
+          "startup_service_s": 0.0,
+          "streamable_work_s": 0.0,
+          "injected_bytes_per_endpoint_sum": 0.0,
+          "nodes": 9812,
+          "assumptions": [
+            "Uniform final-GEMM output production; operator startup is unchanged.",
+            "One collective launch begins after every rank produces its leading vector.",
+            "Direct reduce-scatter and all-gather share endpoint injection resources.",
+            "Flight latency releases injection; whole-buffer consumers wait for all vectors.",
+            "Compute arbitration may occur at vector boundaries between concurrent jobs.",
+            "Vector boundaries and per-rank output schedules are analytical assumptions.",
+            "No overlap across earlier attention/FFN operators or across model layers."
+          ],
+          "fabric": {
+            "config": {
+              "local_chips": 16,
+              "middle_chips": 128,
+              "local_us": 0.35,
+              "middle_us": 0.75,
+              "rack_us": 1.15,
+              "ports_per_chip": 96,
+              "lanes_per_peer": 6,
+              "p2p_lanes": 6,
+              "lane_bytes_per_s": 14000000000.0,
+              "injection_bytes_per_s": 1344000000000.0,
+              "efficiency": 1.0,
+              "reduction_ops_per_s": 10000000000000.0,
+              "routes": []
+            },
+            "counters": {
+              "reduction_operations_per_endpoint": 5671512.0,
+              "vector_rounds": 121,
+              "whole_collectives": 162,
+              "pipeline_handoffs": 224
+            },
+            "status": "Synthetic per-port routes and scoped propagation; physical LPX wiring and scheduling are unverified."
+          }
+        },
+        "modeled_duration_s": 0.0005246507131261378,
+        "service": "batch-probe",
+        "model_id": "gemma-4-31b-text",
+        "input_sha256": "53e8ee4aa5e7e93ff99a6bed5b88830058cb5a40b4426367882dc90004195b9e",
+        "node_body_sha256": "57453c9cc09f52f1189a50bbf8f56dc0ed8fb4f9f428469966278b4ac49dcbe0"
+      },
+      "refined_nodes": 9812,
+      "cohorts": 1,
+      "microbatch": 9,
+      "resident_requests": 9,
+      "warmup_completions": 8,
+      "measured_completions": 64,
+      "measured_tokens": 576,
+      "measured_seconds": 0.03357764564008074,
+      "aggregate_tps": 17154.27002161355,
+      "per_request_tps": 1906.0300024015055,
+      "mean_tpot_us": 524.6507131262616,
+      "p50_tpot_us": 524.6507131263199,
+      "p99_tpot_us": 524.6507131264483,
+      "per_cohort_completions": {
+        "0": 64
+      },
+      "convergence": {
+        "first_half_tps": 17154.27002161189,
+        "second_half_tps": 17154.270021615208,
+        "relative_change": 1.9340085088970227e-13
+      },
+      "mfu_percent": 0.7039305399846209,
+      "precision_normalized_mfu_percent": 1.0735319850275806,
+      "linear_only_mfu_percent": 0.33432909494166085,
+      "host_seconds": 3.837939416989684
+    },
+    {
+      "status": "infeasible",
+      "mode": "one_cohort_true_batch",
+      "partition": "default",
+      "resident_requests": 11,
+      "microbatch": 11,
+      "reason": "resident KV exceeds compiled replica budget on ('batch-probe-a-domain', 224): required_bytes=287375360, available_bytes=275111936",
+      "host_seconds": 0.11809266707859933
+    },
+    {
+      "status": "ok",
+      "mode": "pp_microbatch1",
+      "partition": "default",
+      "memory": {
+        "resident": 1,
+        "total_bytes": 48577171200,
+        "peak_chip": {
+          "identity": "batch-probe-a:224",
+          "weights": 202486272,
+          "buffers": 9032014,
+          "kv": 28737536,
+          "total": 240255822,
+          "capacity": 500000000
+        },
+        "minimum_headroom_bytes": 259744178
+      },
+      "cohorts": 1,
+      "microbatch": 1,
+      "resident_requests": 1,
+      "warmup_completions": 8,
+      "measured_completions": 64,
+      "measured_tokens": 64,
+      "measured_seconds": 0.01801319306148169,
+      "aggregate_tps": 3552.951427409818,
+      "per_request_tps": 3552.951427409818,
+      "mean_tpot_us": 281.45614158565144,
+      "p50_tpot_us": 281.4561415856679,
+      "p99_tpot_us": 281.4561415857113,
+      "per_cohort_completions": {
+        "0": 64
+      },
+      "convergence": {
+        "first_half_tps": 3552.951427409466,
+        "second_half_tps": 3552.9514274101693,
+        "relative_change": 1.9806378759312793e-13
+      },
+      "mfu_percent": 0.14579641183708456,
+      "precision_normalized_mfu_percent": 0.22234738020143804,
+      "linear_only_mfu_percent": 0.06924544347273108,
+      "host_seconds": 1.4857931670267135
+    },
+    {
+      "status": "ok",
+      "mode": "pp_microbatch1",
+      "partition": "default",
+      "memory": {
+        "resident": 8,
+        "total_bytes": 83694636800,
+        "peak_chip": {
+          "identity": "batch-probe-a:224",
+          "weights": 202486272,
+          "buffers": 9032014,
+          "kv": 229900288,
+          "total": 441418574,
+          "capacity": 500000000
+        },
+        "minimum_headroom_bytes": 58581426
+      },
+      "cohorts": 8,
+      "microbatch": 1,
+      "resident_requests": 8,
+      "warmup_completions": 256,
+      "measured_completions": 2048,
+      "measured_tokens": 2048,
+      "measured_seconds": 0.09285961233695522,
+      "aggregate_tps": 22054.798081307086,
+      "per_request_tps": 2756.849760163386,
+      "mean_tpot_us": 362.6657094886862,
+      "p50_tpot_us": 359.51970628069625,
+      "p99_tpot_us": 476.8605313257308,
+      "per_cohort_completions": {
+        "0": 256,
+        "1": 256,
+        "2": 256,
+        "3": 256,
+        "4": 256,
+        "5": 256,
+        "6": 256,
+        "7": 256
+      },
+      "convergence": {
+        "first_half_tps": 22113.20040429176,
+        "second_half_tps": 21996.70343398952,
+        "relative_change": -0.005268209403087143
+      },
+      "host_seconds": 90.74436054099351,
+      "mfu_percent": 0.9050251571804262,
+      "precision_normalized_mfu_percent": 1.3802121065936814,
+      "linear_only_mfu_percent": 0.4298382077671709
+    },
+    {
+      "status": "ok",
+      "mode": "pp_microbatch1",
+      "partition": "default",
+      "memory": {
+        "resident": 9,
+        "total_bytes": 88711417600,
+        "peak_chip": {
+          "identity": "batch-probe-a:224",
+          "weights": 202486272,
+          "buffers": 9032014,
+          "kv": 258637824,
+          "total": 470156110,
+          "capacity": 500000000
+        },
+        "minimum_headroom_bytes": 29843890
+      },
+      "cohorts": 9,
+      "microbatch": 1,
+      "resident_requests": 9,
+      "warmup_completions": 288,
+      "measured_completions": 2304,
+      "measured_tokens": 2304,
+      "measured_seconds": 0.0966259551208003,
+      "aggregate_tps": 23844.524973849668,
+      "per_request_tps": 2649.391663761074,
+      "mean_tpot_us": 377.489253086826,
+      "p50_tpot_us": 364.61430973856733,
+      "p99_tpot_us": 509.5099748330462,
+      "per_cohort_completions": {
+        "0": 256,
+        "1": 256,
+        "2": 256,
+        "3": 256,
+        "4": 256,
+        "5": 256,
+        "6": 256,
+        "7": 256,
+        "8": 256
+      },
+      "convergence": {
+        "first_half_tps": 23785.579312938815,
+        "second_half_tps": 23903.76352004641,
+        "relative_change": 0.004968733599156172
+      },
+      "host_seconds": 100.21485354204196,
+      "mfu_percent": 0.9784671291387291,
+      "precision_normalized_mfu_percent": 1.4922150691906149,
+      "linear_only_mfu_percent": 0.46471918908684307
+    },
+    {
+      "status": "infeasible",
+      "mode": "pp_microbatch1",
+      "partition": "default",
+      "resident_requests": 11,
+      "microbatch": 1,
+      "reason": "resident KV exceeds compiled replica budget on ('batch-probe-a-domain', 224): required_bytes=287375360, available_bytes=285564928",
+      "host_seconds": 0.029586125048808753
+    },
+    {
+      "status": "ok",
+      "mode": "one_cohort_true_batch",
+      "partition": "capacity",
+      "step_us": 281.4561415856472,
+      "memory": {
+        "resident": 1,
+        "total_bytes": 48577171200,
+        "peak_chip": {
+          "identity": "batch-probe-a:160",
+          "weights": 201799680,
+          "buffers": 9194838,
+          "kv": 18300928,
+          "total": 229295446,
+          "capacity": 500000000
+        },
+        "minimum_headroom_bytes": 270704554
+      },
+      "profile": {
+        "phase": "decode",
+        "batch": 1,
+        "queries": 1,
+        "context": 101000,
+        "contexts": [
+          101000
+        ],
+        "emit_logits": true,
+        "dp_rank": 0,
+        "seed": 42,
+        "sample": 0,
+        "source_sha256": "6a8f1dbc0155aceded7708d9e10f1144c5048eb20064b927de00f9502ee0a7bc",
+        "host_capture_s": 0.8005609579849988,
+        "native_duration_s": 0.0027316247278332748,
+        "native_events": 8515,
+        "streaming": {
+          "config": {
+            "vector_bytes": 320,
+            "overlap": false,
+            "early_output": true,
+            "collective_launch_us": 0
+          },
+          "catalog_collectives": 162,
+          "streaming_collectives": 0,
+          "output_vectors": 0,
+          "producer_nodes": 0,
+          "producer_service_s": 0.0,
+          "startup_service_s": 0.0,
+          "streamable_work_s": 0.0,
+          "injected_bytes_per_endpoint_sum": 0.0,
+          "nodes": 9812,
+          "assumptions": [
+            "Uniform final-GEMM output production; operator startup is unchanged.",
+            "One collective launch begins after every rank produces its leading vector.",
+            "Direct reduce-scatter and all-gather share endpoint injection resources.",
+            "Flight latency releases injection; whole-buffer consumers wait for all vectors.",
+            "Compute arbitration may occur at vector boundaries between concurrent jobs.",
+            "Vector boundaries and per-rank output schedules are analytical assumptions.",
+            "No overlap across earlier attention/FFN operators or across model layers."
+          ],
+          "fabric": {
+            "config": {
+              "local_chips": 16,
+              "middle_chips": 128,
+              "local_us": 0.35,
+              "middle_us": 0.75,
+              "rack_us": 1.15,
+              "ports_per_chip": 96,
+              "lanes_per_peer": 6,
+              "p2p_lanes": 6,
+              "lane_bytes_per_s": 14000000000.0,
+              "injection_bytes_per_s": 1344000000000.0,
+              "efficiency": 1.0,
+              "reduction_ops_per_s": 10000000000000.0,
+              "routes": []
+            },
+            "counters": {
+              "reduction_operations_per_endpoint": 630168.0,
+              "vector_rounds": 121,
+              "whole_collectives": 162,
+              "pipeline_handoffs": 224
+            },
+            "status": "Synthetic per-port routes and scoped propagation; physical LPX wiring and scheduling are unverified."
+          }
+        },
+        "modeled_duration_s": 0.00028145614158564715,
+        "service": "batch-probe",
+        "model_id": "gemma-4-31b-text",
+        "input_sha256": "8c1a9b97bb5a45921a814d6e525e513fc48ed1de46f8194bf7a5532d9e2fd9c2",
+        "node_body_sha256": "5df0c4ac3a9731440cd12d96cbe3c73fcdc2a8755a034338272e561797199aab"
+      },
+      "refined_nodes": 9812,
+      "cohorts": 1,
+      "microbatch": 1,
+      "resident_requests": 1,
+      "warmup_completions": 8,
+      "measured_completions": 64,
+      "measured_tokens": 64,
+      "measured_seconds": 0.01801319306148169,
+      "aggregate_tps": 3552.951427409818,
+      "per_request_tps": 3552.951427409818,
+      "mean_tpot_us": 281.45614158565144,
+      "p50_tpot_us": 281.4561415856679,
+      "p99_tpot_us": 281.4561415857113,
+      "per_cohort_completions": {
+        "0": 64
+      },
+      "convergence": {
+        "first_half_tps": 3552.951427409467,
+        "second_half_tps": 3552.951427410168,
+        "relative_change": 1.971756091734278e-13
+      },
+      "mfu_percent": 0.14579641183708456,
+      "precision_normalized_mfu_percent": 0.22234738020143804,
+      "linear_only_mfu_percent": 0.06924544347273108,
+      "host_seconds": 3.4582992090145126
+    },
+    {
+      "status": "ok",
+      "mode": "one_cohort_true_batch",
+      "partition": "capacity",
+      "step_us": 493.88931929714596,
+      "memory": {
+        "resident": 8,
+        "total_bytes": 85592952576,
+        "peak_chip": {
+          "identity": "batch-probe-a:128",
+          "weights": 158446080,
+          "buffers": 16436558,
+          "kv": 229900288,
+          "total": 404782926,
+          "capacity": 500000000
+        },
+        "minimum_headroom_bytes": 95217074
+      },
+      "profile": {
+        "phase": "decode",
+        "batch": 8,
+        "queries": 1,
+        "context": 101000,
+        "contexts": [
+          101000,
+          101000,
+          101000,
+          101000,
+          101000,
+          101000,
+          101000,
+          101000
+        ],
+        "emit_logits": true,
+        "dp_rank": 0,
+        "seed": 42,
+        "sample": 0,
+        "source_sha256": "6a8f1dbc0155aceded7708d9e10f1144c5048eb20064b927de00f9502ee0a7bc",
+        "host_capture_s": 0.9768407910596579,
+        "native_duration_s": 0.002937538009278103,
+        "native_events": 8515,
+        "streaming": {
+          "config": {
+            "vector_bytes": 320,
+            "overlap": false,
+            "early_output": true,
+            "collective_launch_us": 0
+          },
+          "catalog_collectives": 162,
+          "streaming_collectives": 0,
+          "output_vectors": 0,
+          "producer_nodes": 0,
+          "producer_service_s": 0.0,
+          "startup_service_s": 0.0,
+          "streamable_work_s": 0.0,
+          "injected_bytes_per_endpoint_sum": 0.0,
+          "nodes": 9812,
+          "assumptions": [
+            "Uniform final-GEMM output production; operator startup is unchanged.",
+            "One collective launch begins after every rank produces its leading vector.",
+            "Direct reduce-scatter and all-gather share endpoint injection resources.",
+            "Flight latency releases injection; whole-buffer consumers wait for all vectors.",
+            "Compute arbitration may occur at vector boundaries between concurrent jobs.",
+            "Vector boundaries and per-rank output schedules are analytical assumptions.",
+            "No overlap across earlier attention/FFN operators or across model layers."
+          ],
+          "fabric": {
+            "config": {
+              "local_chips": 16,
+              "middle_chips": 128,
+              "local_us": 0.35,
+              "middle_us": 0.75,
+              "rack_us": 1.15,
+              "ports_per_chip": 96,
+              "lanes_per_peer": 6,
+              "p2p_lanes": 6,
+              "lane_bytes_per_s": 14000000000.0,
+              "injection_bytes_per_s": 1344000000000.0,
+              "efficiency": 1.0,
+              "reduction_ops_per_s": 10000000000000.0,
+              "routes": []
+            },
+            "counters": {
+              "reduction_operations_per_endpoint": 5041344.0,
+              "vector_rounds": 121,
+              "whole_collectives": 162,
+              "pipeline_handoffs": 224
+            },
+            "status": "Synthetic per-port routes and scoped propagation; physical LPX wiring and scheduling are unverified."
+          }
+        },
+        "modeled_duration_s": 0.000493889319297146,
+        "service": "batch-probe",
+        "model_id": "gemma-4-31b-text",
+        "input_sha256": "35f95a6ed0c9424b2d0fb817527f8362ca5962cf843cb23c3a0c4b3b5e3ed3f1",
+        "node_body_sha256": "7526030155ecfb9acbb9ffee7e62750be14a5080e857ad072465801c420ec23e"
+      },
+      "refined_nodes": 9812,
+      "cohorts": 1,
+      "microbatch": 8,
+      "resident_requests": 8,
+      "warmup_completions": 8,
+      "measured_completions": 64,
+      "measured_tokens": 512,
+      "measured_seconds": 0.03160891643503523,
+      "aggregate_tps": 16197.961137082848,
+      "per_request_tps": 2024.745142135356,
+      "mean_tpot_us": 493.88931929742546,
+      "p50_tpot_us": 493.8893192975198,
+      "p99_tpot_us": 493.88931929778,
+      "per_cohort_completions": {
+        "0": 64
+      },
+      "convergence": {
+        "first_half_tps": 16197.961137088278,
+        "second_half_tps": 16197.961137077418,
+        "relative_change": -6.70463684571132e-13
+      },
+      "mfu_percent": 0.6646881222873583,
+      "precision_normalized_mfu_percent": 1.0136851845623756,
+      "linear_only_mfu_percent": 0.31569106001234093,
+      "host_seconds": 3.8522253329865634
+    },
+    {
+      "status": "ok",
+      "mode": "one_cohort_true_batch",
+      "partition": "capacity",
+      "step_us": 524.6507131261378,
+      "memory": {
+        "resident": 9,
+        "total_bytes": 90880921344,
+        "peak_chip": {
+          "identity": "batch-probe-a:128",
+          "weights": 158446080,
+          "buffers": 17495886,
+          "kv": 258637824,
+          "total": 434579790,
+          "capacity": 500000000
+        },
+        "minimum_headroom_bytes": 65420210
+      },
+      "profile": {
+        "phase": "decode",
+        "batch": 9,
+        "queries": 1,
+        "context": 101000,
+        "contexts": [
+          101000,
+          101000,
+          101000,
+          101000,
+          101000,
+          101000,
+          101000,
+          101000,
+          101000
+        ],
+        "emit_logits": true,
+        "dp_rank": 0,
+        "seed": 42,
+        "sample": 0,
+        "source_sha256": "6a8f1dbc0155aceded7708d9e10f1144c5048eb20064b927de00f9502ee0a7bc",
+        "host_capture_s": 1.0555690840119496,
+        "native_duration_s": 0.002967367989354709,
+        "native_events": 8515,
+        "streaming": {
+          "config": {
+            "vector_bytes": 320,
+            "overlap": false,
+            "early_output": true,
+            "collective_launch_us": 0
+          },
+          "catalog_collectives": 162,
+          "streaming_collectives": 0,
+          "output_vectors": 0,
+          "producer_nodes": 0,
+          "producer_service_s": 0.0,
+          "startup_service_s": 0.0,
+          "streamable_work_s": 0.0,
+          "injected_bytes_per_endpoint_sum": 0.0,
+          "nodes": 9812,
+          "assumptions": [
+            "Uniform final-GEMM output production; operator startup is unchanged.",
+            "One collective launch begins after every rank produces its leading vector.",
+            "Direct reduce-scatter and all-gather share endpoint injection resources.",
+            "Flight latency releases injection; whole-buffer consumers wait for all vectors.",
+            "Compute arbitration may occur at vector boundaries between concurrent jobs.",
+            "Vector boundaries and per-rank output schedules are analytical assumptions.",
+            "No overlap across earlier attention/FFN operators or across model layers."
+          ],
+          "fabric": {
+            "config": {
+              "local_chips": 16,
+              "middle_chips": 128,
+              "local_us": 0.35,
+              "middle_us": 0.75,
+              "rack_us": 1.15,
+              "ports_per_chip": 96,
+              "lanes_per_peer": 6,
+              "p2p_lanes": 6,
+              "lane_bytes_per_s": 14000000000.0,
+              "injection_bytes_per_s": 1344000000000.0,
+              "efficiency": 1.0,
+              "reduction_ops_per_s": 10000000000000.0,
+              "routes": []
+            },
+            "counters": {
+              "reduction_operations_per_endpoint": 5671512.0,
+              "vector_rounds": 121,
+              "whole_collectives": 162,
+              "pipeline_handoffs": 224
+            },
+            "status": "Synthetic per-port routes and scoped propagation; physical LPX wiring and scheduling are unverified."
+          }
+        },
+        "modeled_duration_s": 0.0005246507131261378,
+        "service": "batch-probe",
+        "model_id": "gemma-4-31b-text",
+        "input_sha256": "af7ba81c54b833de95346d17f6a44049411d23d592d5a5b2f8d457788d4227dc",
+        "node_body_sha256": "9dce13d2c099af2961ec592a73108db812ad29e38d103c76afe5e7dd37e91bf9"
+      },
+      "refined_nodes": 9812,
+      "cohorts": 1,
+      "microbatch": 9,
+      "resident_requests": 9,
+      "warmup_completions": 8,
+      "measured_completions": 64,
+      "measured_tokens": 576,
+      "measured_seconds": 0.03357764564008073,
+      "aggregate_tps": 17154.270021613556,
+      "per_request_tps": 1906.0300024015062,
+      "mean_tpot_us": 524.6507131262614,
+      "p50_tpot_us": 524.6507131263199,
+      "p99_tpot_us": 524.6507131264483,
+      "per_cohort_completions": {
+        "0": 64
+      },
+      "convergence": {
+        "first_half_tps": 17154.270021611897,
+        "second_half_tps": 17154.270021615215,
+        "relative_change": 1.9340085088970227e-13
+      },
+      "mfu_percent": 0.703930539984621,
+      "precision_normalized_mfu_percent": 1.073531985027581,
+      "linear_only_mfu_percent": 0.334329094941661,
+      "host_seconds": 3.932612792006694
+    },
+    {
+      "status": "ok",
+      "mode": "one_cohort_true_batch",
+      "partition": "capacity",
+      "step_us": 586.1795557959819,
+      "memory": {
+        "resident": 11,
+        "total_bytes": 101456858880,
+        "peak_chip": {
+          "identity": "batch-probe-a:128",
+          "weights": 158446080,
+          "buffers": 19614542,
+          "kv": 316112896,
+          "total": 494173518,
+          "capacity": 500000000
+        },
+        "minimum_headroom_bytes": 5826482
+      },
+      "profile": {
+        "phase": "decode",
+        "batch": 11,
+        "queries": 1,
+        "context": 101000,
+        "contexts": [
+          101000,
+          101000,
+          101000,
+          101000,
+          101000,
+          101000,
+          101000,
+          101000,
+          101000,
+          101000,
+          101000
+        ],
+        "emit_logits": true,
+        "dp_rank": 0,
+        "seed": 42,
+        "sample": 0,
+        "source_sha256": "6a8f1dbc0155aceded7708d9e10f1144c5048eb20064b927de00f9502ee0a7bc",
+        "host_capture_s": 1.112497250083834,
+        "native_duration_s": 0.003027034004519796,
+        "native_events": 8515,
+        "streaming": {
+          "config": {
+            "vector_bytes": 320,
+            "overlap": false,
+            "early_output": true,
+            "collective_launch_us": 0
+          },
+          "catalog_collectives": 162,
+          "streaming_collectives": 0,
+          "output_vectors": 0,
+          "producer_nodes": 0,
+          "producer_service_s": 0.0,
+          "startup_service_s": 0.0,
+          "streamable_work_s": 0.0,
+          "injected_bytes_per_endpoint_sum": 0.0,
+          "nodes": 9812,
+          "assumptions": [
+            "Uniform final-GEMM output production; operator startup is unchanged.",
+            "One collective launch begins after every rank produces its leading vector.",
+            "Direct reduce-scatter and all-gather share endpoint injection resources.",
+            "Flight latency releases injection; whole-buffer consumers wait for all vectors.",
+            "Compute arbitration may occur at vector boundaries between concurrent jobs.",
+            "Vector boundaries and per-rank output schedules are analytical assumptions.",
+            "No overlap across earlier attention/FFN operators or across model layers."
+          ],
+          "fabric": {
+            "config": {
+              "local_chips": 16,
+              "middle_chips": 128,
+              "local_us": 0.35,
+              "middle_us": 0.75,
+              "rack_us": 1.15,
+              "ports_per_chip": 96,
+              "lanes_per_peer": 6,
+              "p2p_lanes": 6,
+              "lane_bytes_per_s": 14000000000.0,
+              "injection_bytes_per_s": 1344000000000.0,
+              "efficiency": 1.0,
+              "reduction_ops_per_s": 10000000000000.0,
+              "routes": []
+            },
+            "counters": {
+              "reduction_operations_per_endpoint": 6931848.0,
+              "vector_rounds": 121,
+              "whole_collectives": 162,
+              "pipeline_handoffs": 224
+            },
+            "status": "Synthetic per-port routes and scoped propagation; physical LPX wiring and scheduling are unverified."
+          }
+        },
+        "modeled_duration_s": 0.0005861795557959819,
+        "service": "batch-probe",
+        "model_id": "gemma-4-31b-text",
+        "input_sha256": "d3e0cd665043c15ffff14729aa7f1560ddf0b4bcdc32262bff4029e8e8345e53",
+        "node_body_sha256": "af7c1d0c538ebc4103abcd40b7f256a76d6d686a8d5bfba3b599e71cc6aa3b97"
+      },
+      "refined_nodes": 9812,
+      "cohorts": 1,
+      "microbatch": 11,
+      "resident_requests": 11,
+      "warmup_completions": 8,
+      "measured_completions": 64,
+      "measured_tokens": 704,
+      "measured_seconds": 0.037515491570945365,
+      "aggregate_tps": 18765.581111170275,
+      "per_request_tps": 1705.9619191972977,
+      "mean_tpot_us": 586.1795557960213,
+      "p50_tpot_us": 586.1795557961027,
+      "p99_tpot_us": 586.179555796356,
+      "per_cohort_completions": {
+        "0": 64
+      },
+      "convergence": {
+        "first_half_tps": 18765.581111169773,
+        "second_half_tps": 18765.581111170774,
+        "relative_change": 5.3290705182007514e-14
+      },
+      "mfu_percent": 0.7700511667396952,
+      "precision_normalized_mfu_percent": 1.1743695018842777,
+      "linear_only_mfu_percent": 0.36573283159511305,
+      "host_seconds": 4.106267958995886
+    },
+    {
+      "status": "ok",
+      "mode": "pp_microbatch1",
+      "partition": "capacity",
+      "memory": {
+        "resident": 1,
+        "total_bytes": 48577171200,
+        "peak_chip": {
+          "identity": "batch-probe-a:160",
+          "weights": 201799680,
+          "buffers": 9194838,
+          "kv": 18300928,
+          "total": 229295446,
+          "capacity": 500000000
+        },
+        "minimum_headroom_bytes": 270704554
+      },
+      "cohorts": 1,
+      "microbatch": 1,
+      "resident_requests": 1,
+      "warmup_completions": 8,
+      "measured_completions": 64,
+      "measured_tokens": 64,
+      "measured_seconds": 0.01801319306148169,
+      "aggregate_tps": 3552.951427409818,
+      "per_request_tps": 3552.951427409818,
+      "mean_tpot_us": 281.45614158565144,
+      "p50_tpot_us": 281.4561415856679,
+      "p99_tpot_us": 281.4561415857113,
+      "per_cohort_completions": {
+        "0": 64
+      },
+      "convergence": {
+        "first_half_tps": 3552.951427409467,
+        "second_half_tps": 3552.951427410168,
+        "relative_change": 1.971756091734278e-13
+      },
+      "mfu_percent": 0.14579641183708456,
+      "precision_normalized_mfu_percent": 0.22234738020143804,
+      "linear_only_mfu_percent": 0.06924544347273108,
+      "host_seconds": 1.508992874994874
+    },
+    {
+      "status": "ok",
+      "mode": "pp_microbatch1",
+      "partition": "capacity",
+      "memory": {
+        "resident": 8,
+        "total_bytes": 83694636800,
+        "peak_chip": {
+          "identity": "batch-probe-a:128",
+          "weights": 158446080,
+          "buffers": 9021262,
+          "kv": 229900288,
+          "total": 397367630,
+          "capacity": 500000000
+        },
+        "minimum_headroom_bytes": 102632370
+      },
+      "cohorts": 8,
+      "microbatch": 1,
+      "resident_requests": 8,
+      "warmup_completions": 256,
+      "measured_completions": 2048,
+      "measured_tokens": 2048,
+      "measured_seconds": 0.07983085094600278,
+      "aggregate_tps": 25654.24238538128,
+      "per_request_tps": 3206.78029817266,
+      "mean_tpot_us": 311.6679228555722,
+      "p50_tpot_us": 302.62884157823686,
+      "p99_tpot_us": 395.72496573414645,
+      "per_cohort_completions": {
+        "0": 256,
+        "1": 256,
+        "2": 256,
+        "3": 256,
+        "4": 256,
+        "5": 256,
+        "6": 256,
+        "7": 256
+      },
+      "convergence": {
+        "first_half_tps": 25532.86444509749,
+        "second_half_tps": 25776.779848889717,
+        "relative_change": 0.009552998031878035
+      },
+      "host_seconds": 87.88869250006974,
+      "mfu_percent": 1.0527294179515987,
+      "precision_normalized_mfu_percent": 1.605469059170526,
+      "linear_only_mfu_percent": 0.4999897767326715
+    },
+    {
+      "status": "ok",
+      "mode": "pp_microbatch1",
+      "partition": "capacity",
+      "memory": {
+        "resident": 9,
+        "total_bytes": 88711417600,
+        "peak_chip": {
+          "identity": "batch-probe-a:128",
+          "weights": 158446080,
+          "buffers": 9021262,
+          "kv": 258637824,
+          "total": 426105166,
+          "capacity": 500000000
+        },
+        "minimum_headroom_bytes": 73894834
+      },
+      "cohorts": 9,
+      "microbatch": 1,
+      "resident_requests": 9,
+      "warmup_completions": 576,
+      "measured_completions": 4608,
+      "measured_tokens": 4608,
+      "measured_seconds": 0.1648518385865413,
+      "aggregate_tps": 27952.372503149036,
+      "per_request_tps": 3105.8191670165597,
+      "mean_tpot_us": 321.8878446187289,
+      "p50_tpot_us": 314.7809120169001,
+      "p99_tpot_us": 426.4281127501083,
+      "per_cohort_completions": {
+        "0": 512,
+        "1": 512,
+        "2": 512,
+        "3": 512,
+        "4": 512,
+        "5": 512,
+        "6": 512,
+        "7": 512,
+        "8": 512
+      },
+      "convergence": {
+        "first_half_tps": 27668.715634653454,
+        "second_half_tps": 28241.905657668452,
+        "relative_change": 0.02071617745411758
+      },
+      "host_seconds": 213.2620355420513,
+      "mfu_percent": 1.1470338665067936,
+      "precision_normalized_mfu_percent": 1.7492884221670533,
+      "linear_only_mfu_percent": 0.5447793108465339
+    },
+    {
+      "status": "ok",
+      "mode": "pp_microbatch1",
+      "partition": "capacity",
+      "memory": {
+        "resident": 11,
+        "total_bytes": 98744979200,
+        "peak_chip": {
+          "identity": "batch-probe-a:128",
+          "weights": 158446080,
+          "buffers": 9021262,
+          "kv": 316112896,
+          "total": 483580238,
+          "capacity": 500000000
+        },
+        "minimum_headroom_bytes": 16419762
+      },
+      "cohorts": 11,
+      "microbatch": 1,
+      "resident_requests": 11,
+      "warmup_completions": 704,
+      "measured_completions": 5632,
+      "measured_tokens": 5632,
+      "measured_seconds": 0.17454225259006437,
+      "aggregate_tps": 32267.258594556464,
+      "per_request_tps": 2933.3871449596786,
+      "mean_tpot_us": 340.8981051328923,
+      "p50_tpot_us": 326.0930532182904,
+      "p99_tpot_us": 512.506324860597,
+      "per_cohort_completions": {
+        "0": 512,
+        "1": 512,
+        "2": 512,
+        "3": 512,
+        "4": 512,
+        "5": 512,
+        "6": 512,
+        "7": 512,
+        "8": 512,
+        "9": 512,
+        "10": 512
+      },
+      "convergence": {
+        "first_half_tps": 31933.732955817566,
+        "second_half_tps": 32607.824652402753,
+        "relative_change": 0.021109079152062726
+      },
+      "host_seconds": 260.81969541707076,
+      "mfu_percent": 1.3240964924576273,
+      "precision_normalized_mfu_percent": 2.019318462794851,
+      "linear_only_mfu_percent": 0.6288745221204038
+    }
+  ],
+  "git_commit": "4f3136c25455e4433ed9016824f6403688412ab7",
+  "validation": {
+    "points": 16,
+    "feasible": 14,
+    "assertions": "NativeProfile.verify, isolated batch throughput identity, resident SRAM admission, token conservation, per-request/aggregate identity, and batch-one regression.",
+    "measurement_convergence": "First-half versus second-half throughput reported for every measured point; not a statistical confidence interval."
+  }
+}
