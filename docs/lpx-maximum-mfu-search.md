@@ -28,6 +28,14 @@ The [integrated-boundary study](lpx-integrated-boundary-search.md) adds 79,387 s
 The [vector-resource correction](lpx-vector-resource-correction.md) completes scalar-kernel reservations and revalidates the displayed decode records under the corrected resource model.
 The [frame-workspace study](lpx-frame-workspace-search.md) separates temporary attention tiles from persistent request state, admits thirteen requests on 160 chips, and evaluates two through four active/input slots.
 A longer replay of the highest result among thirteen screens measures 3.37048% MFU; compiler storage allocation and model quality remain unverified.
+The [multi-group correction](lpx-multi-group-fidelity.md) separates physical LP30 group coordinates and gives A/F transfers the shared routed injection budget.
+The [pure-LP30 A/F ratio study](lpx-pure-lp30-af-ratio-bounds.md) captures four full research graphs and conditionally bounds 226 F-depth choices with variable separate head width below the shared-cache record.
+Its wire-free A/F envelope includes the minimum head matrix work and reaches at most 3.40453% MFU; a complementary free-boundary envelope with configured A/F wire time reaches at most 3.39162%.
+The existing-format and experimental shared-cache incumbent replays remain 3.03914% and 3.41960% under the corrected source.
+The [decode protocol-buffer study](lpx-decode-protocol-buffer-search.md) admits fifteen requests with explicit paired active frames after removing a duplicated full-vocabulary buffer charge from transformer chips.
+Fourteen buffer/scheduler screens and a 480-output long replay reach at most 3.41007% MFU, with the 5 MB safety reserve, native KV watermark and complete three-chip head retained.
+Additional incoming slots and a private work-conserving arbitration prototype provide no throughput gain.
+The previous independent-batch exclusions retain their stated buffer envelopes and do not automatically extend to this projection.
 
 ## Metric and workload
 
