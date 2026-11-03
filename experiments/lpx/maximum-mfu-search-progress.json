@@ -2,7 +2,7 @@
   "record_date": "2026-11-03",
   "goal": "Find the highest useful MFU for Gemma 4 31B serving with a 100K input; explore inventories beyond 256 LP30 chips.",
   "maximum_certified": false,
-  "status": "Pure LP30 search continues without a TPS floor. Three integrated boundary placements add 79387 relaxed points; 48 batch-one points remain open. Three conservative paired-arena prototypes do not improve the incumbent. Native normalization/residual vector-resource exclusions are corrected, with fresh graph controls and 878 full-suite tests. Two prior macOS environment failures persist. Longer corrected baseline replays preserve 3.03914% separate-cache and 3.41960% experimental shared-cache MFU. Single-end compiler ownership, finer scratch lifetimes, mixed cohorts, heterogeneous widths, alternative overlap, offload and physical validation remain open; global maximum uncertified.",
+  "status": "Pure LP30 search continues without a TPS floor. Shared transient attention tiles and disjoint persistent request frames admit thirteen requests on 160 chips. Thirteen finite slot/issue screens and one longer control are complete, with the long control at 3.370475880% MFU. Original native dependencies and worker/vector exclusions remain, and every charged reservation preserves the 5 MB safety margin and native KV watermark. These finite results do not certify other partitions, phases, kernels, offload, physical SRAM banks or a global maximum. Shared-cache model quality and compiler storage allocation remain unverified.",
   "shared_timing_config": {
     "operator": {
       "activation_dtype": "bf16",
@@ -115200,7 +115200,7 @@
   ],
   "source_cpp_sha256": "8118adb459ae6870d4a441217e4b4bfdef54f6b5a5f7a4e93cc6787cdf70aa57",
   "pending_experiments": [],
-  "last_updated_utc": "2026-11-03 03:33:48 UTC",
+  "last_updated_utc": "2026-11-03T04:20:14.832310+00:00",
   "empirical_100k_gpu_acceptance": {
     "measurements": [
       {
@@ -303846,5 +303846,569 @@
     },
     "scope": "Uniform TP/DCP, PP1 through60, three tied-weight placements and three shared-cache policies, batch1 through54, complete resident KV. Single-end memory ownership is projected and uncompiled. Frozen pre-correction replay screens remain separate from current-resource selected-interval controls. Forty-eight batch-one points remain above the decode incumbent under the free-boundary envelope.",
     "maximum_certified": false
+  },
+  "frame_workspace_search": {
+    "status": "complete_finite_experiment",
+    "turn_classification": "progress",
+    "artifact": "experiments/lpx/frame-workspace-search.json.gz",
+    "artifact_sha256": "27ec40603ddf1729607692e86a57e77071491a35453f4b054023e93dc15768cc",
+    "document": "docs/lpx-frame-workspace-search.md",
+    "source_sha256": "e1e67a8d10501bb84d594754f25d8df526bd8c815087a01d6f450a87a922f590",
+    "hardware": "pure LP30",
+    "minimum_tps": null,
+    "maximum_certified": false,
+    "quality_verified": false,
+    "compiler_storage_allocation_verified": false,
+    "resident_requests": 13,
+    "chips": 160,
+    "layout": {
+      "tp": 16,
+      "kvp": 4,
+      "pp": 10,
+      "placement": "last_only",
+      "layer_counts": [
+        6,
+        6,
+        6,
+        6,
+        6,
+        7,
+        7,
+        6,
+        6,
+        4
+      ]
+    },
+    "finite_screen_count": 13,
+    "summary": [
+      {
+        "slots": 2,
+        "screen_count": 9,
+        "extra_bytes_per_chip": 753664,
+        "minimum_projected_headroom_bytes": 836914,
+        "best_screen": {
+          "issue_us": 19.0,
+          "mfu_percent": 3.3707835758161764,
+          "replay": {
+            "resident_requests": 13,
+            "batch": 1,
+            "cohorts": 13,
+            "warmup_completions": 52,
+            "measured_completions": 208,
+            "measured_tokens": 208,
+            "measured_seconds": 0.004051443373052051,
+            "aggregate_tps": 51339.72780750198,
+            "mean_per_request_tps": 3949.209831346306,
+            "per_cohort_completions": {
+              "0": 16,
+              "1": 16,
+              "2": 16,
+              "3": 16,
+              "4": 16,
+              "5": 16,
+              "6": 16,
+              "7": 16,
+              "8": 16,
+              "9": 16,
+              "10": 16,
+              "11": 16,
+              "12": 16
+            },
+            "per_cohort_per_request_tps": {
+              "0": 3949.209831346306,
+              "1": 3949.209831346306,
+              "2": 3949.209831346306,
+              "3": 3949.209831346306,
+              "4": 3949.209831346306,
+              "5": 3949.209831346306,
+              "6": 3949.209831346306,
+              "7": 3949.209831346306,
+              "8": 3949.209831346306,
+              "9": 3949.209831346306,
+              "10": 3949.209831346306,
+              "11": 3949.209831346306,
+              "12": 3949.209831346306
+            },
+            "mean_tpot_s": 0.0002532648196218501,
+            "p50_tpot_s": 0.0002531903917993366,
+            "p99_tpot_s": 0.00025794044330872254,
+            "initial_spacing_s": 1.8999999999999998e-05,
+            "issue_interval_s": 1.8999999999999998e-05,
+            "convergence": {
+              "earlier_half_tps": 51286.226081562425,
+              "later_half_tps": 51393.34127587626,
+              "relative_change": 0.002088576261070285
+            },
+            "scope": "Fixed-context operator-DAG replay; compiler scheduling and buffer lifetime safety unverified.",
+            "programs": 2,
+            "program_assignment": {
+              "0": 0,
+              "1": 1,
+              "2": 0,
+              "3": 1,
+              "4": 0,
+              "5": 1,
+              "6": 0,
+              "7": 1,
+              "8": 0,
+              "9": 1,
+              "10": 0,
+              "11": 1,
+              "12": 0
+            }
+          },
+          "programs": [
+            {
+              "program_sha256": "53555145c020c65bfece13065cc35e4be4a06f2fffe052bd5680ade301430315",
+              "modeled_duration_s": 0.0002230641500079062,
+              "operators": {
+                "elementwise": 256,
+                "gemm": 16
+              },
+              "scope": "Explicit synthetic operator composition with analytical LP30 costs; compiler and physical bank placement unverified.",
+              "input_sha256": "67f3860c707ba0d042d295a6ad6d06010725c3485dcd84b8d94c83f0d141aa14",
+              "node_body_sha256": "a9ff7802655b8276780fd0cf0c4b2892f75efdc7114be6f8488994c03e0b18be"
+            },
+            {
+              "program_sha256": "71c18df84289dffb421283e24eed40593b35710fbe54d85a96504e68e3f90901",
+              "modeled_duration_s": 0.0002230641500079062,
+              "operators": {
+                "elementwise": 256,
+                "gemm": 16
+              },
+              "scope": "Explicit synthetic operator composition with analytical LP30 costs; compiler and physical bank placement unverified.",
+              "input_sha256": "30b2f3544f4f07f909954b3093c2691807a538838a44430fb377a78f9173a9e5",
+              "node_body_sha256": "cbf6b468fe7c46273d2e0d65d831ef4040740662adaf576f087bcc0b699ccc38"
+            }
+          ]
+        }
+      },
+      {
+        "slots": 3,
+        "screen_count": 2,
+        "extra_bytes_per_chip": 1130496,
+        "minimum_projected_headroom_bytes": 460082,
+        "best_screen": {
+          "issue_us": 17.2,
+          "mfu_percent": 3.3595160426540294,
+          "replay": {
+            "resident_requests": 13,
+            "batch": 1,
+            "cohorts": 13,
+            "warmup_completions": 52,
+            "measured_completions": 208,
+            "measured_tokens": 208,
+            "measured_seconds": 0.004065031572060727,
+            "aggregate_tps": 51168.1142723712,
+            "mean_per_request_tps": 3936.0087901824,
+            "per_cohort_completions": {
+              "0": 16,
+              "1": 16,
+              "2": 16,
+              "3": 16,
+              "4": 16,
+              "5": 16,
+              "6": 16,
+              "7": 16,
+              "8": 16,
+              "9": 16,
+              "10": 16,
+              "11": 16,
+              "12": 16
+            },
+            "per_cohort_per_request_tps": {
+              "0": 3936.0087901823995,
+              "1": 3936.0087901823995,
+              "2": 3936.0087901823995,
+              "3": 3936.0087901823995,
+              "4": 3936.0087901823995,
+              "5": 3936.0087901823995,
+              "6": 3936.0087901823995,
+              "7": 3936.0087901823995,
+              "8": 3936.0087901823995,
+              "9": 3936.0087901823995,
+              "10": 3936.0087901823995,
+              "11": 3936.0087901823995,
+              "12": 3936.0087901823995
+            },
+            "mean_tpot_s": 0.0002541242069379082,
+            "p50_tpot_s": 0.00025375408016976397,
+            "p99_tpot_s": 0.00026083811746291114,
+            "initial_spacing_s": 1.7199999999999998e-05,
+            "issue_interval_s": 1.7199999999999998e-05,
+            "convergence": {
+              "earlier_half_tps": 51270.07594482624,
+              "later_half_tps": 51066.55734082705,
+              "relative_change": -0.003969539741236261
+            },
+            "scope": "Fixed-context operator-DAG replay; compiler scheduling and buffer lifetime safety unverified.",
+            "programs": 3,
+            "program_assignment": {
+              "0": 0,
+              "1": 1,
+              "2": 2,
+              "3": 0,
+              "4": 1,
+              "5": 2,
+              "6": 0,
+              "7": 1,
+              "8": 2,
+              "9": 0,
+              "10": 1,
+              "11": 2,
+              "12": 0
+            }
+          }
+        }
+      },
+      {
+        "slots": 4,
+        "screen_count": 2,
+        "extra_bytes_per_chip": 1507328,
+        "minimum_projected_headroom_bytes": 83250,
+        "best_screen": {
+          "issue_us": 17.2,
+          "mfu_percent": 3.3595160426540294,
+          "replay": {
+            "resident_requests": 13,
+            "batch": 1,
+            "cohorts": 13,
+            "warmup_completions": 52,
+            "measured_completions": 208,
+            "measured_tokens": 208,
+            "measured_seconds": 0.004065031572060727,
+            "aggregate_tps": 51168.1142723712,
+            "mean_per_request_tps": 3936.0087901824,
+            "per_cohort_completions": {
+              "0": 16,
+              "1": 16,
+              "2": 16,
+              "3": 16,
+              "4": 16,
+              "5": 16,
+              "6": 16,
+              "7": 16,
+              "8": 16,
+              "9": 16,
+              "10": 16,
+              "11": 16,
+              "12": 16
+            },
+            "per_cohort_per_request_tps": {
+              "0": 3936.0087901823995,
+              "1": 3936.0087901823995,
+              "2": 3936.0087901823995,
+              "3": 3936.0087901823995,
+              "4": 3936.0087901823995,
+              "5": 3936.0087901823995,
+              "6": 3936.0087901823995,
+              "7": 3936.0087901823995,
+              "8": 3936.0087901823995,
+              "9": 3936.0087901823995,
+              "10": 3936.0087901823995,
+              "11": 3936.0087901823995,
+              "12": 3936.0087901823995
+            },
+            "mean_tpot_s": 0.0002541242069379082,
+            "p50_tpot_s": 0.00025375408016976397,
+            "p99_tpot_s": 0.00026083811746291114,
+            "initial_spacing_s": 1.7199999999999998e-05,
+            "issue_interval_s": 1.7199999999999998e-05,
+            "convergence": {
+              "earlier_half_tps": 51270.07594482624,
+              "later_half_tps": 51066.55734082705,
+              "relative_change": -0.003969539741236261
+            },
+            "scope": "Fixed-context operator-DAG replay; compiler scheduling and buffer lifetime safety unverified.",
+            "programs": 4,
+            "program_assignment": {
+              "0": 0,
+              "1": 1,
+              "2": 2,
+              "3": 3,
+              "4": 0,
+              "5": 1,
+              "6": 2,
+              "7": 3,
+              "8": 0,
+              "9": 1,
+              "10": 2,
+              "11": 3,
+              "12": 0
+            }
+          }
+        }
+      }
+    ],
+    "long_control": {
+      "status": "complete",
+      "selected_screen": {
+        "slots": 2,
+        "folder": "outputs/lpx-maximum-mfu-20261103/frame-workspace-prototypes/last_only-pp10-n13",
+        "row": {
+          "issue_us": 19.0,
+          "mfu_percent": 3.3707835758161764,
+          "replay": {
+            "resident_requests": 13,
+            "batch": 1,
+            "cohorts": 13,
+            "warmup_completions": 52,
+            "measured_completions": 208,
+            "measured_tokens": 208,
+            "measured_seconds": 0.004051443373052051,
+            "aggregate_tps": 51339.72780750198,
+            "mean_per_request_tps": 3949.209831346306,
+            "per_cohort_completions": {
+              "0": 16,
+              "1": 16,
+              "2": 16,
+              "3": 16,
+              "4": 16,
+              "5": 16,
+              "6": 16,
+              "7": 16,
+              "8": 16,
+              "9": 16,
+              "10": 16,
+              "11": 16,
+              "12": 16
+            },
+            "per_cohort_per_request_tps": {
+              "0": 3949.209831346306,
+              "1": 3949.209831346306,
+              "2": 3949.209831346306,
+              "3": 3949.209831346306,
+              "4": 3949.209831346306,
+              "5": 3949.209831346306,
+              "6": 3949.209831346306,
+              "7": 3949.209831346306,
+              "8": 3949.209831346306,
+              "9": 3949.209831346306,
+              "10": 3949.209831346306,
+              "11": 3949.209831346306,
+              "12": 3949.209831346306
+            },
+            "mean_tpot_s": 0.0002532648196218501,
+            "p50_tpot_s": 0.0002531903917993366,
+            "p99_tpot_s": 0.00025794044330872254,
+            "initial_spacing_s": 1.8999999999999998e-05,
+            "issue_interval_s": 1.8999999999999998e-05,
+            "convergence": {
+              "earlier_half_tps": 51286.226081562425,
+              "later_half_tps": 51393.34127587626,
+              "relative_change": 0.002088576261070285
+            },
+            "scope": "Fixed-context operator-DAG replay; compiler scheduling and buffer lifetime safety unverified.",
+            "programs": 2,
+            "program_assignment": {
+              "0": 0,
+              "1": 1,
+              "2": 0,
+              "3": 1,
+              "4": 0,
+              "5": 1,
+              "6": 0,
+              "7": 1,
+              "8": 0,
+              "9": 1,
+              "10": 0,
+              "11": 1,
+              "12": 0
+            }
+          },
+          "programs": [
+            {
+              "program_sha256": "53555145c020c65bfece13065cc35e4be4a06f2fffe052bd5680ade301430315",
+              "modeled_duration_s": 0.0002230641500079062,
+              "operators": {
+                "elementwise": 256,
+                "gemm": 16
+              },
+              "scope": "Explicit synthetic operator composition with analytical LP30 costs; compiler and physical bank placement unverified.",
+              "input_sha256": "67f3860c707ba0d042d295a6ad6d06010725c3485dcd84b8d94c83f0d141aa14",
+              "node_body_sha256": "a9ff7802655b8276780fd0cf0c4b2892f75efdc7114be6f8488994c03e0b18be"
+            },
+            {
+              "program_sha256": "71c18df84289dffb421283e24eed40593b35710fbe54d85a96504e68e3f90901",
+              "modeled_duration_s": 0.0002230641500079062,
+              "operators": {
+                "elementwise": 256,
+                "gemm": 16
+              },
+              "scope": "Explicit synthetic operator composition with analytical LP30 costs; compiler and physical bank placement unverified.",
+              "input_sha256": "30b2f3544f4f07f909954b3093c2691807a538838a44430fb377a78f9173a9e5",
+              "node_body_sha256": "cbf6b468fe7c46273d2e0d65d831ef4040740662adaf576f087bcc0b699ccc38"
+            }
+          ]
+        }
+      },
+      "screen_count": 13,
+      "warmup_rounds": 8,
+      "measured_rounds": 32,
+      "programs": [
+        {
+          "program_sha256": "53555145c020c65bfece13065cc35e4be4a06f2fffe052bd5680ade301430315",
+          "modeled_duration_s": 0.0002230641500079062,
+          "operators": {
+            "elementwise": 256,
+            "gemm": 16
+          },
+          "scope": "Explicit synthetic operator composition with analytical LP30 costs; compiler and physical bank placement unverified.",
+          "input_sha256": "67f3860c707ba0d042d295a6ad6d06010725c3485dcd84b8d94c83f0d141aa14",
+          "node_body_sha256": "a9ff7802655b8276780fd0cf0c4b2892f75efdc7114be6f8488994c03e0b18be"
+        },
+        {
+          "program_sha256": "71c18df84289dffb421283e24eed40593b35710fbe54d85a96504e68e3f90901",
+          "modeled_duration_s": 0.0002230641500079062,
+          "operators": {
+            "elementwise": 256,
+            "gemm": 16
+          },
+          "scope": "Explicit synthetic operator composition with analytical LP30 costs; compiler and physical bank placement unverified.",
+          "input_sha256": "30b2f3544f4f07f909954b3093c2691807a538838a44430fb377a78f9173a9e5",
+          "node_body_sha256": "cbf6b468fe7c46273d2e0d65d831ef4040740662adaf576f087bcc0b699ccc38"
+        }
+      ],
+      "replay": {
+        "resident_requests": 13,
+        "batch": 1,
+        "cohorts": 13,
+        "warmup_completions": 104,
+        "measured_completions": 416,
+        "measured_tokens": 416,
+        "measured_seconds": 0.008103626470431887,
+        "aggregate_tps": 51335.04135683947,
+        "mean_per_request_tps": 3948.8493351414977,
+        "per_cohort_completions": {
+          "0": 32,
+          "1": 32,
+          "2": 32,
+          "3": 32,
+          "4": 32,
+          "5": 32,
+          "6": 32,
+          "7": 32,
+          "8": 32,
+          "9": 32,
+          "10": 32,
+          "11": 32,
+          "12": 32
+        },
+        "per_cohort_per_request_tps": {
+          "0": 3948.8493351414977,
+          "1": 3948.8493351414977,
+          "2": 3948.8493351414977,
+          "3": 3948.8493351414977,
+          "4": 3948.8493351414977,
+          "5": 3948.8493351414977,
+          "6": 3948.8493351414977,
+          "7": 3948.8493351414977,
+          "8": 3948.8493351414977,
+          "9": 3948.8493351414977,
+          "10": 3948.8493351414977,
+          "11": 3948.8493351414977,
+          "12": 3948.8493351414977
+        },
+        "mean_tpot_s": 0.0002532859080652289,
+        "p50_tpot_s": 0.00025316891082861285,
+        "p99_tpot_s": 0.0002599611203677561,
+        "initial_spacing_s": 1.8999999999999998e-05,
+        "issue_interval_s": 1.8999999999999998e-05,
+        "convergence": {
+          "earlier_half_tps": 51384.680954874624,
+          "later_half_tps": 51285.49757380358,
+          "relative_change": -0.0019302130368026305
+        },
+        "scope": "Fixed-context operator-DAG replay; compiler scheduling and buffer lifetime safety unverified.",
+        "programs": 2,
+        "program_assignment": {
+          "0": 0,
+          "1": 1,
+          "2": 0,
+          "3": 1,
+          "4": 0,
+          "5": 1,
+          "6": 0,
+          "7": 1,
+          "8": 0,
+          "9": 1,
+          "10": 0,
+          "11": 1,
+          "12": 0
+        }
+      },
+      "mfu_percent": 3.370475880166108,
+      "reproduction_source": "\"\"\"Extend the best finite shared-tile slot/issue screen.\"\"\"\nimport gzip,json,sys\nfrom pathlib import Path\nsys.path.insert(0,'/Users/bytedance/codes/TokenSim')\nfrom scripts.search_lpx_mfu import build_cache\nfrom scripts.bound_lpx_mfu_layouts import saved_profile\nfrom scripts.lpx.mfu_replay import replay_cohorts\nROOT=Path('outputs/lpx-maximum-mfu-20261103/frame-workspace-prototypes')\nPARENT=ROOT/'last_only-pp10-n13'\nbuild_cache()\nbase=json.loads((PARENT/'result.json').read_text())\nassert base['status']=='complete'\ncases=[dict(slots=2,folder=str(PARENT),row=r) for r in base['replays']]\ncases.extend(dict(slots=2,folder=str(PARENT),row=json.loads(p.read_text())) for p in sorted((PARENT/'phase-grid').glob('*.json')))\nfor slots in (3,4):\n    folder=ROOT/'slot-controls'/f'slots{slots}'\n    raw=json.loads((folder/'result.json').read_text())\n    assert raw['status']=='complete'\n    cases.extend(dict(slots=slots,folder=str(folder),row=r) for r in raw['replays'])\nassert len(cases)==13\nselected=max(cases,key=lambda r:r['row']['mfu_percent'])\nprint(json.dumps(dict(stage='selected',slots=selected['slots'],issue_us=selected['row']['issue_us'],mfu=selected['row']['mfu_percent'])),flush=True)\nprofiles=[]\nfor slot in range(selected['slots']):\n    path=Path(selected['folder'])/f'program-slot{slot}.json.gz'\n    with gzip.open(path,'rt') as stream:sha=json.load(stream)['input_sha256']\n    profiles.append(saved_profile(path,sha))\nissue=selected['row']['issue_us']*1e-6\nreplay=replay_cohorts(profiles[0],additional_profiles=profiles[1:],resident_requests=13,warmup_rounds=8,measured_rounds=32,initial_spacing_s=issue,issue_interval_s=issue)\nrow=dict(status='complete',selected_screen=selected,screen_count=len(cases),warmup_rounds=8,measured_rounds=32,programs=[p.metadata for p in profiles],replay=replay,mfu_percent=100*replay['aggregate_tps']*129261109248/(160*315e15/256),reproduction_source=Path(__file__).read_text())\nassert replay['measured_tokens']==416\n(ROOT/'long-control.json').write_text(json.dumps(row,indent=2)+'\\n')\nprint(json.dumps(dict(stage='complete',slots=selected['slots'],mfu=row['mfu_percent'],tps=replay['aggregate_tps'],drift=replay['convergence']['relative_change'],counts=replay['per_cohort_completions'])),flush=True)\n"
+    },
+    "native_lifetime_validation": {
+      "status": "complete",
+      "checks": [
+        {
+          "preserved_native_nodes": 96536,
+          "bounded_active_frames": 10,
+          "bounded_incoming_frames": 10,
+          "streamed_attention_prefixes": 800,
+          "unstreamed_attention_prefixes": 160,
+          "vector_bound_compute_nodes": 69552
+        },
+        {
+          "preserved_native_nodes": 96536,
+          "bounded_active_frames": 10,
+          "bounded_incoming_frames": 10,
+          "streamed_attention_prefixes": 800,
+          "unstreamed_attention_prefixes": 160,
+          "vector_bound_compute_nodes": 69552
+        }
+      ]
+    },
+    "slot_alias_validation": [
+      {
+        "slots": 3,
+        "checked_node_rows": 290601,
+        "renamed_arenas_per_nonzero_slot": 20,
+        "all_other_fields_identical": true,
+        "minimum_projected_headroom_bytes": 460082
+      },
+      {
+        "slots": 4,
+        "checked_node_rows": 387468,
+        "renamed_arenas_per_nonzero_slot": 20,
+        "all_other_fields_identical": true,
+        "minimum_projected_headroom_bytes": 83250
+      }
+    ],
+    "extra_reserve_thresholds": [
+      {
+        "placement": "first_only",
+        "pp": 12,
+        "resident": 17,
+        "maximum_additional_uniform_bytes": 39862,
+        "rejects_next_byte": true
+      },
+      {
+        "placement": "last_only",
+        "pp": 10,
+        "resident": 13,
+        "maximum_additional_uniform_bytes": 1590578,
+        "rejects_next_byte": true
+      }
+    ],
+    "validation": {
+      "focused_tests": ".............\n----------------------------------------------------------------------\nRan 13 tests in 0.313s\n\nOK\n",
+      "black": "Pinned Black formatter and check both report 580 files unchanged.",
+      "source_changes": false
+    }
+  },
+  "best_experimental_projected_frame_shared_decode": {
+    "chips": 160,
+    "resident_requests": 13,
+    "slots": 2,
+    "mfu_percent": 3.370475880166108,
+    "aggregate_tps": 51335.04135683947,
+    "issue_us": 19.0,
+    "matching_quality_verified": false,
+    "compiler_storage_allocation_verified": false,
+    "global_optimum_certified": false,
+    "record_ref": "frame_workspace_search.long_control"
   }
 }

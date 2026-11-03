@@ -86,6 +86,7 @@ These finite screens do not exclude other issue intervals, client phases or prog
 | `last_only` | 160 | 10 | 12 | 2,625,718 | 3.270693263% | approximately zero |
 
 No supplied prototype interval improves the displayed decode record.
+The [frame-workspace study](lpx-frame-workspace-search.md) admits thirteen requests with tied weights on the final pipeline group by separately charging temporary tiles and persistent request state.
 Longer corrected controls measure 320 outputs for the existing KV format and 448 outputs for the experimental shared format.
 Their displayed MFU values remain 3.039141553% and 3.419600500% respectively.
 The resource correction adds scheduling exclusions, so earlier resource-relaxed necessary bounds remain optimistic.

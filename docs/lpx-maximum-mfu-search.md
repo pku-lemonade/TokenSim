@@ -26,6 +26,8 @@ The [independent-batch study](lpx-pure-lp30-independent-batches.md) excludes 28,
 Its greatest remaining necessary bound is 3.406617750%, with native layer references, full-model controls and a separate exclusion for the remaining batch-two point.
 The [integrated-boundary study](lpx-integrated-boundary-search.md) adds 79,387 supplied points across duplicate-end and single-end tied-weight placements, with 48 batch-one points still unresolved.
 The [vector-resource correction](lpx-vector-resource-correction.md) completes scalar-kernel reservations and revalidates the displayed decode records under the corrected resource model.
+The [frame-workspace study](lpx-frame-workspace-search.md) separates temporary attention tiles from persistent request state, admits thirteen requests on 160 chips, and evaluates two through four active/input slots.
+A longer replay of the highest result among thirteen screens measures 3.37048% MFU; compiler storage allocation and model quality remain unverified.
 
 ## Metric and workload
 
