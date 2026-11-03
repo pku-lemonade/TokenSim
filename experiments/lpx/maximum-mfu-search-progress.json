@@ -2,7 +2,7 @@
   "record_date": "2026-11-03",
   "goal": "Find the highest useful MFU for Gemma 4 31B serving with a 100K input; explore inventories beyond 256 LP30 chips.",
   "maximum_certified": false,
-  "status": "Search active. Decode incumbents remain 3.03914% existing cache and 3.41960% experimental shared cache. A new bounded global-core GPU/LP30 prototype adds native-ledger KV placement, per-request activation slots, shared cross-device uplinks and operator arena lifetimes. The 203-accelerator B200 point reaches 2.90028% MFU over 7424 measured outputs; short phase screens reach 2.90936%. Main and adjacent-PP screens repeat exactly. These whole-buffer candidates do not improve the incumbent. Finer streaming, heterogeneous weight placement, GPU context parallelism, persistent weights and KV offload remain open; global hardware optimality and sustained complete serving are unproven.",
+  "status": "Pure LP30 search continues without a TPS floor. The new TP16/DCP4 paired-arena partition screen covers 1260 admitted PP/resident points and replays its top nine candidates. None improves the 3.41007% paired-arena control or the 3.41960% experimental shared-cache timing incumbent. The existing-format decode incumbent remains 3.03914%. Native-ledger offload bandwidth floors quantify necessary transfer rates without claiming physical attainability. GPU-assisted records are historical and ineligible. Global optimality and sustained complete serving remain unproven.",
   "shared_timing_config": {
     "operator": {
       "activation_dtype": "bf16",
@@ -115185,7 +115185,7 @@
   ],
   "source_cpp_sha256": "8118adb459ae6870d4a441217e4b4bfdef54f6b5a5f7a4e93cc6787cdf70aa57",
   "pending_experiments": [],
-  "last_updated_utc": "2026-11-02 20:23:00 UTC",
+  "last_updated_utc": "2026-11-03 01:46:18 UTC",
   "empirical_100k_gpu_acceptance": {
     "measurements": [
       {
@@ -303684,5 +303684,40 @@
     ],
     "maximum_certified": false,
     "implementation_commit": "837c9351deab453fa2dbb3b49259323c5a029a03"
+  },
+  "optimization_constraints": {
+    "source": "Explicit user clarification: pure LP30, MFU priority, no minimum TPS.",
+    "accelerator_hardware": "groq_lp30 only",
+    "minimum_aggregate_tps": null,
+    "minimum_per_request_tps": null,
+    "inventory_fixed_at_256": false,
+    "denominator": "Include every allocated LP30 chip, including boundary, draft and communication roles.",
+    "gpu_assisted_candidates_eligible": false,
+    "workload_metrics": "Keep representative-context decode and prompt-inclusive complete-request serving separate.",
+    "quality": "Experimental KV representations and speculative acceptance remain conditional until matching model-quality evidence exists.",
+    "archived_gpu_research": {
+      "artifact": "outputs/lpx-maximum-mfu-20261103/gpu-context-parallel-joint-bounds-archived.json.gz",
+      "status": "Retained locally; GPU batch-tail scan stopped after the user selected pure LP30.",
+      "eligible": false
+    }
+  },
+  "pure_lp30_partition_search": {
+    "base_commit": "78a2f2b310cde6e90b7c46479cabae04c10bbb30",
+    "source_sha256": "60deeb309b8f50165a6782c73305f6c969f022d730e92848a6e590b370eaff40",
+    "portable_result": "experiments/lpx/pure-lp30-partition-search.json.gz",
+    "portable_result_sha256": "0cbce42fe47b88fadf50842467e9c24278ce4c96c3ff0d94e5facaf507f18245",
+    "documentation": "docs/lpx-pure-lp30-partition-search.md",
+    "eligible_hardware": "groq_lp30 only",
+    "minimum_tps": null,
+    "inter_rack_timing_calibrated": false,
+    "capacity_proxy_points": 1260,
+    "native_replay_cases": 9,
+    "measured_tokens": 7616,
+    "enumerated_partition_checks": 5313,
+    "bandwidth_rows_audited": 64,
+    "best_paired_control_mfu_percent": 3.4100668410186055,
+    "incumbents_changed": false,
+    "maximum_certified": false,
+    "scope": "Fixed TP16/DCP4 shared-cache paired-buffer footprint, batch one. The full contiguous partition DP optimizes a stage-time proxy; native replay determines reported MFU. No global or physical optimum claim."
   }
 }

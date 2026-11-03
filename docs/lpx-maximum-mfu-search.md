@@ -3,6 +3,10 @@
 Progress date: 2026-11-03.
 The objective is to maximize useful model FLOP utilization (MFU) when serving Gemma 4 31B with a 100,000-token input.
 The search includes inventories beyond 256 LP30 chips.
+The user-confirmed optimization constraint requires pure LP30 accelerator deployments and imposes no minimum throughput.
+MFU determines the ranking within each explicitly stated workload and quality convention.
+Every allocated LP30 chip contributes its peak to the denominator, including boundary, draft and communication roles.
+GPU-assisted records remain historical research evidence and are excluded from the eligible ranking.
 Observed throughput, memory admission, model bounds and hardware evidence have separate meanings in this record.
 The search remains open.
 The existing-format non-speculative decode incumbent reaches 3.03914% MFU on 163 chips with ten resident requests.
@@ -16,6 +20,8 @@ Its prompt work is included in the numerator and its measurements remain separat
 The two-cycle complete-request replay reaches 15.80238% on 164 chips with eight clients and two requests per client; its fixed-work resource-demand bound is 21.08620%.
 Separate frozen controls reach 15.86469% for one request per client and isolate the effect of conservative context bands from request replacement.
 The [explicit stage-buffer study](lpx-stage-buffer-search.md) retains a nearby experimental decode point at 3.41007% with admitted additional scratch and paired active/incoming arenas.
+The [pure-LP30 partition study](lpx-pure-lp30-partition-search.md) covers 1,260 admitted combinations of pipeline depth and resident count in one paired-buffer family and replays its nine highest stage-time proxy candidates.
+It preserves the existing decode records and adds native-ledger necessary offload read-bandwidth floors.
 
 ## Metric and workload
 
@@ -45,7 +51,8 @@ Those records remain preserved under the historical convention in the portable r
 The correction changes MFU by approximately 0.00005545% relative and leaves the displayed candidate rankings unchanged.
 The evidence also records a precision-specific correction using the catalog BF16 peak assumption.
 Replicated projections, padding and speculative draft work receive no additional useful-token credit.
-Candidates using graphics processing units (GPUs) must include all allocated GPUs in the hardware denominator under an explicitly stated precision convention.
+Historical candidates using graphics processing units (GPUs) include all allocated GPUs in their hardware denominator under an explicitly stated precision convention.
+Those candidates do not satisfy the current pure-LP30 hardware constraint.
 The 3,400 TPS per-request reference remains a separate comparison; it is not imposed as a universal optimization constraint.
 
 ## Resident decode candidates with 16-row scratch
