@@ -83,7 +83,7 @@ class KVParallelCompilerTest(unittest.TestCase):
         with patch("scripts.lpx.native_config.build_model_runtime", build):
             return configuration(self.hardware, self.model, layout, namespace="kvp")
 
-    def test_compiler_records_kv_parallelism_and_rejects_uneven_heads(self):
+    def test_compiler_records_kv_parallelism_and_checks_output_fragments(self):
         domain = self.runtime(2).plan.domain_runtime("kvp-a-domain")
         self.assertEqual(
             (domain.kv_parallel_size, domain.kv_parallel_layers), (2, "full_attention")
@@ -92,7 +92,12 @@ class KVParallelCompilerTest(unittest.TestCase):
             self.runtime(1).plan.domain_runtime("kvp-a-domain").kv_parallel_size, 1
         )
         self.model = replace(self.model, num_attention_heads=2, num_key_value_heads=1)
-        with self.assertRaisesRegex(ConfigurationError, "divisible"):
+        split = self.runtime(2, tp=4).plan.local_shape(
+            "kvp-a-domain", 0, 0, "attention"
+        )
+        self.assertEqual((split["num_heads"], split["output_head_dim"]), (1, 2))
+        self.model = replace(self.model, head_dim=3)
+        with self.assertRaisesRegex(ConfigurationError, "head-channel fragments"):
             self.runtime(2, tp=4)
 
 

@@ -152,7 +152,7 @@ class AttentionPartitionTest(unittest.TestCase):
         for call in (
             lambda: attention_partition(self.model, 5, 16, 3),
             lambda: attention_partition(self.model, 5, 16, 2, "local"),
-            lambda: attention_partition(uneven, 5, 32, 2),
+            lambda: attention_partition(uneven, 5, 48, 16),
             lambda: attention_partition(self.model, 5, 0),
         ):
             with self.assertRaises(ConfigurationError):

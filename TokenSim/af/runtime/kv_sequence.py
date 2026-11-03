@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from TokenSim.af.runtime.attention_output import attention_output_partition
 from TokenSim.config.af.domains import KV_PARALLEL_LAYERS
 from TokenSim.config.cache_config import local_kv_heads
 from TokenSim.config.validation import integer
@@ -98,13 +99,14 @@ class AttentionPartition:
     output_heads_per_rank: int
     kv_heads_per_rank: int
     kv_replica_factor: int
+    output_head_dim: int | None = None
 
     @property
     def enabled(self) -> bool:
         return self.kv_parallel_size > 1
 
     def as_dict(self) -> dict[str, int]:
-        return {
+        result = {
             "layer_id": self.layer_id,
             "tensor_parallel_size": self.tensor_parallel_size,
             "kv_parallel_size": self.kv_parallel_size,
@@ -114,6 +116,9 @@ class AttentionPartition:
             "kv_heads_per_rank": self.kv_heads_per_rank,
             "kv_replica_factor": self.kv_replica_factor,
         }
+        if self.output_head_dim is not None:
+            result["output_head_dim"] = self.output_head_dim
+        return result
 
 
 def layer_kv_parallel_size(
@@ -146,11 +151,7 @@ def attention_partition(
     tpa = tp // kvp
     geometry = model.attention_geometry(layer_id)
     heads, kv_heads = model.num_attention_heads, geometry.num_key_value_heads
-    if kvp > 1 and heads % tp:
-        raise ConfigurationError(
-            f"layer {layer_id} KV parallelism needs {heads} query heads divisible "
-            f"by TP={tp} for the combine all-to-all"
-        )
+    output = attention_output_partition(heads, geometry.head_dim, tp, kvp)
     return AttentionPartition(
         layer_id=layer_id,
         tensor_parallel_size=tp,
@@ -160,6 +161,7 @@ def attention_partition(
         output_heads_per_rank=-(-heads // tp),
         kv_heads_per_rank=local_kv_heads(kv_heads, tpa),
         kv_replica_factor=max(1, tpa // kv_heads),
+        output_head_dim=output.head_dim if output.fragmented else None,
     )
 
 

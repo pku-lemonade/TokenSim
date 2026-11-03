@@ -2,7 +2,7 @@
   "record_date": "2026-11-03",
   "goal": "Find the highest useful MFU for Gemma 4 31B serving with a 100K input; explore inventories beyond 256 LP30 chips.",
   "maximum_certified": false,
-  "status": "Pure LP30 MFU search continues without a TPS floor. Mixed local-batch-two/global-batch-one cohorts reach 3.822823729747% MFU on 444 allocated chips with 54 requests. The long native replay measures 1,728 outputs and drains 1,107 complete paired jobs, corresponding to 2,214 logical request forwards. Twelve compositions, 256 calendars and 177 numerical cyclic-order models extend coverage with role-specific arena periods and exact native memory checks. The objective-wide maximum, physical compilation, banks, shared-cache quality and multi-rack timing remain unverified.",
+  "status": "Pure LP30 MFU search continues without a TPS floor. Native within-head output-channel fragments now support wider global groups while preserving complete Q/K heads, repeated FP32 LSE costs and nonzero O shards. An 84-configuration native catalog captures 67 graphs; 93,888 necessary repeated-block bounds leave 531 supplied batch-two/four points across 85 classes. Six whole-head controls reproduce prior native nodes and admission exactly. The attained decode record remains 3.822823729747% on 444 chips. Full wider-pipeline composition and replay remain under evaluation; objective-wide optimality, physical compilation, banks, shared-cache quality and multi-rack timing remain unverified.",
   "shared_timing_config": {
     "operator": {
       "activation_dtype": "bf16",
@@ -115272,8 +115272,25 @@
     }
   ],
   "source_cpp_sha256": "8118adb459ae6870d4a441217e4b4bfdef54f6b5a5f7a4e93cc6787cdf70aa57",
-  "pending_experiments": [],
-  "last_updated_utc": "2026-11-03T11:47:34.660065+00:00",
+  "pending_experiments": [
+    {
+      "name": "wider-global-full-native-compositions",
+      "status": "running",
+      "session_id": 40528,
+      "result_directory": "outputs/lpx-maximum-mfu-20261103/output-channel-fragment-compositions",
+      "completed_at_checkpoint": 67,
+      "expected_cases": 88
+    },
+    {
+      "name": "wider-global-108-request-native-replay",
+      "status": "running",
+      "session_id": 38769,
+      "result_directory": "outputs/lpx-maximum-mfu-20261103/output-channel-fragment-compositions/b2-wide000-head4/native-replay",
+      "short_replay_mfu_percent": 3.357712032955245,
+      "long_replay_status": "pending"
+    }
+  ],
+  "last_updated_utc": "2026-11-03T12:40:44.614976+00:00",
   "empirical_100k_gpu_acceptance": {
     "measurements": [
       {
@@ -311154,6 +311171,105 @@
       "sentence_layout": "passed",
       "wording": "passed",
       "local_links_checked": 25,
+      "diff_check": "passed"
+    }
+  },
+  "output_channel_fragment_catalog": {
+    "status": "complete_native_output_fragment_catalog_and_bound_screen",
+    "turn_classification": "progress",
+    "base_commit": "adf26b1e446ac15b10cecc4d0eb4fa2c500ba343",
+    "source_sha256": "9dfe67e50e9ab76edafd96f37033622e8ae62b2abb3a03f0d233a81920e2407e",
+    "previous_source_sha256": "ae29c716bbf5693a8c9d70df1ee5c6435c3e93af93781bcc5aff57c2e8074986",
+    "hardware": "pure LP30",
+    "minimum_tps": null,
+    "maximum_certified": false,
+    "artifact": "experiments/lpx/output-channel-fragment-catalog.json.gz",
+    "artifact_sha256": "69ae81075271d13941cb846a5e8619d10249ae44f723364cccb807f8bde9ebe0",
+    "document": "docs/lpx-output-channel-fragments.md",
+    "native_configurations": 84,
+    "captured_native_graphs": 67,
+    "rejected_under_declared_policy": 17,
+    "global_widths": [
+      64,
+      128,
+      256
+    ],
+    "independent_batches": [
+      1,
+      2,
+      4
+    ],
+    "within_head_output_fragments": true,
+    "full_query_key_head_dimension_retained": true,
+    "duplicate_fp32_lse_scalars_charged": true,
+    "nonzero_output_projection_shards_charged": true,
+    "frames": 2,
+    "bound_points": 93888,
+    "remaining_ordered_points": 531,
+    "remaining_classes": 85,
+    "remaining_global_geometry": "TP64/DCP16",
+    "bound_counts": {
+      "1": {
+        "points": 75168,
+        "survivors": 0,
+        "classes": 0,
+        "maximum_upper": 3.129830104190918
+      },
+      "2": {
+        "points": 12480,
+        "survivors": 520,
+        "classes": 79,
+        "maximum_upper": 5.29824900908652
+      },
+      "4": {
+        "points": 6240,
+        "survivors": 11,
+        "classes": 6,
+        "maximum_upper": 4.917883612420165
+      }
+    },
+    "whole_head_native_regressions": 6,
+    "physical_placement_controls": 4,
+    "scope": "Complete finite native catalog and necessary bounds for repeated identical local/global blocks, supplied independent batches 1/2/4, head widths 3/4, full copied workspaces and one 4 us host submission per macro job. Other control policies, batches, head pools, graphs and inventories remain open. Larger physical placements use reconstructed actual collective port sets. Full compiler execution, banks, shared-cache quality and multi-rack timing remain unverified.",
+    "next_actions": [
+      "Finish the twenty selected multiset classes and all their eighty-eight local segment orders using reconstructed port ownership.",
+      "Complete uniform batch-two and batch-four native replay and compare useful MFU against the unchanged 444-chip record.",
+      "Search different cyclic orders and finer period phases; greedy calendar failures exclude no other schedule.",
+      "Extend independent batch sizes and head-pool widths, preserving full KV, frame and useful-output accounting.",
+      "Evaluate other submission/control policies with explicit resources and validation.",
+      "Keep complete-request serving separate from fixed-context decode."
+    ],
+    "validation": {
+      "status": "passed",
+      "artifact_sha256": "69ae81075271d13941cb846a5e8619d10249ae44f723364cccb807f8bde9ebe0",
+      "native_configurations": 84,
+      "native_profiles": 67,
+      "checked_native_nodes": 322050,
+      "bound_points": 93888,
+      "remaining_points": 531,
+      "remaining_classes": 85,
+      "whole_head_regressions": 6,
+      "physical_placement_controls": 4,
+      "tests": {
+        "ran": 898,
+        "passed": 896,
+        "failures": [
+          "tests.test_lpx_gpu_monitor.GpuMonitorTest.test_watch_paths_require_unique_names"
+        ],
+        "errors": [
+          "tests.test_lpx_gpu_runner.GpuRunnerTest.test_stop_refuses_foreign_process"
+        ],
+        "platform_reasons": [
+          "macOS resolves /tmp to /private/tmp",
+          "nvidia-smi is unavailable"
+        ],
+        "native_replay_cache": "public build_cache helper places the identical C++ source and binary in writable temporary storage"
+      },
+      "black_version": "24.2.0",
+      "formatted_and_checked_files": 585,
+      "sentence_layout": "passed",
+      "wording": "passed",
+      "local_links_checked": 44,
       "diff_check": "passed"
     }
   }

@@ -200,7 +200,8 @@ def _validate_parallel_shapes(
                 "not implemented"
             )
         if domain.capability == "af_attention":
-            if attention_heads % tp_size:
+            kvp = domain.parallel.kv_parallel_size
+            if attention_heads % (tp_size // kvp):
                 raise ConfigurationError(
                     f"AF runtime query heads={attention_heads} are not divisible by "
                     f"A domain={domain.name!r} TP={tp_size}"

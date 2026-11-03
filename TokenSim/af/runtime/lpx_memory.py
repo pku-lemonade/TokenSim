@@ -75,11 +75,14 @@ def workspace_components(components, model, raw, *, kernel=None):
             cache_tile = (
                 policy.tile_buffers * tile * 2 * kv * (cache_bytes + activation_bytes)
             )
-            # KV-parallel partial outputs and LSE values, sent and received in FP32.
+            # Send and receive FP32 output fragments and one LSE per fragment.
+            # Fragmenting a head duplicates its LSE on each destination rank.
             combine = (
-                tokens
-                * (shape["q_heads_local"] + shape["o_heads_local"] * kvp)
-                * (shape["head_dim"] + 1)
+                2
+                * tokens
+                * shape["o_heads_local"]
+                * kvp
+                * (shape.get("o_head_dim", shape["head_dim"]) + 1)
                 * 4
                 if kvp > 1
                 else 0

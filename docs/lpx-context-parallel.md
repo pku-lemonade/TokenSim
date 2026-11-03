@@ -23,6 +23,7 @@ The resulting simulations remain conditional on that hypothesis and on the uncal
 | `B` | Query tokens in one forward, one for serial decode |
 | `H_q`, `H_kv` | Query heads and KV heads of the layer |
 | `d` | Head dimension of the layer |
+| `H_o`, `d_o` | Retained whole heads and their dimension, or retained head fragments and their channel width |
 | `S` | KV context length of the forward, including the new token |
 | `w` | Attention window of the layer, or none for full attention |
 | `b` | Append block, `kv_append_block` |
@@ -74,35 +75,49 @@ Ranks in one KVP group compute identical projections, so the owning rank appends
 Each rank runs attention over its owned keys and produces a partial output and one log-sum-exp (LSE) value per token and query head.
 The decode step finishes when the slowest rank in the group finishes, so the critical path uses `max_r owned(S, r)`.
 
-An all-to-all inside each KVP group exchanges query-head slices.
-Each rank keeps `H_q / N` heads and sends the other slices to their owners.
+An all-to-all inside each KVP group exchanges output-channel slices.
+When `H_q` is divisible by `N`, each rank keeps `H_o = H_q / N` whole heads with `d_o = d`.
+When `N > H_q`, the compiler also accepts `N / H_q` equal channel fragments per head if `N` is divisible by `H_q` and `d` is divisible by `N / H_q`.
+Each rank then retains `H_o = 1` fragment with `d_o = d / (N / H_q)` channels.
+Query heads must divide evenly across `TPA`, so Q/K dot products still use complete heads and the original dimension `d`.
+The output owner for TP rank `t` retains flattened channels `[t * H_o * d_o, (t + 1) * H_o * d_o)`.
 The bytes sent by one rank are:
 
 ```text
-combine_send_bytes = (KVP - 1) * B * (H_q / N) * (d * partial_bytes + lse_bytes)
+combine_send_bytes = (KVP - 1) * B * H_o * (d_o * partial_bytes + lse_bytes)
 ```
 
 Partial outputs and LSE values use 32-bit floating point (FP32), so `partial_bytes = lse_bytes = 4`.
 The volume does not depend on `S`.
 The receiving rank merges `KVP` fragments per token and head with `L = max_i LSE_i`, `a_i = exp(LSE_i - L)` and `O = sum_i a_i * O_i / sum_i a_i`.
-The LP30 vector unit charges `KVP` exponentials and approximately `KVP * (2 * d + 3)` scalar operations per token and retained head.
-The output projection uses an input width of `(H_q / N) * d` on every rank, followed by the existing all-reduce over `N` ranks.
+Each channel fragment receives its head's complete LSE scalar from every sequence partition.
+The normalization weights are shared across the channels of a head, so the same merge formula applies independently to every retained channel.
+Using the formula for each channel follows from the [Flash-Decoding authors' description](https://pytorch.org/blog/flash-decoding/) of partial outputs and one LSE scalar per query row and sequence partition.
+The LP30 vector unit charges `KVP` exponentials and approximately `KVP * (2 * d_o + 3)` scalar operations per token and retained head or head fragment.
+The output projection uses an input width of `H_o * d_o = H_q * d / N` on every rank, followed by the existing all-reduce over `N` ranks.
 The FFN, residual and model-boundary operations retain the TP `N` behavior.
-`H_q` must be divisible by `N` on a CP layer so every rank retains the same number of heads after the all-to-all.
+Unequal fragments crossing head boundaries remain unsupported.
+
+For Gemma's global geometry with 32 query heads and dimension 512, TP64/DCP16 computes eight complete query heads per rank and retains 256 output channels.
+Its combine buffer contains `16 * (256 + 1) * 4 = 16,448` bytes per query and direction.
+The extra LSE copies remain charged, including the copy sent to the rank retaining the other half of the same head.
 
 ## Memory accounting
 
 KV bytes on rank `r` for a selected layer equal its local KV heads times `d` times two cached tensors times the KV dtype size times its owned token count.
 Replicated K/V caches remain two tensors when `k_eq_v` shares the projection.
 Q/K/V projection weights on a CP layer cover `H_q / TPA` query heads and the local KV heads, which replicates them across the `KVP` ranks of a group.
-The output projection keeps its `(H_q / N) * d` row shard.
+The output projection keeps its `H_o * d_o` row shard.
 LP30 attention scratch uses the local key count.
-The combine reserves a send buffer of `B * (H_q / TPA) * (d + 1) * 4` bytes and a receive buffer of `B * (H_q / N) * KVP * (d + 1) * 4` bytes.
+The combine reserves separate send and receive buffers of `B * H_o * KVP * (d_o + 1) * 4` bytes each.
+The send buffer includes repeated LSE values when several ranks retain different fragments of the same head.
+The online attention state and Q/K/V tiles retain their complete head dimension.
 
 ## Scope and rejected combinations
 
 The compiler accepts `kv_parallel_size > 1` for colocated attention/FFN execution without multi-head latent attention (MLA).
-It raises `ConfigurationError` for non-colocated AF, MLA and selected layers whose query heads do not divide `N`.
+It raises `ConfigurationError` for non-colocated AF, MLA, query heads that do not divide `TPA` and output channels that cannot form the supported equal fragments.
+Unselected layers retain whole-head TP and reject inventories exceeding their query-head count.
 The native LPX configuration also rejects KV parallelism on non-LP30 attention devices and in cases with prefill/decode KV handoff or external drafting, because their KV movement is unspecified.
 Prefill applies the decode combine step to each chunk with `B` equal to the chunk's query tokens.
 Batch-wise overlap of the combine step is excluded because a serial client has one request per forward.
@@ -112,9 +127,10 @@ Batch-wise overlap of the combine step is excluded because a serial client has o
 | Component | Module | Behavior |
 | --- | --- | --- |
 | Ownership and partitions | [`kv_sequence.py`](../TokenSim/af/runtime/kv_sequence.py) | Closed-form owned, visible and peak resident token counts; per-layer KVP selection; scope validation |
+| Output channels | [`attention_output.py`](../TokenSim/af/runtime/attention_output.py) | Validates whole heads or equal fragments, records output width and supplies explicit flattened channel intervals |
 | KV partitions | [`layer_kv.py`](../TokenSim/af/runtime/layer_kv.py) | Shards KV heads over `TPA` and records `kv_parallel_size`, `kv_parallel_rank` and `kv_append_block` on selected layers |
 | Admission | [`admission.py`](../TokenSim/af/runtime/admission.py) | Charges each rank's peak owned positions |
-| Weights and scratch | [`memory.py`](../TokenSim/af/runtime/memory.py), [`lpx_memory.py`](../TokenSim/af/runtime/lpx_memory.py) | Replicates Q/K/V over KVP ranks, keeps `H_q / N` output-projection heads, sizes attention tiles from the local context and adds combine buffers |
+| Weights and scratch | [`memory.py`](../TokenSim/af/runtime/memory.py), [`lpx_memory.py`](../TokenSim/af/runtime/lpx_memory.py) | Replicates complete Q/K/V heads over KVP ranks, shards O input channels, sizes attention tiles from the local context and adds send/receive combine buffers |
 | Decode graph | [`planning/context_parallel.py`](../TokenSim/af/planning/context_parallel.py) | Adds one `all_to_all` per KVP group and one `attention_output` node per rank before the attention all-reduce |
 | Decode costs | [`providers/context_parallel.py`](../TokenSim/af/providers/context_parallel.py) | Prices attention over the rank's visible keys and prices the merge and output projection separately |
 | LP30 merge work | [`lp30.py`](../TokenSim/operator_data/analytical/lp30.py) | `lse_merge` charges `2 * d + 3` vector operations and one exponential per fragment |
@@ -124,6 +140,8 @@ Batch-wise overlap of the combine step is excluded because a serial client has o
 Plan summaries, rank KV partitions and attention components emit the new fields only when `KVP > 1`.
 The `KVP = 1` path keeps the previous graph, costs and serialized results.
 The attention node's local shape carries the KVP fields, so operator estimates are cached separately per rank coordinate.
+Fragmented outputs add `output_head_dim`, `output_channel_start` and `output_channel_stop` while retaining the complete attention `head_dim`.
+Whole-head shapes omit these additional fields.
 Contexts are supplied to provider queries at execution time, so the directed acyclic graph template cache needs no change.
 
 A prefill chunk of `q` query tokens on rank `r` attends to `min(S, q + visible(S - q, r))` keys.

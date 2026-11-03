@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from TokenSim.af.runtime.attention_output import attention_output_partition
 
 from TokenSim.af.runtime.records import (
     AFKVHeadPartition,
@@ -65,18 +66,32 @@ def _components_for_binding(
             # KV-parallel ranks replicate Q/K/V for tp/kvp heads; O keeps tp shards.
             q_heads = layer.num_attention_heads // (tp_size // kvp)
             o_heads = layer.num_attention_heads // tp_size
+            output = (
+                attention_output_partition(
+                    layer.num_attention_heads, layer.head_dim, tp_size, kvp
+                )
+                if kvp > 1
+                else None
+            )
+            if output is not None:
+                o_heads = output.heads
+            o_width = output.width if output else o_heads * layer.head_dim
             q_width = q_heads * layer.head_dim
             kv_width = partition.local_head_count * layer.head_dim
             kv_projections = 1 if layer.k_eq_v else 2
             attention_elements = (
-                hidden * (q_width + o_heads * layer.head_dim)
-                + kv_projections * hidden * kv_width
+                hidden * (q_width + o_width) + kv_projections * hidden * kv_width
             )
             parallel_shape = (
                 (("o_heads_local", o_heads), ("kv_parallel_size", kvp))
                 if kvp > 1
                 else ()
             )
+            if output is not None and output.fragmented:
+                parallel_shape += (
+                    ("o_head_dim", output.head_dim),
+                    ("o_width", output.width),
+                )
             norm_elements = 2 * layer.head_dim if qk_norm else 0
             norm_shape = (("qk_norm_elements", norm_elements),) if norm_elements else ()
             attention_elements += norm_elements

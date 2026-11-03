@@ -48,7 +48,10 @@ This certificate does not bound alternate resource orders, operator graphs, plac
 The [heterogeneous batch and phase study](lpx-heterogeneous-batch-search.md) extends the search to 31,248 repeated-block bounds and reaches 3.820105% MFU with native batch-one local cuts and 54 resident requests.
 The [mixed-stage cohort study](lpx-mixed-stage-cohort-search.md) evaluates twelve further compositions, 256 calendars and 177 numerical fixed-order models.
 Its paired local requests and separate global executions reach approximately 161,573.433 TPS, with 1,728 measured outputs and 1,107 paired jobs drained in the long replay.
-Wider global output-channel partitions, alternative cyclic orders and other memory placements remain open.
+Alternative cyclic orders and other memory placements remain open.
+The [output-channel fragment study](lpx-output-channel-fragments.md) adds native TP64, TP128 and TP256 global geometries with complete Q/K heads and explicit partial-head O shards.
+Its completed 84-configuration catalog and 93,888-point bound screen leave 531 supplied batch-two or batch-four points above the attained record.
+Full schedules for wider groups remain under evaluation, with explicit reconstruction of their physical port resources.
 
 ## Metric and workload
 

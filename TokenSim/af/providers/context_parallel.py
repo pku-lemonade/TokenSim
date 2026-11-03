@@ -52,7 +52,11 @@ def local_attention_lengths(query, window):
 
 
 def combine_payload_bytes(tokens, output_heads, head_dim, kvp) -> int:
-    """Per-rank all-to-all buffer: one partial slice for every group member."""
+    """Per-rank buffer with one FP32 LSE per retained head or head fragment.
+
+    ``head_dim`` is the retained channel width, including when a full head
+    is split across multiple output ranks that each receive the same LSE.
+    """
     return tokens * output_heads * kvp * (head_dim + 1) * COMBINE_ELEMENT_BYTES
 
 
@@ -62,7 +66,7 @@ def attention_output_components(provider, resolver, query, tokens, dtype):
     kvp, heads, head_dim = (
         shape["kv_parallel_size"],
         shape["output_heads"],
-        shape["head_dim"],
+        shape.get("output_head_dim", shape["head_dim"]),
     )
     weight_dtype = model.operator_dtype("attention", query.weight_dtype or dtype)
     key = {

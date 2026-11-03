@@ -2,7 +2,7 @@
 
 Selected layer groups keep ``tp / kvp`` query heads, read only the positions
 their KVP rank owns, merge partial outputs after an all-to-all inside the KVP
-group and project ``heads / tp`` heads.  Ownership and combine volume follow
+group and project their retained output channels.  Ownership and combine volume follow
 docs/lpx-context-parallel.md and the decode graph in
 ``TokenSim.af.planning.context_parallel``.
 """
@@ -12,6 +12,7 @@ from __future__ import annotations
 import math
 
 from TokenSim.af.runtime.kv_sequence import layer_kv_parallel_size, visible_tokens
+from TokenSim.af.runtime.attention_output import attention_output_partition
 from TokenSim.config.cache_config import local_kv_heads
 from TokenSim.latency.base import query_tokens
 from TokenSim.latency.projection import Projection
@@ -50,7 +51,10 @@ def _shard(child, kvp, rank, block, group):
     child.kv_heads_local = local_kv_heads(model.num_key_value_heads, attention_tp)
     child.q_dim_local = child.heads_local * model.head_dim
     child.kv_dim_local = child.kv_heads_local * model.head_dim
-    heads = model.num_attention_heads // tp
+    output = attention_output_partition(
+        model.num_attention_heads, model.head_dim, tp, kvp
+    )
+    heads = output.heads
     dtype = model.operator_dtype("attention")
     child.native_attention_projections = (
         Projection(
@@ -60,7 +64,7 @@ def _shard(child, kvp, rank, block, group):
             child.q_dim_local + (1 if model.k_eq_v else 2) * child.kv_dim_local,
             model.hidden_size,
         ),
-        Projection("output", "gemm", dtype, model.hidden_size, heads * model.head_dim),
+        Projection("output", "gemm", dtype, model.hidden_size, output.width),
     )
     window, owner = model.sliding_window, (kvp, rank, block)
     prefill, decode = child._attention_prefill, child._attention_decode
@@ -85,7 +89,7 @@ def _shard(child, kvp, rank, block, group):
             "op_name": "weighted_combine",
             "dtype": model.activation_dtype,
             "num_tokens": tokens * heads * kvp,
-            "hidden_size": model.head_dim + 1,
+            "hidden_size": output.head_dim + 1,
         }
         if child.device.analytical.get("lpx_pipeline") is not None:
             key.update(lpx_vector_operation="lse_merge", kv_parallel_size=kvp)
@@ -95,7 +99,7 @@ def _shard(child, kvp, rank, block, group):
         communicator = child.communicator
         if communicator is None or len(group) < 2:
             return latency
-        payload = tokens * heads * kvp * (model.head_dim + 1) * _COMBINE_ELEMENT_BYTES
+        payload = tokens * heads * kvp * (output.head_dim + 1) * _COMBINE_ELEMENT_BYTES
         estimate = communicator._collective("all_to_all", payload, group)
         combine_s = estimate.latency_s * child.layers_local
         communicator._record(

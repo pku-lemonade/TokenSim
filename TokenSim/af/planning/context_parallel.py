@@ -2,7 +2,7 @@
 
 Each KVP group of consecutive TP ranks exchanges partial outputs and
 log-sum-exp values with one all-to-all, after which every rank merges the
-fragments of its ``heads / tp`` retained query heads and projects them.  The
+fragments of its retained output channels and projects them.  The
 existing attention all-reduce then consumes the projected partial sums.
 """
 
@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from TokenSim.af.planning.nodes import ExecutionNode
 from TokenSim.af.providers.context_parallel import combine_payload_bytes
+from TokenSim.af.runtime.attention_output import attention_output_partition
 from TokenSim.errors import ConfigurationError
 
 
@@ -36,8 +37,10 @@ def append_kv_parallel_combine(
         )
     layer = planner.runtime_plan.layer_plan(layer_id)
     tokens = block.token_count
-    heads = layer.num_attention_heads // len(bindings)
-    payload = combine_payload_bytes(tokens, heads, layer.head_dim, kvp)
+    output = attention_output_partition(
+        layer.num_attention_heads, layer.head_dim, len(bindings), kvp
+    )
+    payload = combine_payload_bytes(tokens, output.heads, output.head_dim, kvp)
     ordered = sorted(bindings, key=lambda binding: binding.tp_rank)
     outputs = {}
     for group in range(len(ordered) // kvp):
@@ -108,7 +111,7 @@ def append_kv_parallel_combine(
                     shape={
                         "tokens": tokens,
                         "hidden_size": planner.hidden_size,
-                        "output_heads": heads,
+                        **output.local_shape(member.tp_rank),
                         "head_dim": layer.head_dim,
                         "kv_parallel_size": kvp,
                     },

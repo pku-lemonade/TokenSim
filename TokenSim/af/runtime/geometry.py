@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Literal
 
+from TokenSim.af.runtime.attention_output import attention_output_partition
 from TokenSim.af.runtime.records import (
     AFRankBinding,
     AFResolvedCollectivePlan,
@@ -134,12 +135,18 @@ class RuntimeGeometryMixin:
                     {
                         "num_heads": heads,
                         "query_width": heads * layer.head_dim,
-                        "output_heads": shape["num_heads"],
                         "kv_parallel_size": kvp,
                         "kv_parallel_rank": partition.kv_parallel_rank,
                         "kv_append_block": partition.kv_append_block,
                     }
                 )
+                output = attention_output_partition(
+                    layer.num_attention_heads,
+                    layer.head_dim,
+                    domain_plan.tensor_parallel_size,
+                    kvp,
+                )
+                shape.update(output.local_shape(binding.tp_rank))
         elif operation == "dense_ffn":
             if layer.layer_type != "dense":
                 raise ConfigurationError(
