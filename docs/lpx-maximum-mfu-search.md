@@ -13,7 +13,8 @@ The existing-format non-speculative decode incumbent reaches 3.03914% MFU on 163
 It places transformer layers on 160 chips and the tied embedding and language-model (LM) head on three additional chips.
 Assistant-aware draft and verification replays provide conditional acceptance scenarios and explicit transports of the repository's measured 100K GPU acceptance.
 The measured GPU KV and assistant precision differ from some LP30 configurations.
-An experimental shared global-cache format reaches 3.55800% conditional decode MFU with fourteen resident requests using a periodic resource-calendar schedule; matching model quality and physical compiler execution remain unverified.
+The current experimental shared global-cache decode record reaches approximately 3.822824% MFU on 444 chips with 54 resident requests using [mixed local/global batch widths](lpx-mixed-stage-cohort-search.md).
+Matching model quality, physical compiler execution, SRAM banks and multi-rack timing remain unverified.
 The 5 MB per-chip safety reserve remains enabled.
 The [complete-request serving study](lpx-complete-serving-mfu.md) adds a separate MFU metric for a 100K prompt followed by 2K outputs, with explicit PP activation buffers and request completion.
 Its prompt work is included in the numerator and its measurements remain separate from the resident-prefix decode ranking.
@@ -44,6 +45,10 @@ The [cyclic-order study](lpx-cyclic-order-optimality.md) derives an exact 432-ro
 Its long native replay reaches 55,207.31 TPS with 448 measured outputs and all 574 submitted forwards drained.
 Forty anchored trials, twelve backward trials and eight specified reordered linear programs provide no eligible improvement over that result.
 This certificate does not bound alternate resource orders, operator graphs, placements or hardware inventories.
+The [heterogeneous batch and phase study](lpx-heterogeneous-batch-search.md) extends the search to 31,248 repeated-block bounds and reaches 3.820105% MFU with native batch-one local cuts and 54 resident requests.
+The [mixed-stage cohort study](lpx-mixed-stage-cohort-search.md) evaluates twelve further compositions, 256 calendars and 177 numerical fixed-order models.
+Its paired local requests and separate global executions reach approximately 161,573.433 TPS, with 1,728 measured outputs and 1,107 paired jobs drained in the long replay.
+Wider global output-channel partitions, alternative cyclic orders and other memory placements remain open.
 
 ## Metric and workload
 

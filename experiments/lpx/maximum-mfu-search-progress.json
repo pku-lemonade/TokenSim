@@ -2,7 +2,7 @@
   "record_date": "2026-11-03",
   "goal": "Find the highest useful MFU for Gemma 4 31B serving with a 100K input; explore inventories beyond 256 LP30 chips.",
   "maximum_certified": false,
-  "status": "Pure LP30 MFU search continues without a TPS floor. A 444-chip heterogeneous batch-one pipeline reaches 3.820105133525% MFU with 54 resident requests. A long native replay measures 1,728 outputs and drains all 2,214 forwards. A 69-configuration native catalog, 31,248 repeated-block bounds, 115 full compositions, 618 calendars and 334 numerical cyclic-order models extend coverage. Exact resource-incidence equivalence reduces search overhead without changing timing or LP arrays. Global-only TP64 remains a native output-head partition coverage gap, not a hardware exclusion. Multi-rack timing, physical compilation, banks and shared-cache quality remain unverified. The objective-wide maximum is unproven. Existing-format, homogeneous experimental and complete-request records remain unchanged.",
+  "status": "Pure LP30 MFU search continues without a TPS floor. Mixed local-batch-two/global-batch-one cohorts reach 3.822823729747% MFU on 444 allocated chips with 54 requests. The long native replay measures 1,728 outputs and drains 1,107 complete paired jobs, corresponding to 2,214 logical request forwards. Twelve compositions, 256 calendars and 177 numerical cyclic-order models extend coverage with role-specific arena periods and exact native memory checks. The objective-wide maximum, physical compilation, banks, shared-cache quality and multi-rack timing remain unverified.",
   "shared_timing_config": {
     "operator": {
       "activation_dtype": "bf16",
@@ -115273,7 +115273,7 @@
   ],
   "source_cpp_sha256": "8118adb459ae6870d4a441217e4b4bfdef54f6b5a5f7a4e93cc6787cdf70aa57",
   "pending_experiments": [],
-  "last_updated_utc": "2026-11-03T10:59:26.463513+00:00",
+  "last_updated_utc": "2026-11-03T11:47:34.660065+00:00",
   "empirical_100k_gpu_acceptance": {
     "measurements": [
       {
@@ -133808,46 +133808,46 @@
   "best_experimental_shared_cache_non_speculative": {
     "chips": 444,
     "layout": {
-      "kind": "heterogeneous_native_segments",
+      "kind": "heterogeneous_native_mixed_cohorts",
       "repeated_blocks": 10,
       "local_segments": [
         {
           "tp": 4,
-          "layers": 1
+          "layers": 1,
+          "batch": 2
         },
         {
-          "tp": 4,
-          "layers": 2
-        },
-        {
-          "tp": 4,
-          "layers": 2
+          "tp": 8,
+          "layers": 4,
+          "batch": 2
         }
       ],
       "global_segment": {
         "tp": 32,
         "kvp": 8,
-        "layers": 1
+        "layers": 1,
+        "batch": 1
       },
-      "pp": 40,
+      "pp": 30,
       "pool_chips": 4
     },
     "resident_requests": 54,
+    "resident_cohorts": 27,
     "slots": 2,
-    "batch": 1,
+    "batch": 2,
     "cache_layout": "value_rope_fp8",
     "kernel": "split_dot",
-    "mfu_percent": 3.820105133524924,
-    "aggregate_tps": 161458.5304925223,
-    "issue_us": 6.193540824071816,
+    "mfu_percent": 3.8228237297466534,
+    "aggregate_tps": 161573.433233578,
+    "issue_us": 12.378272590805272,
     "global_optimum_certified": false,
     "matching_quality_verified": false,
     "compiler_storage_allocation_verified": false,
     "heterogeneous_tp_compilation_verified": false,
     "multirack_timing_calibrated": false,
-    "record_ref": "heterogeneous_batch_and_phase_search.native_replay_summary",
-    "artifact": "experiments/lpx/heterogeneous-batch-and-phase-search.json.gz",
-    "scope": "Analytical fixed-context decode with experimental shared global KV and unchanged full native service/resource semantics. Two full scratch/residual/communication frames, two incoming rows, vocabulary backcharge, five MB safety reserve, native rounding and watermark remain. Physical compilation, banks, matching quality and multi-rack timing are unverified. The finite repeated-block and cyclic-order search does not establish the objective-wide maximum."
+    "record_ref": "mixed_stage_cohort_search.native_replay_summary",
+    "artifact": "experiments/lpx/mixed-stage-cohort-search.json.gz",
+    "scope": "Analytical fixed-context decode using native batch-two local stages and two separate native batch-one global stages per cohort. Full SRAM ledgers, independent-request useful work, role-specific arena periods and native physical resources remain. The finite graph and fixed cyclic-order studies do not certify an objective-wide maximum. Compiler execution, physical banks, shared-cache quality and multi-rack timing remain unverified."
   },
   "previous_milestone_commit": "d7dc70ea29112712ea30727d9d234afe912b80f8",
   "shared_kv_workspace_and_batch_search": {
@@ -310968,6 +310968,193 @@
       "scipy": "1.13.1",
       "blas_threads": 1,
       "openmp_threads": 1
+    }
+  },
+  "mixed_stage_cohort_search": {
+    "status": "complete_finite_mixed_stage_cohort_study",
+    "turn_classification": "progress",
+    "base_commit": "e8bb52a04fe398f6011bbdd6c67d984c6d17756e",
+    "source_sha256": "ae29c716bbf5693a8c9d70df1ee5c6435c3e93af93781bcc5aff57c2e8074986",
+    "artifact": "experiments/lpx/mixed-stage-cohort-search.json.gz",
+    "artifact_sha256": "19a34b2d90d734bf95b261486033789963a8c3cab22f6af9d7fe71220a3bed45",
+    "document": "docs/lpx-mixed-stage-cohort-search.md",
+    "hardware": "pure LP30",
+    "minimum_tps": null,
+    "maximum_certified": false,
+    "compositions": 12,
+    "searched_compositions": 6,
+    "calendar_trials": 256,
+    "numerical_lp_cases": 177,
+    "native_replay_witnesses": 2,
+    "controls": {
+      "driver-controls.json": "passed_canonical_cohort_driver_controls",
+      "lease-controls.json": "passed_role_period_lp_controls",
+      "calendar-row-controls.json": "passed_calendar_role_and_row_controls"
+    },
+    "native_replay_summary": {
+      "label": "pair-local4-8-h4",
+      "chips": 444,
+      "transformer_chips": 440,
+      "head_chips": 4,
+      "stages": 30,
+      "resident": 54,
+      "cohorts": 27,
+      "local_batch": 2,
+      "global_batch": 1,
+      "frames": 2,
+      "period_s": 1.2378272590805272e-05,
+      "mfu_percent": 3.8228237297466534,
+      "aggregate_tps": 161573.433233578,
+      "measured_tokens": 1728,
+      "measured_cohort_completions": 864,
+      "drained_cohort_jobs": 1107,
+      "drained_logical_request_forwards": 2214,
+      "forward_s": 0.00033421335995174244,
+      "added_delay_nodes": 17151,
+      "minimum_watermark_adjusted_headroom_bytes": 378990,
+      "interval_audit": {
+        "status": "passed",
+        "checked_nodes": 98081,
+        "physical_resources": 13731,
+        "arena_resources": 82,
+        "lease_release_descendants": 82,
+        "neighboring_copies": 3,
+        "maximum_floating_overlap_s": 0.0,
+        "feedback_fits": true
+      },
+      "convergence": {
+        "earlier_half_tps": 161573.4332335053,
+        "later_half_tps": 161573.4332336507,
+        "relative_change": 8.999467837611519e-13
+      }
+    },
+    "previous_record": {
+      "chips": 444,
+      "layout": {
+        "kind": "heterogeneous_native_segments",
+        "repeated_blocks": 10,
+        "local_segments": [
+          {
+            "tp": 4,
+            "layers": 1
+          },
+          {
+            "tp": 4,
+            "layers": 2
+          },
+          {
+            "tp": 4,
+            "layers": 2
+          }
+        ],
+        "global_segment": {
+          "tp": 32,
+          "kvp": 8,
+          "layers": 1
+        },
+        "pp": 40,
+        "pool_chips": 4
+      },
+      "resident_requests": 54,
+      "slots": 2,
+      "batch": 1,
+      "cache_layout": "value_rope_fp8",
+      "kernel": "split_dot",
+      "mfu_percent": 3.820105133524924,
+      "aggregate_tps": 161458.5304925223,
+      "issue_us": 6.193540824071816,
+      "global_optimum_certified": false,
+      "matching_quality_verified": false,
+      "compiler_storage_allocation_verified": false,
+      "heterogeneous_tp_compilation_verified": false,
+      "multirack_timing_calibrated": false,
+      "record_ref": "heterogeneous_batch_and_phase_search.native_replay_summary",
+      "artifact": "experiments/lpx/heterogeneous-batch-and-phase-search.json.gz",
+      "scope": "Analytical fixed-context decode with experimental shared global KV and unchanged full native service/resource semantics. Two full scratch/residual/communication frames, two incoming rows, vocabulary backcharge, five MB safety reserve, native rounding and watermark remain. Physical compilation, banks, matching quality and multi-rack timing are unverified. The finite repeated-block and cyclic-order search does not establish the objective-wide maximum."
+    },
+    "scope": "Analytical fixed-context decode using native batch-two local stages and two separate native batch-one global stages per cohort. Full SRAM ledgers, independent-request useful work, role-specific arena periods and native physical resources remain. The finite graph and fixed cyclic-order studies do not certify an objective-wide maximum. Compiler execution, physical banks, shared-cache quality and multi-rack timing remain unverified.",
+    "next_actions": [
+      "Implement and validate partial output-head channels for global-only TP64 and larger context-parallel groups.",
+      "Preserve existing TP<=32 geometry and native graph bodies in regression controls.",
+      "Search other cyclic orders and nonuniform blocks with the same full SRAM and feedback accounting.",
+      "Evaluate LP30-to-LP30 relocation of immutable past KV using spare local-stage SRAM and explicit prefetch resources.",
+      "Keep complete-request serving and fixed-context decode metrics separate."
+    ],
+    "validation": {
+      "status": "passed",
+      "artifact_sha256": "19a34b2d90d734bf95b261486033789963a8c3cab22f6af9d7fe71220a3bed45",
+      "compositions": 12,
+      "checked_native_component_nodes": 1251700,
+      "numerical_primal_dual_controls": [
+        {
+          "duality_gap_ns": -5.820766091346741e-11,
+          "variables": 160486,
+          "constraints": 323927
+        },
+        {
+          "duality_gap_ns": -2.9103830456733704e-11,
+          "variables": 160492,
+          "constraints": 323942
+        },
+        {
+          "duality_gap_ns": -5.4569682106375694e-12,
+          "variables": 98076,
+          "constraints": 189507
+        },
+        {
+          "duality_gap_ns": -7.275957614183426e-11,
+          "variables": 98082,
+          "constraints": 189522
+        },
+        {
+          "duality_gap_ns": -4.547473508864641e-11,
+          "variables": 98082,
+          "constraints": 189504
+        },
+        {
+          "duality_gap_ns": 1.5006662579253316e-10,
+          "variables": 38822,
+          "constraints": 73568
+        }
+      ],
+      "native_interval_audits": {
+        "pair-local4-8-h4": {
+          "original": {
+            "nodes": 98081,
+            "resources": 13813,
+            "leases": 82
+          },
+          "delayed": {
+            "nodes": 98081,
+            "resources": 13813,
+            "leases": 82
+          },
+          "replays": 2
+        },
+        "single-local4-control-h4": {
+          "original": {
+            "nodes": 38821,
+            "resources": 13303,
+            "leases": 82
+          },
+          "delayed": {
+            "nodes": 38821,
+            "resources": 13303,
+            "leases": 82
+          },
+          "replays": 2
+        }
+      },
+      "minimum_headroom_bytes": 378990,
+      "previous_records_preserved": true,
+      "black_version": "24.2.0",
+      "formatted_and_checked_files": 582,
+      "production_source_unchanged": true,
+      "source_sha256": "ae29c716bbf5693a8c9d70df1ee5c6435c3e93af93781bcc5aff57c2e8074986",
+      "sentence_layout": "passed",
+      "wording": "passed",
+      "local_links_checked": 25,
+      "diff_check": "passed"
     }
   }
 }
