@@ -50,13 +50,13 @@ class StreamingBuilder:
         )
         if self.fabric:
             for i, event in enumerate(events):
-                if event.operation in {
-                    "attention",
-                    "attention_output",
-                    "dense_ffn",
-                    "lm_head",
-                }:
-                    resources = self.fabric.vxm_resources(event.physical_endpoints)
+                if event.event_type == "compute":
+                    endpoints = tuple(
+                        endpoint
+                        for endpoint in event.physical_endpoints
+                        if self.workers[endpoint].hardware == "groq_lp30"
+                    )
+                    resources = self.fabric.vxm_resources(endpoints)
                     self.nodes[i] = replace(
                         self.nodes[i],
                         resources=tuple(
