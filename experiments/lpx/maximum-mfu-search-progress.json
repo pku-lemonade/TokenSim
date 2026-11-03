@@ -2,7 +2,7 @@
   "record_date": "2026-11-03",
   "goal": "Find the highest useful MFU for Gemma 4 31B serving with a 100K input; explore inventories beyond 256 LP30 chips.",
   "maximum_certified": false,
-  "status": "Pure LP30 search continues without a TPS floor. The new TP16/DCP4 paired-arena partition screen covers 1260 admitted PP/resident points and replays its top nine candidates. None improves the 3.41007% paired-arena control or the 3.41960% experimental shared-cache timing incumbent. The existing-format decode incumbent remains 3.03914%. Native-ledger offload bandwidth floors quantify necessary transfer rates without claiming physical attainability. GPU-assisted records are historical and ineligible. Global optimality and sustained complete serving remain unproven.",
+  "status": "Pure LP30 search continues without a TPS floor. A current-source independent-batch envelope covers 108 memory-policy cases, 619 family/batch pairs and 28502 batch/PP points through 1923 chips. Native layer references and a full transformer control exclude this separate-boundary, shared-cache homogeneous-batch class from improving 3.41960%. Existing incumbents remain unchanged. Colocated boundaries, mixed cohorts, existing-format batches across all external-pool families, heterogeneous widths, speculative verification, alternative overlap and offload remain open. Global physical optimality and sustained complete serving remain unproven.",
   "shared_timing_config": {
     "operator": {
       "activation_dtype": "bf16",
@@ -115185,7 +115185,7 @@
   ],
   "source_cpp_sha256": "8118adb459ae6870d4a441217e4b4bfdef54f6b5a5f7a4e93cc6787cdf70aa57",
   "pending_experiments": [],
-  "last_updated_utc": "2026-11-03 01:46:18 UTC",
+  "last_updated_utc": "2026-11-03 02:22:27 UTC",
   "empirical_100k_gpu_acceptance": {
     "measurements": [
       {
@@ -303719,5 +303719,30 @@
     "incumbents_changed": false,
     "maximum_certified": false,
     "scope": "Fixed TP16/DCP4 shared-cache paired-buffer footprint, batch one. The full contiguous partition DP optimizes a stage-time proxy; native replay determines reported MFU. No global or physical optimum claim."
+  },
+  "pure_lp30_independent_batch_bounds": {
+    "base_commit": "134f657",
+    "source_sha256": "60deeb309b8f50165a6782c73305f6c969f022d730e92848a6e590b370eaff40",
+    "portable_result": "experiments/lpx/pure-lp30-independent-batch-bounds.json.gz",
+    "portable_result_sha256": "e45d90459f94008fd17b9249b99922735a875cc0e0d1b2498d21dab1ea068e09",
+    "documentation": "docs/lpx-pure-lp30-independent-batches.md",
+    "hardware": "groq_lp30 only",
+    "minimum_tps": null,
+    "capacity_policy_cases": 108,
+    "nonempty_capacity_frontiers": 105,
+    "independent_family_batch_pairs": 619,
+    "independent_batch_pp_points": 28502,
+    "native_layer_references": 78,
+    "full_model_projection_controls": 4,
+    "native_attention_key_checks": 4416,
+    "workspace_endpoint_checks": 210,
+    "largest_batch": 54,
+    "largest_inventory": 1923,
+    "maximum_remaining_bound_mfu_percent": 3.406617749646721,
+    "last_point_free_boundary_mfu_bound": 3.3038390869585936,
+    "last_point_full_io_mfu_bound": 3.1443016418623153,
+    "incumbents_changed": false,
+    "maximum_certified": false,
+    "scope": "Uniform transformer TP/DCP and contiguous PP, separate embedding/head storage with at least three LP30 chips, fixed homogeneous independent-request batches, current sequential operator and output-vector communication model, three supplied shared-KV kernels/workspace policies, 101K timing and 102K resident KV. Boundary execution is relaxed in projected bounds. Colocated boundary weights, mixed batches, offload, alternative kernels and physical compilation remain outside this exclusion."
   }
 }

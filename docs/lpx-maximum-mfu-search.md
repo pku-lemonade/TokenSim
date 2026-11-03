@@ -22,6 +22,8 @@ Separate frozen controls reach 15.86469% for one request per client and isolate 
 The [explicit stage-buffer study](lpx-stage-buffer-search.md) retains a nearby experimental decode point at 3.41007% with admitted additional scratch and paired active/incoming arenas.
 The [pure-LP30 partition study](lpx-pure-lp30-partition-search.md) covers 1,260 admitted combinations of pipeline depth and resident count in one paired-buffer family and replays its nine highest stage-time proxy candidates.
 It preserves the existing decode records and adds native-ledger necessary offload read-bandwidth floors.
+The [independent-batch study](lpx-pure-lp30-independent-batches.md) excludes 28,502 supplied shared-cache batch/PP points from improving the shared-cache record under its uniform-transformer and separate-boundary-pool assumptions.
+Its greatest remaining necessary bound is 3.406617750%, with native layer references, full-model controls and a separate exclusion for the remaining batch-two point.
 
 ## Metric and workload
 
