@@ -101,7 +101,7 @@ Its native admission report and program fingerprints remain in the experiment re
 All 28,502 points in this supplied independent-batch class have necessary bounds below the shared-cache decode incumbent.
 The largest remaining bound is 3.406617750% at TP32/DCP8 on all attention layers, PP20, batch five and an optimistic fifty resident requests on 643 chips.
 That value comes from the relaxed execution-unit envelope and is not an attained throughput measurement.
-The timing incumbent remains unchanged.
+This batch study preserves its 3.419600500% timing comparison reference.
 The existing-format 3.039141553% decode record and the separate prompt-inclusive serving metric also remain unchanged.
 
 The [compressed evidence](../experiments/lpx/pure-lp30-independent-batch-bounds.json.gz) retains the current-source capacity vectors, operator keys and services, native reference fingerprints, complete projections, full-model controls, final exclusions, validation records and reproduction sources.
@@ -113,3 +113,5 @@ The shared-cache representation also requires matching model-quality evidence.
 This exclusion requires homogeneous transformer widths, a separate boundary pool, full resident KV and the supplied sequential operator and output-vector communication model.
 Colocated boundary weights, mixed cohort widths, speculative verification, alternative operators, overlap across model layers, heterogeneous placements and fabric/host-memory offload need separate bounds and implementations.
 The global maximum remains uncertified.
+The [periodic resource-calendar study](lpx-periodic-resource-calendar-search.md) revisits capacity after removing the transformer vocabulary backcharge and excludes 28,545 supplied independent-batch points.
+It also reports a separate batch-one periodic decode result of 3.557996616% MFU.

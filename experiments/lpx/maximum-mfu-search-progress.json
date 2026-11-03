@@ -2,7 +2,7 @@
   "record_date": "2026-11-03",
   "goal": "Find the highest useful MFU for Gemma 4 31B serving with a 100K input; explore inventories beyond 256 LP30 chips.",
   "maximum_certified": false,
-  "status": "Pure LP30 search continues without a TPS floor. Physical LP30 worker-group coordinates and common routed AF injection are corrected. Four full research AF graphs and conditional roofs over 226 F-depth choices and all separate head widths remain below the experimental shared-cache record. Existing-format and shared-cache incumbent controls reproduce 3.03914% and 3.41960%. An external-head protocol-buffer projection admits fifteen requests with explicit paired active frames and the 5 MB safety reserve. Fourteen scheduling/buffer screens and a 480-output long replay reach at most 3.410066841%. Extra incoming slots and private work-conserving arbitration show no gain. All launched probes have terminal receipts. Physical compilation, matching shared-cache quality, revised tensor lifetimes, additional batch/placement families and a global maximum remain unverified.",
+  "status": "Pure LP30 search continues without a TPS floor. A periodic resource-calendar schedule raises the experimental shared-cache decode result to 3.557996616% on 163 chips with fourteen clients. The 448-output long replay drains all 574 submitted forwards, with original compute/communication costs, physical resources and native dependencies retained. Full extra scratch, vocabulary backcharge, 5 MB safety reserve and KV watermark remain; adjusted SRAM headroom is 16,861,300 bytes per chip. Forty-three calendar trials and six optimistic extra-frame screens are complete. Revised independent-batch bounds cover 28,545 points and exclude them below the prior shared-cache reference. Existing-format decode and prompt-inclusive serving records are unchanged. Alternative cyclic schedules, physical compilation, SRAM banks, shared-cache quality and a global maximum remain unverified.",
   "shared_timing_config": {
     "operator": {
       "activation_dtype": "bf16",
@@ -115216,7 +115216,7 @@
   ],
   "source_cpp_sha256": "8118adb459ae6870d4a441217e4b4bfdef54f6b5a5f7a4e93cc6787cdf70aa57",
   "pending_experiments": [],
-  "last_updated_utc": "2026-11-03T06:27:38.664924+00:00",
+  "last_updated_utc": "2026-11-03T07:01:58.348978+00:00",
   "empirical_100k_gpu_acceptance": {
     "measurements": [
       {
@@ -133757,15 +133757,18 @@
       "pool_chips": 3
     },
     "resident_requests": 14,
+    "slots": 2,
     "cache_layout": "value_rope_fp8",
     "kernel": "split_dot",
-    "mfu_percent": 3.4196004996991114,
-    "aggregate_tps": 53059.809483722725,
+    "mfu_percent": 3.557996615928931,
+    "aggregate_tps": 55207.215755621306,
+    "issue_us": 18.113574218750003,
     "global_optimum_certified": false,
     "matching_quality_verified": false,
-    "scope": "Best within these two reconstruction kernels and fifteen supplied phase probes; existing-format incumbent stays separate.",
-    "current_vector_resource_control_ref": "integrated_boundary_and_vector_resource_search.current_controls.shared_long",
-    "current_physical_group_control_ref": "pure_lp30_af_ratio_bounds.current_incumbents.shared_long"
+    "compiler_storage_allocation_verified": false,
+    "record_ref": "periodic_resource_calendar_search.best_summary",
+    "artifact": "experiments/lpx/periodic-resource-calendar-search.json.gz",
+    "scope": "Fourteen-client periodic schedule with preserved native services/dependencies/resources, two active/input frames, full additional scratch and vocabulary backcharge. Native SRAM admission and cyclic resource intervals verified in the model. Physical compiler execution, SRAM banks and shared-cache quality unverified."
   },
   "previous_milestone_commit": "d7dc70ea29112712ea30727d9d234afe912b80f8",
   "shared_kv_workspace_and_batch_search": {
@@ -292711,12 +292714,26 @@
     "scope": "One finite cohort from empty KV through all outputs. Finer context approximation and shorter horizon explain the higher value; sustained serving remains unproven. Two-cycle reference remains 15.802375985321081%."
   },
   "best_explicit_stage_arena_shared_decode": {
-    "artifact": "outputs/lpx-maximum-mfu-20261103/shared-kv-fine-arenas-paired-slots2/long-replay.json",
-    "mfu_percent": 3.410066841016449,
     "chips": 163,
+    "layout": {
+      "tp": 16,
+      "pp": 10,
+      "kvp": 4,
+      "pool_chips": 3
+    },
     "resident_requests": 14,
-    "aggregate_tps": 52911.88164436564,
-    "scope": "Research prototype with preserved fine native dependencies, explicit two-plus-two stage arenas and additional admitted scratch. Experimental shared cache quality, physical banks and compiler execution unverified. Earlier shared-cache timing incumbent remains higher."
+    "slots": 2,
+    "cache_layout": "value_rope_fp8",
+    "kernel": "split_dot",
+    "mfu_percent": 3.557996615928931,
+    "aggregate_tps": 55207.215755621306,
+    "issue_us": 18.113574218750003,
+    "global_optimum_certified": false,
+    "matching_quality_verified": false,
+    "compiler_storage_allocation_verified": false,
+    "record_ref": "periodic_resource_calendar_search.best_summary",
+    "artifact": "experiments/lpx/periodic-resource-calendar-search.json.gz",
+    "scope": "Fourteen-client periodic schedule with preserved native services/dependencies/resources, two active/input frames, full additional scratch and vocabulary backcharge. Native SRAM admission and cyclic resource intervals verified in the model. Physical compiler execution, SRAM banks and shared-cache quality unverified."
   },
   "lifetime_phase_and_allocator_search": {
     "code_commit": "19f83bee67b644d5587926877ea50b7969fd3f73",
@@ -304418,16 +304435,26 @@
     }
   },
   "best_experimental_projected_frame_shared_decode": {
-    "chips": 160,
-    "resident_requests": 13,
+    "chips": 163,
+    "layout": {
+      "tp": 16,
+      "pp": 10,
+      "kvp": 4,
+      "pool_chips": 3
+    },
+    "resident_requests": 14,
     "slots": 2,
-    "mfu_percent": 3.370475880166108,
-    "aggregate_tps": 51335.04135683947,
-    "issue_us": 19.0,
+    "cache_layout": "value_rope_fp8",
+    "kernel": "split_dot",
+    "mfu_percent": 3.557996615928931,
+    "aggregate_tps": 55207.215755621306,
+    "issue_us": 18.113574218750003,
+    "global_optimum_certified": false,
     "matching_quality_verified": false,
     "compiler_storage_allocation_verified": false,
-    "global_optimum_certified": false,
-    "record_ref": "frame_workspace_search.long_control"
+    "record_ref": "periodic_resource_calendar_search.best_summary",
+    "artifact": "experiments/lpx/periodic-resource-calendar-search.json.gz",
+    "scope": "Fourteen-client periodic schedule with preserved native services/dependencies/resources, two active/input frames, full additional scratch and vocabulary backcharge. Native SRAM admission and cyclic resource intervals verified in the model. Physical compiler execution, SRAM banks and shared-cache quality unverified."
   },
   "pure_lp30_af_ratio_bounds": {
     "status": "complete_conditional_af_study",
@@ -309939,6 +309966,255 @@
       "verified_local_graph_files": 14,
       "black_version": "24.2.0",
       "formatted_and_checked_files": 582
+    }
+  },
+  "periodic_resource_calendar_search": {
+    "status": "complete_finite_periodic_search",
+    "turn_classification": "progress",
+    "base_commit": "68fb5db",
+    "code_commit": "3b81a9eaf0d24c912b1b8c2a1993247357625815",
+    "source_sha256": "ae29c716bbf5693a8c9d70df1ee5c6435c3e93af93781bcc5aff57c2e8074986",
+    "artifact": "experiments/lpx/periodic-resource-calendar-search.json.gz",
+    "artifact_sha256": "9f98b5005eb59ffbec80e97fdd95b0936e28c4b0e305597b939ce83b3eeaf8d7",
+    "document": "docs/lpx-periodic-resource-calendar-search.md",
+    "maximum_certified": false,
+    "hardware": "pure LP30",
+    "minimum_tps": null,
+    "calendar_trials": 43,
+    "optimistic_frame_screens": 6,
+    "previous_records": {
+      "best_experimental_shared_cache_non_speculative": {
+        "chips": 163,
+        "layout": {
+          "tp": 16,
+          "pp": 10,
+          "kvp": 4,
+          "pool_chips": 3
+        },
+        "resident_requests": 14,
+        "cache_layout": "value_rope_fp8",
+        "kernel": "split_dot",
+        "mfu_percent": 3.4196004996991114,
+        "aggregate_tps": 53059.809483722725,
+        "global_optimum_certified": false,
+        "matching_quality_verified": false,
+        "scope": "Best within these two reconstruction kernels and fifteen supplied phase probes; existing-format incumbent stays separate.",
+        "current_vector_resource_control_ref": "integrated_boundary_and_vector_resource_search.current_controls.shared_long",
+        "current_physical_group_control_ref": "pure_lp30_af_ratio_bounds.current_incumbents.shared_long"
+      },
+      "best_explicit_stage_arena_shared_decode": {
+        "artifact": "outputs/lpx-maximum-mfu-20261103/shared-kv-fine-arenas-paired-slots2/long-replay.json",
+        "mfu_percent": 3.410066841016449,
+        "chips": 163,
+        "resident_requests": 14,
+        "aggregate_tps": 52911.88164436564,
+        "scope": "Research prototype with preserved fine native dependencies, explicit two-plus-two stage arenas and additional admitted scratch. Experimental shared cache quality, physical banks and compiler execution unverified. Earlier shared-cache timing incumbent remains higher."
+      },
+      "best_experimental_projected_frame_shared_decode": {
+        "chips": 160,
+        "resident_requests": 13,
+        "slots": 2,
+        "mfu_percent": 3.370475880166108,
+        "aggregate_tps": 51335.04135683947,
+        "issue_us": 19.0,
+        "matching_quality_verified": false,
+        "compiler_storage_allocation_verified": false,
+        "global_optimum_certified": false,
+        "record_ref": "frame_workspace_search.long_control"
+      }
+    },
+    "best_result_path": "outputs/lpx-maximum-mfu-20261103/request-frame-lifetime-search/modulo-verified-period18.1135742188/result.json",
+    "best_summary": {
+      "chips": 163,
+      "resident_requests": 14,
+      "period_s": 1.8113574218750004e-05,
+      "forward_latency_s": 0.0002379175024867609,
+      "mfu_percent": 3.557996615928931,
+      "aggregate_tps": 55207.215755621306,
+      "measured_tokens": 448,
+      "drained_forwards": 574,
+      "convergence": {
+        "earlier_half_tps": 55207.215755621226,
+        "later_half_tps": 55207.21575562138,
+        "relative_change": 2.6645352591003757e-15
+      },
+      "minimum_watermark_adjusted_headroom_bytes": 16861300,
+      "added_delay_nodes": 1160,
+      "verified_native_nodes": 96774,
+      "physical_resource_keys": 5778,
+      "head_arena_occupancy": 0.42333206240731647
+    },
+    "revised_independent_batch_points": 28545,
+    "revised_independent_batch_greatest_bound": {
+      "tp": 32,
+      "dcp": 8,
+      "mode": "all",
+      "batch": 5,
+      "pp": 20,
+      "chips": 643,
+      "resident_upper": 50,
+      "unit_lower_s": 0.0002397910208,
+      "native_layer_lower_s": null,
+      "effective_lower_s": 0.0002397910208,
+      "mfu_percent_upper": 3.406617749646721,
+      "final_mfu_percent_upper": 3.406617749646721
+    },
+    "validation": {
+      "repository_source_changed": false,
+      "calendar_controls": {
+        "status": "passed",
+        "wraparound": true,
+        "no_gap": true,
+        "dependencies": true
+      },
+      "independent_interval_sweep": "passed",
+      "delayed_profiles_verified": true,
+      "long_measured_outputs": 448,
+      "drained_forwards": 574,
+      "old_code_baseline": {
+        "black_version": "24.2.0",
+        "formatted_and_checked_files": 582,
+        "targeted_tests_passed": 46,
+        "reporting_tests_passed_after_dependency_install": 4,
+        "full_suite": {
+          "tests_run": 890,
+          "passed": 888,
+          "failures": 1,
+          "errors": 1,
+          "host_seconds": 238.919,
+          "log": "/private/tmp/lpx-af-groups-full-tests.log",
+          "issues": [
+            "Unchanged macOS /tmp resolves to /private/tmp path assertion.",
+            "Unchanged foreign-process shutdown test requires unavailable nvidia-smi."
+          ]
+        },
+        "diff_check": "passed",
+        "partition_bound_tests_passed": 7,
+        "log": "/private/tmp/lpx-af-groups-full-tests.log",
+        "targeted_log": "Terminal session 35558: 46 tests passed in 16.772 seconds.",
+        "additional_acceptance_tests_passed": 3,
+        "acceptance_and_mfu_targeted_tests_passed": 11,
+        "previous_full_suite": {
+          "tests_run": 819,
+          "failures": 1,
+          "errors": 1,
+          "log": "/private/tmp/tokensim-mfu-unittest-empirical.log",
+          "issues": [
+            "Unchanged macOS /tmp to /private/tmp path assertion.",
+            "Unchanged GPU shutdown test depends on Linux /proc and nvidia-smi."
+          ]
+        },
+        "targeted_scope": [
+          "tests.test_lpx_shared_workspace",
+          "tests.test_lpx_io_batch",
+          "tests.test_lpx_kv_codec",
+          "tests.test_lpx_shared_kv",
+          "tests.test_lpx_fidelity",
+          "tests.test_lpx_io_pool",
+          "tests.test_lpx_assistant",
+          "tests.test_lpx_mfu_acceptance"
+        ],
+        "new_shared_kv_tests_passed": 8,
+        "source_files_above_500_lines": [],
+        "previous_commit_advisory_scan": "The commit hook reported a hardcoded-value scan timeout after 2 seconds; the commit succeeded. This advisory scan is not reported as passed.",
+        "physical_shared_kv_code_commit": {
+          "commit": "4d724299063a358b62dcfbd6caecd014c55bef1f",
+          "committed_successfully": true,
+          "advisory_timeout_reported": false
+        },
+        "shared_kv_prior_full_suite": {
+          "tests_run": 827,
+          "failures": 1,
+          "errors": 1,
+          "log": "/private/tmp/tokensim-mfu-unittest-shared-kv-final.log",
+          "issues": [
+            "Unchanged macOS /tmp to /private/tmp path assertion.",
+            "Unchanged GPU shutdown test depends on Linux /proc and nvidia-smi."
+          ],
+          "host_seconds": 192.018
+        },
+        "new_compact_workspace_and_batch_tests_passed": 8,
+        "compact_workspace_and_batch_code_commit": {
+          "commit": "331ab1ffd7b10b3f00740cb5207a01811fe48263",
+          "committed_successfully": true,
+          "advisory_timeout_reported": false
+        },
+        "before_complete_serving_full_suite": {
+          "tests_run": 835,
+          "failures": 1,
+          "errors": 1,
+          "log": "/private/tmp/tokensim-mfu-unittest-compact.log",
+          "issues": [
+            "Unchanged macOS /tmp to /private/tmp path assertion.",
+            "Unchanged GPU shutdown test depends on Linux /proc and nvidia-smi."
+          ],
+          "host_seconds": 139.51
+        },
+        "new_complete_serving_tests_passed": 9,
+        "before_input_policy_full_suite": {
+          "tests_run": 844,
+          "failures": 1,
+          "errors": 1,
+          "log": "/private/tmp/lpx-serving-full-tests-window.log",
+          "issues": [
+            "Unchanged macOS /tmp to /private/tmp path assertion.",
+            "Unchanged GPU shutdown test depends on Linux /proc and nvidia-smi."
+          ],
+          "host_seconds": 200.895
+        },
+        "input_policy_tests_passed": 11,
+        "before_lifetime_bounds_full_suite": {
+          "tests_run": 846,
+          "failures": 1,
+          "errors": 1,
+          "log": "/private/tmp/lpx-serving-policy-full-tests.log",
+          "issues": [
+            "Unchanged macOS /tmp to /private/tmp path assertion.",
+            "Unchanged GPU shutdown test depends on Linux /proc and nvidia-smi."
+          ],
+          "host_seconds": 235.267
+        },
+        "lifetime_and_phase_targeted_tests_passed": 23,
+        "lifetime_and_phase_new_tests_passed": 5,
+        "before_vector_resources_root_full_suite": {
+          "tests_run": 851,
+          "failures": 1,
+          "errors": 1,
+          "log": "/private/tmp/lpx-lifetime-full-tests-final.log",
+          "issues": [
+            "Unchanged macOS /tmp to /private/tmp path assertion.",
+            "Unchanged GPU shutdown test depends on Linux /proc and nvidia-smi."
+          ],
+          "host_seconds": 110.341
+        },
+        "vector_resource_focused_tests_passed": 31,
+        "vector_resource_focused_log": "/private/tmp/lpx-vxm-focused-tests.log",
+        "before_multi_group_root_full_suite": {
+          "tests_run": 878,
+          "passed": 876,
+          "failures": 1,
+          "errors": 1,
+          "host_seconds": 114.213,
+          "log": "/private/tmp/lpx-vxm-full-tests.log",
+          "issues": [
+            "Unchanged macOS /tmp resolves to /private/tmp path assertion.",
+            "Unchanged foreign-process shutdown test requires unavailable nvidia-smi."
+          ]
+        },
+        "multi_group_focused_tests_passed": 43,
+        "multi_group_new_tests": 12,
+        "multi_group_focused_log": "/private/tmp/lpx-af-groups-focused.log"
+      },
+      "checkpoint": {
+        "status": "passed",
+        "script": "/private/tmp/lpx_periodic_calendar_validate.py",
+        "independently_checked_nodes": 193548,
+        "preserved_existing_format_record": true,
+        "preserved_complete_serving_record": true,
+        "black_version": "24.2.0",
+        "formatted_and_checked_files": 582,
+        "repository_diff_check": "passed"
+      }
     }
   }
 }

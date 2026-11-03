@@ -3,7 +3,8 @@
 An external-head protocol-buffer projection admits fifteen resident requests on 163 LP30 chips with two active request frames per pipeline stage.
 Its longest replay reaches 52,911.881644 aggregate tokens per second (TPS), or 3.410066841% model floating-point operation utilization (MFU).
 Fourteen shorter screens vary slot assignment, incoming-buffer count and resource arbitration without exceeding that result.
-The experimental shared-cache decode reference remains 3.419600500%, with model quality and physical compiler support unverified.
+The comparison reference for these buffer screens is 3.419600500% experimental shared-cache decode MFU, with model quality and physical compiler support unverified.
+The later [periodic resource-calendar study](lpx-periodic-resource-calendar-search.md) reaches 3.557996616% with fourteen requests and a larger charged scratch policy.
 This study does not certify a global maximum.
 
 ## Workload and ownership

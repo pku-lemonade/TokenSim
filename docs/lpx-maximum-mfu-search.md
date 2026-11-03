@@ -13,13 +13,13 @@ The existing-format non-speculative decode incumbent reaches 3.03914% MFU on 163
 It places transformer layers on 160 chips and the tied embedding and language-model (LM) head on three additional chips.
 Assistant-aware draft and verification replays provide conditional acceptance scenarios and explicit transports of the repository's measured 100K GPU acceptance.
 The measured GPU KV and assistant precision differ from some LP30 configurations.
-An experimental shared global-cache format reaches 3.41960% conditional decode MFU with fourteen resident requests; matching model quality remains unverified.
+An experimental shared global-cache format reaches 3.55800% conditional decode MFU with fourteen resident requests using a periodic resource-calendar schedule; matching model quality and physical compiler execution remain unverified.
 The 5 MB per-chip safety reserve remains enabled.
 The [complete-request serving study](lpx-complete-serving-mfu.md) adds a separate MFU metric for a 100K prompt followed by 2K outputs, with explicit PP activation buffers and request completion.
 Its prompt work is included in the numerator and its measurements remain separate from the resident-prefix decode ranking.
 The two-cycle complete-request replay reaches 15.80238% on 164 chips with eight clients and two requests per client; its fixed-work resource-demand bound is 21.08620%.
 Separate frozen controls reach 15.86469% for one request per client and isolate the effect of conservative context bands from request replacement.
-The [explicit stage-buffer study](lpx-stage-buffer-search.md) retains a nearby experimental decode point at 3.41007% with admitted additional scratch and paired active/incoming arenas.
+The [explicit stage-buffer study](lpx-stage-buffer-search.md) retains an earlier experimental decode point at 3.41007% with admitted additional scratch and paired active/incoming arenas.
 The [pure-LP30 partition study](lpx-pure-lp30-partition-search.md) covers 1,260 admitted combinations of pipeline depth and resident count in one paired-buffer family and replays its nine highest stage-time proxy candidates.
 It preserves the existing decode records and adds native-ledger necessary offload read-bandwidth floors.
 The [independent-batch study](lpx-pure-lp30-independent-batches.md) excludes 28,502 supplied shared-cache batch/PP points from improving the shared-cache record under its uniform-transformer and separate-boundary-pool assumptions.
@@ -31,11 +31,15 @@ A longer replay of the highest result among thirteen screens measures 3.37048% M
 The [multi-group correction](lpx-multi-group-fidelity.md) separates physical LP30 group coordinates and gives A/F transfers the shared routed injection budget.
 The [pure-LP30 A/F ratio study](lpx-pure-lp30-af-ratio-bounds.md) captures four full research graphs and conditionally bounds 226 F-depth choices with variable separate head width below the shared-cache record.
 Its wire-free A/F envelope includes the minimum head matrix work and reaches at most 3.40453% MFU; a complementary free-boundary envelope with configured A/F wire time reaches at most 3.39162%.
-The existing-format and experimental shared-cache incumbent replays remain 3.03914% and 3.41960% under the corrected source.
+Replaying the earlier existing-format and shared-cache programs reproduces 3.03914% and 3.41960% under the corrected source.
 The [decode protocol-buffer study](lpx-decode-protocol-buffer-search.md) admits fifteen requests with explicit paired active frames after removing a duplicated full-vocabulary buffer charge from transformer chips.
 Fourteen buffer/scheduler screens and a 480-output long replay reach at most 3.41007% MFU, with the 5 MB safety reserve, native KV watermark and complete three-chip head retained.
 Additional incoming slots and a private work-conserving arbitration prototype provide no throughput gain.
 The previous independent-batch exclusions retain their stated buffer envelopes and do not automatically extend to this projection.
+The [periodic resource-calendar study](lpx-periodic-resource-calendar-search.md) raises the shared-cache decode record to 3.557996616% MFU and 55,207.22 TPS on 163 chips with fourteen requests.
+It preserves native service times and resources while adding readiness delays, and independently verifies cyclic physical-resource and buffer-lease intervals.
+Its long replay measures 448 outputs and drains all 574 submitted forwards with the full extra scratch charge, vocabulary backcharge and 5 MB safety reserve retained.
+The same study revisits independent batches under the reduced protocol-buffer charge and excludes 28,545 supplied points below the earlier shared-cache reference.
 
 ## Metric and workload
 
