@@ -29,16 +29,34 @@ def duration(nodes):
         kernel.close()
 
 
+def _lp30_worker_indices(workers):
+    """Pack LP30 groups into disjoint ranges, retaining each local index."""
+    references = tuple(
+        worker.physical_worker_ref
+        for worker in workers
+        if worker.hardware == "groq_lp30"
+    )
+    widths = {}
+    for ref in references:
+        group = ref.identity.rsplit(":", 1)[0]
+        widths[group] = max(widths.get(group, 0), ref.worker_index + 1)
+    offsets, cursor = {}, 0
+    for group, width in widths.items():
+        offsets[group] = cursor
+        cursor += width
+    return {
+        ref.identity: offsets[ref.identity.rsplit(":", 1)[0]] + ref.worker_index
+        for ref in references
+    }
+
+
 class StreamingBuilder:
     def __init__(self, runtime, events, profile, config):
         self.runtime, self.events, self.profile = runtime, events, profile
         self.config = config
         self.nodes = list(profile.nodes)
         self.ids = {event.node_id: i for i, event in enumerate(events)}
-        self.worker_indices = {
-            worker.physical_worker_ref.identity: worker.physical_worker_ref.worker_index
-            for worker in runtime.workers
-        }
+        self.worker_indices = _lp30_worker_indices(runtime.workers)
         self.workers = {
             worker.physical_worker_ref.identity: worker for worker in runtime.workers
         }

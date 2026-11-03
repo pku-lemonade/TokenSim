@@ -218,7 +218,9 @@ class FabricRefinement:
         self.counts["whole_collectives"] += 1
 
     def point_to_point(self, index, event):
-        if event.operation != "af_pipeline_handoff" or not event.payload_bytes:
+        pipeline = event.operation == "af_pipeline_handoff"
+        af = event.operation in {"af_a_to_f", "af_f_to_a"}
+        if not (pipeline or af) or not event.payload_bytes:
             return
         endpoints = tuple(event.physical_endpoints)
         if len(endpoints) != 2 or any(
@@ -226,9 +228,22 @@ class FabricRefinement:
             or self.builder.workers[e].hardware != "groq_lp30"
             for e in endpoints
         ):
-            raise ConfigurationError("LP30 pipeline routing needs two LP30 endpoints")
+            if pipeline:
+                raise ConfigurationError(
+                    "LP30 pipeline routing needs two LP30 endpoints"
+                )
+            return
         b, original = self.builder, self.builder.nodes[index]
         source, target = self.chips(endpoints)
+        if af:
+            if source == target:
+                return
+            if getattr(event, "details", {}).get("phase_completion_only"):
+                raise ConfigurationError(
+                    "LP30 AF routing needs an explicit transport phase"
+                )
+            if getattr(event, "match_type", "analytical") != "analytical":
+                raise ConfigurationError("LP30 AF routing needs analytical transport")
         resources, wire, propagation = self.routed_phase(
             [(source, target, event.payload_bytes)], self.policy.p2p_lanes
         )
@@ -241,7 +256,7 @@ class FabricRefinement:
         )
         ready = b.append((sent,), delay=propagation, rank=original.rank)
         b.barrier(index, (ready,))
-        self.counts["pipeline_handoffs"] += 1
+        self.counts["pipeline_handoffs" if pipeline else "af_transfers"] += 1
 
     def report(self):
         return dict(
