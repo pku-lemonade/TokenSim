@@ -1,6 +1,6 @@
 # Search for maximum MFU at 100K context
 
-Progress date: 2026-11-03.
+Progress date: 2026-11-04.
 The objective is to maximize useful model FLOP utilization (MFU) when serving Gemma 4 31B with a 100,000-token input.
 The search includes inventories beyond 256 LP30 chips.
 The user-confirmed optimization constraint requires pure LP30 accelerator deployments and imposes no minimum throughput.
@@ -55,7 +55,11 @@ The [boundary-pool and wider-pipeline study](lpx-boundary-pool-width-search.md) 
 Its selected 884-chip wider replay reaches 3.357712% MFU, while a fifth boundary chip in the 440-chip transformer layout raises the attained record to 3.827772%.
 The integer head-width envelope excludes widths outside three through 21 for this fixed transformer layout, request count and policy relative to the previous record.
 A separate pure-LP30 SRAM exchange proposal passes capacity and byte-ownership controls for 58 logical requests on 445 chips.
-Its native global plan retains 54 physical cache slots, and its packet timing and MFU remain unmeasured.
+The subsequent [finite-bank exchange study](lpx-sram-kv-exchange-search.md) implements complete native packet and pipeline graphs.
+Its selected paired-readiness controllers drain but reach only approximately 1.15% and 1.22% MFU in short screens.
+A read-only scheduler snapshot identifies a cross-row buffer deadlock in the earlier unpaired controller.
+The same study admits a preliminary 54-permanent-plus-four-home attention placement on 445 chips and prices its home attention operators.
+Its full numerical, routing and pipeline validation remain open.
 
 ## Metric and workload
 

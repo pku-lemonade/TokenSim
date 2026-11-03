@@ -185,5 +185,6 @@ An optimistic bulk wire calculation uses every recorded global-rank/home-chip by
 It charges both directions and yields approximately 6.75 microseconds of wire service for one global stage, or 44.31 microseconds for all ten stages together.
 This calculation assumes simultaneously available payloads and unlimited staging, and excludes switch execution module (SXM) work, buffer reuse, control and target-operator competition.
 It does not establish attainable prefetch latency or throughput.
-Packet packing into the execution graph, SXM work, routed transfers, buffer lifetimes, dynamic address control and closed-loop timing remain to be implemented and measured.
-The 58-request proposal has no TPS or MFU claim.
+The subsequent [finite-bank exchange study](lpx-sram-kv-exchange-search.md) implements native copies, routed transfers, bank leases and closed-loop token feedback.
+Its selected controllers do not improve the decode record and leave other ordering policies open.
+That study also develops a separate whole-entry placement for computing attention on the chips storing KV.

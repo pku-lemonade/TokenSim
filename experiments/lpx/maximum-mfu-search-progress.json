@@ -1,8 +1,8 @@
 {
-  "record_date": "2026-11-03",
+  "record_date": "2026-11-04",
   "goal": "Find the highest useful MFU for Gemma 4 31B serving with a 100K input; explore inventories beyond 256 LP30 chips.",
   "maximum_certified": false,
-  "status": "Pure LP30 MFU search continues without a TPS floor. Twenty-one native head-width captures, 1,368 calendars and 1,334 fixed-order models raise the experimental shared-cache decode record to 3.827772117064% on 445 chips with 54 requests. The longer native replay measures 1,728 outputs and drains all 1,107 paired jobs. Eighty-eight wider compositions and seven calibrated cases provide no higher tested MFU; the selected 884-chip native replay reaches 3.357712032956%. A different SRAM exchange policy passes fresh local admission and byte-owner controls for 58 logical requests, retaining 54 global physical slots, but its timing and MFU remain unmeasured. Objective-wide optimality, physical compilation, banks, matching shared-cache quality and multi-rack timing remain unverified.",
+  "status": "Pure LP30 MFU search continues without a TPS floor. The attained experimental shared-cache decode record remains 3.827772117064% on 445 chips with 54 requests. A finite-bank SRAM exchange study retains native copies, routed transfers and buffer leases; one supplied controller deadlocks and two paired-readiness short screens drain at approximately 1.15% and 1.22% MFU. A separate 54-permanent-plus-four-home attention placement passes fresh local admission and preliminary native home-operator pricing on the same 445 chips. Its numerical, routing and integrated timing validation remain open. Objective-wide optimality, physical compilation, banks, matching shared-cache quality and multi-rack timing remain unverified.",
   "shared_timing_config": {
     "operator": {
       "activation_dtype": "bf16",
@@ -11865,6 +11865,53 @@
       "wording": "passed",
       "local_links_checked": 31,
       "diff_check": "passed"
+    },
+    "sram_kv_exchange_evidence": {
+      "status": "passed",
+      "artifact_sha256": "045f0da276527bc51d85170bb7c98d6517eacf64f6f7d55f8540c4271f2b1910",
+      "source_sha256": "9dfe67e50e9ab76edafd96f37033622e8ae62b2abb3a03f0d233a81920e2407e",
+      "checked": {
+        "copy_nodes": 579364,
+        "wire_nodes": 7570,
+        "exchange_stages": 71,
+        "integrated_bodies": 10
+      },
+      "finite_closed_loop_screens": [
+        {
+          "label": "best58-ahead0-lead45-p15-w4-s1.01-paired-rolling",
+          "mfu_percent": 1.224908388015794,
+          "tps": 51887.928110510555,
+          "drained_jobs": 203
+        },
+        {
+          "label": "best58-ahead25-lead45-p15-w4-s1.01-paired",
+          "mfu_percent": 1.1463752683320907,
+          "tps": 48561.21330611362,
+          "drained_jobs": 208
+        }
+      ],
+      "verified_failed_controller_cycles": [
+        {
+          "label": "best58-ahead25-lead45-p16-w4-s1.01",
+          "cycle_actors": 4
+        }
+      ],
+      "ideal_primal_dual": {
+        "duality_gap_ns": 5.638867150992155e-11,
+        "variables": 98088,
+        "constraints": 189453
+      },
+      "home_workspace_bytes": 1738580,
+      "prior_records_unchanged": true,
+      "maximum_certified": false,
+      "black_version": "24.2.0",
+      "formatted_and_checked_files": 585,
+      "production_source_unchanged": true,
+      "sentence_layout": "passed",
+      "wording": "passed",
+      "diff_check": "passed",
+      "scope": "Documentation and experiment evidence only; production simulation source is unchanged.",
+      "local_links_checked": 34
     }
   },
   "sources": [
@@ -115472,12 +115519,13 @@
   "source_cpp_sha256": "8118adb459ae6870d4a441217e4b4bfdef54f6b5a5f7a4e93cc6787cdf70aa57",
   "pending_experiments": [
     {
-      "name": "pure-lp30-sram-kv-swap-native-timing",
-      "status": "capacity_and_byte_controls_passed_native_packet_program_pending",
-      "result_directory": "outputs/lpx-maximum-mfu-20261103/sram-kv-swap-capacity",
-      "logical_requests": 58,
-      "global_physical_slots": 54,
+      "name": "pure-lp30-home-attention-native-integration",
+      "status": "capacity_and_native_operator_screen_passed_numerical_routing_and_closed_loop_validation_pending",
+      "result_directory": "outputs/lpx-maximum-mfu-20261103/home-attention-screen",
       "chips": 445,
+      "logical_requests": 58,
+      "permanent_global_clients": 54,
+      "remote_home_clients": 4,
       "mfu_claimed": false
     }
   ],
@@ -311831,6 +311879,148 @@
       "Search other cyclic orders and the remaining wider multiset classes while preserving all allocated-chip peaks and request useful work.",
       "Evaluate nonuniform blocks, independent batch widths and other control or cache policies with complete admission.",
       "Keep complete-request serving distinct from representative-context decode; obtain matching quality, compiler, physical-bank and multi-rack evidence."
+    ],
+    "followup": "sram_kv_exchange_search"
+  },
+  "sram_kv_exchange_search": {
+    "status": "complete_finite_native_exchange_and_preliminary_home_attention_checkpoint",
+    "turn_classification": "progress",
+    "base_commit": "aba388dcf5ddcdbcdfb8f27bd5a3a0d3d3ee58a3",
+    "source_sha256": "9dfe67e50e9ab76edafd96f37033622e8ae62b2abb3a03f0d233a81920e2407e",
+    "artifact": "experiments/lpx/sram-kv-exchange-and-home-attention-screen.json.gz",
+    "artifact_sha256": "045f0da276527bc51d85170bb7c98d6517eacf64f6f7d55f8540c4271f2b1910",
+    "artifact_bytes": 36790361,
+    "document": "docs/lpx-sram-kv-exchange-search.md",
+    "hardware": "pure LP30",
+    "minimum_tps": null,
+    "maximum_certified": false,
+    "attained_record_promoted": false,
+    "packet_captures": 3,
+    "coalesced_packet_captures": 9,
+    "integrated_captures": 5,
+    "full_native_bodies": 13,
+    "relative_delta_native_bodies": 13,
+    "ideal_order_targets": {
+      "cases": 70,
+      "successful_numerical_models": 53,
+      "reported_infeasible": 17,
+      "best_before_io_mfu_percent": 3.915951299870342,
+      "kv_io_omitted": true,
+      "eligible_global_memory_admission": false,
+      "attained_record": false
+    },
+    "closed_loop_short_screens": [
+      {
+        "label": "best58-ahead0-lead45-p15-w4-s1.01-paired-rolling",
+        "depth": 1,
+        "warmup_rounds": 2,
+        "measured_rounds": 4,
+        "aggregate_tps": 51887.928110510555,
+        "mfu_percent": 1.224908388015794,
+        "measured_tokens": 232,
+        "trace_drained": true,
+        "attained_record": false
+      },
+      {
+        "label": "best58-ahead25-lead45-p15-w4-s1.01-paired",
+        "depth": 2,
+        "warmup_rounds": 2,
+        "measured_rounds": 4,
+        "aggregate_tps": 48561.21330611362,
+        "mfu_percent": 1.1463752683320907,
+        "measured_tokens": 232,
+        "trace_drained": true,
+        "attained_record": false
+      }
+    ],
+    "verified_failed_controller_cycles": [
+      {
+        "label": "best58-ahead25-lead45-p16-w4-s1.01",
+        "cycle_actors": 4
+      }
+    ],
+    "controls": {
+      "driver-controls.json": "passed_bounded_lookahead_feedback_controls",
+      "admission-controls.json": "passed_cross_row_buffer_cycle_controls",
+      "byte-controls.json": "passed_coalesced_byte_address_and_bank_controls",
+      "native-controls.json": "passed_native_absolute_release_and_driver_controls"
+    },
+    "home_attention_preliminary": {
+      "chips": 445,
+      "logical_requests": 58,
+      "permanent_global_clients": 54,
+      "remote_home_clients": 4,
+      "home_kv_bytes": 10677381120,
+      "minimum_home_headroom_bytes": 14904,
+      "home_workspace_bytes": 1738580,
+      "home_workspace_budget_bytes": 2048000,
+      "maximum_four_serial_home_core_us": 2.344423207671723,
+      "home_attention_tile_keys": 128,
+      "numerical_attention_validated": false,
+      "routing_integrated": false,
+      "integrated_timing_evaluated": false,
+      "mfu_claimed": false
+    },
+    "validation": {
+      "status": "passed",
+      "artifact_sha256": "045f0da276527bc51d85170bb7c98d6517eacf64f6f7d55f8540c4271f2b1910",
+      "source_sha256": "9dfe67e50e9ab76edafd96f37033622e8ae62b2abb3a03f0d233a81920e2407e",
+      "checked": {
+        "copy_nodes": 579364,
+        "wire_nodes": 7570,
+        "exchange_stages": 71,
+        "integrated_bodies": 10
+      },
+      "finite_closed_loop_screens": [
+        {
+          "label": "best58-ahead0-lead45-p15-w4-s1.01-paired-rolling",
+          "mfu_percent": 1.224908388015794,
+          "tps": 51887.928110510555,
+          "drained_jobs": 203
+        },
+        {
+          "label": "best58-ahead25-lead45-p15-w4-s1.01-paired",
+          "mfu_percent": 1.1463752683320907,
+          "tps": 48561.21330611362,
+          "drained_jobs": 208
+        }
+      ],
+      "verified_failed_controller_cycles": [
+        {
+          "label": "best58-ahead25-lead45-p16-w4-s1.01",
+          "cycle_actors": 4
+        }
+      ],
+      "ideal_primal_dual": {
+        "duality_gap_ns": 5.638867150992155e-11,
+        "variables": 98088,
+        "constraints": 189453
+      },
+      "home_workspace_bytes": 1738580,
+      "prior_records_unchanged": true,
+      "maximum_certified": false,
+      "black_version": "24.2.0",
+      "formatted_and_checked_files": 585,
+      "production_source_unchanged": true,
+      "sentence_layout": "passed",
+      "wording": "passed",
+      "diff_check": "passed",
+      "scope": "Documentation and experiment evidence only; production simulation source is unchanged.",
+      "local_links_checked": 34
+    },
+    "primary_research_sources": [
+      {
+        "url": "https://arxiv.org/html/2401.02669v2",
+        "checked": "2026-11-04 Asia/Shanghai",
+        "claim": "The primary paper describes sequence-partitioned attention computed where KV resides, with query distribution and partial-result aggregation. Applying that algebra to spare LP30 SRAM is a new inference here; GPU measurements do not establish LP30 performance."
+      }
+    ],
+    "scope": "Finite native packet and closed-loop controller experiments on the existing 445-chip layout, together with a preliminary whole-entry home-attention memory/operator screen. A supplied unpaired controller deadlocks; paired fixed-clock and rolling controllers drain but remain below the current decode record. Ideal 58-request numerical schedules omit KV I/O and have no eligible admission or attained-MFU claim. Other prefetch, ordering and compute-on-home policies remain unexcluded. Hardware compilation, banks, experimental shared-cache quality and multi-rack calibration remain unverified.",
+    "next_actions": [
+      "Implement home-attention query and new-KV routing with explicit ownership, copies, partial-result merging and buffer lifetimes.",
+      "Verify partitioned shared-cache attention numerically while preserving native Q/K/V prefixes, output projection shards, FFN and useful-token accounting.",
+      "Replay the admitted home-attention placement under bounded request feedback before assigning any attained MFU.",
+      "Continue other controller, request-count, placement, physical-order and inventory searches; the objective-wide maximum remains unproven."
     ]
   }
 }
