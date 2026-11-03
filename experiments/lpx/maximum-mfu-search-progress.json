@@ -2,7 +2,7 @@
   "record_date": "2026-11-04",
   "goal": "Find the highest useful MFU for Gemma 4 31B serving with a 100K input; explore inventories beyond 256 LP30 chips.",
   "maximum_certified": false,
-  "status": "Pure LP30 MFU search continues without a TPS floor. The attained experimental shared-cache decode record remains 3.827772117064% on 445 chips with 54 requests. A finite-bank SRAM exchange study retains native copies, routed transfers and buffer leases; one supplied controller deadlocks and two paired-readiness short screens drain at approximately 1.15% and 1.22% MFU. A separate 54-permanent-plus-four-home attention placement passes fresh local admission and preliminary native home-operator pricing on the same 445 chips. Its numerical, routing and integrated timing validation remain open. Objective-wide optimality, physical compilation, banks, matching shared-cache quality and multi-rack timing remain unverified.",
+  "status": "Pure LP30 MFU search continues without a TPS floor. The attained experimental shared-cache decode record remains 3.827772117064% on 445 chips with 54 requests. A finite attention-on-home study now validates static block ownership, shared-cache numerical attention and query/delta/partial payload mappings, and captures all ten native global components under whole-home and grouped workspace policies. Eight selected 56/58-request short screens remain below the record; the selected 56-request grouped case measures 1,792 outputs at 3.115374157391% MFU and drains all 1,148 cohort jobs. A same-driver 54-request control reproduces the incumbent TPS. Hierarchical communication, other schedules and placements remain open. Objective-wide optimality, physical compilation, banks, matching shared-cache quality and multi-rack timing remain unverified.",
   "shared_timing_config": {
     "operator": {
       "activation_dtype": "bf16",
@@ -11912,6 +11912,146 @@
       "diff_check": "passed",
       "scope": "Documentation and experiment evidence only; production simulation source is unchanged.",
       "local_links_checked": 34
+    },
+    "home_attention_native_evidence": {
+      "status": "passed",
+      "artifact_sha256": "74402850fa9dc7a757ec320d576e724b84510f387a07162300ddfb08afb3d0a9",
+      "source_sha256": "9dfe67e50e9ab76edafd96f37033622e8ae62b2abb3a03f0d233a81920e2407e",
+      "checked": {
+        "unchanged_native_rows": 3000,
+        "preserved_qkv_prefixes": 640,
+        "preserved_output_shards": 640,
+        "native_copies": 10480,
+        "controller_budgets": 5020,
+        "home_attention_kernels": 10000,
+        "routed_phases": 180,
+        "home_workspace_lifetimes": 90,
+        "integrated_extra_nodes": 40220,
+        "artifact_only_native_control_replays": 1
+      },
+      "screens": [
+        {
+          "label": "home-best58-s1.01-lanes6",
+          "name": "screen-n56-p12.177311-w2-m4.json",
+          "requests": 56,
+          "home_clients": 2,
+          "mfu_percent": 3.0838897592797196,
+          "aggregate_tps": 130635.6064631525,
+          "relative_half_window_drift": -0.01207041725054847,
+          "measured_tokens": 224,
+          "drained_jobs": 196
+        },
+        {
+          "label": "home-best58-s1.01-lanes6",
+          "name": "screen-p12.177311-w2-m4.json",
+          "requests": 58,
+          "home_clients": 4,
+          "mfu_percent": 2.868219312073589,
+          "aggregate_tps": 121499.66391456654,
+          "relative_half_window_drift": 0.02366676083578767,
+          "measured_tokens": 232,
+          "drained_jobs": 203
+        },
+        {
+          "label": "home-best58-s1.01-lanes6-group16",
+          "name": "screen-n56-p12.177311-w2-m4-homes0_13.json",
+          "requests": 56,
+          "home_clients": 2,
+          "mfu_percent": 3.0885949569945503,
+          "aggregate_tps": 130834.92174514548,
+          "relative_half_window_drift": -0.0003857928152033452,
+          "measured_tokens": 224,
+          "drained_jobs": 196
+        },
+        {
+          "label": "home-best58-s1.01-lanes6-group16",
+          "name": "screen-n56-p12.177311-w2-m4.json",
+          "requests": 56,
+          "home_clients": 2,
+          "mfu_percent": 3.1302191310452647,
+          "aggregate_tps": 132598.14924193925,
+          "relative_half_window_drift": -0.002906763877052132,
+          "measured_tokens": 224,
+          "drained_jobs": 196
+        },
+        {
+          "label": "home-best58-s1.01-lanes6-group16",
+          "name": "screen-n56-p12.177311-w8-m32.json",
+          "requests": 56,
+          "home_clients": 2,
+          "mfu_percent": 3.1153741573906353,
+          "aggregate_tps": 131969.30635594876,
+          "relative_half_window_drift": -0.0017089301282571245,
+          "measured_tokens": 1792,
+          "drained_jobs": 1148
+        },
+        {
+          "label": "home-best58-s1.01-lanes6-group16",
+          "name": "screen-n56-p14.000000-w2-m4.json",
+          "requests": 56,
+          "home_clients": 2,
+          "mfu_percent": 3.090988285700168,
+          "aggregate_tps": 130936.30472940525,
+          "relative_half_window_drift": 0.02012352098296777,
+          "measured_tokens": 224,
+          "drained_jobs": 196
+        },
+        {
+          "label": "home-best58-s1.01-lanes6-group16",
+          "name": "screen-n58-p12.177311-w2-m4.json",
+          "requests": 58,
+          "home_clients": 4,
+          "mfu_percent": 2.941832412194086,
+          "aggregate_tps": 124617.96344162873,
+          "relative_half_window_drift": 0.004629339166115187,
+          "measured_tokens": 232,
+          "drained_jobs": 203
+        },
+        {
+          "label": "home-incumbent-s1-lanes6-group16",
+          "name": "screen-n54-p12.334490-w2-m4.json",
+          "requests": 54,
+          "home_clients": 0,
+          "mfu_percent": 3.827772117069258,
+          "aggregate_tps": 162146.95431683623,
+          "relative_half_window_drift": 0.0,
+          "measured_tokens": 216,
+          "drained_jobs": 189
+        },
+        {
+          "label": "home-incumbent-s1-lanes6-group16",
+          "name": "screen-n56-p12.334490-w2-m4-homes0_13.json",
+          "requests": 56,
+          "home_clients": 2,
+          "mfu_percent": 3.1239444061051014,
+          "aggregate_tps": 132332.3477503389,
+          "relative_half_window_drift": 0.023664636703550013,
+          "measured_tokens": 224,
+          "drained_jobs": 196
+        },
+        {
+          "label": "home-incumbent-s1-lanes6-group16",
+          "name": "screen-n58-p12.334490-w2-m4.json",
+          "requests": 58,
+          "home_clients": 4,
+          "mfu_percent": 3.0544537995329626,
+          "aggregate_tps": 129388.6797720244,
+          "relative_half_window_drift": 0.020511141349053963,
+          "measured_tokens": 232,
+          "drained_jobs": 203
+        }
+      ],
+      "numeric_101k_maximum_absolute_error": 1.2803355697865726e-07,
+      "prior_records_unchanged": true,
+      "maximum_certified": false,
+      "black_version": "24.2.0",
+      "formatted_and_checked_files": 585,
+      "production_source_unchanged": true,
+      "sentence_layout": "passed",
+      "wording": "passed",
+      "local_links_checked": 34,
+      "diff_check": "passed",
+      "scope": "Documentation and experiment evidence only; archived native computation, physical-resource costs, structural lifetimes and token feedback are checked. Production simulation code is unchanged; hardware compilation and physical-bank or neighbor mapping remain unverified."
     }
   },
   "sources": [
@@ -115519,13 +115659,14 @@
   "source_cpp_sha256": "8118adb459ae6870d4a441217e4b4bfdef54f6b5a5f7a4e93cc6787cdf70aa57",
   "pending_experiments": [
     {
-      "name": "pure-lp30-home-attention-native-integration",
-      "status": "capacity_and_native_operator_screen_passed_numerical_routing_and_closed_loop_validation_pending",
-      "result_directory": "outputs/lpx-maximum-mfu-20261103/home-attention-screen",
+      "name": "pure-lp30-hierarchical-home-attention-communication",
+      "status": "unimplemented_candidate_after_finite_dense_home_attention_screens",
       "chips": 445,
-      "logical_requests": 58,
-      "permanent_global_clients": 54,
-      "remote_home_clients": 4,
+      "hardware": "pure LP30",
+      "query_dissemination": "Global roots to home group leaders, then local home followers.",
+      "partial_result_reduction": "Merge on home leaders after retiring attention scratch, then return fewer partials to global output ranks.",
+      "memory_lifetimes_validated": false,
+      "native_program_captured": false,
       "mfu_claimed": false
     }
   ],
@@ -312021,6 +312162,420 @@
       "Verify partitioned shared-cache attention numerically while preserving native Q/K/V prefixes, output projection shards, FFN and useful-token accounting.",
       "Replay the admitted home-attention placement under bounded request feedback before assigning any attained MFU.",
       "Continue other controller, request-count, placement, physical-order and inventory searches; the objective-wide maximum remains unproven."
-    ]
+    ],
+    "followup": "home_attention_native_search"
+  },
+  "home_attention_native_search": {
+    "status": "complete_finite_native_home_attention_checkpoint",
+    "turn_classification": "progress",
+    "base_commit": "c5bb823b1c2d1e2063c679e0dacfae6141ef68d0",
+    "source_sha256": "9dfe67e50e9ab76edafd96f37033622e8ae62b2abb3a03f0d233a81920e2407e",
+    "hardware": "pure LP30",
+    "minimum_tps": null,
+    "maximum_certified": false,
+    "attained_record_promoted": false,
+    "artifact": "experiments/lpx/home-attention-native-search.json.gz",
+    "artifact_sha256": "74402850fa9dc7a757ec320d576e724b84510f387a07162300ddfb08afb3d0a9",
+    "artifact_bytes": 7640526,
+    "document": "docs/lpx-home-attention-native-search.md",
+    "native_layer_captures": 20,
+    "global_layer_placements": 10,
+    "home_workspace_policies": [
+      "whole_125_home_lease",
+      "disjoint_atomic_groups_of_at_most_16_homes"
+    ],
+    "pipeline_captures": 3,
+    "full_native_bodies": 22,
+    "relative_delta_native_bodies": 9,
+    "numerical_controls": {
+      "cases": 24,
+      "full_101k_query_heads": 32,
+      "ownership_assignments": 1020000,
+      "full_101k_maximum_absolute_error": 1.2803355697865726e-07,
+      "fp64_partition_tolerance": 2e-12,
+      "scope": "CPU FP32 split-dot and LSE partition/merge compared with independent complete-context FP64 assembled-key softmax over the same experimental FP8 bytes. This checks algebra and static addresses, not BF16 kernel compilation or model quality."
+    },
+    "payload_controls": {
+      "cases": 16,
+      "returned_head_fragments": 64000,
+      "negative_controls": [
+        "incorrect_GQA_query_source",
+        "missing_partial_result_fragment"
+      ]
+    },
+    "finite_screens": [
+      {
+        "label": "home-best58-s1.01-lanes6",
+        "name": "screen-n56-p12.177311-w2-m4.json",
+        "logical_requests": 56,
+        "home_clients": 2,
+        "home_cohorts": [
+          0,
+          14
+        ],
+        "nominal_period_s": 1.2177311336859089e-05,
+        "warmup_rounds": 2,
+        "measured_rounds": 4,
+        "aggregate_tps": 130635.6064631525,
+        "mfu_percent": 3.0838897592797188,
+        "measured_tokens": 224,
+        "drained_cohort_jobs": 196,
+        "relative_half_window_drift": -0.01207041725054847,
+        "attained_record": false
+      },
+      {
+        "label": "home-best58-s1.01-lanes6",
+        "name": "screen-p12.177311-w2-m4.json",
+        "logical_requests": 58,
+        "home_clients": 4,
+        "home_cohorts": [
+          0,
+          7,
+          14,
+          21
+        ],
+        "nominal_period_s": 1.2177311336859089e-05,
+        "warmup_rounds": 2,
+        "measured_rounds": 4,
+        "aggregate_tps": 121499.66391456654,
+        "mfu_percent": 2.868219312073589,
+        "measured_tokens": 232,
+        "drained_cohort_jobs": 203,
+        "relative_half_window_drift": 0.02366676083578767,
+        "attained_record": false
+      },
+      {
+        "label": "home-best58-s1.01-lanes6-group16",
+        "name": "screen-n56-p12.177311-w2-m4-homes0_13.json",
+        "logical_requests": 56,
+        "home_clients": 2,
+        "home_cohorts": [
+          0,
+          13
+        ],
+        "nominal_period_s": 1.2177311336859089e-05,
+        "warmup_rounds": 2,
+        "measured_rounds": 4,
+        "aggregate_tps": 130834.92174514548,
+        "mfu_percent": 3.0885949569945503,
+        "measured_tokens": 224,
+        "drained_cohort_jobs": 196,
+        "relative_half_window_drift": -0.0003857928152033452,
+        "attained_record": false
+      },
+      {
+        "label": "home-best58-s1.01-lanes6-group16",
+        "name": "screen-n56-p12.177311-w2-m4.json",
+        "logical_requests": 56,
+        "home_clients": 2,
+        "home_cohorts": [
+          0,
+          14
+        ],
+        "nominal_period_s": 1.2177311336859089e-05,
+        "warmup_rounds": 2,
+        "measured_rounds": 4,
+        "aggregate_tps": 132598.14924193925,
+        "mfu_percent": 3.1302191310452643,
+        "measured_tokens": 224,
+        "drained_cohort_jobs": 196,
+        "relative_half_window_drift": -0.002906763877052132,
+        "attained_record": false
+      },
+      {
+        "label": "home-best58-s1.01-lanes6-group16",
+        "name": "screen-n56-p12.177311-w8-m32.json",
+        "logical_requests": 56,
+        "home_clients": 2,
+        "home_cohorts": [
+          0,
+          14
+        ],
+        "nominal_period_s": 1.2177311336859089e-05,
+        "warmup_rounds": 8,
+        "measured_rounds": 32,
+        "aggregate_tps": 131969.30635594876,
+        "mfu_percent": 3.1153741573906353,
+        "measured_tokens": 1792,
+        "drained_cohort_jobs": 1148,
+        "relative_half_window_drift": -0.0017089301282571245,
+        "attained_record": false
+      },
+      {
+        "label": "home-best58-s1.01-lanes6-group16",
+        "name": "screen-n56-p14.000000-w2-m4.json",
+        "logical_requests": 56,
+        "home_clients": 2,
+        "home_cohorts": [
+          0,
+          14
+        ],
+        "nominal_period_s": 1.4e-05,
+        "warmup_rounds": 2,
+        "measured_rounds": 4,
+        "aggregate_tps": 130936.30472940525,
+        "mfu_percent": 3.090988285700168,
+        "measured_tokens": 224,
+        "drained_cohort_jobs": 196,
+        "relative_half_window_drift": 0.02012352098296777,
+        "attained_record": false
+      },
+      {
+        "label": "home-best58-s1.01-lanes6-group16",
+        "name": "screen-n58-p12.177311-w2-m4.json",
+        "logical_requests": 58,
+        "home_clients": 4,
+        "home_cohorts": [
+          0,
+          7,
+          14,
+          21
+        ],
+        "nominal_period_s": 1.2177311336859089e-05,
+        "warmup_rounds": 2,
+        "measured_rounds": 4,
+        "aggregate_tps": 124617.96344162873,
+        "mfu_percent": 2.941832412194086,
+        "measured_tokens": 232,
+        "drained_cohort_jobs": 203,
+        "relative_half_window_drift": 0.004629339166115187,
+        "attained_record": false
+      },
+      {
+        "label": "home-incumbent-s1-lanes6-group16",
+        "name": "screen-n54-p12.334490-w2-m4.json",
+        "logical_requests": 54,
+        "home_clients": 0,
+        "home_cohorts": [],
+        "nominal_period_s": 1.2334490082940358e-05,
+        "warmup_rounds": 2,
+        "measured_rounds": 4,
+        "aggregate_tps": 162146.95431683623,
+        "mfu_percent": 3.827772117069258,
+        "measured_tokens": 216,
+        "drained_cohort_jobs": 189,
+        "relative_half_window_drift": 0.0,
+        "attained_record": false
+      },
+      {
+        "label": "home-incumbent-s1-lanes6-group16",
+        "name": "screen-n56-p12.334490-w2-m4-homes0_13.json",
+        "logical_requests": 56,
+        "home_clients": 2,
+        "home_cohorts": [
+          0,
+          13
+        ],
+        "nominal_period_s": 1.2334490082940358e-05,
+        "warmup_rounds": 2,
+        "measured_rounds": 4,
+        "aggregate_tps": 132332.3477503389,
+        "mfu_percent": 3.1239444061051014,
+        "measured_tokens": 224,
+        "drained_cohort_jobs": 196,
+        "relative_half_window_drift": 0.023664636703550013,
+        "attained_record": false
+      },
+      {
+        "label": "home-incumbent-s1-lanes6-group16",
+        "name": "screen-n58-p12.334490-w2-m4.json",
+        "logical_requests": 58,
+        "home_clients": 4,
+        "home_cohorts": [
+          0,
+          7,
+          14,
+          21
+        ],
+        "nominal_period_s": 1.2334490082940358e-05,
+        "warmup_rounds": 2,
+        "measured_rounds": 4,
+        "aggregate_tps": 129388.6797720244,
+        "mfu_percent": 3.0544537995329626,
+        "measured_tokens": 232,
+        "drained_cohort_jobs": 203,
+        "relative_half_window_drift": 0.020511141349053963,
+        "attained_record": false
+      }
+    ],
+    "selected_longer_measurement": {
+      "label": "home-best58-s1.01-lanes6-group16",
+      "name": "screen-n56-p12.177311-w8-m32.json",
+      "logical_requests": 56,
+      "home_clients": 2,
+      "home_cohorts": [
+        0,
+        14
+      ],
+      "nominal_period_s": 1.2177311336859089e-05,
+      "warmup_rounds": 8,
+      "measured_rounds": 32,
+      "aggregate_tps": 131969.30635594876,
+      "mfu_percent": 3.1153741573906353,
+      "measured_tokens": 1792,
+      "drained_cohort_jobs": 1148,
+      "relative_half_window_drift": -0.0017089301282571245,
+      "attained_record": false
+    },
+    "global_workspace_used_bytes": 1301196,
+    "global_scratch_frame_bytes": 2179712,
+    "home_workspace_used_bytes": 1738580,
+    "home_workspace_budget_bytes": 2048000,
+    "minimum_home_headroom_bytes": 14904,
+    "research_sources": [
+      {
+        "url": "https://developer.nvidia.com/blog/how-nvidia-groq-3-lpx-unlocks-ultrafast-interactivity-at-long-context-on-nvidia-vera-rubin/",
+        "published": "2026-08-24",
+        "checked": "2026-11-04 Asia/Shanghai",
+        "claim": "The primary LPX vendor describes 96 C2C links per LP30, direct pairwise connections, relay routing through other LPUs and 320-byte computation/communication overlap. It does not supply the fixed neighbor map or a compiler schedule for this 445-chip home-attention placement. Dense logical-peer phases in the present routed sensitivity model do not prove a physical neighbor mapping."
+      }
+    ],
+    "scope": "Finite analytical native pipeline comparison for 54 permanent KV caches plus two or four static home-resident caches on the same 445 LP30 chips. Numeric and byte-route controls validate shared-cache attention algebra, unique append ownership and payload head mappings; native profiles retain original QKV prefixes, O projections and all FFN work. Whole-home and grouped workspace policies, two supplied schedules and selected request/phase variants do not exhaust controller or placement choices. No new attained decode record or physical compilation claim is made.",
+    "next_actions": [
+      "Implement and validate hierarchical query distribution and partial-result reduction with explicit home scratch overlays and native costs.",
+      "Compare bounded native closed-loop replays before assigning any MFU to hierarchical communication.",
+      "Continue other request counts, resource orders, block placements, kernel policies and inventories while counting all allocated-chip peaks.",
+      "Obtain a fixed physical neighbor/relay map, compiler scheduling, bank placement and matching shared-cache quality evidence."
+    ],
+    "validation": {
+      "status": "passed",
+      "artifact_sha256": "74402850fa9dc7a757ec320d576e724b84510f387a07162300ddfb08afb3d0a9",
+      "source_sha256": "9dfe67e50e9ab76edafd96f37033622e8ae62b2abb3a03f0d233a81920e2407e",
+      "checked": {
+        "unchanged_native_rows": 3000,
+        "preserved_qkv_prefixes": 640,
+        "preserved_output_shards": 640,
+        "native_copies": 10480,
+        "controller_budgets": 5020,
+        "home_attention_kernels": 10000,
+        "routed_phases": 180,
+        "home_workspace_lifetimes": 90,
+        "integrated_extra_nodes": 40220,
+        "artifact_only_native_control_replays": 1
+      },
+      "screens": [
+        {
+          "label": "home-best58-s1.01-lanes6",
+          "name": "screen-n56-p12.177311-w2-m4.json",
+          "requests": 56,
+          "home_clients": 2,
+          "mfu_percent": 3.0838897592797196,
+          "aggregate_tps": 130635.6064631525,
+          "relative_half_window_drift": -0.01207041725054847,
+          "measured_tokens": 224,
+          "drained_jobs": 196
+        },
+        {
+          "label": "home-best58-s1.01-lanes6",
+          "name": "screen-p12.177311-w2-m4.json",
+          "requests": 58,
+          "home_clients": 4,
+          "mfu_percent": 2.868219312073589,
+          "aggregate_tps": 121499.66391456654,
+          "relative_half_window_drift": 0.02366676083578767,
+          "measured_tokens": 232,
+          "drained_jobs": 203
+        },
+        {
+          "label": "home-best58-s1.01-lanes6-group16",
+          "name": "screen-n56-p12.177311-w2-m4-homes0_13.json",
+          "requests": 56,
+          "home_clients": 2,
+          "mfu_percent": 3.0885949569945503,
+          "aggregate_tps": 130834.92174514548,
+          "relative_half_window_drift": -0.0003857928152033452,
+          "measured_tokens": 224,
+          "drained_jobs": 196
+        },
+        {
+          "label": "home-best58-s1.01-lanes6-group16",
+          "name": "screen-n56-p12.177311-w2-m4.json",
+          "requests": 56,
+          "home_clients": 2,
+          "mfu_percent": 3.1302191310452647,
+          "aggregate_tps": 132598.14924193925,
+          "relative_half_window_drift": -0.002906763877052132,
+          "measured_tokens": 224,
+          "drained_jobs": 196
+        },
+        {
+          "label": "home-best58-s1.01-lanes6-group16",
+          "name": "screen-n56-p12.177311-w8-m32.json",
+          "requests": 56,
+          "home_clients": 2,
+          "mfu_percent": 3.1153741573906353,
+          "aggregate_tps": 131969.30635594876,
+          "relative_half_window_drift": -0.0017089301282571245,
+          "measured_tokens": 1792,
+          "drained_jobs": 1148
+        },
+        {
+          "label": "home-best58-s1.01-lanes6-group16",
+          "name": "screen-n56-p14.000000-w2-m4.json",
+          "requests": 56,
+          "home_clients": 2,
+          "mfu_percent": 3.090988285700168,
+          "aggregate_tps": 130936.30472940525,
+          "relative_half_window_drift": 0.02012352098296777,
+          "measured_tokens": 224,
+          "drained_jobs": 196
+        },
+        {
+          "label": "home-best58-s1.01-lanes6-group16",
+          "name": "screen-n58-p12.177311-w2-m4.json",
+          "requests": 58,
+          "home_clients": 4,
+          "mfu_percent": 2.941832412194086,
+          "aggregate_tps": 124617.96344162873,
+          "relative_half_window_drift": 0.004629339166115187,
+          "measured_tokens": 232,
+          "drained_jobs": 203
+        },
+        {
+          "label": "home-incumbent-s1-lanes6-group16",
+          "name": "screen-n54-p12.334490-w2-m4.json",
+          "requests": 54,
+          "home_clients": 0,
+          "mfu_percent": 3.827772117069258,
+          "aggregate_tps": 162146.95431683623,
+          "relative_half_window_drift": 0.0,
+          "measured_tokens": 216,
+          "drained_jobs": 189
+        },
+        {
+          "label": "home-incumbent-s1-lanes6-group16",
+          "name": "screen-n56-p12.334490-w2-m4-homes0_13.json",
+          "requests": 56,
+          "home_clients": 2,
+          "mfu_percent": 3.1239444061051014,
+          "aggregate_tps": 132332.3477503389,
+          "relative_half_window_drift": 0.023664636703550013,
+          "measured_tokens": 224,
+          "drained_jobs": 196
+        },
+        {
+          "label": "home-incumbent-s1-lanes6-group16",
+          "name": "screen-n58-p12.334490-w2-m4.json",
+          "requests": 58,
+          "home_clients": 4,
+          "mfu_percent": 3.0544537995329626,
+          "aggregate_tps": 129388.6797720244,
+          "relative_half_window_drift": 0.020511141349053963,
+          "measured_tokens": 232,
+          "drained_jobs": 203
+        }
+      ],
+      "numeric_101k_maximum_absolute_error": 1.2803355697865726e-07,
+      "prior_records_unchanged": true,
+      "maximum_certified": false,
+      "black_version": "24.2.0",
+      "formatted_and_checked_files": 585,
+      "production_source_unchanged": true,
+      "sentence_layout": "passed",
+      "wording": "passed",
+      "local_links_checked": 34,
+      "diff_check": "passed",
+      "scope": "Documentation and experiment evidence only; archived native computation, physical-resource costs, structural lifetimes and token feedback are checked. Production simulation code is unchanged; hardware compilation and physical-bank or neighbor mapping remain unverified."
+    }
   }
 }

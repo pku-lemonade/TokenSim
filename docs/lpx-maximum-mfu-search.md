@@ -59,7 +59,9 @@ The subsequent [finite-bank exchange study](lpx-sram-kv-exchange-search.md) impl
 Its selected paired-readiness controllers drain but reach only approximately 1.15% and 1.22% MFU in short screens.
 A read-only scheduler snapshot identifies a cross-row buffer deadlock in the earlier unpaired controller.
 The same study admits a preliminary 54-permanent-plus-four-home attention placement on 445 chips and prices its home attention operators.
-Its full numerical, routing and pipeline validation remain open.
+The subsequent [native attention-on-home study](lpx-home-attention-native-search.md) validates the partitioned shared-cache attention algebra and payload mappings, then measures selected complete native pipeline schedules.
+Its selected 56-request grouped case reaches approximately 3.115374% MFU over 1,792 measured outputs and drains all submitted jobs.
+Other communication structures and schedules, physical compilation, banks and matching cache quality remain open.
 
 ## Metric and workload
 

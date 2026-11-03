@@ -187,3 +187,5 @@ Production simulation code and the displayed decode and complete-request records
 The next attention-on-home experiment must preserve target Q/K/V projections, normalization and output shards while replacing only the distributed core and its partial-result merge.
 It must validate newly appended KV placement and equivalent attention values before assigning serving performance.
 Other request counts, head widths, block placements, cache controllers, resource orders and inventories remain open.
+The subsequent [native attention-on-home study](lpx-home-attention-native-search.md) completes numerical controls, routed native components and selected 56/58-request pipeline measurements.
+Its supplied whole-buffer and grouped schedules remain below the attained decode record.
