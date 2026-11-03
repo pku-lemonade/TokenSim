@@ -143,3 +143,5 @@ Production simulation code remains unchanged.
 Hierarchical query dissemination and home-side partial-result reduction remain unimplemented candidates.
 Their attention and reduction scratch lifetimes must be separated explicitly to fit the existing home budget.
 Other home groups, request counts, resource orders, operator placements and inventories remain open.
+The subsequent [hierarchical attention and output-staging study](lpx-hierarchical-home-attention-search.md) implements the proposed hierarchical communication and selected complete pipeline replays.
+Its supplied schedules remain below the attained decode record.

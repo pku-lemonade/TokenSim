@@ -62,6 +62,11 @@ The same study admits a preliminary 54-permanent-plus-four-home attention placem
 The subsequent [native attention-on-home study](lpx-home-attention-native-search.md) validates the partitioned shared-cache attention algebra and payload mappings, then measures selected complete native pipeline schedules.
 Its selected 56-request grouped case reaches approximately 3.115374% MFU over 1,792 measured outputs and drains all submitted jobs.
 Other communication structures and schedules, physical compilation, banks and matching cache quality remain open.
+The subsequent [hierarchical attention and output-staging study](lpx-hierarchical-home-attention-search.md) screens twelve layer configurations and four complete hierarchy placements.
+Its selected longer run reaches approximately 2.953492% MFU, and separate output-staging fixed-order targets also remain below the decode record.
+Fresh resource orders and native request-feedback replay for the output-staging policy remain open.
+A separate projection-broadcast proposal passes a conditional 56-request global capacity ledger by removing duplicate QKV matrices and using nonuniform KV ranges.
+Its fresh native weight provenance, numerical, routing and closed-loop validation remain open, and it has no TPS or MFU claim.
 
 ## Metric and workload
 

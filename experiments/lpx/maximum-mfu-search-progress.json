@@ -2,7 +2,7 @@
   "record_date": "2026-11-04",
   "goal": "Find the highest useful MFU for Gemma 4 31B serving with a 100K input; explore inventories beyond 256 LP30 chips.",
   "maximum_certified": false,
-  "status": "Pure LP30 MFU search continues without a TPS floor. The attained experimental shared-cache decode record remains 3.827772117064% on 445 chips with 54 requests. A finite attention-on-home study now validates static block ownership, shared-cache numerical attention and query/delta/partial payload mappings, and captures all ten native global components under whole-home and grouped workspace policies. Eight selected 56/58-request short screens remain below the record; the selected 56-request grouped case measures 1,792 outputs at 3.115374157391% MFU and drains all 1,148 cohort jobs. A same-driver 54-request control reproduces the incumbent TPS. Hierarchical communication, other schedules and placements remain open. Objective-wide optimality, physical compilation, banks, matching shared-cache quality and multi-rack timing remain unverified.",
+  "status": "Pure LP30 MFU search continues without a TPS floor. The attained experimental shared-cache decode record remains 3.827772117064% on 445 chips with 54 requests. Twelve hierarchical-home layer combinations and four selected complete placements do not improve it; the selected longer run measures 1,792 outputs at 2.953491826377% MFU and drains all 1,148 cohort jobs. Separate global-output staging fits inside the charged vocabulary guard, while the best successful lifted-calendar numerical target remains 3.819043233002% across seventy supplied orders. A new capacity-only projection-broadcast proposal would release approximately 6.94 GB of duplicate QKV weights and admits a derived nonuniform 56-request global allocation under its declared policy. Its fresh native weight, numerical, routing and closed-loop validation remain open. Objective-wide optimality, physical compilation, banks, matching shared-cache quality and multi-rack timing remain unverified.",
   "shared_timing_config": {
     "operator": {
       "activation_dtype": "bf16",
@@ -12052,6 +12052,446 @@
       "local_links_checked": 34,
       "diff_check": "passed",
       "scope": "Documentation and experiment evidence only; archived native computation, physical-resource costs, structural lifetimes and token feedback are checked. Production simulation code is unchanged; hardware compilation and physical-bank or neighbor mapping remain unverified."
+    },
+    "hierarchical_home_attention_evidence": {
+      "status": "passed",
+      "artifact_sha256": "cc38a13a979f34f4242f38b3263a72a673db0aa672c3f50baf213a1ebd03b39a",
+      "source_sha256": "9dfe67e50e9ab76edafd96f37033622e8ae62b2abb3a03f0d233a81920e2407e",
+      "checked": {
+        "preserved_qkv_prefixes": 1664,
+        "preserved_output_shards": 1664,
+        "native_copies": 33502,
+        "vector_budgets": 13676,
+        "home_attention_kernels": 26000,
+        "fp32_home_merges": 624,
+        "routed_phases": 2084,
+        "home_scratch_overlay_lifetimes": 624,
+        "integrated_extra_nodes": 58400,
+        "staged_output_order_primal_dual_models": 32
+      },
+      "screens": [
+        {
+          "label": "hier-incumbent-s1-g16-qdirect-rdirect",
+          "name": "screen-n56-p12.334490-w2-m4.json",
+          "requests": 56,
+          "mfu_percent": 3.0052978713365195,
+          "aggregate_tps": 127306.40219647923,
+          "measured_tokens": 224,
+          "drained_jobs": 196,
+          "relative_half_window_drift": 0.011124547415087616
+        },
+        {
+          "label": "hier-incumbent-s1-g16-qdirect-rdirect",
+          "name": "screen-n56-p12.334490-w8-m32.json",
+          "requests": 56,
+          "mfu_percent": 2.953491826376685,
+          "aggregate_tps": 125111.86392499252,
+          "measured_tokens": 1792,
+          "drained_jobs": 1148,
+          "relative_half_window_drift": -0.0039707559898573
+        },
+        {
+          "label": "hier-incumbent-s1-g16-qdirect-rroots",
+          "name": "screen-n56-p12.334490-w2-m4.json",
+          "requests": 56,
+          "mfu_percent": 2.883783443355435,
+          "aggregate_tps": 122158.97079249816,
+          "measured_tokens": 224,
+          "drained_jobs": 196,
+          "relative_half_window_drift": 0.0029476701241404335
+        },
+        {
+          "label": "hier-incumbent-s1-g16-qdirect-rroots",
+          "name": "screen-n58-p12.334490-w2-m4.json",
+          "requests": 58,
+          "mfu_percent": 2.691141406992851,
+          "aggregate_tps": 113998.52693266298,
+          "measured_tokens": 232,
+          "drained_jobs": 203,
+          "relative_half_window_drift": 0.007354802836292418
+        },
+        {
+          "label": "hier-incumbent-s1-g16-qtree-rroots",
+          "name": "screen-n56-p12.334490-w2-m4.json",
+          "requests": 56,
+          "mfu_percent": 2.8284674819095614,
+          "aggregate_tps": 119815.75014110179,
+          "measured_tokens": 224,
+          "drained_jobs": 196,
+          "relative_half_window_drift": -0.011845276605755628
+        },
+        {
+          "label": "hier-incumbent-s1-g8-qdirect-rdirect",
+          "name": "screen-n56-p12.334490-w2-m4.json",
+          "requests": 56,
+          "mfu_percent": 2.8669277546806424,
+          "aggregate_tps": 121444.95269059953,
+          "measured_tokens": 224,
+          "drained_jobs": 196,
+          "relative_half_window_drift": 0.0004633741073309938
+        },
+        {
+          "label": "hier-incumbent-s1-g8-qdirect-rdirect",
+          "name": "screen-n58-p12.334490-w2-m4.json",
+          "requests": 58,
+          "mfu_percent": 2.713008020543526,
+          "aggregate_tps": 114924.81112096514,
+          "measured_tokens": 232,
+          "drained_jobs": 203,
+          "relative_half_window_drift": -0.037873605725269543
+        }
+      ],
+      "staged_output_numerical_targets": [
+        {
+          "banks": 2,
+          "fixed_order_mfu_target_percent": 3.8181781151616523,
+          "numerical": {
+            "duality_gap_ns": -7.821654435247183e-11,
+            "variables": 98768,
+            "constraints": 191498
+          },
+          "periodic_interval_audit": {
+            "nodes": 98767,
+            "resources": 13854,
+            "leases": 102
+          }
+        },
+        {
+          "banks": 32,
+          "fixed_order_mfu_target_percent": 3.8181781151616523,
+          "numerical": {
+            "duality_gap_ns": -7.821654435247183e-11,
+            "variables": 98768,
+            "constraints": 191498
+          },
+          "periodic_interval_audit": {
+            "nodes": 98767,
+            "resources": 13854,
+            "leases": 102
+          },
+          "calendar_orders": 70,
+          "successful_numerical_targets": [
+            {
+              "index": 28,
+              "mfu_percent": 3.591338530054859,
+              "numerical": {
+                "duality_gap_ns": 1.9281287677586079e-10,
+                "variables": 98768,
+                "constraints": 192169
+              }
+            },
+            {
+              "index": 29,
+              "mfu_percent": 3.5315681062687623,
+              "numerical": {
+                "duality_gap_ns": 6.184563972055912e-11,
+                "variables": 98768,
+                "constraints": 192178
+              }
+            },
+            {
+              "index": 30,
+              "mfu_percent": 3.4336816820747895,
+              "numerical": {
+                "duality_gap_ns": -7.821654435247183e-11,
+                "variables": 98768,
+                "constraints": 192178
+              }
+            },
+            {
+              "index": 31,
+              "mfu_percent": 3.3119086844246297,
+              "numerical": {
+                "duality_gap_ns": 2.837623469531536e-10,
+                "variables": 98768,
+                "constraints": 192178
+              }
+            },
+            {
+              "index": 32,
+              "mfu_percent": 3.0390258444487057,
+              "numerical": {
+                "duality_gap_ns": 7.09405867382884e-11,
+                "variables": 98768,
+                "constraints": 192169
+              }
+            },
+            {
+              "index": 33,
+              "mfu_percent": 2.828538828259993,
+              "numerical": {
+                "duality_gap_ns": 5.748006515204906e-10,
+                "variables": 98768,
+                "constraints": 192180
+              }
+            },
+            {
+              "index": 34,
+              "mfu_percent": 2.4839315133184727,
+              "numerical": {
+                "duality_gap_ns": -2.1354935597628355e-09,
+                "variables": 98768,
+                "constraints": 192178
+              }
+            },
+            {
+              "index": 35,
+              "mfu_percent": 1.9799771797819956,
+              "numerical": {
+                "duality_gap_ns": -2.1318555809557438e-09,
+                "variables": 98768,
+                "constraints": 192180
+              }
+            },
+            {
+              "index": 48,
+              "mfu_percent": 3.8181781151616523,
+              "numerical": {
+                "duality_gap_ns": -7.821654435247183e-11,
+                "variables": 98768,
+                "constraints": 191498
+              }
+            },
+            {
+              "index": 49,
+              "mfu_percent": 3.8190432330019015,
+              "numerical": {
+                "duality_gap_ns": -6.730260793119669e-11,
+                "variables": 98768,
+                "constraints": 191498,
+                "periodic_interval_audit": {
+                  "nodes": 98767,
+                  "resources": 13854,
+                  "leases": 102
+                }
+              }
+            },
+            {
+              "index": 50,
+              "mfu_percent": 3.817648110435314,
+              "numerical": {
+                "duality_gap_ns": 4.9112713895738125e-11,
+                "variables": 98768,
+                "constraints": 191498
+              }
+            },
+            {
+              "index": 51,
+              "mfu_percent": 3.810392604676148,
+              "numerical": {
+                "duality_gap_ns": 5.638867150992155e-11,
+                "variables": 98768,
+                "constraints": 191498
+              }
+            },
+            {
+              "index": 52,
+              "mfu_percent": 3.803164625029588,
+              "numerical": {
+                "duality_gap_ns": 5.820766091346741e-11,
+                "variables": 98768,
+                "constraints": 191498
+              }
+            },
+            {
+              "index": 53,
+              "mfu_percent": 3.79954198991796,
+              "numerical": {
+                "duality_gap_ns": -5.4569682106375694e-12,
+                "variables": 98768,
+                "constraints": 191498
+              }
+            },
+            {
+              "index": 54,
+              "mfu_percent": 3.7842095744491333,
+              "numerical": {
+                "duality_gap_ns": -3.637978807091713e-12,
+                "variables": 98768,
+                "constraints": 191498
+              }
+            },
+            {
+              "index": 55,
+              "mfu_percent": 3.774554378954157,
+              "numerical": {
+                "duality_gap_ns": -5.4569682106375694e-12,
+                "variables": 98768,
+                "constraints": 191503
+              }
+            },
+            {
+              "index": 56,
+              "mfu_percent": 3.774554378954157,
+              "numerical": {
+                "duality_gap_ns": -5.4569682106375694e-12,
+                "variables": 98768,
+                "constraints": 191503
+              }
+            },
+            {
+              "index": 57,
+              "mfu_percent": 3.774554378954157,
+              "numerical": {
+                "duality_gap_ns": -5.4569682106375694e-12,
+                "variables": 98768,
+                "constraints": 191503
+              }
+            },
+            {
+              "index": 58,
+              "mfu_percent": 3.774554378954157,
+              "numerical": {
+                "duality_gap_ns": -5.4569682106375694e-12,
+                "variables": 98768,
+                "constraints": 191503
+              }
+            },
+            {
+              "index": 59,
+              "mfu_percent": 3.774554378954157,
+              "numerical": {
+                "duality_gap_ns": -5.4569682106375694e-12,
+                "variables": 98768,
+                "constraints": 191503
+              }
+            },
+            {
+              "index": 60,
+              "mfu_percent": 3.774554378954157,
+              "numerical": {
+                "duality_gap_ns": -5.4569682106375694e-12,
+                "variables": 98768,
+                "constraints": 191503
+              }
+            },
+            {
+              "index": 61,
+              "mfu_percent": 3.774554378954157,
+              "numerical": {
+                "duality_gap_ns": -5.4569682106375694e-12,
+                "variables": 98768,
+                "constraints": 191503
+              }
+            },
+            {
+              "index": 62,
+              "mfu_percent": 3.774554378954157,
+              "numerical": {
+                "duality_gap_ns": -5.4569682106375694e-12,
+                "variables": 98768,
+                "constraints": 191503
+              }
+            },
+            {
+              "index": 63,
+              "mfu_percent": 3.703577270807337,
+              "numerical": {
+                "duality_gap_ns": -5.4569682106375694e-12,
+                "variables": 98768,
+                "constraints": 191498
+              }
+            },
+            {
+              "index": 64,
+              "mfu_percent": 3.591114191743109,
+              "numerical": {
+                "duality_gap_ns": -4.347384674474597e-10,
+                "variables": 98768,
+                "constraints": 191500
+              }
+            },
+            {
+              "index": 65,
+              "mfu_percent": 3.5315681062687623,
+              "numerical": {
+                "duality_gap_ns": 6.184563972055912e-11,
+                "variables": 98768,
+                "constraints": 191503
+              }
+            },
+            {
+              "index": 66,
+              "mfu_percent": 3.438986572682484,
+              "numerical": {
+                "duality_gap_ns": 6.366462912410498e-11,
+                "variables": 98768,
+                "constraints": 191498
+              }
+            },
+            {
+              "index": 67,
+              "mfu_percent": 3.292107604877242,
+              "numerical": {
+                "duality_gap_ns": -1.7462298274040222e-10,
+                "variables": 98768,
+                "constraints": 191500
+              }
+            },
+            {
+              "index": 68,
+              "mfu_percent": 3.089691694097667,
+              "numerical": {
+                "duality_gap_ns": -7.530616130679846e-10,
+                "variables": 98768,
+                "constraints": 191498
+              }
+            },
+            {
+              "index": 69,
+              "mfu_percent": 2.8292510533091892,
+              "numerical": {
+                "duality_gap_ns": 7.60337570682168e-10,
+                "variables": 98768,
+                "constraints": 191503
+              }
+            },
+            {
+              "index": 70,
+              "mfu_percent": 2.501178990460016,
+              "numerical": {
+                "duality_gap_ns": 5.093170329928398e-11,
+                "variables": 98768,
+                "constraints": 191498
+              }
+            },
+            {
+              "index": 71,
+              "mfu_percent": 2.0597944627317784,
+              "numerical": {
+                "duality_gap_ns": -2.2737367544323206e-09,
+                "variables": 98768,
+                "constraints": 191498
+              }
+            }
+          ],
+          "reported_infeasible_without_farkas_certificate": 38
+        }
+      ],
+      "prior_records_unchanged": true,
+      "maximum_certified": false,
+      "black_version": "24.2.0",
+      "formatted_and_checked_files": 585,
+      "production_source_unchanged": true,
+      "sentence_layout": "passed",
+      "wording": "passed",
+      "local_links_checked": 35,
+      "diff_check": "passed",
+      "scope": "Documentation and experiment evidence only; native operator costs, scratch reuse, all successful output-staging primal/dual models and selected full interval witnesses are checked. Production simulation code remains unchanged. Physical compilation, banks, fixed wiring and matching shared-cache quality remain unverified."
+    },
+    "qkv_projection_broadcast_capacity": {
+      "status": "passed_declared_integer_memory_ledger",
+      "artifact_sha256": "f231e618ee136e7b4799b4701d6bf5ad2dc88ee0fac373154ce64c5e52fb6069",
+      "source_sha256": "9dfe67e50e9ab76edafd96f37033622e8ae62b2abb3a03f0d233a81920e2407e",
+      "cases": 4,
+      "checked_rank_capacity_limits": 128,
+      "native_weight_provenance_pending": true,
+      "maximum_certified": false,
+      "sentence_layout": "passed",
+      "wording": "passed",
+      "local_links_checked": 35,
+      "diff_check": "passed",
+      "production_source_unchanged": true
     }
   },
   "sources": [
@@ -115659,14 +116099,23 @@
   "source_cpp_sha256": "8118adb459ae6870d4a441217e4b4bfdef54f6b5a5f7a4e93cc6787cdf70aa57",
   "pending_experiments": [
     {
-      "name": "pure-lp30-hierarchical-home-attention-communication",
-      "status": "unimplemented_candidate_after_finite_dense_home_attention_screens",
+      "name": "pure-lp30-qkv-projection-broadcast-native-validation",
+      "status": "conditional_capacity_passed_fresh_weight_numeric_routing_and_closed_loop_validation_pending",
       "chips": 445,
+      "logical_requests": 56,
       "hardware": "pure LP30",
-      "query_dissemination": "Global roots to home group leaders, then local home followers.",
-      "partial_result_reduction": "Merge on home leaders after retiring attention scratch, then return fewer partials to global output ranks.",
-      "memory_lifetimes_validated": false,
-      "native_program_captured": false,
+      "capacity_artifact": "experiments/lpx/qkv-projection-broadcast-capacity.json",
+      "mfu_claimed": false
+    },
+    {
+      "name": "pure-lp30-global-output-staging-fresh-orders-and-replay",
+      "status": "single_job_native_graph_and_lifted_order_targets_checked_fresh_orders_and_feedback_replay_pending",
+      "chips": 445,
+      "logical_requests": 54,
+      "staging_banks": [
+        2,
+        32
+      ],
       "mfu_claimed": false
     }
   ],
@@ -312576,6 +313025,629 @@
       "local_links_checked": 34,
       "diff_check": "passed",
       "scope": "Documentation and experiment evidence only; archived native computation, physical-resource costs, structural lifetimes and token feedback are checked. Production simulation code is unchanged; hardware compilation and physical-bank or neighbor mapping remain unverified."
-    }
+    },
+    "followup": "hierarchical_home_attention_search"
+  },
+  "hierarchical_home_attention_search": {
+    "status": "complete_finite_hierarchy_and_output_staging_checkpoint",
+    "turn_classification": "progress",
+    "base_commit": "c117fe5a90ff9d0f34d1f192a0c6ab8b3e32c458",
+    "source_sha256": "9dfe67e50e9ab76edafd96f37033622e8ae62b2abb3a03f0d233a81920e2407e",
+    "hardware": "pure LP30",
+    "minimum_tps": null,
+    "maximum_certified": false,
+    "attained_record_promoted": false,
+    "artifact": "experiments/lpx/hierarchical-home-attention-search.json.gz",
+    "artifact_sha256": "cc38a13a979f34f4242f38b3263a72a673db0aa672c3f50baf213a1ebd03b39a",
+    "artifact_bytes": 28971622,
+    "document": "docs/lpx-hierarchical-home-attention-search.md",
+    "stage_zero_combinations": 12,
+    "native_layer_captures": 52,
+    "selected_complete_placements": 4,
+    "pipeline_traces": 7,
+    "numerical_cases": 60,
+    "payload_cases": 48,
+    "full_native_bodies": 50,
+    "relative_delta_native_bodies": 11,
+    "native_home_attention_kernels_checked": 26000,
+    "home_workspace_peak_bytes": 1762836,
+    "home_workspace_budget_bytes": 2048000,
+    "global_workspace_peak_bytes": 1593352,
+    "global_scratch_frame_bytes": 2179712,
+    "finite_screens": [
+      {
+        "label": "hier-incumbent-s1-g16-qdirect-rdirect",
+        "name": "screen-n56-p12.334490-w2-m4.json",
+        "logical_requests": 56,
+        "home_clients": 2,
+        "warmup_rounds": 2,
+        "measured_rounds": 4,
+        "aggregate_tps": 127306.40219647923,
+        "mfu_percent": 3.0052978713365195,
+        "measured_tokens": 224,
+        "drained_cohort_jobs": 196,
+        "relative_half_window_drift": 0.011124547415087616,
+        "attained_record": false
+      },
+      {
+        "label": "hier-incumbent-s1-g16-qdirect-rdirect",
+        "name": "screen-n56-p12.334490-w8-m32.json",
+        "logical_requests": 56,
+        "home_clients": 2,
+        "warmup_rounds": 8,
+        "measured_rounds": 32,
+        "aggregate_tps": 125111.86392499252,
+        "mfu_percent": 2.953491826376685,
+        "measured_tokens": 1792,
+        "drained_cohort_jobs": 1148,
+        "relative_half_window_drift": -0.0039707559898573,
+        "attained_record": false
+      },
+      {
+        "label": "hier-incumbent-s1-g16-qdirect-rroots",
+        "name": "screen-n56-p12.334490-w2-m4.json",
+        "logical_requests": 56,
+        "home_clients": 2,
+        "warmup_rounds": 2,
+        "measured_rounds": 4,
+        "aggregate_tps": 122158.97079249816,
+        "mfu_percent": 2.883783443355435,
+        "measured_tokens": 224,
+        "drained_cohort_jobs": 196,
+        "relative_half_window_drift": 0.0029476701241404335,
+        "attained_record": false
+      },
+      {
+        "label": "hier-incumbent-s1-g16-qdirect-rroots",
+        "name": "screen-n58-p12.334490-w2-m4.json",
+        "logical_requests": 58,
+        "home_clients": 4,
+        "warmup_rounds": 2,
+        "measured_rounds": 4,
+        "aggregate_tps": 113998.52693266298,
+        "mfu_percent": 2.691141406992851,
+        "measured_tokens": 232,
+        "drained_cohort_jobs": 203,
+        "relative_half_window_drift": 0.007354802836292418,
+        "attained_record": false
+      },
+      {
+        "label": "hier-incumbent-s1-g16-qtree-rroots",
+        "name": "screen-n56-p12.334490-w2-m4.json",
+        "logical_requests": 56,
+        "home_clients": 2,
+        "warmup_rounds": 2,
+        "measured_rounds": 4,
+        "aggregate_tps": 119815.75014110179,
+        "mfu_percent": 2.8284674819095614,
+        "measured_tokens": 224,
+        "drained_cohort_jobs": 196,
+        "relative_half_window_drift": -0.011845276605755628,
+        "attained_record": false
+      },
+      {
+        "label": "hier-incumbent-s1-g8-qdirect-rdirect",
+        "name": "screen-n56-p12.334490-w2-m4.json",
+        "logical_requests": 56,
+        "home_clients": 2,
+        "warmup_rounds": 2,
+        "measured_rounds": 4,
+        "aggregate_tps": 121444.95269059953,
+        "mfu_percent": 2.8669277546806424,
+        "measured_tokens": 224,
+        "drained_cohort_jobs": 196,
+        "relative_half_window_drift": 0.0004633741073309938,
+        "attained_record": false
+      },
+      {
+        "label": "hier-incumbent-s1-g8-qdirect-rdirect",
+        "name": "screen-n58-p12.334490-w2-m4.json",
+        "logical_requests": 58,
+        "home_clients": 4,
+        "warmup_rounds": 2,
+        "measured_rounds": 4,
+        "aggregate_tps": 114924.81112096514,
+        "mfu_percent": 2.713008020543526,
+        "measured_tokens": 232,
+        "drained_cohort_jobs": 203,
+        "relative_half_window_drift": -0.037873605725269543,
+        "attained_record": false
+      }
+    ],
+    "selected_longer_measurement": {
+      "label": "hier-incumbent-s1-g16-qdirect-rdirect",
+      "name": "screen-n56-p12.334490-w8-m32.json",
+      "logical_requests": 56,
+      "home_clients": 2,
+      "warmup_rounds": 8,
+      "measured_rounds": 32,
+      "aggregate_tps": 125111.86392499252,
+      "mfu_percent": 2.953491826376685,
+      "measured_tokens": 1792,
+      "drained_cohort_jobs": 1148,
+      "relative_half_window_drift": -0.0039707559898573,
+      "attained_record": false
+    },
+    "global_output_staging": {
+      "banks": [
+        2,
+        32
+      ],
+      "global_guard_bytes": 1027072,
+      "used_guard_bytes_by_bank_count": {
+        "2": 47104,
+        "32": 692224
+      },
+      "native_nodes": 98767,
+      "original_native_nodes": 98087,
+      "added_native_copies": 640,
+      "added_zero_service_nodes": 40,
+      "lifted_optimized_order_targets": 2,
+      "lifted_calendar_order_models": 70,
+      "successful_calendar_order_models": 32,
+      "reported_infeasible_without_farkas_certificate": 38,
+      "best_successful_fixed_order_mfu_target_percent": 3.819043233001901,
+      "best_order_index": 49,
+      "native_closed_loop_replay_complete": false,
+      "mfu_claimed": false
+    },
+    "research_sources": [
+      {
+        "url": "https://docs.flashinfer.ai/tutorials/recursive_attention.html",
+        "checked": "2026-11-04 Asia/Shanghai",
+        "claim": "The primary recursive-attention tutorial defines attention states as normalized output plus log-sum-exp and describes their associative merge. Applying the algebra to LP30 home groups is an inference here; GPU kernels or performance do not calibrate LP30 execution."
+      }
+    ],
+    "scope": "Finite native analytical hierarchical-home attention comparison and an independently retained global-output staging prototype. Query relay and FP32 partial LSE reduction explicitly reuse retired scratch; target QKV, O projection and FFN remain. Selected hierarchy schedules remain below the existing decode record. Staged-output fixed-order numerical targets, including seventy lifted supplied calendars, are not closed-loop measurements and do not exhaust resource orders. Compiler execution, physical banks, fixed neighbor/relay mapping, multi-rack calibration and matching experimental-cache quality remain unverified.",
+    "validation": {
+      "status": "passed",
+      "artifact_sha256": "cc38a13a979f34f4242f38b3263a72a673db0aa672c3f50baf213a1ebd03b39a",
+      "source_sha256": "9dfe67e50e9ab76edafd96f37033622e8ae62b2abb3a03f0d233a81920e2407e",
+      "checked": {
+        "preserved_qkv_prefixes": 1664,
+        "preserved_output_shards": 1664,
+        "native_copies": 33502,
+        "vector_budgets": 13676,
+        "home_attention_kernels": 26000,
+        "fp32_home_merges": 624,
+        "routed_phases": 2084,
+        "home_scratch_overlay_lifetimes": 624,
+        "integrated_extra_nodes": 58400,
+        "staged_output_order_primal_dual_models": 32
+      },
+      "screens": [
+        {
+          "label": "hier-incumbent-s1-g16-qdirect-rdirect",
+          "name": "screen-n56-p12.334490-w2-m4.json",
+          "requests": 56,
+          "mfu_percent": 3.0052978713365195,
+          "aggregate_tps": 127306.40219647923,
+          "measured_tokens": 224,
+          "drained_jobs": 196,
+          "relative_half_window_drift": 0.011124547415087616
+        },
+        {
+          "label": "hier-incumbent-s1-g16-qdirect-rdirect",
+          "name": "screen-n56-p12.334490-w8-m32.json",
+          "requests": 56,
+          "mfu_percent": 2.953491826376685,
+          "aggregate_tps": 125111.86392499252,
+          "measured_tokens": 1792,
+          "drained_jobs": 1148,
+          "relative_half_window_drift": -0.0039707559898573
+        },
+        {
+          "label": "hier-incumbent-s1-g16-qdirect-rroots",
+          "name": "screen-n56-p12.334490-w2-m4.json",
+          "requests": 56,
+          "mfu_percent": 2.883783443355435,
+          "aggregate_tps": 122158.97079249816,
+          "measured_tokens": 224,
+          "drained_jobs": 196,
+          "relative_half_window_drift": 0.0029476701241404335
+        },
+        {
+          "label": "hier-incumbent-s1-g16-qdirect-rroots",
+          "name": "screen-n58-p12.334490-w2-m4.json",
+          "requests": 58,
+          "mfu_percent": 2.691141406992851,
+          "aggregate_tps": 113998.52693266298,
+          "measured_tokens": 232,
+          "drained_jobs": 203,
+          "relative_half_window_drift": 0.007354802836292418
+        },
+        {
+          "label": "hier-incumbent-s1-g16-qtree-rroots",
+          "name": "screen-n56-p12.334490-w2-m4.json",
+          "requests": 56,
+          "mfu_percent": 2.8284674819095614,
+          "aggregate_tps": 119815.75014110179,
+          "measured_tokens": 224,
+          "drained_jobs": 196,
+          "relative_half_window_drift": -0.011845276605755628
+        },
+        {
+          "label": "hier-incumbent-s1-g8-qdirect-rdirect",
+          "name": "screen-n56-p12.334490-w2-m4.json",
+          "requests": 56,
+          "mfu_percent": 2.8669277546806424,
+          "aggregate_tps": 121444.95269059953,
+          "measured_tokens": 224,
+          "drained_jobs": 196,
+          "relative_half_window_drift": 0.0004633741073309938
+        },
+        {
+          "label": "hier-incumbent-s1-g8-qdirect-rdirect",
+          "name": "screen-n58-p12.334490-w2-m4.json",
+          "requests": 58,
+          "mfu_percent": 2.713008020543526,
+          "aggregate_tps": 114924.81112096514,
+          "measured_tokens": 232,
+          "drained_jobs": 203,
+          "relative_half_window_drift": -0.037873605725269543
+        }
+      ],
+      "staged_output_numerical_targets": [
+        {
+          "banks": 2,
+          "fixed_order_mfu_target_percent": 3.8181781151616523,
+          "numerical": {
+            "duality_gap_ns": -7.821654435247183e-11,
+            "variables": 98768,
+            "constraints": 191498
+          },
+          "periodic_interval_audit": {
+            "nodes": 98767,
+            "resources": 13854,
+            "leases": 102
+          }
+        },
+        {
+          "banks": 32,
+          "fixed_order_mfu_target_percent": 3.8181781151616523,
+          "numerical": {
+            "duality_gap_ns": -7.821654435247183e-11,
+            "variables": 98768,
+            "constraints": 191498
+          },
+          "periodic_interval_audit": {
+            "nodes": 98767,
+            "resources": 13854,
+            "leases": 102
+          },
+          "calendar_orders": 70,
+          "successful_numerical_targets": [
+            {
+              "index": 28,
+              "mfu_percent": 3.591338530054859,
+              "numerical": {
+                "duality_gap_ns": 1.9281287677586079e-10,
+                "variables": 98768,
+                "constraints": 192169
+              }
+            },
+            {
+              "index": 29,
+              "mfu_percent": 3.5315681062687623,
+              "numerical": {
+                "duality_gap_ns": 6.184563972055912e-11,
+                "variables": 98768,
+                "constraints": 192178
+              }
+            },
+            {
+              "index": 30,
+              "mfu_percent": 3.4336816820747895,
+              "numerical": {
+                "duality_gap_ns": -7.821654435247183e-11,
+                "variables": 98768,
+                "constraints": 192178
+              }
+            },
+            {
+              "index": 31,
+              "mfu_percent": 3.3119086844246297,
+              "numerical": {
+                "duality_gap_ns": 2.837623469531536e-10,
+                "variables": 98768,
+                "constraints": 192178
+              }
+            },
+            {
+              "index": 32,
+              "mfu_percent": 3.0390258444487057,
+              "numerical": {
+                "duality_gap_ns": 7.09405867382884e-11,
+                "variables": 98768,
+                "constraints": 192169
+              }
+            },
+            {
+              "index": 33,
+              "mfu_percent": 2.828538828259993,
+              "numerical": {
+                "duality_gap_ns": 5.748006515204906e-10,
+                "variables": 98768,
+                "constraints": 192180
+              }
+            },
+            {
+              "index": 34,
+              "mfu_percent": 2.4839315133184727,
+              "numerical": {
+                "duality_gap_ns": -2.1354935597628355e-09,
+                "variables": 98768,
+                "constraints": 192178
+              }
+            },
+            {
+              "index": 35,
+              "mfu_percent": 1.9799771797819956,
+              "numerical": {
+                "duality_gap_ns": -2.1318555809557438e-09,
+                "variables": 98768,
+                "constraints": 192180
+              }
+            },
+            {
+              "index": 48,
+              "mfu_percent": 3.8181781151616523,
+              "numerical": {
+                "duality_gap_ns": -7.821654435247183e-11,
+                "variables": 98768,
+                "constraints": 191498
+              }
+            },
+            {
+              "index": 49,
+              "mfu_percent": 3.8190432330019015,
+              "numerical": {
+                "duality_gap_ns": -6.730260793119669e-11,
+                "variables": 98768,
+                "constraints": 191498,
+                "periodic_interval_audit": {
+                  "nodes": 98767,
+                  "resources": 13854,
+                  "leases": 102
+                }
+              }
+            },
+            {
+              "index": 50,
+              "mfu_percent": 3.817648110435314,
+              "numerical": {
+                "duality_gap_ns": 4.9112713895738125e-11,
+                "variables": 98768,
+                "constraints": 191498
+              }
+            },
+            {
+              "index": 51,
+              "mfu_percent": 3.810392604676148,
+              "numerical": {
+                "duality_gap_ns": 5.638867150992155e-11,
+                "variables": 98768,
+                "constraints": 191498
+              }
+            },
+            {
+              "index": 52,
+              "mfu_percent": 3.803164625029588,
+              "numerical": {
+                "duality_gap_ns": 5.820766091346741e-11,
+                "variables": 98768,
+                "constraints": 191498
+              }
+            },
+            {
+              "index": 53,
+              "mfu_percent": 3.79954198991796,
+              "numerical": {
+                "duality_gap_ns": -5.4569682106375694e-12,
+                "variables": 98768,
+                "constraints": 191498
+              }
+            },
+            {
+              "index": 54,
+              "mfu_percent": 3.7842095744491333,
+              "numerical": {
+                "duality_gap_ns": -3.637978807091713e-12,
+                "variables": 98768,
+                "constraints": 191498
+              }
+            },
+            {
+              "index": 55,
+              "mfu_percent": 3.774554378954157,
+              "numerical": {
+                "duality_gap_ns": -5.4569682106375694e-12,
+                "variables": 98768,
+                "constraints": 191503
+              }
+            },
+            {
+              "index": 56,
+              "mfu_percent": 3.774554378954157,
+              "numerical": {
+                "duality_gap_ns": -5.4569682106375694e-12,
+                "variables": 98768,
+                "constraints": 191503
+              }
+            },
+            {
+              "index": 57,
+              "mfu_percent": 3.774554378954157,
+              "numerical": {
+                "duality_gap_ns": -5.4569682106375694e-12,
+                "variables": 98768,
+                "constraints": 191503
+              }
+            },
+            {
+              "index": 58,
+              "mfu_percent": 3.774554378954157,
+              "numerical": {
+                "duality_gap_ns": -5.4569682106375694e-12,
+                "variables": 98768,
+                "constraints": 191503
+              }
+            },
+            {
+              "index": 59,
+              "mfu_percent": 3.774554378954157,
+              "numerical": {
+                "duality_gap_ns": -5.4569682106375694e-12,
+                "variables": 98768,
+                "constraints": 191503
+              }
+            },
+            {
+              "index": 60,
+              "mfu_percent": 3.774554378954157,
+              "numerical": {
+                "duality_gap_ns": -5.4569682106375694e-12,
+                "variables": 98768,
+                "constraints": 191503
+              }
+            },
+            {
+              "index": 61,
+              "mfu_percent": 3.774554378954157,
+              "numerical": {
+                "duality_gap_ns": -5.4569682106375694e-12,
+                "variables": 98768,
+                "constraints": 191503
+              }
+            },
+            {
+              "index": 62,
+              "mfu_percent": 3.774554378954157,
+              "numerical": {
+                "duality_gap_ns": -5.4569682106375694e-12,
+                "variables": 98768,
+                "constraints": 191503
+              }
+            },
+            {
+              "index": 63,
+              "mfu_percent": 3.703577270807337,
+              "numerical": {
+                "duality_gap_ns": -5.4569682106375694e-12,
+                "variables": 98768,
+                "constraints": 191498
+              }
+            },
+            {
+              "index": 64,
+              "mfu_percent": 3.591114191743109,
+              "numerical": {
+                "duality_gap_ns": -4.347384674474597e-10,
+                "variables": 98768,
+                "constraints": 191500
+              }
+            },
+            {
+              "index": 65,
+              "mfu_percent": 3.5315681062687623,
+              "numerical": {
+                "duality_gap_ns": 6.184563972055912e-11,
+                "variables": 98768,
+                "constraints": 191503
+              }
+            },
+            {
+              "index": 66,
+              "mfu_percent": 3.438986572682484,
+              "numerical": {
+                "duality_gap_ns": 6.366462912410498e-11,
+                "variables": 98768,
+                "constraints": 191498
+              }
+            },
+            {
+              "index": 67,
+              "mfu_percent": 3.292107604877242,
+              "numerical": {
+                "duality_gap_ns": -1.7462298274040222e-10,
+                "variables": 98768,
+                "constraints": 191500
+              }
+            },
+            {
+              "index": 68,
+              "mfu_percent": 3.089691694097667,
+              "numerical": {
+                "duality_gap_ns": -7.530616130679846e-10,
+                "variables": 98768,
+                "constraints": 191498
+              }
+            },
+            {
+              "index": 69,
+              "mfu_percent": 2.8292510533091892,
+              "numerical": {
+                "duality_gap_ns": 7.60337570682168e-10,
+                "variables": 98768,
+                "constraints": 191503
+              }
+            },
+            {
+              "index": 70,
+              "mfu_percent": 2.501178990460016,
+              "numerical": {
+                "duality_gap_ns": 5.093170329928398e-11,
+                "variables": 98768,
+                "constraints": 191498
+              }
+            },
+            {
+              "index": 71,
+              "mfu_percent": 2.0597944627317784,
+              "numerical": {
+                "duality_gap_ns": -2.2737367544323206e-09,
+                "variables": 98768,
+                "constraints": 191498
+              }
+            }
+          ],
+          "reported_infeasible_without_farkas_certificate": 38
+        }
+      ],
+      "prior_records_unchanged": true,
+      "maximum_certified": false,
+      "black_version": "24.2.0",
+      "formatted_and_checked_files": 585,
+      "production_source_unchanged": true,
+      "sentence_layout": "passed",
+      "wording": "passed",
+      "local_links_checked": 35,
+      "diff_check": "passed",
+      "scope": "Documentation and experiment evidence only; native operator costs, scratch reuse, all successful output-staging primal/dual models and selected full interval witnesses are checked. Production simulation code remains unchanged. Physical compilation, banks, fixed wiring and matching shared-cache quality remain unverified."
+    },
+    "next_actions": [
+      "Validate the separate QKV projection-broadcast placement with complete native weight provenance, nonuniform KV ownership, copies, routes and request-feedback replay.",
+      "Generate fresh calendars and resource orders for staged global outputs; retain full guard and safety charges and verify native closed-loop behavior before assigning attained MFU.",
+      "Continue other model partitions, request counts, kernel placements, inventory counts and physical compilation/quality validation."
+    ]
+  },
+  "qkv_projection_broadcast_capacity": {
+    "status": "passed_conditional_projection_broadcast_capacity_screen",
+    "turn_classification": "progress",
+    "artifact": "experiments/lpx/qkv-projection-broadcast-capacity.json",
+    "artifact_sha256": "f231e618ee136e7b4799b4701d6bf5ad2dc88ee0fac373154ce64c5e52fb6069",
+    "source_sha256": "9dfe67e50e9ab76edafd96f37033622e8ae62b2abb3a03f0d233a81920e2407e",
+    "chips": 445,
+    "proposed_requests": 56,
+    "removed_duplicate_qkv_weight_bytes": 6936330240,
+    "charged_guard_bytes": 1027072,
+    "used_guard_bytes": 155648,
+    "minimum_56_request_headroom_bytes": 5196222,
+    "native_deduplicated_weight_admission": false,
+    "numerical_and_routing_validated": false,
+    "native_closed_loop_replay_complete": false,
+    "mfu_claimed": false,
+    "maximum_certified": false,
+    "scope": "Capacity-only design inference that removes seven unused duplicate FP8 QKV matrices per eight-way global CP group and broadcasts normalized queries plus rotary-K/value deltas from its one projection root. Original non-QKV weights, auxiliary data, both native active frames, charged vocabulary guard, five-MB safety and independent KV watermark remain. The derived 56-request placement fits; 57/58 fail this declared rank/block policy. Fresh weight provenance, broadcast copies/routes, unique append ownership, nonuniform core costs and request-feedback performance remain unverified. This is not an attained serving result."
   }
 }
