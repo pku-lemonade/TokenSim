@@ -2,7 +2,7 @@
   "record_date": "2026-11-03",
   "goal": "Find the highest useful MFU for Gemma 4 31B serving with a 100K input; explore inventories beyond 256 LP30 chips.",
   "maximum_certified": false,
-  "status": "Pure LP30 search continues without a TPS floor. A 432-row exact rational cycle bounds the supplied cyclic resource order at 3.558002959680344% MFU, independent of resident count. A 448-output native replay reaches 3.558002959671% and drains all 574 submitted forwards with original services, dependencies, resources and full fourteen-request scratch policy. Forty anchored and twelve backward calendar trials yield no eligible witness; eight specified reordered LP models are reported infeasible. These results certify a conditional cycle bound and do not exhaust alternate orders, placements, operators, chip counts, physical compilation or shared-cache quality. Existing-format decode and prompt-inclusive serving records remain unchanged.",
+  "status": "Pure LP30 MFU search continues without a TPS floor. A research heterogeneous pipeline on 423 chips reaches 3.699683848029% MFU with 54 resident requests and two complete frames. Native closed-loop replay measures 1,728 outputs and drains all 2,214 forwards. Eight distinct native component bodies, twenty compositions, four hundred initial calendars and sixty-eight numerical cyclic-order models extend the search. Multi-rack timing, heterogeneous compilation, physical banks and shared-cache quality remain unverified. The global maximum is unproven. Existing-format decode and prompt-inclusive serving records remain unchanged.",
   "shared_timing_config": {
     "operator": {
       "activation_dtype": "bf16",
@@ -11610,7 +11610,33 @@
     },
     "multi_group_focused_tests_passed": 43,
     "multi_group_new_tests": 12,
-    "multi_group_focused_log": "/private/tmp/lpx-af-groups-focused.log"
+    "multi_group_focused_log": "/private/tmp/lpx-af-groups-focused.log",
+    "heterogeneous_tp_evidence": {
+      "status": "passed",
+      "artifact_sha256": "d3c12d1719844525da9b8d2ea8b98009c7f31196e544a2bea922c42812ce822c",
+      "native_bodies": 10,
+      "original_interval_audit": {
+        "nodes": 37295,
+        "resources": 12995,
+        "leases": 82
+      },
+      "delayed_interval_audit": {
+        "nodes": 37295,
+        "resources": 12995,
+        "leases": 82
+      },
+      "numerical_duality_gap_ns": 7.275957614183426e-12,
+      "replays": 2,
+      "previous_records_preserved": true,
+      "black_version": "24.2.0",
+      "formatted_and_checked_files": 582,
+      "source_sha256_unchanged": "ae29c716bbf5693a8c9d70df1ee5c6435c3e93af93781bcc5aff57c2e8074986",
+      "sentence_layout": "passed",
+      "wording": "passed",
+      "local_links_checked": 3,
+      "diff_check": "passed",
+      "scope": "Documentation and experiment evidence; production simulation source is unchanged."
+    }
   },
   "sources": [
     "https://developer.nvidia.com/blog/inside-nvidia-groq-3-lpx-the-low-latency-inference-accelerator-for-the-nvidia-vera-rubin-platform/",
@@ -115216,7 +115242,7 @@
   ],
   "source_cpp_sha256": "8118adb459ae6870d4a441217e4b4bfdef54f6b5a5f7a4e93cc6787cdf70aa57",
   "pending_experiments": [],
-  "last_updated_utc": "2026-11-03T07:58:28.253597+00:00",
+  "last_updated_utc": "2026-11-03T09:38:02.567330+00:00",
   "empirical_100k_gpu_acceptance": {
     "measurements": [
       {
@@ -133749,26 +133775,47 @@
     ]
   },
   "best_experimental_shared_cache_non_speculative": {
-    "chips": 163,
+    "chips": 423,
     "layout": {
-      "tp": 16,
-      "pp": 10,
-      "kvp": 4,
+      "kind": "heterogeneous_native_segments",
+      "repeated_blocks": 10,
+      "local_segments": [
+        {
+          "tp": 4,
+          "layers": 2
+        },
+        {
+          "tp": 4,
+          "layers": 2
+        },
+        {
+          "tp": 2,
+          "layers": 1
+        }
+      ],
+      "global_segment": {
+        "tp": 32,
+        "kvp": 8,
+        "layers": 1
+      },
+      "pp": 40,
       "pool_chips": 3
     },
-    "resident_requests": 14,
+    "resident_requests": 54,
     "slots": 2,
     "cache_layout": "value_rope_fp8",
     "kernel": "split_dot",
-    "mfu_percent": 3.5580029596708163,
-    "aggregate_tps": 55207.31418751002,
-    "issue_us": 18.113541923102037,
+    "mfu_percent": 3.6996838480290695,
+    "aggregate_tps": 148973.04366578697,
+    "issue_us": 6.712623810274445,
     "global_optimum_certified": false,
     "matching_quality_verified": false,
     "compiler_storage_allocation_verified": false,
-    "record_ref": "cyclic_order_optimization.native_replay_summary",
-    "artifact": "experiments/lpx/cyclic-order-optimization-search.json.gz",
-    "scope": "All native dependencies, service times, physical resources and release indices remain. Only readiness delays are added to construct a legal periodic schedule. Two active/input frames, full duplicated native scratch, the vocabulary backcharge, 5 MB safety reserve, native KV rounding and watermark are retained. Physical banks, compiler schedules and shared-cache quality are unverified."
+    "heterogeneous_tp_compilation_verified": false,
+    "multirack_timing_calibrated": false,
+    "record_ref": "heterogeneous_tp_search.native_replay_summary",
+    "artifact": "experiments/lpx/heterogeneous-tp-search.json.gz",
+    "scope": "Research composition of native replicated-input/output segments with heterogeneous TP. Additional barriers join every segment before handoff. Full copied scratch and explicit input rows reserve two active/input frames per TF chip. Four conservative head query rows cover two embedding and two logits workspaces. Every original non-host service, native edge and vector resource remains; one explicit 4 us host replaces per-component hosts. Physical compiler execution, banks, multirack timing and shared-cache quality remain unverified. The selected two-frame pipeline additionally reserves a second complete native communication workspace on every transformer chip. Fresh native admission and max-plus-one rejection retain the same capacities. Fresh captured node bodies are bit identical, so compute and communication pricing, dependencies and replay schedules are unchanged. SRAM bank allocation and physical compiler execution remain unverified."
   },
   "previous_milestone_commit": "d7dc70ea29112712ea30727d9d234afe912b80f8",
   "shared_kv_workspace_and_batch_search": {
@@ -310549,5 +310596,151 @@
         "diff_check": "passed"
       }
     }
+  },
+  "heterogeneous_tp_search": {
+    "status": "complete_finite_heterogeneous_tp_study",
+    "turn_classification": "progress",
+    "base_commit": "71be828f4b90ca84b0d82ec651c24cc1fb942d7e",
+    "source_sha256": "ae29c716bbf5693a8c9d70df1ee5c6435c3e93af93781bcc5aff57c2e8074986",
+    "artifact": "experiments/lpx/heterogeneous-tp-search.json.gz",
+    "artifact_sha256": "d3c12d1719844525da9b8d2ea8b98009c7f31196e544a2bea922c42812ce822c",
+    "document": "docs/lpx-heterogeneous-tp-search.md",
+    "hardware": "pure LP30",
+    "minimum_tps": null,
+    "maximum_certified": false,
+    "homogeneous_screen": {
+      "points": 1665,
+      "surviving_points": 17,
+      "scope": "Conditional supplied homogeneous TP/DCP/ownership families with the archived maximum-resident capacity union. The envelope gives extra frames and boundary work zero bytes and removes the vocabulary backcharge. Layer costs independently minimize over the three supplied native kernels. Full embedding, normalization, logits, head communication, host work and pipeline wire bytes cost zero; three head chips remain allocated. Every adjacent pipeline cut costs only the minimum 0.35 us propagation. Heterogeneous layouts, other kernels, changed work and unrepresented physical schedules are not excluded."
+    },
+    "native_components": 16,
+    "distinct_component_bodies": 8,
+    "compositions": 20,
+    "initial_calendar_trials": 400,
+    "initial_cyclic_lp_cases": 32,
+    "feedback_calendar_trials": 46,
+    "additional_cyclic_lp_cases": 36,
+    "additional_lp_successes": 11,
+    "numerical_lp_infeasible": 25,
+    "previous_record": {
+      "chips": 163,
+      "layout": {
+        "tp": 16,
+        "pp": 10,
+        "kvp": 4,
+        "pool_chips": 3
+      },
+      "resident_requests": 14,
+      "slots": 2,
+      "cache_layout": "value_rope_fp8",
+      "kernel": "split_dot",
+      "mfu_percent": 3.5580029596708163,
+      "aggregate_tps": 55207.31418751002,
+      "issue_us": 18.113541923102037,
+      "global_optimum_certified": false,
+      "matching_quality_verified": false,
+      "compiler_storage_allocation_verified": false,
+      "record_ref": "cyclic_order_optimization.native_replay_summary",
+      "artifact": "experiments/lpx/cyclic-order-optimization-search.json.gz",
+      "scope": "All native dependencies, service times, physical resources and release indices remain. Only readiness delays are added to construct a legal periodic schedule. Two active/input frames, full duplicated native scratch, the vocabulary backcharge, 5 MB safety reserve, native KV rounding and watermark are retained. Physical banks, compiler schedules and shared-cache quality are unverified."
+    },
+    "native_replay_summary": {
+      "chips": 423,
+      "transformer_chips": 420,
+      "head_chips": 3,
+      "stages": 40,
+      "resident": 54,
+      "frames": 2,
+      "period_s": 6.712623810274444e-06,
+      "latency_s": 0.0003587658535202436,
+      "mfu_percent": 3.6996838480290695,
+      "aggregate_tps": 148973.04366578697,
+      "measured_tokens": 1728,
+      "drained_forwards": 2214,
+      "added_delay_nodes": 9904,
+      "minimum_watermark_adjusted_headroom_bytes": 378990,
+      "interval_audit": {
+        "status": "passed",
+        "checked_nodes": 37295,
+        "physical_resources": 12913,
+        "arena_resources": 82,
+        "lease_release_descendants": 82,
+        "neighboring_copies": 3,
+        "maximum_floating_overlap_s": 0.0,
+        "feedback_fits": true
+      },
+      "convergence": {
+        "earlier_half_tps": 148973.04366580173,
+        "later_half_tps": 148973.04366577222,
+        "relative_change": -1.9806378759312793e-13
+      },
+      "additional_protocol_bytes_per_tf_chip": 21504
+    },
+    "scope": "Research composition of native replicated-input/output segments with heterogeneous TP. Additional barriers join every segment before handoff. Full copied scratch and explicit input rows reserve two active/input frames per TF chip. Four conservative head query rows cover two embedding and two logits workspaces. Every original non-host service, native edge and vector resource remains; one explicit 4 us host replaces per-component hosts. Physical compiler execution, banks, multirack timing and shared-cache quality remain unverified. The selected two-frame pipeline additionally reserves a second complete native communication workspace on every transformer chip. Fresh native admission and max-plus-one rejection retain the same capacities. Fresh captured node bodies are bit identical, so compute and communication pricing, dependencies and replay schedules are unchanged. SRAM bank allocation and physical compiler execution remain unverified.",
+    "open_directions": [
+      "Refine heterogeneous cyclic orders and phase assignments.",
+      "Test independent per-segment batch widths and additional cuts.",
+      "Verify heterogeneous TP compilation and physical buffer banks.",
+      "Calibrate multi-rack timing and check shared-cache model quality.",
+      "Optimize prompt-inclusive complete-request serving separately."
+    ],
+    "duplicated_protocol_control": {
+      "status": "passed_native_duplicated_protocol_admission",
+      "resident": 54,
+      "frames": 2,
+      "added_protocol_bytes_per_tf_chip": 21504,
+      "minimum_watermark_adjusted_headroom_bytes": 378990,
+      "scope": "The selected two-frame pipeline additionally reserves a second complete native communication workspace on every transformer chip. Fresh native admission and max-plus-one rejection retain the same capacities. Fresh captured node bodies are bit identical, so compute and communication pricing, dependencies and replay schedules are unchanged. SRAM bank allocation and physical compiler execution remain unverified."
+    },
+    "additional_protocol_component_captures": 3,
+    "native_component_capture_count_total": 19,
+    "validation": {
+      "status": "passed",
+      "artifact_sha256": "d3c12d1719844525da9b8d2ea8b98009c7f31196e544a2bea922c42812ce822c",
+      "native_bodies": 10,
+      "original_interval_audit": {
+        "nodes": 37295,
+        "resources": 12995,
+        "leases": 82
+      },
+      "delayed_interval_audit": {
+        "nodes": 37295,
+        "resources": 12995,
+        "leases": 82
+      },
+      "numerical_duality_gap_ns": 7.275957614183426e-12,
+      "replays": 2,
+      "previous_records_preserved": true,
+      "black_version": "24.2.0",
+      "formatted_and_checked_files": 582,
+      "source_sha256_unchanged": "ae29c716bbf5693a8c9d70df1ee5c6435c3e93af93781bcc5aff57c2e8074986",
+      "sentence_layout": "passed",
+      "wording": "passed",
+      "local_links_checked": 3,
+      "diff_check": "passed",
+      "scope": "Documentation and experiment evidence; production simulation source is unchanged."
+    }
+  },
+  "best_homogeneous_experimental_shared_cache_non_speculative": {
+    "chips": 163,
+    "layout": {
+      "tp": 16,
+      "pp": 10,
+      "kvp": 4,
+      "pool_chips": 3
+    },
+    "resident_requests": 14,
+    "slots": 2,
+    "cache_layout": "value_rope_fp8",
+    "kernel": "split_dot",
+    "mfu_percent": 3.5580029596708163,
+    "aggregate_tps": 55207.31418751002,
+    "issue_us": 18.113541923102037,
+    "global_optimum_certified": false,
+    "matching_quality_verified": false,
+    "compiler_storage_allocation_verified": false,
+    "record_ref": "cyclic_order_optimization.native_replay_summary",
+    "artifact": "experiments/lpx/cyclic-order-optimization-search.json.gz",
+    "scope": "All native dependencies, service times, physical resources and release indices remain. Only readiness delays are added to construct a legal periodic schedule. Two active/input frames, full duplicated native scratch, the vocabulary backcharge, 5 MB safety reserve, native KV rounding and watermark are retained. Physical banks, compiler schedules and shared-cache quality are unverified."
   }
 }
