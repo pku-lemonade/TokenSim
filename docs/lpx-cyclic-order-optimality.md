@@ -109,6 +109,7 @@ The long control records actual resource occupancy and drains every submitted fo
 The [compressed experiment record](../experiments/lpx/cyclic-order-optimization-search.json.gz) retains all 52 calendar trials, ten LP receipts, complete base constraints, changed-order constraint deltas, primal/dual data, the exact rational certificate, both native replays, drained traces and reproduction sources.
 Local native program bodies are identified by their file hashes.
 Independent checks validate both 96,774-node programs, the portable rational certificate and the base primal/dual constraints.
+The validation script compares prior records against the pinned base revision `984ae3a`.
 Pinned Black formatting and checking leave all 582 Python files unchanged.
 The simulation source identity remains `ae29c716bbf5693a8c9d70df1ee5c6435c3e93af93781bcc5aff57c2e8074986`.
 The existing-format decode and prompt-inclusive serving records remain unchanged.

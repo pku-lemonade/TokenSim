@@ -115216,7 +115216,7 @@
   ],
   "source_cpp_sha256": "8118adb459ae6870d4a441217e4b4bfdef54f6b5a5f7a4e93cc6787cdf70aa57",
   "pending_experiments": [],
-  "last_updated_utc": "2026-11-03T07:52:37.209349+00:00",
+  "last_updated_utc": "2026-11-03T07:58:28.253597+00:00",
   "empirical_100k_gpu_acceptance": {
     "measurements": [
       {
@@ -310226,7 +310226,7 @@
     "minimum_tps": null,
     "maximum_certified": false,
     "artifact": "experiments/lpx/cyclic-order-optimization-search.json.gz",
-    "artifact_sha256": "9307c8a52becc405c7ce7c775bc27805335bcf59bf615053c7ee42a08a6d58fb",
+    "artifact_sha256": "10e0f6b8da3cfea7a2da39812de524d2ff191118f91403bf226424230ae9a598",
     "document": "docs/lpx-cyclic-order-optimality.md",
     "heuristic_trials": 52,
     "lp_cases": 10,
