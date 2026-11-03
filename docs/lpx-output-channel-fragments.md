@@ -3,8 +3,8 @@
 The native attention planner now supports equal output-channel fragments within an attention head when context parallelism supplies complete query heads on each rank.
 This removes the previous whole-output-head restriction that prevented Gemma's global layers from using tensor parallelism (TP) 64, 128 or 256.
 The completed experiment captures 67 native graphs from 84 configurations and evaluates 93,888 conditional throughput bounds.
-The current attained decode record remains approximately 3.822824% model floating-point operation utilization (MFU), as recorded in the [mixed-stage cohort study](lpx-mixed-stage-cohort-search.md).
-Wider complete pipelines remain under evaluation.
+The subsequent [boundary-pool and wider-pipeline study](lpx-boundary-pool-width-search.md) raises the attained decode record to approximately 3.827772% model floating-point operation utilization (MFU) on 445 chips.
+It completes 88 wider compositions and measures a selected 884-chip native replay at approximately 3.357712% MFU.
 The objective remains pure LP30 hardware, MFU priority and no minimum tokens per second (TPS).
 The objective-wide maximum remains unproven.
 
@@ -118,7 +118,7 @@ The fabric assigns fewer lanes per peer to sufficiently wide dense collectives, 
 Four native controls compare offsets 0, 64, 128 and 192 against reconstructed dense fabric phases.
 Offsets 64 and 128 each expose four wire-resource set differences from the earlier translation rule.
 Reconstruction preserves unit wire time, propagation time and single-program native duration while retaining the physical port sets at the new placement.
-The ongoing multi-stage search uses that reconstruction.
+The subsequent multi-stage study uses that reconstruction.
 
 ## Validation and evidence
 

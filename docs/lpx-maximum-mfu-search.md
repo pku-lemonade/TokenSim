@@ -13,7 +13,7 @@ The existing-format non-speculative decode incumbent reaches 3.03914% MFU on 163
 It places transformer layers on 160 chips and the tied embedding and language-model (LM) head on three additional chips.
 Assistant-aware draft and verification replays provide conditional acceptance scenarios and explicit transports of the repository's measured 100K GPU acceptance.
 The measured GPU KV and assistant precision differ from some LP30 configurations.
-The current experimental shared global-cache decode record reaches approximately 3.822824% MFU on 444 chips with 54 resident requests using [mixed local/global batch widths](lpx-mixed-stage-cohort-search.md).
+The current experimental shared global-cache decode record reaches approximately 3.827772% MFU on 445 chips with 54 resident requests using [mixed local/global batch widths and a five-chip boundary pool](lpx-boundary-pool-width-search.md).
 Matching model quality, physical compiler execution, SRAM banks and multi-rack timing remain unverified.
 The 5 MB per-chip safety reserve remains enabled.
 The [complete-request serving study](lpx-complete-serving-mfu.md) adds a separate MFU metric for a 100K prompt followed by 2K outputs, with explicit PP activation buffers and request completion.
@@ -50,8 +50,12 @@ The [mixed-stage cohort study](lpx-mixed-stage-cohort-search.md) evaluates twelv
 Its paired local requests and separate global executions reach approximately 161,573.433 TPS, with 1,728 measured outputs and 1,107 paired jobs drained in the long replay.
 Alternative cyclic orders and other memory placements remain open.
 The [output-channel fragment study](lpx-output-channel-fragments.md) adds native TP64, TP128 and TP256 global geometries with complete Q/K heads and explicit partial-head O shards.
-Its completed 84-configuration catalog and 93,888-point bound screen leave 531 supplied batch-two or batch-four points above the attained record.
-Full schedules for wider groups remain under evaluation, with explicit reconstruction of their physical port resources.
+Its completed 84-configuration catalog and 93,888-point bound screen leave 531 supplied batch-two or batch-four points above the previous 3.822824% record.
+The [boundary-pool and wider-pipeline study](lpx-boundary-pool-width-search.md) constructs 88 wider compositions and 21 head-width variants with explicit physical port ownership.
+Its selected 884-chip wider replay reaches 3.357712% MFU, while a fifth boundary chip in the 440-chip transformer layout raises the attained record to 3.827772%.
+The integer head-width envelope excludes widths outside three through 21 for this fixed transformer layout, request count and policy relative to the previous record.
+A separate pure-LP30 SRAM exchange proposal passes capacity and byte-ownership controls for 58 logical requests on 445 chips.
+Its native global plan retains 54 physical cache slots, and its packet timing and MFU remain unmeasured.
 
 ## Metric and workload
 

@@ -2,7 +2,7 @@
   "record_date": "2026-11-03",
   "goal": "Find the highest useful MFU for Gemma 4 31B serving with a 100K input; explore inventories beyond 256 LP30 chips.",
   "maximum_certified": false,
-  "status": "Pure LP30 MFU search continues without a TPS floor. Native within-head output-channel fragments now support wider global groups while preserving complete Q/K heads, repeated FP32 LSE costs and nonzero O shards. An 84-configuration native catalog captures 67 graphs; 93,888 necessary repeated-block bounds leave 531 supplied batch-two/four points across 85 classes. Six whole-head controls reproduce prior native nodes and admission exactly. The attained decode record remains 3.822823729747% on 444 chips. Full wider-pipeline composition and replay remain under evaluation; objective-wide optimality, physical compilation, banks, shared-cache quality and multi-rack timing remain unverified.",
+  "status": "Pure LP30 MFU search continues without a TPS floor. Twenty-one native head-width captures, 1,368 calendars and 1,334 fixed-order models raise the experimental shared-cache decode record to 3.827772117064% on 445 chips with 54 requests. The longer native replay measures 1,728 outputs and drains all 1,107 paired jobs. Eighty-eight wider compositions and seven calibrated cases provide no higher tested MFU; the selected 884-chip native replay reaches 3.357712032956%. A different SRAM exchange policy passes fresh local admission and byte-owner controls for 58 logical requests, retaining 54 global physical slots, but its timing and MFU remain unmeasured. Objective-wide optimality, physical compilation, banks, matching shared-cache quality and multi-rack timing remain unverified.",
   "shared_timing_config": {
     "operator": {
       "activation_dtype": "bf16",
@@ -11666,6 +11666,204 @@
       "sentence_layout": "passed",
       "wording": "passed",
       "links_checked": 5,
+      "diff_check": "passed"
+    },
+    "boundary_width_and_wide_pipeline_evidence": {
+      "status": "passed",
+      "artifact_sha256": "d96acf6f13131a9071224f4faefe623a05c17e46c3f16af7c94ca587b699061e",
+      "source_sha256": "9dfe67e50e9ab76edafd96f37033622e8ae62b2abb3a03f0d233a81920e2407e",
+      "head_captures": 21,
+      "wide_compositions": 88,
+      "portable_parents": 28,
+      "checked_native_component_nodes": 2173500,
+      "counts": {
+        "calendars": 1550,
+        "lp_models": 1376
+      },
+      "numerical_primal_dual_controls": {
+        "heads4": {
+          "duality_gap_ns": -4.547473508864641e-11,
+          "variables": 98082,
+          "constraints": 189504
+        },
+        "heads3": {
+          "duality_gap_ns": 6.002665031701326e-11,
+          "variables": 98076,
+          "constraints": 189489
+        },
+        "heads5": {
+          "duality_gap_ns": -7.821654435247183e-11,
+          "variables": 98088,
+          "constraints": 189518
+        },
+        "heads6": {
+          "duality_gap_ns": 3.8198777474462986e-11,
+          "variables": 98094,
+          "constraints": 189532
+        },
+        "heads7": {
+          "duality_gap_ns": 4.18367562815547e-11,
+          "variables": 98100,
+          "constraints": 189546
+        },
+        "heads8": {
+          "duality_gap_ns": 4.001776687800884e-11,
+          "variables": 98106,
+          "constraints": 189560
+        },
+        "heads12": {
+          "duality_gap_ns": 2.7284841053187847e-11,
+          "variables": 98130,
+          "constraints": 189616
+        },
+        "heads16": {
+          "duality_gap_ns": 2.9103830456733704e-11,
+          "variables": 98154,
+          "constraints": 189672
+        },
+        "heads9": {
+          "duality_gap_ns": -1.1095835361629725e-10,
+          "variables": 98112,
+          "constraints": 189574
+        },
+        "heads10": {
+          "duality_gap_ns": -1.1641532182693481e-10,
+          "variables": 98118,
+          "constraints": 189588
+        },
+        "heads11": {
+          "duality_gap_ns": 4.001776687800884e-11,
+          "variables": 98124,
+          "constraints": 189602
+        },
+        "heads13": {
+          "duality_gap_ns": 3.8198777474462986e-11,
+          "variables": 98136,
+          "constraints": 189630
+        },
+        "heads14": {
+          "duality_gap_ns": 3.8198777474462986e-11,
+          "variables": 98142,
+          "constraints": 189644
+        },
+        "heads15": {
+          "duality_gap_ns": 4.001776687800884e-11,
+          "variables": 98148,
+          "constraints": 189658
+        },
+        "heads17": {
+          "duality_gap_ns": 3.637978807091713e-11,
+          "variables": 98160,
+          "constraints": 189686
+        },
+        "heads18": {
+          "duality_gap_ns": 4.18367562815547e-11,
+          "variables": 98166,
+          "constraints": 189699
+        },
+        "heads19": {
+          "duality_gap_ns": 4.001776687800884e-11,
+          "variables": 98172,
+          "constraints": 189713
+        },
+        "heads20": {
+          "duality_gap_ns": 4.001776687800884e-11,
+          "variables": 98178,
+          "constraints": 189727
+        },
+        "heads21": {
+          "duality_gap_ns": 4.18367562815547e-11,
+          "variables": 98184,
+          "constraints": 189742
+        },
+        "b2-wide000-head4": {
+          "duality_gap_ns": 6.366462912410498e-12,
+          "variables": 137632,
+          "constraints": 275766
+        },
+        "b2-wide001-head4": {
+          "duality_gap_ns": 5.4569682106375694e-11,
+          "variables": 137632,
+          "constraints": 275382
+        },
+        "b4-wide008-head4": {
+          "duality_gap_ns": 1.4040779205970466e-08,
+          "variables": 307442,
+          "constraints": 606253
+        },
+        "b2-wide009-head4": {
+          "duality_gap_ns": -3.092281986027956e-11,
+          "variables": 160512,
+          "constraints": 325154
+        },
+        "b2-wide010-head4": {
+          "duality_gap_ns": -1.864464138634503e-10,
+          "variables": 160512,
+          "constraints": 323781
+        },
+        "b2-wide020-head4": {
+          "duality_gap_ns": -5.275069270282984e-11,
+          "variables": 103392,
+          "constraints": 201932
+        },
+        "b2-wide021-head4": {
+          "duality_gap_ns": -1.1459633242338896e-10,
+          "variables": 103392,
+          "constraints": 201936
+        }
+      },
+      "native_replay_audits": {
+        "heads5": {
+          "original": {
+            "nodes": 98087,
+            "resources": 13834,
+            "leases": 82
+          },
+          "delayed": {
+            "nodes": 98087,
+            "resources": 13834,
+            "leases": 82
+          },
+          "replays": 2,
+          "measured_tokens": 1728
+        },
+        "b2-wide000-head4": {
+          "original": {
+            "nodes": 137631,
+            "resources": 29842,
+            "leases": 62
+          },
+          "delayed": {
+            "nodes": 137631,
+            "resources": 29842,
+            "leases": 62
+          },
+          "replays": 2,
+          "measured_tokens": 3456
+        }
+      },
+      "head_width_envelope": {
+        "integer_widths_explicitly_checked": 31,
+        "upper_tail_from": 32,
+        "fixed_transformer_chips": 440,
+        "current_policy_only": true
+      },
+      "proposed_sram_swap": {
+        "status": "passed_capacity_and_functional_only",
+        "logical_requests": 58,
+        "home_cells_bytes": 10683187200,
+        "minimum_home_headroom_bytes": 31288,
+        "timing_evaluated": false,
+        "mfu_claimed": false
+      },
+      "previous_workload_records_preserved": true,
+      "maximum_certified": false,
+      "black_version": "24.2.0",
+      "formatted_and_checked_files": 585,
+      "production_source_unchanged": true,
+      "sentence_layout": "passed",
+      "wording": "passed",
+      "local_links_checked": 31,
       "diff_check": "passed"
     }
   },
@@ -115274,23 +115472,16 @@
   "source_cpp_sha256": "8118adb459ae6870d4a441217e4b4bfdef54f6b5a5f7a4e93cc6787cdf70aa57",
   "pending_experiments": [
     {
-      "name": "wider-global-full-native-compositions",
-      "status": "running",
-      "session_id": 40528,
-      "result_directory": "outputs/lpx-maximum-mfu-20261103/output-channel-fragment-compositions",
-      "completed_at_checkpoint": 67,
-      "expected_cases": 88
-    },
-    {
-      "name": "wider-global-108-request-native-replay",
-      "status": "running",
-      "session_id": 38769,
-      "result_directory": "outputs/lpx-maximum-mfu-20261103/output-channel-fragment-compositions/b2-wide000-head4/native-replay",
-      "short_replay_mfu_percent": 3.357712032955245,
-      "long_replay_status": "pending"
+      "name": "pure-lp30-sram-kv-swap-native-timing",
+      "status": "capacity_and_byte_controls_passed_native_packet_program_pending",
+      "result_directory": "outputs/lpx-maximum-mfu-20261103/sram-kv-swap-capacity",
+      "logical_requests": 58,
+      "global_physical_slots": 54,
+      "chips": 445,
+      "mfu_claimed": false
     }
   ],
-  "last_updated_utc": "2026-11-03T12:40:44.614976+00:00",
+  "last_updated_utc": "2026-11-03 14:59:04 UTC",
   "empirical_100k_gpu_acceptance": {
     "measurements": [
       {
@@ -133823,7 +134014,7 @@
     ]
   },
   "best_experimental_shared_cache_non_speculative": {
-    "chips": 444,
+    "chips": 445,
     "layout": {
       "kind": "heterogeneous_native_mixed_cohorts",
       "repeated_blocks": 10,
@@ -133846,7 +134037,7 @@
         "batch": 1
       },
       "pp": 30,
-      "pool_chips": 4
+      "pool_chips": 5
     },
     "resident_requests": 54,
     "resident_cohorts": 27,
@@ -133854,17 +134045,17 @@
     "batch": 2,
     "cache_layout": "value_rope_fp8",
     "kernel": "split_dot",
-    "mfu_percent": 3.8228237297466534,
-    "aggregate_tps": 161573.433233578,
-    "issue_us": 12.378272590805272,
+    "mfu_percent": 3.827772117064225,
+    "aggregate_tps": 162146.954316623,
+    "issue_us": 12.334490082940357,
     "global_optimum_certified": false,
     "matching_quality_verified": false,
     "compiler_storage_allocation_verified": false,
     "heterogeneous_tp_compilation_verified": false,
     "multirack_timing_calibrated": false,
-    "record_ref": "mixed_stage_cohort_search.native_replay_summary",
-    "artifact": "experiments/lpx/mixed-stage-cohort-search.json.gz",
-    "scope": "Analytical fixed-context decode using native batch-two local stages and two separate native batch-one global stages per cohort. Full SRAM ledgers, independent-request useful work, role-specific arena periods and native physical resources remain. The finite graph and fixed cyclic-order studies do not certify an objective-wide maximum. Compiler execution, physical banks, shared-cache quality and multi-rack timing remain unverified."
+    "record_ref": "boundary_width_and_wide_pipeline_search.native_replay_summary",
+    "artifact": "experiments/lpx/boundary-width-and-wide-pipeline-search.json.gz",
+    "scope": "All integer head counts are bounded for one fixed 440-chip transformer layout, 54 requests, batch-two cohorts, existing control costs and buffer policy. Nineteen supplied head widths and seven selected wider compositions have finite calendar/fixed-order LP searches. The artifact retains every head graph and the seven calibrated wider graphs, best numerical certificates and two complete drained native replay witnesses. Other wider captures retain receipts and composition/bound records, requiring recapture to reconstruct their bodies. An additional SRAM swap study checks capacity and a byte-ownership control only, with no timing or MFU claim. Other resource orders, transformer placements, request counts, cache policies, compiler execution, physical banks, shared-cache quality and multi-rack calibration remain open."
   },
   "previous_milestone_commit": "d7dc70ea29112712ea30727d9d234afe912b80f8",
   "shared_kv_workspace_and_batch_search": {
@@ -311272,5 +311463,374 @@
       "local_links_checked": 44,
       "diff_check": "passed"
     }
+  },
+  "boundary_width_and_wide_pipeline_search": {
+    "status": "complete_finite_boundary_width_and_selected_wide_pipeline_checkpoint",
+    "turn_classification": "progress",
+    "base_commit": "f9d369b3551ca425f37b0a7d6686084b52cb1c36",
+    "source_sha256": "9dfe67e50e9ab76edafd96f37033622e8ae62b2abb3a03f0d233a81920e2407e",
+    "artifact": "experiments/lpx/boundary-width-and-wide-pipeline-search.json.gz",
+    "artifact_sha256": "d96acf6f13131a9071224f4faefe623a05c17e46c3f16af7c94ca587b699061e",
+    "document": "docs/lpx-boundary-pool-width-search.md",
+    "hardware": "pure LP30",
+    "minimum_tps": null,
+    "maximum_certified": false,
+    "head_native_captures": 21,
+    "head_widths_calibrated": [
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21
+    ],
+    "head_calendar_trials": 1368,
+    "head_numerical_lp_models": 1334,
+    "head_envelope": {
+      "target_mfu_percent": 3.8228237297466534,
+      "fixed_transformer_chips": 440,
+      "requests": 54,
+      "remaining_widths": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21
+      ],
+      "all_head_widths_at_or_above_excluded": 32,
+      "largest_conditional_mfu_upper_percent": 3.9547637096698884
+    },
+    "wide_compositions": 88,
+    "wide_selected_classes": 20,
+    "wide_calibrated_compositions": 7,
+    "wide_calendar_trials": 182,
+    "wide_numerical_lp_models": 42,
+    "native_replay_witnesses": 2,
+    "native_replay_summary": {
+      "label": "heads5",
+      "chips": 445,
+      "transformer_chips": 440,
+      "head_chips": 5,
+      "stages": 30,
+      "resident": 54,
+      "cohorts": 27,
+      "local_batch": 2,
+      "global_batch": 1,
+      "frames": 2,
+      "period_s": 1.2334490082940358e-05,
+      "mfu_percent": 3.827772117064225,
+      "aggregate_tps": 162146.954316623,
+      "measured_tokens": 1728,
+      "measured_cohort_completions": 864,
+      "drained_cohort_jobs": 1107,
+      "drained_logical_request_forwards": 2214,
+      "forward_s": 0.00033303123223939315,
+      "added_delay_nodes": 17633,
+      "minimum_watermark_adjusted_headroom_bytes": 378990,
+      "interval_audit": {
+        "status": "passed",
+        "checked_nodes": 98087,
+        "physical_resources": 13752,
+        "arena_resources": 82,
+        "lease_release_descendants": 82,
+        "neighboring_copies": 3,
+        "maximum_floating_overlap_s": 0.0,
+        "feedback_fits": true
+      },
+      "convergence": {
+        "earlier_half_tps": 162146.95431656626,
+        "later_half_tps": 162146.95431667977,
+        "relative_change": 7.001066393286237e-13
+      },
+      "added_delay_node_ids_ref": "head_searches.heads5.witness.native_replays.added_delay_nodes in the referenced artifact"
+    },
+    "previous_record": {
+      "chips": 444,
+      "layout": {
+        "kind": "heterogeneous_native_mixed_cohorts",
+        "repeated_blocks": 10,
+        "local_segments": [
+          {
+            "tp": 4,
+            "layers": 1,
+            "batch": 2
+          },
+          {
+            "tp": 8,
+            "layers": 4,
+            "batch": 2
+          }
+        ],
+        "global_segment": {
+          "tp": 32,
+          "kvp": 8,
+          "layers": 1,
+          "batch": 1
+        },
+        "pp": 30,
+        "pool_chips": 4
+      },
+      "resident_requests": 54,
+      "resident_cohorts": 27,
+      "slots": 2,
+      "batch": 2,
+      "cache_layout": "value_rope_fp8",
+      "kernel": "split_dot",
+      "mfu_percent": 3.8228237297466534,
+      "aggregate_tps": 161573.433233578,
+      "issue_us": 12.378272590805272,
+      "global_optimum_certified": false,
+      "matching_quality_verified": false,
+      "compiler_storage_allocation_verified": false,
+      "heterogeneous_tp_compilation_verified": false,
+      "multirack_timing_calibrated": false,
+      "record_ref": "mixed_stage_cohort_search.native_replay_summary",
+      "artifact": "experiments/lpx/mixed-stage-cohort-search.json.gz",
+      "scope": "Analytical fixed-context decode using native batch-two local stages and two separate native batch-one global stages per cohort. Full SRAM ledgers, independent-request useful work, role-specific arena periods and native physical resources remain. The finite graph and fixed cyclic-order studies do not certify an objective-wide maximum. Compiler execution, physical banks, shared-cache quality and multi-rack timing remain unverified."
+    },
+    "proposed_sram_swap": {
+      "status": "capacity_and_functional_only",
+      "chips": 445,
+      "logical_requests": 58,
+      "global_native_physical_slots": 54,
+      "home_slots": 4,
+      "home_kv_bytes": 10683187200,
+      "minimum_home_headroom_bytes": 31288,
+      "guard_reassignment_policy": true,
+      "separate_send_receive_banks": true,
+      "timing_evaluated": false,
+      "mfu_claimed": false
+    },
+    "scope": "All integer head counts are bounded for one fixed 440-chip transformer layout, 54 requests, batch-two cohorts, existing control costs and buffer policy. Nineteen supplied head widths and seven selected wider compositions have finite calendar/fixed-order LP searches. The artifact retains every head graph and the seven calibrated wider graphs, best numerical certificates and two complete drained native replay witnesses. Other wider captures retain receipts and composition/bound records, requiring recapture to reconstruct their bodies. An additional SRAM swap study checks capacity and a byte-ownership control only, with no timing or MFU claim. Other resource orders, transformer placements, request counts, cache policies, compiler execution, physical banks, shared-cache quality and multi-rack calibration remain open.",
+    "validation": {
+      "status": "passed",
+      "artifact_sha256": "d96acf6f13131a9071224f4faefe623a05c17e46c3f16af7c94ca587b699061e",
+      "source_sha256": "9dfe67e50e9ab76edafd96f37033622e8ae62b2abb3a03f0d233a81920e2407e",
+      "head_captures": 21,
+      "wide_compositions": 88,
+      "portable_parents": 28,
+      "checked_native_component_nodes": 2173500,
+      "counts": {
+        "calendars": 1550,
+        "lp_models": 1376
+      },
+      "numerical_primal_dual_controls": {
+        "heads4": {
+          "duality_gap_ns": -4.547473508864641e-11,
+          "variables": 98082,
+          "constraints": 189504
+        },
+        "heads3": {
+          "duality_gap_ns": 6.002665031701326e-11,
+          "variables": 98076,
+          "constraints": 189489
+        },
+        "heads5": {
+          "duality_gap_ns": -7.821654435247183e-11,
+          "variables": 98088,
+          "constraints": 189518
+        },
+        "heads6": {
+          "duality_gap_ns": 3.8198777474462986e-11,
+          "variables": 98094,
+          "constraints": 189532
+        },
+        "heads7": {
+          "duality_gap_ns": 4.18367562815547e-11,
+          "variables": 98100,
+          "constraints": 189546
+        },
+        "heads8": {
+          "duality_gap_ns": 4.001776687800884e-11,
+          "variables": 98106,
+          "constraints": 189560
+        },
+        "heads12": {
+          "duality_gap_ns": 2.7284841053187847e-11,
+          "variables": 98130,
+          "constraints": 189616
+        },
+        "heads16": {
+          "duality_gap_ns": 2.9103830456733704e-11,
+          "variables": 98154,
+          "constraints": 189672
+        },
+        "heads9": {
+          "duality_gap_ns": -1.1095835361629725e-10,
+          "variables": 98112,
+          "constraints": 189574
+        },
+        "heads10": {
+          "duality_gap_ns": -1.1641532182693481e-10,
+          "variables": 98118,
+          "constraints": 189588
+        },
+        "heads11": {
+          "duality_gap_ns": 4.001776687800884e-11,
+          "variables": 98124,
+          "constraints": 189602
+        },
+        "heads13": {
+          "duality_gap_ns": 3.8198777474462986e-11,
+          "variables": 98136,
+          "constraints": 189630
+        },
+        "heads14": {
+          "duality_gap_ns": 3.8198777474462986e-11,
+          "variables": 98142,
+          "constraints": 189644
+        },
+        "heads15": {
+          "duality_gap_ns": 4.001776687800884e-11,
+          "variables": 98148,
+          "constraints": 189658
+        },
+        "heads17": {
+          "duality_gap_ns": 3.637978807091713e-11,
+          "variables": 98160,
+          "constraints": 189686
+        },
+        "heads18": {
+          "duality_gap_ns": 4.18367562815547e-11,
+          "variables": 98166,
+          "constraints": 189699
+        },
+        "heads19": {
+          "duality_gap_ns": 4.001776687800884e-11,
+          "variables": 98172,
+          "constraints": 189713
+        },
+        "heads20": {
+          "duality_gap_ns": 4.001776687800884e-11,
+          "variables": 98178,
+          "constraints": 189727
+        },
+        "heads21": {
+          "duality_gap_ns": 4.18367562815547e-11,
+          "variables": 98184,
+          "constraints": 189742
+        },
+        "b2-wide000-head4": {
+          "duality_gap_ns": 6.366462912410498e-12,
+          "variables": 137632,
+          "constraints": 275766
+        },
+        "b2-wide001-head4": {
+          "duality_gap_ns": 5.4569682106375694e-11,
+          "variables": 137632,
+          "constraints": 275382
+        },
+        "b4-wide008-head4": {
+          "duality_gap_ns": 1.4040779205970466e-08,
+          "variables": 307442,
+          "constraints": 606253
+        },
+        "b2-wide009-head4": {
+          "duality_gap_ns": -3.092281986027956e-11,
+          "variables": 160512,
+          "constraints": 325154
+        },
+        "b2-wide010-head4": {
+          "duality_gap_ns": -1.864464138634503e-10,
+          "variables": 160512,
+          "constraints": 323781
+        },
+        "b2-wide020-head4": {
+          "duality_gap_ns": -5.275069270282984e-11,
+          "variables": 103392,
+          "constraints": 201932
+        },
+        "b2-wide021-head4": {
+          "duality_gap_ns": -1.1459633242338896e-10,
+          "variables": 103392,
+          "constraints": 201936
+        }
+      },
+      "native_replay_audits": {
+        "heads5": {
+          "original": {
+            "nodes": 98087,
+            "resources": 13834,
+            "leases": 82
+          },
+          "delayed": {
+            "nodes": 98087,
+            "resources": 13834,
+            "leases": 82
+          },
+          "replays": 2,
+          "measured_tokens": 1728
+        },
+        "b2-wide000-head4": {
+          "original": {
+            "nodes": 137631,
+            "resources": 29842,
+            "leases": 62
+          },
+          "delayed": {
+            "nodes": 137631,
+            "resources": 29842,
+            "leases": 62
+          },
+          "replays": 2,
+          "measured_tokens": 3456
+        }
+      },
+      "head_width_envelope": {
+        "integer_widths_explicitly_checked": 31,
+        "upper_tail_from": 32,
+        "fixed_transformer_chips": 440,
+        "current_policy_only": true
+      },
+      "proposed_sram_swap": {
+        "status": "passed_capacity_and_functional_only",
+        "logical_requests": 58,
+        "home_cells_bytes": 10683187200,
+        "minimum_home_headroom_bytes": 31288,
+        "timing_evaluated": false,
+        "mfu_claimed": false
+      },
+      "previous_workload_records_preserved": true,
+      "maximum_certified": false,
+      "sentence_layout": "passed",
+      "wording": "passed",
+      "local_links_checked": 31,
+      "diff_check": "passed",
+      "production_source_unchanged": true
+    },
+    "next_actions": [
+      "Build the proposed LP30 SRAM exchange packet program with separate send/receive banks and explicit SXM, C2C, cache-owner and buffer-lease costs.",
+      "Compare actual closed-loop 58-request native replay before assigning any MFU to the SRAM exchange policy.",
+      "Search other cyclic orders and the remaining wider multiset classes while preserving all allocated-chip peaks and request useful work.",
+      "Evaluate nonuniform blocks, independent batch widths and other control or cache policies with complete admission.",
+      "Keep complete-request serving distinct from representative-context decode; obtain matching quality, compiler, physical-bank and multi-rack evidence."
+    ]
   }
 }
