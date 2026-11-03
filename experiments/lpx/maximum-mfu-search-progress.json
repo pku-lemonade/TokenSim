@@ -2,7 +2,7 @@
   "record_date": "2026-11-03",
   "goal": "Find the highest useful MFU for Gemma 4 31B serving with a 100K input; explore inventories beyond 256 LP30 chips.",
   "maximum_certified": false,
-  "status": "Pure LP30 search continues without a TPS floor. A periodic resource-calendar schedule raises the experimental shared-cache decode result to 3.557996616% on 163 chips with fourteen clients. The 448-output long replay drains all 574 submitted forwards, with original compute/communication costs, physical resources and native dependencies retained. Full extra scratch, vocabulary backcharge, 5 MB safety reserve and KV watermark remain; adjusted SRAM headroom is 16,861,300 bytes per chip. Forty-three calendar trials and six optimistic extra-frame screens are complete. Revised independent-batch bounds cover 28,545 points and exclude them below the prior shared-cache reference. Existing-format decode and prompt-inclusive serving records are unchanged. Alternative cyclic schedules, physical compilation, SRAM banks, shared-cache quality and a global maximum remain unverified.",
+  "status": "Pure LP30 search continues without a TPS floor. A 432-row exact rational cycle bounds the supplied cyclic resource order at 3.558002959680344% MFU, independent of resident count. A 448-output native replay reaches 3.558002959671% and drains all 574 submitted forwards with original services, dependencies, resources and full fourteen-request scratch policy. Forty anchored and twelve backward calendar trials yield no eligible witness; eight specified reordered LP models are reported infeasible. These results certify a conditional cycle bound and do not exhaust alternate orders, placements, operators, chip counts, physical compilation or shared-cache quality. Existing-format decode and prompt-inclusive serving records remain unchanged.",
   "shared_timing_config": {
     "operator": {
       "activation_dtype": "bf16",
@@ -115216,7 +115216,7 @@
   ],
   "source_cpp_sha256": "8118adb459ae6870d4a441217e4b4bfdef54f6b5a5f7a4e93cc6787cdf70aa57",
   "pending_experiments": [],
-  "last_updated_utc": "2026-11-03T07:01:58.348978+00:00",
+  "last_updated_utc": "2026-11-03T07:52:37.209349+00:00",
   "empirical_100k_gpu_acceptance": {
     "measurements": [
       {
@@ -133760,15 +133760,15 @@
     "slots": 2,
     "cache_layout": "value_rope_fp8",
     "kernel": "split_dot",
-    "mfu_percent": 3.557996615928931,
-    "aggregate_tps": 55207.215755621306,
-    "issue_us": 18.113574218750003,
+    "mfu_percent": 3.5580029596708163,
+    "aggregate_tps": 55207.31418751002,
+    "issue_us": 18.113541923102037,
     "global_optimum_certified": false,
     "matching_quality_verified": false,
     "compiler_storage_allocation_verified": false,
-    "record_ref": "periodic_resource_calendar_search.best_summary",
-    "artifact": "experiments/lpx/periodic-resource-calendar-search.json.gz",
-    "scope": "Fourteen-client periodic schedule with preserved native services/dependencies/resources, two active/input frames, full additional scratch and vocabulary backcharge. Native SRAM admission and cyclic resource intervals verified in the model. Physical compiler execution, SRAM banks and shared-cache quality unverified."
+    "record_ref": "cyclic_order_optimization.native_replay_summary",
+    "artifact": "experiments/lpx/cyclic-order-optimization-search.json.gz",
+    "scope": "All native dependencies, service times, physical resources and release indices remain. Only readiness delays are added to construct a legal periodic schedule. Two active/input frames, full duplicated native scratch, the vocabulary backcharge, 5 MB safety reserve, native KV rounding and watermark are retained. Physical banks, compiler schedules and shared-cache quality are unverified."
   },
   "previous_milestone_commit": "d7dc70ea29112712ea30727d9d234afe912b80f8",
   "shared_kv_workspace_and_batch_search": {
@@ -292725,15 +292725,15 @@
     "slots": 2,
     "cache_layout": "value_rope_fp8",
     "kernel": "split_dot",
-    "mfu_percent": 3.557996615928931,
-    "aggregate_tps": 55207.215755621306,
-    "issue_us": 18.113574218750003,
+    "mfu_percent": 3.5580029596708163,
+    "aggregate_tps": 55207.31418751002,
+    "issue_us": 18.113541923102037,
     "global_optimum_certified": false,
     "matching_quality_verified": false,
     "compiler_storage_allocation_verified": false,
-    "record_ref": "periodic_resource_calendar_search.best_summary",
-    "artifact": "experiments/lpx/periodic-resource-calendar-search.json.gz",
-    "scope": "Fourteen-client periodic schedule with preserved native services/dependencies/resources, two active/input frames, full additional scratch and vocabulary backcharge. Native SRAM admission and cyclic resource intervals verified in the model. Physical compiler execution, SRAM banks and shared-cache quality unverified."
+    "record_ref": "cyclic_order_optimization.native_replay_summary",
+    "artifact": "experiments/lpx/cyclic-order-optimization-search.json.gz",
+    "scope": "All native dependencies, service times, physical resources and release indices remain. Only readiness delays are added to construct a legal periodic schedule. Two active/input frames, full duplicated native scratch, the vocabulary backcharge, 5 MB safety reserve, native KV rounding and watermark are retained. Physical banks, compiler schedules and shared-cache quality are unverified."
   },
   "lifetime_phase_and_allocator_search": {
     "code_commit": "19f83bee67b644d5587926877ea50b7969fd3f73",
@@ -304446,15 +304446,15 @@
     "slots": 2,
     "cache_layout": "value_rope_fp8",
     "kernel": "split_dot",
-    "mfu_percent": 3.557996615928931,
-    "aggregate_tps": 55207.215755621306,
-    "issue_us": 18.113574218750003,
+    "mfu_percent": 3.5580029596708163,
+    "aggregate_tps": 55207.31418751002,
+    "issue_us": 18.113541923102037,
     "global_optimum_certified": false,
     "matching_quality_verified": false,
     "compiler_storage_allocation_verified": false,
-    "record_ref": "periodic_resource_calendar_search.best_summary",
-    "artifact": "experiments/lpx/periodic-resource-calendar-search.json.gz",
-    "scope": "Fourteen-client periodic schedule with preserved native services/dependencies/resources, two active/input frames, full additional scratch and vocabulary backcharge. Native SRAM admission and cyclic resource intervals verified in the model. Physical compiler execution, SRAM banks and shared-cache quality unverified."
+    "record_ref": "cyclic_order_optimization.native_replay_summary",
+    "artifact": "experiments/lpx/cyclic-order-optimization-search.json.gz",
+    "scope": "All native dependencies, service times, physical resources and release indices remain. Only readiness delays are added to construct a legal periodic schedule. Two active/input frames, full duplicated native scratch, the vocabulary backcharge, 5 MB safety reserve, native KV rounding and watermark are retained. Physical banks, compiler schedules and shared-cache quality are unverified."
   },
   "pure_lp30_af_ratio_bounds": {
     "status": "complete_conditional_af_study",
@@ -310214,6 +310214,339 @@
         "black_version": "24.2.0",
         "formatted_and_checked_files": 582,
         "repository_diff_check": "passed"
+      }
+    }
+  },
+  "cyclic_order_optimization": {
+    "status": "complete_conditional_cyclic_order_study",
+    "turn_classification": "progress",
+    "base_commit": "984ae3a",
+    "source_sha256": "ae29c716bbf5693a8c9d70df1ee5c6435c3e93af93781bcc5aff57c2e8074986",
+    "hardware": "pure LP30",
+    "minimum_tps": null,
+    "maximum_certified": false,
+    "artifact": "experiments/lpx/cyclic-order-optimization-search.json.gz",
+    "artifact_sha256": "9307c8a52becc405c7ce7c775bc27805335bcf59bf615053c7ee42a08a6d58fb",
+    "document": "docs/lpx-cyclic-order-optimality.md",
+    "heuristic_trials": 52,
+    "lp_cases": 10,
+    "repacked_models_reported_infeasible": 8,
+    "exact_cycle_summary": {
+      "status": "exact_cycle_verified",
+      "cycle_edges": 432,
+      "cancelled_node_variables": 432,
+      "feedback_edges": 0,
+      "resource_order_successors_independently_checked": true,
+      "total_iteration_distance": 1,
+      "period_lower_bound_s": 1.811354192310192e-05,
+      "period_fraction_s": {
+        "numerator": "5605869699970543866095",
+        "denominator": "309485009821345068724781056"
+      },
+      "fixed_order_mfu_percent_upper": 3.5580029596803437,
+      "mfu_fraction": {
+        "numerator": "138904082170608464898402750432280576",
+        "denominator": "39039900681557559516689422607421875"
+      },
+      "resource_order_edges": [
+        {
+          "index": 2900,
+          "u": 396,
+          "v": 96573,
+          "distance": 1,
+          "lag_s": 5.177043640146491e-06,
+          "lag_fraction_s": {
+            "numerator": "5968724943013",
+            "denominator": "1152921504606846976"
+          },
+          "support": {
+            "resource_order": [
+              "lp30:0:vxm",
+              "mfu-search/worker:0"
+            ]
+          }
+        },
+        {
+          "index": 292496,
+          "u": 96573,
+          "v": 4364,
+          "distance": 0,
+          "lag_s": 5.2690342483660135e-08,
+          "lag_fraction_s": {
+            "numerator": "7962339434104293",
+            "denominator": "151115727451828646838272"
+          },
+          "support": {
+            "resource_order": [
+              "lp30:0:vxm",
+              "mfu-search/worker:0"
+            ]
+          }
+        }
+      ],
+      "scope": "Exact rational summation of the native binary floating-point durations and readiness lags in one critical cycle. Resource-order rows are conditional on the supplied cyclic order. The certificate does not bound alternative orders or hardware schedules."
+    },
+    "native_result_path": "outputs/lpx-maximum-mfu-20261103/cyclic-order-native-replays/fixed-order-resident14/result.json",
+    "native_replay_summary": {
+      "chips": 163,
+      "resident": 14,
+      "mfu_percent": 3.5580029596708163,
+      "aggregate_tps": 55207.31418751002,
+      "measured_tokens": 448,
+      "drained_forwards": 574,
+      "period_s": 1.8113541923102036e-05,
+      "convergence": {
+        "earlier_half_tps": 55207.314187507174,
+        "later_half_tps": 55207.31418751287,
+        "relative_change": 1.0325074129013956e-13
+      },
+      "added_delay_nodes": 1748,
+      "minimum_watermark_adjusted_headroom_bytes": 16861300
+    },
+    "previous_records": {
+      "best_experimental_shared_cache_non_speculative": {
+        "chips": 163,
+        "layout": {
+          "tp": 16,
+          "pp": 10,
+          "kvp": 4,
+          "pool_chips": 3
+        },
+        "resident_requests": 14,
+        "slots": 2,
+        "cache_layout": "value_rope_fp8",
+        "kernel": "split_dot",
+        "mfu_percent": 3.557996615928931,
+        "aggregate_tps": 55207.215755621306,
+        "issue_us": 18.113574218750003,
+        "global_optimum_certified": false,
+        "matching_quality_verified": false,
+        "compiler_storage_allocation_verified": false,
+        "record_ref": "periodic_resource_calendar_search.best_summary",
+        "artifact": "experiments/lpx/periodic-resource-calendar-search.json.gz",
+        "scope": "Fourteen-client periodic schedule with preserved native services/dependencies/resources, two active/input frames, full additional scratch and vocabulary backcharge. Native SRAM admission and cyclic resource intervals verified in the model. Physical compiler execution, SRAM banks and shared-cache quality unverified."
+      },
+      "best_explicit_stage_arena_shared_decode": {
+        "chips": 163,
+        "layout": {
+          "tp": 16,
+          "pp": 10,
+          "kvp": 4,
+          "pool_chips": 3
+        },
+        "resident_requests": 14,
+        "slots": 2,
+        "cache_layout": "value_rope_fp8",
+        "kernel": "split_dot",
+        "mfu_percent": 3.557996615928931,
+        "aggregate_tps": 55207.215755621306,
+        "issue_us": 18.113574218750003,
+        "global_optimum_certified": false,
+        "matching_quality_verified": false,
+        "compiler_storage_allocation_verified": false,
+        "record_ref": "periodic_resource_calendar_search.best_summary",
+        "artifact": "experiments/lpx/periodic-resource-calendar-search.json.gz",
+        "scope": "Fourteen-client periodic schedule with preserved native services/dependencies/resources, two active/input frames, full additional scratch and vocabulary backcharge. Native SRAM admission and cyclic resource intervals verified in the model. Physical compiler execution, SRAM banks and shared-cache quality unverified."
+      },
+      "best_experimental_projected_frame_shared_decode": {
+        "chips": 163,
+        "layout": {
+          "tp": 16,
+          "pp": 10,
+          "kvp": 4,
+          "pool_chips": 3
+        },
+        "resident_requests": 14,
+        "slots": 2,
+        "cache_layout": "value_rope_fp8",
+        "kernel": "split_dot",
+        "mfu_percent": 3.557996615928931,
+        "aggregate_tps": 55207.215755621306,
+        "issue_us": 18.113574218750003,
+        "global_optimum_certified": false,
+        "matching_quality_verified": false,
+        "compiler_storage_allocation_verified": false,
+        "record_ref": "periodic_resource_calendar_search.best_summary",
+        "artifact": "experiments/lpx/periodic-resource-calendar-search.json.gz",
+        "scope": "Fourteen-client periodic schedule with preserved native services/dependencies/resources, two active/input frames, full additional scratch and vocabulary backcharge. Native SRAM admission and cyclic resource intervals verified in the model. Physical compiler execution, SRAM banks and shared-cache quality unverified."
+      }
+    },
+    "validation": {
+      "exact_rational_cycle": "passed",
+      "independent_resource_successor_checks": "passed",
+      "independent_interval_audits": [
+        {
+          "status": "passed",
+          "physical_resource_keys": 5778,
+          "arena_resource_keys": 21,
+          "checked_nodes": 96774,
+          "replicated_periods": 3,
+          "maximum_floating_roundoff_overlap_s": 6.2341624917916505e-19,
+          "token_feedback_fits": true
+        },
+        {
+          "status": "passed",
+          "physical_resource_keys": 5778,
+          "arena_resource_keys": 21,
+          "checked_nodes": 96774,
+          "replicated_periods": 3,
+          "maximum_floating_roundoff_overlap_s": 2.4936649967166602e-18,
+          "token_feedback_fits": true
+        }
+      ],
+      "closed_loop_outputs": 448,
+      "drained_forwards": 574,
+      "source_changed": false,
+      "old_code_baseline": {
+        "black_version": "24.2.0",
+        "formatted_and_checked_files": 582,
+        "targeted_tests_passed": 46,
+        "reporting_tests_passed_after_dependency_install": 4,
+        "full_suite": {
+          "tests_run": 890,
+          "passed": 888,
+          "failures": 1,
+          "errors": 1,
+          "host_seconds": 238.919,
+          "log": "/private/tmp/lpx-af-groups-full-tests.log",
+          "issues": [
+            "Unchanged macOS /tmp resolves to /private/tmp path assertion.",
+            "Unchanged foreign-process shutdown test requires unavailable nvidia-smi."
+          ]
+        },
+        "diff_check": "passed",
+        "partition_bound_tests_passed": 7,
+        "log": "/private/tmp/lpx-af-groups-full-tests.log",
+        "targeted_log": "Terminal session 35558: 46 tests passed in 16.772 seconds.",
+        "additional_acceptance_tests_passed": 3,
+        "acceptance_and_mfu_targeted_tests_passed": 11,
+        "previous_full_suite": {
+          "tests_run": 819,
+          "failures": 1,
+          "errors": 1,
+          "log": "/private/tmp/tokensim-mfu-unittest-empirical.log",
+          "issues": [
+            "Unchanged macOS /tmp to /private/tmp path assertion.",
+            "Unchanged GPU shutdown test depends on Linux /proc and nvidia-smi."
+          ]
+        },
+        "targeted_scope": [
+          "tests.test_lpx_shared_workspace",
+          "tests.test_lpx_io_batch",
+          "tests.test_lpx_kv_codec",
+          "tests.test_lpx_shared_kv",
+          "tests.test_lpx_fidelity",
+          "tests.test_lpx_io_pool",
+          "tests.test_lpx_assistant",
+          "tests.test_lpx_mfu_acceptance"
+        ],
+        "new_shared_kv_tests_passed": 8,
+        "source_files_above_500_lines": [],
+        "previous_commit_advisory_scan": "The commit hook reported a hardcoded-value scan timeout after 2 seconds; the commit succeeded. This advisory scan is not reported as passed.",
+        "physical_shared_kv_code_commit": {
+          "commit": "4d724299063a358b62dcfbd6caecd014c55bef1f",
+          "committed_successfully": true,
+          "advisory_timeout_reported": false
+        },
+        "shared_kv_prior_full_suite": {
+          "tests_run": 827,
+          "failures": 1,
+          "errors": 1,
+          "log": "/private/tmp/tokensim-mfu-unittest-shared-kv-final.log",
+          "issues": [
+            "Unchanged macOS /tmp to /private/tmp path assertion.",
+            "Unchanged GPU shutdown test depends on Linux /proc and nvidia-smi."
+          ],
+          "host_seconds": 192.018
+        },
+        "new_compact_workspace_and_batch_tests_passed": 8,
+        "compact_workspace_and_batch_code_commit": {
+          "commit": "331ab1ffd7b10b3f00740cb5207a01811fe48263",
+          "committed_successfully": true,
+          "advisory_timeout_reported": false
+        },
+        "before_complete_serving_full_suite": {
+          "tests_run": 835,
+          "failures": 1,
+          "errors": 1,
+          "log": "/private/tmp/tokensim-mfu-unittest-compact.log",
+          "issues": [
+            "Unchanged macOS /tmp to /private/tmp path assertion.",
+            "Unchanged GPU shutdown test depends on Linux /proc and nvidia-smi."
+          ],
+          "host_seconds": 139.51
+        },
+        "new_complete_serving_tests_passed": 9,
+        "before_input_policy_full_suite": {
+          "tests_run": 844,
+          "failures": 1,
+          "errors": 1,
+          "log": "/private/tmp/lpx-serving-full-tests-window.log",
+          "issues": [
+            "Unchanged macOS /tmp to /private/tmp path assertion.",
+            "Unchanged GPU shutdown test depends on Linux /proc and nvidia-smi."
+          ],
+          "host_seconds": 200.895
+        },
+        "input_policy_tests_passed": 11,
+        "before_lifetime_bounds_full_suite": {
+          "tests_run": 846,
+          "failures": 1,
+          "errors": 1,
+          "log": "/private/tmp/lpx-serving-policy-full-tests.log",
+          "issues": [
+            "Unchanged macOS /tmp to /private/tmp path assertion.",
+            "Unchanged GPU shutdown test depends on Linux /proc and nvidia-smi."
+          ],
+          "host_seconds": 235.267
+        },
+        "lifetime_and_phase_targeted_tests_passed": 23,
+        "lifetime_and_phase_new_tests_passed": 5,
+        "before_vector_resources_root_full_suite": {
+          "tests_run": 851,
+          "failures": 1,
+          "errors": 1,
+          "log": "/private/tmp/lpx-lifetime-full-tests-final.log",
+          "issues": [
+            "Unchanged macOS /tmp to /private/tmp path assertion.",
+            "Unchanged GPU shutdown test depends on Linux /proc and nvidia-smi."
+          ],
+          "host_seconds": 110.341
+        },
+        "vector_resource_focused_tests_passed": 31,
+        "vector_resource_focused_log": "/private/tmp/lpx-vxm-focused-tests.log",
+        "before_multi_group_root_full_suite": {
+          "tests_run": 878,
+          "passed": 876,
+          "failures": 1,
+          "errors": 1,
+          "host_seconds": 114.213,
+          "log": "/private/tmp/lpx-vxm-full-tests.log",
+          "issues": [
+            "Unchanged macOS /tmp resolves to /private/tmp path assertion.",
+            "Unchanged foreign-process shutdown test requires unavailable nvidia-smi."
+          ]
+        },
+        "multi_group_focused_tests_passed": 43,
+        "multi_group_new_tests": 12,
+        "multi_group_focused_log": "/private/tmp/lpx-af-groups-focused.log"
+      },
+      "checkpoint": {
+        "status": "passed",
+        "rational_cycle_edges": 432,
+        "independently_checked_program_nodes": 193548,
+        "lp_cases": 10,
+        "heuristic_trials": 52,
+        "measured_outputs": 448,
+        "drained_forwards": 574,
+        "source_unchanged": true,
+        "existing_format_record_unchanged": true,
+        "complete_serving_record_unchanged": true
+      },
+      "formatting": {
+        "black_version": "24.2.0",
+        "formatted_and_checked_files": 582,
+        "diff_check": "passed"
       }
     }
   }

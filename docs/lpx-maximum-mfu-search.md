@@ -40,6 +40,10 @@ The [periodic resource-calendar study](lpx-periodic-resource-calendar-search.md)
 It preserves native service times and resources while adding readiness delays, and independently verifies cyclic physical-resource and buffer-lease intervals.
 Its long replay measures 448 outputs and drains all 574 submitted forwards with the full extra scratch charge, vocabulary backcharge and 5 MB safety reserve retained.
 The same study revisits independent batches under the reduced protocol-buffer charge and excludes 28,545 supplied points below the earlier shared-cache reference.
+The [cyclic-order study](lpx-cyclic-order-optimality.md) derives an exact 432-row cycle certificate and a conditional 3.558002960% MFU ceiling for the supplied resource order.
+Its long native replay reaches 55,207.31 TPS with 448 measured outputs and all 574 submitted forwards drained.
+Forty anchored trials, twelve backward trials and eight specified reordered linear programs provide no eligible improvement over that result.
+This certificate does not bound alternate resource orders, operator graphs, placements or hardware inventories.
 
 ## Metric and workload
 

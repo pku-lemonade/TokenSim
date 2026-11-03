@@ -2,6 +2,7 @@
 
 A verified closed-loop periodic replay reaches 55,207.215756 aggregate tokens per second (TPS), corresponding to 3.557996616% model floating-point operation utilization (MFU) on 163 LP30 chips.
 The result improves the earlier 3.419600500% experimental shared-cache decode reference by 4.04714% relative.
+The later [cyclic-order study](lpx-cyclic-order-optimality.md) closes the small remaining timing gap and derives an exact conditional ceiling for this resource order.
 The schedule preserves every native operator dependency, compute service time, communication cost, physical resource binding and buffer release index.
 It adds readiness delays so independent requests occupy compatible phases of a repeating resource calendar.
 The useful model work and allocated hardware denominator remain unchanged.
