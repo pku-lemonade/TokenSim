@@ -24,6 +24,8 @@ The [pure-LP30 partition study](lpx-pure-lp30-partition-search.md) covers 1,260 
 It preserves the existing decode records and adds native-ledger necessary offload read-bandwidth floors.
 The [independent-batch study](lpx-pure-lp30-independent-batches.md) excludes 28,502 supplied shared-cache batch/PP points from improving the shared-cache record under its uniform-transformer and separate-boundary-pool assumptions.
 Its greatest remaining necessary bound is 3.406617750%, with native layer references, full-model controls and a separate exclusion for the remaining batch-two point.
+The [integrated-boundary study](lpx-integrated-boundary-search.md) adds 79,387 supplied points across duplicate-end and single-end tied-weight placements, with 48 batch-one points still unresolved.
+The [vector-resource correction](lpx-vector-resource-correction.md) completes scalar-kernel reservations and revalidates the displayed decode records under the corrected resource model.
 
 ## Metric and workload
 

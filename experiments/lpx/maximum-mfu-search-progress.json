@@ -2,7 +2,7 @@
   "record_date": "2026-11-03",
   "goal": "Find the highest useful MFU for Gemma 4 31B serving with a 100K input; explore inventories beyond 256 LP30 chips.",
   "maximum_certified": false,
-  "status": "Pure LP30 search continues without a TPS floor. A current-source independent-batch envelope covers 108 memory-policy cases, 619 family/batch pairs and 28502 batch/PP points through 1923 chips. Native layer references and a full transformer control exclude this separate-boundary, shared-cache homogeneous-batch class from improving 3.41960%. Existing incumbents remain unchanged. Colocated boundaries, mixed cohorts, existing-format batches across all external-pool families, heterogeneous widths, speculative verification, alternative overlap and offload remain open. Global physical optimality and sustained complete serving remain unproven.",
+  "status": "Pure LP30 search continues without a TPS floor. Three integrated boundary placements add 79387 relaxed points; 48 batch-one points remain open. Three conservative paired-arena prototypes do not improve the incumbent. Native normalization/residual vector-resource exclusions are corrected, with fresh graph controls and 878 full-suite tests. Two prior macOS environment failures persist. Longer corrected baseline replays preserve 3.03914% separate-cache and 3.41960% experimental shared-cache MFU. Single-end compiler ownership, finer scratch lifetimes, mixed cohorts, heterogeneous widths, alternative overlap, offload and physical validation remain open; global maximum uncertified.",
   "shared_timing_config": {
     "operator": {
       "activation_dtype": "bf16",
@@ -10932,7 +10932,8 @@
     "per_request_tps": 4715.646515136632,
     "bound_mfu_percent": 3.039245855980009,
     "metric_ref": "metric",
-    "profile_input_sha256": "ab6fbad789a3e915e5e6ac96b86927b78f0cd621596b19ba74d59595c5e09605"
+    "profile_input_sha256": "ab6fbad789a3e915e5e6ac96b86927b78f0cd621596b19ba74d59595c5e09605",
+    "current_vector_resource_control_ref": "integrated_boundary_and_vector_resource_search.current_controls.separate_long"
   },
   "stage_window_diagnostics": [
     {
@@ -11478,23 +11479,24 @@
   },
   "validation": {
     "black_version": "24.2.0",
-    "formatted_and_checked_files": 571,
+    "formatted_and_checked_files": 580,
     "targeted_tests_passed": 46,
     "reporting_tests_passed_after_dependency_install": 4,
     "full_suite": {
-      "tests_run": 851,
+      "tests_run": 878,
+      "passed": 876,
       "failures": 1,
       "errors": 1,
-      "log": "/private/tmp/lpx-lifetime-full-tests-final.log",
+      "host_seconds": 114.213,
+      "log": "/private/tmp/lpx-vxm-full-tests.log",
       "issues": [
-        "Unchanged macOS /tmp to /private/tmp path assertion.",
-        "Unchanged GPU shutdown test depends on Linux /proc and nvidia-smi."
-      ],
-      "host_seconds": 110.341
+        "Unchanged macOS /tmp resolves to /private/tmp path assertion.",
+        "Unchanged foreign-process shutdown test requires unavailable nvidia-smi."
+      ]
     },
     "diff_check": "passed",
     "partition_bound_tests_passed": 7,
-    "log": "/private/tmp/lpx-lifetime-full-tests-final.log",
+    "log": "/private/tmp/lpx-vxm-full-tests.log",
     "targeted_log": "Terminal session 35558: 46 tests passed in 16.772 seconds.",
     "additional_acceptance_tests_passed": 3,
     "acceptance_and_mfu_targeted_tests_passed": 11,
@@ -11579,7 +11581,20 @@
       "host_seconds": 235.267
     },
     "lifetime_and_phase_targeted_tests_passed": 23,
-    "lifetime_and_phase_new_tests_passed": 5
+    "lifetime_and_phase_new_tests_passed": 5,
+    "before_vector_resources_root_full_suite": {
+      "tests_run": 851,
+      "failures": 1,
+      "errors": 1,
+      "log": "/private/tmp/lpx-lifetime-full-tests-final.log",
+      "issues": [
+        "Unchanged macOS /tmp to /private/tmp path assertion.",
+        "Unchanged GPU shutdown test depends on Linux /proc and nvidia-smi."
+      ],
+      "host_seconds": 110.341
+    },
+    "vector_resource_focused_tests_passed": 31,
+    "vector_resource_focused_log": "/private/tmp/lpx-vxm-focused-tests.log"
   },
   "sources": [
     "https://developer.nvidia.com/blog/inside-nvidia-groq-3-lpx-the-low-latency-inference-accelerator-for-the-nvidia-vera-rubin-platform/",
@@ -115185,7 +115200,7 @@
   ],
   "source_cpp_sha256": "8118adb459ae6870d4a441217e4b4bfdef54f6b5a5f7a4e93cc6787cdf70aa57",
   "pending_experiments": [],
-  "last_updated_utc": "2026-11-03 02:22:27 UTC",
+  "last_updated_utc": "2026-11-03 03:33:48 UTC",
   "empirical_100k_gpu_acceptance": {
     "measurements": [
       {
@@ -126995,7 +127010,7 @@
     "after_artifact": "outputs/lpx-maximum-mfu-20261102/changed-set-regression-after.json",
     "scope": "One local frozen three-program replay comparison; host timing is not a calibrated general speedup. Every completion and resource statistic agrees exactly."
   },
-  "milestone_commit": "837c9351deab453fa2dbb3b49259323c5a029a03",
+  "milestone_commit": "d7dc70ea29112712ea30727d9d234afe912b80f8",
   "experimental_shared_global_kv": {
     "name": "value_rope_fp8",
     "kernel_options": [
@@ -133732,9 +133747,10 @@
     "aggregate_tps": 53059.809483722725,
     "global_optimum_certified": false,
     "matching_quality_verified": false,
-    "scope": "Best within these two reconstruction kernels and fifteen supplied phase probes; existing-format incumbent stays separate."
+    "scope": "Best within these two reconstruction kernels and fifteen supplied phase probes; existing-format incumbent stays separate.",
+    "current_vector_resource_control_ref": "integrated_boundary_and_vector_resource_search.current_controls.shared_long"
   },
-  "previous_milestone_commit": "1dfa86ee6dff71d7b172e979e2b2d37247c35f9c",
+  "previous_milestone_commit": "837c9351deab453fa2dbb3b49259323c5a029a03",
   "shared_kv_workspace_and_batch_search": {
     "parent_commit": "39b77d7",
     "native_source_sha256": "53ca1eccb65aacc282227fd3938cc8651807151de748146f6958654cd4de117e",
@@ -224084,7 +224100,8 @@
     "651cc627c781ad9cd1923f020ab2c7fd00c5fd5f",
     "19f83bee67b644d5587926877ea50b7969fd3f73",
     "1dfa86ee6dff71d7b172e979e2b2d37247c35f9c",
-    "837c9351deab453fa2dbb3b49259323c5a029a03"
+    "837c9351deab453fa2dbb3b49259323c5a029a03",
+    "d7dc70ea29112712ea30727d9d234afe912b80f8"
   ],
   "complete_serving_search": {
     "code_commit": "65c1b726f0eafc6e1e73f8895dce546761a68910",
@@ -303744,5 +303761,90 @@
     "incumbents_changed": false,
     "maximum_certified": false,
     "scope": "Uniform transformer TP/DCP and contiguous PP, separate embedding/head storage with at least three LP30 chips, fixed homogeneous independent-request batches, current sequential operator and output-vector communication model, three supplied shared-KV kernels/workspace policies, 101K timing and 102K resident KV. Boundary execution is relaxed in projected bounds. Colocated boundary weights, mixed batches, offload, alternative kernels and physical compilation remain outside this exclusion."
+  },
+  "integrated_boundary_and_vector_resource_search": {
+    "code_commit": "d7dc70ea29112712ea30727d9d234afe912b80f8",
+    "source_sha256": "e1e67a8d10501bb84d594754f25d8df526bd8c815087a01d6f450a87a922f590",
+    "capacity_source_sha256": "60deeb309b8f50165a6782c73305f6c969f022d730e92848a6e590b370eaff40",
+    "portable_result": "experiments/lpx/integrated-boundary-vector-resource-search.json.gz",
+    "portable_result_sha256": "bf5e8b9bf6cedd01dc08f94464d5ddee5fa24ff28a345d95d932ab30a17df7a2",
+    "documentation": "docs/lpx-integrated-boundary-search.md",
+    "resource_correction_documentation": "docs/lpx-vector-resource-correction.md",
+    "capacity_policy_placement_cases": 324,
+    "projected_points": 79387,
+    "remaining_free_boundary_points": 48,
+    "remaining_batches": [
+      1
+    ],
+    "extra_scratch_per_transformer_chip": 2190464,
+    "pre_correction_prototypes": 3,
+    "current_controls": {
+      "integrated_first_only_pp12": {
+        "mfu_percent": 3.079508240250557,
+        "source_sha256": "e1e67a8d10501bb84d594754f25d8df526bd8c815087a01d6f450a87a922f590",
+        "resident": 16,
+        "chips": 192,
+        "issue_s": 1.6307100975233307e-05,
+        "warmup_rounds": 4,
+        "measured_rounds": 16,
+        "measured_tokens": 256,
+        "half_window_drift": -0.017576296613498243
+      },
+      "separate_long": {
+        "mfu_percent": 3.039141552988896,
+        "source_sha256": "e1e67a8d10501bb84d594754f25d8df526bd8c815087a01d6f450a87a922f590",
+        "resident": 10,
+        "chips": 163,
+        "issue_s": 2.1206e-05,
+        "warmup_rounds": 8,
+        "measured_rounds": 32,
+        "measured_tokens": 320,
+        "half_window_drift": 2.424727085781342e-13
+      },
+      "integrated_last_only_pp10": {
+        "mfu_percent": 3.270693262829052,
+        "source_sha256": "e1e67a8d10501bb84d594754f25d8df526bd8c815087a01d6f450a87a922f590",
+        "resident": 12,
+        "chips": 160,
+        "issue_s": 1.8607267846492842e-05,
+        "warmup_rounds": 4,
+        "measured_rounds": 16,
+        "measured_tokens": 192,
+        "half_window_drift": -1.9804158313263542e-12
+      },
+      "shared_long": {
+        "mfu_percent": 3.4196004996967937,
+        "source_sha256": "e1e67a8d10501bb84d594754f25d8df526bd8c815087a01d6f450a87a922f590",
+        "resident": 14,
+        "chips": 163,
+        "issue_s": 1.6336630748959784e-05,
+        "warmup_rounds": 8,
+        "measured_rounds": 32,
+        "measured_tokens": 448,
+        "half_window_drift": 4.440892098500626e-15
+      },
+      "integrated_first_only_pp11": {
+        "mfu_percent": 2.933467055597165,
+        "source_sha256": "e1e67a8d10501bb84d594754f25d8df526bd8c815087a01d6f450a87a922f590",
+        "resident": 14,
+        "chips": 176,
+        "issue_s": 1.8559572486175134e-05,
+        "warmup_rounds": 4,
+        "measured_rounds": 16,
+        "measured_tokens": 224,
+        "half_window_drift": 0.013205049391253443
+      }
+    },
+    "body_vector_checks": 105,
+    "restored_capacity_checks": 108,
+    "full_suite": {
+      "tests_run": 878,
+      "passed": 876,
+      "failures": 1,
+      "errors": 1,
+      "host_seconds": 114.213
+    },
+    "scope": "Uniform TP/DCP, PP1 through60, three tied-weight placements and three shared-cache policies, batch1 through54, complete resident KV. Single-end memory ownership is projected and uncompiled. Frozen pre-correction replay screens remain separate from current-resource selected-interval controls. Forty-eight batch-one points remain above the decode incumbent under the free-boundary envelope.",
+    "maximum_certified": false
   }
 }

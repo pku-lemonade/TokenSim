@@ -1,11 +1,12 @@
 # LP30 vector-resource reservations for scalar kernels
 
-Native decode refinement now assigns the physical vector execution module (VXM) resource to every LP30 compute event.
+With explicit LP30 fabric refinement enabled, native decode assigns the physical vector execution module (VXM) resource to every LP30 compute event.
 The previous operation-name list covered attention, attention output, dense feed-forward work and the language-model head.
 Normalization, residual, conversion and selection events retained only their worker resource.
 Chip-to-chip (C2C) reductions separately reserved the VXM resource, so independent requests could execute a scalar kernel and a reduction concurrently on the same modeled vector unit.
 The [streaming refinement](../scripts/lpx/streaming.py) now derives vector reservations from compute-event type and physical LP30 endpoints.
-Transport events and compute on other device types do not acquire an LP30 VXM resource.
+The compute-event binding leaves wire transfers and non-LP30 compute unchanged.
+Collective reductions retain their explicit VXM work.
 
 The correction preserves operator service durations and directed acyclic graph (DAG) dependencies.
 It completes resource exclusions in the existing model, which reserves each declared compute resource for the complete modeled kernel duration.
@@ -40,4 +41,5 @@ The complete suite runs 878 tests, with 876 passing and the same two macOS envir
 `test_stop_refuses_foreign_process` requires the unavailable `nvidia-smi` command.
 The formatter leaves all 580 Python files compliant, and the staged diff check passes.
 
+The [integrated-boundary study](lpx-integrated-boundary-search.md) retains the placement experiments, corrected controls and graph fingerprints associated with this correction.
 The shared-cache format still requires matching model-quality evidence, and the global maximum remains uncertified.
