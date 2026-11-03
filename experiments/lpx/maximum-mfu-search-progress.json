@@ -2,7 +2,7 @@
   "record_date": "2026-11-03",
   "goal": "Find the highest useful MFU for Gemma 4 31B serving with a 100K input; explore inventories beyond 256 LP30 chips.",
   "maximum_certified": false,
-  "status": "Pure LP30 MFU search continues without a TPS floor. A research heterogeneous pipeline on 423 chips reaches 3.699683848029% MFU with 54 resident requests and two complete frames. Native closed-loop replay measures 1,728 outputs and drains all 2,214 forwards. Eight distinct native component bodies, twenty compositions, four hundred initial calendars and sixty-eight numerical cyclic-order models extend the search. Multi-rack timing, heterogeneous compilation, physical banks and shared-cache quality remain unverified. The global maximum is unproven. Existing-format decode and prompt-inclusive serving records remain unchanged.",
+  "status": "Pure LP30 MFU search continues without a TPS floor. A 444-chip heterogeneous batch-one pipeline reaches 3.820105133525% MFU with 54 resident requests. A long native replay measures 1,728 outputs and drains all 2,214 forwards. A 69-configuration native catalog, 31,248 repeated-block bounds, 115 full compositions, 618 calendars and 334 numerical cyclic-order models extend coverage. Exact resource-incidence equivalence reduces search overhead without changing timing or LP arrays. Global-only TP64 remains a native output-head partition coverage gap, not a hardware exclusion. Multi-rack timing, physical compilation, banks and shared-cache quality remain unverified. The objective-wide maximum is unproven. Existing-format, homogeneous experimental and complete-request records remain unchanged.",
   "shared_timing_config": {
     "operator": {
       "activation_dtype": "bf16",
@@ -11636,6 +11636,37 @@
       "local_links_checked": 3,
       "diff_check": "passed",
       "scope": "Documentation and experiment evidence; production simulation source is unchanged."
+    },
+    "heterogeneous_batch_and_phase_evidence": {
+      "status": "passed",
+      "artifact_sha256": "3a9d3e9251aeca66f402ffed1f9d8905e0c072fe554160433e4e8ac188bfe18f",
+      "catalog_configurations": 69,
+      "native_profiles": 52,
+      "checked_native_nodes": 311418,
+      "screen_points": 31248,
+      "compositions": 115,
+      "selected_original_intervals": {
+        "nodes": 38821,
+        "resources": 13303,
+        "leases": 82
+      },
+      "selected_delayed_intervals": {
+        "nodes": 38821,
+        "resources": 13303,
+        "leases": 82
+      },
+      "numerical_duality_gap_ns": 1.4642864698544145e-10,
+      "minimum_headroom_bytes": 378990,
+      "replays": 2,
+      "previous_records_preserved": true,
+      "black_version": "24.2.0",
+      "formatted_and_checked_files": 582,
+      "production_source_unchanged": true,
+      "source_sha256": "ae29c716bbf5693a8c9d70df1ee5c6435c3e93af93781bcc5aff57c2e8074986",
+      "sentence_layout": "passed",
+      "wording": "passed",
+      "links_checked": 5,
+      "diff_check": "passed"
     }
   },
   "sources": [
@@ -115242,7 +115273,7 @@
   ],
   "source_cpp_sha256": "8118adb459ae6870d4a441217e4b4bfdef54f6b5a5f7a4e93cc6787cdf70aa57",
   "pending_experiments": [],
-  "last_updated_utc": "2026-11-03T09:38:02.567330+00:00",
+  "last_updated_utc": "2026-11-03T10:59:26.463513+00:00",
   "empirical_100k_gpu_acceptance": {
     "measurements": [
       {
@@ -133775,22 +133806,22 @@
     ]
   },
   "best_experimental_shared_cache_non_speculative": {
-    "chips": 423,
+    "chips": 444,
     "layout": {
       "kind": "heterogeneous_native_segments",
       "repeated_blocks": 10,
       "local_segments": [
         {
           "tp": 4,
-          "layers": 2
+          "layers": 1
         },
         {
           "tp": 4,
           "layers": 2
         },
         {
-          "tp": 2,
-          "layers": 1
+          "tp": 4,
+          "layers": 2
         }
       ],
       "global_segment": {
@@ -133799,23 +133830,24 @@
         "layers": 1
       },
       "pp": 40,
-      "pool_chips": 3
+      "pool_chips": 4
     },
     "resident_requests": 54,
     "slots": 2,
+    "batch": 1,
     "cache_layout": "value_rope_fp8",
     "kernel": "split_dot",
-    "mfu_percent": 3.6996838480290695,
-    "aggregate_tps": 148973.04366578697,
-    "issue_us": 6.712623810274445,
+    "mfu_percent": 3.820105133524924,
+    "aggregate_tps": 161458.5304925223,
+    "issue_us": 6.193540824071816,
     "global_optimum_certified": false,
     "matching_quality_verified": false,
     "compiler_storage_allocation_verified": false,
     "heterogeneous_tp_compilation_verified": false,
     "multirack_timing_calibrated": false,
-    "record_ref": "heterogeneous_tp_search.native_replay_summary",
-    "artifact": "experiments/lpx/heterogeneous-tp-search.json.gz",
-    "scope": "Research composition of native replicated-input/output segments with heterogeneous TP. Additional barriers join every segment before handoff. Full copied scratch and explicit input rows reserve two active/input frames per TF chip. Four conservative head query rows cover two embedding and two logits workspaces. Every original non-host service, native edge and vector resource remains; one explicit 4 us host replaces per-component hosts. Physical compiler execution, banks, multirack timing and shared-cache quality remain unverified. The selected two-frame pipeline additionally reserves a second complete native communication workspace on every transformer chip. Fresh native admission and max-plus-one rejection retain the same capacities. Fresh captured node bodies are bit identical, so compute and communication pricing, dependencies and replay schedules are unchanged. SRAM bank allocation and physical compiler execution remain unverified."
+    "record_ref": "heterogeneous_batch_and_phase_search.native_replay_summary",
+    "artifact": "experiments/lpx/heterogeneous-batch-and-phase-search.json.gz",
+    "scope": "Analytical fixed-context decode with experimental shared global KV and unchanged full native service/resource semantics. Two full scratch/residual/communication frames, two incoming rows, vocabulary backcharge, five MB safety reserve, native rounding and watermark remain. Physical compilation, banks, matching quality and multi-rack timing are unverified. The finite repeated-block and cyclic-order search does not establish the objective-wide maximum."
   },
   "previous_milestone_commit": "d7dc70ea29112712ea30727d9d234afe912b80f8",
   "shared_kv_workspace_and_batch_search": {
@@ -310742,5 +310774,200 @@
     "record_ref": "cyclic_order_optimization.native_replay_summary",
     "artifact": "experiments/lpx/cyclic-order-optimization-search.json.gz",
     "scope": "All native dependencies, service times, physical resources and release indices remain. Only readiness delays are added to construct a legal periodic schedule. Two active/input frames, full duplicated native scratch, the vocabulary backcharge, 5 MB safety reserve, native KV rounding and watermark are retained. Physical banks, compiler schedules and shared-cache quality are unverified."
+  },
+  "heterogeneous_batch_and_phase_search": {
+    "status": "complete_finite_batch_catalog_and_phase_study",
+    "turn_classification": "progress",
+    "base_commit": "8b532e04ca1acfe53f24cd5c12f7de1ea4045cec",
+    "source_sha256": "ae29c716bbf5693a8c9d70df1ee5c6435c3e93af93781bcc5aff57c2e8074986",
+    "artifact": "experiments/lpx/heterogeneous-batch-and-phase-search.json.gz",
+    "artifact_sha256": "3a9d3e9251aeca66f402ffed1f9d8905e0c072fe554160433e4e8ac188bfe18f",
+    "document": "docs/lpx-heterogeneous-batch-search.md",
+    "hardware": "pure LP30",
+    "minimum_tps": null,
+    "maximum_certified": false,
+    "native_catalog": {
+      "configurations": 69,
+      "captured": 52,
+      "rejected_under_declared_policy": 17,
+      "frames": 2,
+      "batches": [
+        1,
+        2,
+        4
+      ]
+    },
+    "screen_counts": {
+      "1": {
+        "points": 12528,
+        "survivors": 1314,
+        "classes": 233,
+        "maximum_upper": 5.188687226819127
+      },
+      "2": {
+        "points": 12480,
+        "survivors": 74,
+        "classes": 36,
+        "maximum_upper": 4.4775809450251005
+      },
+      "4": {
+        "points": 6240,
+        "survivors": 0,
+        "classes": 0,
+        "maximum_upper": 3.3894810097183536
+      }
+    },
+    "screen_points": 31248,
+    "compositions": 115,
+    "batch1_compositions": 41,
+    "batch2_compositions": 74,
+    "calendar_trials": 618,
+    "numerical_lp_cases": 334,
+    "batch2_numerical_lp_cases": 172,
+    "batch2_best_fixed_order_mfu": 3.7344806857170014,
+    "batch2_remaining_full_graph_bound_points": 8,
+    "resource_equivalence": {
+      "timing_cases": 8,
+      "original_physical_keys": 17047,
+      "canonical_keys": 1173,
+      "original_resource_uses": 7351389,
+      "canonical_resource_uses": 379332,
+      "full_constraint_arrays_bit_identical": true
+    },
+    "native_replay_summary": {
+      "chips": 444,
+      "transformer_chips": 440,
+      "head_chips": 4,
+      "stages": 40,
+      "resident": 54,
+      "frames": 2,
+      "batch": 1,
+      "period_s": 6.193540824071816e-06,
+      "mfu_percent": 3.820105133524924,
+      "aggregate_tps": 161458.5304925223,
+      "measured_tokens": 1728,
+      "drained_forwards": 2214,
+      "added_delay_nodes": 9871,
+      "minimum_watermark_adjusted_headroom_bytes": 378990,
+      "interval_audit": {
+        "status": "passed",
+        "checked_nodes": 38821,
+        "physical_resources": 13221,
+        "arena_resources": 82,
+        "lease_release_descendants": 82,
+        "neighboring_copies": 3,
+        "maximum_floating_overlap_s": 0.0,
+        "feedback_fits": true
+      },
+      "convergence": {
+        "earlier_half_tps": 161458.53049251705,
+        "later_half_tps": 161458.53049252753,
+        "relative_change": 6.483702463810914e-14
+      }
+    },
+    "previous_record": {
+      "chips": 423,
+      "layout": {
+        "kind": "heterogeneous_native_segments",
+        "repeated_blocks": 10,
+        "local_segments": [
+          {
+            "tp": 4,
+            "layers": 2
+          },
+          {
+            "tp": 4,
+            "layers": 2
+          },
+          {
+            "tp": 2,
+            "layers": 1
+          }
+        ],
+        "global_segment": {
+          "tp": 32,
+          "kvp": 8,
+          "layers": 1
+        },
+        "pp": 40,
+        "pool_chips": 3
+      },
+      "resident_requests": 54,
+      "slots": 2,
+      "cache_layout": "value_rope_fp8",
+      "kernel": "split_dot",
+      "mfu_percent": 3.6996838480290695,
+      "aggregate_tps": 148973.04366578697,
+      "issue_us": 6.712623810274445,
+      "global_optimum_certified": false,
+      "matching_quality_verified": false,
+      "compiler_storage_allocation_verified": false,
+      "heterogeneous_tp_compilation_verified": false,
+      "multirack_timing_calibrated": false,
+      "record_ref": "heterogeneous_tp_search.native_replay_summary",
+      "artifact": "experiments/lpx/heterogeneous-tp-search.json.gz",
+      "scope": "Research composition of native replicated-input/output segments with heterogeneous TP. Additional barriers join every segment before handoff. Full copied scratch and explicit input rows reserve two active/input frames per TF chip. Four conservative head query rows cover two embedding and two logits workspaces. Every original non-host service, native edge and vector resource remains; one explicit 4 us host replaces per-component hosts. Physical compiler execution, banks, multirack timing and shared-cache quality remain unverified. The selected two-frame pipeline additionally reserves a second complete native communication workspace on every transformer chip. Fresh native admission and max-plus-one rejection retain the same capacities. Fresh captured node bodies are bit identical, so compute and communication pricing, dependencies and replay schedules are unchanged. SRAM bank allocation and physical compiler execution remain unverified."
+    },
+    "native_wide_query_head_guard": {
+      "name": "global1-tp64-cp16",
+      "batch": 1,
+      "tp": 64,
+      "cp": 16,
+      "layers": 1,
+      "kind": "global",
+      "frames": 2,
+      "source_sha256": "ae29c716bbf5693a8c9d70df1ee5c6435c3e93af93781bcc5aff57c2e8074986",
+      "status": "infeasible_base_cohort",
+      "reason": "AF runtime query heads=32 are not divisible by A domain='mfu-search-a-domain' TP=64",
+      "physical_infeasibility_proved": false,
+      "interpretation": "The native output-head partition is unsupported; this is a coverage gap."
+    },
+    "scope": "Analytical fixed-context decode with experimental shared global KV and unchanged full native service/resource semantics. Two full scratch/residual/communication frames, two incoming rows, vocabulary backcharge, five MB safety reserve, native rounding and watermark remain. Physical compilation, banks, matching quality and multi-rack timing are unverified. The finite repeated-block and cyclic-order search does not establish the objective-wide maximum.",
+    "next_actions": [
+      "Compose batch-two local segments with batch-one global attention, using role-specific frame periods and cohort-aware feedback.",
+      "Implement output-channel fragments within attention heads for wider global-only TP/DCP groups.",
+      "Validate LSE merges, output projection shards and weight/memory counts, while preserving existing TP<=32 behavior.",
+      "Recompute larger-inventory native bounds and periodic schedules after wider-head coverage exists.",
+      "Continue other cyclic orders, batch widths and cross-block layouts.",
+      "Retain complete-request serving as a separate optimization metric."
+    ],
+    "validation": {
+      "status": "passed",
+      "artifact_sha256": "3a9d3e9251aeca66f402ffed1f9d8905e0c072fe554160433e4e8ac188bfe18f",
+      "catalog_configurations": 69,
+      "native_profiles": 52,
+      "checked_native_nodes": 311418,
+      "screen_points": 31248,
+      "compositions": 115,
+      "selected_original_intervals": {
+        "nodes": 38821,
+        "resources": 13303,
+        "leases": 82
+      },
+      "selected_delayed_intervals": {
+        "nodes": 38821,
+        "resources": 13303,
+        "leases": 82
+      },
+      "numerical_duality_gap_ns": 1.4642864698544145e-10,
+      "minimum_headroom_bytes": 378990,
+      "replays": 2,
+      "previous_records_preserved": true,
+      "black_version": "24.2.0",
+      "formatted_and_checked_files": 582,
+      "production_source_unchanged": true,
+      "source_sha256": "ae29c716bbf5693a8c9d70df1ee5c6435c3e93af93781bcc5aff57c2e8074986",
+      "sentence_layout": "passed",
+      "wording": "passed",
+      "links_checked": 5,
+      "diff_check": "passed"
+    },
+    "numeric_solver_environment": {
+      "python": "3.9.6",
+      "numpy": "2.0.2",
+      "scipy": "1.13.1",
+      "blas_threads": 1,
+      "openmp_threads": 1
+    }
   }
 }
