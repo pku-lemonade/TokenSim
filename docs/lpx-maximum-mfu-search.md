@@ -13,7 +13,9 @@ The existing-format non-speculative decode incumbent reaches 3.03914% MFU on 163
 It places transformer layers on 160 chips and the tied embedding and language-model (LM) head on three additional chips.
 Assistant-aware draft and verification replays provide conditional acceptance scenarios and explicit transports of the repository's measured 100K GPU acceptance.
 The measured GPU KV and assistant precision differ from some LP30 configurations.
-The current experimental shared global-cache decode record reaches approximately 3.827772% MFU on 445 chips with 54 resident requests using [mixed local/global batch widths and a five-chip boundary pool](lpx-boundary-pool-width-search.md).
+The native-ownership experimental shared global-cache decode record reaches approximately 3.827772% MFU on 445 chips with 54 resident requests using [mixed local/global batch widths and a five-chip boundary pool](lpx-boundary-pool-width-search.md).
+The separate [custom-ownership QKV projection-sharing study](lpx-qkv-projection-broadcast-search.md) reaches approximately 3.832974589% analytical decode MFU on the same 445 chips with 56 requests.
+Its custom KV owner map has an independently checked byte ledger and numerical controls, while default AFService compilation of that map remains unsupported.
 Matching model quality, physical compiler execution, SRAM banks and multi-rack timing remain unverified.
 The 5 MB per-chip safety reserve remains enabled.
 The [complete-request serving study](lpx-complete-serving-mfu.md) adds a separate MFU metric for a 100K prompt followed by 2K outputs, with explicit PP activation buffers and request completion.
@@ -65,8 +67,9 @@ Other communication structures and schedules, physical compilation, banks and ma
 The subsequent [hierarchical attention and output-staging study](lpx-hierarchical-home-attention-search.md) screens twelve layer configurations and four complete hierarchy placements.
 Its selected longer run reaches approximately 2.953492% MFU, and separate output-staging fixed-order targets also remain below the decode record.
 Fresh resource orders and native request-feedback replay for the output-staging policy remain open.
-A separate projection-broadcast proposal passes a conditional 56-request global capacity ledger by removing duplicate QKV matrices and using nonuniform KV ranges.
-Its fresh native weight provenance, numerical, routing and closed-loop validation remain open, and it has no TPS or MFU claim.
+The subsequent [projection-sharing study](lpx-qkv-projection-broadcast-search.md) removes duplicate QKV matrices, verifies native weight provenance and implements a nonuniform KV map with explicit broadcast costs.
+Its selected 56-request native-program replay reaches 162,367.334 TPS and 3.832974589% MFU over 1,792 measured outputs, with all submitted jobs drained.
+This custom-ownership analytical result is recorded separately from the native-ownership record because default AFService compilation, physical storage allocation and model-quality validation remain open.
 
 ## Metric and workload
 

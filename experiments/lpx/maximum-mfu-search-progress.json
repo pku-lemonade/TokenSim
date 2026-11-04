@@ -2,7 +2,7 @@
   "record_date": "2026-11-04",
   "goal": "Find the highest useful MFU for Gemma 4 31B serving with a 100K input; explore inventories beyond 256 LP30 chips.",
   "maximum_certified": false,
-  "status": "Pure LP30 MFU search continues without a TPS floor. The attained experimental shared-cache decode record remains 3.827772117064% on 445 chips with 54 requests. Twelve hierarchical-home layer combinations and four selected complete placements do not improve it; the selected longer run measures 1,792 outputs at 2.953491826377% MFU and drains all 1,148 cohort jobs. Separate global-output staging fits inside the charged vocabulary guard, while the best successful lifted-calendar numerical target remains 3.819043233002% across seventy supplied orders. A new capacity-only projection-broadcast proposal would release approximately 6.94 GB of duplicate QKV weights and admits a derived nonuniform 56-request global allocation under its declared policy. Its fresh native weight, numerical, routing and closed-loop validation remain open. Objective-wide optimality, physical compilation, banks, matching shared-cache quality and multi-rack timing remain unverified.",
+  "status": "Pure LP30 MFU search continues without a TPS floor. The custom-ownership analytical QKV-sharing decode replay reaches 3.832974588992% MFU and 162367.334463 TPS on 445 chips with 56 requests. Its 1792-token long measurement drains all 1148 paired jobs. Fresh native weight provenance, an explicit modified-state byte ledger, full-shape synthetic numerical controls, broadcast costs, eighty specified order models and complete native-program feedback replays are archived. The default AFService does not compile the custom KV owner table, so this result is recorded separately and all prior native-ownership records remain unchanged. Objective-wide optimality, physical compilation, SRAM banks, fixed routes, model quality and multi-rack timing remain unverified.",
   "shared_timing_config": {
     "operator": {
       "activation_dtype": "bf16",
@@ -116099,15 +116099,6 @@
   "source_cpp_sha256": "8118adb459ae6870d4a441217e4b4bfdef54f6b5a5f7a4e93cc6787cdf70aa57",
   "pending_experiments": [
     {
-      "name": "pure-lp30-qkv-projection-broadcast-native-validation",
-      "status": "conditional_capacity_passed_fresh_weight_numeric_routing_and_closed_loop_validation_pending",
-      "chips": 445,
-      "logical_requests": 56,
-      "hardware": "pure LP30",
-      "capacity_artifact": "experiments/lpx/qkv-projection-broadcast-capacity.json",
-      "mfu_claimed": false
-    },
-    {
       "name": "pure-lp30-global-output-staging-fresh-orders-and-replay",
       "status": "single_job_native_graph_and_lifted_order_targets_checked_fresh_orders_and_feedback_replay_pending",
       "chips": 445,
@@ -116117,9 +116108,23 @@
         32
       ],
       "mfu_claimed": false
+    },
+    {
+      "name": "pure-lp30-guarded-early-qkv-preparation",
+      "status": "scratch_lifetime_ownership_and_schedule_not_yet_implemented",
+      "chips": 445,
+      "logical_requests": 56,
+      "hardware": "pure LP30",
+      "mfu_claimed": false
+    },
+    {
+      "name": "pure-lp30-boundary-pool-projection-placement",
+      "status": "capacity_provenance_and_shared_resource_bounds_not_yet_evaluated",
+      "hardware": "pure LP30",
+      "mfu_claimed": false
     }
   ],
-  "last_updated_utc": "2026-11-03 14:59:04 UTC",
+  "last_updated_utc": "2026-11-04T02:24:20.974399Z",
   "empirical_100k_gpu_acceptance": {
     "measurements": [
       {
@@ -313649,5 +313654,178 @@
     "mfu_claimed": false,
     "maximum_certified": false,
     "scope": "Capacity-only design inference that removes seven unused duplicate FP8 QKV matrices per eight-way global CP group and broadcasts normalized queries plus rotary-K/value deltas from its one projection root. Original non-QKV weights, auxiliary data, both native active frames, charged vocabulary guard, five-MB safety and independent KV watermark remain. The derived 56-request placement fits; 57/58 fail this declared rank/block policy. Fresh weight provenance, broadcast copies/routes, unique append ownership, nonuniform core costs and request-feedback performance remain unverified. This is not an attained serving result."
+  },
+  "best_custom_ownership_analytical_shared_decode": {
+    "chips": 445,
+    "resident_requests": 56,
+    "resident_cohorts": 28,
+    "batch": 2,
+    "slots": 2,
+    "cache_layout": "value_rope_fp8",
+    "kernel": "split_dot",
+    "mfu_percent": 3.832974588991876,
+    "aggregate_tps": 162367.33446261598,
+    "issue_us": 12.317748558257115,
+    "layout": {
+      "transformer_chips": 440,
+      "head_chips": 5,
+      "pp": 30,
+      "local_segments": [
+        {
+          "tp": 4,
+          "layers": 1,
+          "batch": 2
+        },
+        {
+          "tp": 8,
+          "layers": 4,
+          "batch": 2
+        }
+      ],
+      "global_segment": {
+        "tp": 32,
+        "kvp": 8,
+        "layers": 1,
+        "batch": 1,
+        "projection_roots": 4,
+        "broadcast_lanes_per_peer": 12
+      }
+    },
+    "global_optimum_certified": false,
+    "matching_quality_verified": false,
+    "compiler_storage_allocation_verified": false,
+    "custom_owner_map_default_afservice_supported": false,
+    "physical_fixed_routes_verified": false,
+    "multirack_timing_calibrated": false,
+    "record_ref": "qkv_projection_broadcast_search.selected_native_replay",
+    "artifact": "experiments/lpx/qkv-projection-broadcast-search.json.gz",
+    "scope": "Custom nonuniform KV ownership and producer-only QKV analytical native-program decode. Fresh original native weight provenance and an explicit physical-state modification establish the byte ledger; the default AFService does not compile the owner map. Complete native active/input frames, guard, safety, O/FFN and conservative row-zero core gate remain. Synthetic projection/attention algebra, exact native cost reconstruction, periodic intervals and drained cohort-feedback replays pass. Compiler execution, SRAM banks, physical neighbor mapping, quality, multi-rack timing and the objective-wide maximum remain unverified."
+  },
+  "qkv_projection_broadcast_search": {
+    "status": "complete_finite_qkv_broadcast_analytical_search",
+    "artifact": "experiments/lpx/qkv-projection-broadcast-search.json.gz",
+    "artifact_sha256": "c6c8407474cbc06816c4b23e382ae98749f0c569d79efa85510b7daeba4007e1",
+    "report": "docs/lpx-qkv-projection-broadcast-search.md",
+    "base_commit": "1262ec4e3e1778fb6aeefed3fc1be373a55211b2",
+    "source_sha256": "9dfe67e50e9ab76edafd96f37033622e8ae62b2abb3a03f0d233a81920e2407e",
+    "hardware": "pure LP30",
+    "minimum_tps": null,
+    "maximum_certified": false,
+    "previous_native_ownership_records_preserved": true,
+    "removed_qkv_weight_bytes": 6936330240,
+    "custom_owner_policies": 3,
+    "isolated_policy_lane_cases": 9,
+    "complete_native_pipeline_captures": 4,
+    "global_native_default_owner_map_supported": false,
+    "minimum_custom_global_headroom_bytes": 551358,
+    "numerical_maximum_absolute_error": 1.0598463756616994e-07,
+    "selected_native_replay": {
+      "chips": 445,
+      "requests": 56,
+      "warmup_rounds": 8,
+      "measured_rounds": 32,
+      "mfu_percent": 3.832974588991876,
+      "aggregate_tps": 162367.33446261598,
+      "measured_tokens": 1792,
+      "measured_completions": 896,
+      "drained_jobs": 1148,
+      "relative_half_window_drift": 6.41597885930878e-12,
+      "period_us": 12.317748558257115
+    },
+    "lp_order_counts": {
+      "total": 80,
+      "solver_reported_infeasible_without_farkas": 30,
+      "successful": 50
+    },
+    "validation": {
+      "status": "passed",
+      "artifact_sha256": "c6c8407474cbc06816c4b23e382ae98749f0c569d79efa85510b7daeba4007e1",
+      "checked": {
+        "native_weight_component_provenance": 32,
+        "custom_rank_memory_and_owner_ranges": 96,
+        "isolated_owner_policy_lane_cases": 9,
+        "unchanged_native_pipeline_rows": 389428,
+        "unchanged_native_component_rows": 5820,
+        "producer_prefixes_and_retired_duplicates": 960,
+        "native_copy_costs": 960,
+        "controller_budgets": 960,
+        "native_nonuniform_core_costs": 960,
+        "routed_broadcast_phases": 30,
+        "integrated_extra_nodes": 7840,
+        "exactly_grafted_native_component_nodes": 2880,
+        "preserved_external_longest_core_gates": 40,
+        "native_active_frame_lifetimes": 80,
+        "delayed_full_native_interval_audits": 1,
+        "artifact_only_native_replays": 1
+      },
+      "lp_orders": {
+        "total": 80,
+        "solver_reported_infeasible_without_farkas": 30,
+        "successful": 50
+      },
+      "replays": [
+        {
+          "label": "frontload-lanes12",
+          "prefix": "program",
+          "warm": 2,
+          "measure": 4,
+          "mfu_percent": 3.796179649176363,
+          "tps": 160808.676516718,
+          "drift": -0.005195201117789039,
+          "measured_tokens": 224,
+          "drained_jobs": 196
+        },
+        {
+          "label": "frontload-lanes12",
+          "prefix": "scheduled",
+          "warm": 2,
+          "measure": 4,
+          "mfu_percent": 3.8329745890120597,
+          "tps": 162367.33446347096,
+          "drift": -8.840705945090122e-13,
+          "measured_tokens": 224,
+          "drained_jobs": 196
+        },
+        {
+          "label": "frontload-lanes12",
+          "prefix": "scheduled",
+          "warm": 4,
+          "measure": 16,
+          "mfu_percent": 3.8329745889847904,
+          "tps": 162367.33446231583,
+          "drift": -8.47655279301307e-12,
+          "measured_tokens": 896,
+          "drained_jobs": 588
+        },
+        {
+          "label": "frontload-lanes12",
+          "prefix": "scheduled",
+          "warm": 8,
+          "measure": 32,
+          "mfu_percent": 3.832974588991876,
+          "tps": 162367.33446261598,
+          "drift": 6.41597885930878e-12,
+          "measured_tokens": 1792,
+          "drained_jobs": 1148
+        },
+        {
+          "label": "frontload-lanes6-anchored",
+          "prefix": "program",
+          "warm": 2,
+          "measure": 4,
+          "mfu_percent": 3.7901995038007836,
+          "tps": 160555.3536099812,
+          "drift": -6.895583336841149e-05,
+          "measured_tokens": 224,
+          "drained_jobs": 196
+        }
+      ],
+      "maximum_certified": false
+    },
+    "remaining_work": [
+      "Guarded early projection preparation needs a new scratch-lifetime proof and native schedules.",
+      "Additional resource orders, transformer/head placements and chip inventories remain open.",
+      "Default AFService compilation of custom ownership, physical banks/routes, model quality and multi-rack timing remain unverified."
+    ]
   }
 }

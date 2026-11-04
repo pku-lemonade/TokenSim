@@ -152,8 +152,9 @@ The [conditional capacity receipt](../experiments/lpx/qkv-projection-broadcast-c
 It charges a separate one-percent KV watermark per request and rank.
 The derived 56-request global allocation fits this declared policy, while 57 and 58 requests exceed its summed per-group block limits.
 Existing conservative local 58-request native admissions remain sufficient for the unchanged local 56-request layout.
-Fresh deduplicated-weight provenance, query broadcast routing, numerical append ownership, nonuniform attention timing and complete request-feedback replay remain unverified.
-No TPS or MFU is assigned to this proposal.
+The capacity-only receipt does not assign TPS or MFU to the proposal.
+The subsequent [projection-sharing study](lpx-qkv-projection-broadcast-search.md) verifies weight provenance, numerical ownership, native broadcast costs and complete request-feedback replays, reaching approximately 3.832974589% analytical decode MFU with the custom owner map.
+Default AFService compilation of that map and hardware execution remain unverified.
 
 ## Evidence and remaining work
 
@@ -164,5 +165,5 @@ Compiler execution, physical banks, multi-rack calibration and matching experime
 
 Fresh output-staging calendars and other cyclic resource orders remain candidates.
 The release policy also needs native request-feedback replay before any attained performance claim.
-The projection-broadcast proposal requires complete native computation, communication and memory validation.
+The projection-broadcast follow-up retains separate custom-ownership limitations and remaining hardware validation.
 Other transformer/head ratios, request counts, operator placements and inventories remain open.
