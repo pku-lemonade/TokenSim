@@ -125,3 +125,6 @@ The current multi-rack propagation assumption remains uncalibrated.
 Other resource orders, guarded early projection preparation, custom-owner compiler support, SRAM bank allocation, different chip inventories and model-quality validation remain open.
 The experiment provides a larger analytical decode result within its stated custom-ownership assumptions.
 It does not certify the maximum MFU for the user's full serving objective.
+
+The subsequent [boundary-pool projection study](lpx-qkv-boundary-projection-pool-search.md) admits 57 requests under an explicit matrix-relocation policy.
+Its longer 448-chip decode replay reaches approximately 2.95940% MFU, and the tested schedules leave this page's 3.83297% record unchanged.

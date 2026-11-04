@@ -2,7 +2,7 @@
   "record_date": "2026-11-04",
   "goal": "Find the highest useful MFU for Gemma 4 31B serving with a 100K input; explore inventories beyond 256 LP30 chips.",
   "maximum_certified": false,
-  "status": "Pure LP30 MFU search continues without a TPS floor. The custom-ownership analytical QKV-sharing decode replay reaches 3.832974588992% MFU and 162367.334463 TPS on 445 chips with 56 requests. Its 1792-token long measurement drains all 1148 paired jobs. Fresh native weight provenance, an explicit modified-state byte ledger, full-shape synthetic numerical controls, broadcast costs, eighty specified order models and complete native-program feedback replays are archived. The default AFService does not compile the custom KV owner table, so this result is recorded separately and all prior native-ownership records remain unchanged. Objective-wide optimality, physical compilation, SRAM banks, fixed routes, model quality and multi-rack timing remain unverified.",
+  "status": "Pure LP30 MFU search continues without a TPS floor. The completed boundary-pool projection study fits 57 requests under explicitly modified native states and recomputed budgets, but its 448-chip long replay reaches only 2.959402320020% MFU; a 445-chip batch-one global-projection control reaches 3.011306689746%. Six tested batch-two pool widths have fixed-graph upper bounds below 3.53%. The custom-ownership 56-request batch-two record remains 3.832974588992% MFU on 445 chips. Capacity, numerical controls, graph/cost/lifetime audits, finite-order certificates and drained traces are retained separately. Other orders and placements, physical compilation, SRAM banks, fixed routes, model quality, multi-rack timing and objective-wide optimality remain unverified.",
   "shared_timing_config": {
     "operator": {
       "activation_dtype": "bf16",
@@ -116124,7 +116124,7 @@
       "mfu_claimed": false
     }
   ],
-  "last_updated_utc": "2026-11-04T02:24:20.974399Z",
+  "last_updated_utc": "2026-11-04T05:55:03.805614+00:00",
   "empirical_100k_gpu_acceptance": {
     "measurements": [
       {
@@ -313826,6 +313826,73 @@
       "Guarded early projection preparation needs a new scratch-lifetime proof and native schedules.",
       "Additional resource orders, transformer/head placements and chip inventories remain open.",
       "Default AFService compilation of custom ownership, physical banks/routes, model quality and multi-rack timing remain unverified."
+    ]
+  },
+  "qkv_boundary_projection_pool_search": {
+    "artifact": "experiments/lpx/qkv-boundary-projection-pool-search.json.gz",
+    "validation": "experiments/lpx/qkv-boundary-projection-pool-validation.json",
+    "documentation": "docs/lpx-qkv-boundary-projection-pool-search.md",
+    "source_sha256": "9dfe67e50e9ab76edafd96f37033622e8ae62b2abb3a03f0d233a81920e2407e",
+    "capacity": {
+      "global_admitted_requests": [
+        56,
+        57
+      ],
+      "rejected_requests": 58,
+      "minimum_global_headroom57_bytes": 140094,
+      "native_budget_recomputation_verified": true,
+      "default_afservice_custom_placement_compiled": false
+    },
+    "long_replays": [
+      {
+        "placement": "boundary_pool_qkv",
+        "chips": 448,
+        "requests": 57,
+        "batch": 1,
+        "warmup_rounds": 8,
+        "measured_rounds": 32,
+        "measured_tokens": 1824,
+        "drained_jobs": 2337,
+        "mfu_percent": 2.9594023200197364,
+        "aggregate_tps": 126207.37501029306,
+        "relative_half_window_drift": 0.000917376892068944
+      },
+      {
+        "placement": "global_qkv_control",
+        "chips": 445,
+        "requests": 56,
+        "batch": 1,
+        "warmup_rounds": 8,
+        "measured_rounds": 32,
+        "measured_tokens": 1792,
+        "drained_jobs": 2296,
+        "mfu_percent": 3.01130668974597,
+        "aggregate_tps": 127560.93971186334,
+        "relative_half_window_drift": -0.0012554241899491725
+      }
+    ],
+    "batch2_pool_widths": [
+      5,
+      6,
+      7,
+      8,
+      12,
+      16
+    ],
+    "maximum_batch2_fixed_graph_mfu_upper_percent": 3.52004765488082,
+    "batch1_pool8_three_local_frames_mfu_upper_percent": 3.9622742637114845,
+    "finite_orders": {
+      "total": 892,
+      "primal_dual_successes": 127,
+      "solver_infeasible_without_farkas": 765
+    },
+    "existing_best_records_preserved": true,
+    "maximum_certified": false,
+    "remaining_work": [
+      "Other cyclic resource orders and guarded early projection preparation.",
+      "Other pool assignments, chip counts and transformer placements.",
+      "Default custom-placement compilation, physical banks and routes, multi-rack timing and trained-model quality.",
+      "Objective-wide optimality and complete-serving coverage remain unproven."
     ]
   }
 }
